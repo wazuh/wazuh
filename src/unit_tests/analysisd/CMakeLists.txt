@@ -40,6 +40,10 @@ list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain 
                          -Wl,--wrap,connect_to_remoted -Wl,--wrap,send_msg_to_agent -Wl,--wrap,wdbc_query_ex \
                          -Wl,--wrap,wdbc_parse_result")
 
+list(APPEND analysisd_names "test_decoder_syscollector")
+list(APPEND analysisd_flags "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,fillData \
+                             -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
+
 list(APPEND analysisd_names "test_labels")
 list(APPEND analysisd_flags "-Wl,--wrap,wdb_get_agent_labels")
 

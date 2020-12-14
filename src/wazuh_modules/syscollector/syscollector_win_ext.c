@@ -15,7 +15,6 @@
 
 #define MAXSTR 1024
 
-#include <external/cJSON/cJSON.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <winsock2.h>
@@ -27,6 +26,76 @@
 
 char* length_to_ipv6_mask(int mask_length);
 char* get_broadcast_addr(char* ip, char* netmask);
+
+typedef struct net_addr {
+    char ** address;
+    char ** netmask;
+    char ** broadcast;
+    int metric;
+    char * gateway;
+    char * dhcp;
+} net_addr;
+
+typedef struct iface_data {
+    char * name;
+    char * adapter;
+    char * type;
+    char * state;
+    char * mac;
+    int mtu;
+
+    int tx_packets;
+    int rx_packets;
+    int tx_bytes;
+    int rx_bytes;
+    int tx_errors;
+    int rx_errors;
+    int tx_dropped;
+    int rx_dropped;
+
+    struct net_addr * ipv4;
+    struct net_addr * ipv6;
+
+    int enabled;
+} iface_data;
+
+net_addr * init_net_addr();
+iface_data * init_iface_data();
+
+net_addr * init_net_addr() {
+    net_addr * net = NULL;
+    net = calloc(1, sizeof(net_addr));
+    net->address = NULL;
+    net->netmask = NULL;
+    net->broadcast = NULL;
+    net->metric = INT_MIN;
+    net->gateway = NULL;
+    net->dhcp = NULL;
+    return net;
+}
+
+iface_data * init_iface_data() {
+    iface_data * data = NULL;
+    data = calloc(1, sizeof(iface_data));
+    data->name = NULL;
+    data->adapter = NULL;
+    data->type = NULL;
+    data->state = NULL;
+    data->mac = NULL;
+    data->mtu = INT_MIN;
+    data->tx_packets = INT_MIN;
+    data->rx_packets = INT_MIN;
+    data->tx_bytes = INT_MIN;
+    data->rx_bytes = INT_MIN;
+    data->tx_errors = INT_MIN;
+    data->rx_errors = INT_MIN;
+    data->tx_dropped = INT_MIN;
+    data->rx_dropped = INT_MIN;
+    data->ipv4 = NULL;
+    data->ipv6 = NULL;
+    data->enabled = 0;
+    return data;
+}
 
 __declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
 
@@ -43,12 +112,11 @@ __declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
 
 }
 
-__declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp){
+__declspec( dllexport ) iface_data * get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses){
 
     PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
     PIP_ADAPTER_GATEWAY_ADDRESS_LH pGateway = NULL;
 
-    char *string;
     unsigned int i = 0;
     char host[NI_MAXHOST];
     char ipv4addr[NI_MAXHOST];
@@ -56,76 +124,71 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
     struct sockaddr_in *addr4;
     struct sockaddr_in6 *addr6;
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *iface_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "iface", iface_info);
+    iface_data * data = init_iface_data();
 
     /* Iface Name */
     char iface_name[MAXSTR];
     snprintf(iface_name, MAXSTR, "%S", pCurrAddresses->FriendlyName);
-    cJSON_AddStringToObject(iface_info, "name", iface_name);
+    data->name = strdup(iface_name);
 
     /* Iface adapter */
     char description[MAXSTR];
     snprintf(description, MAXSTR, "%S", pCurrAddresses->Description);
-    cJSON_AddStringToObject(iface_info, "adapter", description);
+    data->adapter = strdup(description);
 
     /* Type of interface */
     switch (pCurrAddresses->IfType){
         case IF_TYPE_ETHERNET_CSMACD:
-            cJSON_AddStringToObject(iface_info, "type", "ethernet");
+            data->type = strdup("ethernet");
             break;
         case IF_TYPE_ISO88025_TOKENRING:
-            cJSON_AddStringToObject(iface_info, "type", "token ring");
+            data->type = ("token ring");
             break;
         case IF_TYPE_PPP:
-            cJSON_AddStringToObject(iface_info, "type", "point-to-point");
+            data->type = strdup("point-to-point");
             break;
         case IF_TYPE_ATM:
-            cJSON_AddStringToObject(iface_info, "type", "ATM");
+            data->type = strdup("ATM");
             break;
         case IF_TYPE_IEEE80211:
-            cJSON_AddStringToObject(iface_info, "type", "wireless");
+            data->type = strdup("wireless");
             break;
         case IF_TYPE_TUNNEL:
-            cJSON_AddStringToObject(iface_info, "type", "tunnel");
+            data->type = strdup("tunnel");
             break;
         case IF_TYPE_IEEE1394:
-            cJSON_AddStringToObject(iface_info, "type", "firewire");
+            data->type = strdup("firewire");
             break;
         default:
-            cJSON_AddStringToObject(iface_info, "type", "unknown");
+            data->type = strdup("unknown");
             break;
     }
 
     /* Operational status */
     switch (pCurrAddresses->OperStatus){
         case IfOperStatusUp:
-            cJSON_AddStringToObject(iface_info, "state", "up");
+            data->state = strdup("up");
             break;
         case IfOperStatusDown:
-            cJSON_AddStringToObject(iface_info, "state", "down");
+            data->state = strdup("down");
             break;
         case IfOperStatusTesting:
-            cJSON_AddStringToObject(iface_info, "state", "testing");    // In testing mode
+            data->state = strdup("testing");
             break;
         case IfOperStatusUnknown:
-            cJSON_AddStringToObject(iface_info, "state", "unknown");
+            data->state = strdup("unknown");
             break;
         case IfOperStatusDormant:
-            cJSON_AddStringToObject(iface_info, "state", "dormant");    // In a pending state, waiting for some external event
+            data->state = strdup("dormant");
             break;
         case IfOperStatusNotPresent:
-            cJSON_AddStringToObject(iface_info, "state", "notpresent"); // Interface down because of any component is not present (hardware typically)
+            data->state = strdup("notpresent");
             break;
         case IfOperStatusLowerLayerDown:
-            cJSON_AddStringToObject(iface_info, "state", "lowerlayerdown"); // This interface depends on a lower layer interface which is down
+            data->state = strdup("lowerlayerdown");
             break;
         default:
-            cJSON_AddStringToObject(iface_info, "state", "unknown");
+            data->state = strdup("unknown");
             break;
     }
 
@@ -137,22 +200,23 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
             snprintf(MAC + strlen(MAC), 3, "%.2X", pCurrAddresses->PhysicalAddress[i]);
             if (i < (pCurrAddresses->PhysicalAddressLength - 1)) MAC[strlen(MAC)] = ':';
         }
-        cJSON_AddStringToObject(iface_info, "MAC", MAC);
+        data->mac = strdup(MAC);
     }
 
     /* MTU */
     int mtu = (int) pCurrAddresses->Mtu;
-    if (mtu != 0)
-        cJSON_AddNumberToObject(iface_info, "MTU", mtu);
+    data->mtu = mtu;
 
-    cJSON *ipv4 = cJSON_CreateObject();
-    cJSON *ipv4_addr = cJSON_CreateArray();
-    cJSON *ipv4_netmask = cJSON_CreateArray();
-    cJSON *ipv4_broadcast = cJSON_CreateArray();
+    data->ipv4 = init_net_addr();
+    data->ipv4->address = malloc(sizeof(char *));
+    data->ipv4->netmask = malloc(sizeof(char *));
+    data->ipv4->broadcast = malloc(sizeof(char *));
+    int address4 = 0, nmask4 = 0, bcast4 = 0;
 
-    cJSON *ipv6 = cJSON_CreateObject();
-    cJSON *ipv6_addr = cJSON_CreateArray();
-    cJSON *ipv6_netmask = cJSON_CreateArray();
+    data->ipv6 = init_net_addr();
+    data->ipv6->address = malloc(sizeof(char *));
+    data->ipv6->netmask = malloc(sizeof(char *));
+    int address6 = 0, nmask6 = 0;
 
     /* Get network stats */
 
@@ -171,14 +235,14 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
             ULONG64 tx_packets = ifRow.OutUcastPkts + ifRow.OutNUcastPkts;
             ULONG64 rx_packets = ifRow.InUcastPkts + ifRow.InNUcastPkts;
 
-            cJSON_AddNumberToObject(iface_info, "tx_packets", tx_packets);
-            cJSON_AddNumberToObject(iface_info, "rx_packets", rx_packets);
-            cJSON_AddNumberToObject(iface_info, "tx_bytes", ifRow.OutOctets);
-            cJSON_AddNumberToObject(iface_info, "rx_bytes", ifRow.InOctets);
-            cJSON_AddNumberToObject(iface_info, "tx_errors", ifRow.OutErrors);
-            cJSON_AddNumberToObject(iface_info, "rx_errors", ifRow.InErrors);
-            cJSON_AddNumberToObject(iface_info, "tx_dropped", ifRow.OutDiscards);
-            cJSON_AddNumberToObject(iface_info, "rx_dropped", ifRow.InDiscards);
+            data->tx_packets = tx_packets;
+            data->rx_packets = rx_packets;
+            data->tx_bytes = ifRow.OutOctets;
+            data->rx_bytes = ifRow.InOctets;
+            data->tx_errors = ifRow.OutErrors;
+            data->rx_errors = ifRow.InErrors;
+            data->tx_dropped = ifRow.OutDiscards;
+            data->rx_dropped = ifRow.InDiscards;
         }
     }
 
@@ -191,7 +255,9 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
             if (pUnicast->Address.lpSockaddr->sa_family == AF_INET){
                 addr4 = (struct sockaddr_in *) pUnicast->Address.lpSockaddr;
                 inet_ntop(AF_INET, &(addr4->sin_addr), host, NI_MAXHOST);
-                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
+                data->ipv4->address[address4] = strdup(host);
+                data->ipv4->address = realloc(data->ipv4->address, (address4 + 2) * sizeof(char *));
+                address4++;
 
                 snprintf(ipv4addr, NI_MAXHOST, "%s", host);
 
@@ -200,25 +266,33 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
                 PULONG netmask = &mask;
                 if (!ConvertLengthToIpv4Mask(pUnicast->OnLinkPrefixLength, netmask)){
                     inet_ntop(pUnicast->Address.lpSockaddr->sa_family, netmask, host, NI_MAXHOST);
-                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(host));
+                    data->ipv4->netmask[nmask4] = strdup(host);
+                    data->ipv4->netmask = realloc(data->ipv4->netmask, (nmask4 + 2) * sizeof(char *));
+                    nmask4++;
                 }
 
                 /* Broadcast address */
                 broadcast = get_broadcast_addr(ipv4addr, host);
                 if (broadcast) {
-                    cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadcast));
+                    data->ipv4->broadcast[bcast4] = strdup(broadcast);
+                    data->ipv4->broadcast = realloc(data->ipv4->broadcast, (bcast4 + 2) * sizeof(char *));
+                    bcast4++;
                     free(broadcast);
                     broadcast = NULL;
                 }
             } else if (pUnicast->Address.lpSockaddr->sa_family == AF_INET6){
                 addr6 = (struct sockaddr_in6 *) pUnicast->Address.lpSockaddr;
                 inet_ntop(AF_INET6, &(addr6->sin6_addr), host, NI_MAXHOST);
-                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
+                data->ipv6->address[address6] = strdup(host);
+                data->ipv6->address = realloc(data->ipv6->address, (address6 + 2) * sizeof(char *));
+                address6++;
 
                 /* IPv6 Netmask */
                 netmask6 = length_to_ipv6_mask(pUnicast->OnLinkPrefixLength);
                 if (netmask6) {
-                    cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
+                    data->ipv6->netmask[nmask6] = strdup(netmask6);
+                    data->ipv6->netmask = realloc(data->ipv6->netmask, (nmask6 + 2) * sizeof(char *));
+                    nmask6++;
                     free(netmask6);
                     netmask6 = NULL;
                 }
@@ -237,14 +311,14 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
             if (pGateway->Address.lpSockaddr->sa_family == AF_INET){
                 addr4 = (struct sockaddr_in *) pGateway->Address.lpSockaddr;
                 inet_ntop(AF_INET, &(addr4->sin_addr), host, NI_MAXHOST);
-                cJSON_AddStringToObject(ipv4, "gateway", host);
-                cJSON_AddNumberToObject(ipv4, "metric", pCurrAddresses->Ipv4Metric);
+                data->ipv4->gateway = strdup(host);
+                data->ipv4->metric = pCurrAddresses->Ipv4Metric;
 
             } else if (pGateway->Address.lpSockaddr->sa_family == AF_INET6){
                 addr6 = (struct sockaddr_in6 *) pGateway->Address.lpSockaddr;
                 inet_ntop(AF_INET6, &(addr6->sin6_addr), host, NI_MAXHOST);
-                cJSON_AddStringToObject(ipv6, "gateway", host);
-                cJSON_AddNumberToObject(ipv6, "metric", pCurrAddresses->Ipv6Metric);
+                data->ipv6->gateway = strdup(host);
+                data->ipv6->metric = pCurrAddresses->Ipv6Metric;
 
             }
 
@@ -253,57 +327,24 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
     }
 
     if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->Flags & IP_ADAPTER_IPV4_ENABLED)){
-        cJSON_AddStringToObject(ipv4, "DHCP", "enabled");
+        data->ipv4->dhcp = strdup("enabled");
     }else{
-        cJSON_AddStringToObject(ipv4, "DHCP", "disabled");
+        data->ipv4->dhcp = strdup("disabled");
     }
 
     if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->Flags & IP_ADAPTER_IPV6_ENABLED)){
-        cJSON_AddStringToObject(ipv6, "DHCP", "enabled");
+        data->ipv6->dhcp = strdup("enabled");
     }else{
-        cJSON_AddStringToObject(ipv6, "DHCP", "disabled");
+        data->ipv6->dhcp = strdup("disabled");
     }
 
-    /* Create structure and send data in JSON format of each interface */
+    data->ipv4->address[address4] = NULL;
+    data->ipv4->netmask[nmask4] = NULL;
+    data->ipv4->broadcast[bcast4] = NULL;
+    data->ipv6->address[address6] = NULL;
+    data->ipv6->netmask[nmask6] = NULL;
 
-    if (cJSON_GetArraySize(ipv4_addr) > 0) {
-        cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
-        if (cJSON_GetArraySize(ipv4_netmask) > 0) {
-            cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
-        } else {
-            cJSON_Delete(ipv4_netmask);
-        }
-        if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
-            cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
-        } else {
-            cJSON_Delete(ipv4_broadcast);
-        }
-        cJSON_AddItemToObject(iface_info, "IPv4", ipv4);
-    } else {
-        cJSON_Delete(ipv4_addr);
-        cJSON_Delete(ipv4_netmask);
-        cJSON_Delete(ipv4_broadcast);
-        cJSON_Delete(ipv4);
-    }
-
-    if (cJSON_GetArraySize(ipv6_addr) > 0) {
-        cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
-        if (cJSON_GetArraySize(ipv6_netmask) > 0) {
-            cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
-        } else {
-            cJSON_Delete(ipv6_netmask);
-        }
-        cJSON_AddItemToObject(iface_info, "IPv6", ipv6);
-    } else {
-        cJSON_Delete(ipv6_addr);
-        cJSON_Delete(ipv6_netmask);
-        cJSON_Delete(ipv6);
-    }
-
-    string = cJSON_PrintUnformatted(object);
-    cJSON_Delete(object);
-    return string;
-
+    return data;
 }
 
 /* Adapt IPv6 subnet prefix length to hexadecimal notation */

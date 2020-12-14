@@ -124,24 +124,36 @@ char* getPrimaryIP(){
 #endif
 
     for (i=0; i<size; i++) {
-        cJSON *object = cJSON_CreateObject();
+        cJSON * object = NULL;
+        interface_entry_data * iface = NULL;
 #ifdef __linux__
-        getNetworkIface_linux(object, ifaces_list[i], ifaddr);
+        if (iface = getNetworkIface_linux(ifaces_list[i], ifaddr), iface) {
+            object = interface_json_event(NULL, iface, 0, "");
+            free_interface_data(iface);
+        } else {
+            mdebug2("Couldn't get the data of the interface: '%s'", ifaces_list[i]);
+            continue;
+        }
 #elif defined __MACH__
-        if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
-            if(!gate->isdefault){
-                cJSON_Delete(object);
+        if(gate = OSHash_Get(gateways, ifaces_list[i]), gate) {
+            if(!gate->isdefault) {
                 continue;
             }
-            if(gate->addr[0]=='l'){
-                cJSON_Delete(object);
+            if(gate->addr[0]=='l') {
                 continue;
             }
-            getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
+            if (iface = getNetworkIface_bsd(ifaces_list[i], ifaddr, gate), iface) {
+                object = interface_json_event(NULL, iface, 0, "");
+                free_interface_data(iface);
+            } else {
+                mdebug2("Couldn't get the data of the interface: '%s'", ifaces_list[i]);
+                continue;
+            }
         }
 #endif
-        cJSON *interface = cJSON_GetObjectItem(object, "iface");
-        cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
+        cJSON *data = cJSON_GetObjectItem(object, "data");
+        cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+        cJSON *ipv4 = cJSON_GetObjectItem(attributes, "IPv4");
         if(ipv4){
 #ifdef __linux__
             cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");

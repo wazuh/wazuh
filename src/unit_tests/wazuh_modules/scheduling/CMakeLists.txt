@@ -14,29 +14,27 @@ list(APPEND shared_libs "wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "wmodules_scheduling_helpers.c")
 
 # Generate modulesd library
-file(GLOB modulesd_files ../../../wazuh_modules/*.o)
+file(GLOB modulesd_files
+  ../../../wazuh_modules/*.o
+  ../../../wazuh_modules/syscollector/*.o)
 list(REMOVE_ITEM modulesd_files ../../../wazuh_modules/main.o)
-file(GLOB syscollector_files ../../../wazuh_modules/syscollector/*.o)
 
 add_library(MODULESD_O STATIC ${modulesd_files})
-add_library(SYSCOLLECTOR_O STATIC ${syscollector_files})
 
 set_source_files_properties(
   ${modulesd_files}
-  ${syscollector_files}
-  PROPERTIES
+ss  PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
   )
 
 set_target_properties(
   MODULESD_O
-  SYSCOLLECTOR_O
   PROPERTIES
   LINKER_LANGUAGE C
 )
 
-target_link_libraries(MODULESD_O SYSCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+target_link_libraries(MODULESD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 
 # Compiling tests
@@ -59,7 +57,6 @@ foreach(counter RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         MODULESD_O
-        SYSCOLLECTOR_O
         -lcmocka
         -fprofile-arcs
         -ftest-coverage

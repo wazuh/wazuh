@@ -155,7 +155,7 @@ void test_wdb_parse_global_actor_fail(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
     char query[OS_BUFFER_SIZE] = "error ";
 
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid DB query actor: error");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB() Invalid DB query actor: error");
 
     ret = wdb_parse(query, data->output);
 

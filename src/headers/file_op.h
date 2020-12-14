@@ -17,7 +17,6 @@
 #include <time.h>
 #include <stdbool.h>
 #include <sys/stat.h>
-#include <external/cJSON/cJSON.h>
 
 #ifdef WIN32
 #include <windows.h>
@@ -48,14 +47,6 @@ typedef struct File {
  * @param name Program name.
  */
 void OS_SetName(const char *name) __attribute__((nonnull));
-
-
-/**
- * @brief Get the information of the operating system version in JSON format.
- *
- * @return Pointer to JSON object.
- */
-cJSON* getunameJSON();
 
 
 /**

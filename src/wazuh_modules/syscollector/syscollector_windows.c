@@ -18,8 +18,8 @@
 
 #define MAXSTR 1024
 
-typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);  // char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
-typedef int (*CallFunc1)(char **serial);                                                    // int get_baseboard_serial(char **serial);
+typedef interface_entry_data* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses);  // interface_entry_data* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses);
+typedef int (*CallFunc1)(char **serial);                                          // int get_baseboard_serial(char **serial);
 
 typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
 {
@@ -32,7 +32,7 @@ typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInfor
 static bool found_hotfix_error(HKEY hKey);
 static bool valid_hotfix_status(HKEY hKey);
 static char * parse_Rollup_hotfix(HKEY hKey, char *value);
-hw_info *get_system_windows();
+void get_system_windows(hw_entry * info);
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
 /* From process ID get its name */
@@ -280,12 +280,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
-
     // Set timestamp
-
     char *timestamp = w_get_timestamp(time(NULL));
 
 	HANDLE hdle;
@@ -350,55 +345,54 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
         for (i=0; i < (int) pTcpTable->dwNumEntries; i++){
 
+            port_entry_data * entry_data = NULL;
+
             listening = 0;
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", "tcp");
+            entry_data = init_port_data_entry();
+
+            os_strdup("tcp", entry_data->protocol);
 
             ipaddress.S_un.S_addr = (u_long) pTcpTable->table[i].dwLocalAddr;
             snprintf(local_addr, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
 
-            cJSON_AddStringToObject(port, "local_ip", local_addr);
-            cJSON_AddNumberToObject(port, "local_port", ntohs((u_short)pTcpTable->table[i].dwLocalPort));
+            os_strdup(local_addr, entry_data->local_ip);
+            entry_data->local_port = ntohs((u_short)pTcpTable->table[i].dwLocalPort);
 
             ipaddress.S_un.S_addr = (u_long) pTcpTable->table[i].dwRemoteAddr;
             snprintf(rem_addr, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
-            cJSON_AddStringToObject(port, "remote_ip", rem_addr);
-            cJSON_AddNumberToObject(port, "remote_port", ntohs((u_short)pTcpTable->table[i].dwRemotePort));
+            os_strdup(rem_addr, entry_data->remote_ip);
+            entry_data->remote_port = ntohs((u_short)pTcpTable->table[i].dwRemotePort);
 
             /* Get port state */
             char *port_state;
             port_state = get_port_state((int)pTcpTable->table[i].dwState);
-            cJSON_AddStringToObject(port, "state", port_state);
+            os_strdup(port_state, entry_data->state);
             if (strncmp(port_state, "listening", 9) == 0) {
                 listening = 1;
             }
             free(port_state);
 
             /* Get PID and process name */
-            cJSON_AddNumberToObject(port, "PID", pTcpTable->table[i].dwOwningPid);
+            entry_data->pid = pTcpTable->table[i].dwOwningPid;
 
             char *pid_name;
             pid_name = get_process_name(pTcpTable->table[i].dwOwningPid);
-            cJSON_AddStringToObject(port, "process", pid_name);
+            os_strdup(pid_name, entry_data->process);
             free(pid_name);
 
             if (check_all || listening) {
 
-                char *string;
-                string = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(object);
-                free(string);
+                // Check if it is necessary to create a port event
+                char * string = NULL;
+                if (string = analyze_port(entry_data, timestamp), string) {
+                    mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
+                    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
+                }
 
             } else {
-                cJSON_Delete(object);
+                free_port_data(entry_data);
             }
         }
 
@@ -444,19 +438,17 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
         for (i=0; i < (int) pTcp6Table->dwNumEntries; i++){
 
+            port_entry_data * entry_data = NULL;
+
             listening = 0;
             DWORD addresslen = 128;
             char laddress[128] = {'\0'};
             char raddress[128] = {'\0'};
             socklen_t socksize;
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", "tcp6");
+            entry_data = init_port_data_entry();
+
+            os_strdup("tcp6", entry_data->protocol);
 
             struct sockaddr_in6 ipv6_local_sock;
             ipv6_local_sock.sin6_family = AF_INET6;
@@ -473,8 +465,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 clean_wsa_conversion(laddress);
             }
 
-            cJSON_AddStringToObject(port, "local_ip", laddress);
-            cJSON_AddNumberToObject(port, "local_port", ntohs((u_short)pTcp6Table->table[i].dwLocalPort));
+            os_strdup(laddress, entry_data->local_ip);
+            entry_data->local_port = ntohs((u_short)pTcp6Table->table[i].dwLocalPort);
 
             struct sockaddr_in6 ipv6_remote_sock;
             ipv6_remote_sock.sin6_family = AF_INET6;
@@ -491,35 +483,38 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 clean_wsa_conversion(raddress);
             }
 
-            cJSON_AddStringToObject(port, "remote_ip", raddress);
-            cJSON_AddNumberToObject(port, "remote_port", ntohs((u_short)pTcp6Table->table[i].dwRemotePort));
+            os_strdup(raddress, entry_data->remote_ip);
+            entry_data->remote_port = ntohs((u_short)pTcp6Table->table[i].dwRemotePort);
 
             /* Get port state */
             char *port_state;
             port_state = get_port_state((int)pTcp6Table->table[i].dwState);
-            cJSON_AddStringToObject(port, "state", port_state);
+            os_strdup(port_state, entry_data->state);
             if (strncmp(port_state, "listening", 9) == 0) {
                 listening = 1;
             }
             free(port_state);
 
             /* Get PID and process name */
-            cJSON_AddNumberToObject(port, "PID", pTcp6Table->table[i].dwOwningPid);
+            entry_data->pid = pTcp6Table->table[i].dwOwningPid;
 
             char *pid_name;
             pid_name = get_process_name(pTcp6Table->table[i].dwOwningPid);
-            cJSON_AddStringToObject(port, "process", pid_name);
+            os_strdup(pid_name, entry_data->process);
             free(pid_name);
 
             if (check_all || listening) {
-                char *string;
-                string = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(object);
-                free(string);
+
+                // Check if it is necessary to create a port event
+                char * string = NULL;
+                if (string = analyze_port(entry_data, timestamp), string) {
+                    mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
+                    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
+                }
+
             } else {
-                cJSON_Delete(object);
+                free_port_data(entry_data);
             }
         }
 
@@ -567,36 +562,33 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
         for (i=0; i < (int) pUdpTable->dwNumEntries; i++){
 
-            char *string;
+            port_entry_data * entry_data = NULL;
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", "udp");
+            entry_data = init_port_data_entry();
+
+            os_strdup("udp", entry_data->protocol);
 
             ipaddress.S_un.S_addr = (u_long) pUdpTable->table[i].dwLocalAddr;
             snprintf(local_addr, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
 
-            cJSON_AddStringToObject(port, "local_ip", local_addr);
-            cJSON_AddNumberToObject(port, "local_port", ntohs((u_short)pUdpTable->table[i].dwLocalPort));
+            os_strdup(local_addr, entry_data->local_ip);
+            entry_data->local_port = ntohs((u_short)pUdpTable->table[i].dwLocalPort);
 
             /* Get PID and process name */
-            cJSON_AddNumberToObject(port, "PID", pUdpTable->table[i].dwOwningPid);
+            entry_data->pid = pUdpTable->table[i].dwOwningPid;
 
             char *pid_name;
             pid_name = get_process_name(pUdpTable->table[i].dwOwningPid);
-            cJSON_AddStringToObject(port, "process", pid_name);
+            os_strdup(pid_name, entry_data->process);
             free(pid_name);
 
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-
-            free(string);
+            // Check if it is necessary to create a port event
+            char * string = NULL;
+            if (string = analyze_port(entry_data, timestamp), string) {
+                mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
+                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                free(string);
+            }
         }
 
     } else {
@@ -638,18 +630,15 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
         for (i=0; i < (int) pUdp6Table->dwNumEntries; i++){
 
-            char *string;
             DWORD addresslen = 128;
             char laddress[128] = {'\0'};
             socklen_t socksize;
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", "udp6");
+            port_entry_data * entry_data = NULL;
+
+            entry_data = init_port_data_entry();
+
+            os_strdup("udp6", entry_data->protocol);
 
             struct sockaddr_in6 ipv6_local_sock;
             ipv6_local_sock.sin6_family = AF_INET6;
@@ -666,23 +655,24 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 clean_wsa_conversion(laddress);
             }
 
-            cJSON_AddStringToObject(port, "local_ip", laddress);
-            cJSON_AddNumberToObject(port, "local_port", ntohs((u_short)pUdp6Table->table[i].dwLocalPort));
+            os_strdup(laddress, entry_data->local_ip);
+            entry_data->local_port = ntohs((u_short)pUdp6Table->table[i].dwLocalPort);
 
             /* Get PID and process name */
-            cJSON_AddNumberToObject(port, "PID", pUdp6Table->table[i].dwOwningPid);
+            entry_data->pid = pUdp6Table->table[i].dwOwningPid;
 
             char *pid_name;
             pid_name = get_process_name(pUdp6Table->table[i].dwOwningPid);
-            cJSON_AddStringToObject(port, "process", pid_name);
+            os_strdup(pid_name, entry_data->process);
             free(pid_name);
 
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-
-            free(string);
+            // Check if it is necessary to create a port event
+            char * string = NULL;
+            if (string = analyze_port(entry_data, timestamp), string) {
+                mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
+                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                free(string);
+            }
         }
 
     } else {
@@ -713,18 +703,10 @@ end:
     if (pUdpTable != NULL) win_free(pUdpTable);
     if (pUdp6Table != NULL) win_free(pUdp6Table);
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "port_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
     free(timestamp);
+
+    // Checking for closed ports
+    check_closed_ports();
 }
 
 // Get installed programs inventory
@@ -736,10 +718,6 @@ void sys_programs_windows(const char* LOCATION){
 
     // Set timestamp
     char *timestamp = w_get_timestamp(time(NULL));
-
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed programs inventory.");
 
@@ -764,7 +742,7 @@ void sys_programs_windows(const char* LOCATION){
                  &main_key) == ERROR_SUCCESS
                ){
                mtdebug2(WM_SYS_LOGTAG, "Reading 64 bits programs from registry.");
-               list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
+               list_programs(main_key, arch, NULL, usec, timestamp, LOCATION);
             }
             RegCloseKey(main_key);
         }
@@ -782,7 +760,7 @@ void sys_programs_windows(const char* LOCATION){
          &main_key) == ERROR_SUCCESS
        ){
        mtdebug2(WM_SYS_LOGTAG, "Reading 32 bits programs from registry.");
-       list_programs(main_key, arch, NULL, usec, timestamp, ID, LOCATION);
+       list_programs(main_key, arch, NULL, usec, timestamp, LOCATION);
     }
     RegCloseKey(main_key);
 
@@ -794,23 +772,14 @@ void sys_programs_windows(const char* LOCATION){
          KEY_READ,
          &main_key) == ERROR_SUCCESS
        ){
-       list_users(main_key, usec, timestamp, ID, LOCATION);
+       list_users(main_key, usec, timestamp, LOCATION);
     }
     RegCloseKey(main_key);
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
-    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
     free(timestamp);
 
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
 }
 
 // Get installed hotfixes inventory
@@ -818,12 +787,9 @@ void sys_programs_windows(const char* LOCATION){
 void sys_hotfixes(const char* LOCATION){
     int usec = 1000000 / wm_max_eps;
     char *timestamp = w_get_timestamp(time(NULL));
-    int ID = wm_sys_get_random_id();
     HKEY main_key;
     long unsigned int result;
     const char *HOTFIXES_REG;
-    cJSON *end_evt;
-    char *end_evt_str;
 
     HOTFIXES_REG = isVista ? WIN_REG_HOTFIX : VISTA_REG_HOTFIX;
 
@@ -831,28 +797,20 @@ void sys_hotfixes(const char* LOCATION){
 
     if(result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, TEXT(HOTFIXES_REG), 0, KEY_READ | KEY_WOW64_64KEY, &main_key), result == ERROR_SUCCESS) {
         mtdebug2(WM_SYS_LOGTAG, "Reading hotfixes from the registry.");
-        list_hotfixes(main_key,usec, timestamp, ID, LOCATION);
+        list_hotfixes(main_key,usec, timestamp, LOCATION);
     } else {
         mterror(WM_SYS_LOGTAG, "Could not open the registry '%s'. Error: %lu.", HOTFIXES_REG, result);
     }
 
-    end_evt = cJSON_CreateObject();
-    cJSON_AddStringToObject(end_evt, "type", "hotfix_end");
-    cJSON_AddNumberToObject(end_evt, "ID", ID);
-    cJSON_AddStringToObject(end_evt, "timestamp", timestamp);
-
-    end_evt_str = cJSON_PrintUnformatted(end_evt);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", end_evt_str);
-    wm_sendmsg(usec, 0, end_evt_str, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(end_evt);
-
-    free(end_evt_str);
     free(timestamp);
     RegCloseKey(main_key);
+
+    // Checking for uninstalled hotfixes
+    check_uninstalled_hotfixes();
 }
 
 // List installed programs from the registry
-void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, const char * LOCATION) {
 
     TCHAR    achKey[KEY_LENGTH];   // buffer for subkey name
     DWORD    cbName;                   // size of name string
@@ -904,10 +862,10 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
 
                 if (root_key) {
                     snprintf(full_key, KEY_LENGTH - 1, "%s\\%s", root_key, achKey);
-                    read_win_program(full_key, arch, U_KEY, usec, timestamp, ID, LOCATION);
+                    read_win_program(full_key, arch, U_KEY, usec, timestamp, LOCATION);
                 } else {
                     snprintf(full_key, KEY_LENGTH - 1, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\%s", achKey);
-                    read_win_program(full_key, arch, LM_KEY, usec, timestamp, ID, LOCATION);
+                    read_win_program(full_key, arch, LM_KEY, usec, timestamp, LOCATION);
                 }
 
                 free(full_key);
@@ -918,7 +876,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
     }
 }
 
-void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const char *LOCATION) {
+void list_hotfixes(HKEY hKey, int usec, const char *timestamp, const char *LOCATION) {
     static OSRegex *hotfix_regex = NULL;
     HKEY subKey;
     // This table is used to discard already reported hotfixes (same key and same timestamp)
@@ -1035,14 +993,14 @@ void list_hotfixes(HKEY hKey, int usec, const char *timestamp, int ID, const cha
                     }
                 }
 
-                send_hotfix(hotfix, usec, timestamp, ID, LOCATION);
+                send_hotfix(hotfix, usec, timestamp, LOCATION);
             } else {
                 // Ignore the hotfix if it is the same as the previous one
                 if (!strcmp(achKey, prev_hotfix)) {
                     continue;
                 }
                 snprintf(prev_hotfix, KEY_LENGTH, achKey);
-                send_hotfix(achKey, usec, timestamp, ID, LOCATION);
+                send_hotfix(achKey, usec, timestamp, LOCATION);
             }
         } else {
             mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
@@ -1111,7 +1069,7 @@ bool valid_hotfix_status(HKEY hKey) {
 }
 
 // List Windows users from the registry
-void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void list_users(HKEY hKey, int usec, const char * timestamp, const char * LOCATION) {
 
     TCHAR    achKey[KEY_LENGTH];   // buffer for subkey name
     DWORD    cbName;                   // size of name string
@@ -1174,7 +1132,7 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
                      KEY_READ,
                      &uKey) == ERROR_SUCCESS
                    ){
-                   list_programs(uKey, arch, user_key, usec, timestamp, ID, LOCATION);
+                   list_programs(uKey, arch, user_key, usec, timestamp, LOCATION);
                 }
 
                 RegCloseKey(uKey);
@@ -1188,17 +1146,20 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
 }
 
 // Get values about a single program from the registry
-void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, const char * LOCATION) {
 
     HKEY primary_key;
     HKEY program_key;
     DWORD cbData, ret;
     DWORD buffer_size = TOTALBYTES;
+    const char * format = "win";
     char * program_name;
     char * version;
     char * vendor;
     char * date;
     char * location;
+
+    program_entry_data * entry_data = NULL;
 
     if (root_key == LM_KEY)
         primary_key = HKEY_LOCAL_MACHINE;
@@ -1230,22 +1191,18 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 
         if (ret == ERROR_SUCCESS && program_name[0] != '\0') {
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *package = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "program");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "program", package);
-            cJSON_AddStringToObject(package, "format", "win");
-            cJSON_AddStringToObject(package, "name", program_name);
+            entry_data = init_program_data_entry();
+
+            os_strdup(format, entry_data->format);
+            os_strdup(program_name, entry_data->name);
             free(program_name);
 
             if (arch == ARCH32)
-                cJSON_AddStringToObject(package, "architecture", "i686");
+                os_strdup("i686", entry_data->architecture);
             else if (arch == ARCH64)
-                cJSON_AddStringToObject(package, "architecture", "x86_64");
+                os_strdup("x86_64", entry_data->architecture);
             else
-                cJSON_AddStringToObject(package, "architecture", "unknown");
+                os_strdup("unknown", entry_data->architecture);
 
             // Get version
 
@@ -1264,7 +1221,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             }
 
             if (ret == ERROR_SUCCESS && version[0] != '\0') {
-                cJSON_AddStringToObject(package, "version", version);
+                os_strdup(version, entry_data->version);
             }
 
             free(version);
@@ -1286,7 +1243,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             }
 
             if (ret == ERROR_SUCCESS && vendor[0] != '\0') {
-                cJSON_AddStringToObject(package, "vendor", vendor);
+                os_strdup(vendor, entry_data->vendor);
             }
 
             free(vendor);
@@ -1308,7 +1265,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             }
 
             if (ret == ERROR_SUCCESS && date[0] != '\0') {
-                cJSON_AddStringToObject(package, "install_time", date);
+                os_strdup(date, entry_data->install_time);
             }
 
             free(date);
@@ -1330,17 +1287,18 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             }
 
             if (ret == ERROR_SUCCESS && location[0] != '\0') {
-                cJSON_AddStringToObject(package, "location", location);
+                os_strdup(location, entry_data->location);
             }
 
             free(location);
 
-            char *string;
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
-            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-            free(string);
+            // Check if it is necessary to create a program event
+            char * string = NULL;
+            if (string = analyze_program(entry_data, timestamp), string) {
+                mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
+                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                free(string);
+            }
 
         } else
             free(program_name);
@@ -1352,44 +1310,33 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     RegCloseKey(program_key);
 }
 
-void send_hotfix(const char *hotfix, int usec, const char *timestamp, int ID, const char *LOCATION) {
+void send_hotfix(const char *hotfix, int usec, const char *timestamp, const char *LOCATION) {
     if (!strcmp(hotfix, "RollupFix")) {
         return;
     }
 
-    cJSON *event;
-    if (event = cJSON_CreateObject(), !event) {
-        mterror(WM_SYS_LOGTAG, "Could not create the hotfix event.");
-        return;
-    }
-    cJSON_AddStringToObject(event, "type", "hotfix");
-    cJSON_AddNumberToObject(event, "ID", ID);
-    cJSON_AddStringToObject(event, "timestamp", timestamp);
-    cJSON_AddStringToObject(event, "hotfix", hotfix);
+    hotfix_entry_data * entry_data = init_hotfix_data_entry();
 
-    char *str_event = cJSON_PrintUnformatted(event);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", str_event);
-    wm_sendmsg(usec, 0, str_event, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(event);
-    free(str_event);
+    os_strdup(hotfix, entry_data->hotfix);
+
+    // Check if it is necessary to create a hotfix event
+    char * string = NULL;
+    if (string = analyze_hotfix(entry_data, timestamp), string) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_hotfixes() sending '%s'", string);
+        wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+        free(string);
+    }
 }
 
 void sys_hw_windows(const char* LOCATION){
     // Set timestamp
     char *timestamp = w_get_timestamp(time(NULL));
 
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
+    hw_entry * hw_data = NULL;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting hardware inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *hw_inventory = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "hardware");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+    hw_data = init_hw_data();
 
     /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
@@ -1479,71 +1426,86 @@ void sys_hw_windows(const char* LOCATION){
     }
 
     if (serial) {
-        cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+        os_strdup(serial, hw_data->board_serial);
         free(serial);
     }
 
     /* Get CPU and memory information */
-    hw_info *sys_info;
-    if (sys_info = get_system_windows(), sys_info){
-        if (sys_info->cpu_name)
-            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
-        if (sys_info->cpu_cores)
-            cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
-        if (sys_info->cpu_MHz)
-            cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
-        if (sys_info->ram_total)
-            cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
-        if (sys_info->ram_free)
-            cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
-        if (sys_info->ram_usage)
-            cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
+    get_system_windows(hw_data);
 
-        os_free(sys_info->cpu_name);
-        free(sys_info);
+    // Check if it is necessary to create a hardware event
+    char * string = NULL;
+    if (string = analyze_hw(hw_data, timestamp), string) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
+        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+        free(string);
     }
 
-    /* Send interface data in JSON format */
-    char *string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-
-    free(string);
     free(timestamp);
-
 }
 
 void sys_os_windows(const char* LOCATION){
 
-    char *string;
+    os_entry * os_data = NULL;
 
     // Set timestamp
 
     char *timestamp = w_get_timestamp(time(NULL));
 
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
-
     mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "OS");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    os_data = init_os_data();
 
-    cJSON *os_inventory = getunameJSON();
+    os_info * info = get_win_version();
+    if (info->nodename && (strcmp(info->nodename, "unknown") != 0)) {
+        os_strdup(info->nodename, os_data->hostname);
+    }
+    if (info->machine && (strcmp(info->machine, "unknown") != 0)) {
+        os_strdup(info->machine, os_data->architecture);
+    }
+    if (info->os_name && (strcmp(info->os_name, "unknown") != 0)) {
+        os_strdup(info->os_name, os_data->os_name);
+    }
+    if (info->os_release) {
+        os_strdup(info->os_release, os_data->os_release);
+    }
+    if (info->os_version && (strcmp(info->os_version, "unknown") != 0)) {
+        os_strdup(info->os_version, os_data->os_version);
+    }
+    if (info->os_codename) {
+        os_strdup(info->os_codename, os_data->os_codename);
+    }
+    if (info->os_major) {
+        os_strdup(info->os_major, os_data->os_major);
+    }
+    if (info->os_minor) {
+        os_strdup(info->os_minor, os_data->os_minor);
+    }
+    if (info->os_build) {
+        os_strdup(info->os_build, os_data->os_build);
+    }
+    if (info->os_platform) {
+        os_strdup(info->os_platform, os_data->os_platform);
+    }
+    if (info->sysname) {
+        os_strdup(info->sysname, os_data->sysname);
+    }
+    if (info->release) {
+        os_strdup(info->release, os_data->release);
+    }
+    if (info->version) {
+        os_strdup(info->version, os_data->version);
+    }
+    free_osinfo(info);
 
-    cJSON_AddItemToObject(object, "inventory", os_inventory);
+    // Check if it is necessary to create a operative system event
+    char * string = NULL;
+    if (string = analyze_os(os_data, timestamp), string) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
+        SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
+        free(string);
+    }
 
-    /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_os_windows() sending '%s'", string);
-    SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-
-    free(string);
     free(timestamp);
 }
 
@@ -1588,12 +1550,11 @@ char* get_broadcast_addr_xp(char* ip, char* netmask) {
     return broadcast_addr;
 }
 
-char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo, int ID, char * timestamp) {
+interface_entry_data * get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo) {
     PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
     PIP_ADAPTER_INFO currAdapterInfo = NULL;
     PIP_ADDR_STRING currIP = NULL;
 
-    char *string;
     unsigned int i = 0;
     char host[NI_MAXHOST];
     char ipv4addr[NI_MAXHOST];
@@ -1603,76 +1564,71 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
     struct sockaddr_in6 *addr6;
     socklen_t socksize;
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *iface_info = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "iface", iface_info);
+    interface_entry_data * entry_data = init_interface_data_entry();
 
     /* Iface Name */
     char iface_name[MAXSTR];
     snprintf(iface_name, MAXSTR, "%S", pCurrAddresses->FriendlyName);
-    cJSON_AddStringToObject(iface_info, "name", iface_name);
+    os_strdup(iface_name, entry_data->name);
 
     /* Iface adapter */
     char description[MAXSTR];
     snprintf(description, MAXSTR, "%S", pCurrAddresses->Description);
-    cJSON_AddStringToObject(iface_info, "adapter", description);
+    os_strdup(description, entry_data->adapter);
 
     /* Type of interface */
     switch (pCurrAddresses->IfType){
         case IF_TYPE_ETHERNET_CSMACD:
-            cJSON_AddStringToObject(iface_info, "type", "ethernet");
+            os_strdup("ethernet", entry_data->type);
             break;
         case IF_TYPE_ISO88025_TOKENRING:
-            cJSON_AddStringToObject(iface_info, "type", "token ring");
+            os_strdup("token ring", entry_data->type);
             break;
         case IF_TYPE_PPP:
-            cJSON_AddStringToObject(iface_info, "type", "point-to-point");
+            os_strdup("point-to-point", entry_data->type);
             break;
         case IF_TYPE_ATM:
-            cJSON_AddStringToObject(iface_info, "type", "ATM");
+            os_strdup("ATM", entry_data->type);
             break;
         case IF_TYPE_IEEE80211:
-            cJSON_AddStringToObject(iface_info, "type", "wireless");
+            os_strdup("wireless", entry_data->type);
             break;
         case IF_TYPE_TUNNEL:
-            cJSON_AddStringToObject(iface_info, "type", "tunnel");
+            os_strdup("tunnel", entry_data->type);
             break;
         case IF_TYPE_IEEE1394:
-            cJSON_AddStringToObject(iface_info, "type", "firewire");
+            os_strdup("firewire", entry_data->type);
             break;
         default:
-            cJSON_AddStringToObject(iface_info, "type", "unknown");
+            os_strdup("unknown", entry_data->type);
             break;
     }
 
     /* Operational status */
     switch (pCurrAddresses->OperStatus){
         case IfOperStatusUp:
-            cJSON_AddStringToObject(iface_info, "state", "up");
+            os_strdup("up", entry_data->state);
             break;
         case IfOperStatusDown:
-            cJSON_AddStringToObject(iface_info, "state", "down");
+            os_strdup("down", entry_data->state);
             break;
         case IfOperStatusTesting:
-            cJSON_AddStringToObject(iface_info, "state", "testing");    // In testing mode
+            os_strdup("testing", entry_data->state);
             break;
         case IfOperStatusUnknown:
-            cJSON_AddStringToObject(iface_info, "state", "unknown");
+            os_strdup("unknown", entry_data->state);
             break;
         case IfOperStatusDormant:
-            cJSON_AddStringToObject(iface_info, "state", "dormant");    // In a pending state, waiting for some external event
+            os_strdup("dormant", entry_data->state);
             break;
         case IfOperStatusNotPresent:
-            cJSON_AddStringToObject(iface_info, "state", "notpresent"); // Interface down because of any component is not present (hardware typically)
+            os_strdup("notpresent", entry_data->state);
             break;
         case IfOperStatusLowerLayerDown:
-            cJSON_AddStringToObject(iface_info, "state", "lowerlayerdown"); // This interface depends on a lower layer interface which is down
+            os_strdup("lowerlayerdown", entry_data->state);
             break;
         default:
-            cJSON_AddStringToObject(iface_info, "state", "unknown");
+            os_strdup("unknown", entry_data->state);
             break;
     }
 
@@ -1684,20 +1640,22 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
             snprintf(MAC + strlen(MAC), 3, "%.2X", pCurrAddresses->PhysicalAddress[i]);
             if (i < (pCurrAddresses->PhysicalAddressLength - 1)) MAC[strlen(MAC)] = ':';
         }
-        cJSON_AddStringToObject(iface_info, "MAC", MAC);
+        os_strdup(MAC, entry_data->mac);
     }
 
     /* MTU */
     int mtu = (int) pCurrAddresses->Mtu;
-    if (mtu != 0) cJSON_AddNumberToObject(iface_info, "MTU", mtu);
+    entry_data->mtu = mtu;
 
-    cJSON *ipv4 = cJSON_CreateObject();
-    cJSON *ipv4_addr = cJSON_CreateArray();
-    cJSON *ipv4_netmask = cJSON_CreateArray();
-    cJSON *ipv4_broadcast = cJSON_CreateArray();
+    entry_data->ipv4 = init_net_addr();
+    os_malloc(sizeof(char *), entry_data->ipv4->address);
+    os_malloc(sizeof(char *), entry_data->ipv4->netmask);
+    os_malloc(sizeof(char *), entry_data->ipv4->broadcast);
+    int address4 = 0, nmask4 = 0, bcast4 = 0;
 
-    cJSON *ipv6 = cJSON_CreateObject();
-    cJSON *ipv6_addr = cJSON_CreateArray();
+    entry_data->ipv6 = init_net_addr();
+    os_malloc(sizeof(char *), entry_data->ipv6->address);
+    int address6 = 0;
 
     /* Get network stats */
     DWORD retVal = 0;
@@ -1716,14 +1674,14 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
             ULONG64 tx_packets = ifRow.dwOutUcastPkts + ifRow.dwOutNUcastPkts;
             ULONG64 rx_packets = ifRow.dwInUcastPkts + ifRow.dwInNUcastPkts;
 
-            cJSON_AddNumberToObject(iface_info, "tx_packets", tx_packets);
-            cJSON_AddNumberToObject(iface_info, "rx_packets", rx_packets);
-            cJSON_AddNumberToObject(iface_info, "tx_bytes", ifRow.dwOutOctets);
-            cJSON_AddNumberToObject(iface_info, "rx_bytes", ifRow.dwInOctets);
-            cJSON_AddNumberToObject(iface_info, "tx_errors", ifRow.dwOutErrors);
-            cJSON_AddNumberToObject(iface_info, "rx_errors", ifRow.dwInErrors);
-            cJSON_AddNumberToObject(iface_info, "tx_dropped", ifRow.dwOutDiscards);
-            cJSON_AddNumberToObject(iface_info, "rx_dropped", ifRow.dwInDiscards);
+            entry_data->tx_packets = tx_packets;
+            entry_data->rx_packets = rx_packets;
+            entry_data->tx_bytes = ifRow.dwOutOctets;
+            entry_data->rx_bytes = ifRow.dwInOctets;
+            entry_data->tx_errors = ifRow.dwOutErrors;
+            entry_data->rx_errors = ifRow.dwInErrors;
+            entry_data->tx_dropped = ifRow.dwOutDiscards;
+            entry_data->rx_dropped = ifRow.dwInDiscards;
         }
     }
 
@@ -1756,7 +1714,9 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
                 /* inet_ntoa() is used to provide compatibility with XP */
                 ipaddress = ((struct sockaddr_in*)(pUnicast->Address.lpSockaddr))->sin_addr;
                 snprintf(host, NI_MAXHOST, "%s", inet_ntoa(ipaddress));
-                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
+                os_strdup(host, entry_data->ipv4->address[address4]);
+                os_realloc(entry_data->ipv4->address, (address4 + 2) * sizeof(char *), entry_data->ipv4->address);
+                address4++;
                 snprintf(ipv4addr, NI_MAXHOST, "%s", host);
 
                 /* Locate this network interface in the IP_ADAPTER_INFO struct array */
@@ -1787,12 +1747,16 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
                 if (currIP) {
                     /* We found a full match. Let's get the network mask right away */
                     snprintf(host, NI_MAXHOST, "%s", currIP->IpMask.String);
-                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(host));
+                    os_strdup(host, entry_data->ipv4->netmask[nmask4]);
+                    os_realloc(entry_data->ipv4->netmask, (nmask4 + 2) * sizeof(char *), entry_data->ipv4->netmask);
+                    nmask4++;
 
                     /* Get the broadcast address only if we already retrieved the network mask */
                     broadcast = get_broadcast_addr_xp(ipv4addr, host);
                     if (broadcast) {
-                        cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadcast));
+                        os_strdup(broadcast, entry_data->ipv4->broadcast[bcast4]);
+                        os_realloc(entry_data->ipv4->broadcast, (bcast4 + 2) * sizeof(char *), entry_data->ipv4->broadcast);
+                        bcast4++;
                         free(broadcast);
                         broadcast = NULL;
                     }
@@ -1818,7 +1782,9 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
                     clean_wsa_conversion(host);
                 }
 
-                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
+                os_strdup(host, entry_data->ipv6->address[address6]);
+                os_realloc(entry_data->ipv6->address, (address6 + 2) * sizeof(char *), entry_data->ipv6->address);
+                address6++;
             }
 
             pUnicast = pUnicast->Next;
@@ -1842,7 +1808,7 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
 
             while(currIP) {
                 snprintf(host, NI_MAXHOST, "%s", currIP->IpAddress.String);
-                cJSON_AddStringToObject(ipv4, "gateway", host);
+                os_strdup(host, entry_data->ipv4->gateway);
                 currIP = currIP->Next;
             }
 
@@ -1856,50 +1822,23 @@ finish:
     if (wsa_enabled) WSACleanup();
 
     if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->IfIndex != 0)) {
-        cJSON_AddStringToObject(ipv4, "DHCP", "enabled");
+        os_strdup("enabled", entry_data->ipv4->dhcp);
     }else{
-        cJSON_AddStringToObject(ipv4, "DHCP", "disabled");
+        os_strdup("disabled", entry_data->ipv4->dhcp);
     }
 
-    if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->Ipv6IfIndex != 0)){
-        cJSON_AddStringToObject(ipv6, "DHCP", "enabled");
-    }else{
-        cJSON_AddStringToObject(ipv6, "DHCP", "disabled");
+    if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->Ipv6IfIndex != 0)){\
+        os_strdup("enabled", entry_data->ipv6->dhcp);
+    }else{\
+        os_strdup("disabled", entry_data->ipv6->dhcp);
     }
 
-    /* Create structure and send data in JSON format of each interface */
+    entry_data->ipv4->address[address4] = NULL;
+    entry_data->ipv4->netmask[nmask4] = NULL;
+    entry_data->ipv4->broadcast[bcast4] = NULL;
+    entry_data->ipv6->address[address6] = NULL;
 
-    if (cJSON_GetArraySize(ipv4_addr) > 0) {
-        cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
-        if (cJSON_GetArraySize(ipv4_netmask) > 0) {
-            cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
-        } else {
-            cJSON_Delete(ipv4_netmask);
-        }
-        if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
-            cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
-        } else {
-            cJSON_Delete(ipv4_broadcast);
-        }
-        cJSON_AddItemToObject(iface_info, "IPv4", ipv4);
-    } else {
-        cJSON_Delete(ipv4_addr);
-        cJSON_Delete(ipv4_netmask);
-        cJSON_Delete(ipv4_broadcast);
-        cJSON_Delete(ipv4);
-    }
-
-    if (cJSON_GetArraySize(ipv6_addr) > 0) {
-        cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
-        cJSON_AddItemToObject(iface_info, "IPv6", ipv6);
-    } else {
-        cJSON_Delete(ipv6_addr);
-        cJSON_Delete(ipv6);
-    }
-
-    string = cJSON_PrintUnformatted(object);
-    cJSON_Delete(object);
-    return string;
+    return entry_data;
 }
 
 /* Network inventory for Windows systems */
@@ -1941,10 +1880,6 @@ void sys_network_windows(const char* LOCATION){
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    // Set random ID and timestamp
-
-    int ID = wm_sys_get_random_id();
 
     char *timestamp = w_get_timestamp(time(NULL));
 
@@ -2036,25 +1971,33 @@ void sys_network_windows(const char* LOCATION){
                     continue;
                 }
 
-                char* string;
+                interface_entry_data * entry_data = NULL;
 
                 if (checkVista()) {
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
                     if(_get_network_vista) {
-                        string = _get_network_vista(pCurrAddresses, ID, timestamp);
+                        entry_data = _get_network_vista(pCurrAddresses);
                     }
                     else {
-                        os_strdup("UNKNOWN",string);
+                        continue;
                     }
                 } else {
                     /* Call function get_network_xp() */
-                    string = get_network_xp(pCurrAddresses, AdapterInfo, ID, timestamp);
+                    entry_data = get_network_xp(pCurrAddresses, AdapterInfo);
                 }
 
-                mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
-                wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                if (!entry_data) {
+                    mdebug2("Couldn't get the data of the interface: '%S'", pCurrAddresses->FriendlyName);
+                    continue;
+                }
 
-                free(string);
+                // Check if it is necessary to create an interface event
+                char * string = NULL;
+                if (string = analyze_interface(entry_data, timestamp), string) {
+                    mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
+                    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
+                }
 
                 pCurrAddresses = pCurrAddresses->Next;
             }
@@ -2083,32 +2026,20 @@ void sys_network_windows(const char* LOCATION){
         win_free(pAddresses);
     }
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_network_windows() sending '%s'", string);
-    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
     free(timestamp);
+
+    // Checking for disabled interfaces
+    check_disabled_interfaces();
 }
 
-hw_info *get_system_windows(){
+void get_system_windows(hw_entry * info) {
 
-    hw_info *info;
     DWORD retVal;
     HKEY RegistryKey;
     char subkey[KEY_LENGTH];
     TCHAR name[MAX_VALUE_NAME];
     DWORD frequency = 0;
     DWORD dwCount = MAX_VALUE_NAME;
-
-    os_calloc(1,sizeof(hw_info),info);
-    init_hw_info(info);
 
     // Get CPU name and frequency
 
@@ -2164,8 +2095,6 @@ hw_info *get_system_windows(){
         info->ram_free = statex.ullAvailPhys/1024;
         info->ram_usage = statex.dwMemoryLoad;
     }
-
-    return info;
 }
 
 int ntpath_to_win32path(char *ntpath, char **outbuf)
@@ -2235,26 +2164,19 @@ void sys_proc_windows(const char* LOCATION) {
 
     char *timestamp = w_get_timestamp(time(NULL));
 
-    // Set random ID for each scan
-
-    int ID = wm_sys_get_random_id();
-
-    cJSON *item;
-    cJSON *proc_array = cJSON_CreateArray();
-
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
 	PROCESSENTRY32 pe = { 0 };
 	pe.dwSize = sizeof(PROCESSENTRY32);
 
-	HANDLE hSnapshot, hProcess;
-	FILETIME lpCreationTime, lpExitTime, lpKernelTime, lpUserTime;
-	PROCESS_MEMORY_COUNTERS ppsmemCounters;
+    HANDLE hSnapshot, hProcess;
+    FILETIME lpCreationTime, lpExitTime, lpKernelTime, lpUserTime;
+    PROCESS_MEMORY_COUNTERS ppsmemCounters;
 
-	LONG priority;
-	char *exec_path, *name;
-	ULARGE_INTEGER kernel_mode_time, user_mode_time;
-	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
+    LONG priority;
+    char *exec_path, *name;
+    ULARGE_INTEGER kernel_mode_time, user_mode_time;
+    DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
 
 	HANDLE hdle;
 	int privilege_enabled = 0;
@@ -2279,129 +2201,132 @@ void sys_proc_windows(const char* LOCATION) {
 		if (Process32First(hSnapshot, &pe))
 		{
 			do {
-				/* Get process ID */
-				pid = pe.th32ProcessID;
+                process_entry_data * entry_data = NULL;
 
-				/* Get thread count */
-				thread_count = pe.cntThreads;
+                /* Get process ID */
+                pid = pe.th32ProcessID;
 
-				/* Get parent process ID */
-				parent_pid = pe.th32ParentProcessID;
+                /* Get thread count */
+                thread_count = pe.cntThreads;
 
-				/* Get process base priority */
-				priority = pe.pcPriClassBase;
+                /* Get parent process ID */
+                parent_pid = pe.th32ParentProcessID;
 
-				/* Initialize variables */
-				name = exec_path = NULL;
-				kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
-				session_id = page_file_usage = virtual_size = 0;
+                /* Get process base priority */
+                priority = pe.pcPriClassBase;
 
-				/* Check if we are dealing with a system process */
-				if (pid == 0 || pid == 4)
-				{
-					name = strdup(pid == 0 ? "System Idle Process" : "System");
-					exec_path = strdup("none");
-				} else {
-					/* Get process name */
-					name = strdup(pe.szExeFile);
+                /* Initialize variables */
+                name = exec_path = NULL;
+                kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
+                session_id = page_file_usage = virtual_size = 0;
 
-					/* Get process handle */
-					hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-					if (hProcess != NULL)
-					{
-						/* Get full Windows kernel path for the process */
-						if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
-						{
-							/* Convert Windows kernel path to a valid Win32 filepath */
-							/* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
+                /* Check if we are dealing with a system process */
+                if (pid == 0 || pid == 4)
+                {
+                    name = strdup(pid == 0 ? "System Idle Process" : "System");
+                    exec_path = strdup("none");
+                } else {
+                    /* Get process name */
+                    name = strdup(pe.szExeFile);
+
+                    /* Get process handle */
+                    hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+                    if (hProcess != NULL)
+                    {
+                        /* Get full Windows kernel path for the process */
+                        if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
+                        {
+                            /* Convert Windows kernel path to a valid Win32 filepath */
+                            /* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
                             /* This requires hotfix KB931305 in order to work under XP/Server 2003, so the conversion will be skipped if we're not running under Vista or greater */
-							if (!checkVista() || !ntpath_to_win32path(read_buff, &exec_path))
-							{
-								/* If there were any errors, the read_buff array will remain intact */
-								/* In that case, let's just use the Windows kernel path. It's better than nothing */
-								exec_path = strdup(read_buff);
-							}
-						} else {
-							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
-							exec_path = strdup("unknown");
-						}
+                            if (!checkVista() || !ntpath_to_win32path(read_buff, &exec_path))
+                            {
+                                /* If there were any errors, the read_buff array will remain intact */
+                                /* In that case, let's just use the Windows kernel path. It's better than nothing */
+                                exec_path = strdup(read_buff);
+                            }
+                        } else {
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
+                            exec_path = strdup("unknown");
+                        }
 
-						/* Get kernel mode and user mode times */
-						if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
-						{
-							/* Copy the kernel mode filetime high and low parts and convert it to seconds */
-							kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
-							kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
-							kernel_mode_time.QuadPart /= 10000000ULL;
+                        /* Get kernel mode and user mode times */
+                        if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
+                        {
+                            /* Copy the kernel mode filetime high and low parts and convert it to seconds */
+                            kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
+                            kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
+                            kernel_mode_time.QuadPart /= 10000000ULL;
 
-							/* Copy the user mode filetime high and low parts and convert it to seconds */
-							user_mode_time.LowPart = lpUserTime.dwLowDateTime;
-							user_mode_time.HighPart = lpUserTime.dwHighDateTime;
-							user_mode_time.QuadPart /= 10000000ULL;
-						} else {
-							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
-						}
+                            /* Copy the user mode filetime high and low parts and convert it to seconds */
+                            user_mode_time.LowPart = lpUserTime.dwLowDateTime;
+                            user_mode_time.HighPart = lpUserTime.dwHighDateTime;
+                            user_mode_time.QuadPart /= 10000000ULL;
+                        } else {
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve kernel mode and user mode times from process with PID %lu (%lu).", pid, GetLastError());
+                        }
 
-						/* Get page file usage and virtual size */
-						/* Reference: https://stackoverflow.com/a/1986486 */
-						if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
-						{
-							page_file_usage = ppsmemCounters.PagefileUsage;
-							virtual_size = (ppsmemCounters.WorkingSetSize + ppsmemCounters.PagefileUsage);
-						} else {
-							mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
-						}
+                        /* Get page file usage and virtual size */
+                        /* Reference: https://stackoverflow.com/a/1986486 */
+                        if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
+                        {
+                            page_file_usage = ppsmemCounters.PagefileUsage;
+                            virtual_size = (ppsmemCounters.WorkingSetSize + ppsmemCounters.PagefileUsage);
+                        } else {
+                            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve page file usage from process with PID %lu (%lu).", pid, GetLastError());
+                        }
 
-						/* Get session ID */
-						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
+                        /* Get session ID */
+                        if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "Unable to retrieve session ID from process with PID %lu (%lu).", pid, GetLastError());
 
-						/* Close process handle */
-						CloseHandle(hProcess);
-					} else {
-						/* Silence access denied errors under Windows Vista or greater */
+                        /* Close process handle */
+                        CloseHandle(hProcess);
+                    } else {
+                        /* Silence access denied errors under Windows Vista or greater */
                         DWORD lastError = GetLastError();
                         if (!checkVista() || lastError != ERROR_ACCESS_DENIED)
                         {
                             mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process handle for PID %lu (%lu).", pid, lastError);
                             exec_path = strdup("unknown");
                         }
-					}
-				}
+                    }
+                }
 
-				/* Add process information to the JSON document */
-				cJSON *object = cJSON_CreateObject();
-				cJSON *process = cJSON_CreateObject();
-				cJSON_AddStringToObject(object, "type", "process");
-				cJSON_AddNumberToObject(object, "ID", ID);
-				cJSON_AddStringToObject(object, "timestamp", timestamp);
-				cJSON_AddItemToObject(object, "process", process);
+                entry_data = init_process_data_entry();
 
-				cJSON_AddStringToObject(process, "cmd", exec_path); // CommandLine
-				cJSON_AddNumberToObject(process, "stime", kernel_mode_time.QuadPart); // KernelModeTime
-				cJSON_AddStringToObject(process, "name", name); // Name
-				cJSON_AddNumberToObject(process, "size", page_file_usage); // PageFileUsage
-				cJSON_AddNumberToObject(process, "ppid", parent_pid); // ParentProcessId
-				cJSON_AddNumberToObject(process, "priority", priority); // Priority
-				cJSON_AddNumberToObject(process, "pid", pid); // ProcessId
-				cJSON_AddNumberToObject(process, "session", session_id); // SessionId
-				cJSON_AddNumberToObject(process, "nlwp", thread_count); // ThreadCount
-				cJSON_AddNumberToObject(process, "utime", user_mode_time.QuadPart); // UserModeTime
-				cJSON_AddNumberToObject(process, "vm_size", virtual_size); // VirtualSize
+                entry_data->pid = pid;
+                entry_data->ppid = parent_pid;
 
-				cJSON_AddItemToArray(proc_array, object);
+                if (name) {
+                    os_strdup(name, entry_data->name);
+                    free(name);
+                }
 
-				free(name);
-				free(exec_path);
+                if (exec_path) {
+                    os_strdup(exec_path, entry_data->cmd);
+                    free(exec_path);
+                }
+
+                entry_data->priority = priority;
+
+                entry_data->size = page_file_usage;
+                entry_data->vm_size = virtual_size;
+
+                entry_data->utime = user_mode_time.QuadPart;
+                entry_data->stime = kernel_mode_time.QuadPart;
+
+                entry_data->session = session_id;
+                entry_data->nlwp = thread_count;
+
+                // Check if it is necessary to create a process event
+                char * string = NULL;
+                if (string = analyze_process(entry_data, timestamp), string) {
+                    mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
+                    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
+                }
 			} while(Process32Next(hSnapshot, &pe));
 
-			cJSON_ArrayForEach(item, proc_array) {
-				char *string = cJSON_PrintUnformatted(item);
-				mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-				wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-				free(string);
-			}
-
-			cJSON_Delete(proc_array);
 		} else {
 			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve process information from the snapshot.");
 		}
@@ -2420,18 +2345,10 @@ void sys_proc_windows(const char* LOCATION) {
 
 	if (hdle) CloseHandle(hdle);
 
-	cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "process_end");
-    cJSON_AddNumberToObject(object, "ID", ID);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-    wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-
-    cJSON_Delete(object);
-    free(string);
     free(timestamp);
+
+    // Checking for terminated processes
+    check_terminated_processes();
 }
 
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {

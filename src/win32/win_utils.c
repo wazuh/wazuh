@@ -324,7 +324,7 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 
 char *get_agent_ip()
 {
-    typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
+    typedef interface_entry_data* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses);
 
     char *agent_ip = NULL;
     int min_metric = INT_MAX;
@@ -407,7 +407,9 @@ char *get_agent_ip()
         if (dwRetVal == NO_ERROR) {
             pCurrAddresses = pAddresses;
             while (pCurrAddresses) {
-                char *string;
+                cJSON * object = NULL;
+                interface_entry_data * iface_data = NULL;
+
                 /* Ignore Loopback interface */
                 if (pCurrAddresses->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
                     pCurrAddresses = pCurrAddresses->Next;
@@ -427,16 +429,23 @@ char *get_agent_ip()
                     }
 
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
-                    string = _get_network_vista(pCurrAddresses, 0, NULL);
+                    iface_data = _get_network_vista(pCurrAddresses);
                 } else {
                     /* Call function get_network_xp() */
-                    string = get_network_xp(pCurrAddresses, AdapterInfo, 0, NULL);
+                    iface_data = get_network_xp(pCurrAddresses, AdapterInfo);
                 }
 
-                const char *jsonErrPtr;
-                cJSON *object = cJSON_ParseWithOpts(string, &jsonErrPtr, 0);
-                cJSON *iface = cJSON_GetObjectItem(object, "iface");
-                cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
+                if (iface_data) {
+                    object = interface_json_event(NULL, iface_data, 0, "");
+                    free_interface_data(iface_data);
+                } else {
+                    mdebug2("Couldn't get the data of the interface: '%S'", pCurrAddresses->FriendlyName);
+                    continue;
+                }
+
+                cJSON *data = cJSON_GetObjectItem(object, "data");
+                cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
+                cJSON *ipv4 = cJSON_GetObjectItem(attributes, "IPv4");
                 if(ipv4){
                     cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
                     if (gateway) {
@@ -455,13 +464,11 @@ char *get_agent_ip()
                             cJSON *address = cJSON_GetArrayItem(addresses,0);
                             free(agent_ip);
                             os_strdup(address->valuestring, agent_ip);
-                            free(string);
                             cJSON_Delete(object);
                             break;
                         }
                     }
                 }
-                free(string);
                 cJSON_Delete(object);
                 pCurrAddresses = pCurrAddresses->Next;
             }

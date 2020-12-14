@@ -22,7 +22,7 @@
 
         wodle-openscap.template
 
-        wodle-syscollector.template
+        inventory.template
 
         syscheck.template
 
@@ -63,7 +63,7 @@
 
         wodle-openscap.template
 
-        wodle-syscollector.template
+        inventory.template
 
         syscheck.template
 

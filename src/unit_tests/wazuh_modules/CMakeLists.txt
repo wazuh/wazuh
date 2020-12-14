@@ -18,6 +18,7 @@ if(${TARGET} STREQUAL "server")
     add_subdirectory(sca)
     add_subdirectory(scheduling)
     add_subdirectory(vulnerability_detector)
+    add_subdirectory(syscollector)
     add_subdirectory(task_manager)
 endif()
 

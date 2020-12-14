@@ -207,6 +207,12 @@ CREATE TABLE IF NOT EXISTS sys_processes (
 
 CREATE INDEX IF NOT EXISTS processes_id ON sys_processes (scan_id);
 
+CREATE TABLE IF NOT EXISTS sys_scan_info (
+   inventory TEXT PRIMARY KEY,
+   timestamp INTEGER,
+   items INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS ciscat_results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     scan_id INTEGER,

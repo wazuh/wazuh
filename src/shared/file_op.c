@@ -2395,64 +2395,6 @@ int w_ref_parent_folder(const char * path) {
 }
 
 
-cJSON* getunameJSON()
-{
-    os_info *read_info;
-    cJSON* root = cJSON_CreateObject();
-
-#ifndef WIN32
-    if (read_info = get_unix_version(), read_info) {
-#else
-    if (read_info = get_win_version(), read_info) {
-#endif
-        if (read_info->os_name && (strcmp(read_info->os_name, "unknown") != 0)){
-            cJSON_AddStringToObject(root, "os_name", read_info->os_name);
-        }
-        if (read_info->os_major){
-            cJSON_AddStringToObject(root, "os_major", read_info->os_major);
-        }
-        if (read_info->os_minor){
-            cJSON_AddStringToObject(root, "os_minor", read_info->os_minor);
-        }
-        if (read_info->os_build){
-            cJSON_AddStringToObject(root, "os_build", read_info->os_build);
-        }
-        if (read_info->os_version && (strcmp(read_info->os_version, "unknown") != 0)){
-            cJSON_AddStringToObject(root, "os_version", read_info->os_version);
-        }
-        if (read_info->os_codename){
-            cJSON_AddStringToObject(root, "os_codename", read_info->os_codename);
-        }
-        if (read_info->os_platform){
-            cJSON_AddStringToObject(root, "os_platform", read_info->os_platform);
-        }
-        if (read_info->sysname){
-            cJSON_AddStringToObject(root, "sysname", read_info->sysname);
-        }
-        if (read_info->nodename && (strcmp(read_info->nodename, "unknown") != 0)){
-            cJSON_AddStringToObject(root, "hostname", read_info->nodename);
-        }
-        if (read_info->release){
-            cJSON_AddStringToObject(root, "release", read_info->release);
-        }
-        if (read_info->version){
-            cJSON_AddStringToObject(root, "version", read_info->version);
-        }
-        if (read_info->machine && (strcmp(read_info->machine, "unknown") != 0)){
-            cJSON_AddStringToObject(root, "architecture", read_info->machine);
-        }
-        if (read_info->os_release){
-            cJSON_AddStringToObject(root, "os_release", read_info->os_release);
-        }
-
-        free_osinfo(read_info);
-        return root;
-    }
-    else
-        return NULL;
-}
-
-
 wino_t get_fp_inode(FILE * fp) {
 #ifdef WIN32
     int fd;

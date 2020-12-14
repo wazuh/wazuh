@@ -27,7 +27,7 @@
 #include "external/procps/readproc.h"
 #include "external/libdb/build_unix/db.h"
 
-hw_info *get_system_linux();                    // Get system information
+void get_system_linux(hw_entry * info);    // Get system information
 char* get_serial_number();                      // Get Motherboard serial number
 char* get_if_type(char *ifa_name);              // Get interface type
 char* get_oper_state(char *ifa_name);           // Get operational state
@@ -85,7 +85,7 @@ char* get_port_state(int state){
 
 // Get opened ports related to IPv4 sockets
 
-void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, int random_id, const char* timestamp, int check_all){
+void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, const char* timestamp, int check_all){
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
@@ -112,6 +112,8 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
         while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
 
+            port_entry_data * entry_data = NULL;
+
             listening = 0;
 
             if (first_line){
@@ -130,25 +132,23 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
             snprintf(laddress, NI_MAXHOST, "%s", inet_ntoa(local));
             snprintf(raddress, NI_MAXHOST, "%s", inet_ntoa(remote));
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", random_id);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", protocol);
-            cJSON_AddStringToObject(port, "local_ip", laddress);
-            cJSON_AddNumberToObject(port, "local_port", local_port);
-            cJSON_AddStringToObject(port, "remote_ip", raddress);
-            cJSON_AddNumberToObject(port, "remote_port", rem_port);
-            cJSON_AddNumberToObject(port, "tx_queue", txq);
-            cJSON_AddNumberToObject(port, "rx_queue", rxq);
-            cJSON_AddNumberToObject(port, "inode", inode);
+            entry_data = init_port_data_entry();
+
+            os_strdup(protocol, entry_data->protocol);
+
+            os_strdup(laddress, entry_data->local_ip);
+            entry_data->local_port = local_port;
+            os_strdup(raddress, entry_data->remote_ip);
+            entry_data->remote_port = rem_port;
+
+            entry_data->tx_queue = txq;
+            entry_data->rx_queue = rxq;
+            entry_data->inode = inode;
 
             if (!strncmp(protocol, "tcp", 3)){
                 char *port_state;
                 port_state = get_port_state(state);
-                cJSON_AddStringToObject(port, "state", port_state);
+                os_strdup(port_state, entry_data->state);
                 if (!strcmp(port_state, "listening")) {
                     listening = 1;
                 }
@@ -157,15 +157,17 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
             if (check_all || listening) {
 
-                char *string;
-                string = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
-                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(object);
-                free(string);
+                // Check if it is necessary to create a port event
+                char * string = NULL;
+                if (string = analyze_port(entry_data, timestamp), string) {
+                    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
+                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
+                }
 
-            } else
-                cJSON_Delete(object);
+            } else {
+                free_port_data(entry_data);
+            }
 
         }
         fclose(fp);
@@ -178,7 +180,7 @@ void get_ipv4_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
 // Get opened ports related to IPv6 sockets
 
-void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, int random_id, const char * timestamp, int check_all){
+void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, const char * timestamp, int check_all){
 
     unsigned long rxq, txq, time_len, retr, inode;
     int local_port, rem_port, d, state, uid, timer_run, timeout;
@@ -203,6 +205,8 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
         while(fgets(read_buff, OS_MAXSTR - 1, fp) != NULL){
 
+            port_entry_data * entry_data = NULL;
+
             listening = 0;
 
             if (first_line){
@@ -225,25 +229,23 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
                 &rem.s6_addr32[2], &rem.s6_addr32[3]);
             inet_ntop(AF_INET6, &rem, raddress, sizeof(raddress));
 
-            cJSON *object = cJSON_CreateObject();
-            cJSON *port = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "port");
-            cJSON_AddNumberToObject(object, "ID", random_id);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "port", port);
-            cJSON_AddStringToObject(port, "protocol", protocol);
-            cJSON_AddStringToObject(port, "local_ip", laddress);
-            cJSON_AddNumberToObject(port, "local_port", local_port);
-            cJSON_AddStringToObject(port, "remote_ip", raddress);
-            cJSON_AddNumberToObject(port, "remote_port", rem_port);
-            cJSON_AddNumberToObject(port, "tx_queue", txq);
-            cJSON_AddNumberToObject(port, "rx_queue", rxq);
-            cJSON_AddNumberToObject(port, "inode", inode);
+            entry_data = init_port_data_entry();
+
+            os_strdup(protocol, entry_data->protocol);
+
+            os_strdup(laddress, entry_data->local_ip);
+            entry_data->local_port = local_port;
+            os_strdup(raddress, entry_data->remote_ip);
+            entry_data->remote_port = rem_port;
+
+            entry_data->tx_queue = txq;
+            entry_data->rx_queue = rxq;
+            entry_data->inode = inode;
 
             if (!strncmp(protocol, "tcp6", 4)){
                 char *port_state;
                 port_state = get_port_state(state);
-                cJSON_AddStringToObject(port, "state", port_state);
+                os_strdup(port_state, entry_data->state);
                 if (!strcmp(port_state, "listening")) {
                     listening = 1;
                 }
@@ -252,15 +254,17 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 
             if (check_all || listening) {
 
-                char *string;
-                string = cJSON_PrintUnformatted(object);
-                mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
-                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                cJSON_Delete(object);
-                free(string);
+                // Check if it is necessary to create a port event
+                char * string = NULL;
+                if (string = analyze_port(entry_data, timestamp), string) {
+                    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
+                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                    free(string);
+                }
 
-            } else
-                cJSON_Delete(object);
+            } else {
+                free_port_data(entry_data);
+            }
 
         }
         fclose(fp);
@@ -274,11 +278,7 @@ void get_ipv6_ports(int queue_fd, const char* LOCATION, const char* protocol, in
 void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     char *protocol;
-    int random_id = os_random();
     char *timestamp = w_get_timestamp(time(NULL));
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting ports inventory.");
 
@@ -286,38 +286,29 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 
     /* TCP opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "tcp");
-    get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, random_id, timestamp, check_all);
+    get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, timestamp, check_all);
 
     if (check_all) {
         /* UDP opened ports inventory */
         snprintf(protocol, PROTO_LENGTH, "%s", "udp");
-        get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, random_id, timestamp, check_all);
+        get_ipv4_ports(queue_fd, WM_SYS_LOCATION, protocol, timestamp, check_all);
     }
 
     /* TCP6 opened ports inventory */
     snprintf(protocol, PROTO_LENGTH, "%s", "tcp6");
-    get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, random_id, timestamp, check_all);
+    get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, timestamp, check_all);
 
     if (check_all) {
         /* UDP6 opened ports inventory */
         snprintf(protocol, PROTO_LENGTH, "%s", "udp6");
-        get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, random_id, timestamp, check_all);
+        get_ipv6_ports(queue_fd, WM_SYS_LOCATION, protocol, timestamp, check_all);
     }
 
     free(protocol);
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "port_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_ports_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
     free(timestamp);
+
+    // Checking for closed ports
+    check_closed_ports();
 }
 
 // Get installed programs inventory
@@ -325,54 +316,28 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 void sys_packages_linux(int queue_fd, const char* LOCATION) {
 
     DIR *dir;
-    int random_id = os_random();
-    char * end_dpkg = NULL;
-    char * end_rpm = NULL;
-
-    // Define time to sleep between messages sent
-    int usec = 1000000 / wm_max_eps;
 
     /* Set positive random ID for each event */
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     if ((dir = opendir("/var/lib/dpkg/"))){
         closedir(dir);
-        if (end_dpkg = sys_deb_packages(queue_fd, LOCATION, random_id), !end_dpkg) {
-            mterror(WM_SYS_LOGTAG, "Unable to get debian packages due to: %s", strerror(errno));
-        }
+        sys_deb_packages(queue_fd, LOCATION);
     }
     if ((dir = opendir("/var/lib/rpm/"))){
         closedir(dir);
-        if (end_rpm = sys_rpm_packages(queue_fd, LOCATION, random_id), !end_rpm) {
-            mterror(WM_SYS_LOGTAG, "Unable to get rpm packages due to: %s", strerror(errno));
-        }
+        sys_rpm_packages(queue_fd, LOCATION);
     }
 
-    if (end_rpm) {
-        mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_rpm);
-        wm_sendmsg(usec, queue_fd, end_rpm, LOCATION, SYSCOLLECTOR_MQ);
-
-        free(end_rpm);
-        if (end_dpkg) {
-            free(end_dpkg);
-        }
-    } else if (end_dpkg) {
-        mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_dpkg);
-        wm_sendmsg(usec, queue_fd, end_dpkg, LOCATION, SYSCOLLECTOR_MQ);
-        free(end_dpkg);
-    }
+    // Checking for uninstalled programs
+    check_uninstalled_programs();
 }
 
-char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
+void sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     char *format = "rpm";
     char *timestamp = w_get_timestamp(time(NULL));
-    cJSON *object = NULL;
-    cJSON *package = NULL;
 
     DBT key, data;
     DBC *cursor;
@@ -396,7 +361,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
-        return NULL;
+        return;
     }
 
     // Set Little-endian order by default
@@ -407,13 +372,13 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
         free(timestamp);
-        return NULL;
+        return;
     }
 
     if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "Error creating cursor: %s", db_strerror(ret));
         free(timestamp);
-        return NULL;
+        return;
     }
 
     memset(&key, 0, sizeof(DBT));
@@ -422,6 +387,8 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     int j;
 
     for (j = 0; ret = cursor->c_get(cursor, &key, &data, DB_NEXT), ret == 0; j++) {
+
+        program_entry_data * entry_data = NULL;
 
         // First header is not a package
 
@@ -460,13 +427,9 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         epoch = 0;
         skip = 0;
 
-        object = cJSON_CreateObject();
-        package = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "program");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
-        cJSON_AddItemToObject(object, "program", package);
-        cJSON_AddStringToObject(package, "format", format);
+        entry_data = init_program_data_entry();
+
+        os_strdup(format, entry_data->format);
 
         for (info = head; info; info = next_info) {
             next_info = info->next;
@@ -478,18 +441,23 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
                 case 0:
                     break;
                 case 6:   // String
-
                     read = read_string(bytes);
 
-                    if (!strncmp(info->tag, "name", 4) && !strncmp(read, "gpg-pubkey", 10))
-                        skip = 1;
-
-                    if (!strncmp(info->tag, "version", 7)) {
+                    if (!strncmp(info->tag, "name", 4)) {
+                        os_strdup(read, entry_data->name);
+                        if (!strncmp(read, "gpg-pubkey", 10)) {
+                            skip = 1;
+                        }
+                    } else if (!strncmp(info->tag, "version", 7)) {
                         snprintf(version, TYPE_LENGTH - 1, "%s", read);
                     } else if (!strncmp(info->tag, "release", 7)) {
                         snprintf(release, TYPE_LENGTH - 1, "%s", read);
+                    } else if (!strncmp(info->tag, "vendor", 6)) {
+                        os_strdup(read, entry_data->vendor);
+                    } else if (!strncmp(info->tag, "architecture", 12)) {
+                        os_strdup(read, entry_data->architecture);
                     } else {
-                        cJSON_AddStringToObject(package, info->tag, read);
+                        mtdebug2(WM_SYS_LOGTAG, "Unknown package tag: '%s'", info->tag);
                     }
                     free(read);
                     break;
@@ -499,24 +467,29 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
                     if (!strncmp(info->tag, "size", 4)) {
                         result = result / 1024;   // Bytes to KBytes
+                        entry_data->size = result;
                     }
-
-                    if (!strncmp(info->tag, "install_time", 12)) {    // Format date
+                    else if (!strncmp(info->tag, "install_time", 12)) {    // Format date
                         char *installt = w_get_timestamp(result);
-
-                        cJSON_AddStringToObject(package, info->tag, installt);
+                        os_strdup(installt, entry_data->install_time);
                         free(installt);
                     } else if (!strncmp(info->tag, "epoch", 5)) {
                         epoch = result;
                     } else {
-                        cJSON_AddNumberToObject(package, info->tag, result);
+                        mtdebug2(WM_SYS_LOGTAG, "Unknown package tag: '%s'", info->tag);
                     }
-
                     break;
 
                 case 9:   // Vector of strings
                     read = read_string(bytes);
-                    cJSON_AddStringToObject(package, info->tag, read);
+
+                    if (!strncmp(info->tag, "group", 5)) {
+                        os_strdup(read, entry_data->group);
+                    } else if (!strncmp(info->tag, "description", 11)) {
+                        os_strdup(read, entry_data->description);
+                    } else {
+                        mtdebug2(WM_SYS_LOGTAG, "Unknown package tag: '%s'", info->tag);
+                    }
                     free(read);
                     break;
 
@@ -530,19 +503,20 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         } else {
             snprintf(final_version, V_LENGTH, "%s-%s", version, release);
         }
-        cJSON_AddStringToObject(package, "version", final_version);
+        os_strdup(final_version, entry_data->version);
 
         // Send RPM package information to the manager
 
         if (skip) {
-            cJSON_Delete(object);
+            free_program_data(entry_data);
         } else {
-            char *string;
-            string = cJSON_PrintUnformatted(object);
-            mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", string);
-            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-            cJSON_Delete(object);
-            free(string);
+            // Check if it is necessary to create a program event
+            char * string = NULL;
+            if (string = analyze_program(entry_data, timestamp), string) {
+                mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", string);
+                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                free(string);
+            }
         }
 
         // Free resources
@@ -561,31 +535,18 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     cursor->c_close(cursor);
     dbp->close(dbp, 0);
 
-    object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *end_msg;
-    end_msg = cJSON_PrintUnformatted(object);
-    cJSON_Delete(object);
     free(timestamp);
-
-    return end_msg;
-
 }
 
-char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
+void sys_deb_packages(int queue_fd, const char* LOCATION){
 
     const char * format = "deb";
     char file[PATH_LENGTH] = "/var/lib/dpkg/status";
     char read_buff[OS_MAXSTR];
     FILE *fp;
     size_t length;
-    int i, installed = 1;
+    int i;
     char *timestamp = w_get_timestamp(time(NULL));
-    cJSON *object = NULL;
-    cJSON *package = NULL;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -595,7 +556,11 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     if ((fp = fopen(file, "r"))) {
         w_file_cloexec(fp);
 
-        while(fgets(read_buff, OS_MAXSTR, fp) != NULL){
+        program_entry_data * entry_data = NULL;
+
+        entry_data = init_program_data_entry();
+
+        while(fgets(read_buff, OS_MAXSTR, fp) != NULL) {
 
             // Remove '\n' from the read line
             length = strlen(read_buff);
@@ -603,21 +568,18 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             if (!strncmp(read_buff, "Package: ", 9)) {
 
-                if(object){
-                    cJSON_Delete(object);
+                if (entry_data) {
+                    free_program_data(entry_data);
+                    entry_data = NULL;
                 }
 
-                object = cJSON_CreateObject();
-                package = cJSON_CreateObject();
-                cJSON_AddStringToObject(object, "type", "program");
-                cJSON_AddNumberToObject(object, "ID", random_id);
-                cJSON_AddStringToObject(object, "timestamp", timestamp);
-                cJSON_AddItemToObject(object, "program", package);
-                cJSON_AddStringToObject(package, "format", format);
+                entry_data = init_program_data_entry();
+
+                os_strdup(format, entry_data->format);
 
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "name", parts[1]);
+                os_strdup(parts[1], entry_data->name);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -626,16 +588,24 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Status: ", 8)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 if (strstr(read_buff, "install ok installed"))
-                    installed = 1;
+                    entry_data->installed = 1;
                 else
-                    installed = 0;
+                    entry_data->installed = 0;
 
             } else if (!strncmp(read_buff, "Priority: ", 10)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "priority", parts[1]);
+                os_strdup(parts[1], entry_data->priority);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -644,9 +614,13 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Section: ", 9)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "group", parts[1]);
+                os_strdup(parts[1], entry_data->group);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -655,9 +629,13 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Installed-Size: ", 16)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddNumberToObject(package, "size", atoi(parts[1]));
+                entry_data->size = atoi(parts[1]);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -666,9 +644,13 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Maintainer: ", 12)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "vendor", parts[1]);
+                os_strdup(parts[1], entry_data->vendor);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -677,9 +659,13 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Architecture: ", 14)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "architecture", parts[1]);
+                os_strdup(parts[1], entry_data->architecture);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -688,9 +674,13 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Multi-Arch: ", 12)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "multi-arch", parts[1]);
+                os_strdup(parts[1], entry_data->multi_arch);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -699,9 +689,13 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Source: ", 8)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "source", parts[1]);
+                os_strdup(parts[1], entry_data->source);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -710,9 +704,13 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Version: ", 9)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "version", parts[1]);
+                os_strdup(parts[1], entry_data->version);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -721,9 +719,13 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             } else if (!strncmp(read_buff, "Description: ", 13)) {
 
+                if (!entry_data) {
+                    entry_data = init_program_data_entry();
+                }
+
                 char ** parts = NULL;
                 parts = OS_StrBreak(' ', read_buff, 2);
-                cJSON_AddStringToObject(package, "description", parts[1]);
+                os_strdup(parts[1], entry_data->description);
 
                 for (i=0; parts[i]; i++){
                     free(parts[i]);
@@ -732,25 +734,23 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
                 // Send message to the queue
 
-                if (installed) {
-
-                    installed = 0;
-
-                    char *string;
-                    string = cJSON_PrintUnformatted(object);
-                    mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
-                    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-                    cJSON_Delete(object);
-                    object = NULL;
-                    free(string);
-
+                if (entry_data->installed) {
+                    // Check if it is necessary to create a program event
+                    char * string = NULL;
+                    if (string = analyze_program(entry_data, timestamp), string) {
+                        mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
+                        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                        free(string);
+                    }
                 } else {
-                    cJSON_Delete(object);
-                    object = NULL;
-                    continue;
+                    free_program_data(entry_data);
                 }
-
+                entry_data = NULL;
             }
+        }
+
+        if (entry_data) {
+            free_program_data(entry_data);
         }
 
         fclose(fp);
@@ -758,80 +758,43 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     } else {
 
         mterror(WM_SYS_LOGTAG, "Unable to open the file '%s'", file);
-        free(timestamp);
-        return NULL;
-
     }
 
-    if(object){
-        cJSON_Delete(object);
-    }
-
-    object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "program_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *end_msg;
-    end_msg = cJSON_PrintUnformatted(object);
-    cJSON_Delete(object);
     free(timestamp);
-
-    return end_msg;
-
 }
 
 // Get Hardware inventory
 
 void sys_hw_linux(int queue_fd, const char* LOCATION){
 
-    char *string;
-    int random_id = os_random();
-    char *timestamp = w_get_timestamp(time(NULL));
+    char *timestamp;
 
-    if (random_id < 0)
-        random_id = -random_id;
+    hw_entry * hw_data = NULL;
+
+    timestamp = w_get_timestamp(time(NULL));
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Hardware inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON *hw_inventory = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "hardware");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-    cJSON_AddItemToObject(object, "inventory", hw_inventory);
+    hw_data = init_hw_data();
 
     /* Motherboard serial-number */
     char *serial;
     serial = get_serial_number();
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+    os_strdup(serial, hw_data->board_serial);
     free(serial);
 
     /* Get CPU and memory information */
-    hw_info *sys_info;
-    if (sys_info = get_system_linux(), sys_info){
-        if(sys_info->cpu_name) {
-            cJSON_AddStringToObject(hw_inventory, "cpu_name", w_strtrim(sys_info->cpu_name));
-        }
-        cJSON_AddNumberToObject(hw_inventory, "cpu_cores", sys_info->cpu_cores);
-        cJSON_AddNumberToObject(hw_inventory, "cpu_MHz", sys_info->cpu_MHz);
-        cJSON_AddNumberToObject(hw_inventory, "ram_total", sys_info->ram_total);
-        cJSON_AddNumberToObject(hw_inventory, "ram_free", sys_info->ram_free);
-        cJSON_AddNumberToObject(hw_inventory, "ram_usage", sys_info->ram_usage);
+    get_system_linux(hw_data);
 
-        os_free(sys_info->cpu_name);
-        free(sys_info);
+    // Check if it is necessary to create a hardware event
+    char * string = NULL;
+    if (string = analyze_hw(hw_data, timestamp), string) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);
+        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        free(string);
     }
 
-    /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_hw_linux() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-
-    free(string);
     free(timestamp);
-
 }
 
 #endif /* __linux__ */
@@ -840,32 +803,67 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
 
 void sys_os_unix(int queue_fd, const char* LOCATION){
 
-    char *string;
-    int random_id = os_random();
-    char *timestamp = w_get_timestamp(time(NULL));
+    char *timestamp;
 
-    if (random_id < 0)
-        random_id = -random_id;
+    os_entry * os_data = NULL;
+
+    timestamp = w_get_timestamp(time(NULL));
 
     mtdebug1(WM_SYS_LOGTAG, "Starting Operating System inventory.");
 
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "OS");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
+    os_data = init_os_data();
 
-    cJSON *os_inventory = getunameJSON();
+    os_info * info = get_unix_version();
+    if (info->nodename && (strcmp(info->nodename, "unknown") != 0)) {
+        os_strdup(info->nodename, os_data->hostname);
+    }
+    if (info->machine && (strcmp(info->machine, "unknown") != 0)) {
+        os_strdup(info->machine, os_data->architecture);
+    }
+    if (info->os_name && (strcmp(info->os_name, "unknown") != 0)) {
+        os_strdup(info->os_name, os_data->os_name);
+    }
+    if (info->os_release) {
+        os_strdup(info->os_release, os_data->os_release);
+    }
+    if (info->os_version && (strcmp(info->os_version, "unknown") != 0)) {
+        os_strdup(info->os_version, os_data->os_version);
+    }
+    if (info->os_codename) {
+        os_strdup(info->os_codename, os_data->os_codename);
+    }
+    if (info->os_major) {
+        os_strdup(info->os_major, os_data->os_major);
+    }
+    if (info->os_minor) {
+        os_strdup(info->os_minor, os_data->os_minor);
+    }
+    if (info->os_build) {
+        os_strdup(info->os_build, os_data->os_build);
+    }
+    if (info->os_platform) {
+        os_strdup(info->os_platform, os_data->os_platform);
+    }
+    if (info->sysname) {
+        os_strdup(info->sysname, os_data->sysname);
+    }
+    if (info->release) {
+        os_strdup(info->release, os_data->release);
+    }
+    if (info->version) {
+        os_strdup(info->version, os_data->version);
+    }
+    free_osinfo(info);
 
-    if (os_inventory != NULL)
-        cJSON_AddItemToObject(object, "inventory", os_inventory);
+    // Check if it is necessary to create a operative system event
+    char * string = NULL;
+    if (string = analyze_os(os_data, timestamp), string) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
+        SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        free(string);
+    }
 
-    /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
-    SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
     free(timestamp);
-    free(string);
 }
 
 #if defined(__linux__)
@@ -896,14 +894,12 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     char ** ifaces_list;
     int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddr = NULL, *ifa;
-    int random_id = os_random();
-    char *timestamp = w_get_timestamp(time(NULL));
+    char *timestamp;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    if (random_id < 0)
-        random_id = -random_id;
+    timestamp = w_get_timestamp(time(NULL));
 
     mtdebug1(WM_SYS_LOGTAG, "Starting network inventory.");
 
@@ -942,21 +938,19 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     /* Collect all information for each interface */
     for (i=0; i < size_ifaces; i++){
 
-        char *string;
-        cJSON *object = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "network");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
+        interface_entry_data * entry_data = NULL;
 
-        getNetworkIface_linux(object, ifaces_list[i], ifaddr);
-
-        /* Send interface data in JSON format */
-        string = cJSON_PrintUnformatted(object);
-        mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
-        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(object);
-
-        free(string);
+        if (entry_data = getNetworkIface_linux(ifaces_list[i], ifaddr), entry_data) {
+            // Check if it is necessary to create an interface event
+            char * string = NULL;
+            if (string = analyze_interface(entry_data, timestamp), string) {
+                mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
+                wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+                free(string);
+            }
+        } else {
+            mdebug2("Couldn't get the data of the interface: '%s'", ifaces_list[i]);
+        }
     }
 
     freeifaddrs(ifaddr);
@@ -964,32 +958,19 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         free(ifaces_list[i]);
     }
     free(ifaces_list);
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_network_linux() sending '%s'", string);
-    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
     free(timestamp);
+
+    // Checking for disabled interfaces
+    check_disabled_interfaces();
 }
 
 /* Get System information */
-hw_info *get_system_linux(){
+void get_system_linux(hw_entry * info) {
 
     FILE *fp;
-    hw_info *info;
     char string[OS_MAXSTR];
     char *saveptr;
     char *end;
-
-    os_calloc(1, sizeof(hw_info), info);
-    init_hw_info(info);
 
     if (!(fp = fopen("/proc/cpuinfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read the CPU name.");
@@ -1067,8 +1048,6 @@ hw_info *get_system_linux(){
         }
         fclose(fp);
     }
-
-    return info;
 }
 
 /* Get Motherboard Serial Number */
@@ -1437,10 +1416,6 @@ char* get_default_gateway(char *ifa_name){
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     char *timestamp = w_get_timestamp(time(NULL));
-    int random_id = os_random();
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -1448,7 +1423,6 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 
     proc_t * proc_info;
-    char *string;
 
     if (!proc) {
         mterror(WM_SYS_LOGTAG, "Running process inventory: could not create libproc context.");
@@ -1456,87 +1430,102 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
         return;
     }
 
-    int i = 0;
-    cJSON *item;
-    cJSON *proc_array = cJSON_CreateArray();
-
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
 
     while (proc_info = readproc(proc, NULL), proc_info != NULL) {
-        cJSON *object = cJSON_CreateObject();
-        cJSON *process = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "process");
-        cJSON_AddNumberToObject(object, "ID", random_id);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
-        cJSON_AddItemToObject(object, "process", process);
-        cJSON_AddNumberToObject(process,"pid",proc_info->tid);
-        cJSON_AddStringToObject(process,"name",proc_info->cmd);
-        cJSON_AddStringToObject(process,"state",&proc_info->state);
-        cJSON_AddNumberToObject(process,"ppid",proc_info->ppid);
-        cJSON_AddNumberToObject(process,"utime",proc_info->utime);
-        cJSON_AddNumberToObject(process,"stime",proc_info->stime);
+        int i;
+        int pos = 0;
+
+        process_entry_data * entry_data = NULL;
+
+        entry_data = init_process_data_entry(entry_data);
+
+        entry_data->pid = proc_info->tid;
+        entry_data->ppid = proc_info->ppid;
+
+        if (proc_info->cmd) {
+            os_strdup(proc_info->cmd, entry_data->name);
+        }
+
+        if (&proc_info->state) {
+            os_strdup(&proc_info->state, entry_data->state);
+        }
+
+        os_malloc(sizeof(char *), entry_data->argvs);
         if (proc_info->cmdline && proc_info->cmdline[0]) {
-            cJSON *argvs = cJSON_CreateArray();
-            cJSON_AddStringToObject(process, "cmd", proc_info->cmdline[0]);
+            os_strdup(proc_info->cmdline[0], entry_data->cmd);
             for (i = 1; proc_info->cmdline[i]; i++) {
-                if (!strlen(proc_info->cmdline[i])==0) {
-                    cJSON_AddItemToArray(argvs, cJSON_CreateString(proc_info->cmdline[i]));
+                if (!strlen(proc_info->cmdline[i]) == 0) {
+                    os_strdup(proc_info->cmdline[i], entry_data->argvs[pos]);
+                    os_realloc(entry_data->argvs, (pos + 2) * sizeof(char *), entry_data->argvs);
+                    pos++;
                 }
             }
-            if (cJSON_GetArraySize(argvs) > 0) {
-                cJSON_AddItemToObject(process, "argvs", argvs);
-            } else {
-                cJSON_Delete(argvs);
-            }
         }
-        cJSON_AddStringToObject(process,"euser",proc_info->euser);
-        cJSON_AddStringToObject(process,"ruser",proc_info->ruser);
-        cJSON_AddStringToObject(process,"suser",proc_info->suser);
-        cJSON_AddStringToObject(process,"egroup",proc_info->egroup);
-        cJSON_AddStringToObject(process,"rgroup",proc_info->rgroup);
-        cJSON_AddStringToObject(process,"sgroup",proc_info->sgroup);
-        cJSON_AddStringToObject(process,"fgroup",proc_info->fgroup);
-        cJSON_AddNumberToObject(process,"priority",proc_info->priority);
-        cJSON_AddNumberToObject(process,"nice",proc_info->nice);
-        cJSON_AddNumberToObject(process,"size",proc_info->size);
-        cJSON_AddNumberToObject(process,"vm_size",proc_info->vm_size);
-        cJSON_AddNumberToObject(process,"resident",proc_info->resident);
-        cJSON_AddNumberToObject(process,"share",proc_info->share);
-        cJSON_AddNumberToObject(process,"start_time",proc_info->start_time);
-        cJSON_AddNumberToObject(process,"pgrp",proc_info->pgrp);
-        cJSON_AddNumberToObject(process,"session",proc_info->session);
-        cJSON_AddNumberToObject(process,"nlwp",proc_info->nlwp);
-        cJSON_AddNumberToObject(process,"tgid",proc_info->tgid);
-        cJSON_AddNumberToObject(process,"tty",proc_info->tty);
-        cJSON_AddNumberToObject(process,"processor",proc_info->processor);
+        entry_data->argvs[pos] = NULL;
 
-        cJSON_AddItemToArray(proc_array, object);
+        if (proc_info->euser) {
+            os_strdup(proc_info->euser, entry_data->euser);
+        }
+
+        if (proc_info->ruser) {
+            os_strdup(proc_info->ruser, entry_data->ruser);
+        }
+
+        if (proc_info->suser) {
+            os_strdup(proc_info->suser, entry_data->suser);
+        }
+
+        if (proc_info->egroup) {
+            os_strdup(proc_info->egroup, entry_data->egroup);
+        }
+
+        if (proc_info->rgroup) {
+            os_strdup(proc_info->rgroup, entry_data->rgroup);
+        }
+
+        if (proc_info->sgroup) {
+            os_strdup(proc_info->sgroup, entry_data->sgroup);
+        }
+
+        if (proc_info->fgroup) {
+            os_strdup(proc_info->fgroup, entry_data->fgroup);
+        }
+
+        entry_data->priority = proc_info->priority;
+        entry_data->nice = proc_info->nice;
+
+        entry_data->size = proc_info->size;
+        entry_data->vm_size = proc_info->vm_size;
+        entry_data->resident = proc_info->resident;
+        entry_data->share = proc_info->share;
+
+        entry_data->start_time =  proc_info->start_time;
+        entry_data->utime = proc_info->utime;
+        entry_data->stime = proc_info->stime;
+
+        entry_data->pgrp = proc_info->pgrp;
+        entry_data->session = proc_info->session;
+        entry_data->nlwp = proc_info->nlwp;
+        entry_data->tgid = proc_info->tgid;
+        entry_data->tty = proc_info->tty;
+        entry_data->processor = proc_info->processor;
+
         freeproc(proc_info);
-    }
 
-    cJSON_ArrayForEach(item, proc_array) {
-        string = cJSON_PrintUnformatted(item);
-        mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
-        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        free(string);
+        // Check if it is necessary to create a process event
+        char * string = NULL;
+        if (string = analyze_process(entry_data, timestamp), string) {
+            mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", string);
+            wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+            free(string);
+        }
     }
-
-    cJSON_Delete(proc_array);
     closeproc(proc);
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "process_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *end_msg;
-    end_msg = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_proc_linux() sending '%s'", end_msg);
-    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(end_msg);
     free(timestamp);
 
+    // Checking for terminated processes
+    check_terminated_processes();
 }
 
 // Read string from a byte array until find a NULL byte
@@ -1634,26 +1623,26 @@ int read_entry(u_int8_t* bytes, rpm_data *info) {
 
 }
 
-void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
+interface_entry_data * getNetworkIface_linux(char *iface_name, struct ifaddrs *ifaddr){
 
     struct ifaddrs *ifa;
     int k = 0;
     int family = 0;
 
-    cJSON *interface = cJSON_CreateObject();
-    cJSON_AddItemToObject(object, "iface", interface);
-    cJSON_AddStringToObject(interface, "name", iface_name);
+    interface_entry_data * entry_data = init_interface_data_entry();
+
+    os_strdup(iface_name, entry_data->name);
 
     /* Interface type */
     char *type;
     type = get_if_type(iface_name);
-    cJSON_AddStringToObject(interface, "type", type);
+    os_strdup(type, entry_data->type);
     free(type);
 
     /* Operational state */
     char *state;
     state = get_oper_state(iface_name);
-    cJSON_AddStringToObject(interface, "state", state);
+    os_strdup(state, entry_data->state);
     free(state);
 
     /* Get MAC address */
@@ -1667,7 +1656,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
             if (newline) {
                 *newline = '\0';
             }
-            cJSON_AddStringToObject(interface, "MAC", mac);
+            os_strdup(mac, entry_data->mac);
         } else {
             mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface '%s' at '%s': file is empty.", iface_name, addr_path);
         }
@@ -1676,15 +1665,17 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
         mtdebug1(WM_SYS_LOGTAG, "Unable to read MAC address for interface '%s' from '%s': %s (%d)", iface_name, addr_path, strerror(errno), errno);
     }
 
-    cJSON *ipv4 = cJSON_CreateObject();
-    cJSON *ipv4_addr = cJSON_CreateArray();
-    cJSON *ipv4_netmask = cJSON_CreateArray();
-    cJSON *ipv4_broadcast = cJSON_CreateArray();
+    entry_data->ipv4 = init_net_addr();
+    os_malloc(sizeof(char *), entry_data->ipv4->address);
+    os_malloc(sizeof(char *), entry_data->ipv4->netmask);
+    os_malloc(sizeof(char *), entry_data->ipv4->broadcast);
+    int addr4 = 0, nmask4 = 0, bcast4 = 0;
 
-    cJSON *ipv6 = cJSON_CreateObject();
-    cJSON *ipv6_addr = cJSON_CreateArray();
-    cJSON *ipv6_netmask = cJSON_CreateArray();
-    cJSON *ipv6_broadcast = cJSON_CreateArray();
+    entry_data->ipv6 = init_net_addr();
+    os_malloc(sizeof(char *), entry_data->ipv6->address);
+    os_malloc(sizeof(char *), entry_data->ipv6->netmask);
+    os_malloc(sizeof(char *), entry_data->ipv6->broadcast);
+    int addr6 = 0, nmask6 = 0, bcast6 = 0;
 
     for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
 
@@ -1707,7 +1698,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         host, NI_MAXHOST,
                         NULL, 0, NI_NUMERICHOST);
                 if (result == 0) {
-                    cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
+                    os_strdup(host, entry_data->ipv4->address[addr4]);
+                    os_realloc(entry_data->ipv4->address, (addr4 + 2) * sizeof(char *), entry_data->ipv4->address);
+                    addr4++;
                 } else {
                     mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 address for interface '%s': %s\n", iface_name, gai_strerror(result));
                 }
@@ -1721,7 +1714,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
+                        os_strdup(netmask, entry_data->ipv4->netmask[nmask4]);
+                        os_realloc(entry_data->ipv4->netmask, (nmask4 + 2) * sizeof(char *), entry_data->ipv4->netmask);
+                        nmask4++;
                     } else {
                         mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
@@ -1735,7 +1730,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                             NULL, 0, NI_NUMERICHOST);
 
                         if (result == 0) {
-                            cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                            os_strdup(broadaddr, entry_data->ipv4->broadcast[bcast4]);
+                            os_realloc(entry_data->ipv4->broadcast, (bcast4 + 2) * sizeof(char *), entry_data->ipv4->broadcast);
+                            bcast4++;
                         } else {
                             mterror(WM_SYS_LOGTAG, "Can't obtain the IPv4 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                         }
@@ -1743,7 +1740,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         char * broadaddr;
                         broadaddr = get_broadcast_addr(host, netmask);
                         if (strncmp(broadaddr, "unknown", 7)) {
-                            cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                            os_strdup(broadaddr, entry_data->ipv4->broadcast[bcast4]);
+                            os_realloc(entry_data->ipv4->broadcast, (bcast4 + 2) * sizeof(char *), entry_data->ipv4->broadcast);
+                            bcast4++;
                         } else {
                             mterror(WM_SYS_LOGTAG, "Failed getting broadcast addr for '%s'", host);
                         }
@@ -1765,7 +1764,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                     parts = OS_StrBreak('%', host, 2);
                     if(parts) {
                         ip_addrr = w_strtrim(parts[0]);
-                        cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(ip_addrr));
+                        os_strdup(ip_addrr, entry_data->ipv6->address[addr6]);
+                        os_realloc(entry_data->ipv6->address, (addr6 + 2) * sizeof(char *), entry_data->ipv6->address);
+                        addr6++;
                         for (k=0; parts[k]; k++){
                             free(parts[k]);
                         }
@@ -1784,7 +1785,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
+                        os_strdup(netmask6, entry_data->ipv6->netmask[nmask6]);
+                        os_realloc(entry_data->ipv6->netmask, (nmask6 + 2) * sizeof(char *), entry_data->ipv6->netmask);
+                        nmask6++;
                     } else {
                         mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 netmask for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
@@ -1799,7 +1802,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
                         NULL, 0, NI_NUMERICHOST);
 
                     if (result == 0) {
-                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
+                        os_strdup(broadaddr6, entry_data->ipv6->broadcast[bcast6]);
+                        os_realloc(entry_data->ipv6->broadcast, (bcast6 + 2) * sizeof(char *), entry_data->ipv6->broadcast);
+                        bcast6++;
                     } else {
                         mterror(WM_SYS_LOGTAG, "Can't obtain the IPv6 broadcast for interface '%s': %s\n", iface_name, gai_strerror(result));
                     }
@@ -1809,99 +1814,62 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
 
                 /* Get stats of interface */
                 struct link_stats *stats = ifa->ifa_data;
-                cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
-                cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
-                cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
-                cJSON_AddNumberToObject(interface, "rx_bytes", stats->rx_bytes);
-                cJSON_AddNumberToObject(interface, "tx_errors", stats->tx_errors);
-                cJSON_AddNumberToObject(interface, "rx_errors", stats->rx_errors);
-                cJSON_AddNumberToObject(interface, "tx_dropped", stats->tx_dropped);
-                cJSON_AddNumberToObject(interface, "rx_dropped", stats->rx_dropped);
+                entry_data->tx_packets = stats->tx_packets;
+                entry_data->rx_packets = stats->rx_packets;
+                entry_data->tx_bytes = stats->tx_bytes;
+                entry_data->rx_bytes = stats->rx_bytes;
+                entry_data->tx_errors = stats->tx_errors;
+                entry_data->rx_errors = stats->rx_errors;
+                entry_data->tx_dropped = stats->tx_dropped;
+                entry_data->rx_dropped = stats->rx_dropped;
 
                 /* MTU */
                 char *mtu;
                 int mtu_value;
                 mtu = get_mtu(iface_name);
                 mtu_value = atoi(mtu);
-                cJSON_AddNumberToObject(interface, "MTU", mtu_value);
+                entry_data->mtu = mtu_value;
                 free(mtu);
             }
         }
     }
 
-    /* Add address information to the structure */
+    entry_data->ipv4->address[addr4] = NULL;
+    entry_data->ipv4->netmask[nmask4] = NULL;
+    entry_data->ipv4->broadcast[bcast4] = NULL;
+    entry_data->ipv6->address[addr6] = NULL;
+    entry_data->ipv6->netmask[nmask6] = NULL;
+    entry_data->ipv6->broadcast[bcast6] = NULL;
 
-    if (cJSON_GetArraySize(ipv4_addr) > 0) {
-        cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
-        if (cJSON_GetArraySize(ipv4_netmask) > 0) {
-            cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
-        } else {
-            cJSON_Delete(ipv4_netmask);
-        }
-        if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
-            cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
-        } else {
-            cJSON_Delete(ipv4_broadcast);
-        }
+    /* Get Default Gateway */
+    char *gateway;
+    char *metric = NULL;
+    char *end = NULL;
 
-        /* Get Default Gateway */
-        char *gateway;
-        char *metric = NULL;
-        char *end = NULL;
+    gateway = get_default_gateway(iface_name);
 
-        gateway = get_default_gateway(iface_name);
-
-        if (metric = end = strchr(gateway, '|'), metric) {
-            metric++;
-            cJSON_AddNumberToObject(ipv4, "metric", atoi(metric));
-            *end = '\0';
-        }
-
-        cJSON_AddStringToObject(ipv4, "gateway", gateway);
-        free(gateway);
-
-        /* Get DHCP status for IPv4 */
-        char *dhcp_v4;
-        dhcp_v4 = check_dhcp(iface_name, AF_INET);
-        cJSON_AddStringToObject(ipv4, "DHCP", dhcp_v4);
-        free(dhcp_v4);
-
-        cJSON_AddItemToObject(interface, "IPv4", ipv4);
-
-    } else {
-        cJSON_Delete(ipv4_addr);
-        cJSON_Delete(ipv4_netmask);
-        cJSON_Delete(ipv4_broadcast);
-        cJSON_Delete(ipv4);
+    if (metric = end = strchr(gateway, '|'), metric) {
+        metric++;
+        entry_data->ipv4->metric = atoi(metric);
+        *end = '\0';
     }
 
-    if (cJSON_GetArraySize(ipv6_addr) > 0) {
-        cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
-        if (cJSON_GetArraySize(ipv6_netmask) > 0) {
-            cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
-        } else {
-            cJSON_Delete(ipv6_netmask);
-        }
-        if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
-            cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
-        } else {
-            cJSON_Delete(ipv6_broadcast);
-        }
+    os_strdup(gateway, entry_data->ipv4->gateway);
+    free(gateway);
 
-        /* Get DHCP status for IPv6 */
-        char *dhcp_v6;
-        dhcp_v6 = check_dhcp(iface_name, AF_INET6);
-        cJSON_AddStringToObject(ipv6, "DHCP", dhcp_v6);
-        free(dhcp_v6);
+    /* Get DHCP status for IPv4 */
+    char *dhcp_v4;
+    dhcp_v4 = check_dhcp(iface_name, AF_INET);
+    os_strdup(dhcp_v4, entry_data->ipv4->dhcp);
+    free(dhcp_v4);
 
-        cJSON_AddItemToObject(interface, "IPv6", ipv6);
-    } else {
-        cJSON_Delete(ipv6_addr);
-        cJSON_Delete(ipv6_netmask);
-        cJSON_Delete(ipv6_broadcast);
-        cJSON_Delete(ipv6);
-    }
+    /* Get DHCP status for IPv6 */
+    char *dhcp_v6;
+    dhcp_v6 = check_dhcp(iface_name, AF_INET6);
+    os_strdup(dhcp_v6, entry_data->ipv6->dhcp);
+    free(dhcp_v6);
 
+    return entry_data;
 }
 
 #endif /* __linux__ */
