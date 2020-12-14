@@ -1262,11 +1262,12 @@ static void test_fim_file_add(void **state) {
     fim_data->item->index = 1;
     fim_data->item->statbuf = buf;
     fim_data->item->configuration = CHECK_SIZE |
-                                    CHECK_PERM  |
+                                    CHECK_PERM |
                                     CHECK_OWNER |
                                     CHECK_GROUP |
                                     CHECK_MD5SUM |
                                     CHECK_SHA1SUM |
+                                    CHECK_MTIME |
                                     CHECK_SHA256SUM;
 
     fim_data->item->configuration |= CHECK_SEECHANGES;

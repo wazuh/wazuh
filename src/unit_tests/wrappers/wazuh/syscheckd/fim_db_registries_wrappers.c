@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-#ifdef TEST_WINAGENT
+#ifdef WIN32
 #include "fim_db_registries_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
@@ -106,4 +106,4 @@ int __wrap_fim_db_set_all_registry_data_unscanned(__attribute__((unused)) fdb_t 
 int __wrap_fim_db_set_all_registry_key_unscanned(__attribute__((unused)) fdb_t *fim_sql) {
     return FIMDB_OK;
 }
-#endif
+#endif // WIN32

@@ -1,6 +1,7 @@
 #ifndef FIM_DB_REGISTRIES_WRAPPERS_H
 #define FIM_DB_REGISTRIES_WRAPPERS_H
-#ifdef TEST_WINAGENT
+
+#ifdef WIN32
 #include "syscheckd/db/fim_db_registries.h"
 
 int __wrap_fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *entry);
@@ -38,5 +39,5 @@ int __wrap_fim_db_set_all_registry_data_unscanned(fdb_t *fim_sql);
 
 int __wrap_fim_db_set_all_registry_key_unscanned(fdb_t *fim_sql);
 
+#endif // WIN32
 #endif // FIM_DB_REGISTRIES_WRAPPERS_H
-#endif
