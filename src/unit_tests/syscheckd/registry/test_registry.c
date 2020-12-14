@@ -175,9 +175,6 @@ static int setup_group(void **state) {
 
     syscheck.key_ignore_regex = default_ignore_regex;
 
-    // Init database
-    //syscheck.database = fim_db_init(0);
-
     return 0;
 }
 
@@ -192,11 +189,6 @@ static int teardown_group(void **state) {
         OSMatch_FreePattern(syscheck.key_ignore_regex[i].regex);
     }
     syscheck.key_ignore_regex = NULL;
-
-    // Close database
-    expect_string(__wrap__mdebug1, formatted_msg, "Database transaction completed.");
-    fim_db_close(syscheck.database);
-    fim_db_clean();
 
     return 0;
 }
@@ -401,13 +393,6 @@ static int setup_process_value_events(void **state) {
     // Key
     entry1->registry_entry.key = create_reg_key(1, "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", 1,
                             "permissions", "userid", "groupid", "username", "groupname");
-    sqlite3_exec(syscheck.database->db, "INSERT INTO registry_key VALUES(1, \"HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\", \"permissions\", \"userid\", \"groupid\", \"username\", \"groupname\", 1234, \'[x64]\', 0, 1234, \"checksum1\");", NULL, NULL, &err_msg);
-    if (err_msg) {
-        fail_msg("%s", err_msg);
-        sqlite3_free(err_msg);
-
-        return -1;
-    }
 
     // Value
     char value_name[10] = "valuename";
@@ -415,14 +400,6 @@ static int setup_process_value_events(void **state) {
     unsigned int value_size = 4;
 
     entry1->registry_entry.value = create_reg_value_data(1, value_name, value_type, value_size);
-    sqlite3_exec(syscheck.database->db, "INSERT INTO registry_data VALUES(1, \"valuename\", 4, 4, \"hash1\", \"hash2\", \"hash3\", 0, 1234, \"checksum2\");", NULL, NULL, &err_msg);
-    if (err_msg) {
-        fail_msg("%s", err_msg);
-        sqlite3_free(err_msg);
-
-        return -1;
-    }
-
 
     // Set fim_entry2
     fim_entry *entry2 = calloc(1, sizeof(fim_entry));
@@ -451,10 +428,6 @@ static int setup_process_value_events(void **state) {
 static int teardown_process_value_events_failed(void **state) {
     fim_entry **entry_array = *state;
 
-    if (delete_tables()){
-        return -1;
-    }
-
     // Free state
     if (entry_array){
         int i = 0;
@@ -471,18 +444,10 @@ static int teardown_process_value_events_failed(void **state) {
 static int teardown_process_value_events_success(void **state) {
     fim_entry **entry_array = *state;
 
-    if (delete_tables()){
-        return -1;
-    }
-
     // Free state
     if (entry_array){
         fim_registry_free_entry(entry_array[1]);
         free(entry_array);
-    }
-
-    if (rmdir_ex(DIFF_DIR) != 0) {
-        return -1;
     }
 
     return 0;
@@ -1191,6 +1156,10 @@ static void test_fim_registry_process_value_event_success(void **state) {
     fim_event_mode event_mode = FIM_SCHEDULED;
     BYTE *data_buffer = (unsigned char *)"value_data";
 
+    will_return(__wrap_fim_db_get_registry_data, entry_array[0]->registry_entry.value);
+    expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", "valuename", "value_data", REG_QWORD, "diff string");
+    will_return(__wrap_fim_db_insert_registry_data, FIMDB_OK);
+
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
 }
 
@@ -1240,11 +1209,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_registry_calculate_hashes_no_config, setup_test_hashes, teardown_test_hashes),
 
         /* fim_registry_scan tests */
-        // cmocka_unit_test_setup_teardown(test_fim_registry_scan_no_entries_configured, setup_remove_entries, teardown_restore_scan),
-        // cmocka_unit_test_setup_teardown(test_fim_registry_scan_base_line_generation, setup_base_line, teardown_clean_db_and_state),
-        // cmocka_unit_test_setup_teardown(test_fim_registry_scan_regular_scan, setup_regular_scan, teardown_clean_db_and_state),
-        // cmocka_unit_test_setup_teardown(test_fim_registry_scan_RegOpenKeyEx_fail, setup_base_line, teardown_clean_db_and_state),
-        // cmocka_unit_test_setup_teardown(test_fim_registry_scan_RegQueryInfoKey_fail, setup_base_line, teardown_clean_db_and_state),
+        cmocka_unit_test_setup_teardown(test_fim_registry_scan_no_entries_configured, setup_remove_entries, teardown_restore_scan),
+        cmocka_unit_test_setup_teardown(test_fim_registry_scan_base_line_generation, setup_base_line, teardown_clean_db_and_state),
+        cmocka_unit_test_setup_teardown(test_fim_registry_scan_regular_scan, setup_regular_scan, teardown_clean_db_and_state),
+        cmocka_unit_test_setup_teardown(test_fim_registry_scan_RegOpenKeyEx_fail, setup_base_line, teardown_clean_db_and_state),
+        cmocka_unit_test_setup_teardown(test_fim_registry_scan_RegQueryInfoKey_fail, setup_base_line, teardown_clean_db_and_state),
 
         /* fim_registry_process_value_delete_event tests */
         cmocka_unit_test_setup_teardown(test_fim_registry_process_value_delete_event_null_configuration, setup_process_delete_events, teardown_process_delete_events),
