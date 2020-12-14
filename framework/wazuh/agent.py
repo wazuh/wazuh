@@ -63,16 +63,23 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_summary_status(agent_list=None):
-    """Counts the number of agents by status.
+    """Count the number of agents by status.
 
-    :param agent_list: List of agents ID's.
-    :return: WazuhResult.
+    Parameters
+    ----------
+    agent_list : list[str]
+       List of agents ID's
+
+    Returns
+    -------
+    WazuhResult
     """
     summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
     if len(agent_list) != 0:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        db_query = WazuhDBQueryAgents(limit=None, select=['status'], **rbac_filters)
+        # We don't consider agent 000 in order to get the summary
+        db_query = WazuhDBQueryAgents(limit=None, select=['status'], query="id!=000", **rbac_filters)
         data = db_query.run()
 
         for agent in data['items']:
@@ -84,10 +91,16 @@ def get_agents_summary_status(agent_list=None):
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_agents_summary_os(agent_list=None):
-    """Gets a list of available OS.
+    """Get a list of available OS.
 
-    :param agent_list: List of agents ID's.
-    :return: WazuhResult.
+    Parameters
+    ----------
+    agent_list : list[str]
+       List of agents ID's
+
+    Returns
+    -------
+    WazuhResult
     """
     result = AffectedItemsWazuhResult(none_msg='Could not get the operative system of the agents',
                                       all_msg='Showing the operative system of all specified agents',
@@ -95,8 +108,9 @@ def get_agents_summary_os(agent_list=None):
     if len(agent_list) != 0:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
+        # We don't consider agent 000 in order to get the summary
         db_query = WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
-                                      distinct=True, **rbac_filters)
+                                      distinct=True, query="id!=000", **rbac_filters)
         query_data = db_query.run()
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
         result.affected_items = query_data['items']
@@ -901,19 +915,25 @@ def upload_group_file(group_list=None, file_data=None, file_name='agent.conf'):
 def get_full_overview() -> WazuhResult:
     """Get information about agents.
 
-    :return: Dictionary with information about agents
+    Returns
+    -------
+    Dictionary with information about agents
     """
-    # get information from different methods of Agent class
-    stats_distinct_node = get_distinct_agents(fields=['node_name']).affected_items
+    # We don't consider agent 000 in order to get the summary
+    q = "id!=000"
+
+    # Get information from different methods of Agent class
+    stats_distinct_node = get_distinct_agents(fields=['node_name'], q=q).affected_items
     groups = get_agent_groups().affected_items
     stats_distinct_os = get_distinct_agents(fields=['os.name',
-                                                    'os.platform', 'os.version']).affected_items
-    stats_version = get_distinct_agents(fields=['version']).affected_items
-    summary = get_agents_summary_status()['data'] if 'data' in get_agents_summary_status() else dict()
+                                                    'os.platform', 'os.version'], q=q).affected_items
+    stats_version = get_distinct_agents(fields=['version'], q=q).affected_items
+    agent_summary_status = get_agents_summary_status()
+    summary = agent_summary_status['data'] if 'data' in agent_summary_status else dict()
     try:
         last_registered_agent = [get_agents(limit=1,
                                             sort={'fields': ['dateAdd'], 'order': 'desc'},
-                                            q='id!=000').affected_items[0]]
+                                            q=q).affected_items[0]]
     except IndexError:  # an IndexError could happen if there are not registered agents
         last_registered_agent = []
     # combine results in an unique dictionary

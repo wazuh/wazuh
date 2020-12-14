@@ -128,7 +128,7 @@
 #define FIM_WHODATA_SCAN                    "(6231): The '%s' directory has been scanned after detecting event of new files."
 #define FIM_WHODATA_SCAN_ABORTED            "(6232): Scanning of the '%s' directory is aborted because something has gone wrong."
 #define FIM_WHODATA_CHECKTHREAD             "(6233): Checking thread set to '%d' seconds."
-#define FIM_LINK_ALREADY_ADDED              "(6234): Directory '%s' already monitored, ignoring link '%s'"
+#define FIM_LINK_ALREADY_ADDED              "(6234): Directory '%s' already monitored, ignoring link."
 #define FIM_WHODATA_FULLQUEUE               "(6235): Real-time Whodata events queue for Windows is full. Removing the first '%d'"
 #define FIM_WHODATA_EVENT_DELETED           "(6236): '%d' events have been deleted from the whodata list."
 #define FIM_WHODATA_EVENTQUEUE_VALUES       "(6237): Whodata event queue values for Windows -> max_size:'%d' | max_remove:'%d' | alert_threshold:'%d'",
@@ -152,7 +152,7 @@
 #define FIM_HEALTHCHECK_THREAD_ACTIVE       "(6255): Whodata health-check: Reading thread active."
 #define FIM_HEALTHCHECK_THREAD_FINISHED     "(6256): Whodata health-check: Reading thread finished."
 #define FIM_HEALTHCHECK_CREATE_ERROR        "(6257): Whodata health-check: Failed to receive creation event."
-
+#define FIM_UNABLE_TO_READ_TEMP_FILE        "(6258): Detected error or EOF before processing all entries."
 
 
 #define FIM_HEALTHCHECK_SUCCESS             "(6261): Whodata health-check: Success."

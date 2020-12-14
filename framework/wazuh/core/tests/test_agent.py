@@ -16,6 +16,7 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException
         from api.util import remove_nones_to_dict
+        from wazuh.core.common import reset_context_cache
 
 from pwd import getpwnam
 from grp import getgrnam
@@ -1451,34 +1452,41 @@ def test_send_restart_command(mock_ossec_queue):
     mock_ossec_queue.return_value.send_msg_to_agent.assert_called_once_with(ANY, '001')
 
 
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_get_agents_info(socket_mock, send_mock):
+def test_get_agents_info():
     """Test that get_agents_info() returns expected agent IDs"""
-    expected_result = {'005', '003', '008', '000', '004', '001', '006', '002', '007'}
+    with open(os.path.join(test_data_path, 'client.keys')) as f:
+        client_keys = ''.join(f.readlines())
 
-    result = get_agents_info()
-    assert result == expected_result
+    expected_result = {'000', '001', '002', '003', '004', '005', '006', '007', '008', '009', '010'}
+
+    with patch('wazuh.core.agent.open', mock_open(read_data=client_keys)) as m:
+        result = get_agents_info()
+        assert result == expected_result
 
 
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_get_groups(socket_mock, send_mock):
+def test_get_groups():
     """Test that get_groups() returns expected agent groups"""
     expected_result = {'group-1', 'group-2'}
+    shared = os.path.join(test_data_path, 'shared')
 
-    result = get_groups()
-    assert result == expected_result
+    with patch('wazuh.core.common.shared_path', new=shared):
+        try:
+            for group in list(expected_result):
+                os.makedirs(os.path.join(shared, group))
+            open(os.path.join(shared, 'non-dir-file'), 'a').close()
+
+            result = get_groups()
+            assert result == expected_result
+        finally:
+            rmtree(shared)
 
 
 @pytest.mark.parametrize('group, expected_agents', [
-    ('group-1', {'000'}),
-    ('group-2', {'001'}),
-    ('*', {'006', '008', '000', '002', '005', '007', '001'})
+    ('group1', {'000'}),
+    ('group2', {'001'}),
+    ('*', {'000', '001', '002', '005'})
 ])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_expand_group(socket_mock, send_mock, group, expected_agents):
+def test_expand_group(group, expected_agents):
     """Test that expand_group() returns expected agent IDs
 
     Parameters
@@ -1488,9 +1496,26 @@ def test_expand_group(socket_mock, send_mock, group, expected_agents):
     expected_agents : set
         Expected agent IDs for the selected group
     """
-    result = expand_group(group)
-    assert result == expected_agents
+    # Clear and set get_agents_info cache
+    reset_context_cache()
+    test_get_agents_info()
 
+    id_groups = {'000': 'group1', '001': 'group2', '002': 'group3', '004': '', '005': 'group3,group4', '006': ''}
+    agent_groups = os.path.join(test_data_path, 'agent-groups')
+
+    with patch('wazuh.core.common.groups_path', new=agent_groups):
+        try:
+            os.makedirs(agent_groups)
+            for id_, groups in id_groups.items():
+                with open(os.path.join(agent_groups, id_), 'w+') as f:
+                    f.write(groups)
+
+            result = expand_group(group)
+            assert result == expected_agents
+        except Exception as e:
+            pytest.fail(f'Exception raised: {e}')
+        finally:
+            rmtree(agent_groups)
 
 @pytest.mark.parametrize('agent_id, expected_exception', [
     ('001', 1746),

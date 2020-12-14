@@ -223,6 +223,26 @@ static void test_dispatch_send_local_success(void **state) {
     dispatch_send_local(data->ctx, query);
 }
 
+static void test_dispatch_send_local_success_syscollector(void **state) {
+    test_dbsync_t *data = *state;
+    const char *query = "This is a mock query, it won't go anywhere...";
+
+    snprintf(data->ctx->component, OS_SIZE_32, "syscollector-process");
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 65555);
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 65555);
+    expect_value(__wrap_OS_SendSecureTCP, size, 45);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "This is a mock query, it won't go anywhere...");
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    // Assertions to this function are done through wrappers.
+    dispatch_send_local(data->ctx, query);
+}
+
 static void test_dispatch_send_local_socket_connect_error(void **state) {
     test_dbsync_t *data = *state;
     const char *query = "This is a mock query, it won't go anywhere...";
@@ -980,6 +1000,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         /* dispatch_send_local */
         cmocka_unit_test_setup_teardown(test_dispatch_send_local_success, setup_send_local, teardown_dispatch_send_local),
+        cmocka_unit_test_setup_teardown(test_dispatch_send_local_success_syscollector, setup_send_local, teardown_dispatch_send_local),
         cmocka_unit_test_setup_teardown(test_dispatch_send_local_socket_connect_error, setup_send_local, teardown_dispatch_send_local),
         cmocka_unit_test_setup_teardown(test_dispatch_send_local_wrong_component, setup_send_local, teardown_dispatch_send_local),
         cmocka_unit_test_setup_teardown(test_dispatch_send_local_null_component, setup_send_local, teardown_dispatch_send_local),

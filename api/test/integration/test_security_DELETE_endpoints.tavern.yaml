@@ -205,7 +205,7 @@ stages:
           total_failed_items: 1
 
   # DELETE /security/roles/{role_id}/rules/{rule_id}
-  - name: Try to delete a non-existent role-rule (reserved rule)
+  - name: Try to delete a non-existent role-rule (reserved role)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/rules"
@@ -222,7 +222,7 @@ stages:
           affected_items: [ ]
           failed_items:
             - error:
-                code: 4008
+                code: 4022
               id: !anything
           total_failed_items: 1
 

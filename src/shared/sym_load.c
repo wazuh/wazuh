@@ -1,6 +1,21 @@
 #include <stdio.h>
 #include "sym_load.h"
 
+void* so_get_module_handle_on_path(const char *path, const char *so){
+#ifdef WIN32
+    char file_name[MAX_PATH] = { 0 };
+    snprintf(file_name, MAX_PATH-1, "%s%s.dll", path, so);
+    return LoadLibrary(file_name);
+#else
+    char file_name[4096] = { 0 };
+#if defined(__MACH__)
+    snprintf(file_name, 4096-1, "%slib%s.dylib", path, so);
+#else
+    snprintf(file_name, 4096-1, "%slib%s.so", path, so);
+#endif
+    return dlopen(file_name, RTLD_LAZY);
+#endif
+}
 
 void* so_get_module_handle(const char *so){
 #ifdef WIN32

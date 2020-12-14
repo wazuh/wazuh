@@ -19,7 +19,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
 from wazuh.core.exception import WazuhError
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status='all',
@@ -1039,9 +1039,16 @@ async def get_agent_fields(request, pretty=False, wait_for_complete=False, field
 async def get_agent_summary_status(request, pretty=False, wait_for_complete=False):
     """Get agents status summary.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return: AgentsSummaryStatus
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    AgentsSummaryStatus
     """
     f_kwargs = {}
 
@@ -1061,9 +1068,16 @@ async def get_agent_summary_status(request, pretty=False, wait_for_complete=Fals
 async def get_agent_summary_os(request, pretty=False, wait_for_complete=False):
     """Get agents OS summary.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return: ListMetadata
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    ListMetadata
     """
     f_kwargs = {}
 

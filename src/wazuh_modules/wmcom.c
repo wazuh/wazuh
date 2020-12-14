@@ -84,19 +84,24 @@ int wmcom_sync(char * buffer) {
     return ret;
 }
 
-#ifndef WIN32
+#ifdef WIN32
+void wmcom_send(char * message)
+{
+    wmcom_sync(message);
+}
+#else
 
-void wcom_send(char * message)
+void wmcom_send(char * message)
 {
     int sock;
     if (sock = OS_ConnectUnixDomain(DEFAULTDIR WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         switch (errno) {
             case ECONNREFUSED:
-                merror("At wcom_send(): Target wmodules refused connection. The component might be disabled");
+                merror("At wmcom_send(): Target wmodules refused connection. The component might be disabled");
                 break;
 
             default:
-                merror("At wcom_send(): Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
+                merror("At wmcom_send(): Could not connect to socket wmodules: %s (%d).", strerror(errno), errno);
         }
     }
     else

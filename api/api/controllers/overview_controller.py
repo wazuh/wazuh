@@ -11,7 +11,7 @@ from api.util import raise_if_exc, remove_nones_to_dict
 from wazuh.agent import get_full_overview
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def get_overview_agents(request, pretty=False, wait_for_complete=False):

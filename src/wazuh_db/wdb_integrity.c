@@ -78,7 +78,6 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     int step = sqlite3_step(stmt);
 
     if (step != SQLITE_ROW) {
-        merror("Can't query %s, query:%s database: %s", COMPONENT_NAMES[component], sqlite3_sql(stmt), sqlite3_errmsg(wdb->db));
         return 0;
     }
 
