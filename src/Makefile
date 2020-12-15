@@ -744,7 +744,7 @@ endif
 
 #### Sysinfo ##
 
-win32/sysinfo:
+win32/sysinfo: external
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && make
 
 #### Syscollector ##

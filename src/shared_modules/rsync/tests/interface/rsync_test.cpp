@@ -10,6 +10,8 @@
  */
 
 #include <iostream>
+#include <chrono>
+#include <thread>
 #include "rsync_test.h"
 #include "rsync.h"
 #include "rsync.hpp"
@@ -974,6 +976,6 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
     std::string buffer3{R"(test_id no_data {"begin":1,"end":5,"id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
-    sleep(3);
+    std::this_thread::sleep_for(std::chrono::seconds(3));
     remoteSync.reset();
 }
