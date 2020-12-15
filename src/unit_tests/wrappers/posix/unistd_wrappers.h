@@ -14,13 +14,19 @@
 #include <unistd.h>
 #include <errno.h>
 
-#ifndef WIN32
+#undef _unlink
+#define _unlink wrap__unlink
+
 int __wrap_unlink(const char *file);
-#else
-int __wrap__unlink(const char *file);
+#ifdef WIN32
+int wrap__unlink(const char *file);
 #endif
 
+#ifndef WIN32
+int __wrap_close(int fd) __attribute__((weak));
+#else
 int __wrap_close(int fd);
+#endif
 
 extern int __real_getpid();
 int __wrap_getpid();

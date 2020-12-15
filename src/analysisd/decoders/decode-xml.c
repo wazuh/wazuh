@@ -249,8 +249,8 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
         }
 
         /* Get name */
-        if ((!node[i]->attributes) || (!node[i]->values) 
-                || (!node[i]->values[0]) || (!node[i]->attributes[0]) 
+        if ((!node[i]->attributes) || (!node[i]->values)
+                || (!node[i]->values[0]) || (!node[i]->attributes[0])
                 || (strcasecmp(node[i]->attributes[0], xml_decoder_name) != 0)) {
             smerror(log_msg, XML_INVELEM, node[i]->element);
             goto cleanup;
@@ -836,9 +836,15 @@ int SetDecodeXML(OSList* log_msg, OSStore **decoder_list, OSDecoderNode **decode
 {
     /* Add internal decoders to list */
     addDecoder2list(ROOTCHECK_MOD, decoder_list);
-    addDecoder2list(SYSCHECK_MOD, decoder_list);
-    addDecoder2list(SYSCHECK_NEW, decoder_list);
-    addDecoder2list(SYSCHECK_DEL, decoder_list);
+    addDecoder2list(FIM_MOD, decoder_list);
+    addDecoder2list(FIM_NEW, decoder_list);
+    addDecoder2list(FIM_DEL, decoder_list);
+    addDecoder2list(FIM_REG_KEY_MOD, decoder_list);
+    addDecoder2list(FIM_REG_KEY_NEW, decoder_list);
+    addDecoder2list(FIM_REG_KEY_DEL, decoder_list);
+    addDecoder2list(FIM_REG_VAL_MOD, decoder_list);
+    addDecoder2list(FIM_REG_VAL_NEW, decoder_list);
+    addDecoder2list(FIM_REG_VAL_DEL, decoder_list);
     addDecoder2list(HOSTINFO_NEW, decoder_list);
     addDecoder2list(HOSTINFO_MOD, decoder_list);
     addDecoder2list(SYSCOLLECTOR_MOD, decoder_list);

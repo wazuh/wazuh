@@ -127,6 +127,14 @@ typedef enum wdb_stmt {
     WDB_STMT_SYNC_UPDATE_ATTEMPT,
     WDB_STMT_SYNC_UPDATE_COMPLETION,
     WDB_STMT_MITRE_NAME_GET,
+    WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_FILE_CLEAR,
+    WDB_STMT_FIM_FILE_DELETE_AROUND,
+    WDB_STMT_FIM_FILE_DELETE_RANGE,
+    WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_FIM_REGISTRY_CLEAR,
+    WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
+    WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
     WDB_STMT_ROOTCHECK_INSERT_PM,
     WDB_STMT_ROOTCHECK_UPDATE_PM,
     WDB_STMT_ROOTCHECK_DELETE_PM,
@@ -222,7 +230,9 @@ typedef struct wdb_config {
 
 /// Enumeration of components supported by the integrity library.
 typedef enum {
-    WDB_FIM         ///< File integrity monitoring.
+    WDB_FIM,            ///< Legacy file integrity monitoring.
+    WDB_FIM_FILE,       ///< File integrity monitoring.
+    WDB_FIM_REGISTRY    ///< Registry integrity monitoring.
 } wdb_component_t;
 
 extern char *schema_global_sql;
@@ -971,7 +981,7 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 
 int wdb_parse(char * input, char * output);
 
-int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output);
+int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
 
 /**
  * @brief Parses a rootcheck command

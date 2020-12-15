@@ -7,10 +7,14 @@
  */
 
 CREATE TABLE IF NOT EXISTS fim_entry (
-    file TEXT PRIMARY KEY,
-    type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
+    full_path TEXT NOT NULL PRIMARY KEY,
+    file TEXT,
+    type TEXT NOT NULL CHECK (type IN ('file', 'registry_key', 'registry_value')),
     date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
     changes INTEGER NOT NULL DEFAULT 1,
+    arch TEXT CHECK (arch IN (NULL, '[x64]', '[x32]')),
+    value_name TEXT,
+    value_type TEXT,
     size INTEGER,
     perm TEXT,
     uid TEXT,
@@ -27,6 +31,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     checksum TEXT
 );
 
+CREATE INDEX IF NOT EXISTS fim_full_path_index ON fim_entry (full_path);
 CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);
 CREATE INDEX IF NOT EXISTS fim_date_index ON fim_entry (date);
 

@@ -7,10 +7,10 @@
  * Foundation
  */
 
-#include "win-registry_wrappers.h"
-#include <stddef.h>
-#include <stdarg.h>
-#include <setjmp.h>
-#include <cmocka.h>
 
-void __wrap_os_winreg_check() {}
+#ifndef WIN_REGISTRY_WRAPPERS_H
+#define WIN_REGISTRY_WRAPPERS_H
+
+void __wrap_fim_registry_scan();
+
+#endif
