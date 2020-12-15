@@ -10,8 +10,6 @@
 #include "shared.h"
 #include "expression.h"
 
-
-
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/externals/pcre2/pcre2_wrappers.h"
 #endif
