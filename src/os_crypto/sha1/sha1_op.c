@@ -116,11 +116,11 @@ int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, size_t nb
 
     /* It's important to read \r\n instead of \n to generate the correct hash */
 #ifdef WIN32
-    if (fp = w_fopen_r(fname), !fp) {
+    if (fp = w_fopen_r(fname), fp == NULL) {
         return -1;
     }
 #else
-    if (fp = fopen(fname, "r"), !fp) {
+    if (fp = fopen(fname, "r"), fp == NULL) {
         return -1;
     }
 #endif

@@ -130,7 +130,7 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
     *rc = 0;
 
     while (rlines = multiline_getlog(read_buffer, max_line_len, lf->fp, lf->multiline),
-           rlines > 0 && (!maximum_lines || count_lines < maximum_lines)) {
+           rlines > 0 && (maximum_lines == 0 || count_lines < maximum_lines)) {
 
         if (drop_it == 0) {
             w_msg_hash_queues_push(read_buffer, lf->file, strlen(read_buffer), lf->log_target, LOCALFILE_MQ);
@@ -214,7 +214,7 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
         collecting_lines = true;
         /* Allow save new content in the context in case can_read() fail */
         retstr = NULL;
-        /* Avoid fgets infinite loop behauvior when size parameter is 1 */
+        /* Avoid fgets infinite loop behavior when size parameter is 1 */
         if (offset == length - 1) {
             break;
         }
@@ -222,7 +222,7 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
 
     /* Check if we have to save/create context in case
        Multiline log found but MAYBE not finished yet */
-    if (collecting_lines && !retstr && length > offset + 1) {
+    if (collecting_lines && retstr == NULL && length > offset + 1) {
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
     } else if (length == offset + 1) {
@@ -291,7 +291,7 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
 
     /* Check if we have to save/create context in case
        Multiline log found but not finished yet */
-    if (collecting_lines && !retstr && length > offset + 1) {
+    if (collecting_lines && retstr == NULL && length > offset + 1) {
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
     } else if (length == offset + 1) {
@@ -362,7 +362,7 @@ STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_mult
 
     /* Check if we have to save/create context in case
        Multiline log found but not finished yet */
-    if (collecting_lines && !retstr && length > offset + 1) {
+    if (collecting_lines && retstr == NULL && length > offset + 1) {
         multiline_ctxt_backup(buffer, readed_lines, &ml_cfg->ctxt);
         readed_lines = 0;
     } else if (length == offset + 1) {
@@ -392,7 +392,7 @@ STATIC void multiline_replace(char * str, w_multiline_replace_type_t type) {
     char * pos_newline;
     char * pos_creturn;
 
-    if (!str || str[0] == '\0') {
+    if (str == NULL || str[0] == '\0') {
         return;
     }
 
@@ -462,7 +462,7 @@ STATIC void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_c
 
 STATIC void multiline_ctxt_free(w_multiline_ctxt_t ** ctxt) {
 
-    if (!(*ctxt)) {
+    if ((*ctxt) == NULL) {
         return;
     }
     if ((*ctxt)->buffer) {
@@ -474,7 +474,7 @@ STATIC void multiline_ctxt_free(w_multiline_ctxt_t ** ctxt) {
 
 STATIC bool multiline_ctxt_restore(char * buffer, int * readed_lines, w_multiline_ctxt_t * ctxt) {
 
-    if (!ctxt) {
+    if (ctxt == NULL) {
         return false;
     }
     strcpy(buffer, ctxt->buffer);
@@ -484,7 +484,7 @@ STATIC bool multiline_ctxt_restore(char * buffer, int * readed_lines, w_multilin
 
 STATIC bool multiline_ctxt_is_expired(time_t timeout, w_multiline_ctxt_t * ctxt) {
 
-    if (!ctxt) {
+    if (ctxt == NULL) {
         return true;
     }
 

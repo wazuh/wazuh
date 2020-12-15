@@ -321,7 +321,7 @@ void LogCollectorStart()
              */
 #ifdef WIN32
             if (current->fp) {
-                if (!current->future) {
+                if (current->future == 0) {
                     w_set_to_last_line_read(current);
                 } else {
                     w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
@@ -340,7 +340,7 @@ void LogCollectorStart()
             }
 
             if (current->fp) {
-                if (!current->future) {
+                if (current->future == 0) {
                     w_set_to_last_line_read(current);
                 } else {
                     w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
@@ -961,7 +961,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 /* Windows and fseek causes some weird issues */
 #ifndef WIN32
     if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
-        if (!lf->future) {
+        if (lf->future == NULL) {
             if (w_set_to_last_line_read(lf) < 0) {
                 goto error;
             }
@@ -2095,7 +2095,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 * we don't attempt to read it.
                 * Excluding multiline_regex log format which has its own handler.
                 */
-               if (!current->multiline) {
+               if (current->multiline == NULL) {
                    if ((r = fgetc(current->fp)) == EOF) {
                        clearerr(current->fp);
                        w_mutex_unlock(&current->mutex);
@@ -2173,9 +2173,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     if (!ucs2) {
                         if (!strcmp("syslog", current->logformat) || !strcmp("generic", current->logformat)) {
                             current->read = read_syslog;
-                        } else if (!strcmp("multi-line", current->logformat)) {
+                        } else if (strcmp("multi-line", current->logformat) == 0) {
                             current->read = read_multiline;
-                        } else if (!strcmp(MULTI_LINE_REGEX, current->logformat)) {
+                        } else if (strcmp(MULTI_LINE_REGEX, current->logformat) == 0) {
                             current->read = read_multiline_regex;
                         }
                     }
@@ -2230,7 +2230,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             continue;
                         }
     #ifdef WIN32
-                        if (!current->future) {
+                        if (current->future == 0) {
                             w_set_to_last_line_read(current);
                         } else {
                             w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
@@ -2539,11 +2539,11 @@ int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX * context) {
 STATIC void w_initialize_file_status() {
 
     /* Initialize hash table to associate paths and read position */
-    if (files_status = OSHash_Create(), !files_status) {
+    if (files_status = OSHash_Create(), files_status == NULL) {
         merror_exit(HCREATE_ERROR, files_status_name);
     }
 
-    if (!OSHash_setSize(files_status, LOCALFILES_TABLE_SIZE)) {
+    if (OSHash_setSize(files_status, LOCALFILES_TABLE_SIZE) == 0) {
         merror_exit(HSETSIZE_ERROR, files_status_name);
     }
 
@@ -2618,22 +2618,22 @@ STATIC void w_load_files_status(cJSON * global_json) {
         }
 
         cJSON * hash = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_HASH);
-        if (!hash) {
+        if (hash == NULL) {
             continue;
         }
 
         char * hash_str = cJSON_GetStringValue(hash);
-        if (!hash_str) {
+        if (hash_str == NULL) {
             continue;
         }
 
         cJSON * offset = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_OFFSET);
-        if (!offset) {
+        if (offset == NULL) {
             continue;
         }
 
         char * offset_str = cJSON_GetStringValue(offset);
-        if (!offset_str) {
+        if (offset_str == NULL) {
             continue;
         }
 
@@ -2704,7 +2704,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
 
     os_file_status_t * data;
 
-    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), !data) {
+    if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
         w_set_to_pos(lf, 0, SEEK_END);
         return 0;
     }
@@ -2746,7 +2746,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
 STATIC int w_update_hash_node(char * path, w_offset_t pos) {
     os_file_status_t * data;
 
-    if (!path) {
+    if (path == NULL) {
         return -1;
     }
 
@@ -2770,7 +2770,7 @@ STATIC int w_update_hash_node(char * path, w_offset_t pos) {
 
 STATIC w_offset_t w_set_to_pos(logreader * lf, w_offset_t pos, int mode) {
 
-    if (!lf || !lf->file) {
+    if (lf == NULL || lf->file == NULL) {
         return -1;
     }
 

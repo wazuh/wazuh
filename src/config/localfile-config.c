@@ -327,9 +327,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
         } else if (strcasecmp(node[i]->element, xml_localfile_multiline_regex) == 0) {
 
-            if (!strlen(node[i]->content)) {
+            if (strlen(node[i]->content) == 0) {
                 mwarn("Empty tag '%s' is ignored", xml_localfile_multiline_regex);
-            } else if (!logf[pl].multiline) {
+            } else if (logf[pl].multiline == NULL) {
                 os_calloc(1, sizeof(w_multiline_config_t), logf[pl].multiline);
                 w_calloc_expression_t(&logf[pl].multiline->regex, EXP_TYPE_PCRE2);
 
@@ -432,7 +432,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
 
-        if (!logf[pl].multiline) {
+        if (logf[pl].multiline == NULL) {
             /* Multiline_regex must be configured */
             merror(MISS_MULT_REGEX);
             return (OS_INVALID);
@@ -735,7 +735,7 @@ w_multiline_match_type_t w_get_attr_match(xml_node * node) {
     w_multiline_match_type_t retval = ML_MATCH_START;
     const char * str_match = w_get_attr_val_by_name(node, xml_attr_name);
 
-    if (!str_match) {
+    if (str_match == NULL) {
         return retval;
     }
 
@@ -760,7 +760,7 @@ w_multiline_replace_type_t w_get_attr_replace(xml_node * node) {
     w_multiline_replace_type_t retval = ML_REPLACE_NO_REPLACE;
     const char * str_replace = w_get_attr_val_by_name(node, xml_attr_name);
 
-    if (!str_replace) {
+    if (str_replace == NULL) {
         return retval;
     }
 
@@ -788,7 +788,7 @@ unsigned int w_get_attr_timeout(xml_node * node) {
     const char * str_timeout = w_get_attr_val_by_name(node, xml_attr_name);
     char * endptr = NULL;
 
-    if (!str_timeout) {
+    if (str_timeout == NULL) {
         return retval;
     }
 

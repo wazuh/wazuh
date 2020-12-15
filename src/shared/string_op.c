@@ -971,7 +971,7 @@ char * w_strndup(const char * str, size_t n) {
     char * str_cpy = NULL;
     size_t str_len;
 
-    if (!str) {
+    if (str == NULL) {
         return str_cpy;
     }
 

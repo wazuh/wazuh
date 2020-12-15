@@ -2048,7 +2048,7 @@ FILE * w_fopen_r(const char *file) {
         return NULL;
     }
 
-    if (fp = _fdopen(fd, "r"), !fp) {
+    if (fp = _fdopen(fd, "r"), fp == NULL) {
         merror(FOPEN_ERROR, file, errno, strerror(errno));
         CloseHandle(h);
         return NULL;
