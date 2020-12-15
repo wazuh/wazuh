@@ -64,9 +64,9 @@ static const char* PACKAGES_FIELDS[] = {
     "triaged",
     "cpe",
     "msu_name",
-    "os_patch",
     "checksum",
     "item_id",
+    "os_patch",
     NULL 
 };
 
