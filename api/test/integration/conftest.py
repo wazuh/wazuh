@@ -243,6 +243,28 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
         rbac_config.writelines(sql_sentences)
 
 
+def save_logs(test_name):
+    """Save api, cluster and ossec log if tests fail.
+
+    Parameters
+    ----------
+    test_name : str
+        Name of the test.
+    """
+    logs_path = '/var/ossec/logs'
+    logs = ['api.log', 'cluster.log', 'ossec.log']
+    test_logs_path = os.path.join(current_path, '_test_results', 'logs')
+    os.makedirs(test_logs_path, exist_ok=True)
+    for log in logs:
+        try:
+            subprocess.check_output(
+                f"docker cp env_wazuh-master_1:{os.path.join(logs_path, log)} "
+                f"{os.path.join(test_logs_path, f'{test_name}-{log}')}",
+                shell=True)
+        except:
+            continue
+
+
 @pytest.fixture(scope='session', autouse=True)
 def api_test(request):
     """This function is responsible for setting up the Docker environment necessary for every test.
@@ -278,6 +300,8 @@ def api_test(request):
         else:
             values['retries'] += 1
     clean_tmp_folder()
+    if request.session.testsfailed > 0:
+        save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
     down_env()
 
 
