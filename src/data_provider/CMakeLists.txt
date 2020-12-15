@@ -42,7 +42,6 @@ link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
-link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -121,9 +120,16 @@ elseif(UNIX AND NOT APPLE)
           LINK_FLAGS "-static-libgcc -static-libstdc++")
   string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
 elseif(APPLE)
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Xlinker -rpath -Xlinker @executable_path") 
-  target_link_libraries(sysinfo proc plist-2.0)
+  target_link_libraries(sysinfo ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if(APPLE)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+  add_custom_command(TARGET sysinfo 
+    POST_BUILD COMMAND 
+    ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"
+    $<TARGET_FILE:sysinfo>)
+endif(APPLE)
 
 if(UNIT_TEST)
 add_subdirectory(tests)
