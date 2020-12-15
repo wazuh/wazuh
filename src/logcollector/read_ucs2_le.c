@@ -39,14 +39,14 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 
-        OS_SHA1_Stream(&context, NULL, (char *) str);
-
         mdebug2("Bytes read from '%s': %lld bytes",lf->file,rbytes);
 
         /* Flow control */
         if (rbytes <= 0) {
             break;
         }
+
+        OS_SHA1_Stream(&context, NULL, (char *) str);
 
         wchar_t * n;
         /* Get the last occurrence of \n */

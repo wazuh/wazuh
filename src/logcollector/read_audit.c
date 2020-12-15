@@ -71,12 +71,12 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
 
-        OS_SHA1_Stream(&context, NULL, buffer);
-
         /* Flow control */
         if (rbytes <= 0) {
             break;
         }
+
+        OS_SHA1_Stream(&context, NULL, buffer);
 
         lines++;
 

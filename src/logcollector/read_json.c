@@ -44,12 +44,12 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
 
-        OS_SHA1_Stream(&context, NULL, str);
-
         /* Flow control */
         if (rbytes <= 0) {
             break;
         }
+
+        OS_SHA1_Stream(&context, NULL, str);
 
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {

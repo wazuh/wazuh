@@ -636,6 +636,7 @@ void LogCollectorStart()
                         mdebug1("File inode changed. %s",
                                current->file);
 
+                        OSHash_Delete_ex(files_status,current->file);
                         fclose(current->fp);
 
 #ifdef WIN32
@@ -667,6 +668,7 @@ void LogCollectorStart()
                                 current->file);
 
                         /* Get new file */
+                        OSHash_Delete_ex(files_status,current->file);
                         fclose(current->fp);
 
 #ifdef WIN32
