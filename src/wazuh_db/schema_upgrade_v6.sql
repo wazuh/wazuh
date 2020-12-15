@@ -44,4 +44,10 @@ ALTER TABLE sys_programs ADD COLUMN checksum TEXT DEFAULT NOT NULL CHECK (checks
 ALTER TABLE sys_hotfixes ADD COLUMN checksum TEXT DEFAULT NOT NULL CHECK (checksum <> '');
 ALTER TABLE sys_processes ADD COLUMN checksum TEXT DEFAULT NOT NULL CHECK (checksum <> '');
 
+ALTER TABLE sys_netiface ADD COLUMN item_id TEXT DEFAULT NULL;
+ALTER TABLE sys_netproto ADD COLUMN item_id TEXT DEFAULT NULL;
+ALTER TABLE sys_netaddr ADD COLUMN item_id TEXT DEFAULT NULL;
+ALTER TABLE sys_ports ADD COLUMN item_id TEXT DEFAULT NULL;
+ALTER TABLE sys_programs ADD COLUMN item_id TEXT DEFAULT NULL;
+
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 6);

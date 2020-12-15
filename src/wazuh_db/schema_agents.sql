@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS sys_netiface (
     tx_dropped INTEGER,
     rx_dropped INTEGER,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (scan_id, name)
 );
 
@@ -73,6 +74,7 @@ CREATE TABLE IF NOT EXISTS sys_netproto (
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
     metric INTEGER,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (scan_id, iface, type)
 );
 
@@ -86,6 +88,7 @@ CREATE TABLE IF NOT EXISTS sys_netaddr (
     netmask TEXT,
     broadcast TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (scan_id, iface, proto, address)
 );
 
@@ -139,6 +142,7 @@ CREATE TABLE IF NOT EXISTS sys_ports (
     PID INTEGER,
     process TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (protocol, local_ip, local_port, inode)
 );
 
@@ -164,6 +168,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     cpe TEXT,
     msu_name TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 

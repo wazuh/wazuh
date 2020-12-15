@@ -101,12 +101,13 @@ void* wm_sys_main(wm_sys_t *sys)
 void wm_sys_destroy(wm_sys_t *data) 
 {
     mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
-    if (queue_fd) {
-        close(queue_fd);
-    }
 
+    syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
         syscollector_stop_ptr();
+    }
+    if (queue_fd) {
+        close(queue_fd);
     }
 
     if (syscollector_module){
@@ -116,7 +117,6 @@ void wm_sys_destroy(wm_sys_t *data)
     syscollector_module = NULL;
     syscollector_start_ptr = NULL;
     syscollector_stop_ptr = NULL;
-    syscollector_sync_message_ptr = NULL;
     free(data);
 }
 

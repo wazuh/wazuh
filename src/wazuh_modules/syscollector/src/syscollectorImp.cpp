@@ -129,8 +129,10 @@ constexpr auto PACKAGES_SQL_STATEMENT
     source TEXT,
     format TEXT,
     checksum TEXT,
+    item_id TEXT,
     PRIMARY KEY (name,version,architecture)) WITHOUT ROWID;)"
 };
+static const std::vector<std::string> PACKAGES_ITEM_ID_FIELDS{"name", "version", "architecture"};
 
 constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
 {
@@ -139,7 +141,7 @@ constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_packages",
         "component":"syscollector_packages",
-        "index":"name",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
                 "row_filter":" ",
@@ -148,20 +150,20 @@ constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE name ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -175,28 +177,28 @@ constexpr auto PACKAGES_START_CONFIG_STATEMENT
     R"({"table":"dbsync_packages",
         "first_query":
             {
-                "column_list":["name"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"name DESC",
+                "order_by_opt":"item_id DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["name"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"name ASC",
+                "order_by_opt":"item_id ASC",
                 "count_opt":1
             },
         "component":"syscollector_packages",
-        "index":"name",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
-                "column_list":["name, checksum"],
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["item_id, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":100
@@ -316,28 +318,28 @@ constexpr auto PORTS_START_CONFIG_STATEMENT
     R"({"table":"dbsync_ports",
         "first_query":
             {
-                "column_list":["local_port"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"local_port DESC",
+                "order_by_opt":"item_id DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["local_port"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"local_port ASC",
+                "order_by_opt":"item_id ASC",
                 "count_opt":1
             },
         "component":"syscollector_ports",
-        "index":"local_port",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE local_port BETWEEN '?' and '?' ORDER BY local_port",
-                "column_list":["local_port, checksum"],
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["item_id, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":1000
@@ -352,7 +354,7 @@ constexpr auto PORTS_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_ports",
         "component":"syscollector_ports",
-        "index":"local_port",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
                 "row_filter":" ",
@@ -361,20 +363,20 @@ constexpr auto PORTS_SYNC_CONFIG_STATEMENT
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE local_port BETWEEN '?' and '?' ORDER BY local_port",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE local_port ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE local_port BETWEEN '?' and '?' ORDER BY local_port",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -398,36 +400,38 @@ constexpr auto PORTS_SQL_STATEMENT
        pid BIGINT,
        process_name TEXT,
        checksum TEXT,
+       item_id TEXT,
        PRIMARY KEY (inode, protocol, local_port)) WITHOUT ROWID;)"
 };
+static const std::vector<std::string> PORTS_ITEM_ID_FIELDS{"inode","protocol","local_port"};
 
 constexpr auto NETIFACE_START_CONFIG_STATEMENT
 {
     R"({"table":"dbsync_network_iface",
         "first_query":
             {
-                "column_list":["name"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"name DESC",
+                "order_by_opt":"item_id DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["name"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"name ASC",
+                "order_by_opt":"item_id ASC",
                 "count_opt":1
             },
         "component":"syscollector_network_iface",
-        "index":"name",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
-                "column_list":["name, checksum"],
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["item_id, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":1000
@@ -442,7 +446,7 @@ constexpr auto NETIFACE_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_network_iface",
         "component":"syscollector_network_iface",
-        "index":"name",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
                 "row_filter":" ",
@@ -451,20 +455,20 @@ constexpr auto NETIFACE_SYNC_CONFIG_STATEMENT
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE name ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE name BETWEEN '?' and '?' ORDER BY name",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -491,36 +495,38 @@ constexpr auto NETIFACE_SQL_STATEMENT
        tx_dropped INTEGER,
        rx_dropped INTEGER,
        checksum TEXT,
-       PRIMARY KEY (name)) WITHOUT ROWID;)"
+       item_id TEXT,
+       PRIMARY KEY (item_id)) WITHOUT ROWID;)"
 };
+static const std::vector<std::string> NETIFACE_ITEM_ID_FIELDS{"name","adapter","type"};
 
 constexpr auto NETPROTO_START_CONFIG_STATEMENT
 {
     R"({"table":"dbsync_network_protocol",
         "first_query":
             {
-                "column_list":["iface"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"iface DESC",
+                "order_by_opt":"item_id DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["iface"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"iface ASC",
+                "order_by_opt":"item_id ASC",
                 "count_opt":1
             },
         "component":"syscollector_network_protocol",
-        "index":"iface",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
-                "column_list":["iface, checksum"],
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["item_id, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":1000
@@ -535,7 +541,7 @@ constexpr auto NETPROTO_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_network_protocol",
         "component":"syscollector_network_protocol",
-        "index":"iface",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
                 "row_filter":" ",
@@ -544,20 +550,20 @@ constexpr auto NETPROTO_SYNC_CONFIG_STATEMENT
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE iface ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -575,36 +581,38 @@ constexpr auto NETPROTO_SQL_STATEMENT
        dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
        metric TEXT,
        checksum TEXT,
+       item_id TEXT,
        PRIMARY KEY (iface,type)) WITHOUT ROWID;)"
 };
+static const std::vector<std::string> NETPROTO_ITEM_ID_FIELDS{"iface", "type"};
 
 constexpr auto NETADDRESS_START_CONFIG_STATEMENT
 {
     R"({"table":"dbsync_network_address",
         "first_query":
             {
-                "column_list":["iface"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"iface DESC",
+                "order_by_opt":"item_id DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["iface"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"iface ASC",
+                "order_by_opt":"item_id ASC",
                 "count_opt":1
             },
         "component":"syscollector_network_address",
-        "index":"iface",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
-                "column_list":["iface, checksum"],
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["item_id, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":1000
@@ -619,7 +627,7 @@ constexpr auto NETADDRESS_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_network_address",
         "component":"syscollector_network_address",
-        "index":"iface",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
                 "row_filter":" ",
@@ -628,20 +636,20 @@ constexpr auto NETADDRESS_SYNC_CONFIG_STATEMENT
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE iface ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE iface BETWEEN '?' and '?' ORDER BY iface",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -660,8 +668,32 @@ constexpr auto NETADDR_SQL_STATEMENT
        netmask TEXT,
        broadcast TEXT,
        checksum TEXT,
+       item_id TEXT,
        PRIMARY KEY (iface,proto,address)) WITHOUT ROWID;)"
 };
+static const std::vector<std::string> NETADDRESS_ITEM_ID_FIELDS{"iface", "proto", "address"};
+
+
+static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
+{
+    Utils::HashData hash;
+    for (const auto& field : idFields)
+    {
+        const auto& value{item.at(field)};
+        if(value.is_string())
+        {
+            const auto& valueString{value.get<std::string>()};
+            hash.update(valueString.c_str(), valueString.size());
+        }
+        else
+        {
+            const auto& valueNumber{value.get<unsigned long>()};
+            const auto valueString{std::to_string(valueNumber)};
+            hash.update(valueString.c_str(), valueString.size());
+        }
+    }
+    return Utils::asciiToHex(hash.hash());
+}
 
 static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
                                    const std::string& table,
@@ -913,6 +945,7 @@ void Syscollector::scanNetwork()
                     ifaceTableData["rx_errors"]  = item.at("rx_errors");
                     ifaceTableData["tx_dropped"] = item.at("tx_dropped");
                     ifaceTableData["rx_dropped"] = item.at("rx_dropped");
+                    ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
                     ifaceTableDataList.push_back(ifaceTableData);
 
                     // "dbsync_network_protocol" table data to update and notify
@@ -942,8 +975,10 @@ void Syscollector::scanNetwork()
                         // "dbsync_network_address" table data to update and notify
                         addressTableData["iface"] = item.at("name");
                         addressTableData["proto"] = "IPv6";
+                        addressTableData["item_id"] = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                         addressTableDataList.push_back(addressTableData);
                     }
+                    protoTableData["item_id"] = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
                     protoTableDataList.push_back(protoTableData);
                 }
 
@@ -969,7 +1004,7 @@ void Syscollector::scanPackages()
 
         if (!packagesData.is_null())
         {
-            for (const auto& item : packagesData)
+            for (auto item : packagesData)
             {
                 if(item.find("hotfix") != item.end())
                 {
@@ -980,6 +1015,7 @@ void Syscollector::scanPackages()
                 }
                 else
                 {
+                    item["item_id"] = getItemId(item, PACKAGES_ITEM_ID_FIELDS);
                     packages.push_back(item);
                 }
             }
@@ -1011,7 +1047,7 @@ void Syscollector::scanPorts()
 
             if (data.end() != itPorts)
             {
-                for (const auto& item : itPorts.value())
+                for (auto item : itPorts.value())
                 {
                     const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
                     if(isListeningState)
@@ -1020,6 +1056,7 @@ void Syscollector::scanPorts()
                         if (m_portsAll)
                         {
                             // TCP and UDP ports
+                            item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
                             portsList.push_back(item);
                         }
                         else
@@ -1028,6 +1065,7 @@ void Syscollector::scanPorts()
                             const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
                             if (isTCPProto)
                             {
+                                item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
                                 portsList.push_back(item);
                             }
                         }
