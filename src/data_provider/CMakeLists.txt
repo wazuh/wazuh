@@ -23,10 +23,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
-endif(APPLE)
-
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${SRC_FOLDER}/)
@@ -106,7 +102,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     link_directories(${SRC_FOLDER}/external/googletest/lib/)
   endif(UNIT_TEST)
 else()
+  if(APPLE)
+    target_link_libraries(sysinfo cjson plist-2.0)
+  else()  
     target_link_libraries(sysinfo cjson)
+  endif(APPLE)
     add_subdirectory(testtool)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
@@ -124,9 +124,15 @@ elseif(UNIX AND NOT APPLE)
   set_target_properties(sysinfo PROPERTIES
           LINK_FLAGS "-static-libgcc -static-libstdc++")
   string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
-elseif(APPLE)
-  target_link_libraries(sysinfo proc plist-2.0)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if(APPLE)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+  add_custom_command(TARGET sysinfo 
+    POST_BUILD COMMAND 
+    ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"
+    $<TARGET_FILE:sysinfo>)
+endif(APPLE)
 
 if(UNIT_TEST)
 add_subdirectory(tests)
