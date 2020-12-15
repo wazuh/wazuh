@@ -13,7 +13,7 @@
 
 #include <sys/socket.h>
 #include <sys/un.h>
-#include "syscheck.h"
+#include "../syscheck.h"
 #include <os_net/os_net.h>
 #include "syscheck_op.h"
 #include "audit_op.h"

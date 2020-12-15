@@ -230,8 +230,8 @@ const char* FindField(const Eventinfo *lf, const char *name);
 char* ParseRuleComment(Eventinfo *lf);
 
 /**
- * @brief Function to check for repetitions from same fields 
- * 
+ * @brief Function to check for repetitions from same fields
+ *
  * @param rule has rule information
  * @param lf has event information
  * @param my_lf has last event information
@@ -241,8 +241,8 @@ char* ParseRuleComment(Eventinfo *lf);
 bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf);
 
 /**
- * @brief Function to check for repetitions from different fields 
- * 
+ * @brief Function to check for repetitions from different fields
+ *
  * @param rule has rule information
  * @param lf has event information
  * @param my_lf has last event information
