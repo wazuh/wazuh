@@ -13,6 +13,7 @@
 #include "osinfo/sysOsParsers.h"
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
+#include "sharedDefs.h"
 
 static void getOsInfoFromUname(nlohmann::json& info)
 {

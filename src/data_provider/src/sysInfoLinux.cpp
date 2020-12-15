@@ -307,7 +307,7 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         ret["size"]         = size;
         ret["install_time"] = install_time;
         ret["groups"]       = groups;
-        ret["version"]      = version;
+        ret["version"]      = version.empty() ? UNKNOWN_VALUE : version;
         ret["architecture"] = architecture;
         ret["format"]       = "rpm";
         ret["os_patch"]     = UNKNOWN_VALUE;
