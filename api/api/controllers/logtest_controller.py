@@ -13,7 +13,7 @@ from api.util import remove_nones_to_dict, raise_if_exc
 from wazuh import logtest
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
 async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: bool = False):

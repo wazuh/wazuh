@@ -76,12 +76,32 @@ void test_get_unix_version_Ubuntu1904(void **state)
     assert_string_equal(ret->os_platform, "ubuntu");
     assert_string_equal(ret->sysname, "Linux");
 }
+
+void test_OSX_ReleaseName(void **state) {
+    (void)state;
+
+    assert_string_equal(OSX_ReleaseName(9), "Unknown");
+    assert_string_equal(OSX_ReleaseName(10), "Snow Leopard");
+    assert_string_equal(OSX_ReleaseName(11), "Lion");
+    assert_string_equal(OSX_ReleaseName(12), "Mountain Lion");
+    assert_string_equal(OSX_ReleaseName(13), "Mavericks");
+    assert_string_equal(OSX_ReleaseName(14), "Yosemite");
+    assert_string_equal(OSX_ReleaseName(15), "El Capitan");
+    assert_string_equal(OSX_ReleaseName(16), "Sierra");
+    assert_string_equal(OSX_ReleaseName(17), "High Sierra");
+    assert_string_equal(OSX_ReleaseName(18), "Mojave");
+    assert_string_equal(OSX_ReleaseName(19), "Catalina");
+    assert_string_equal(OSX_ReleaseName(20), "Big Sur");
+    assert_string_equal(OSX_ReleaseName(21), "Unknown");
+}
+
 #endif
 
 int main(void) {
     const struct CMUnitTest tests[] = {
 #ifdef __linux__
             cmocka_unit_test_teardown(test_get_unix_version_Ubuntu1904, delete_os_info),
+            cmocka_unit_test(test_OSX_ReleaseName),
 #endif
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

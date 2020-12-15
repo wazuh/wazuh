@@ -489,7 +489,7 @@ def main():
         status['new_version'] = get_new_ruleset(arguments['source'], arguments['url'], arguments['branch-name'])
         # Compare major
         old_version = ossec_version.replace('"', '')
-        if not same_major_minor(old_version, status['new_version']):
+        if not same_major_minor(old_version, status['new_version']) and not arguments['force']:
             copy(ossec_ruleset_version_path + '-old', ossec_ruleset_version_path)
             copy(ossec_update_script + '-old', ossec_update_script, 0o750)
             os.remove(ossec_update_script + '-old')
@@ -574,7 +574,10 @@ def usage():
     \t-b , --backups      Restore last backup.
 
     Additional Params:
-    \t-f, --force-update  Force to update the ruleset. By default, only it is updated the new/changed decoders/rules/rootchecks.
+    \t-f, --force-update  Force the update of the ruleset even if there are no changes, and even if the requested ruleset
+    \t                    branch (like 4.0) differs from the major/minor release of this instance of Wazuh Manager (like 3.13).
+    \t                    By default, the ruleset is only updated if there is something new available, and the target branch
+    \t                    matches the version of the Wazuh manager.
     \t-s, --source        Select ruleset source path (instead of download it).
     \t-j, --json          JSON output. It should be used with '-s' argument.
     \t-d, --debug         Debug mode.

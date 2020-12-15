@@ -56,22 +56,22 @@ fi
 
 
 # Just to make sure ossec is installed ...
-CONTROL="$DIRECTORY/bin/ossec-control"
+CONTROL="$DIRECTORY/bin/wazuh-control"
 
 test -x $CONTROL || { echo "$CONTROL not installed";
     if [ "$1" = "stop" ]; then exit 0;
     else exit 5; fi; }
 
 start() {
-    ${DIRECTORY}/bin/ossec-control start
+    ${DIRECTORY}/bin/wazuh-control start
 }
 
 stop() {
-    ${DIRECTORY}/bin/ossec-control stop
+    ${DIRECTORY}/bin/wazuh-control stop
 }
 
 status() {
-    ${DIRECTORY}/bin/ossec-control status
+    ${DIRECTORY}/bin/wazuh-control status
 }
 
 case "$1" in

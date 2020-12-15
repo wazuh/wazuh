@@ -34,14 +34,13 @@ PWD=`pwd`
 # Logging the call
 echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
-# Run logtest in managers
+# Rules and decoders test
 if [ "$TYPE" = "manager" ]; then
-    if !(${PWD}/bin/ossec-logtest -t > /dev/null 2>&1); then
+    if !(${PWD}/bin/ossec-analysisd -t > /dev/null 2>&1); then
         exit 1;
     fi
 fi
 
-# Restart Wazuh
 if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1; then
     touch ${PWD}/var/run/.restart
     systemctl restart wazuh-$TYPE
@@ -51,7 +50,7 @@ elif command -v service > /dev/null 2>&1; then
     service wazuh-$TYPE restart
     rm -f ${PWD}/var/run/.restart
 else
-    ${PWD}/bin/ossec-control restart
+    ${PWD}/bin/wazuh-control restart
 fi
 
 exit $?;

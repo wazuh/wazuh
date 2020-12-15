@@ -1,5 +1,5 @@
 WAZUH
-Copyright (C) 2015-2020, Wazuh Inc.
+Copyright (C) 2015-2021, Wazuh Inc.
 
 Based on OSSEC
 Copyright (C) 2014 Trend Micro Inc.
@@ -29,7 +29,7 @@ Fast way steps:
    or /etc/rc.d/init.d/ossec). If the init script is not created,
    make sure to follow the instructions from the install.sh to make
    OSSEC HIDS start during the boot. To start it by hand, just run
-   /var/ossec/bin/ossec-control start
+   /var/ossec/bin/wazuh-control start
 
 3- If you are running it on multiple clients, make sure to install
    the server first. Use the manage_agents tool
