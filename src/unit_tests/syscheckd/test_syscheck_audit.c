@@ -252,7 +252,7 @@ void test_init_auditd_socket_failure(void **state) {
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
 
-    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/sockets/audit'.");
 
     ret = init_auditd_socket();
     assert_int_equal(ret, -1);
@@ -275,7 +275,7 @@ void test_set_auditd_config_audit3_plugin_created(void **state) {
     expect_string(__wrap_IsFile, file, audit3_socket);
     will_return(__wrap_IsFile, 0);
 
-    expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/ossec/audit");
+    expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/sockets/audit");
     will_return(__wrap_IsSocket, 0);
 
     int ret;
@@ -321,7 +321,7 @@ void test_set_auditd_config_audit2_plugin_created(void **state) {
     expect_string(__wrap_IsFile, file, audit2_socket);
     will_return(__wrap_IsFile, 0);
 
-    expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/ossec/audit");
+    expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/sockets/audit");
     will_return(__wrap_IsSocket, 0);
 
     int ret;
@@ -349,10 +349,10 @@ void test_set_auditd_config_audit_socket_not_created(void **state) {
     expect_string(__wrap_IsFile, file, audit3_socket);
     will_return(__wrap_IsFile, 0);
 
-    expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/ossec/audit");
+    expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/sockets/audit");
     will_return(__wrap_IsSocket, 1);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6909): Audit socket (/var/ossec/queue/ossec/audit) does not exist. You need to restart Auditd. Who-data will be disabled.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6909): Audit socket (/var/ossec/queue/sockets/audit) does not exist. You need to restart Auditd. Who-data will be disabled.");
 
     int ret;
     ret = set_auditd_config();
@@ -379,9 +379,9 @@ void test_set_auditd_config_audit_socket_not_created_restart(void **state) {
     expect_string(__wrap_IsFile, file, audit3_socket);
     will_return(__wrap_IsFile, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6023): No socket found at '/var/ossec/queue/ossec/audit'. Restarting Auditd service.");
+    expect_string(__wrap__minfo, formatted_msg, "(6023): No socket found at '/var/ossec/queue/sockets/audit'. Restarting Auditd service.");
 
-    expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/ossec/audit");
+    expect_string(__wrap_IsSocket, sock, "/var/ossec/queue/sockets/audit");
     will_return(__wrap_IsSocket, 1);
 
     will_return(__wrap_audit_restart, 99);
@@ -2334,7 +2334,7 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
-    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/sockets/audit'.");
 
     while (++counter < max_retries){
         expect_any(__wrap__minfo, formatted_msg);
@@ -2344,7 +2344,7 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
         expect_any(__wrap_OS_ConnectUnixDomain, type);
         expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
         will_return(__wrap_OS_ConnectUnixDomain, -5);
-        expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+        expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/sockets/audit'.");
     }
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Connection closed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
@@ -2378,7 +2378,7 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
-    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/ossec/audit'.");
+    expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket '/var/ossec/queue/sockets/audit'.");
 
     // While (*audit_sock < 0)
     // init_auditd_socket succes

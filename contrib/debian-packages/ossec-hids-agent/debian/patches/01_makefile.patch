@@ -30,7 +30,7 @@ Index: ossec-hids-agent-2.8.2/Makefile
 +
 +install:
 +	mkdir -p $(DIR)
-+	(cd $(DIR); mkdir -p logs bin queue queue/ossec queue/alerts queue/syscheck queue/diff queue/rids)
++	(cd $(DIR); mkdir -p logs bin queue queue/sockets queue/alerts queue/syscheck queue/diff queue/rids)
 +	(cd $(DIR); mkdir -p var var/run etc etc/init.d etc/shared active-response active-response/bin agentless .ssh)
 +	cp -pr src/rootcheck/db/*.txt $(DIR)/etc/shared/
 +	chmod -x $(DIR)/etc/shared/*.txt

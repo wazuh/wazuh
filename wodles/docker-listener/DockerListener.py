@@ -36,7 +36,7 @@ class DockerListener:
             sys.exit(1)
         else:
             self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
-        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
+        self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.client = docker.from_env()

@@ -218,7 +218,7 @@ class WazuhLogtest:
             log_format (str, optional): type of log. Defaults to "syslog".
         """
         self.protocol = WazuhDeamonProtocol()
-        self.socket = WazuhSocket('/var/ossec/queue/ossec/logtest')
+        self.socket = WazuhSocket('/var/ossec/queue/sockets/logtest')
         self.fixed_fields = dict()
         self.fixed_fields['location'] = location
         self.fixed_fields['log_format'] = log_format

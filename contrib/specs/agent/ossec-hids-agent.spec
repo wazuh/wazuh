@@ -215,6 +215,6 @@ fi
 %attr(550, root, ossec) /var/ossec/queue/alerts
 %dir /var/ossec/queue/syscheck
 %attr(550, root, ossec) /var/ossec/queue/syscheck
-%dir /var/ossec/queue/ossec
-%attr(770, ossec, ossec) /var/ossec/queue/ossec
+%dir /var/ossec/queue/sockets
+%attr(770, ossec, ossec) /var/ossec/queue/sockets
 

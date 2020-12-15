@@ -117,30 +117,30 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Default queue */
-#define DEFAULTQUEUE    "/queue/ossec/queue"
+#define DEFAULTQUEUE    "/queue/sockets/queue"
 
 // Authd local socket
-#define AUTH_LOCAL_SOCK "/queue/ossec/auth"
+#define AUTH_LOCAL_SOCK "/queue/sockets/auth"
 #define AUTH_LOCAL_SOCK_PATH DEFAULTDIR AUTH_LOCAL_SOCK
 
 // Remote requests socket
-#define REMOTE_REQ_SOCK "/queue/ossec/request"
+#define REMOTE_REQ_SOCK "/queue/sockets/request"
 
 // Local requests socket
-#define COM_LOCAL_SOCK  "/queue/ossec/com"
-#define LC_LOCAL_SOCK  "/queue/ossec/logcollector"
-#define SYS_LOCAL_SOCK  "/queue/ossec/syscheck"
-#define WM_LOCAL_SOCK  "/queue/ossec/wmodules"
-#define ANLSYS_LOCAL_SOCK  "/queue/ossec/analysis"
-#define MAIL_LOCAL_SOCK "/queue/ossec/mail"
-#define LESSD_LOCAL_SOCK "/queue/ossec/agentless"
-#define INTG_LOCAL_SOCK "/queue/ossec/integrator"
-#define CSYS_LOCAL_SOCK  "/queue/ossec/csyslog"
-#define MON_LOCAL_SOCK  "/queue/ossec/monitor"
+#define COM_LOCAL_SOCK  "/queue/sockets/com"
+#define LC_LOCAL_SOCK  "/queue/sockets/logcollector"
+#define SYS_LOCAL_SOCK  "/queue/sockets/syscheck"
+#define WM_LOCAL_SOCK  "/queue/sockets/wmodules"
+#define ANLSYS_LOCAL_SOCK  "/queue/sockets/analysis"
+#define MAIL_LOCAL_SOCK "/queue/sockets/mail"
+#define LESSD_LOCAL_SOCK "/queue/sockets/agentless"
+#define INTG_LOCAL_SOCK "/queue/sockets/integrator"
+#define CSYS_LOCAL_SOCK  "/queue/sockets/csyslog"
+#define MON_LOCAL_SOCK  "/queue/sockets/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
-#define CONTROL_SOCK "/queue/ossec/control"
-#define LOGTEST_SOCK "/queue/ossec/logtest"
-#define AGENT_UPGRADE_SOCK "/queue/ossec/upgrade"
+#define CONTROL_SOCK "/queue/sockets/control"
+#define LOGTEST_SOCK "/queue/sockets/logtest"
+#define AGENT_UPGRADE_SOCK "/queue/sockets/upgrade"
 
 
 // Tasks socket
@@ -158,10 +158,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_LOCAL_SOCK_PATH DEFAULTDIR WDB_LOCAL_SOCK
 #endif
 
-#define WM_DOWNLOAD_SOCK "/queue/ossec/download"
+#define WM_DOWNLOAD_SOCK "/queue/sockets/download"
 #define WM_DOWNLOAD_SOCK_PATH DEFAULTDIR WM_DOWNLOAD_SOCK
 
-#define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
+#define WM_KEY_REQUEST_SOCK "/queue/sockets/krequest"
 #define WM_KEY_REQUEST_SOCK_PATH DEFAULTDIR WM_KEY_REQUEST_SOCK
 
 // Tasks socket
@@ -249,14 +249,14 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Wait file */
 #ifndef WIN32
-#define WAIT_FILE       "/queue/ossec/.wait"
+#define WAIT_FILE       "/queue/sockets/.wait"
 #else
 #define WAIT_FILE       ".wait"
 #endif
 
 /* Agent information file */
 #ifndef WIN32
-#define AGENT_INFO_FILE "/queue/ossec/.agent_info"
+#define AGENT_INFO_FILE "/queue/sockets/.agent_info"
 #define AGENT_INFO_FILEP DEFAULTDIR AGENT_INFO_FILE
 #else
 #define AGENT_INFO_FILE ".agent_info"

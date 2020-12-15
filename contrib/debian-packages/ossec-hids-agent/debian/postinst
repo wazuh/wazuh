@@ -34,8 +34,8 @@ case "$1" in
 	chown -R root:${GROUP} ${DIR}
 
 	# To the ossec queue (default for agentd to read)
-	chown -R ${USER}:${GROUP} ${DIR}/queue/ossec
-	chmod -R 770 ${DIR}/queue/ossec
+	chown -R ${USER}:${GROUP} ${DIR}/queue/sockets
+	chmod -R 770 ${DIR}/queue/sockets
 
 	# For the logging user
 	chown -R ${USER}:${GROUP} ${DIR}/logs

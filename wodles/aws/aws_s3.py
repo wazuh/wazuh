@@ -144,7 +144,7 @@ class WazuhIntegration:
             re_ossec_init = re.compile(r'^([A-Z]+)={1}"{1}([\w\/.]+)"{1}$')
             self.wazuh_path = re.search(re_ossec_init, lines[0]).group(2)
             self.wazuh_version = re.search(re_ossec_init, lines[2]).group(2)
-        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
+        self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
         # GovCloud regions

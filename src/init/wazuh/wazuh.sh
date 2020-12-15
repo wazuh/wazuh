@@ -128,4 +128,8 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
+
+    # Remove existing socket folder
+
+    rm -rf $DIRECTORY/queue/ossec
 }

@@ -324,8 +324,8 @@ fi
 %attr(755, ossecr, ossec) /var/ossec/queue/agent-info
 %dir /var/ossec/queue/syscheck
 %attr(750, ossec, ossec) /var/ossec/queue/syscheck
-%dir /var/ossec/queue/ossec
-%attr(770, ossec, ossec) /var/ossec/queue/ossec
+%dir /var/ossec/queue/sockets
+%attr(770, ossec, ossec) /var/ossec/queue/sockets
 
 
 
