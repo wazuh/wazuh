@@ -67,7 +67,6 @@ CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
 API_SETUP="../api/setup.py"
 API_SPEC="../api/api/spec/spec.yaml"
 VERSION_DOCU="../src/Doxyfile"
-RULESET_VERSION="../src/update/ruleset/RULESET_VERSION"
 
 if [ -n "$version" ]
 then
@@ -128,10 +127,6 @@ then
     # Documentation config file
 
     sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$version\"/g" $VERSION_DOCU
-
-    # Ruleset version
-
-    sed -E -i'' -e "s/RULESET_VERSION=\".+\"/RULESET_VERSION=\"$version\"/g" $RULESET_VERSION
 fi
 
 if [ -n "$revision" ]
