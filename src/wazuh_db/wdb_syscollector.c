@@ -541,7 +541,7 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_int(stmt, 16, triaged);
     sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 18, item_id, -1, NULL);
-    sqlite3_bind_text(stmt, 18, os_patch, -1, NULL);
+    sqlite3_bind_text(stmt, 19, os_patch, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_DONE:
