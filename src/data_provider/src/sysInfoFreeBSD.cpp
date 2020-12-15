@@ -105,7 +105,7 @@ nlohmann::json SysInfo::getPackages() const
             package["architecture"] = data[3];
             package["description"] = data[4];
             package["format"] = "pkg";
-            package["os_patch"] = "";
+            package["os_patch"] = UNKNOWN_VALUE;
             ret.push_back(package);
         }
     }
