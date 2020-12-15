@@ -23,6 +23,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+if(APPLE)
+  set(CMAKE_MACOSX_RPATH 1)
+endif(APPLE)
+
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${SRC_FOLDER}/)
@@ -121,7 +125,6 @@ elseif(UNIX AND NOT APPLE)
           LINK_FLAGS "-static-libgcc -static-libstdc++")
   string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
 elseif(APPLE)
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Xlinker -rpath -Xlinker @executable_path") 
   target_link_libraries(sysinfo proc plist-2.0)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
