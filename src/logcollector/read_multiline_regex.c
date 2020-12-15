@@ -18,11 +18,45 @@
 #define STATIC static
 #endif
 
-/* Timeout functions */
+/**
+ * @brief Restore read context from backup
+ *
+ * Restores the buffer and number of lines reads from a context backup
+ * Buffer must be allocated, function does not check, allocate or release memory from the buffer
+ * @param buffer Destination buffer
+ * @param readed_lines Destination number of lines read
+ * @param ctxt context backup
+ * @return true if a context was restored. Otherwise returns false
+ */
 STATIC bool multiline_ctxt_restore(char * buffer, int * readed_lines, w_multiline_ctxt_t * ctxt);
+
+/**
+ * @brief Generate a backup of the reading context
+ *
+ * If the backup does not exist (*ctxt = NULL), it creates it.
+ * If the backup exists, the new content is appended and updates the lines read
+ * @param buffer to backup
+ * @param readed_lines to backup
+ * @param ctxt backup destination
+ */
 STATIC void multiline_ctxt_backup(char * buffer, int readed_lines, w_multiline_ctxt_t ** ctxt);
+
+/**
+ * @brief frees a context backup
+ *
+ * @param ctxt context backup to free
+ */
 STATIC void multiline_ctxt_free(w_multiline_ctxt_t ** ctxt);
+
+/**
+ * @brief check if a context in a backup expired
+ *
+ * @param timeout A timeout that a context without updating is valid.
+ * @param ctxt context to check
+ * @return true if the context does not exist or expired. Otherwise returns false
+ */
 STATIC bool multiline_ctxt_is_expired(time_t timeout, w_multiline_ctxt_t * ctxt);
+
 /**
  * @brief Get log from file with multiline log support.
  *
@@ -112,21 +146,21 @@ STATIC int multiline_getlog(char * buffer, int length, FILE * stream, w_multilin
     int readed_lines = 0;
 
     switch (ml_cfg->match_type) {
-    case ML_MATCH_START:
-        readed_lines = multiline_getlog_start(buffer, length, stream, ml_cfg);
-        break;
+        case ML_MATCH_START:
+            readed_lines = multiline_getlog_start(buffer, length, stream, ml_cfg);
+            break;
 
-    case ML_MATCH_END:
-        readed_lines = multiline_getlog_end(buffer, length, stream, ml_cfg);
-        break;
+        case ML_MATCH_END:
+            readed_lines = multiline_getlog_end(buffer, length, stream, ml_cfg);
+            break;
 
-    case ML_MATCH_ALL:
-        readed_lines = multiline_getlog_all(buffer, length, stream, ml_cfg);
-        break;
+        case ML_MATCH_ALL:
+            readed_lines = multiline_getlog_all(buffer, length, stream, ml_cfg);
+            break;
 
-    default:
-        *buffer = '\0';
-        break;
+        default:
+            *buffer = '\0';
+            break;
     }
 
     return readed_lines;

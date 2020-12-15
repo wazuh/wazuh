@@ -14,6 +14,7 @@
 #include "logcollector.h"
 #include "os_crypto/sha1/sha1_op.h"
 
+
 /* Read syslog files */
 void *read_syslog(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;

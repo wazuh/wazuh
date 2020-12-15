@@ -2087,6 +2087,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
                 /* We check for the end of file. If is returns EOF,
                 * we don't attempt to read it.
+                * Excluding multiline_regex log format which has its own handler.
                 */
                if (!current->multiline) {
                    if ((r = fgetc(current->fp)) == EOF) {
