@@ -629,6 +629,7 @@ int main(int argc, char **argv)
                 }
                 os_free(list_msg);
             }
+            minfo("Building CDB lists.");
             Lists_OP_MakeAll(0, 0, &os_analysisd_cdblists);
         }
 
