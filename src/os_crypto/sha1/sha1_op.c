@@ -115,15 +115,20 @@ int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, size_t nb
     buf[OS_MAXSTR - 1] = '\0';
 
     /* It's important to read \r\n instead of \n to generate the correct hash */
-    #ifdef WIN32
-    if (fp = w_fopen_r(fname), !fp) return -1;
-    #else
-    if (fp = fopen(fname, "r"), !fp) return -1;
-    #endif
+#ifdef WIN32
+    if (fp = w_fopen_r(fname), !fp) {
+        return -1;
+    }
+#else
+    if (fp = fopen(fname, "r"), !fp) {
+        return -1;
+    }
+#endif
 
     SHA1_Init(c);
 
     while (fgets(buf, OS_MAXSTR-1, fp) && bytes_count < nbytes) {
+
         size_t chars_read = strlen(buf);
         if (bytes_count + chars_read > nbytes) {
             chars_read = nbytes - bytes_count;

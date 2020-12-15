@@ -152,7 +152,7 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
     fpos_t pos;
     fgetpos(lf->fp, &pos);
 
-    /* For Windows, Macos, Solaris, FreeBSD and OpenBSD fpos_t is a interger type.
+    /* For Windows, macOS, Solaris, FreeBSD and OpenBSD fpos_t is a interger type.
     In contrast, for Linux is a __fpos_t type */
 #if defined(__linux__)
     w_update_file_status(lf->file, fp_pos.__pos, &context);

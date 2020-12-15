@@ -20,10 +20,10 @@
 #define OUTPUT_MIN_QUEUE_SIZE 128
 #define WIN32_MAX_FILES 200
 
-///> Size of hash table to save the status file
+///< Size of hash table to save the status file
 #define LOCALFILES_TABLE_SIZE 40
 
-///> JSON path wich contains the files position of last read
+///< JSON path wich contains the files position of last read
 #ifdef WIN32
 #define LOCALFILE_STATUS_PATH   "queue\\logcollector\\file_status.json"
 #else
@@ -31,7 +31,7 @@
 #define LOCALFILE_STATUS_PATH   DEFAULTDIR LOCALFILE_STATUS
 #endif
 
-///> JSON fields for file_status
+///< JSON fields for file_status
 #define OS_LOGCOLLECTOR_JSON_FILES      "files"
 #define OS_LOGCOLLECTOR_JSON_PATH       "path"
 #define OS_LOGCOLLECTOR_JSON_HASH       "hash"
@@ -42,7 +42,7 @@
 #include "config/config.h"
 #include "os_crypto/sha1/sha1_op.h"
 
-/**/
+/* Some Windows functions use the long long type as offset, Linux use long type */
 #ifdef WIN32
 typedef int64_t w_offset_t;
 #else
@@ -193,11 +193,11 @@ typedef struct w_input_range_t{
     int end_j;
 } w_input_range_t;
 
-///> Struct to save the position of last line read and the SHA1 hash content
+///< Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
-    w_offset_t offset;  ///> Position to read
-    SHA_CTX context;    ///> It stores the hashed data calculated so far
-    os_sha1 hash;       ///> Content file SHA1 hash
+    w_offset_t offset;  ///< Position to read
+    SHA_CTX context;    ///< It stores the hashed data calculated so far
+    os_sha1 hash;       ///< Content file SHA1 hash
 } os_file_status_t;
 
 extern w_input_range_t *w_input_threads_range;
@@ -261,7 +261,7 @@ int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX *context);
  * @param context SHA1 context.
  * @param position end file position.
  */
-void w_get_hash_context (const char * path, SHA_CTX *context, w_offset_t position);
+void w_get_hash_context(const char * path, SHA_CTX *context, w_offset_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;

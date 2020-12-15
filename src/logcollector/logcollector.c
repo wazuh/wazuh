@@ -97,9 +97,9 @@ int reload_delay;
 int free_excluded_files_interval;
 OSHash * msg_queues_table;
 
-///> To asociate the path, the position to read, and the hash key of lines read.
+///< To asociate the path, the position to read, and the hash key of lines read.
 OSHash * files_status;
-///> Use for log messages
+///< Use for log messages
 char *files_status_name = "file_status";
 
 static int _cday = 0;
@@ -324,7 +324,7 @@ void LogCollectorStart()
                 if (!current->future) {
                     w_set_to_last_line_read(current);
                 } else {
-                   w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
+                    w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
                     w_update_hash_node(current->file, offset);
                 }
             }
@@ -960,10 +960,14 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 #ifndef WIN32
     if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
         if (!lf->future) {
-            if (w_set_to_last_line_read(lf) < 0) goto error;
+            if (w_set_to_last_line_read(lf) < 0) {
+                goto error;
+            }
         } else {
             w_offset_t offset;
-            if (offset = w_set_to_pos(lf, 0, SEEK_END), offset < 0) goto error;
+            if (offset = w_set_to_pos(lf, 0, SEEK_END), offset < 0) {
+                goto error;
+            }
             w_update_hash_node(lf->file, offset);
         }
     }
@@ -2567,7 +2571,7 @@ STATIC void w_initialize_file_status() {
 STATIC void w_save_file_status() {
     char * str = w_save_files_status_to_cJSON();
 
-    if (!str) {
+    if (str == NULL) {
         return;
     }
 
@@ -2596,12 +2600,12 @@ STATIC void w_load_files_status(cJSON * global_json) {
         cJSON * localfile_item = cJSON_GetArrayItem(localfiles_array, i);
 
         cJSON * path = cJSON_GetObjectItem(localfile_item, OS_LOGCOLLECTOR_JSON_PATH);
-        if (!path) {
+        if (path == NULL) {
             continue;
         }
 
         char * path_str = cJSON_GetStringValue(path);
-        if (!path_str) {
+        if (path_str == NULL) {
             continue;
         }
 
@@ -2672,11 +2676,11 @@ STATIC char * w_save_files_status_to_cJSON() {
         char * path = hash_node->key;
         char offset[OFFSET_SIZE] = {0};
 
-        #ifdef WIN32
+#ifdef WIN32
         sprintf(offset, "%lld", data->offset);
-        #else
+#else
         sprintf(offset, "%ld", data->offset);
-        #endif
+#endif
 
         cJSON * item = cJSON_CreateObject();
 
