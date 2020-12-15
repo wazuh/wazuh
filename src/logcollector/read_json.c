@@ -49,10 +49,9 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        OS_SHA1_Stream(&context, NULL, str);
-
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
+            OS_SHA1_Stream(&context, NULL, str);
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
@@ -67,6 +66,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
          */
         else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
+            OS_SHA1_Stream(&context, NULL, str);
             __ms = 1;
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
@@ -134,6 +134,8 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
                 if (rbytes <= 0) {
                     break;
                 }
+
+                OS_SHA1_Stream(&context, NULL, str);
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {

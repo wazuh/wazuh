@@ -76,11 +76,10 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        OS_SHA1_Stream(&context, NULL, buffer);
-
         lines++;
 
         if (buffer[rbytes - 1] == '\n') {
+            OS_SHA1_Stream(&context, NULL, buffer);
             buffer[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(buffer) != rbytes - 1)
@@ -98,6 +97,8 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                     if (rbytes <= 0) {
                         break;
                     }
+
+                    OS_SHA1_Stream(&context, NULL, buffer);
 
                     if (buffer[rbytes - 1] == '\n') {
                         break;

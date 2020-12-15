@@ -46,11 +46,10 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        OS_SHA1_Stream(&context, NULL, (char *) str);
-
         wchar_t * n;
         /* Get the last occurrence of \n */
         if ((n = wcsrchr(str, L'\n')) != NULL) {
+            OS_SHA1_Stream(&context, NULL, (char *) str);
             *n = '\0';
         }
         /* If we didn't get the new line, because the
@@ -58,6 +57,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
          */
         if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
+            OS_SHA1_Stream(&context, NULL, (char *) str);
             __ms = 1;
             str[rbytes - 1] = '\0';
         } else {
@@ -133,6 +133,8 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                 if (rbytes <= 1) {
                     break;
                 }
+
+                OS_SHA1_Stream(&context, NULL, (char *) str);
 
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 2] == '\n') {

@@ -47,10 +47,9 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             break;
         }
 
-        OS_SHA1_Stream(&context, NULL, str);
-
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
+            OS_SHA1_Stream(&context, NULL, str);
             str[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(str) != rbytes - 1)
@@ -66,6 +65,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             __ms = 1;
+            OS_SHA1_Stream(&context, NULL, str);
             str[rbytes - 1] = '\0';
         } else {
             /* We may not have gotten a line feed
@@ -125,6 +125,8 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
                     break;
                 }
 
+                OS_SHA1_Stream(&context, NULL, str);
+
                 /* Get the last occurrence of \n */
                 if (str[rbytes - 1] == '\n') {
                     break;
@@ -132,7 +134,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             }
             __ms = 0;
         }
-        fgetpos(lf->fp, &fp_pos);       
+        fgetpos(lf->fp, &fp_pos);
     }
 
     /* For Windows, macOS, Solaris, FreeBSD and OpenBSD fpos_t is a interger type.
