@@ -152,6 +152,10 @@ Install()
         WazuhSetup
     fi
 
+    # Calling the init script to start ossec hids during boot
+    runInit $INSTYPE ${update_only}
+    runinit_value=$?
+
     # If update, start OSSEC
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
@@ -161,9 +165,7 @@ Install()
         UpdateStartOSSEC
     fi
 
-    # Calling the init script  to start ossec hids during boot
-    runInit $INSTYPE ${update_only}
-    if [ $? = 1 ]; then
+    if [ $runinit_value = 1 ]; then
         notmodified="yes"
     elif [ "X$START_WAZUH" = "Xyes" ]; then
         echo "Starting Wazuh..."
