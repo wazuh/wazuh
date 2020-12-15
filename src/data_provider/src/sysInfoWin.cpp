@@ -372,8 +372,6 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
             }
             if (packageJson.at("name") != "unknown")
             {
-                packageJson["format"] = "win";
-
                 if (access & KEY_WOW64_32KEY)
                 {
                     packageJson["architecture"] = "i686";
@@ -389,6 +387,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                 data.push_back(packageJson);
             }
             packageJson["format"] = "win";
+            packageJson["os_patch"] = "";
         }
     }
     catch(...)

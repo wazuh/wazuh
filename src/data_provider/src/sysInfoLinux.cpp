@@ -176,6 +176,7 @@ static nlohmann::json parsePackage(const std::vector<std::string>& entries)
             ret["version"] = it->second;
         }
         ret["format"] = "deb";
+        ret["os_patch"] = "";
     }
     return ret;
 }
@@ -276,6 +277,7 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         }
         ret["version"] = version;
         ret["format"] = "rpm";
+        ret["os_patch"] = "";
     }
     return ret;
 }

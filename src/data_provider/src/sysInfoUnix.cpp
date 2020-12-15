@@ -62,7 +62,7 @@ void SysInfo::getMemory(nlohmann::json& /*info*/) const
 }
 nlohmann::json SysInfo::getPackages() const
 {
-    return nlohmann::json();
+    return nlohmann::json {};
 }
 nlohmann::json SysInfo::getOsInfo() const
 {

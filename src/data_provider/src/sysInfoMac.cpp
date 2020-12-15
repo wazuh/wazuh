@@ -179,6 +179,7 @@ static void parseAppInfo(const std::string& path, nlohmann::json& data)
         package["description"] = DEFAULT_STRING_VALUE;
         package["architecture"] = DEFAULT_STRING_VALUE;
         package["format"] = "pkg";
+        package["os_patch"] = "";
         while(std::getline(file, line))
         {
             line = Utils::trim(line," \t");
