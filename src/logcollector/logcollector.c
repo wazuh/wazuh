@@ -22,7 +22,7 @@
 
 #define MAX_ASCII_LINES 10
 #define MAX_UTF8_CHARS 1400
-#define OFFSET_SIZE 11
+#define OFFSET_SIZE 20
 
 /* Prototypes */
 static int update_fname(int i, int j);
@@ -961,7 +961,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 /* Windows and fseek causes some weird issues */
 #ifndef WIN32
     if (do_fseek == 1 && S_ISREG(stat_fd.st_mode)) {
-        if (lf->future == NULL) {
+        if (lf->future == 0) {
             if (w_set_to_last_line_read(lf) < 0) {
                 goto error;
             }

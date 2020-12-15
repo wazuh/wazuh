@@ -11,6 +11,9 @@
 #include "shared.h"
 #include "logcollector.h"
 
+/* To string size of max-size option */
+#define OFFSET_SIZE 11
+
 int accept_remote;
 int lc_debug_level;
 #ifndef WIN32
@@ -114,6 +117,16 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
+
+        if (list[i].future == 1){
+            cJSON_AddStringToObject(file, "only-future-events", "yes");
+        } else {
+            char offset[OFFSET_SIZE] = {0};
+            sprintf(offset, "%ld", list[i].diff_max_size);
+            cJSON_AddStringToObject(file, "only-future-events", "no");
+            cJSON_AddStringToObject(file, "max-size", offset);
+        }
+
         if (list[i].target && *list[i].target) {
             cJSON *target = cJSON_CreateArray();
             for (j=0;list[i].target[j];j++) {
