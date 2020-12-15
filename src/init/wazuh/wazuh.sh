@@ -128,4 +128,8 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
+
+    # Remove existing ruleset version file
+
+    rm -f $DIRECTORY/ruleset/VERSION
 }
