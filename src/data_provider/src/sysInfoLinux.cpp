@@ -140,43 +140,60 @@ static nlohmann::json parsePackage(const std::vector<std::string>& entries)
     if (!info.empty() && info.at("Status") == "install ok installed")
     {
         ret["name"] = info.at("Package");
+
+        std::string priority     { UNKNOWN_VALUE };
+        std::string groups       { UNKNOWN_VALUE };
+        std::string size         { UNKNOWN_VALUE };
+        std::string multiarch    { UNKNOWN_VALUE };
+        std::string architecture { UNKNOWN_VALUE };
+        std::string source       { UNKNOWN_VALUE };
+        std::string version      { UNKNOWN_VALUE };
+
         auto it{info.find("Priority")};
         if (it != info.end())
         {
-            ret["priority"] = it->second;
+            priority = it->second;
         }
         it = info.find("Section");
         if (it != info.end())
         {
-            ret["groups"] = it->second;
+            groups = it->second;
         }
         it = info.find("Installed-Size");
         if (it != info.end())
         {
-            ret["size"] = it->second;
+            size = it->second;
         }
         it = info.find("Multi-Arch");
         if (it != info.end())
         {
-            ret["multiarch"] = it->second;
+            multiarch = it->second;
         }
         it = info.find("Architecture");
         if (it != info.end())
         {
-            ret["architecture"] = it->second;
+            architecture = it->second;
         }
         it = info.find("Source");
         if (it != info.end())
         {
-            ret["source"] = it->second;
+            source = it->second;
         }
         it = info.find("Version");
         if (it != info.end())
         {
-            ret["version"] = it->second;
+            version = it->second;
         }
-        ret["format"] = "deb";
-        ret["os_patch"] = "";
+
+        ret["priority"]     = priority;
+        ret["groups"]       = groups;
+        ret["size"]         = size;
+        ret["multiarch"]    = multiarch;
+        ret["architecture"] = architecture;
+        ret["source"]       = source;
+        ret["version"]      = version;
+        ret["format"]       = "deb";
+        ret["os_patch"]     = UNKNOWN_VALUE;
     }
     return ret;
 }
@@ -243,22 +260,28 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
     auto it{info.find("Name")};
     if (it != info.end() && it->second != "gpg-pubkey")
     {
-        std::string version;
         ret["name"] = it->second;
+
+        std::string size         { UNKNOWN_VALUE };
+        std::string install_time { UNKNOWN_VALUE };
+        std::string groups       { UNKNOWN_VALUE };
+        std::string version;
+        std::string architecture { UNKNOWN_VALUE };
+
         it = info.find("Size");
         if (it != info.end())
         {
-            ret["size"] = it->second;
+            size = it->second;
         }
         it = info.find("Install Date");
         if (it != info.end())
         {
-            ret["install_time"] = it->second;
+            install_time = it->second;
         }
         it = info.find("Group");
         if (it != info.end())
         {
-            ret["groups"] = it->second;
+            groups = it->second;
         }
         it = info.find("Epoch");
         if (it != info.end())
@@ -275,9 +298,19 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         {
             version += it->second;
         }
-        ret["version"] = version;
-        ret["format"] = "rpm";
-        ret["os_patch"] = "";
+        it = info.find("Architecture");
+        if (it != info.end())
+        {
+            architecture = it->second;
+        }
+
+        ret["size"]         = size;
+        ret["install_time"] = install_time;
+        ret["groups"]       = groups;
+        ret["version"]      = version;
+        ret["architecture"] = architecture;
+        ret["format"]       = "rpm";
+        ret["os_patch"]     = UNKNOWN_VALUE;
     }
     return ret;
 }
@@ -314,14 +347,14 @@ std::string SysInfo::getSerialNumber() const
     }
     else
     {
-        serial = "unknown";
+        serial = UNKNOWN_VALUE;
     }
     return serial;
 }
 
 std::string SysInfo::getCpuName() const
 {
-    std::string retVal { "unknown" };
+    std::string retVal { UNKNOWN_VALUE };
     std::map<std::string, std::string> systemInfo;
     getSystemInfo(WM_SYS_CPU_DIR, ":", systemInfo);
     const auto& it { systemInfo.find("model name") };
@@ -456,7 +489,7 @@ nlohmann::json SysInfo::getOsInfo() const
     {
         ret["os_name"] = "Linux";
         ret["os_platform"] = "linux";
-        ret["os_version"] = "unknown";
+        ret["os_version"] = UNKNOWN_VALUE;
     }
     if (uname(&uts) >= 0)
     {

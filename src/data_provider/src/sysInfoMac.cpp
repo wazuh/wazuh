@@ -172,14 +172,12 @@ static void parseAppInfo(const std::string& path, nlohmann::json& data)
     {
         std::string line;
         nlohmann::json package;
-        constexpr auto DEFAULT_STRING_VALUE {"unknown"};
-        package["name"] = DEFAULT_STRING_VALUE;
-        package["version"] = DEFAULT_STRING_VALUE;
-        package["groups"] = DEFAULT_STRING_VALUE;
-        package["description"] = DEFAULT_STRING_VALUE;
-        package["architecture"] = DEFAULT_STRING_VALUE;
-        package["format"] = "pkg";
-        package["os_patch"] = "";
+
+        std::string name         { UNKNOWN_VALUE };
+        std::string version      { UNKNOWN_VALUE };
+        std::string groups       { UNKNOWN_VALUE };
+        std::string description  { UNKNOWN_VALUE };
+
         while(std::getline(file, line))
         {
             line = Utils::trim(line," \t");
@@ -187,25 +185,34 @@ static void parseAppInfo(const std::string& path, nlohmann::json& data)
             if (line == "<key>CFBundleName</key>" &&
                 std::getline(file, line))
             {
-                package["name"] = getValueFnc(line);
+                name = getValueFnc(line);
             }
             else if (line == "<key>CFBundleShortVersionString</key>" &&
                 std::getline(file, line))
             {
-                package["version"] = getValueFnc(line);
+                version = getValueFnc(line);
             }
             else if (line == "<key>LSApplicationCategoryType</key>" &&
                 std::getline(file, line))
             {
-                package["groups"] = getValueFnc(line);
+                groups = getValueFnc(line);
             }
             else if (line == "<key>CFBundleIdentifier</key>" &&
                 std::getline(file, line))
             {
-                package["description"] = getValueFnc(line);
+                description = getValueFnc(line);
             }
         }
-        if(package.at("name") != DEFAULT_STRING_VALUE)
+
+        package["name"]         = name;
+        package["version"]      = version;
+        package["groups"]       = groups;
+        package["description"]  = description;
+        package["architecture"] = UNKNOWN_VALUE;
+        package["format"]       = "pkg";
+        package["os_patch"]     = UNKNOWN_VALUE;
+
+        if(package.at("name") != UNKNOWN_VALUE)
         {
             data.push_back(package);
         }

@@ -35,18 +35,18 @@ static void getOsInfoFromUname(nlohmann::json& info)
     {
         info["os_name"] = "Unix";
         info["os_platform"] = "Unix";
-        info["os_version"] = "unknown";
+        info["os_version"] = UNKNOWN_VALUE;
     }
 }
 
 
 std::string SysInfo::getSerialNumber() const
 {
-    return "unknown";
+    return UNKNOWN_VALUE;
 }
 std::string SysInfo::getCpuName() const
 {
-    return "unknown";
+    return UNKNOWN_VALUE;
 }
 int SysInfo::getCpuMHz() const
 {
