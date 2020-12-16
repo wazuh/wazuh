@@ -14,12 +14,12 @@
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
 #define MULTI_LINE_REGEX              "multi-line-regex"
-#define MULTI_LINE_REGEX_TIMEOUT      3
+#define MULTI_LINE_REGEX_TIMEOUT      5
 #define MULTI_LINE_REGEX_MAX_TIMEOUT  120
 #define DATE_MODIFIED   1
 #define DEFAULT_EVENTCHANNEL_REC_TIME 5
-#define DIFF_DEFAULT_SIZE 10240
-#define DIFF_MAX_SIZE 100 * 1024 * 1024
+#define DIFF_DEFAULT_SIZE 10 * 1024 * 1024
+#define DIFF_MAX_SIZE 2 * 1024 * 1024 * 1024
 
 #include <pthread.h>
 
@@ -80,9 +80,9 @@ typedef enum {
  * An instance of w_multiline_timeout_ctxt_t allow save the context of a log that have not yet matched with the regex.
  */
 typedef struct {
-    int lines_count;
-    char * buffer;
-    time_t timestamp;
+    int lines_count;   ///< number of readed lines from a multiline log
+    char * buffer;     ///< backup buffer. Contains readed line so far
+    time_t timestamp;  ///< last successful read
 } w_multiline_ctxt_t;
 
 /**
@@ -94,7 +94,8 @@ typedef struct {
     w_multiline_replace_type_t replace_type; ///< replacement type
     /** Max waiting time to receive a new line, once the time has expired, the collected lines are sent */
     unsigned int timeout;
-    w_multiline_ctxt_t * ctxt;
+    w_multiline_ctxt_t * ctxt; ///< store current status when multiline log is in process
+    int64_t offset_last_read;  ///< absolut file offset of last complete multiline log processed
 } w_multiline_config_t;
 
 /* Logreader config */

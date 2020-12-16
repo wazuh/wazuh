@@ -101,9 +101,10 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 for (int j = 0; node[i]->attributes[j]; j++) {
                     if (strcmp(node[i]->attributes[j], xml_localfile_max_size_attr) == 0) {
                         long long value = w_validate_bytes(node[i]->values[j]);
-                        if (value == -1 && value > DIFF_MAX_SIZE) {
-                            mwarn("Invalid value in attribute '%s' in localfile block configuration",
-                                  node[i]->attributes[j]);
+                        if (value == -1 || value > DIFF_MAX_SIZE) {
+                            mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, node[i]->values[j], \
+                                  xml_localfile_max_size_attr, xml_localfile_future);
+
                             continue;
                         }
                         logf[pl].diff_max_size = (long) value;

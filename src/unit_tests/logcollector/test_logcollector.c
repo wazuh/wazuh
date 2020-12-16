@@ -288,7 +288,7 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
 
-    will_return(__wrap_cJSON_Print, "test_1234");
+    will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
 
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -358,7 +358,7 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
 
-    will_return(__wrap_cJSON_Print, strdup("test_1234"));
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -417,7 +417,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
 
-    will_return(__wrap_cJSON_Print, strdup("test_1234"));
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
     expect_function_call(__wrap_cJSON_Delete);
 
@@ -484,7 +484,7 @@ void test_w_save_file_status_OK(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
 
-    will_return(__wrap_cJSON_Print, strdup("test_1234"));
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
     expect_function_call(__wrap_cJSON_Delete);
 

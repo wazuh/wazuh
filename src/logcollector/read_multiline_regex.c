@@ -105,6 +105,16 @@ STATIC int multiline_getlog_end(char * buffer, int length, FILE * stream, w_mult
  */
 STATIC int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
 
+/**
+ * @brief Get specific chunk of file between two positions
+ * 
+ * @param stream File stream 
+ * @param initial_pos initial position 
+ * @param final_pos final position
+ * @return allocated buffer containing the readed chunk. NULL on error
+ */
+STATIC char * get_file_chunk(FILE * stream, int64_t initial_pos, int64_t final_pos);
+
 /* Misc functions */
 
 /**
@@ -126,6 +136,18 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
     int rlines;
     const int max_line_len = OS_MAXSTR - OS_LOG_HEADER;
 
+    /* Continue from last read line */
+    SHA_CTX context;
+    int64_t initial_pos;
+    char * raw_data = NULL;
+
+    if (can_read() == 0) {
+        return NULL;
+    } else if (lf->multiline->offset_last_read == 0) {
+        lf->multiline->offset_last_read = w_ftell(lf->fp);
+    }
+    w_get_hash_context(lf->file, &context, lf->multiline->offset_last_read);
+
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
@@ -133,10 +155,23 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
            rlines > 0 && (maximum_lines == 0 || count_lines < maximum_lines)) {
 
         if (drop_it == 0) {
-            w_msg_hash_queues_push(read_buffer, lf->file, strlen(read_buffer), lf->log_target, LOCALFILE_MQ);
+            w_msg_hash_queues_push(read_buffer, lf->file, strlen(read_buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
         count_lines += rlines;
+
+        /* Continue from last read line */
+        initial_pos = lf->multiline->offset_last_read;
+        lf->multiline->offset_last_read = w_ftell(lf->fp);
+
+        raw_data = get_file_chunk(lf->fp, initial_pos, lf->multiline->offset_last_read);
+        if (raw_data == NULL) {
+            continue;
+        }
+
+        OS_SHA1_Stream(&context, NULL, raw_data);
+        os_free(raw_data);
     }
+    w_update_file_status(lf->file, lf->multiline->offset_last_read, &context);
 
     return NULL;
 }
@@ -176,7 +211,7 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
     int readed_lines = 0;
     int c = 0;
     *str = '\0';
-    long pos = w_ftell(stream);
+    int64_t pos = w_ftell(stream);
 
     /* Check if a context restore is needed */
     if (ml_cfg->ctxt) {
@@ -200,7 +235,11 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
             /* Rewind. This line dont belong to last log */
             buffer[offset] = '\0';
             multiline_replace(buffer, ML_REPLACE_NONE);
+#ifdef WIN32
+            _fseeki64(stream, pos, SEEK_SET);
+#else
             fseek(stream, pos, SEEK_SET);
+#endif
             break;
         }
 
@@ -493,4 +532,28 @@ STATIC bool multiline_ctxt_is_expired(time_t timeout, w_multiline_ctxt_t * ctxt)
     }
 
     return false;
+}
+
+STATIC char * get_file_chunk(FILE * stream, int64_t initial_pos, int64_t final_pos) {
+
+    char * ret_buffer = NULL;
+    int64_t read_length = final_pos - initial_pos;
+
+#ifdef WIN32
+    if (read_length <= 0 || _fseeki64(stream, initial_pos, SEEK_SET) != 0) {
+#else
+    if (read_length <= 0 || fseek(stream, initial_pos, SEEK_SET) != 0) {
+#endif
+        return ret_buffer;
+    }
+
+    os_calloc((size_t) read_length + 1, sizeof(char), ret_buffer);
+    int64_t ret = (int64_t) fread(ret_buffer, sizeof(char), read_length, stream);
+
+    if (ret != read_length) {
+        /* do not move the pointer to the file, it will remain at the end */
+        os_free(ret_buffer);
+    }
+
+    return ret_buffer;
 }

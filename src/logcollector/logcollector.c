@@ -2685,7 +2685,7 @@ STATIC char * w_save_files_status_to_cJSON() {
         char * path = hash_node->key;
         char offset[OFFSET_SIZE] = {0};
 
-#ifdef WIN32
+#if defined(WIN32) || defined(Darwin)
         sprintf(offset, "%lld", data->offset);
 #else
         sprintf(offset, "%ld", data->offset);
@@ -2701,7 +2701,7 @@ STATIC char * w_save_files_status_to_cJSON() {
         hash_node = OSHash_Next(files_status, &index, hash_node);
     }
 
-    char * global_json_str = cJSON_Print(global_json);
+    char * global_json_str = cJSON_PrintUnformatted(global_json);
     cJSON_Delete(global_json);
 
     return global_json_str;

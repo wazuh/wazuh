@@ -30,8 +30,8 @@ int multiline_getlog_start(char * buffer, int length, FILE * stream, w_multiline
 int multiline_getlog_end(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
 int multiline_getlog_all(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
 int multiline_getlog(char * buffer, int length, FILE * stream, w_multiline_config_t * ml_cfg);
-void * read_multiline_regex(logreader *lf, int *rc, int drop_it);
-
+void * read_multiline_regex(logreader * lf, int * rc, int drop_it);
+char * get_file_chunk(FILE * stream, int64_t initial_pos, int64_t final_pos);
 
 /* setup/teardown */
 
@@ -46,18 +46,38 @@ static int group_teardown(void ** state) {
 }
 
 /* wraps */
-time_t __wrap_time(time_t * t) { return mock_type(time_t); }
+time_t __wrap_time(time_t * t) {
+    return mock_type(time_t);
+}
 
-int __wrap_can_read() { return mock_type(int); }
+int __wrap_can_read() {
+    return mock_type(int);
+}
 
 bool __wrap_w_expression_match(w_expression_t * expression, const char * str_test, const char ** end_match,
                                regex_matching * regex_match) {
     return mock_type(bool);
 }
 
-int __wrap_w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq) {
+int __wrap_w_msg_hash_queues_push(const char * str, char * file, unsigned long size, logtarget * targets,
+                                  char queue_mq) {
     return mock_type(int);
 }
+
+void __wrap_w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
+    function_called();
+    return;
+}
+
+int __wrap_w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) { 
+    return mock_type(int);
+}
+
+void __wrap_OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf) {
+    function_called();
+    return;
+}
+
 /* tests */
 
 /* multiline_replace linux */
@@ -371,9 +391,7 @@ void test_multiline_replace_w_noreplace_char_replace_last(void ** state) {
     assert_string_equal(str, str_expected);
 }
 // Test multiline_ctxt_is_expired
-void test_multiline_ctxt_is_expired_not_found(void ** state) { 
-    assert_true(multiline_ctxt_is_expired(1, NULL)); 
-}
+void test_multiline_ctxt_is_expired_not_found(void ** state) { assert_true(multiline_ctxt_is_expired(1, NULL)); }
 
 void test_multiline_ctxt_is_expired_not_expired(void ** state) {
 
@@ -1129,7 +1147,7 @@ void test_multiline_getlog_end_match_multi_replace(void ** state) {
 }
 
 // Test multiline_getlog_all
-void test_multiline_getlog_all_single_match_no_context(void ** state){
+void test_multiline_getlog_all_single_match_no_context(void ** state) {
 
     int retval;
     const size_t buffer_size = 500;
@@ -1423,7 +1441,7 @@ void test_multiline_getlog_all_match_multi_replace(void ** state) {
 /* multiline_getlog */
 void test_multiline_getlog_unknown(void ** state) {
 
-    char buffer[]="1234567890";
+    char buffer[] = "1234567890";
     int length = 100;
     int retval;
     w_multiline_config_t ml_cfg = {0};
@@ -1435,7 +1453,7 @@ void test_multiline_getlog_unknown(void ** state) {
     assert_int_equal(strlen(buffer), 0);
 }
 
-void test_multiline_getlog_start(void ** state){
+void test_multiline_getlog_start(void ** state) {
 
     int retval;
     const size_t buffer_size = 500;
@@ -1468,7 +1486,7 @@ void test_multiline_getlog_start(void ** state){
     assert_string_equal(buffer, "no match\nno match2");
 }
 
-void test_multiline_getlog_end(void ** state){
+void test_multiline_getlog_end(void ** state) {
 
     int retval;
     const size_t buffer_size = 500;
@@ -1492,7 +1510,7 @@ void test_multiline_getlog_end(void ** state){
     assert_string_equal(buffer, "end match");
 }
 
-void test_multiline_getlog_all(void ** state){
+void test_multiline_getlog_all(void ** state) {
 
     int retval;
     const size_t buffer_size = 500;
@@ -1532,14 +1550,34 @@ void test_read_multiline_regex_log_process(void ** state) {
     lf.multiline = &ml_confg;
 
     will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 5);
+    expect_function_call(__wrap_w_get_hash_context);
+
+    will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "end match\n");
     will_return(__wrap_w_expression_match, true);
     will_return(__wrap_w_msg_hash_queues_push, 0);
-    
+
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 10);
+
+#ifdef WIN32
+    will_return(__wrap__fseeki64, 0);
+#else
+    will_return(__wrap_fseek, 0);
+#endif
+
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 5);
+
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
+
+    expect_function_call(__wrap_OS_SHA1_Stream);
+    will_return(__wrap_w_update_file_status, 0);
 
     void * retval = read_multiline_regex(&lf, &rc, drop_it);
     assert_ptr_equal(retval, NULL);
@@ -1547,7 +1585,7 @@ void test_read_multiline_regex_log_process(void ** state) {
 }
 
 void test_read_multiline_regex_no_aviable_log(void ** state) {
-  logreader lf = {0};
+    logreader lf = {0};
     int rc = 0;
     int drop_it = 0;
 
@@ -1558,14 +1596,89 @@ void test_read_multiline_regex_no_aviable_log(void ** state) {
     ml_confg.match_type = ML_MATCH_END;
 
     lf.multiline = &ml_confg;
-    
+
+    will_return(__wrap_can_read, 1);
+    expect_any(__wrap_w_ftell, x);
+    will_return(__wrap_w_ftell, (int64_t) 5);
+    expect_function_call(__wrap_w_get_hash_context);
+
     will_return(__wrap_can_read, 1);
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
+    will_return(__wrap_w_update_file_status, 0);
+
     void * retval = read_multiline_regex(&lf, &rc, drop_it);
     assert_ptr_equal(retval, NULL);
     assert_null(ml_confg.ctxt);
+}
+
+void test_read_multiline_regex_cant_read(void ** state) {
+    logreader lf = {0};
+    int rc = 0;
+    int drop_it = 0;
+
+    w_multiline_config_t ml_confg = {0};
+
+    ml_confg.timeout = 500;
+    ml_confg.replace_type = ML_REPLACE_NO_REPLACE;
+    ml_confg.match_type = ML_MATCH_END;
+
+    lf.multiline = &ml_confg;
+
+    will_return(__wrap_can_read, 0);
+    void * retval = read_multiline_regex(&lf, &rc, drop_it);
+    assert_ptr_equal(retval, NULL);
+    assert_null(ml_confg.ctxt);
+}
+// Test get_file_chunk
+void test_get_file_chunk_fseek_fail(void ** state) {
+
+    char * retval = -1;
+    int64_t initial_pos = 10;
+    int64_t final_pos = 5;
+
+    retval = get_file_chunk(NULL, initial_pos, final_pos);
+    assert_null(retval);
+}
+
+void test_get_file_chunk_size_reduce(void ** state) {
+
+    char * retval = -1;
+    int64_t initial_pos = 5;
+    int64_t final_pos = 10;
+
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 4);
+
+#ifdef WIN32
+    will_return(__wrap__fseeki64, 0);
+#else
+    will_return(__wrap_fseek, 0);
+#endif
+
+    retval = get_file_chunk(NULL, initial_pos, final_pos);
+    assert_null(retval);
+}
+
+void test_get_file_chunk_ok(void ** state) {
+
+    char * retval = -1;
+    int64_t initial_pos = 5;
+    int64_t final_pos = 10;
+
+#ifdef WIN32
+    will_return(__wrap__fseeki64, 0);
+#else
+    will_return(__wrap_fseek, 0);
+#endif
+
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 5);
+
+    retval = get_file_chunk(NULL, initial_pos, final_pos);
+    assert_string_equal("test", retval);
+    os_free(retval);
 }
 
 int main(void) {
@@ -1661,6 +1774,11 @@ int main(void) {
         // Tests read_multiline_regex
         cmocka_unit_test(test_read_multiline_regex_no_aviable_log),
         cmocka_unit_test(test_read_multiline_regex_log_process),
+        cmocka_unit_test(test_read_multiline_regex_cant_read),
+        // Test get_file_chunk
+        cmocka_unit_test(test_get_file_chunk_fseek_fail),
+        cmocka_unit_test(test_get_file_chunk_size_reduce),
+        cmocka_unit_test(test_get_file_chunk_ok),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
