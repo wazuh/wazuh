@@ -35,7 +35,7 @@ def init_argparse():
         dest='debug'
     )
     parser.add_argument(
-        "-U", help='Unit test. Refer to contrib/ossec-testing/runtests.py',
+        "-U", help='Unit test. Refer to ruleset/testing/runtests.py',
         nargs=1,
         metavar='rule:alert:decoder',
         dest='ut'
