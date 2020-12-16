@@ -135,7 +135,11 @@ WazuhUpgrade()
 
 	# Move rotated logs to new folder and remove the existing one
 	
-	mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
-	rm -rf $DIRECTORY/logs/ossec
+	if [ -d $DIRECTORY/logs/ossec ]; then
+		if [ "$(ls -A $DIRECTORY/logs/ossec)" ]; then
+			mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
+		fi
+		rm -rf $DIRECTORY/logs/ossec
+	fi
 
 }
