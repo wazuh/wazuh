@@ -51,7 +51,7 @@ def get_ossec_log_fields(log):
         description = match.group(4)
 
         if "rootcheck" in tag:  # Unify rootcheck category
-            tag = "ossec-rootcheck"
+            tag = "wazuh-rootcheck"
 
     else:
         return None

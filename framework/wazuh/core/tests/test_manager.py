@@ -94,7 +94,7 @@ def test_get_ossec_log_fields():
     result = get_ossec_log_fields('2020/07/14 06:10:40 rootcheck: INFO: Ending rootcheck scan.')
     assert isinstance(result, tuple), 'The result is not a tuple'
     assert result[0] == datetime(2020, 7, 14, 6, 10, 40)
-    assert result[1] == 'ossec-rootcheck'
+    assert result[1] == 'wazuh-rootcheck'
     assert result[2] == 'info'
     assert result[3] == ' Ending rootcheck scan.'
 

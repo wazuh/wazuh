@@ -2376,9 +2376,8 @@ components:
             - wazuh-logcollector
             - wazuh-remoted
             - wazuh-reportd
-            - ossec-rootcheck
+            - wazuh-rootcheck
             - wazuh-syscheckd
-            - ossec-testrule
             - sca
             - verify-agent-conf
             - wazuh-db
@@ -2467,11 +2466,9 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-reportd:
             $ref: '#/components/schemas/LogSummary'
-          ossec-rootcheck:
+          wazuh-rootcheck:
             $ref: '#/components/schemas/LogSummary'
           wazuh-syscheckd:
-            $ref: '#/components/schemas/LogSummary'
-          ossec-testrule:
             $ref: '#/components/schemas/LogSummary'
           sca:
             $ref: '#/components/schemas/LogSummary'
@@ -4528,9 +4525,8 @@ components:
         - wazuh-logcollector
         - wazuh-remoted
         - wazuh-reportd
-        - ossec-rootcheck
+        - wazuh-rootcheck
         - wazuh-syscheckd
-        - ossec-testrule
         - sca
         - wazuh-db
         - wazuh-modulesd
@@ -8729,7 +8725,7 @@ paths:
                         debug: 0
                         error: 3
                         warning: 0
-                    - ossec-rootcheck:
+                    - wazuh-rootcheck:
                         info: 8
                         all: 8
                         critical: 0
@@ -10099,7 +10095,7 @@ paths:
                         debug: 0
                         error: 3
                         warning: 0
-                    - ossec-rootcheck:
+                    - wazuh-rootcheck:
                         info: 8
                         all: 8
                         critical: 0
