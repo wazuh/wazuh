@@ -15,9 +15,7 @@
 #include "dbsync.h"
 #include "dbsync.hpp"
 #include "makeUnique.h"
-#include "input1.h"
-#include "input2.h"
-#include "diff.h"
+#include "test_inputs.h"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 
