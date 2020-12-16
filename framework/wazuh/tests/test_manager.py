@@ -128,6 +128,15 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
 
 def test_ossec_log_summary():
     """Tests ossec_log_summary function works and returned data match with expected"""
+    expected_result = {
+        'wazuh-csyslogd': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
+        'wazuh-execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
+        'wazuh-modulesd:aws-s3': {'all': 5, 'info': 2, 'error': 1, 'critical': 0, 'warning': 2, 'debug': 0},
+        'wazuh-modulesd:database': {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 2},
+        'wazuh-modulesd:syscollector': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
+        'wazuh-rootcheck': {'all': 1, 'info': 1, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0}
+    }
+
     logs = get_logs().splitlines()
     with patch('wazuh.core.manager.tail', return_value=logs):
         result = ossec_log_summary()
@@ -135,13 +144,8 @@ def test_ossec_log_summary():
         # Assert data match what was expected and type of the result.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['total_affected_items'] == 6
-        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['all'] == 2
-        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['info'] == 2
-        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['error'] == 0
-        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['critical'] == 0
-        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['warning'] == 0
-        assert result.render()['data']['affected_items'][1]['wazuh-csyslogd']['debug'] == 0
-
+        assert all(all(value == expected_result[key] for key, value in item.items())
+                   for item in result.render()['data']['affected_items'])
 
 @pytest.mark.parametrize('path, overwrite', [
     ('test.xml', False),
