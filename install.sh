@@ -127,7 +127,7 @@ Install()
         fi
     fi
 
-    # If update, stop ossec
+    # If update, stop Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         echo "Stopping Wazuh..."
         UpdateStopOSSEC
@@ -152,11 +152,11 @@ Install()
         WazuhSetup
     fi
 
-    # Calling the init script to start ossec hids during boot
+    # Calling the init script to start Wazuh during boot
     runInit $INSTYPE ${update_only}
     runinit_value=$?
 
-    # If update, start OSSEC
+    # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
         # Update versions previous to Wazuh 1.2
