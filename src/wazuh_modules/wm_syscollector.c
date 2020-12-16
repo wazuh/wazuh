@@ -9,8 +9,6 @@
  * Foundation.
  */
 #include <stdlib.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 #include "../../wmodules_def.h"
 #include "wmodules.h"
 #include "wm_syscollector.h"
@@ -48,7 +46,6 @@ static void wm_sys_send_diff_message(const void* data) {
 
 static void wm_sys_send_dbsync_message(const void* data) {
     const int eps = 1000000/wm_max_eps;
-    mtinfo(WM_SYS_LOGTAG, "Sync message: %s.", data);
     wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
 }
 

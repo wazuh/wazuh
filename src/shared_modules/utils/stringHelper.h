@@ -100,12 +100,18 @@ namespace Utils
 
     static std::string asciiToHex(const std::vector<unsigned char>& asciiData)
     {
+        std::string ret;
         std::stringstream ss;
         for (const auto& val : asciiData)
         {
             ss << std::hex << std::setfill('0') << std::setw(2) << static_cast<unsigned int>(val);
         }
-        if (!ss.good())
+        if (ss.good())
+        {
+            ret = ss.str();
+        }
+        // LCOV_EXCL_START
+        else
         {
             const auto size{asciiData.size() * 2};
             const auto buffer{std::make_unique<char[]>(size + 1)};
@@ -115,9 +121,10 @@ namespace Utils
                 snprintf(output, 3, "%02x", value);
                 output += 2;
             }
-            return {buffer.get(), size};
+            ret = std::string{buffer.get(), size};
         }
-        return ss.str();
+        // LCOV_EXCL_STOP
+        return ret;
     }
 
     static std::string leftTrim(const std::string& str, const std::string& args = " ")

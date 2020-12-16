@@ -130,6 +130,7 @@ constexpr auto PACKAGES_SQL_STATEMENT
     format TEXT,
     checksum TEXT,
     item_id TEXT,
+    os_patch TEXT,
     PRIMARY KEY (name,version,architecture)) WITHOUT ROWID;)"
 };
 static const std::vector<std::string> PACKAGES_ITEM_ID_FIELDS{"name", "version", "architecture"};
@@ -496,7 +497,7 @@ constexpr auto NETIFACE_SQL_STATEMENT
        rx_dropped INTEGER,
        checksum TEXT,
        item_id TEXT,
-       PRIMARY KEY (item_id)) WITHOUT ROWID;)"
+       PRIMARY KEY (name,adapter,type)) WITHOUT ROWID;)"
 };
 static const std::vector<std::string> NETIFACE_ITEM_ID_FIELDS{"name","adapter","type"};
 
@@ -674,7 +675,7 @@ constexpr auto NETADDR_SQL_STATEMENT
 static const std::vector<std::string> NETADDRESS_ITEM_ID_FIELDS{"iface", "proto", "address"};
 
 
-static std::string getItemId(const nlohmann::json& item, const std::vector<std::string> idFields)
+static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
 {
     Utils::HashData hash;
     for (const auto& field : idFields)
