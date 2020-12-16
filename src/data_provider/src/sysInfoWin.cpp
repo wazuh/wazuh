@@ -371,7 +371,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
             {
                 location = value;
             }
-            if (packageJson.at("name") != UNKNOWN_VALUE)
+            if (UNKNOWN_VALUE != name)
             {
                 if (access & KEY_WOW64_32KEY)
                 {
@@ -381,18 +381,18 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                 {
                     architecture = "x86_64";
                 }
+
+                packageJson["name"]         = name;
+                packageJson["version"]      = version;
+                packageJson["vendor"]       = vendor;
+                packageJson["install_time"] = install_time;
+                packageJson["location"]     = location;
+                packageJson["architecture"] = architecture;
+                packageJson["format"]       = "win";
+                packageJson["os_patch"]     = UNKNOWN_VALUE;
+
+                data.push_back(packageJson);
             }
-
-            packageJson["name"]         = name;
-            packageJson["version"]      = version;
-            packageJson["vendor"]       = vendor;
-            packageJson["install_time"] = install_time;
-            packageJson["location"]     = location;
-            packageJson["architecture"] = architecture;
-            packageJson["format"]       = "win";
-            packageJson["os_patch"]     = UNKNOWN_VALUE;
-
-            data.push_back(packageJson);
         }
     }
     catch(...)
