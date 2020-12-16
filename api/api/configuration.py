@@ -57,7 +57,20 @@ default_api_configuration = {
     },
     "use_only_authd": False,
     "drop_privileges": True,
-    "experimental_features": False
+    "experimental_features": False,
+    "remote_commands": {
+        "localfile": {
+            "enabled": True,
+            "exceptions": ["df -P",
+                           "netstat -tan |grep LISTEN |grep -v 127.0.0.1 | sort",
+                           "last -n 5",
+                           ]
+        },
+        "wodle_command": {
+            "enabled": True,
+            "exceptions": []
+        }
+    }
 }
 
 

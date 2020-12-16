@@ -18,6 +18,7 @@ from itertools import groupby, chain
 from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import fromstring
+from api import configuration
 
 from wazuh.core import common
 from wazuh.core.database import Connection
@@ -628,6 +629,38 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
+def _check_remote_commands(data):
+    """Check if remote commands are allowed.
+    If not, it will check if the found command is in the list of exceptions.
+
+    Parameters
+    ----------
+    data : str
+        Configuration file
+    """
+    api_conf = configuration.read_yaml_config()
+    if api_conf['remote_commands']['localfile']['enabled'] is not None and \
+            not api_conf['remote_commands']['localfile']['enabled']:
+        command_section = re.compile(r"<localfile>(.*)</localfile>", flags=re.MULTILINE | re.DOTALL)
+        for line in command_section.findall(data)[0].split('</localfile>'):
+            command_matches = re.match(r".*<(command|full_command)>(.*)</(command|full_command)>.*",
+                                       line, flags=re.MULTILINE | re.DOTALL)
+            if command_matches and \
+                    (line.count('<command>') > 1 or
+                     command_matches.group(2) not in api_conf['remote_commands']['localfile']['exceptions']):
+                raise WazuhError(1124)
+
+    if api_conf['remote_commands']['wodle_command']['enabled'] is not None and not \
+            api_conf['remote_commands']['wodle_command']['enabled']:
+        command_section = re.compile(r"<wodle name=\"command\">(.*)</wodle>", flags=re.MULTILINE | re.DOTALL)
+        for line in command_section.findall(data)[0].split('<wodle name=\"command\">'):
+            command_matches = re.match(r".*<command>(.*)</command>.*", line, flags=re.MULTILINE | re.DOTALL)
+            if command_matches and \
+                    (line.count('<command>') > 1 or
+                     command_matches.group(1) not in api_conf['remote_commands']['wodle_command']['exceptions']):
+                raise WazuhError(1124)
+
+
 def load_wazuh_xml(xml_path):
     with open(xml_path) as f:
         data = f.read()
@@ -637,6 +670,9 @@ def load_wazuh_xml(xml_path):
     for comment in xml_comment.finditer(data):
         good_comment = comment.group(2).replace('--', '..')
         data = data.replace(comment.group(2), good_comment)
+
+    # Check if remote commands are allowed
+    _check_remote_commands(data)
 
     # Replace &lt; and &gt; currently present in the config
     data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')

@@ -108,11 +108,12 @@ def get_logs_summary(limit=2000):
     return tags
 
 
-def upload_xml(xml_file, path):
+def upload_xml(xml_file, path, overwrite=False):
     """
     Upload XML files (rules and decoders)
     :param xml_file: content of the XML file
     :param path: Destination of the new XML file
+    :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message
     """
     # -- characters are not allowed in XML comments
@@ -151,8 +152,13 @@ def upload_xml(xml_file, path):
             raise WazuhError(1113, str(e))
 
         # move temporary file to group folder
+        new_conf_path = join(common.ossec_path, path)
+        if overwrite:
+            try:
+                remove(new_conf_path)
+            except FileNotFoundError:
+                pass
         try:
-            new_conf_path = join(common.ossec_path, path)
             safe_move(tmp_file_path, new_conf_path, permissions=0o660)
         except Error:
             raise WazuhInternalError(1016)
@@ -165,11 +171,12 @@ def upload_xml(xml_file, path):
         raise e
 
 
-def upload_list(list_file, path):
+def upload_list(list_file, path, overwrite=False):
     """
     Updates CDB lists
     :param list_file: content of the list
     :param path: Destination of the new list file
+    :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message.
     """
     # path of temporary file
@@ -193,8 +200,13 @@ def upload_list(list_file, path):
         raise WazuhError(1800)
 
     # move temporary file to group folder
+    new_conf_path = join(common.ossec_path, path)
+    if overwrite:
+        try:
+            remove(new_conf_path)
+        except FileNotFoundError:
+            pass
     try:
-        new_conf_path = join(common.ossec_path, path)
         safe_move(tmp_file_path, new_conf_path, permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)

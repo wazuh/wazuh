@@ -49,3 +49,15 @@
 # Enable features under development
 # experimental_features: no
 
+# Disable remote commands
+# remote_commands:
+#   localfile:
+#     enabled: yes
+#     exceptions:
+#       - "df -P" # Default command
+#       - "netstat -tan |grep LISTEN |grep -v 127.0.0.1 | sort" # Default command
+#       - "last -n 5" # Default command
+#
+#   wodle_command:
+#     enabled: yes
+#     exceptions: []

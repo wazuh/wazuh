@@ -130,14 +130,12 @@ def upload_file(path=None, content=None, overwrite=False):
         # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(join(common.ossec_path, path)):
             raise WazuhError(1905)
-        elif overwrite and exists(join(common.ossec_path, path)):
-            delete_file(path=path)
 
         # For CDB lists
         if re.match(r'^etc/lists', path):
-            upload_list(content, path)
+            upload_list(content, path, overwrite=overwrite)
         else:
-            upload_xml(content, path)
+            upload_xml(content, path, overwrite=overwrite)
         result.affected_items.append(path)
     except WazuhError as e:
         result.add_failed_item(id_=path, error=e)
