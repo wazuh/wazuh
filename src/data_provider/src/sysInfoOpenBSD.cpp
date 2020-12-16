@@ -111,7 +111,7 @@ nlohmann::json SysInfo::getOsInfo() const
     {
         ret["os_name"] = "BSD";
         ret["os_platform"] = "bsd";
-        ret["os_version"] = "unknown";
+        ret["os_version"] = UNKNOWN_VALUE;
     }
     if (uname(&uts) >= 0)
     {

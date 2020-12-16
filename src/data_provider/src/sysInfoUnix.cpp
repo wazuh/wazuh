@@ -13,6 +13,7 @@
 #include "osinfo/sysOsParsers.h"
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
+#include "sharedDefs.h"
 
 static void getOsInfoFromUname(nlohmann::json& info)
 {
@@ -35,18 +36,18 @@ static void getOsInfoFromUname(nlohmann::json& info)
     {
         info["os_name"] = "Unix";
         info["os_platform"] = "Unix";
-        info["os_version"] = "unknown";
+        info["os_version"] = UNKNOWN_VALUE;
     }
 }
 
 
 std::string SysInfo::getSerialNumber() const
 {
-    return "unknown";
+    return UNKNOWN_VALUE;
 }
 std::string SysInfo::getCpuName() const
 {
-    return "unknown";
+    return UNKNOWN_VALUE;
 }
 int SysInfo::getCpuMHz() const
 {
@@ -62,7 +63,7 @@ void SysInfo::getMemory(nlohmann::json& /*info*/) const
 }
 nlohmann::json SysInfo::getPackages() const
 {
-    return nlohmann::json();
+    return nlohmann::json {};
 }
 nlohmann::json SysInfo::getOsInfo() const
 {
