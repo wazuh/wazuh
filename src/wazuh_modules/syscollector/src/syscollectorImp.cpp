@@ -1153,13 +1153,11 @@ void Syscollector::syncLoop()
     if (m_scanOnStart)
     {
         scan();
-        std::this_thread::sleep_for(std::chrono::seconds{1});
         sync();
     }
     while(sleepFor())
     {
         scan();
-        std::this_thread::sleep_for(std::chrono::seconds{1});
         sync();
     }
     m_spRsync.reset(nullptr);
