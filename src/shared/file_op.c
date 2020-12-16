@@ -2030,7 +2030,7 @@ void w_ch_exec_dir() {
     }
 }
 
-FILE * w_fopen_r(const char *file) {
+FILE * w_fopen_r(const char *file, const char * mode) {
 
     FILE *fp = NULL;
     int fd;
@@ -2048,7 +2048,7 @@ FILE * w_fopen_r(const char *file) {
         return NULL;
     }
 
-    if (fp = _fdopen(fd, "r"), fp == NULL) {
+    if (fp = _fdopen(fd, mode), fp == NULL) {
         merror(FOPEN_ERROR, file, errno, strerror(errno));
         CloseHandle(h);
         return NULL;

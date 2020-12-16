@@ -36,7 +36,7 @@ char * w_save_files_status_to_cJSON();
 void w_save_file_status();
 void w_load_files_status(cJSON *global_json);
 void w_initialize_file_status();
-int w_update_hash_node(char * path, w_offset_t pos);
+int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
 
 
@@ -61,7 +61,7 @@ void test_w_get_hash_context_NULL(void ** state) {
 
     SHA_CTX * context;
     os_calloc(1, sizeof(SHA_CTX), context);
-    w_offset_t position = 10;
+    int64_t position = 10;
     const char path[] = "/test_path";
 
     expect_any(__wrap_OSHash_Get_ex, self);
@@ -82,7 +82,7 @@ void test_w_get_hash_context_done(void ** state) {
 
     SHA_CTX * context;
     os_calloc(1, sizeof(SHA_CTX), context);
-    w_offset_t position = 10;
+    int64_t position = 10;
     const char path[] = "/test_path";
     os_file_status_t data = {0};
     data.context.num = 123;

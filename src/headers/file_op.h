@@ -41,7 +41,6 @@ typedef struct File {
     FILE *fp;
 } File;
 
-
 /**
  * @brief Set the program name. Must be done before *anything* else.
  *
@@ -527,7 +526,7 @@ DWORD FileSizeWin(const char * file);
  * @param file pathfile to open
  * @return file descriptor on success, otherwise null.
  */
-FILE * w_fopen_r(const char *file);
+FILE * w_fopen_r(const char *file, const char * mode);
 
 #endif // Windows
 

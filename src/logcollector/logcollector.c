@@ -71,7 +71,7 @@ STATIC int w_set_to_last_line_read(logreader *lf);
  * @param lf logreader to set
  * @return 0 on success, otherwise -1
  */
-STATIC w_offset_t w_set_to_pos(logreader *lf, w_offset_t pos, int mode);
+STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
 
 /**
  * @brief Update hash node
@@ -79,7 +79,7 @@ STATIC w_offset_t w_set_to_pos(logreader *lf, w_offset_t pos, int mode);
  * @param pos Offset of hash
  * @return 0 on success, otherwise -1
  */
-STATIC int w_update_hash_node(char * path, w_offset_t pos);
+STATIC int w_update_hash_node(char * path, int64_t pos);
 
 /* Global variables */
 int loop_timeout;
@@ -324,7 +324,7 @@ void LogCollectorStart()
                 if (current->future == 0) {
                     w_set_to_last_line_read(current);
                 } else {
-                    w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
+                    int64_t offset = w_set_to_pos(current, 0, SEEK_END);
                     w_update_hash_node(current->file, offset);
                 }
             }
@@ -343,7 +343,7 @@ void LogCollectorStart()
                 if (current->future == 0) {
                     w_set_to_last_line_read(current);
                 } else {
-                    w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
+                    int64_t offset = w_set_to_pos(current, 0, SEEK_END);
                     w_update_hash_node(current->file, offset);
                 }
             }
@@ -966,7 +966,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
                 goto error;
             }
         } else {
-            w_offset_t offset;
+            int64_t offset;
             if (offset = w_set_to_pos(lf, 0, SEEK_END), offset < 0) {
                 goto error;
             }
@@ -2233,7 +2233,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         if (current->future == 0) {
                             w_set_to_last_line_read(current);
                         } else {
-                            w_offset_t offset = w_set_to_pos(current, 0, SEEK_END);
+                            int64_t offset = w_set_to_pos(current, 0, SEEK_END);
                             w_update_hash_node(current->file, offset);
                         }
     #endif
@@ -2513,7 +2513,7 @@ int can_read() {
     return ret;
 }
 
-int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX * context) {
+int w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) {
 
     os_file_status_t * data;
     os_malloc(sizeof(os_file_status_t), data);
@@ -2638,10 +2638,17 @@ STATIC void w_load_files_status(cJSON * global_json) {
         }
 
         char * end;
-        w_offset_t value_offset = strtol(offset_str, &end, 10);
+
+#ifdef WIN32
+        int64_t value_offset = strtoll(offset_str, &end, 10);
+#else
+        int64_t value_offset = strtol(offset_str, &end, 10);
+#endif
+
         if (value_offset < 0 || *end != '\0') {
             continue;
         }
+
         os_file_status_t * data;
 
         os_malloc(sizeof(os_file_status_t), data);
@@ -2650,7 +2657,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
 
         SHA_CTX context;
         os_sha1 output;
-        OS_SHA1_File_Nbytes(path_str, &context, output, value_offset);
+        OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset);
         data->context = context;
 
         if (OSHash_Update_ex(files_status, path_str, data) != 1) {
@@ -2716,12 +2723,12 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
         return -1;
     }
 
-    w_offset_t result = 0;
+    int64_t result = 0;
 
     SHA_CTX context;
     os_sha1 output;
 
-    if (OS_SHA1_File_Nbytes(lf->file, &context, output, data->offset) == -1) {
+    if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset) == -1) {
         merror("Failure to generate the SHA1 hash from file '%s'", lf->file);
         return -1;
     }
@@ -2743,7 +2750,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     return result;
 }
 
-STATIC int w_update_hash_node(char * path, w_offset_t pos) {
+STATIC int w_update_hash_node(char * path, int64_t pos) {
     os_file_status_t * data;
 
     if (path == NULL) {
@@ -2756,7 +2763,7 @@ STATIC int w_update_hash_node(char * path, w_offset_t pos) {
 
     SHA_CTX context;
     os_sha1 output;
-    OS_SHA1_File_Nbytes(path, &context, output, pos);
+    OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos);
     strncpy(data->hash, output, sizeof(os_sha1));
     data->context = context;
 
@@ -2768,7 +2775,7 @@ STATIC int w_update_hash_node(char * path, w_offset_t pos) {
     return 0;
 }
 
-STATIC w_offset_t w_set_to_pos(logreader * lf, w_offset_t pos, int mode) {
+STATIC int64_t w_set_to_pos(logreader * lf, int64_t pos, int mode) {
 
     if (lf == NULL || lf->file == NULL) {
         return -1;
@@ -2795,12 +2802,12 @@ STATIC w_offset_t w_set_to_pos(logreader * lf, w_offset_t pos, int mode) {
 #endif
 }
 
-void w_get_hash_context (const char * path, SHA_CTX * context, w_offset_t position) {
+void w_get_hash_context (const char * path, SHA_CTX * context, int64_t position) {
     os_file_status_t * data;
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {
         os_sha1 output;
-        OS_SHA1_File_Nbytes(path, context, output, position);
+        OS_SHA1_File_Nbytes(path, context, output, OS_BINARY, position);
     } else {
         *context = data->context;
     }

@@ -35,10 +35,10 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
 
     /* For Windows fpos_t is a __int64 type. In contrast, for Linux is a __fpos_t type */
 #if defined(__linux__)
-    OS_SHA1_File_Nbytes(lf->file, &context, output, pos.__pos);
+    OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, pos.__pos);
     w_update_file_status(lf->file, pos.__pos, &context);
 #else
-    OS_SHA1_File_Nbytes(lf->file, &context, output,  pos);
+    OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, pos);
     w_update_file_status(lf->file, pos, &context);
 #endif
 

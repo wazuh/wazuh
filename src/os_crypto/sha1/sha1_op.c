@@ -104,11 +104,11 @@ void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output) {
     }
 }
 
-int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, size_t nbytes) {
+int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, int64_t nbytes) {
 
     FILE *fp = NULL;
     char buf[OS_MAXSTR];
-    size_t bytes_count = 0;
+    int64_t n;
     unsigned char md[SHA_DIGEST_LENGTH];
 
     memset(output, 0, sizeof(os_sha1));
@@ -116,28 +116,26 @@ int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, size_t nb
 
     /* It's important to read \r\n instead of \n to generate the correct hash */
 #ifdef WIN32
-    if (fp = w_fopen_r(fname), fp == NULL) {
+    if (fp = w_fopen_r(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
         return -1;
     }
 #else
-    if (fp = fopen(fname, "r"), fp == NULL) {
+    if (fp = fopen(fname, mode == OS_BINARY ? "rb" : "r"), fp == NULL) {
         return -1;
     }
 #endif
 
     SHA1_Init(c);
 
-    while (fgets(buf, OS_MAXSTR-1, fp) && bytes_count < nbytes) {
-
-        size_t chars_read = strlen(buf);
-        if (bytes_count + chars_read > nbytes) {
-            chars_read = nbytes - bytes_count;
-            buf[chars_read] = '\0';
+    for (int64_t bytes_count = 0; bytes_count < nbytes; bytes_count+=2048) {
+        if(bytes_count+2048 < nbytes) {
+            n = fread(buf, 1, 2048, fp);
+        } else {
+            n = fread(buf, 1, nbytes-bytes_count, fp);
         }
 
-        bytes_count += chars_read;
-
-        SHA1_Update(c, buf, chars_read);
+        buf[n] = '\0';
+        SHA1_Update(c, buf, n);
     }
 
     SHA_CTX aux = *c;

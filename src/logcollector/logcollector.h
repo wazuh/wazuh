@@ -42,12 +42,6 @@
 #include "config/config.h"
 #include "os_crypto/sha1/sha1_op.h"
 
-/* Some Windows functions use the long long type as offset, Linux use long type */
-#ifdef WIN32
-typedef int64_t w_offset_t;
-#else
-typedef long w_offset_t;
-#endif
 
 /*** Function prototypes ***/
 
@@ -195,7 +189,7 @@ typedef struct w_input_range_t{
 
 ///< Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
-    w_offset_t offset;  ///< Position to read
+    int64_t offset;  ///< Position to read
     SHA_CTX context;    ///< It stores the hashed data calculated so far
     os_sha1 hash;       ///< Content file SHA1 hash
 } os_file_status_t;
@@ -253,7 +247,7 @@ int can_read();
  * @param context SHA1 context.
  * @return 0 on succes, otherwise -1
  */
-int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX *context);
+int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
 
 /**
  * @brief Get SHA1 context or initialize it
@@ -261,7 +255,7 @@ int w_update_file_status(const char * path, w_offset_t pos, SHA_CTX *context);
  * @param context SHA1 context.
  * @param position end file position.
  */
-void w_get_hash_context(const char * path, SHA_CTX *context, w_offset_t position);
+void w_get_hash_context(const char * path, SHA_CTX *context, int64_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;
