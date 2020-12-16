@@ -57,7 +57,7 @@ static void help_logtest(void)
     print_out("    -v          Verbose (full) output/rule debugging");
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
-    print_out("    -U <rule:alert:decoder>  Unit test. Refer to contrib/ossec-testing/runtests.py");
+    print_out("    -U <rule:alert:decoder>  Unit test. Refer to ruleset/testing/runtests.py");
     print_out(" ");
     exit(1);
 }
@@ -392,7 +392,7 @@ int main(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     mdebug1("Reading rules file: '%s'", *rulesfiles);
-                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists, 
+                    if (Rules_OP_ReadRules(*rulesfiles, &os_analysisd_rulelist, &os_analysisd_cdblists,
                                            &os_analysisd_last_events, &os_analysisd_decoder_store, list_msg) < 0) {
                         error_exit = 1;
                     }
