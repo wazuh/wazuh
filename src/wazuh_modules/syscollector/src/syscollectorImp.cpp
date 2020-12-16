@@ -496,7 +496,7 @@ constexpr auto NETIFACE_SQL_STATEMENT
        rx_dropped INTEGER,
        checksum TEXT,
        item_id TEXT,
-       PRIMARY KEY (item_id)) WITHOUT ROWID;)"
+       PRIMARY KEY (name,adapter,type)) WITHOUT ROWID;)"
 };
 static const std::vector<std::string> NETIFACE_ITEM_ID_FIELDS{"name","adapter","type"};
 

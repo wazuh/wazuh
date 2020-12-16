@@ -15,6 +15,9 @@
 #include "dbsync.h"
 #include "dbsync.hpp"
 #include "makeUnique.h"
+#include "input1.h"
+#include "input2.h"
+#include "diff.h"
 
 constexpr auto DATABASE_TEMP {"TEMP.db"};
 
@@ -623,8 +626,8 @@ TEST_F(DBSyncTest, syncRowInsertAndModified)
                 nlohmann::json::parse(R"([{"pid":4,"name":"System", "tid":100},
                                           {"pid":5,"name":"System", "tid":101},
                                           {"pid":6,"name":"System", "tid":102}])"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"pid":4, "tid":101})"))).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"pid":4, "name":"Systemmm", "tid":105})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"pid":4, "tid":101}])"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"([{"pid":4, "name":"Systemmm", "tid":105}])"))).Times(1);
     EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"([{"pid":7,"name":"Guake"}])"))).Times(1);
 
     const auto insertionSqlStmt1{ R"({"table":"processes","data":[{"pid":4,"name":"System", "tid":100},
@@ -1569,6 +1572,77 @@ TEST_F(DBSyncTest, createTxnCPP)
 
     const auto insertionSqlStmt2{ R"({"table":"processes","data":[{"pid":7,"name":"Guake"}]})" }; // Insert
     EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(nlohmann::json::parse(insertionSqlStmt2)));
+
+    EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData));
+}
+
+
+TEST_F(DBSyncTest, createTxnCPP1)
+{
+    constexpr auto sql
+    {
+        R"(CREATE TABLE processes (
+        pid BIGINT,
+        name TEXT,
+        state TEXT,
+        ppid BIGINT,
+        utime BIGINT,
+        stime BIGINT,
+        cmd TEXT,
+        argvs TEXT,
+        euser TEXT,
+        ruser TEXT,
+        suser TEXT,
+        egroup TEXT,
+        rgroup TEXT,
+        sgroup TEXT,
+        fgroup TEXT,
+        priority BIGINT,
+        nice BIGINT,
+        size BIGINT,
+        vm_size BIGINT,
+        resident BIGINT,
+        share BIGINT,
+        start_time BIGINT,
+        pgrp BIGINT,
+        session BIGINT,
+        nlwp BIGINT,
+        tgid BIGINT,
+        tty BIGINT,
+        processor BIGINT,
+        PRIMARY KEY (pid)) WITHOUT ROWID;)"
+    };
+    const auto tables { R"({"table": "processes"})" };
+    const std::unique_ptr<DummyContext> dummyCtx { std::make_unique<DummyContext>()};
+    std::unique_ptr<DBSync> dbSync;
+
+    EXPECT_NO_THROW(dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql));
+    const auto& data1{nlohmann::json::parse(input1)};
+    const auto& data2{nlohmann::json::parse(input2)};
+    const auto& diffData{nlohmann::json::parse(diffResult)};
+    nlohmann::json insertionSqlStmt1;
+    insertionSqlStmt1["table"] = "processes";
+    insertionSqlStmt1["data"] = data1;
+    nlohmann::json insertionSqlStmt2;
+    insertionSqlStmt2["table"] = "processes";
+    insertionSqlStmt2["data"] = data2;
+
+    CallbackMock wrapper;
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, data1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, diffData)).Times(1);
+    ResultCallbackData callbackData 
+    { 
+        [&wrapper](ReturnTypeCallback type, const nlohmann::json& jsonResult)
+        {
+            wrapper.callbackMock(type, jsonResult);
+        } 
+    };
+    EXPECT_NO_THROW(dbSync->syncRow(insertionSqlStmt1, callbackData));  // Expect an insert event
+
+    std::unique_ptr<DBSyncTxn> dbSyncTxn;
+    EXPECT_NO_THROW(dbSyncTxn = std::make_unique<DBSyncTxn>(dbSync->handle(), nlohmann::json::parse(tables), 0, 4096, callbackData));
+
+    EXPECT_NO_THROW(dbSyncTxn->syncTxnRow(insertionSqlStmt2));
 
     EXPECT_NO_THROW(dbSyncTxn->getDeletedRows(callbackData));
 }
