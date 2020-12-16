@@ -63,12 +63,14 @@ void test_w_get_hash_context_NULL(void ** state) {
     os_calloc(1, sizeof(SHA_CTX), context);
     int64_t position = 10;
     const char path[] = "/test_path";
+    int mode = OS_BINARY;
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, path);
     will_return(__wrap_OSHash_Get_ex, NULL);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, position);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
@@ -164,6 +166,18 @@ void test_w_update_file_status_update_OK(void ** state) {
 }
 
 /* w_set_to_pos */
+
+void test_w_set_to_pos_localfile_NULL(void ** state) {
+    test_mode = 1;
+    logreader *lf = NULL;
+    long pos = 0;
+    int mode = OS_BINARY;
+
+    int retval = w_set_to_pos(lf, pos, mode);
+
+    assert_int_equal(retval, -1);
+
+}
 
 void test_w_set_to_pos_fseek_error(void ** state) {
     test_mode = 1;
@@ -742,6 +756,8 @@ void test_w_load_files_status_update_add_fail(void ** state) {
 
     cJSON *global_json = (cJSON*)1;
 
+    int mode = OS_BINARY;
+
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetArraySize, 1);
@@ -768,6 +784,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "1");
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
@@ -791,6 +808,8 @@ void test_w_load_files_status_update_fail(void ** state) {
 
     cJSON *global_json = (cJSON*)1;
 
+    int mode = OS_BINARY;
+
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetArraySize, 1);
@@ -817,6 +836,7 @@ void test_w_load_files_status_update_fail(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "1");
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
@@ -838,6 +858,8 @@ void test_w_load_files_status_OK(void ** state) {
 
     cJSON *global_json = (cJSON*)1;
 
+    int mode = OS_BINARY;
+
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetArraySize, 1);
@@ -864,6 +886,7 @@ void test_w_load_files_status_OK(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "1");
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
@@ -976,6 +999,8 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
 void test_w_initialize_file_status_OK(void ** state) {
     test_mode = 1;
 
+    int mode = OS_BINARY;
+
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
 
@@ -1020,6 +1045,7 @@ void test_w_initialize_file_status_OK(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "1");
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
@@ -1051,9 +1077,12 @@ void test_w_update_hash_node_path_NULL(void ** state) {
 void test_w_update_hash_node_update_fail(void ** state) {
     test_mode = 1;
 
+    int mode = OS_BINARY;
+
     char * path = "test";
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 0);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
@@ -1069,9 +1098,12 @@ void test_w_update_hash_node_update_fail(void ** state) {
 void test_w_update_hash_node_OK(void ** state) {
     test_mode = 1;
 
+    int mode = OS_BINARY;
+
     char * path = "test";
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 0);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
@@ -1155,6 +1187,8 @@ void test_w_set_to_last_line_read_fstat_fail(void ** state) {
 void test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail(void ** state) {
     test_mode = 1;
 
+    int mode = OS_BINARY;
+
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
     lf->fp = (FILE*)1;
@@ -1175,6 +1209,7 @@ void test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail(void ** state) {
     will_return(__wrap_fstat, 1);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 0);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, -1);
@@ -1192,6 +1227,8 @@ void test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail(void ** state) {
 
 void test_w_set_to_last_line_read_diferent_file(void ** state) {
     test_mode = 1;
+
+    int mode = OS_BINARY;
 
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
@@ -1215,13 +1252,13 @@ void test_w_set_to_last_line_read_diferent_file(void ** state) {
     will_return(__wrap_fstat, 1);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     //w_set_pos
     long pos = 0;
-    int mode = OS_BINARY;
 
     will_return(__wrap_fseek, -1);
 
@@ -1243,6 +1280,8 @@ void test_w_set_to_last_line_read_diferent_file(void ** state) {
 void test_w_set_to_last_line_read_same_file(void ** state) {
     test_mode = 1;
 
+    int mode = OS_BINARY;
+
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
     lf->fp = (FILE*)1;
@@ -1266,13 +1305,13 @@ void test_w_set_to_last_line_read_same_file(void ** state) {
     will_return(__wrap_fstat, 1);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     //w_set_pos
     long pos = 0;
-    int mode = OS_BINARY;
 
     will_return(__wrap_fseek, -1);
 
@@ -1294,6 +1333,8 @@ void test_w_set_to_last_line_read_same_file(void ** state) {
 void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
     test_mode = 1;
 
+    int mode = OS_BINARY;
+
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
     lf->fp = (FILE*)1;
@@ -1317,13 +1358,13 @@ void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
     will_return(__wrap_fstat, 1);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     //w_set_pos
     long pos = 0;
-    int mode = OS_BINARY;
 
     will_return(__wrap_fseek, -1);
 
@@ -1345,6 +1386,8 @@ void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
 void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
     test_mode = 1;
 
+    int mode = OS_BINARY;
+
     logreader *lf = NULL;
     os_calloc(1, sizeof(logreader), lf);
     lf->fp = (FILE*)1;
@@ -1368,13 +1411,13 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
     will_return(__wrap_fstat, 1);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     //w_set_pos
     long pos = 0;
-    int mode = OS_BINARY;
 
     os_calloc(1, sizeof(fpos_t), test_position);
     test_position->__pos = 1;
@@ -1386,6 +1429,7 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
 
     //w_update_hash_node
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
     expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
@@ -1416,6 +1460,7 @@ int main(void) {
         cmocka_unit_test(test_w_update_file_status_update_OK),
 
         // Test w_set_to_pos
+        cmocka_unit_test(test_w_set_to_pos_localfile_NULL),
         cmocka_unit_test(test_w_set_to_pos_fseek_error),
         cmocka_unit_test(test_w_set_to_pos_OK),
 

@@ -17,6 +17,8 @@
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/common.h"
 
+int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, int64_t nbytes);
+
 /* setups/teardowns */
 static int setup_group(void **state) {
     test_mode = 1;
@@ -39,11 +41,13 @@ void OS_SHA1_File_Nbytes_unable_open_file (void **state)
     os_sha1 output;
     ssize_t nbytes = 4096;
 
-    expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    int mode = OS_BINARY;
 
-    int ret = OS_SHA1_File_Nbytes(path, &context, output, nbytes);
+    expect_value(__wrap_fopen, path, path);
+    expect_string(__wrap_fopen, mode, "rb");
+    will_return(__wrap_fopen, NULL);
+
+    int ret = OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes);
     assert_int_equal(ret, -1);
 }
 
@@ -54,20 +58,22 @@ void OS_SHA1_File_Nbytes_ok (void **state)
     os_sha1 output;
     ssize_t nbytes = 4000;
 
+    int mode = OS_BINARY;
+
     expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
+    expect_string(__wrap_fopen, mode, "rb");
     will_return(__wrap_fopen, 1);
 
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "hello");
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 0);
 
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, NULL);
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 0);
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    int ret = OS_SHA1_File_Nbytes(path, &context, output, nbytes);
+    int ret = OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes);
     assert_int_equal(ret, 0);
 }
 
@@ -78,28 +84,23 @@ void OS_SHA1_File_Nbytes_num_bytes_exceded (void **state)
     os_sha1 output;
     ssize_t nbytes = 6;
 
+    int mode = OS_BINARY;
+
     expect_value(__wrap_fopen, path, path);
-    expect_string(__wrap_fopen, mode, "r");
+    expect_string(__wrap_fopen, mode, "rb");
     will_return(__wrap_fopen, 1);
 
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "hello");
-
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "hello");
-
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "hello");
+    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, 0);
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
 
-    int ret = OS_SHA1_File_Nbytes(path, &context, output, nbytes);
+    int ret = OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes);
     assert_int_equal(ret, 0);
 }
 
 /* OS_SHA1_Stream */
-//void OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf)
 
 void OS_SHA1_Stream_ok (void **state)
 {
