@@ -18,4 +18,6 @@
 
 WINBOOL wrap_CloseHandle (HANDLE hObject);
 
+void expect_CloseHandle_call(HANDLE object, int ret);
+
 #endif

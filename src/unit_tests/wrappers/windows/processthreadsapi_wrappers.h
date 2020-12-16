@@ -37,4 +37,8 @@ BOOL wrap_OpenProcessToken(HANDLE ProcessHandle,
                            DWORD DesiredAccess,
                            PHANDLE TokenHandle);
 
+/**
+ * @brief This function loads the expect and will_return calls for the wrapper of SetThreadPriority
+ */
+void expect_SetThreadPriority_call(HANDLE handle, int priority, int ret);
 #endif
