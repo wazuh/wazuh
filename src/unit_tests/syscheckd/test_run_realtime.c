@@ -1348,9 +1348,9 @@ void test_free_win32rtfim_data_full_data(void **state) {
 
     data->h = (HANDLE)123456;
 
-    data->overlap.Pointer = calloc(1, sizeof(PVOID));
+    data->overlap.hEvent = calloc(1, sizeof(PVOID));
 
-    if(data->overlap.Pointer == NULL) {
+    if(data->overlap.hEvent == NULL) {
         free(data);
         fail();
     }
@@ -1358,7 +1358,7 @@ void test_free_win32rtfim_data_full_data(void **state) {
     data->dir = strdup("c:\\a\\path");
 
     if(data->dir == NULL) {
-        free(data->overlap.Pointer);
+        free(data->overlap.hEvent);
         free(data);
         fail();
     }
@@ -1611,7 +1611,7 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
     rt->dir = NULL;
     rt->watch_status = 1;
 
-    ov.Pointer = "C:\\a\\path";
+    ov.hEvent = "C:\\a\\path";
 
     // Begin calls to mock functions
 
@@ -1648,7 +1648,7 @@ void test_RTCallBack_acquired_changes(void **state) {
     rt->dir = strdup("C:\\a\\path");
     rt->watch_status = 1;
 
-    ov.Pointer = "C:\\a\\path\\file.test";
+    ov.hEvent = "C:\\a\\path\\file.test";
 
     // Begin calls to mock functions
 
