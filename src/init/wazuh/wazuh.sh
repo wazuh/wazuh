@@ -132,4 +132,10 @@ WazuhUpgrade()
     # Remove existing socket folder
 
     rm -rf $DIRECTORY/queue/ossec
+
+	# Move rotated logs to new folder and remove the existing one
+	
+	mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
+	rm -rf $DIRECTORY/logs/ossec
+
 }
