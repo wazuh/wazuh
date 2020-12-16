@@ -782,8 +782,8 @@ void wm_fluent_poll_server(wm_fluent_t * fluent) {
     }
 
     // Peek connection
-
-    switch (fluent->shared_key ? SSL_read(fluent->ssl, buffer, sizeof(buffer)) : recv(fluent->client_sock, buffer, sizeof(buffer), 0)) {
+    ssize_t ret = fluent->shared_key ? SSL_read(fluent->ssl, buffer, sizeof(buffer)) : recv(fluent->client_sock, buffer, sizeof(buffer), 0);
+    switch (ret) {
     case -1:
         // No input data. This is the normal case.
         break;

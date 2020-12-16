@@ -56,6 +56,7 @@ typedef enum _wm_upgrade_command {
     WM_UPGRADE_UPGRADE_CUSTOM = WM_TASK_UPGRADE_CUSTOM,
     WM_UPGRADE_AGENT_GET_STATUS = WM_TASK_UPGRADE_GET_STATUS,
     WM_UPGRADE_AGENT_UPDATE_STATUS = WM_TASK_UPGRADE_UPDATE_STATUS,
+    WM_UPGRADE_RESULT = WM_TASK_UPGRADE_RESULT,
     WM_UPGRADE_CANCEL_TASKS = WM_TASK_UPGRADE_CANCEL_TASKS
 } wm_upgrade_command;
 
@@ -157,5 +158,12 @@ char* wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids, wm_u
  * @return string with the response
  * */
 char* wm_agent_upgrade_process_agent_result_command(const int* agent_ids, const wm_upgrade_agent_status_task* task) __attribute__((nonnull));
+
+/**
+ * Process an upgrade_result command
+ * @param agent_ids List with id of the agents (In this case the list will contain only 1 id)
+ * @return string with the response
+ * */
+char* wm_agent_upgrade_process_upgrade_result_command(const int* agent_ids) __attribute__((nonnull));
 
 #endif
