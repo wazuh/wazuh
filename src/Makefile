@@ -474,7 +474,7 @@ help: failtarget
 	@echo "   make USE_ZEROMQ=yes          Build with zeromq support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_PRELUDE=yes         Build with prelude support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_INOTIFY=yes         Build with inotify support. Allowed values are auto, 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make BIG_ENDIAN=yes          Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make USE_BIG_ENDIAN=yes      Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_FRAMEWORK_LIB=yes   Use external SQLite library for the framework. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -1465,13 +1465,18 @@ rootcheck.a: ${rootcheck_o_lib}
 #### syscheck ######
 
 
-syscheck_sql := syscheckd/schema_fim_db.sql
+syscheck_sql := syscheckd/db/schema_fim_db.sql
+
 syscheck_c := $(wildcard syscheckd/*.c)
+syscheck_c += $(wildcard syscheckd/db/*.c)
+syscheck_c += $(wildcard syscheckd/whodata/*.c)
+syscheck_c += $(wildcard syscheckd/registry/*.c)
+
 syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
 
-syscheckd/schema_fim_db.o: syscheckd/schema_fim_db.sql
+syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
 	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 syscheckd/%.o: syscheckd/%.c

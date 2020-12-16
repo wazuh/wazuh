@@ -180,7 +180,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - "group1"
@@ -201,7 +201,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - "group1"
@@ -244,7 +244,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -274,7 +274,7 @@ stages:
       strict: False
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -300,7 +300,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '006'
@@ -322,7 +322,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '008'
@@ -374,7 +374,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_agents: []
           affected_items: []
@@ -400,7 +400,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_agents: []
           affected_items: []
@@ -425,7 +425,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_agents:
             - '003'
@@ -465,7 +465,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_agents: []
           affected_items: []
@@ -491,7 +491,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_agents:
             - '007'
@@ -520,136 +520,13 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_agents: []
           affected_items:
             - 'group2'
           total_affected_items: 1
     delay_after: !float "{global_db_delay}"
-
----
-test_name: DELETE /agents
-
-stages:
-
-    # DELETE /agents?agents_list=000
-  - name: Try to delete agent 000 (manager)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '000'
-    response: &error_delete_agent
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1703
-              id:
-                - '000'
-
-    # DELETE /agents?agents_list=999
-  - name: Try to delete non existing agent
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '999'
-    response:
-      <<: *error_delete_agent
-      json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1701
-              id:
-                - '999'
-          total_affected_items: 0
-          total_failed_items: 1
-
-    # DELETE /agents?agents_list=wrong
-  - name: Try to delete agent using wrong agent_id format
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: wrong
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
-
-    # DELETE /agents?agents_list=006
-  - name: Delete an agent
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '006'
-        older_than: '0s'
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - '006'
-          total_affected_items: 1
-    delay_after: !float "{global_db_delay}"
-
-    # DELETE /agents?agents_list=010&purge=True
-  - name: Delete an agent using purge
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        purge: True
-        agents_list: '010'
-        older_than: '0s'
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - '010'
-          total_affected_items: 1
-    delay_after: !float "{global_db_delay}"
-
-  # DELETE /agents?purge=True
-  - name: Delete an agent using purge
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        purge: True
-        older_than: '0s'
-    response:
-      status_code: 400
 
 ---
 test_name: DELETE /agents
@@ -666,6 +543,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         agents_list: 'wrong'
+        status: 'all'
     response:
       status_code: 400
       json:
@@ -678,10 +556,11 @@ stages:
       <<: *delete_agents
       params:
         agents_list: '998,999'
+        status: 'all'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -700,10 +579,11 @@ stages:
       <<: *delete_agents
       params:
         agents_list: '000'
+        status: 'all'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -738,7 +618,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -761,7 +641,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '004'
@@ -777,6 +657,7 @@ stages:
       params:
         agents_list: '007'
         older_than: 'wrong'
+        status: 'all'
     response:
       status_code: 400
       json:
@@ -790,10 +671,11 @@ stages:
       params:
         agents_list: '007'
         older_than: '1h'
+        status: 'all'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -814,10 +696,11 @@ stages:
       params:
         agents_list: '009'
         older_than: '1s'
+        status: 'all'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '009'
@@ -833,10 +716,11 @@ stages:
       params:
         agents_list: '001,011'
         older_than: '0s'
+        status: 'all'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - "001"
@@ -854,10 +738,11 @@ stages:
         agents_list: '012'
         older_than: '1s'
         purge: True
+        status: 'all'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '012'
@@ -866,7 +751,7 @@ stages:
     delay_after: !float "{global_db_delay}"
 
     # DELETE /agents
-  - name: Delete all agents (001,002,003,005)
+  - name: Delete all agents (002,003,005,006,007,008,010)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents"
@@ -876,14 +761,19 @@ stages:
       params:
         older_than: '0s'
         agents_list: all
+        status: 'all'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - "002"
             - "003"
             - "005"
+            - "006"
+            - "007"
+            - "008"
+            - "010"
           older_than: '0s'
-          total_affected_items: 5
+          total_affected_items: 7

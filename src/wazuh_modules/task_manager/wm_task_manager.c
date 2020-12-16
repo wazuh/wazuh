@@ -19,7 +19,6 @@
 #ifndef WIN32
 
 #include "../wmodules.h"
-#include "wm_task_manager_db.h"
 #include "wm_task_manager_parsing.h"
 #include "wm_task_manager_tasks.h"
 #include "../os_net/os_net.h"
@@ -68,6 +67,16 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) {
         cJSON_Delete(data_array);
         data_array = wm_task_manager_parse_data_response(WM_TASK_DATABASE_ERROR, OS_INVALID, OS_INVALID, NULL);
         break;
+    case WM_TASK_DATABASE_PARSE_ERROR:
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR);
+        cJSON_Delete(data_array);
+        data_array = wm_task_manager_parse_data_response(WM_TASK_DATABASE_PARSE_ERROR, OS_INVALID, OS_INVALID, NULL);
+        break;
+    case WM_TASK_DATABASE_REQUEST_ERROR:
+        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_DB_ERROR);
+        cJSON_Delete(data_array);
+        data_array = wm_task_manager_parse_data_response(WM_TASK_DATABASE_REQUEST_ERROR, OS_INVALID, OS_INVALID, NULL);
+        break;
     default:
         break;
     }
@@ -92,14 +101,8 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
         pthread_exit(NULL);
     }
 
-    // Check or create tasks DB
-    if (wm_task_manager_check_db()) {
-        mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CHECK_DB_ERROR);
-        pthread_exit(NULL);
-    }
-
-    // Start clean DB thread
-    w_create_thread(wm_task_manager_clean_db, task_config);
+    // Start clean tasks thread
+    w_create_thread(wm_task_manager_clean_tasks, task_config);
 
     /* Set the queue */
     if (sock = OS_BindUnixDomain(DEFAULTDIR TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
@@ -199,8 +202,8 @@ STATIC cJSON* wm_task_manager_dump(const wm_task_manager* task_config){
     cJSON *wm_info = cJSON_CreateObject();
 
     if (task_config->enabled) {
-        cJSON_AddStringToObject(wm_info, "enabled", "yes"); 
-    } else { 
+        cJSON_AddStringToObject(wm_info, "enabled", "yes");
+    } else {
         cJSON_AddStringToObject(wm_info, "enabled", "no");
     }
     cJSON_AddItemToObject(root, "task-manager", wm_info);

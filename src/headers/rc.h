@@ -38,5 +38,7 @@
 #define HC_FIM_DB_ES        "fim-db-end-scan"
 #define CFGA_DB_DUMP        "sca-dump"
 #define HC_SK               "syscheck "
+#define HC_FIM_FILE         "fim_file "
+#define HC_FIM_REGISTRY     "fim_registry "
 
 #endif /* RC_H */

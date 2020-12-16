@@ -21,7 +21,7 @@
   -->
 
 <decoder name="sonicwall">
-   <prematch>^id=\w+\s+sn=\w+\s+time="\.+"\s+fw=\S+ </prematch>
+   <prematch>^\<\d+>\s*id=\w+\s+sn=\w+\s+time="\.+"\s+fw=\S+ |^\s*id=\w+\s+sn=\w+\s+time="\.+"\s+fw=\S+ </prematch>
    <plugin_decoder>SonicWall_Decoder</plugin_decoder>
 </decoder>
 
