@@ -36,11 +36,13 @@ include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
+include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
+
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSINFO_SRC
@@ -117,9 +119,17 @@ elseif(UNIX AND NOT APPLE)
   set_target_properties(sysinfo PROPERTIES
           LINK_FLAGS "-static-libgcc -static-libstdc++")
   string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
-else()
-  target_link_libraries(sysinfo proc)
+elseif(APPLE)
+  target_link_libraries(sysinfo ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if(APPLE)
+  set(CMAKE_VERBOSE_MAKEFILE ON)
+  add_custom_command(TARGET sysinfo 
+    POST_BUILD COMMAND 
+    ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"
+    $<TARGET_FILE:sysinfo>)
+endif(APPLE)
 
 if(UNIT_TEST)
 add_subdirectory(tests)
