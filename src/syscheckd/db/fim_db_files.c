@@ -601,8 +601,10 @@ int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_fi
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_FROM_PATTERN);
     fim_db_bind_get_path_from_pattern(fim_sql, pattern);
 
-    int ret = fim_db_process_get_query(fim_sql, FIM_FILE, FIMDB_STMT_GET_PATH_FROM_PATTERN, fim_db_callback_save_path, storage, (void*) *file);
-
+    int ret = fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_PATH_FROM_PATTERN,
+                                        FIM_DB_DECODE_TYPE(fim_db_decode_string), free,
+                                        FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string),
+                                        storage, (void *)*file);
     if (*file && (*file)->elements == 0) {
         fim_db_clean_file(file, storage);
     }
