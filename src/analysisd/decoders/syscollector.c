@@ -2007,7 +2007,7 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
                     buffer_t *msg = buffer_initialize(OS_SIZE_6144);
                     buffer_push(msg, header, header_size);
                     if (fill_data_dbsync(data, field_list, msg) && TRUE == msg->status) {
-                        ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_6144);
+                        ret_val = wdbc_query_ex(socket, msg->data, response, OS_SIZE_128);
                         if (ret_val != 0) {
                             merror("Wazuh-db query error, check wdb logs.");
                         }

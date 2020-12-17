@@ -220,7 +220,14 @@ RemoteSync::~RemoteSync()
 {
     if (m_shouldBeRemoved)
     {
-        RSyncImplementation::instance().releaseContext(m_handle);
+        try
+        {
+            RSyncImplementation::instance().releaseContext(m_handle);
+        }
+        catch (const RSync::rsync_error& ex)
+        {
+            log_message(ex.what());
+        }
     }
 }
 
