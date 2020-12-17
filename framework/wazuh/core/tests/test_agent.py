@@ -600,10 +600,10 @@ def test_agent_remove(mock_remove_manual, mock_remove_authd, status):
     Parameters
     ----------
     status : string
-        Status to be mocked in ossec-authd.
+        Status to be mocked in wazuh-authd.
     """
 
-    with patch('wazuh.core.agent.get_manager_status', return_value={'ossec-authd': status}):
+    with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': status}):
         agent = Agent(0)
         result = agent.remove(use_only_authd=False)
         assert result == 'Agent was successfully deleted', 'Not expected message'
@@ -731,7 +731,7 @@ def test_agent_add(mock_add_authd, mock_add_manual, authd_status, ip, id, key, f
     """
     agent = Agent(1, use_only_authd=False)
 
-    with patch('wazuh.core.agent.get_manager_status', return_value={'ossec-authd': authd_status}):
+    with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': authd_status}):
         agent._add('test_name', ip, id=id, key=key, force=force)
 
     if authd_status == 'running':
@@ -740,7 +740,7 @@ def test_agent_add(mock_add_authd, mock_add_manual, authd_status, ip, id, key, f
         mock_add_manual.assert_called_once_with('test_name', ip, id, key, force)
 
 
-@patch('wazuh.core.agent.get_manager_status', return_value={'ossec-authd': 'stopped'})
+@patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'stopped'})
 def test_agent_add_ko(mock_maganer_status):
     """Test if _add() method raises expected exception."""
     agent = Agent(1)
