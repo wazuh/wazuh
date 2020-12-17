@@ -9,10 +9,6 @@ Wazuh ruleset is used to detect attacks, intrusions, software misuse, configurat
 
 The ruleset includes compliance mapping with PCI DSS v3.1 and CIS.
 
-## Installation
-
-* [Installation instructions](https://documentation.wazuh.com/current/user-manual/ruleset/update.html)
-
 ## Directory structure
 
     ├── wazuh/ruleset
@@ -36,7 +32,7 @@ If you have created new rules, decoders or rootchecks and you would like to cont
 
 1. If your rules and decoders are related to existent ones in the ruleset, you should add them at the end of the corresponding file. If they are made for a new application or device that Wazuh does not currently support, you should create a new `XML` following the title format. For example, if the last `XML` file is `0620-last-xml_rules.xml`, the next one should be named `0625-new_integration.xml`. Please, make sure your rules do not use an existent `rule id`.
 
-2. Make sure to create your `test.ini` file. You may find examples under the `wazuh/wazuh-ruleset/tools/rules-testing/tests` folder. Then add it to the repository along with the rest of the tests.
+2. Make sure to create your `test.ini` file. You may find examples under the `wazuh/ruleset/testing/tests` folder. Then add it to the repository along with the rest of the tests.
 
 3. Create the pull request
 
