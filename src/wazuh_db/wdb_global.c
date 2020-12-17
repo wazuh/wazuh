@@ -1338,17 +1338,19 @@ bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data) {
                         }
                     }
                 } else {
-                    if (FIELD_TEXT == column->value.type) {
-                        if (SQLITE_OK != sqlite3_bind_text(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL)) {
-                            merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                    if (NULL != field_value) {
+                        if (FIELD_TEXT == column->value.type) {
+                            if (SQLITE_OK != sqlite3_bind_text(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL)) {
+                                merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                            }
+                        } else {
+                            if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
+                                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                            }
                         }
-                    } else {
-                        if (SQLITE_OK != sqlite3_bind_int(stmt, column->value.index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
-                            merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                        if (column->next) {
+                            field_value = strtok(NULL, FIELD_SEPARATOR_DBSYNC);
                         }
-                    }
-                    if (column->next && NULL != field_value) {
-                        field_value = strtok(NULL, FIELD_SEPARATOR_DBSYNC);
                     }
                 }
             }
@@ -1368,9 +1370,8 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
         strcat(query, "UPDATE ");
         strcat(query, kv_value->value);
         strcat(query, " SET ");
-        char **field_values = NULL;
         const size_t size = sizeof(char*) * (os_strcnt(data, '|') + 1);
-        field_values = (char **)malloc(size);
+        char ** field_values = (char **)malloc(size);
         char *tok = strtok(data, FIELD_SEPARATOR_DBSYNC);
         char **curr = field_values;
 
@@ -1379,7 +1380,10 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
             tok = strtok(NULL, FIELD_SEPARATOR_DBSYNC);
             ++curr;
         }
-        *curr = NULL;
+
+        if (curr) {
+            *curr = NULL;
+        }
 
         bool first_condition_element = true;
         curr = field_values;
