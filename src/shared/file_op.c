@@ -3118,7 +3118,7 @@ float DirSize(const char *path) {
 #endif
 
 
-int64_t w_ftell (FILE *x) {
+int64_t w_ftell(FILE *x) {
 
 #ifndef WIN32
     int64_t z = ftell(x);
@@ -3128,6 +3128,21 @@ int64_t w_ftell (FILE *x) {
 
     if (z < 0)  {
         merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
+        return -1;
+    } else {
+        return z;
+    }
+}
+
+int w_fseek(FILE *x, int64_t pos, int mode) {
+
+#ifndef WIN32
+    int64_t z = fseek(x, pos, mode);
+#else
+    int64_t z = _fseeki64(x, pos, mode);
+#endif
+    if (z < 0)  {
+        mwarn("Fseek function failed due to [(%d)-(%s)]", errno, strerror(errno));
         return -1;
     } else {
         return z;

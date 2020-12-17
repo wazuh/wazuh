@@ -2781,28 +2781,17 @@ STATIC int64_t w_set_to_pos(logreader * lf, int64_t pos, int mode) {
         return -1;
     }
 
-#ifdef WIN32
-    if (_fseeki64(lf->fp, pos, mode) < 0) {
-#else
-    if (fseek(lf->fp, pos, mode) < 0) {
-#endif
-
+    if (w_fseek(lf->fp, pos, mode) < 0) {
         merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
         fclose(lf->fp);
         lf->fp = NULL;
         return -1;
     }
-    fpos_t fp_pos = {0};
-    fgetpos(lf->fp, &fp_pos);
 
-#if defined(__linux__)
-    return fp_pos.__pos;
-#else
-    return fp_pos;
-#endif
+    return w_ftell(lf->fp);
 }
 
-void w_get_hash_context (const char * path, SHA_CTX * context, int64_t position) {
+void w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
     os_file_status_t * data;
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, path), data == NULL) {

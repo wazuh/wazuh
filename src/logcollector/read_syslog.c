@@ -20,7 +20,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
     int __ms_reported = 0;
     char str[OS_MAXSTR + 1];
-    fpos_t fp_pos;
+    int64_t current_position = 0;
     int lines = 0;
     int64_t offset = 0;
     int64_t rbytes = 0;
@@ -29,14 +29,10 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Get initial file location */
-    fgetpos(lf->fp, &fp_pos);
+    current_position = w_ftell(lf->fp);
 
     SHA_CTX context;
-#if defined(__linux__)
-    w_get_hash_context(lf->file, &context, fp_pos.__pos);
-#else
-    w_get_hash_context(lf->file, &context, fp_pos);
-#endif
+    w_get_hash_context(lf->file, &context, current_position);
 
     for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
@@ -74,7 +70,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
              if (feof(lf->fp)) {
                 /* Message not complete. Return. */
                 mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-                fsetpos(lf->fp, &fp_pos);
+                w_fseek(lf->fp, current_position, SEEK_SET);
                 break;
             }
         }
@@ -88,13 +84,13 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
 
         /* Look for empty string (only on Windows) */
         if (rbytes <= 2) {
-            fgetpos(lf->fp, &fp_pos);
+            current_position = w_ftell(lf->fp);
             continue;
         }
 
         /* Windows can have comment on their logs */
         if (str[0] == '#') {
-            fgetpos(lf->fp, &fp_pos);
+            current_position = w_ftell(lf->fp);
             continue;
         }
 #endif
@@ -134,16 +130,10 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             }
             __ms = 0;
         }
-        fgetpos(lf->fp, &fp_pos);
+        current_position = w_ftell(lf->fp);
     }
 
-    /* For Windows, macOS, Solaris, FreeBSD and OpenBSD fpos_t is a interger type.
-    In contrast, for Linux is a __fpos_t type */
-#if defined(__linux__)
-    w_update_file_status(lf->file, fp_pos.__pos, &context);
-#else
-    w_update_file_status(lf->file, fp_pos, &context);
-#endif
+    w_update_file_status(lf->file, current_position, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
