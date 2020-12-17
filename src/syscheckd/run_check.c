@@ -590,7 +590,12 @@ STATIC void fim_link_update(int pos, char *new_path) {
     // Check if the previously pointed folder is in the configuration
     // and delete its database entries if it isn't
     for (i = 0; syscheck.dir[i] != NULL; i++) {
-        if (strcmp(syscheck.symbolic_links[pos], syscheck.dir[i]) == 0) {
+        if (i == pos) {
+            // This is the link being changed
+            continue;
+        }
+
+        if (strcmp(syscheck.symbolic_links[pos], fim_get_real_path(i)) == 0) {
             in_configuration = true;
             break;
         }
