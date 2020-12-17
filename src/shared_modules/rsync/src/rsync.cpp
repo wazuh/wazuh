@@ -224,10 +224,12 @@ RemoteSync::~RemoteSync()
         {
             RSyncImplementation::instance().releaseContext(m_handle);
         }
+        // LCOV_EXCL_START
         catch (const RSync::rsync_error& ex)
         {
             log_message(ex.what());
         }
+        // LCOV_EXCL_STOP
     }
 }
 
