@@ -28,10 +28,10 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     f_msg[OS_MAXSTR] = '\0';
 
-    /* Get initial file location */
+    /* Obtain context to calculate hash */
     SHA_CTX context;
-    int64_t pos = w_ftell(lf->fp);
-    w_get_hash_context(lf->file, &context, pos);
+    int64_t current_position = w_ftell(lf->fp);
+    w_get_hash_context(lf->file, &context, current_position);
 
     while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
@@ -120,8 +120,8 @@ file_error:
 
     }
 
-    pos = w_ftell(lf->fp);
-    w_update_file_status(lf->file, pos, &context);
+    current_position = w_ftell(lf->fp);
+    w_update_file_status(lf->file, current_position, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

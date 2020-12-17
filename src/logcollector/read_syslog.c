@@ -28,7 +28,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    /* Get initial file location */
+    /* Obtain context to calculate hash */
     current_position = w_ftell(lf->fp);
 
     SHA_CTX context;
@@ -70,7 +70,9 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
              if (feof(lf->fp)) {
                 /* Message not complete. Return. */
                 mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-                w_fseek(lf->fp, current_position, SEEK_SET);
+                if(current_position >= 0) {
+                    w_fseek(lf->fp, current_position, SEEK_SET);
+                }
                 break;
             }
         }

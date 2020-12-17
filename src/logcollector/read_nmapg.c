@@ -147,11 +147,10 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     port[16] = '\0';
     proto[16] = '\0';
 
-    /* Get initial file location */
-    int64_t fp_pos = w_ftell(lf->fp);
-
+    /* Obtain context to calculate hash */
     SHA_CTX context;
-    w_get_hash_context(lf->file, &context, fp_pos);
+    int64_t current_position = w_ftell(lf->fp);
+    w_get_hash_context(lf->file, &context, current_position);
 
     while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
@@ -264,8 +263,8 @@ file_error:
 
     }
 
-    fp_pos = w_ftell(lf->fp);
-    w_update_file_status(lf->file, fp_pos, &context);
+    current_position = w_ftell(lf->fp);
+    w_update_file_status(lf->file, current_position, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

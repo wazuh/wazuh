@@ -21,7 +21,6 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     int i;
     char *jsonParsed;
     char str[OS_MAXSTR + 1];
-    int64_t fp_pos;
     int lines = 0;
     cJSON * obj;
     int64_t offset = 0;
@@ -30,11 +29,10 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    /* Get initial file location */
-    fp_pos = w_ftell(lf->fp);
-
+    /* Obtain context to calculate hash */
     SHA_CTX context;
-    w_get_hash_context(lf->file, &context, fp_pos);
+    int64_t current_position = w_ftell(lf->fp);
+    w_get_hash_context(lf->file, &context, current_position);
 
     for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
@@ -67,7 +65,9 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
             mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-            w_fseek(lf->fp, fp_pos, SEEK_SET);
+            if(current_position >= 0) {
+                w_fseek(lf->fp, current_position, SEEK_SET);
+            }
             break;
         }
 
@@ -80,13 +80,13 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
 
         /* Look for empty string (only on Windows) */
         if (rbytes <= 2) {
-            fp_pos = w_ftell(lf->fp);
+            current_position = w_ftell(lf->fp);
             continue;
         }
         /* Windows can have comment on their logs */
 
         if (str[0] == '#') {
-            fp_pos = w_ftell(lf->fp);
+            current_position = w_ftell(lf->fp);
             continue;
         }
 #endif
@@ -141,10 +141,10 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             __ms = 0;
         }
 
-        fp_pos = w_ftell(lf->fp);
+        current_position = w_ftell(lf->fp);
     }
 
-    w_update_file_status(lf->file, fp_pos, &context);
+    w_update_file_status(lf->file, current_position, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

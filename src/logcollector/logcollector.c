@@ -2528,7 +2528,7 @@ int w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) {
 
     os_sha1 output;
     OS_SHA1_Stream(context, output, NULL);
-    strncpy(data->hash, output, sizeof(os_sha1));
+    memcpy(data->hash, output, sizeof(os_sha1));
 
     data->offset = pos;
 
@@ -2658,7 +2658,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
         os_file_status_t * data;
 
         os_malloc(sizeof(os_file_status_t), data);
-        strncpy(data->hash, hash_str, sizeof(os_sha1));
+        memcpy(data->hash, hash_str, sizeof(os_sha1));
         data->offset = value_offset;
 
         SHA_CTX context;
@@ -2773,7 +2773,7 @@ STATIC int w_update_hash_node(char * path, int64_t pos) {
     SHA_CTX context;
     os_sha1 output;
     OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos);
-    strncpy(data->hash, output, sizeof(os_sha1));
+    memcpy(data->hash, output, sizeof(os_sha1));
     data->context = context;
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
