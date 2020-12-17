@@ -47,6 +47,10 @@ class BrewWrapper final : public IPackageWrapper
     {
         return DEFAULT_STRING_VALUE;
     }
+    std::string osPatch() const override
+    {
+        return DEFAULT_STRING_VALUE;
+    }
 };
 
 

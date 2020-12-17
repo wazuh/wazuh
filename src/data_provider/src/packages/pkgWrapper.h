@@ -47,6 +47,10 @@ class PKGWrapper final : public IPackageWrapper
     {
         return DEFAULT_STRING_VALUE;
     }
+    std::string osPatch() const override
+    {
+        return DEFAULT_STRING_VALUE;
+    }
 };
 
 #endif //_PKG_WRAPPER_H

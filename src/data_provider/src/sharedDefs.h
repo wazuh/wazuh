@@ -25,7 +25,7 @@ constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 
 constexpr auto DEFAULT_STRING_VALUE {"unknown"};
-constexpr auto MAC_ADDRESS_COUNT_SEGMENTS = 6ull;
+constexpr auto MAC_ADDRESS_COUNT_SEGMENTS {6ull};
 
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
 
