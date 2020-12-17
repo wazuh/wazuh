@@ -532,6 +532,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
     if ((*str == 'a') || (*str == 'A')) {
         str++;
         if ((*str == 'm') || (*str == 'M')) {
+            if (chour == 12) chour = 0;
             snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
             str++;
             return (str);
@@ -539,6 +540,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
     } else if ((*str == 'p') || (*str == 'P')) {
         str++;
         if ((*str == 'm') || (*str == 'M')) {
+            if (chour == 12) chour = 0;
             chour += 12;
 
             /* New hour must be valid */
