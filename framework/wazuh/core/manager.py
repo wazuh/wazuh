@@ -148,6 +148,8 @@ def upload_xml(xml_file, path, overwrite=False):
         # check xml format
         try:
             load_wazuh_xml(tmp_file_path)
+        except WazuhError as e:
+            raise e
         except Exception as e:
             raise WazuhError(1113, str(e))
 
@@ -382,6 +384,11 @@ def update_api_conf(new_config):
     """
     if new_config:
         try:
+            with open(common.api_config_path, 'r') as f:
+                # Avoid changing the "remote_commands" option through the Framework
+                previous_config = yaml.safe_load(f)
+                if 'remote_commands' in previous_config.keys():
+                    new_config['remote_commands'] = previous_config['remote_commands']
             with open(common.api_config_path, 'w+') as f:
                 yaml.dump(new_config, f)
         except IOError:
