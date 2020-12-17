@@ -21,7 +21,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
     int __ms_reported = 0;
     char str[OS_MAXSTR_BE + 1];
-    fpos_t fp_pos;
+    int64_t fp_pos;
     int lines = 0;
     int64_t offset = 0;
     int64_t rbytes = 0;
@@ -30,7 +30,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Get initial file location */
-    fgetpos(lf->fp, &fp_pos);
+    fp_pos = w_ftell(lf->fp);
 
     SHA_CTX context;
     w_get_hash_context(lf->file, &context, fp_pos);
@@ -66,7 +66,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             if (lf->ucs2 == UCS2_LE && feof(lf->fp)) {
                 /* Message not complete. Return. */
                 mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
-                fsetpos(lf->fp, &fp_pos);
+                w_fseek(lf->fp, fp_pos, SEEK_SET);
                 break;
             }
         }
@@ -79,13 +79,13 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
 
         /* Look for empty string (only on Windows) */
         if (rbytes <= 4) {
-            fgetpos(lf->fp, &fp_pos);
+            fp_pos = w_ftell(lf->fp);
             continue;
         }
 
         /* Windows can have comment on their logs */
         if (str[1] == '#') {
-            fgetpos(lf->fp, &fp_pos);
+            fp_pos = w_ftell(lf->fp);
             continue;
         }
 
@@ -150,7 +150,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             }
             __ms = 0;
         }
-        fgetpos(lf->fp, &fp_pos);
+        fp_pos = w_ftell(lf->fp);
     }
 
     w_update_file_status(lf->file, fp_pos, &context);

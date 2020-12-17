@@ -57,16 +57,10 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Get initial file location */
-    fpos_t fp_pos;
-    fgetpos(lf->fp, &fp_pos);
+    offset = w_ftell(lf->fp);
 
     SHA_CTX context;
-#if defined(__linux__)
-    w_get_hash_context(lf->file, &context, fp_pos.__pos);
-#else
-    w_get_hash_context(lf->file, &context, fp_pos);
-#endif
-
+    w_get_hash_context(lf->file, &context, offset);
 
     for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;

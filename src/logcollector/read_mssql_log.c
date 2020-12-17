@@ -38,15 +38,9 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Get initial file location */
-    fpos_t fp_pos;
-    fgetpos(lf->fp, &fp_pos);
-
     SHA_CTX context;
-#if defined(__linux__)
-    w_get_hash_context(lf->file, &context, fp_pos.__pos);
-#else
-    w_get_hash_context(lf->file, &context, fp_pos);
-#endif
+    int64_t pos = w_ftell(lf->fp);
+    w_get_hash_context(lf->file, &context, pos);
 
     /* Get new entry */
     while (can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
@@ -149,16 +143,8 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
         }
     }
 
-    fpos_t pos;
-    fgetpos(lf->fp, &pos);
-
-    /* For Windows, macOS, Solaris, FreeBSD and OpenBSD fpos_t is a interger type.
-    In contrast, for Linux is a __fpos_t type */
-#if defined(__linux__)
-    w_update_file_status(lf->file, fp_pos.__pos, &context);
-#else
-    w_update_file_status(lf->file, fp_pos, &context);
-#endif
+    pos = w_ftell(lf->fp);
+    w_update_file_status(lf->file, pos, &context);
 
     /* Send whatever is stored */
     if (buffer[0] != '\0') {
