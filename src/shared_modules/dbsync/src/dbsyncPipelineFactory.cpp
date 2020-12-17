@@ -44,16 +44,30 @@ namespace DbSync
         }
         ~Pipeline()
         {
+            if (m_spSyncNode)
+            {
+                try
+                {
+                    m_spSyncNode->rundown();
+                }
+                catch(...)
+                {}
+            }
             if (m_spDispatchNode)
             {
                 try
                 {
                     m_spDispatchNode->rundown();
-                    DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext);
                 }
                 catch(...)
                 {}
             }
+            try
+            {
+                DBSyncImplementation::instance().closeTransaction(m_handle, m_txnContext);
+            }
+            catch(...)
+            {}
         }
         void syncRow(const nlohmann::json& value) override
         {
@@ -74,6 +88,10 @@ namespace DbSync
             if (m_spSyncNode)
             {
                 m_spSyncNode->rundown();
+            }
+            if (m_spDispatchNode)
+            {
+                m_spDispatchNode->rundown();
             }
             DBSyncImplementation::instance().getDeleted(m_handle, m_txnContext, callback);
         }

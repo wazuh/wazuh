@@ -459,7 +459,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Function to save Package info into the DB. Return 0 on success or -1 on error.
-int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char * checksum, const char * item_id, const bool replace) {
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char * checksum, const char * item_id, const char * os_patch, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_package_save(): cannot begin transaction");
@@ -485,6 +485,7 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         0,
         checksum,
         item_id,
+        os_patch,
         replace) < 0) {
 
         return -1;
@@ -508,7 +509,7 @@ int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert Package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char* checksum, const char * item_id, const bool replace) {
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char * checksum, const char * item_id, const char * os_patch, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_PROGRAM_INSERT2 : WDB_STMT_PROGRAM_INSERT) < 0) {
@@ -540,6 +541,7 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_int(stmt, 16, triaged);
     sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 18, item_id, -1, NULL);
+    sqlite3_bind_text(stmt, 19, os_patch, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_DONE:
@@ -1130,7 +1132,8 @@ int wdb_syscollector_package_save2(wdb_t * wdb, const cJSON * attributes)
     const char * location = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "location"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
-    return wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, checksum, item_id, TRUE);
+    const char * os_patch = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_patch"));
+    return wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, checksum, item_id, os_patch, TRUE);
 }
 
 int wdb_syscollector_hotfix_save2(wdb_t * wdb, const cJSON * attributes)

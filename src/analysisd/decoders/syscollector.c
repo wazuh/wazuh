@@ -66,6 +66,7 @@ static const char* PACKAGES_FIELDS[] = {
     "msu_name",
     "checksum",
     "item_id",
+    "os_patch",
     NULL 
 };
 

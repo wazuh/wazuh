@@ -49,5 +49,6 @@ ALTER TABLE sys_netproto ADD COLUMN item_id TEXT DEFAULT NULL;
 ALTER TABLE sys_netaddr ADD COLUMN item_id TEXT DEFAULT NULL;
 ALTER TABLE sys_ports ADD COLUMN item_id TEXT DEFAULT NULL;
 ALTER TABLE sys_programs ADD COLUMN item_id TEXT DEFAULT NULL;
+ALTER TABLE sys_programs ADD COLUMN os_patch TEXT DEFAULT NULL;
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 6);
