@@ -23,7 +23,7 @@ class FactoryBSDPackage
 
 class BSDPackageImpl final : public IPackage
 {
-    const std::shared_ptr<IPackageWrapper>& m_packageWrapper;
+    const std::shared_ptr<IPackageWrapper> m_packageWrapper;
 public:
     explicit BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper);
 
