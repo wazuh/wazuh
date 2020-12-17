@@ -55,7 +55,7 @@ void w_validate_bytes_megabytes (void **state)
 void w_validate_bytes_gigabytes (void **state)
 {
     const char * value = "1024GB";
-    long long expected_value = 1024 * ((long) 1024*1024*1024);
+    long long expected_value = 1024 * ((long long) 1024*1024*1024);
 
     long long ret = w_validate_bytes(value);
     assert_memory_equal(&ret, &expected_value, sizeof(long long));

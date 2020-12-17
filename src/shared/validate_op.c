@@ -915,15 +915,15 @@ long long w_validate_bytes(const char *content) {
     switch (*end) {
         case 'K':
         case 'k':
-            converted_value = read_value * 1024;
+            converted_value = read_value * 1024LL;
             break;
         case 'M':
         case 'm':
-            converted_value = read_value * (1024 * 1024);
+            converted_value = read_value * (1024 * 1024LL);
             break;
         case 'G':
         case 'g':
-            converted_value = read_value * (1024 * 1024 * 1024);
+            converted_value = read_value * (1024 * 1024 * 1024LL);
             break;
         default:
             converted_value = read_value;
