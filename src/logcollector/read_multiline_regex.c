@@ -143,9 +143,10 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
 
     if (can_read() == 0) {
         return NULL;
-    } else if (lf->multiline->offset_last_read == 0) {
+    } else if (lf->multiline->offset_last_read == 0 || w_ftell(lf->fp) < lf->multiline->offset_last_read) {
         lf->multiline->offset_last_read = w_ftell(lf->fp);
     }
+
     w_get_hash_context(lf->file, &context, lf->multiline->offset_last_read);
 
     read_buffer[OS_MAXSTR] = '\0';
@@ -235,11 +236,7 @@ STATIC int multiline_getlog_start(char * buffer, int length, FILE * stream, w_mu
             /* Rewind. This line dont belong to last log */
             buffer[offset] = '\0';
             multiline_replace(buffer, ML_REPLACE_NONE);
-#ifdef WIN32
-            _fseeki64(stream, pos, SEEK_SET);
-#else
-            fseek(stream, pos, SEEK_SET);
-#endif
+            w_fseek(stream, pos, SEEK_SET);
             break;
         }
 
@@ -539,11 +536,7 @@ STATIC char * get_file_chunk(FILE * stream, int64_t initial_pos, int64_t final_p
     char * ret_buffer = NULL;
     int64_t read_length = final_pos - initial_pos;
 
-#ifdef WIN32
-    if (read_length <= 0 || _fseeki64(stream, initial_pos, SEEK_SET) != 0) {
-#else
-    if (read_length <= 0 || fseek(stream, initial_pos, SEEK_SET) != 0) {
-#endif
+    if (read_length <= 0 || w_fseek(stream, initial_pos, SEEK_SET) != 0) {
         return ret_buffer;
     }
 

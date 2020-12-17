@@ -640,7 +640,10 @@ void test_multiline_getlog_start_ctxt_match(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "match");
     will_return(__wrap_w_expression_match, true);
-    will_return(__wrap_fseek, 0);
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
 
     retval = multiline_getlog_start(buffer, buffer_size, 0, &ml_confg);
 
@@ -682,7 +685,9 @@ void test_multiline_getlog_start_no_ctxt_match(void ** state) {
     will_return(__wrap_fgets, "match");
     will_return(__wrap_w_expression_match, true);
 
-    will_return(__wrap_fseek, 0);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
 
     retval = multiline_getlog_start(buffer, buffer_size, 0, &ml_confg);
 
@@ -845,7 +850,9 @@ void test_multiline_getlog_start_match_multi_replace(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "next header");
     will_return(__wrap_w_expression_match, true);
-    will_return(__wrap_fseek, 0);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
 
     retval = multiline_getlog_start(buffer, buffer_size, 0, &ml_confg);
 
@@ -1477,7 +1484,9 @@ void test_multiline_getlog_start(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, "match");
     will_return(__wrap_w_expression_match, true);
-    will_return(__wrap_fseek, 0);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
 
     retval = multiline_getlog(buffer, buffer_size, 0, &ml_confg);
 
@@ -1563,13 +1572,11 @@ void test_read_multiline_regex_log_process(void ** state) {
     expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, (int64_t) 10);
 
-#ifdef WIN32
-    will_return(__wrap__fseeki64, 0);
-#else
-    will_return(__wrap_fseek, 0);
-#endif
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 5);
+    will_return(__wrap_w_fseek, 0);
 
-    will_return(__wrap_fread, "test");
+    will_return(__wrap_fread, "test0");
     will_return(__wrap_fread, 5);
 
     will_return(__wrap_can_read, 1);
@@ -1634,7 +1641,7 @@ void test_read_multiline_regex_cant_read(void ** state) {
 // Test get_file_chunk
 void test_get_file_chunk_fseek_fail(void ** state) {
 
-    char * retval = -1;
+    char * retval;
     int64_t initial_pos = 10;
     int64_t final_pos = 5;
 
@@ -1644,18 +1651,16 @@ void test_get_file_chunk_fseek_fail(void ** state) {
 
 void test_get_file_chunk_size_reduce(void ** state) {
 
-    char * retval = -1;
+    char * retval;
     int64_t initial_pos = 5;
     int64_t final_pos = 10;
 
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 4);
 
-#ifdef WIN32
-    will_return(__wrap__fseeki64, 0);
-#else
-    will_return(__wrap_fseek, 0);
-#endif
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 5);
+    will_return(__wrap_w_fseek, 0);
 
     retval = get_file_chunk(NULL, initial_pos, final_pos);
     assert_null(retval);
@@ -1663,16 +1668,13 @@ void test_get_file_chunk_size_reduce(void ** state) {
 
 void test_get_file_chunk_ok(void ** state) {
 
-    char * retval = -1;
+    char * retval;
     int64_t initial_pos = 5;
     int64_t final_pos = 10;
 
-#ifdef WIN32
-    will_return(__wrap__fseeki64, 0);
-#else
-    will_return(__wrap_fseek, 0);
-#endif
-
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 5);
+    will_return(__wrap_w_fseek, 0);
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 5);
 

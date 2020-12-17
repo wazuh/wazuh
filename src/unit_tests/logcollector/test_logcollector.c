@@ -188,7 +188,9 @@ void test_w_set_to_pos_fseek_error(void ** state) {
     long pos = 0;
     int mode = OS_BINARY;
 
-    will_return(__wrap_fseek, -1);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
@@ -217,10 +219,12 @@ void test_w_set_to_pos_OK(void ** state) {
     os_calloc(1, sizeof(fpos_t), test_position);
     test_position->__pos = 1;
 
-    will_return(__wrap_fseek, 0);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
 
-    expect_value(__wrap_fgetpos, __stream, 1);
-    will_return(__wrap_fgetpos, 1);
+    expect_value(__wrap_w_ftell, x, 1);
+    will_return(__wrap_w_ftell, 1);
 
     ssize_t retval = w_set_to_pos(lf, pos, mode);
 
@@ -1166,10 +1170,16 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     os_calloc(1, sizeof(fpos_t), test_position);
     test_position->__pos = 1;
 
-    will_return(__wrap_fseek, 0);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
 
-    expect_value(__wrap_fgetpos, __stream, 1);
-    will_return(__wrap_fgetpos, 1);
+    expect_value(__wrap_w_ftell, x, 1);
+    will_return(__wrap_w_ftell, 1);
+
+    expect_value(__wrap_w_ftell, x, 1);
+    will_return(__wrap_w_ftell, 1);
+
 
     //w_update_hash_node
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, lf->file);
@@ -1298,7 +1308,9 @@ void test_w_set_to_last_line_read_diferent_file(void ** state) {
     //w_set_pos
     long pos = 0;
 
-    will_return(__wrap_fseek, -1);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
@@ -1351,7 +1363,9 @@ void test_w_set_to_last_line_read_same_file(void ** state) {
     //w_set_pos
     long pos = 0;
 
-    will_return(__wrap_fseek, -1);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 1);
+    will_return(__wrap_w_fseek, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
@@ -1404,7 +1418,9 @@ void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
     //w_set_pos
     long pos = 0;
 
-    will_return(__wrap_fseek, -1);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, -1);
 
     expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
@@ -1460,10 +1476,12 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
     os_calloc(1, sizeof(fpos_t), test_position);
     test_position->__pos = 1;
 
-    will_return(__wrap_fseek, 0);
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
 
-    expect_value(__wrap_fgetpos, __stream, 1);
-    will_return(__wrap_fgetpos, 1);
+    expect_value(__wrap_w_ftell, x, 1);
+    will_return(__wrap_w_ftell, 1);
 
     //w_update_hash_node
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, "test");
