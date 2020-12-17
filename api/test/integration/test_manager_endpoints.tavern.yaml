@@ -64,7 +64,6 @@ stages:
               max_agents: !anystr
               openssl_support: !anystr
               path: !anystr
-              ruleset_version: !anystr
               type: !anystr
               tz_name: !anystr
               tz_offset: !anystr

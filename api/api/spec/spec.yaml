@@ -1948,8 +1948,6 @@ components:
           description: "Maximum number of agents that can be registered."
         openssl_support:
           type: string
-        ruleset_version:
-          type: string
         tz_offset:
           type: string
         tz_name:
@@ -8018,7 +8016,6 @@ paths:
                       type: manager
                       max_agents: unlimited
                       openssl_support: yes
-                      ruleset_version: 3905
                       tz_offset: +0000
                       tz_name: UTC
                   total_affected_items: 1
@@ -9396,7 +9393,6 @@ paths:
                       type: manager
                       max_agents: unlimited
                       openssl_support: yes
-                      ruleset_version: 3905
                       tz_offset: +0000
                       tz_name: UTC
                   total_affected_items: 1

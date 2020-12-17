@@ -1,6 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.2.0]
+
+### Changed
+
+- **API:**
+
+  - Removed ruleset version from `GET /cluster/{node_id}/info` and `GET /manager/info` as it was deprecated. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
+
+- **Framework:**
+
+  - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
+
 ## [v4.1.0]
 
 ### Added
