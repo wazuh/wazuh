@@ -156,7 +156,9 @@ int test_setup_packages_valid_msg(void **state)
             \"triaged\" : \"14\",\
             \"cpe\" : \"15\",\
             \"msu_name\" : \"16\",\
-            \"checksum\" : \"17\"\
+            \"checksum\" : \"17\",\
+            \"item_id\" : \"18\",\
+            \"os_patch\" : \"19\"\
         }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -236,7 +238,8 @@ int test_setup_ports_valid_msg(void **state)
             \"state\" : \"55\",\
             \"pid\" : \"56\",\
             \"process_name\" : \"57\",\
-            \"checksum\" : \"58\"\
+            \"checksum\" : \"58\",\
+            \"item_id\" : \"59\"\
         }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -270,7 +273,8 @@ int test_setup_network_iface_valid_msg(void **state)
             \"rx_errors\" : \"70\",\
             \"tx_dropped\" : \"71\",\
             \"rx_dropped\" : \"72\",\
-            \"checksum\" : \"73\"\
+            \"checksum\" : \"73\",\
+            \"item_id\" : \"74\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -295,7 +299,8 @@ int test_setup_network_protocol_valid_msg(void **state)
             \"gateway\" : \"76\",\
             \"dhcp\" : \"77\",\
             \"metric\" : \"78\",\
-            \"checksum\" : \"79\"\
+            \"checksum\" : \"79\",\
+            \"item_id\" : \"80\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -320,7 +325,8 @@ int test_setup_network_address_valid_msg(void **state)
             \"address\" : \"82\",\
             \"netmask\" : \"83\",\
             \"broadcast\" : \"84\",\
-            \"checksum\" : \"85\"\
+            \"checksum\" : \"85\",\
+            \"item_id\" : \"86\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -499,7 +505,7 @@ void test_syscollector_dbsync_packages_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync packages MODIFIED 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|";
+    const char *query = "agent 001 dbsync packages MODIFIED 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|";
     const char *result = "ok";
     int sock = 1;
 
@@ -535,7 +541,7 @@ void test_syscollector_dbsync_ports_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync ports MODIFIED 47|48|49|50|51|52|53|54|55|56|57|58|";
+    const char *query = "agent 001 dbsync ports MODIFIED 47|48|49|50|51|52|53|54|55|56|57|58|59|";
     const char *result = "ok";
     int sock = 1;
 
@@ -553,7 +559,7 @@ void test_syscollector_dbsync_network_iface_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync network_iface MODIFIED 59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|";
+    const char *query = "agent 001 dbsync network_iface MODIFIED 59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
     const char *result = "ok";
     int sock = 1;
 
@@ -571,7 +577,7 @@ void test_syscollector_dbsync_network_protocol_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync network_protocol MODIFIED 74|75|76|77|78|79|";
+    const char *query = "agent 001 dbsync network_protocol MODIFIED 74|75|76|77|78|79|80|";
     const char *result = "ok";
     int sock = 1;
 
@@ -589,7 +595,7 @@ void test_syscollector_dbsync_network_address_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync network_address MODIFIED 80|81|82|83|84|85|";
+    const char *query = "agent 001 dbsync network_address MODIFIED 80|81|82|83|84|85|86|";
     const char *result = "ok";
     int sock = 1;
 

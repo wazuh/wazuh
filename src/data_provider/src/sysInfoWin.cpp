@@ -68,7 +68,7 @@ public:
 
     std::string cmd()
     {
-        std::string ret { "unknown" };
+        std::string ret { UNKNOWN_VALUE };
         const auto spReadBuff { std::make_unique<char[]>(OS_MAXSTR) };
         // Get full Windows kernel path for the process
         if (spReadBuff && GetProcessImageFileName(m_hProcess, spReadBuff.get(), OS_MAXSTR))
@@ -340,55 +340,59 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
         const auto packages{root.enumerate()};
         for (const auto& package : packages)
         {
-            std::string value { "unknown" };
+            std::string value;
             nlohmann::json packageJson;
             Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
 
-            packageJson["name"] = value;
-            packageJson["version"] = value;
-            packageJson["vendor"] = value;
-            packageJson["install_time"] = value;
-            packageJson["location"] = value;
+            std::string name         { UNKNOWN_VALUE };
+            std::string version      { UNKNOWN_VALUE };
+            std::string vendor       { UNKNOWN_VALUE };
+            std::string install_time { UNKNOWN_VALUE };
+            std::string location     { UNKNOWN_VALUE };
+            std::string architecture { UNKNOWN_VALUE };
 
             if (packageReg.string("DisplayName", value))
             {
-                packageJson["name"] = value;
+                name = value;
             }
             if (packageReg.string("DisplayVersion", value))
             {
-                packageJson["version"] = value;
+                version = value;
             }
             if (packageReg.string("Publisher", value))
             {
-                packageJson["vendor"] = value;
+                vendor = value;
             }
             if (packageReg.string("InstallDate", value))
             {
-                packageJson["install_time"] = value;
+                install_time = value;
             }
             if (packageReg.string("InstallLocation", value))
             {
-                packageJson["location"] = value;
+                location = value;
             }
-            if (packageJson.at("name") != "unknown")
+            if (UNKNOWN_VALUE != name)
             {
-                packageJson["format"] = "win";
-
                 if (access & KEY_WOW64_32KEY)
                 {
-                    packageJson["architecture"] = "i686";
+                    architecture = "i686";
                 }
                 else if (access & KEY_WOW64_64KEY)
                 {
-                    packageJson["architecture"] = "x86_64";
+                    architecture = "x86_64";
                 }
-                else
-                {
-                    packageJson["architecture"] = "unknown";
-                }
+
+                packageJson["name"]         = name;
+                packageJson["version"]      = version;
+                packageJson["vendor"]       = vendor;
+                packageJson["install_time"] = install_time;
+                packageJson["location"]     = location;
+                packageJson["architecture"] = architecture;
+                packageJson["format"]       = "win";
+                packageJson["os_patch"]     = UNKNOWN_VALUE;
+
                 data.push_back(packageJson);
             }
-            packageJson["format"] = "win";
         }
     }
     catch(...)
@@ -499,7 +503,7 @@ std::string SysInfo::getSerialNumber() const
         }
         else
         {
-            ret = "unknown";
+            ret = UNKNOWN_VALUE;
         }
     }
     return ret;
