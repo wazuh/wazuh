@@ -20,7 +20,6 @@
 #include <sys/proc_info.h>
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
-#include <fstream>
 #include "ports/portBSDWrapper.h"
 #include "ports/portImpl.h"
 #include "packages/packageFamilyDataAFactory.h"
@@ -167,68 +166,6 @@ std::string SysInfo::getSerialNumber() const
 {
     const auto rawData{Utils::exec("system_profiler SPHardwareDataType | grep Serial")};
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
-}
-
-static void parseAppInfo(const std::string& path, nlohmann::json& data)
-{
-    std::fstream file{path, std::ios_base::in};
-    static const auto getValueFnc
-    {
-        [](const std::string& val)
-        {
-            const auto start{val.find(">")};
-            const auto end{val.rfind("<")};
-            return val.substr(start+1, end - start -1);
-        }
-    };
-    if (file.is_open())
-    {
-        std::string line;
-        nlohmann::json package;
-        std::string name         { UNKNOWN_VALUE };
-        std::string version      { UNKNOWN_VALUE };
-        std::string groups       { UNKNOWN_VALUE };
-        std::string description  { UNKNOWN_VALUE };
-
-        while(std::getline(file, line))
-        {
-            line = Utils::trim(line," \t");
-
-            if (line == "<key>CFBundleName</key>" &&
-                std::getline(file, line))
-            {
-                name = getValueFnc(line);
-            }
-            else if (line == "<key>CFBundleShortVersionString</key>" &&
-                std::getline(file, line))
-            {
-                version = getValueFnc(line);
-            }
-            else if (line == "<key>LSApplicationCategoryType</key>" &&
-                std::getline(file, line))
-            {
-                groups = getValueFnc(line);
-            }
-            else if (line == "<key>CFBundleIdentifier</key>" &&
-                std::getline(file, line))
-            {
-                description = getValueFnc(line);
-            }
-        }
-
-        package["name"]         = name;
-        package["version"]      = version;
-        package["groups"]       = groups;
-        package["description"]  = description;
-        package["architecture"] = UNKNOWN_VALUE;
-        package["format"]       = "pkg";
-        package["os_patch"]     = UNKNOWN_VALUE;
-
-        if(package.at("name") != UNKNOWN_VALUE)
-        {
-            data.push_back(package);
-        }
-    }
 }
 
 nlohmann::json SysInfo::getPackages() const
