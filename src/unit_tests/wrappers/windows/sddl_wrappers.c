@@ -18,3 +18,8 @@ WINBOOL wrap_ConvertSidToStringSid(__UNUSED_PARAM(PSID Sid),
     *StringSid = mock_type(LPSTR);
     return mock();
 }
+
+void expect_ConvertSidToStringSid_call(LPSTR StringSid, int ret_value) {
+    will_return(wrap_ConvertSidToStringSid, StringSid);
+    will_return(wrap_ConvertSidToStringSid, ret_value);
+}

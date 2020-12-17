@@ -1,5 +1,5 @@
 # Generate syscheck library
-file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o)
+file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/*.o ${SRC_FOLDER}/syscheckd/*/*.o)
 list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/main.o)
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
@@ -55,9 +55,23 @@ set_target_properties(
 
 target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
+# Add fim_tools library to compilation
+include_directories((${SRC_FOLDER}/syscheckd))
+include_directories((${SRC_FOLDER}/unit_tests))
+include_directories((${SRC_FOLDER}/unit_tests/syscheckd))
+include_directories((${SRC_FOLDER}/config))
+
+add_library(fim_shared STATIC expect_run_check.c
+                              expect_fim_diff_changes.c
+                              db/expect_fim_db.c
+                              db/expect_fim_db_files.c
+                              db/expect_fim_db_registries.c)
+
+set_target_properties(fim_shared PROPERTIES LINKER_LANGUAGE C )
+
 # Generate syscheckd-event library
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/*-event.o)
+  file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/*-event.o ${SRC_FOLDER}/syscheckd/*/*-event.o)
 
   add_library(SYSCHECK_EVENT_O STATIC ${syscheck_event_files})
 
@@ -76,13 +90,17 @@ if(${TARGET} STREQUAL "winagent")
     )
 
   target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+
+  add_subdirectory(registry)
 endif()
+
+add_subdirectory(db)
 
 # Generate Syscheckd tests
 list(APPEND syscheckd_tests_names "test_syscom")
 list(APPEND syscheckd_tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig \
                                    -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg \
-                                   -Wl,--wrap,_mdebug1")
+                                   -Wl,--wrap,_mdebug1 -Wl,--wrap,getpid")
 
 set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                           -Wl,--wrap,_mdebug2 -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
@@ -90,21 +108,25 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,fim_db_insert -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
                           -Wl,--wrap,seechanges_addfile -Wl,--wrap,fim_db_delete_not_scanned \
-                          -Wl,--wrap,fim_db_set_all_unscanned -Wl,--wrap,fim_db_set_scanned -Wl,--wrap,get_user \
+                          -Wl,--wrap,fim_db_set_all_unscanned -Wl,--wrap,fim_db_set_scanned \
                           -Wl,--wrap,get_group -Wl,--wrap,fim_db_remove_path -Wl,--wrap,isChroot \
                           -Wl,--wrap,fim_db_get_not_scanned -Wl,--wrap,fim_db_set_all_unscanned \
-                          -Wl,--wrap,fim_db_get_count_entry_path -Wl,--wrap,fim_db_get_path_range \
+                          -Wl,--wrap,fim_db_get_count_file_entry -Wl,--wrap,fim_db_get_path_range \
                           -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
-                          -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat")
+                          -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
+                          -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
+                          -Wl,--wrap,fim_db_get_count_entries")
 
 list(APPEND syscheckd_tests_names "test_create_db")
 if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions \
+  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
                                      -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
                                      -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
+                                     -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
                                      -Wl,--wrap,get_UTC_modification_time")
 else()
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches")
+  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
+                                     -Wl,--wrap,get_user")
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
@@ -125,23 +147,37 @@ if(NOT ${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,get_group -Wl,--wrap,realpath -Wl,--wrap,readlink -Wl,--wrap,fread \
                                      -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid -Wl,--wrap,FOREVER \
                                      -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+else()
+  list(APPEND syscheckd_event_tests_names "test_win_whodata")
+  list(APPEND syscheckd_event_tests_flags "-Wl,--wrap=_mdebug2,--wrap=_merror,--wrap=_mdebug1,--wrap=_mwarn \
+                                           -Wl,--wrap=wstr_replace -Wl,--wrap=SendMSG,--wrap,OSHash_Add_ex \
+                                           -Wl,--wrap=free_whodata_event,--wrap=IsFile -Wl,--wrap=remove \
+                                           -Wl,--wrap=wm_exec,--wrap=fopen,--wrap=fclose,--wrap=atexit \
+                                           -Wl,--wrap=OSHash_Delete_ex,--wrap=_mterror,--wrap=check_path_type \
+                                           -Wl,--wrap=_minfo -Wl,--wrap=OSHash_Create -Wl,--wrap=pthread_rwlock_unlock\
+                                           -Wl,--wrap=OSHash_SetFreeDataPointer,--wrap=fim_whodata_event \
+                                           -Wl,--wrap=fim_checker,--wrap=OSHash_Get,--wrap=os_random \
+                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER \
+                                           -Wl,--wrap=fflush,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=fprintf \
+                                           -Wl,--wrap=fgets -Wl,--wrap=wstr_split -Wl,--wrap=pthread_rwlock_wrlock")
 endif()
 
-set(SEECHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,abspath \
+set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat,--wrap=_mdebug1 \
                            -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fwrite \
-                           -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir -Wl,--wrap,fflush \
+                           -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,fflush \
                            -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
                            -Wl,--wrap,rename -Wl,--wrap,system -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \
                            -Wl,--wrap=fgets -Wl,--wrap,atexit -Wl,--wrap,getpid,--wrap=_mdebug2,--wrap=rmdir_ex,--wrap=rename_ex \
-                           -Wl,--wrap,_minfo,--wrap=DirSize -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                           -Wl,--wrap,_minfo,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid \
+                           -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
-list(APPEND syscheckd_tests_names "test_seechanges")
+list(APPEND syscheckd_tests_names "test_fim_diff_changes")
 if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=isChroot,--wrap=unlink -Wl,--wrap=FileSize")
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=isChroot,--wrap=unlink -Wl,--wrap=FileSize")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=_unlink,--wrap=FileSizeWin")
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin")
 else()
-  list(APPEND syscheckd_tests_flags "${SEECHANGES_BASE_FLAGS} -Wl,--wrap=unlink,--wrap=FileSize")
+  list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink,--wrap=FileSize")
 endif()
 
 set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watch -Wl,--wrap,OSHash_Get_ex \
@@ -174,7 +210,7 @@ list(APPEND syscheckd_tests_names "test_syscheck_config")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap=isChroot")
 else()
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS}")
+  list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
 endif()
 
 set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_merror_exit \
@@ -186,7 +222,8 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap=os_wait \
                                     -Wl,--wrap=rootcheck_init \
                                     -Wl,--wrap=start_daemon \
-                                    -Wl,--wrap=File_DateofChange")
+                                    -Wl,--wrap=File_DateofChange \
+                                    -Wl,--wrap,getpid")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
@@ -195,16 +232,20 @@ endif()
 set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                          -Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,queue_push_ex \
                          -Wl,--wrap,fim_db_get_row_path -Wl,--wrap,fim_db_get_data_checksum \
-                         -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_send_sync_msg -Wl,--wrap,fim_db_get_count_range \
-                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_entry_json -Wl,--wrap,fim_db_data_checksum_range \
+                         -Wl,--wrap,dbsync_check_msg -Wl,--wrap,fim_db_get_count_range \
+                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_checksum_range \
                          -Wl,--wrap,dbsync_state_msg -Wl,--wrap,fim_db_sync_path_range \
-                         -Wl,--wrap,fim_db_get_path_range")
+                         -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_get_first_path \
+                         -Wl,--wrap,fim_db_get_last_path -Wl,--wrap,fim_db_get_entry_from_sync_msg \
+                         -Wl,--wrap,fim_db_read_line_from_file -Wl,--wrap,fim_db_clean_file \
+                         -Wl,--wrap,free_entry")
 
 list(APPEND syscheckd_tests_names "test_fim_sync")
 if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock")
+  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock -Wl,--wrap,getpid")
 else()
-  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap,time")
+  list(APPEND syscheckd_tests_flags "${FIM_SYNC_BASE_FLAGS} -Wl,--wrap,time -Wl,--wrap=pthread_mutex_lock \
+                                     -Wl,--wrap=pthread_mutex_unlock")
 endif()
 
 set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
@@ -226,49 +267,6 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                     -Wl,--wrap=audit_restore")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
-endif()
-
-set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_merror \
-                       -Wl,--wrap=sqlite3_prepare_v2,--wrap=sqlite3_step,--wrap=sqlite3_finalize \
-                       -Wl,--wrap=sqlite3_close_v2 -Wl,--wrap=chmod,--wrap=sqlite3_free,--wrap=sqlite3_reset \
-                       -Wl,--wrap=sqlite3_clear_bindings -Wl,--wrap=sqlite3_errmsg,--wrap=sqlite3_bind_int \
-                       -Wl,--wrap=sqlite3_bind_text,--wrap=sqlite3_column_int -Wl,--wrap=sqlite3_column_text \
-                       -Wl,--wrap=fim_send_sync_msg,--wrap=dbsync_state_msg -Wl,--wrap=fim_entry_json \
-                       -Wl,--wrap=sqlite3_last_insert_rowid,--wrap=EVP_DigestUpdate \
-                       -Wl,--wrap=fim_configuration_directory,--wrap=fim_json_event,--wrap=send_syscheck_msg \
-                       -Wl,--wrap=delete_target_file,--wrap=_minfo,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap=fseek \
-                       -Wl,--wrap=fclose,--wrap=fopen,--wrap=getpid,--wrap=fflush -Wl,--wrap=wstr_escape_json \
-                       -Wl,--wrap=sqlite3_bind_int64,--wrap=sqlite3_column_int64 -Wl,--wrap=fread,--wrap=fwrite \
-                       -Wl,--wrap=fprintf,--wrap=fgets,--wrap=stat,--wrap=wstr_split,--wrap=os_random \
-                       -Wl,--wrap=DirSize,--wrap=IsDir,--wrap=wfopen,--wrap=_mwarn -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
-
-list(APPEND syscheckd_tests_names "test_fim_db")
-if(${TARGET} STREQUAL "agent")
-  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time")
-elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS}")
-else()
-list(APPEND syscheckd_tests_flags "${FIM_DB_BASE_FLAGS} -Wl,--wrap=usleep,--wrap=time")
-endif()
-
-if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_names "test_win_registry")
-  list(APPEND syscheckd_tests_flags "-Wl,--wrap=_mdebug2,--wrap=fim_registry_event,--wrap=EVP_DigestUpdate \
-                                     -Wl,--wrap=_mdebug1 -Wl,--wrap=_mwarn")
-
-  list(APPEND syscheckd_event_tests_names "test_win_whodata")
-  list(APPEND syscheckd_event_tests_flags "-Wl,--wrap=_mdebug2,--wrap=_merror,--wrap=_mdebug1,--wrap=_mwarn \
-                                           -Wl,--wrap=wstr_replace -Wl,--wrap=SendMSG,--wrap,OSHash_Add_ex \
-                                           -Wl,--wrap=free_whodata_event,--wrap=IsFile -Wl,--wrap=remove \
-                                           -Wl,--wrap=wm_exec,--wrap=fopen,--wrap=fclose,--wrap=atexit \
-                                           -Wl,--wrap=OSHash_Delete_ex,--wrap=_mterror,--wrap=check_path_type \
-                                           -Wl,--wrap=_minfo -Wl,--wrap=OSHash_Create -Wl,--wrap=pthread_rwlock_unlock\
-                                           -Wl,--wrap=OSHash_SetFreeDataPointer,--wrap=fim_whodata_event \
-                                           -Wl,--wrap=fim_checker,--wrap=OSHash_Get,--wrap=os_random \
-                                           -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER \
-                                           -Wl,--wrap=fflush,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=fprintf \
-                                           -Wl,--wrap=fgets -Wl,--wrap=wstr_split -Wl,--wrap=pthread_rwlock_wrlock \
-                                           -Wl,--wrap=fgetpos -Wl,--wrap=fgetc")
 endif()
 
 # Compiling tests

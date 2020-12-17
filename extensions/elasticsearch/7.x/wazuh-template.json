@@ -439,6 +439,10 @@
       "syscheck.uid_before",
       "syscheck.uname_after",
       "syscheck.uname_before",
+      "syscheck.arch",
+      "syscheck.value_name",
+      "syscheck.value_type",
+      "syscheck.changed_attributes",
       "title",
       "type"
     ]

@@ -16,12 +16,26 @@
 DWORD wrap_GetSecurityInfo(__UNUSED_PARAM(HANDLE handle),
                            __UNUSED_PARAM(SE_OBJECT_TYPE ObjectType),
                            __UNUSED_PARAM(SECURITY_INFORMATION SecurityInfo),
-                           __UNUSED_PARAM(PSID *ppsidOwner),
-                           __UNUSED_PARAM(PSID *ppsidGroup),
+                           PSID *ppsidOwner,
+                           PSID *ppsidGroup,
                            __UNUSED_PARAM(PACL *ppDacl),
                            __UNUSED_PARAM(PACL *ppSacl),
                            __UNUSED_PARAM(PSECURITY_DESCRIPTOR *ppSecurityDescriptor)) {
+    if (ppsidOwner) {
+        *ppsidOwner = mock_type(PSID);
+    }
+
+    if (ppsidGroup) {
+        *ppsidGroup = mock_type(PSID);
+    }
+
     return mock();
+}
+
+void expect_GetSecurityInfo_call(PSID ppsidOwner, PSID pSidGroup, DWORD ret_value) {
+    if (ppsidOwner) will_return(wrap_GetSecurityInfo, ppsidOwner);
+    if (pSidGroup) will_return(wrap_GetSecurityInfo, pSidGroup);
+    will_return(wrap_GetSecurityInfo, ret_value);
 }
 
 DWORD wrap_GetNamedSecurityInfo(LPCSTR pObjectName,

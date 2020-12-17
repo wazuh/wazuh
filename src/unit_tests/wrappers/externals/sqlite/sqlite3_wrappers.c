@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../../common.h"
 
 
 int __wrap_sqlite3_bind_int(__attribute__((unused)) sqlite3_stmt *stmt,
@@ -23,6 +24,12 @@ int __wrap_sqlite3_bind_int(__attribute__((unused)) sqlite3_stmt *stmt,
     return mock();
 }
 
+void expect_sqlite3_bind_int_call(int idx, int val, int ret) {
+    expect_value(__wrap_sqlite3_bind_int, index, idx);
+    expect_value(__wrap_sqlite3_bind_int, value, val);
+    will_return(__wrap_sqlite3_bind_int, ret);
+}
+
 int __wrap_sqlite3_bind_int64(__attribute__((unused)) sqlite3_stmt *stmt,
                               int index,
                               sqlite3_int64 value) {
@@ -30,6 +37,12 @@ int __wrap_sqlite3_bind_int64(__attribute__((unused)) sqlite3_stmt *stmt,
     check_expected(value);
 
     return mock();
+}
+
+void expect_sqlite3_bind_int64_call(int idx, double val, int ret) {
+    expect_value(__wrap_sqlite3_bind_int64, index, idx);
+    expect_value(__wrap_sqlite3_bind_int64, value, val);
+    will_return(__wrap_sqlite3_bind_int64, ret);
 }
 
 int __wrap_sqlite3_bind_text(__attribute__((unused)) sqlite3_stmt* pStmt,
@@ -41,6 +54,16 @@ int __wrap_sqlite3_bind_text(__attribute__((unused)) sqlite3_stmt* pStmt,
     if (buffer) check_expected(buffer);
 
     return mock();
+}
+
+void expect_sqlite3_bind_text_call(int position, const char *buf, int ret) {
+    expect_value(__wrap_sqlite3_bind_text, pos, position);
+
+    if (buf) {
+        expect_string(__wrap_sqlite3_bind_text, buffer, buf);
+    }
+
+    will_return(__wrap_sqlite3_bind_text, ret);
 }
 
 int __wrap_sqlite3_bind_parameter_index(__attribute__((unused)) sqlite3_stmt * stmt,
@@ -135,11 +158,26 @@ int __wrap_sqlite3_reset(__attribute__((unused)) sqlite3_stmt *pStmt) {
     return mock();
 }
 
+extern int __real_sqlite3_step(__attribute__((unused)) sqlite3_stmt * stmt);
 int __wrap_sqlite3_step(__attribute__((unused)) sqlite3_stmt * stmt){
-    return mock();
+    if (mock())
+        return __real_sqlite3_step(stmt);
+    else
+        return mock();
 }
 
-int __wrap_sqlite3_column_count(__attribute__((unused)) sqlite3_stmt *pStmt){
+void expect_sqlite3_step_call(int ret) {
+    will_return(__wrap_sqlite3_step, 0);    // This will_return prevents from calling the real function
+    will_return(__wrap_sqlite3_step, ret);
+}
+
+void expect_sqlite3_step_count(int ret, int count) {
+    for (int i = count; i; i--) {
+        expect_sqlite3_step_call(ret);
+    }
+}
+
+int __wrap_sqlite3_column_count(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
 

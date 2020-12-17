@@ -18,4 +18,11 @@ char * __wrap_dbsync_check_msg(const char * component, dbsync_msg msg, long id, 
 
 char * __wrap_dbsync_state_msg(const char * component, cJSON * data);
 
+void expect_dbsync_check_msg_call(const char *component,
+                                         dbsync_msg msg,
+                                         int id,
+                                         const char *start,
+                                         const char *top,
+                                         const char *tail,
+                                         char *ret);
 #endif

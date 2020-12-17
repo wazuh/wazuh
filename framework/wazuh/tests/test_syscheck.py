@@ -20,6 +20,7 @@ with patch('wazuh.core.common.ossec_uid'):
         del sys.modules['wazuh.rbac.orm']
 
         from wazuh.tests.util import RBAC_bypasser
+
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.syscheck import run, clear, last_scan, files
         from wazuh.syscheck import AffectedItemsWazuhResult
@@ -191,7 +192,7 @@ def test_syscheck_clear_exception(execute_mock, wdb_init_mock, agent_list, expec
 @patch("wazuh.core.database.isfile", return_value=True)
 @patch("wazuh.syscheck.WazuhDBConnection.execute", return_value=[{'end': '', 'start': ''}])
 @patch('socket.socket.connect')
-def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock,  db_mock, agent_id, wazuh_version):
+def test_syscheck_last_scan(socket_mock, wdb_conn_mock, is_file_mock, db_mock, agent_id, wazuh_version):
     """Test function `last_scan` from syscheck module.
 
     Parameters
@@ -236,10 +237,15 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
 
 @pytest.mark.parametrize('agent_id, select, filters, distinct', [
     (['001'], None, None, None),
-    (['001'], ['file', 'size', 'mtime'], None, False),
-    (['001'], None, {'inode': '15470536'}, True),
-    (['001'], ['file', 'size'], {'hash': '15470536'}, False),
-    (['001'], None, {'date': '2019-05-21 12:10:20'}, True)
+    (['002'], ['file', 'size', 'mtime'], None, False),
+    (['003'], None, {'inode': '15470536'}, True),
+    (['004'], ['file', 'size'], {'hash': '15470536'}, False),
+    (['005'], None, {'date': '2019-05-21 12:10:20'}, True),
+    (['006'], None, {'type': 'registry_key'}, True),
+    (['007'], ['file', 'arch', 'value.name', 'value.type'], None, True),
+    (['008'], ['file', 'value.name'], None, True),
+    (['009'], ['value.name'], None, True),
+    (['000'], ['attributes'], None, True)
 ])
 @patch('socket.socket.connect')
 @patch('wazuh.core.common.wdb_path', new=test_data_path)
@@ -257,15 +263,25 @@ def test_syscheck_files(socket_mock, agent_id, select, filters, distinct):
     distinct : bool
         True if all response items must be unique
     """
-    select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid', 'uid', 'type', 'changes', 'attributes']
+    select_list = ['date', 'mtime', 'file', 'size', 'perm', 'uname', 'gname', 'md5', 'sha1', 'sha256', 'inode', 'gid',
+                   'uid', 'type', 'changes', 'attributes', 'arch', 'value.name', 'value.type']
+    nested_fields = ['value']
+
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_syscheck_test.sql')
+        select = select if select else select_list
         result = files(agent_id, select=select, filters=filters)
         assert isinstance(result, AffectedItemsWazuhResult)
         assert isinstance(result.affected_items, list)
-        select = select if select else select_list
+        # Use flag for min_select_field, if file not in select, len(item.keys()) = len(select) + 1
+        flag_select_min = 1 if 'file' not in select else 0
         for item in result.affected_items:
-            assert len(select) == len(item.keys())
+            # Use flag for nested_fields in order to compare select and item.keys() lengths
+            flag_nested = 0
+            for nested_field in nested_fields:
+                if nested_field in item.keys():
+                    flag_nested += sum(1 for i in select if i.startswith(nested_field)) - 1
+            assert len(select) + flag_select_min == len(item.keys()) + flag_nested
             assert (param in select for param in item.keys())
         assert not any(result.affected_items.count(item) > 1 for item in result.affected_items) if distinct else True
         if filters:

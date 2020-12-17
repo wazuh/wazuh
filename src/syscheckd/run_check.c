@@ -22,7 +22,7 @@
 #include "syscheck.h"
 #include "os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "rootcheck/rootcheck.h"
-#include "fim_db.h"
+#include "db/fim_db_files.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -74,10 +74,9 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
 }
 
 // Send a data synchronization control message
-
-void fim_send_sync_msg(const char * msg) {
+void fim_send_sync_msg(const char *location, const char * msg) {
     mdebug2(FIM_DBSYNC_SEND, msg);
-    fim_send_msg(DBSYNC_MQ, SYSCHECK, msg);
+    fim_send_msg(DBSYNC_MQ, location, msg);
 
     if (syscheck.sync_max_eps == 0) {
         return;
@@ -684,7 +683,8 @@ STATIC void fim_link_delete_range(int pos) {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_get_path_range(syscheck.database, first_entry, last_entry, &file, syscheck.database_store) != FIMDB_OK) {
+    if (fim_db_get_path_range(syscheck.database, FIM_TYPE_FILE, first_entry, last_entry, &file,
+                              syscheck.database_store) != FIMDB_OK) {
         merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
     }
 

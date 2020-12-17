@@ -4,14 +4,20 @@
 
 from datetime import datetime
 
-from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_fields_to_nest, plain_dict_to_nested_dict
 
 
 class WazuhDBQuerySyscheck(WazuhDBQuery):
+    nested_fields = ['value']
 
-    def __init__(self, agent_id, default_sort_field='mtime', *args, **kwargs):
-        super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field=default_sort_field, count=True,
-                         get_data=True, date_fields={'mtime', 'date'}, *args, **kwargs)
+    def __init__(self, agent_id, nested=False, default_sort_field='mtime', min_select_fields=None, *args,
+                 **kwargs):
+        if min_select_fields is None:
+            min_select_fields = set()
+        super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field=default_sort_field,
+                         min_select_fields=min_select_fields, count=True, get_data=True, date_fields={'mtime', 'date'},
+                         *args, **kwargs)
+        self.nested = nested
 
     def _filter_date(self, date_filter, filter_db_name):
         # dates are stored as timestamps
@@ -32,7 +38,11 @@ class WazuhDBQuerySyscheck(WazuhDBQuery):
             else:
                 return value
 
-        self._data = [{key: format_fields(key, value) for key, value in item.items() if key in self.select}
-                      for item in self._data]
+        self._data = [{key: format_fields(key, value) for key, value in item.items()} for item in self._data]
+
+        if self.nested:
+            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), self.nested_fields, '.')
+            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, self.nested_fields, '.') for d in
+                          self._data]
 
         return super()._format_data_into_dictionary()

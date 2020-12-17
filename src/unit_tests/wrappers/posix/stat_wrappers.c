@@ -60,6 +60,16 @@ int __wrap_mkdir(const char *__path, __mode_t __mode) {
 }
 #endif
 
+#ifndef WIN32
+void expect_mkdir(const char *__path, __mode_t __mode, int ret) {
+    expect_value(__wrap_mkdir, __mode, __mode);
+#else
+void expect_mkdir(const char *__path, int ret) {
+#endif
+    expect_string(__wrap_mkdir, __path, __path);
+    will_return(__wrap_mkdir, ret);
+}
+
 extern int __real_stat(const char * __file, struct stat * __buf);
 int __wrap_stat(const char * __file, struct stat * __buf) {
     if (test_mode) {

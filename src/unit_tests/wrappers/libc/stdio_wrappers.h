@@ -16,16 +16,20 @@
 extern fpos_t * test_position;
 
 int __wrap_fclose(FILE *_File);
+void expect_fclose(FILE *_File, int ret);
 
 int __wrap_fflush(FILE *__stream);
 
 char * __wrap_fgets (char * __s, int __n, FILE * __stream);
 
 FILE* __wrap_fopen(const char* path, const char* mode);
+void expect_fopen(const char* path, const char* mode, FILE *fp);
 
 int __wrap_fprintf (FILE *__stream, const char *__format, ...);
+void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret);
 
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream);
+void expect_fread(char *file, int ret);
 
 int __wrap_fseek(FILE *stream, long offset, int whence);
 

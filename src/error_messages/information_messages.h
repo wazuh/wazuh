@@ -14,7 +14,7 @@
 /* File integrity monitoring info messages*/
 #define FIM_DAEMON_STARTED                  "(6000): Starting daemon..."
 #define FIM_DISABLED                        "(6001): File integrity monitoring disabled."
-#define FIM_MONITORING_REGISTRY             "(6002): Monitoring registry entry: '%s%s'."
+#define FIM_MONITORING_REGISTRY             "(6002): Monitoring registry entry: '%s%s', with options '%s'"
 #define FIM_MONITORING_DIRECTORY            "(6003): Monitoring path: '%s', with options '%s'."
 #define FIM_MONITORING_LDIRECTORY           "(6003): Monitoring path: '%s' (%s), with options '%s'."
 #define FIM_NO_DIFF                         "(6004): No diff for file: '%s'"
@@ -57,6 +57,7 @@
 
 #define FIM_FILE_SIZE_LIMIT_DISABLED        "(6042): File size limit disabled."
 #define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."
+#define FIM_NO_DIFF_REGISTRY                "(6044): Option nodiff enabled for %s '%s'."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"

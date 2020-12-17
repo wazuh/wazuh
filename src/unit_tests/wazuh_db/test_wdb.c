@@ -167,7 +167,7 @@ void test_wdb_exec_row_stmt_one_int(void **state) {
     const char* json_str = "COLUMN";
     double json_value = 10;
 
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_ROW);
     will_return(__wrap_sqlite3_column_count, 1);
     expect_value(__wrap_sqlite3_column_type, i, 0);
     will_return(__wrap_sqlite3_column_type, SQLITE_INTEGER);
@@ -195,7 +195,7 @@ void test_wdb_exec_row_stmt_multiple_int(void **state) {
         snprintf(json_strs[column], OS_SIZE_256, "COLUMN%d",column);
     }
 
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_ROW);
     will_return(__wrap_sqlite3_column_count, columns);
     for (int column=0; column < columns; column++){
         expect_value(__wrap_sqlite3_column_type, i, column);
@@ -227,7 +227,7 @@ void test_wdb_exec_row_stmt_one_text(void **state) {
     const char* json_str = "COLUMN";
     const char*  json_value = "VALUE";
 
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_ROW);
     will_return(__wrap_sqlite3_column_count, 1);
     expect_value(__wrap_sqlite3_column_type, i, 0);
     will_return(__wrap_sqlite3_column_type, SQLITE_TEXT);
@@ -249,7 +249,7 @@ void test_wdb_exec_row_stmt_one_text(void **state) {
 void test_wdb_exec_row_stmt_done(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_sqlite3_step_call(SQLITE_DONE);
 
     int status = 0;
     cJSON* result = wdb_exec_row_stmt(*data->wdb->stmt, &status);assert_null(result);
@@ -260,7 +260,7 @@ void test_wdb_exec_row_stmt_done(void **state) {
 void test_wdb_exec_row_stmt_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_sqlite3_step_call(SQLITE_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     int status = 0;
@@ -277,8 +277,8 @@ void test_wdb_exec_stmt_sized_success(void **state) {
     double json_value = 10;
 
     //Calling wdb_exec_row_stmt
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_sqlite3_step_call(SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_DONE);
     will_return_count(__wrap_sqlite3_column_count, 1, -1);
     expect_any(__wrap_sqlite3_column_type, i);
     will_return_count(__wrap_sqlite3_column_type, SQLITE_INTEGER,-1);
@@ -306,7 +306,7 @@ void test_wdb_exec_stmt_sized_success_limited(void **state) {
     const int max_size = 282;
 
     //Calling wdb_exec_row_stmt
-    will_return_count(__wrap_sqlite3_step, SQLITE_ROW, rows);
+    expect_sqlite3_step_count(SQLITE_ROW, rows);
     will_return_count(__wrap_sqlite3_column_count, 1, -1);
     expect_any_count(__wrap_sqlite3_column_type, i, -1);
     will_return_count(__wrap_sqlite3_column_type, SQLITE_INTEGER, -1);
@@ -339,7 +339,7 @@ void test_wdb_exec_stmt_sized_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     //Calling wdb_exec_row_stmt
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_sqlite3_step_call(SQLITE_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     int status = 0;
@@ -359,8 +359,8 @@ void test_wdb_exec_stmt_success(void **state) {
     double json_value = 10;
 
     //Calling wdb_exec_row_stmt
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_sqlite3_step_call(SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_DONE);
     will_return_count(__wrap_sqlite3_column_count, 1, -1);
     expect_any(__wrap_sqlite3_column_type, i);
     will_return_count(__wrap_sqlite3_column_type, SQLITE_INTEGER,-1);
@@ -390,7 +390,7 @@ void test_wdb_exec_stmt_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     //Calling wdb_exec_row_stmt
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_sqlite3_step_call(SQLITE_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "SQL statement execution failed");
 
     cJSON* result = wdb_exec_stmt(*data->wdb->stmt);

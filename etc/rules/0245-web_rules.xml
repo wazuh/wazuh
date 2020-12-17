@@ -34,13 +34,12 @@
     <description>Ignored extensions on 400 error codes.</description>
   </rule>
 
-  <rule id="31103" level="6">
+  <rule id="31103" level="7">
     <if_sid>31100,31108</if_sid>
     <url>=select%20|select+|insert%20|%20from%20|%20where%20|union%20|</url>
     <url>union+|where+|null,null|xp_cmdshell</url>
     <description>SQL injection attempt.</description>
     <mitre>
-      <id>T1055</id>
       <id>T1190</id>
     </mitre>
     <group>attack,sql_injection,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -101,7 +100,6 @@
     <regex>%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)</regex>
     <description>MSSQL Injection attempt (/ur.php, urchin.js)</description>
     <mitre>
-      <id>T1055</id>
       <id>T1190</id>
     </mitre>
     <group>attack,pci_dss_6.5,pci_dss_11.4,pci_dss_6.5.1,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>

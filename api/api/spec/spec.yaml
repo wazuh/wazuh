@@ -31,8 +31,8 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.1.0'
-  x-revision: '40101'
+  version: '4.2.0'
+  x-revision: '40200'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -2822,12 +2822,6 @@ components:
           type: string
           format: names_or_empty
           description: "File permissions"
-        type:
-          type: string
-          description: "File type. Registry type only available in Windows agents"
-          enum:
-          - file
-          - registry
         gname:
           type: string
           format: names_or_empty
@@ -4669,12 +4663,13 @@ components:
     filetype:
       in: query
       name: type
-      description: "Filter by file type"
+      description: "Filter by file type. Registry_key and registry_value types are only available in Windows agents"
       schema:
         type: string
         enum:
         - file
-        - registry
+        - registry_key
+        - registry_value
     summary:
       in: query
       name: summary
@@ -5063,6 +5058,15 @@ components:
       schema:
         type: string
         format: alphanumeric
+    syscheck_arch:
+      in: query
+      name: arch
+      description: "Filter by architecture"
+      schema:
+        type: string
+        enum:
+        - '[x32]'
+        - '[x64]'
     sgroup:
       in: query
       name: sgroup
@@ -5177,6 +5181,20 @@ components:
           - 'policy:id'
           - 'role:id'
           - 'user:id'
+    value.name:
+      in: query
+      name: value.name
+      description: "Filter by value name"
+      schema:
+        type: string
+        format: alphanumeric
+    value.type:
+      in: query
+      name: value.type
+      description: "Filter by value type"
+      schema:
+        type: string
+        format: alphanumeric
 
 tags:
   - name: API Info
@@ -11406,6 +11424,9 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/full_path_filter'
+        - $ref: '#/components/parameters/syscheck_arch'
+        - $ref: '#/components/parameters/value.name'
+        - $ref: '#/components/parameters/value.type'
         - $ref: '#/components/parameters/filetype'
         - $ref: '#/components/parameters/summary'
         - $ref: '#/components/parameters/md5'
