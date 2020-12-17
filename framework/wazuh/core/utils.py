@@ -629,7 +629,7 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def _check_remote_commands(data):
+def check_remote_commands(data):
     """Check if remote commands are allowed.
     If not, it will check if the found command is in the list of exceptions.
 
@@ -661,9 +661,10 @@ def _check_remote_commands(data):
         check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
 
 
-def load_wazuh_xml(xml_path):
-    with open(xml_path) as f:
-        data = f.read()
+def load_wazuh_xml(xml_path, data=None):
+    if not data:
+        with open(xml_path) as f:
+            data = f.read()
 
     # -- characters are not allowed in XML comments
     xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
@@ -672,7 +673,7 @@ def load_wazuh_xml(xml_path):
         data = data.replace(comment.group(2), good_comment)
 
     # Check if remote commands are allowed
-    _check_remote_commands(data)
+    check_remote_commands(data)
 
     # Replace &lt; and &gt; currently present in the config
     data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')

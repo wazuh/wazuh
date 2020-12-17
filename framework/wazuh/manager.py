@@ -15,7 +15,7 @@ from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, validate_cdb_list, \
     get_api_conf, update_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import process_array
+from wazuh.core.utils import process_array, load_wazuh_xml
 from wazuh.rbac.decorators import expose_resources
 
 allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
@@ -130,12 +130,22 @@ def upload_file(path=None, content=None, overwrite=False):
         # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(join(common.ossec_path, path)):
             raise WazuhError(1905)
+        elif overwrite and exists(join(common.ossec_path, path)):
+            # Check if remote commands are allowed
+            try:
+                load_wazuh_xml(xml_path='', data=content)
+            except WazuhError as e:
+                raise e
+            except Exception as e:
+                raise WazuhError(1113, str(e))
+            load_wazuh_xml(xml_path='', data=content)
+            delete_file(path=path)
 
         # For CDB lists
         if re.match(r'^etc/lists', path):
-            upload_list(content, path, overwrite=overwrite)
+            upload_list(content, path)
         else:
-            upload_xml(content, path, overwrite=overwrite)
+            upload_xml(content, path)
         result.affected_items.append(path)
     except WazuhError as e:
         result.add_failed_item(id_=path, error=e)
