@@ -74,7 +74,7 @@ STATIC int w_set_to_last_line_read(logreader *lf);
 STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
 
 /**
- * @brief Update hash node
+ * @brief Update or add (if it not exit) hash node
  * @param path Hash key
  * @param pos Offset of hash
  * @return 0 on success, otherwise -1
@@ -807,6 +807,9 @@ void LogCollectorStart()
             if (f_reload >= reload_interval) {
                 f_reload = 0;
             }
+
+            //Save status localfiles to disk
+            w_save_file_status();
 
             f_check = 0;
         }
@@ -2713,6 +2716,9 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
 
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
         w_set_to_pos(lf, 0, SEEK_END);
+        if (w_update_hash_node(lf->file, w_ftell(lf->fp)) == -1) {
+            merror(HUPDATE_ERROR, lf->file, files_status_name);
+        }
         return 0;
     }
 
@@ -2768,8 +2774,10 @@ STATIC int w_update_hash_node(char * path, int64_t pos) {
     data->context = context;
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
-        os_free(data);
-        return -1;
+        if (OSHash_Add_ex(files_status, path, data) != 2) {
+            os_free(data);
+            return -1;
+        }
     }
 
     return 0;

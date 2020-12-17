@@ -1089,6 +1089,35 @@ void test_w_update_hash_node_update_fail(void ** state) {
 
     will_return(__wrap_OSHash_Update_ex, 0);
 
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, path);
+    will_return(__wrap_OSHash_Add_ex, 2);
+
+    int ret = w_update_hash_node(path, 0);
+
+    assert_int_equal(ret, 0);
+
+}
+
+void test_w_update_hash_node_add_fail(void ** state) {
+    test_mode = 1;
+
+    int mode = OS_BINARY;
+
+    char * path = "test";
+
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 0);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, path);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
     int ret = w_update_hash_node(path, 0);
 
     assert_int_equal(ret, -1);
@@ -1141,6 +1170,15 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
 
     expect_value(__wrap_fgetpos, __stream, 1);
     will_return(__wrap_fgetpos, 1);
+
+    //w_update_hash_node
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, lf->file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 1);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 1);
 
     int ret = w_set_to_last_line_read(lf);
 
@@ -1434,6 +1472,10 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, "1234");
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, lf->file);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
     will_return(__wrap_OSHash_Update_ex, 0);
 
     expect_string(__wrap__merror, formatted_msg, "(1299): Failure to update 'test' to 'file_status' hash table");
@@ -1498,6 +1540,7 @@ int main(void) {
         // Test w_update_hash_node
         cmocka_unit_test(test_w_update_hash_node_path_NULL),
         cmocka_unit_test(test_w_update_hash_node_update_fail),
+        cmocka_unit_test(test_w_update_hash_node_add_fail),
         cmocka_unit_test(test_w_update_hash_node_OK),
 
         // Test w_set_to_last_line_read
