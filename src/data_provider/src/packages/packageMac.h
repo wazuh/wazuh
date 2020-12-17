@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _PACKAGE_BSD_H
-#define _PACKAGE_BSD_H
+#ifndef _PACKAGE_MAC_H
+#define _PACKAGE_MAC_H
 
 #include "ipackageInterface.h"
 #include "ipackageWrapper.h"
@@ -30,4 +30,4 @@ public:
     void buildPackageData(nlohmann::json& package) override;
 };
 
-#endif // _PACKAGE_BSD_H
+#endif // _PACKAGE_MAC_H
