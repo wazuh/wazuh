@@ -13,6 +13,7 @@
 #define _PKG_WRAPPER_H
 
 #include <fstream>
+#include "stringHelper.h"
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 
@@ -21,13 +22,6 @@ class PKGWrapper final : public IPackageWrapper
 public:
     explicit PKGWrapper(const std::string& filePath)
       : m_filePath{filePath}
-      , m_name{ DEFAULT_STRING_VALUE }
-      , m_version{ DEFAULT_STRING_VALUE }
-      , m_groups{ DEFAULT_STRING_VALUE }
-      , m_description{ DEFAULT_STRING_VALUE }
-      , m_architecture{ DEFAULT_STRING_VALUE }
-      , m_format{ DEFAULT_STRING_VALUE }
-      , m_osPatch{ DEFAULT_STRING_VALUE }
     { }
 
     ~PKGWrapper() = default;
@@ -82,7 +76,7 @@ public:
                                 : jsonData.at("osPatch");
     }
 private:
-    static void getData(nlohmann::json& data)
+    void getData(nlohmann::json& data) const
     {
         std::fstream file {m_filePath, std::ios_base::in};
         static const auto getValueFnc
@@ -98,6 +92,15 @@ private:
         {
             std::string line;
             nlohmann::json package;
+
+            std::string name         { DEFAULT_STRING_VALUE };
+            std::string version      { DEFAULT_STRING_VALUE };
+            std::string groups       { DEFAULT_STRING_VALUE };
+            std::string description  { DEFAULT_STRING_VALUE };
+            std::string architecture { DEFAULT_STRING_VALUE };
+            std::string format       { DEFAULT_STRING_VALUE };
+            std::string osPatch      { DEFAULT_STRING_VALUE };
+
             while(std::getline(file, line))
             {
                 line = Utils::trim(line," \t");
@@ -105,31 +108,31 @@ private:
                 if (line == "<key>CFBundleName</key>" &&
                     std::getline(file, line))
                 {
-                    m_name = getValueFnc(line);
+                    name = getValueFnc(line);
                 }
                 else if (line == "<key>CFBundleShortVersionString</key>" &&
                     std::getline(file, line))
                 {
-                    m_version = getValueFnc(line);
+                    version = getValueFnc(line);
                 }
                 else if (line == "<key>LSApplicationCategoryType</key>" &&
                     std::getline(file, line))
                 {
-                    m_groups = getValueFnc(line);
+                    groups = getValueFnc(line);
                 }
                 else if (line == "<key>CFBundleIdentifier</key>" &&
                     std::getline(file, line))
                 {
-                    m_description = getValueFnc(line);
+                    description = getValueFnc(line);
                 }
             }
 
-            if (UNKNOWN_VALUE != m_name)
+            if (UNKNOWN_VALUE != name)
             {
-                package["name"]         = m_name;
-                package["version"]      = m_version;
-                package["groups"]       = m_groups;
-                package["description"]  = m_description;
+                package["name"]         = name;
+                package["version"]      = version;
+                package["groups"]       = groups;
+                package["description"]  = description;
                 package["architecture"] = UNKNOWN_VALUE;
                 package["format"]       = "pkg";
                 package["os_patch"]     = UNKNOWN_VALUE;
@@ -139,13 +142,6 @@ private:
     }
 
     std::string m_filePath;
-    std::string m_name;
-    std::string m_version;
-    std::string m_groups;
-    std::string m_description;
-    std::string m_architecture;
-    std::string m_format;
-    std::string m_osPatch;
 };
 
 #endif //_PKG_WRAPPER_H
