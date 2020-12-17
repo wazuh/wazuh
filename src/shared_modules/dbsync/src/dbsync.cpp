@@ -740,7 +740,14 @@ DBSyncTxn::DBSyncTxn(const TXN_HANDLE handle)
 
 DBSyncTxn::~DBSyncTxn()
 {
-    PipelineFactory::instance().destroy(m_txn);
+    try
+    {
+        PipelineFactory::instance().destroy(m_txn);
+    }
+    catch (const DbSync::dbsync_error& ex)
+    {
+        log_message(ex.what());
+    }
 }
 
 void DBSyncTxn::syncTxnRow(const nlohmann::json& jsInput)

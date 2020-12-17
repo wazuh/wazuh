@@ -220,7 +220,16 @@ RemoteSync::~RemoteSync()
 {
     if (m_shouldBeRemoved)
     {
-        RSyncImplementation::instance().releaseContext(m_handle);
+        try
+        {
+            RSyncImplementation::instance().releaseContext(m_handle);
+        }
+        // LCOV_EXCL_START
+        catch (const RSync::rsync_error& ex)
+        {
+            log_message(ex.what());
+        }
+        // LCOV_EXCL_STOP
     }
 }
 

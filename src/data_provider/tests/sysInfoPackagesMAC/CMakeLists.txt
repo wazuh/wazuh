@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6.4)
 
-project(sysInfoPort_unit_test)
+project(sysInfoMacPackage_unit_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
@@ -8,13 +8,13 @@ file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
 
 file(GLOB SYSINFO_SRC
-    "${CMAKE_SOURCE_DIR}/ports/portImpl.h")
+    "${CMAKE_SOURCE_DIR}/src/packages/packageMac.cpp")
 
-add_executable(sysInfoPort_unit_test
+add_executable(sysInfoMacPackage_unit_test 
     ${sysinfo_UNIT_TEST_SRC}
     ${SYSINFO_SRC})
 
-target_link_libraries(sysInfoPort_unit_test
+target_link_libraries(sysInfoMacPackage_unit_test
     debug gtestd
     debug gmockd
     debug gtest_maind
@@ -24,9 +24,7 @@ target_link_libraries(sysInfoPort_unit_test
     optimized gtest_main
     optimized gmock_main
     pthread
-    sqlite3
-    cjson
 )
 
-add_test(NAME sysInfoPort_unit_test
-         COMMAND sysInfoPort_unit_test)
+add_test(NAME sysInfoMacPackage_unit_test
+         COMMAND sysInfoMacPackage_unit_test)

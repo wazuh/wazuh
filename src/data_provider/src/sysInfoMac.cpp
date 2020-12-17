@@ -23,6 +23,9 @@
 #include <fstream>
 #include "ports/portBSDWrapper.h"
 #include "ports/portImpl.h"
+#include "packages/packageFamilyDataAFactory.h"
+#include "packages/pkgWrapper.h"
+#include "packages/packageMac.h"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -45,6 +48,16 @@ static const std::vector<int> s_validFDSock =
         SOCKINFO_TCP,
         SOCKINFO_IN
     }
+};
+
+static const std::map<std::string, int> s_mapPackagesDirectories =
+{
+    { "/Applications", PKG },
+    { "/Applications/Utilities", PKG},
+    { "/System/Applications", PKG},
+    { "/System/Applications/Utilities", PKG},
+    { "/System/Library/CoreServices", PKG},
+    { "/usr/local/Cellar", BREW},
 };
 
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
@@ -172,7 +185,6 @@ static void parseAppInfo(const std::string& path, nlohmann::json& data)
     {
         std::string line;
         nlohmann::json package;
-
         std::string name         { UNKNOWN_VALUE };
         std::string version      { UNKNOWN_VALUE };
         std::string groups       { UNKNOWN_VALUE };
@@ -222,22 +234,15 @@ static void parseAppInfo(const std::string& path, nlohmann::json& data)
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json ret;
-    const auto apps{Utils::enumerateDir(MAC_APPS_PATH)};
-    for(const auto& app : apps)
+
+    for(const auto& packageDirectory : s_mapPackagesDirectories)
     {
-        if (Utils::endsWith(app, ".app"))
+        const auto files{Utils::enumerateDir(packageDirectory.first)};
+        for(const auto& file : files)
         {
-            const auto path{MAC_APPS_PATH + "/" + app + "/" + APP_INFO_PATH};
-            parseAppInfo(path, ret);
-        }
-    }
-    const auto utilities{Utils::enumerateDir(MAC_UTILITIES_PATH)};
-    for(const auto& utility : utilities)
-    {
-        if (Utils::endsWith(utility, ".app"))
-        {
-            const auto path{MAC_UTILITIES_PATH + "/" + utility + "/" + APP_INFO_PATH};
-            parseAppInfo(path, ret);
+            nlohmann::json package;
+            FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(file, packageDirectory.second))->buildPackageData(package);
+            ret.push_back(package);
         }
     }
     return ret;

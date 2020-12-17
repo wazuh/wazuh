@@ -14,7 +14,7 @@
 buffer_t *buffer_initialize(const size_t size){
     buffer_t * buffer;
     os_calloc(1,sizeof(buffer_t),buffer);
-    os_calloc(size,sizeof(char *),buffer->data);
+    os_calloc(size,sizeof(char),buffer->data);
     buffer->size = size;
     buffer->used = 0;
     buffer->status = TRUE;
