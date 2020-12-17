@@ -173,6 +173,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
         if (getPrimaryKeysFromTable(table, primaryKeyList))
         {
             nlohmann::json bulkInsertJson;
+            nlohmann::json bulkModifyJson;
             for (const auto& entry : data)
             {
                 nlohmann::json jsResult;
@@ -187,7 +188,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
                         transaction->commit();
                         if (callback && !jsResult.empty())
                         {
-                            callback(MODIFIED, jsResult);
+                            bulkModifyJson.push_back(jsResult);
                         }
                     }
                 }
@@ -202,6 +203,13 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
                 if (callback)
                 {
                     callback(INSERTED, bulkInsertJson);
+                }
+            }
+            if (!bulkModifyJson.empty())
+            {
+                if (callback)
+                {
+                    callback(MODIFIED, bulkModifyJson);
                 }
             }
         }
