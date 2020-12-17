@@ -361,6 +361,9 @@ void LogCollectorStart()
         }
     }
 
+    //Save status localfiles to disk
+    w_save_file_status();
+
     // Initialize message queue's log builder
     mq_log_builder_init();
 
