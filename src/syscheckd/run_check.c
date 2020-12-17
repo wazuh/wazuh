@@ -707,7 +707,7 @@ STATIC void fim_link_delete_range(int pos) {
         fim_event_mode mode = FIM_MODE(syscheck.opts[pos]);
 
         if (fim_db_delete_range(syscheck.database, file,
-                                &syscheck.fim_entry_mutex, syscheck.database_store, mode) != FIMDB_OK) {
+                                &syscheck.fim_entry_mutex, syscheck.database_store, mode, &pos) != FIMDB_OK) {
             merror(FIM_DB_ERROR_RM_PATTERN, pattern);
         }
     }
