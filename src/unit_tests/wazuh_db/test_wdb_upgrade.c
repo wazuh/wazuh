@@ -23,6 +23,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
 
 extern int test_mode;
 
@@ -120,7 +121,7 @@ void test_wdb_upgrade_global_update_success(void **state)
 
     // wdb_upgrade_check_manager_keepalive
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
@@ -140,7 +141,7 @@ void test_wdb_upgrade_global_update_delete_old_version(void **state)
 
     // wdb_upgrade_check_manager_keepalive
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     //Global backup success
@@ -188,7 +189,7 @@ void test_wdb_upgrade_global_update_fail(void **state)
 
     // wdb_upgrade_check_manager_keepalive
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
@@ -615,7 +616,7 @@ void test_wdb_upgrade_check_manager_keepalive_step_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, SQLITE_ERROR);
+    expect_sqlite3_step_call(SQLITE_ERROR);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     assert_int_equal(wdb_upgrade_check_manager_keepalive(data->wdb), OS_INVALID);
@@ -625,7 +626,7 @@ void test_wdb_upgrade_check_manager_keepalive_step_nodata(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+    expect_sqlite3_step_call(SQLITE_DONE);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     assert_int_equal(wdb_upgrade_check_manager_keepalive(data->wdb), OS_SUCCESS);
@@ -635,7 +636,7 @@ void test_wdb_upgrade_check_manager_keepalive_step_ok(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+    expect_sqlite3_step_call(SQLITE_ROW);
     expect_value(__wrap_sqlite3_column_int, iCol, 0);
     will_return(__wrap_sqlite3_column_int, 1);
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);

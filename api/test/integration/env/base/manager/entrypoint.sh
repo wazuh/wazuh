@@ -38,6 +38,8 @@ if [ "$3" == "master" ]; then
   /var/ossec/framework/python/bin/python3 /configuration_files/master_only/update_agent_info.py
 fi
 
+sqlite3 /var/ossec/api/configuration/security/rbac.db < /configuration_files/base_security_test.sql
+
 # RBAC configuration
 for sql_file in /configuration_files/*.sql; do
   sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file

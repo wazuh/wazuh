@@ -5,14 +5,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Allow negation of expressions in rules. ([#6258](https://github.com/wazuh/wazuh/pull/6258))
-- Support for PCRE2 regular expressions in rules and decoders. ([#6480](https://github.com/wazuh/wazuh/pull/6480))
-- Added new **ruleset test module**. Allow testing and verification of rules and decoders using Wazuh User Interface. ([#5337](https://github.com/wazuh/wazuh/issues/5337))
-
-- Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
-- Added new **task module**. This module stores and manages all the tasks that are executed in the agents or managers. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
-- Let the time interval to detect that an agent got disconnected configurable. Deprecate parameter `DISCON_TIME`. ([#6396](https://github.com/wazuh/wazuh/pull/6396))
-- Added support to macOS in Vulnerability Detector. ([#6532](https://github.com/wazuh/wazuh/pull/6532))
+- **Core:**
+  - Allow negation of expressions in rules. ([#6258](https://github.com/wazuh/wazuh/pull/6258))
+  - Support for PCRE2 regular expressions in rules and decoders. ([#6480](https://github.com/wazuh/wazuh/pull/6480))
+  - Added new **ruleset test module**. Allow testing and verification of rules and decoders using Wazuh User Interface. ([#5337](https://github.com/wazuh/wazuh/issues/5337))
+  - Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
+  - Added new **task module**. This module stores and manages all the tasks that are executed in the agents or managers. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
+  - Let the time interval to detect that an agent got disconnected configurable. Deprecate parameter `DISCON_TIME`. ([#6396](https://github.com/wazuh/wazuh/pull/6396))
+  - Added support to macOS in Vulnerability Detector. ([#6532](https://github.com/wazuh/wazuh/pull/6532))
+  - Added the capability to perform FIM on values in the Windows Registry. ([#6735](https://github.com/wazuh/wazuh/pull/6735))
 
 - **API:**
   - Added endpoints to query and manage Rootcheck data. ([#6496](https://github.com/wazuh/wazuh/pull/6496))
@@ -29,10 +30,13 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-- Removed the limit of agents that a manager can support. ([#6097](https://github.com/wazuh/wazuh/issues/6097))
-  - Migration of rootcheck results to Wazuh DB to remove the files with the results of each agent. ([#6096](https://github.com/wazuh/wazuh/issues/6096))
-  - Designed new mechanism to close RIDS files when agents are disconnected. ([#6112](https://github.com/wazuh/wazuh/issues/6112))
-- Moved CA configuration section to verify WPK signatures from `active-response` section to `agent-upgrade` section. ([#5929](https://github.com/wazuh/wazuh/issues/5929))
+- **Core:**
+  - Removed the limit of agents that a manager can support. ([#6097](https://github.com/wazuh/wazuh/issues/6097))
+    - Migration of rootcheck results to Wazuh DB to remove the files with the results of each agent. ([#6096](https://github.com/wazuh/wazuh/issues/6096))
+    - Designed new mechanism to close RIDS files when agents are disconnected. ([#6112](https://github.com/wazuh/wazuh/issues/6112))
+  - Moved CA configuration section to verify WPK signatures from `active-response` section to `agent-upgrade` section. ([#5929](https://github.com/wazuh/wazuh/issues/5929))
+  - Changed error message to debug when multiple daemons attempt to remove an agent simultaneously ([#6185](https://github.com/wazuh/wazuh/pull/6185))
+  - Changed error message to warning when the agent fails to reach a module. ([#5817](https://github.com/wazuh/wazuh/pull/5817))
 
 - **API:**
   - Changed the `status` parameter behavior in the `DELETE /agents` endpoint to enhance security. ([#6829](https://github.com/wazuh/wazuh/pull/6829))
@@ -61,8 +65,10 @@ All notable changes to this project will be documented in this file.
   - Fixed the validation of hotfixes gathered by Syscollector. ([#6706](https://github.com/wazuh/wazuh/pull/6706))
   - Fixed the reading of the Linux OS version when `/etc/os-release` doesn't provide it. ([#6674](https://github.com/wazuh/wazuh/pull/6674))
   - Fixed a false positive when comparing the minor target of CentOS packages in Vulnerability Detector. ([#6709](https://github.com/wazuh/wazuh/pull/6709))
-
-### Removed
+  - Fixed a zombie process leak in Modulesd when using commands without a timeout. ([#6719](https://github.com/wazuh/wazuh/pull/6719))
+  - Fixed a race condition in Remoted that might create agent-group files with wrong permissions. ([#6833](https://github.com/wazuh/wazuh/pull/6833))
+  - Fixed a warning log in Wazuh DB when upgrading the global database. ([#6697](https://github.com/wazuh/wazuh/pull/6697))
+  - Fixed a bug in FIM on Windows that caused false positive due to changes in the host timezone or the daylight saving time when monitoring files in a FAT32 filesystem. ([#6801](https://github.com/wazuh/wazuh/pull/6801))
 
 
 ## [v4.0.3] - 2020-11-30
@@ -360,7 +366,8 @@ All notable changes to this project will be documented in this file.
 - Make Logcollector continuously attempt to reconnect with the agent daemon. ([#4435](https://github.com/wazuh/wazuh/pull/4435))
 - Make Windows agents to send the keep-alive independently. ([#4077](https://github.com/wazuh/wazuh/pull/4077))
 - Do not enforce source IP checking by default in the registration process. ([#4083](https://github.com/wazuh/wazuh/pull/4083))
-- Updated API manager/configuration endpoint to also return the new synchronization and whodata syscheck fields ([#4818](https://github.com/wazuh/wazuh/pull/4818))
+- Updated API manager/configuration endpoint to also return the new synchronization and whodata syscheck fields ([#4241](https://github.com/wazuh/wazuh/pull/4241))
+- Disabled the chroot jail in Agentd on UNIX.
 
 ### Fixed
 
