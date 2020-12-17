@@ -57,60 +57,6 @@ stages:
           total_failed_items: 2
 
 ---
-test_name: GET /experimental/ciscat/results
-
-stages:
-
-  - name: Request all agents (Partially allowed, user agnostic)
-    skip: True
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - agent_id: '002'
-            - agent_id: '004'
-            - agent_id: '006'
-            - agent_id: '008'
-          failed_items: []
-          total_affected_items: 4
-          total_failed_items: 0
-
-  - name: Request a list of agents (Partially allowed, user aware)
-    skip: True
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '002,003,007,008'
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - agent_id: '002'
-            - agent_id: '008'
-          failed_items:
-            - error:
-                code: 4000
-              id:
-                - '003'
-                - '007'
-          total_affected_items: 2
-          total_failed_items: 2
-
----
 test_name: GET /experimental/syscollector/hardware
 
 stages:
@@ -526,3 +472,56 @@ stages:
                 - '005'
           total_affected_items: !anyint
           total_failed_items: 1
+
+---
+test_name: GET /experimental/ciscat/results
+
+stages:
+
+  - name: Request all agents (Partially allowed, user agnostic)
+    delay_before: !float "{get_experimental_ciscat_results_delay}"
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - agent_id: '002'
+            - agent_id: '004'
+            - agent_id: '006'
+            - agent_id: '008'
+          failed_items: []
+          total_affected_items: 4
+          total_failed_items: 0
+
+  - name: Request a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '002,003,007,008'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - agent_id: '002'
+            - agent_id: '008'
+          failed_items:
+            - error:
+                code: 4000
+              id:
+                - '003'
+                - '007'
+          total_affected_items: 2
+          total_failed_items: 2
