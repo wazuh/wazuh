@@ -26,7 +26,7 @@ from wazuh import WazuhInternalError, WazuhError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.results import WazuhResult
-from wazuh.core.utils import load_wazuh_xml, safe_move, tail
+from wazuh.core.utils import load_wazuh_xml, safe_move, tail, check_remote_commands
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
@@ -108,63 +108,75 @@ def get_logs_summary(limit=2000):
     return tags
 
 
-def upload_xml(xml_file, path):
-    """
-    Upload XML files (rules and decoders)
-    :param xml_file: content of the XML file
-    :param path: Destination of the new XML file
-    :return: Confirmation message
+def prettify_xml(xml_file):
+    """Prettify XML files (rules, decoders and ossec.conf)
+
+    Parameters
+    ----------
+    xml_file : str
+        Content of the XML file
+
+    Returns
+    -------
+    Checked XML content
     """
     # -- characters are not allowed in XML comments
     xml_file = replace_in_comments(xml_file, '--', '%wildcard%')
 
-    # path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
-
     # create temporary file for parsing xml input
     try:
+        # beauty xml file
+        xml = parseString('<root>' + xml_file + '</root>')
+        # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+        indent = '  '  # indent parameter for toprettyxml function
+        pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
+        # revert xml.dom replacings
+        # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
+        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
+            .replace("&gt;", ">").replace('&apos;', "'")
+        # delete two first spaces of each line
+        final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
+        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
+
+        # Check if remote commands are allowed
+        check_remote_commands(final_xml)
+        # Check xml format
+        load_wazuh_xml(xml_path='', data=final_xml)
+
+        return final_xml
+    except ExpatError:
+        raise WazuhError(1113)
+    except WazuhError as e:
+        raise e
+    except Exception as e:
+        raise WazuhError(1113, str(e))
+
+
+def upload_xml(xml_file, path):
+    """
+    Upload XML files (rules, decoders and ossec.conf)
+    :param xml_file: content of the XML file
+    :param path: Destination of the new XML file
+    :return: Confirmation message
+    """
+    # Path of temporary files for parsing xml input
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+    try:
         with open(tmp_file_path, 'w') as tmp_file:
-            # beauty xml file
-            xml = parseString('<root>' + xml_file + '</root>')
-            # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            indent = '  '  # indent parameter for toprettyxml function
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
-            # revert xml.dom replacings
-            # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-                .replace("&gt;", ">").replace('&apos;', "'")
-            # delete two first spaces of each line
-            final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-            final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
+            final_xml = prettify_xml(xml_file)
             tmp_file.write(final_xml)
         chmod(tmp_file_path, 0o660)
     except IOError:
         raise WazuhInternalError(1005)
-    except ExpatError:
-        raise WazuhError(1113)
 
+    # Move temporary file to group folder
     try:
-        # check xml format
-        try:
-            load_wazuh_xml(tmp_file_path)
-        except WazuhError as e:
-            raise e
-        except Exception as e:
-            raise WazuhError(1113, str(e))
+        new_conf_path = join(common.ossec_path, path)
+        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
+    except Error:
+        raise WazuhInternalError(1016)
 
-        # move temporary file to group folder
-        try:
-            new_conf_path = join(common.ossec_path, path)
-            safe_move(tmp_file_path, new_conf_path, permissions=0o660)
-        except Error:
-            raise WazuhInternalError(1016)
-
-        return WazuhResult({'message': 'File was successfully updated'})
-
-    except Exception as e:
-        # remove created temporary file if an exception happens
-        remove(tmp_file_path)
-        raise e
+    return WazuhResult({'message': 'File was successfully updated'})
 
 
 def upload_list(list_file, path):

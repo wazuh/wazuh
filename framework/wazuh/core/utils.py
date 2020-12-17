@@ -672,9 +672,6 @@ def load_wazuh_xml(xml_path, data=None):
         good_comment = comment.group(2).replace('--', '..')
         data = data.replace(comment.group(2), good_comment)
 
-    # Check if remote commands are allowed
-    check_remote_commands(data)
-
     # Replace &lt; and &gt; currently present in the config
     data = data.replace('&lt;', '_custom_amp_lt_').replace('&gt;', '_custom_amp_gt_')
 
