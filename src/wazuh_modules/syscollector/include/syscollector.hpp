@@ -90,7 +90,7 @@ private:
     bool                                           m_portsAll;
     bool                                           m_processes;
     bool                                           m_hotfixes;
-    bool                                           m_running;
+    bool                                           m_stopping;
     std::unique_ptr<DBSync>                        m_spDBSync;
     std::unique_ptr<RemoteSync>                    m_spRsync;
     std::condition_variable                        m_cv;

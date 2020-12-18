@@ -436,13 +436,13 @@ void SQLiteDBEngine::initialize(const std::string& path,
 {
     if(!path.empty())
     {
-        const auto MAX_RETRY { 10 };
-        const auto SECONDS_TO_RETRY { 10 };
-        auto dbInitialization
+        constexpr auto MAX_RETRY { 10 };
+        constexpr auto SECONDS_TO_RETRY { 10 };
+        const auto dbInitialization
         {
             [this, &tableStmtCreation](const std::string& dbPath) -> bool
             {
-                bool previousDbRemoved { cleanDB(dbPath) };
+                const bool previousDbRemoved { cleanDB(dbPath) };
                 if (previousDbRemoved)
                 {
                     m_sqliteConnection = m_sqliteFactory->createConnection(dbPath);

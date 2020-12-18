@@ -868,7 +868,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_portsAll = portsAll;
     m_processes = processes;
     m_hotfixes = hotfixes;
-    m_running = false;
+    m_stopping = false;
     m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
     registerWithRsync();
@@ -878,7 +878,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 void Syscollector::destroy()
 {
     std::unique_lock<std::mutex> lock{m_mutex};
-    m_running = true;
+    m_stopping = true;
     m_cv.notify_all();
     lock.unlock();
 }
@@ -1104,7 +1104,7 @@ void Syscollector::syncLoop()
     {
         scan();
     }
-    while(!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_running;}))
+    while(!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_stopping;}))
     {
         scan();
         //sync Rsync
@@ -1116,7 +1116,7 @@ void Syscollector::syncLoop()
 void Syscollector::push(const std::string& data)
 {
     std::unique_lock<std::mutex> lock{m_mutex};
-    if (!m_running)
+    if (!m_stopping)
     {
         auto rawData{data};
         Utils::replaceFirst(rawData, "dbsync ", "");
