@@ -414,9 +414,10 @@ void SysInfo::getMemory(nlohmann::json& info) const
         memFree = std::stoi(itFree->second);
     }
 
-    info["ram_total"] = memTotal == 0 ? 1 : memTotal;
+    const auto ramTotal { memTotal == 0 ? 1 : memTotal };
+    info["ram_total"] = ramTotal;
     info["ram_free"] = memFree;
-    info["ram_usage"] = 100 - (100*memFree/memTotal);
+    info["ram_usage"] = 100 - (100*memFree/ramTotal);
 }
 
 nlohmann::json SysInfo::getPackages() const
