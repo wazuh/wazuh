@@ -261,9 +261,10 @@ def test_get_api_config():
     assert result['data']['affected_items'][0]['node_name'] == 'manager', 'Not expected node name'
 
 
+@patch('wazuh.core.manager.yaml.safe_load')
 @patch('wazuh.core.manager.yaml.dump')
 @patch('wazuh.core.manager.open')
-def test_update_api_config(mock_open, mock_yaml):
+def test_update_api_config(mock_open, mock_yaml, mock_safe_load):
     """Checks that update_api_config method is updating current api_conf dict and returning expected result."""
     old_config = {'experimental_features': True}
     new_config = {'experimental_features': False}
