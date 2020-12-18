@@ -17,7 +17,7 @@
 
 class FactoryBSDPackage
 {
-    public:
+public:
     static std::shared_ptr<IPackage>create(const std::pair<std::string, int>& ctx);
 };
 
