@@ -2691,11 +2691,7 @@ STATIC char * w_save_files_status_to_cJSON() {
         char * path = hash_node->key;
         char offset[OFFSET_SIZE] = {0};
 
-#if defined(WIN32) || defined(Darwin)
-        sprintf(offset, "%lld", data->offset);
-#else
-        sprintf(offset, "%ld", data->offset);
-#endif
+        sprintf(offset, "%" PRIi64, data->offset);
 
         cJSON * item = cJSON_CreateObject();
 
