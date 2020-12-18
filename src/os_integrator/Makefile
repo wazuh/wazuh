@@ -3,7 +3,7 @@
 # Daniel B. Cid <dcid@sucuri.net>
 
 PT=../
-NAME=ossec-integratord
+NAME=wazuh-integratord
 
 
 include ../Config.Make

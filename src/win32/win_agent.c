@@ -22,7 +22,7 @@
 #include "external/cJSON/cJSON.h"
 
 #ifndef ARGV0
-#define ARGV0 "ossec-agent"
+#define ARGV0 "wazuh-agent"
 #endif
 
 /* Help message */

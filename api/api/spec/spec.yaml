@@ -1887,31 +1887,31 @@ components:
     WazuhDaemonsStatus:
       type: object
       properties:
-        ossec-agentlessd:
+        wazuh-agentlessd:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-analysisd:
+        wazuh-analysisd:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-authd:
+        wazuh-authd:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-csyslogd:
+        wazuh-csyslogd:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-dbd:
+        wazuh-dbd:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-execd:
+        wazuh-execd:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-integratord:
+        wazuh-integratord:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-logcollector:
+        wazuh-logcollector:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-maild:
+        wazuh-maild:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-monitord:
+        wazuh-monitord:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-remoted:
+        wazuh-remoted:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-reportd:
+        wazuh-reportd:
           $ref: '#/components/schemas/DaemonStatus'
-        ossec-syscheckd:
+        wazuh-syscheckd:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-apid:
           $ref: '#/components/schemas/DaemonStatus'
@@ -2364,21 +2364,20 @@ components:
           description: "Wazuh component that logged the event"
           enum:
             - agent_control
-            - ossec-agentlessd
-            - ossec-analysisd
-            - ossec-authd
-            - ossec-csyslogd
-            - ossec-dbd
-            - ossec-execd
-            - ossec-integratord
-            - ossec-maild
-            - ossec-monitord
-            - ossec-logcollector
-            - ossec-remoted
-            - ossec-reportd
-            - ossec-rootcheck
-            - ossec-syscheckd
-            - ossec-testrule
+            - wazuh-agentlessd
+            - wazuh-analysisd
+            - wazuh-authd
+            - wazuh-csyslogd
+            - wazuh-dbd
+            - wazuh-execd
+            - wazuh-integratord
+            - wazuh-maild
+            - wazuh-monitord
+            - wazuh-logcollector
+            - wazuh-remoted
+            - wazuh-reportd
+            - wazuh-rootcheck
+            - wazuh-syscheckd
             - sca
             - verify-agent-conf
             - wazuh-db
@@ -2443,35 +2442,33 @@ components:
     WazuhLogsSummary:
       type: object
       properties:
-          ossec-agentlessd:
+          wazuh-agentlessd:
             $ref: '#/components/schemas/LogSummary'
-          ossec-analysisd:
+          wazuh-analysisd:
             $ref: '#/components/schemas/LogSummary'
-          ossec-authd:
+          wazuh-authd:
             $ref: '#/components/schemas/LogSummary'
-          ossec-csyslogd:
+          wazuh-csyslogd:
             $ref: '#/components/schemas/LogSummary'
-          ossec-dbd:
+          wazuh-dbd:
             $ref: '#/components/schemas/LogSummary'
-          ossec-execd:
+          wazuh-execd:
             $ref: '#/components/schemas/LogSummary'
-          ossec-integratord:
+          wazuh-integratord:
             $ref: '#/components/schemas/LogSummary'
-          ossec-maild:
+          wazuh-maild:
             $ref: '#/components/schemas/LogSummary'
-          ossec-monitord:
+          wazuh-monitord:
             $ref: '#/components/schemas/LogSummary'
-          ossec-logcollector:
+          wazuh-logcollector:
             $ref: '#/components/schemas/LogSummary'
-          ossec-remoted:
+          wazuh-remoted:
             $ref: '#/components/schemas/LogSummary'
-          ossec-reportd:
+          wazuh-reportd:
             $ref: '#/components/schemas/LogSummary'
-          ossec-rootcheck:
+          wazuh-rootcheck:
             $ref: '#/components/schemas/LogSummary'
-          ossec-syscheckd:
-            $ref: '#/components/schemas/LogSummary'
-          ossec-testrule:
+          wazuh-syscheckd:
             $ref: '#/components/schemas/LogSummary'
           sca:
             $ref: '#/components/schemas/LogSummary'
@@ -4516,21 +4513,20 @@ components:
       schema:
         type: string
         enum:
-        - ossec-agentlessd
-        - ossec-analysisd
-        - ossec-authd
-        - ossec-csyslogd
-        - ossec-dbd
-        - ossec-execd
-        - ossec-integratord
-        - ossec-maild
-        - ossec-monitord
-        - ossec-logcollector
-        - ossec-remoted
-        - ossec-reportd
-        - ossec-rootcheck
-        - ossec-syscheckd
-        - ossec-testrule
+        - wazuh-agentlessd
+        - wazuh-analysisd
+        - wazuh-authd
+        - wazuh-csyslogd
+        - wazuh-dbd
+        - wazuh-execd
+        - wazuh-integratord
+        - wazuh-maild
+        - wazuh-monitord
+        - wazuh-logcollector
+        - wazuh-remoted
+        - wazuh-reportd
+        - wazuh-rootcheck
+        - wazuh-syscheckd
         - sca
         - wazuh-db
         - wazuh-modulesd
@@ -7950,19 +7946,19 @@ paths:
               example:
                 data:
                   affected_items:
-                    - ossec-agentlessd: stopped
-                      ossec-analysisd: running
-                      ossec-authd: stopped
-                      ossec-csyslogd: stopped
-                      ossec-dbd: stopped
-                      ossec-execd: running
-                      ossec-integratord: stopped
-                      ossec-logcollector: running
-                      ossec-maild: stopped
-                      ossec-monitord: running
-                      ossec-remoted: running
-                      ossec-reportd: stopped
-                      ossec-syscheckd: running
+                    - wazuh-agentlessd: stopped
+                      wazuh-analysisd: running
+                      wazuh-authd: stopped
+                      wazuh-csyslogd: stopped
+                      wazuh-dbd: stopped
+                      wazuh-execd: running
+                      wazuh-integratord: stopped
+                      wazuh-logcollector: running
+                      wazuh-maild: stopped
+                      wazuh-monitord: running
+                      wazuh-remoted: running
+                      wazuh-reportd: stopped
+                      wazuh-syscheckd: running
                       wazuh-apid: running
                       wazuh-clusterd: running
                       wazuh-db: running
@@ -8660,15 +8656,15 @@ paths:
                 data:
                   affected_items:
                     - timestamp: '2020-04-15T13:43:38+00:00'
-                      tag: ossec-analysisd
+                      tag: wazuh-analysisd
                       level: error
                       description: " (1277): Invalid syscheck message received"
                     - timestamp: '2020-04-15T13:43:38+00:00'
-                      tag: ossec-analysisd
+                      tag: wazuh-analysisd
                       level: error
                       description: " (1277): Invalid syscheck message received"
                     - timestamp: '2020-04-15T13:43:30+00:00'
-                      tag: ossec-analysisd
+                      tag: wazuh-analysisd
                       level: error
                       description: " (1277): Invalid syscheck message received"
                   total_affected_items: 3
@@ -8729,7 +8725,7 @@ paths:
                         debug: 0
                         error: 3
                         warning: 0
-                    - ossec-rootcheck:
+                    - wazuh-rootcheck:
                         info: 8
                         all: 8
                         critical: 0
@@ -9330,19 +9326,19 @@ paths:
               example:
                 data:
                   affected_items:
-                    - ossec-agentlessd: stopped
-                      ossec-analysisd: running
-                      ossec-authd: stopped
-                      ossec-csyslogd: stopped
-                      ossec-dbd: stopped
-                      ossec-execd: running
-                      ossec-integratord: stopped
-                      ossec-logcollector: running
-                      ossec-maild: stopped
-                      ossec-monitord: running
-                      ossec-remoted: running
-                      ossec-reportd: stopped
-                      ossec-syscheckd: running
+                    - wazuh-agentlessd: stopped
+                      wazuh-analysisd: running
+                      wazuh-authd: stopped
+                      wazuh-csyslogd: stopped
+                      wazuh-dbd: stopped
+                      wazuh-execd: running
+                      wazuh-integratord: stopped
+                      wazuh-logcollector: running
+                      wazuh-maild: stopped
+                      wazuh-monitord: running
+                      wazuh-remoted: running
+                      wazuh-reportd: stopped
+                      wazuh-syscheckd: running
                       wazuh-apid: running
                       wazuh-clusterd: running
                       wazuh-db: running
@@ -10039,7 +10035,7 @@ paths:
                       level: info
                       description: "Starting evaluation"
                     - timestamp: '2020-04-15T13:50:24+00:00'
-                      tag: ossec-maild
+                      tag: wazuh-maild
                       level: error
                       description: " (1223): Error Sending email to 69.172.200.109 (smtp server)"
                   total_affected_items: 3
@@ -10099,7 +10095,7 @@ paths:
                         debug: 0
                         error: 3
                         warning: 0
-                    - ossec-rootcheck:
+                    - wazuh-rootcheck:
                         info: 8
                         all: 8
                         critical: 0
