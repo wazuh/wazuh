@@ -209,7 +209,7 @@ nlohmann::json SysInfo::getPackages() const
             }
         }
     }
-    return ret;
+    return jsPackages;
 }
 
 nlohmann::json SysInfo::getProcessesInfo() const
