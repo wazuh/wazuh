@@ -31,7 +31,6 @@ namespace DbSync
         , m_maxQueueSize{ maxQueueSize }
         , m_callback{ callback }
         , m_spDispatchNode{ maxQueueSize ? getDispatchNode(threadNumber) : nullptr }
-        , m_spSyncNode{ maxQueueSize ? getSyncNode(threadNumber) : nullptr}
         {
             if (!m_callback || !m_handle || !m_txnContext)
             {
@@ -40,19 +39,9 @@ namespace DbSync
                     INVALID_PARAMETERS
                 };
             }
-            Utils::connect(m_spSyncNode, m_spDispatchNode);
         }
         ~Pipeline()
         {
-            if (m_spSyncNode)
-            {
-                try
-                {
-                    m_spSyncNode->rundown();
-                }
-                catch(...)
-                {}
-            }
             if (m_spDispatchNode)
             {
                 try
@@ -71,24 +60,34 @@ namespace DbSync
         }
         void syncRow(const nlohmann::json& value) override
         {
-            const auto async{ m_spSyncNode && m_spSyncNode->size() < m_maxQueueSize };
-            if (async)
+            try
             {
-                m_spSyncNode->receive(value);
+                DBSyncImplementation::instance().syncRowData
+                (
+                    m_handle,
+                    m_txnContext,
+                    value,
+                    [this](ReturnTypeCallback resType, const nlohmann::json& resValue)
+                    {
+                        this->pushResult(SyncResult{resType, resValue});
+                    }
+                );
             }
-            else
+            catch(const DbSync::max_rows_error&)
             {
-                //sync will be processed in the host thread instead of a worker thread.
-                const auto result{ processSyncRow(value) };
-                dispatchResult(result);
+                pushResult(SyncResult{MAX_ROWS, value});
+            }
+            catch(const std::exception& ex)
+            {
+                SyncResult result;
+                result.first = DB_ERROR;
+                result.second = value;
+                result.second["exception"] = ex.what();
+                pushResult(result);
             }
         }
         void getDeleted(ResultCallback callback) override
         {
-            if (m_spSyncNode)
-            {
-                m_spSyncNode->rundown();
-            }
             if (m_spDispatchNode)
             {
                 m_spDispatchNode->rundown();
@@ -98,7 +97,6 @@ namespace DbSync
     private:
         using SyncResult = std::pair<ReturnTypeCallback, nlohmann::json>;
         using DispatchCallbackNode = Utils::ReadNode<SyncResult>;
-        using SyncRowNode = Utils::ReadWriteNode<nlohmann::json, SyncResult, DispatchCallbackNode>;
 
         std::shared_ptr<DispatchCallbackNode> getDispatchNode(const int threadNumber)
         {
@@ -108,44 +106,20 @@ namespace DbSync
                 threadNumber ? threadNumber : std::thread::hardware_concurrency()
             );
         }
-        std::shared_ptr<SyncRowNode> getSyncNode(const int threadNumber)
+
+        void pushResult(const SyncResult& result)
         {
-            return std::make_shared<SyncRowNode>
-            (
-                std::bind(&Pipeline::processSyncRow, this, std::placeholders::_1),
-                threadNumber ? threadNumber : std::thread::hardware_concurrency()
-            );
+            const auto async{ m_spDispatchNode && m_spDispatchNode->size() < m_maxQueueSize };
+            if (async)
+            {
+                m_spDispatchNode->receive(result);
+            }
+            else
+            {
+                dispatchResult(result);
+            }
         }
 
-        SyncResult processSyncRow(const nlohmann::json& value)
-        {
-            SyncResult result{};
-            try
-            {
-                DBSyncImplementation::instance().syncRowData
-                (
-                    m_handle,
-                    m_txnContext,
-                    value,
-                    [&result](ReturnTypeCallback resType, const nlohmann::json& resValue)
-                    {
-                        result.first = resType;
-                        result.second = resValue;
-                    }
-                );
-            }
-            catch(const DbSync::max_rows_error&)
-            {
-                result.first = MAX_ROWS;
-                result.second = value;
-            }
-            catch(...)
-            {
-                result.first = DB_ERROR;
-                result.second = value;
-            }
-            return result;
-        }
         void dispatchResult(const SyncResult& result)
         {
             const auto& value{ result.second };
@@ -159,7 +133,6 @@ namespace DbSync
         const unsigned int m_maxQueueSize;
         const ResultCallback m_callback;
         const std::shared_ptr<DispatchCallbackNode> m_spDispatchNode;
-        const std::shared_ptr<SyncRowNode> m_spSyncNode;
     };
 //----------------------------------------------------------------------------------------
     PipelineFactory& PipelineFactory::instance() noexcept

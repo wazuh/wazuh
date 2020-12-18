@@ -1080,7 +1080,7 @@ int wdb_syscollector_processes_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const int pid = cJSON_GetObjectItem(attributes, "pid") ? cJSON_GetObjectItem(attributes, "pid")->valueint : 0;
+    const int pid = strtol(cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "pid")),NULL,10);
     const char * name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "name"));
     const char * state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "state"));
     const int ppid = cJSON_GetObjectItem(attributes, "ppid") ? cJSON_GetObjectItem(attributes, "ppid")->valueint : 0;

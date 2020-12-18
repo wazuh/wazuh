@@ -699,7 +699,8 @@ static std::string getItemId(const nlohmann::json& item, const std::vector<std::
 static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
                                    const std::string& table,
                                    const nlohmann::json& values,
-                                   const std::function<void(const std::string&)> reportFunction)
+                                   const std::function<void(const std::string&)> reportFunction,
+                                   const std::function<void(const std::string&)> errorFunction)
 {
     const std::map<ReturnTypeCallback, std::string> operationsMap
     {
@@ -715,9 +716,13 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
     constexpr auto queueSize{4096};
     const auto callback
     {
-        [&table, &operationsMap, reportFunction](ReturnTypeCallback result, const nlohmann::json& data)
+        [&table, &operationsMap, reportFunction, errorFunction](ReturnTypeCallback result, const nlohmann::json& data)
         {
-            if (data.is_array())
+            if(result == DB_ERROR)
+            {
+                errorFunction(data.dump());
+            }
+            else if (data.is_array())
             {
                 for (const auto& item : data)
                 {
@@ -983,9 +988,9 @@ void Syscollector::scanNetwork()
                     protoTableDataList.push_back(protoTableData);
                 }
 
-                updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportDiffFunction);
-                updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportDiffFunction);
-                updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportDiffFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportDiffFunction, m_logErrorFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportDiffFunction, m_logErrorFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportDiffFunction, m_logErrorFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
@@ -1030,12 +1035,12 @@ void Syscollector::scanPackages()
                     packages.push_back(item);
                 }
             }
-            updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportDiffFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportDiffFunction, m_logErrorFunction);
             m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
             if (m_hotfixes)
             {
                 constexpr auto tableHotfixes{"dbsync_hotfixes"};
-                updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction, m_logErrorFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
         }
@@ -1094,7 +1099,7 @@ void Syscollector::scanPorts()
                         }
                     }
                 }
-                updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportDiffFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportDiffFunction, m_logErrorFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
         }
@@ -1117,7 +1122,7 @@ void Syscollector::scanProcesses()
         const auto& processes{m_spInfo->processes()};
         if (!processes.is_null())
         {
-            updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportDiffFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportDiffFunction, m_logErrorFunction);
         }
     }
 }
