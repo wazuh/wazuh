@@ -61,10 +61,7 @@ default_api_configuration = {
     "remote_commands": {
         "localfile": {
             "enabled": True,
-            "exceptions": ["df -P",
-                           "netstat -tan |grep LISTEN |grep -v 127.0.0.1 | sort",
-                           "last -n 5",
-                           ]
+            "exceptions": []
         },
         "wodle_command": {
             "enabled": True,
