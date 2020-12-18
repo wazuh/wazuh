@@ -145,8 +145,9 @@ if(NOT ${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc \
                                      -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user \
                                      -Wl,--wrap,get_group -Wl,--wrap,realpath -Wl,--wrap,readlink -Wl,--wrap,fread \
-                                     -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid -Wl,--wrap,FOREVER \
-                                     -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                                     -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid \
+                                     -Wl,--wrap,FOREVER -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+
 else()
   list(APPEND syscheckd_event_tests_names "test_win_whodata")
   list(APPEND syscheckd_event_tests_flags "-Wl,--wrap=_mdebug2,--wrap=_merror,--wrap=_mdebug1,--wrap=_mwarn \
