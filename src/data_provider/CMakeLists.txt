@@ -61,6 +61,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
       "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
@@ -124,7 +125,6 @@ elseif(APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(APPLE)
-  set(CMAKE_VERBOSE_MAKEFILE ON)
   add_custom_command(TARGET sysinfo 
     POST_BUILD COMMAND 
     ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"

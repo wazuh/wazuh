@@ -3635,7 +3635,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
     char * next;
     char * scan_id;
     char * scan_time;
-    char *hotfix;
+    char * hotfix;
     int result;
 
     if (next = strchr(input, ' '), !next) {
