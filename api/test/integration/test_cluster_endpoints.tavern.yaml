@@ -2368,12 +2368,12 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Filters -> tag=ossec-analysisd, limit=1 {node_id}
+  - name: Filters -> tag=wazuh-analysisd, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        tag: ossec-analysisd
+        tag: wazuh-analysisd
         limit: 1
     response:
       status_code: 200
@@ -2386,12 +2386,12 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Filters -> tag=ossec-syscheckd, limit=2 {node_id}
+  - name: Filters -> tag=wazuh-syscheckd, limit=2 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        tag: ossec-syscheckd
+        tag: wazuh-syscheckd
         limit: 2
     response:
       status_code: 200
@@ -2400,9 +2400,9 @@ stages:
         data:
           affected_items:
             - <<: *cluster_log
-              tag: ossec-syscheckd
+              tag: wazuh-syscheckd
             - <<: *cluster_log
-              tag: ossec-syscheckd
+              tag: wazuh-syscheckd
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -2426,19 +2426,19 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Filters by query (tag=ossec-syscheckd, level=info)
+  - name: Filters by query (tag=wazuh-syscheckd, level=info)
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        q: tag=ossec-syscheckd;level=info
+        q: tag=wazuh-syscheckd;level=info
     response:
       status_code: 200
       verify_response_with:
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "tag"
-            expected_values: "ossec-syscheckd"
+            expected_values: "wazuh-syscheckd"
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "level"

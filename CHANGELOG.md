@@ -1,6 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v4.2.0]
+
+### Changed
+
+- **Core:**
+  - Rename daemons to new Wazuh standard. ([#6912](https://github.com/wazuh/wazuh/pull/6912))
+
+
 ## [v4.1.0]
 
 ### Added

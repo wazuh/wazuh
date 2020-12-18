@@ -29,8 +29,8 @@ int main(int argc, char **argv)
         return (0);
     }
 
-    /* Configure OSSEC for automatic startup */
-    system("sc config OssecSvc start= auto");
+    /* Configure Wazuh for automatic startup */
+    system("sc config WazuhSvc start= auto");
 
     /* Change permissions */
     if (checkVista()) {

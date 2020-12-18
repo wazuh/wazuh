@@ -23,7 +23,7 @@
 !define VERSION "4.2.0"
 !define REVISION "40200"
 !define NAME "Wazuh"
-!define SERVICE "OssecSvc"
+!define SERVICE "WazuhSvc"
 
 ; output file
 !ifndef OutFile
@@ -175,6 +175,7 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\queue\diff"
     CreateDirectory "$INSTDIR\queue\fim"
     CreateDirectory "$INSTDIR\queue\fim\db"
+    CreateDirectory "$INSTDIR\queue\logcollector"
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
     CreateDirectory "$INSTDIR\wodles"
@@ -182,13 +183,12 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\ruleset\sca"
 
     ; install files
-    File ossec-agent.exe
-    File ossec-agent-eventchannel.exe
+    File wazuh-agent.exe
+    File wazuh-agent-eventchannel.exe
     File default-ossec.conf
     File default-ossec-pre6.conf
     File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
-    File ossec-rootcheck.exe
     File internal_options.conf
     File default-local_internal_options.conf
     File setup-windows.exe
@@ -223,12 +223,12 @@ Section "Wazuh Agent (required)" MainSec
     FileOpen $0 "$INSTDIR\active-response\active-responses.log" w
     FileClose $0
 
-    ; use appropriate version of "ossec-agent.exe"
+    ; use appropriate version of "wazuh-agent.exe"
     ${If} ${AtLeastWinVista}
-        Delete "$INSTDIR\ossec-agent.exe"
-        Rename "$INSTDIR\ossec-agent-eventchannel.exe" "$INSTDIR\ossec-agent.exe"
+        Delete "$INSTDIR\wazuh-agent.exe"
+        Rename "$INSTDIR\wazuh-agent-eventchannel.exe" "$INSTDIR\wazuh-agent.exe"
     ${Else}
-        Delete "$INSTDIR\ossec-agent-eventchannel.exe"
+        Delete "$INSTDIR\wazuh-agent-eventchannel.exe"
     ${Endif}
 
     ; write registry keys
@@ -341,7 +341,7 @@ Section "Wazuh Agent (required)" MainSec
 
     ; install OSSEC service
     ServiceInstall:
-        nsExec::ExecToLog '"$INSTDIR\ossec-agent.exe" install-service'
+        nsExec::ExecToLog '"$INSTDIR\wazuh-agent.exe" install-service'
         Pop $0
         ${If} $0 <> 1
             MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
@@ -420,7 +420,7 @@ Section "Uninstall"
     ; uninstall the services
     ; this also stops the service as well so it should be done early
     ServiceUninstall:
-        nsExec::ExecToLog '"$INSTDIR\ossec-agent.exe" uninstall-service'
+        nsExec::ExecToLog '"$INSTDIR\wazuh-agent.exe" uninstall-service'
         Pop $0
         ${If} $0 <> 1
             MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
@@ -477,7 +477,7 @@ Section "Uninstall"
     DeleteRegKey HKLM SOFTWARE\OSSEC
 
     ; remove files and uninstaller
-    Delete "$INSTDIR\ossec-agent.exe"
+    Delete "$INSTDIR\wazuh-agent.exe"
 	Delete "$INSTDIR\agent-auth.exe"
     Delete "$INSTDIR\manage_agents.exe"
     Delete "$INSTDIR\ossec.conf"
@@ -514,6 +514,7 @@ Section "Uninstall"
     RMDir "$INSTDIR\active-response"
     RMDir "$INSTDIR\tmp"
 	RMDir /r "$INSTDIR\queue\diff"
+    RMDir /r "$INSTDIR\queue\logcollector"
     RMDir "$INSTDIR\incoming"
     RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"

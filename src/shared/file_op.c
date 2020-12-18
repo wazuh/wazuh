@@ -2030,6 +2030,33 @@ void w_ch_exec_dir() {
     }
 }
 
+FILE * w_fopen_r(const char *file, const char * mode) {
+
+    FILE *fp = NULL;
+    int fd;
+    HANDLE h;
+
+    h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+                   NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)h, 0), fd == -1) {
+        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        CloseHandle(h);
+        return NULL;
+    }
+
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        CloseHandle(h);
+        return NULL;
+    }
+
+    return fp;
+}
+
 #endif /* WIN32 */
 
 
@@ -3091,7 +3118,7 @@ float DirSize(const char *path) {
 #endif
 
 
-int64_t w_ftell (FILE *x) {
+int64_t w_ftell(FILE *x) {
 
 #ifndef WIN32
     int64_t z = ftell(x);
@@ -3101,6 +3128,21 @@ int64_t w_ftell (FILE *x) {
 
     if (z < 0)  {
         merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
+        return -1;
+    } else {
+        return z;
+    }
+}
+
+int w_fseek(FILE *x, int64_t pos, int mode) {
+
+#ifndef WIN32
+    int64_t z = fseek(x, pos, mode);
+#else
+    int64_t z = _fseeki64(x, pos, mode);
+#endif
+    if (z < 0)  {
+        mwarn("Fseek function failed due to [(%d)-(%s)]", errno, strerror(errno));
         return -1;
     } else {
         return z;

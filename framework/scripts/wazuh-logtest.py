@@ -108,7 +108,7 @@ def main():
             logging.error('** Wazuh-logtest error ' + str(error))
             continue
         except ConnectionError:
-            logging.error('** Wazuh-logtest error when connecting with ossec-analysisd')
+            logging.error('** Wazuh-logtest error when connecting with wazuh-analysisd')
             continue
 
         # Check and alert to user if new session was created
@@ -211,7 +211,7 @@ class WazuhSocket:
 
 class WazuhLogtest:
     def __init__(self, location="stdin", log_format="syslog"):
-        """Top level class to interact with wazuh-logtest feature, part of ossec-analysisd
+        """Top level class to interact with wazuh-logtest feature, part of wazuh-analysisd
 
         Args:
             location (str, optional): log origin. Defaults to "master->/var/log/syslog".

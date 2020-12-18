@@ -27,7 +27,7 @@
 #define AUTHD_H
 
 #ifndef ARGV0
-#define ARGV0 "ossec-authd"
+#define ARGV0 "wazuh-authd"
 #endif
 
 #include "addagent/manage_agents.h"

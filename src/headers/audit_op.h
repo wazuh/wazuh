@@ -39,6 +39,14 @@ typedef struct {
 } w_audit_rules_list;
 
 
+typedef enum _audit_mode {
+    AUDIT_ERROR = -1,
+    AUDIT_DISABLED,
+    AUDIT_ENABLED,
+    AUDIT_IMMUTABLE
+} audit_mode;
+
+
 /**
  * @brief Init loaded rules list.
  *

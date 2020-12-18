@@ -50,6 +50,20 @@ src/verify-agent-conf
 src/wazuh-modulesd
 src/wazuh-auth
 src/wazuh-db
+src/wazuh-agentd
+src/wazuh-agentlessd
+src/wazuh-analysisd
+src/wazuh-authd
+src/wazuh-csyslogd
+src/wazuh-dbd
+src/wazuh-execd
+src/wazuh-logcollector
+src/wazuh-maild
+src/wazuh-monitord
+src/wazuh-remoted
+src/wazuh-reportd
+src/wazuh-syscheckd
+src/wazuh-integratord
 
 # Windows agent
 src/win32/*.exe

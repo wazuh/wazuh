@@ -32,7 +32,7 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ${DIREC
 status="pending"
 COUNTER=30
 while [ "$status" != "connected" -a $COUNTER -gt 0  ]; do
-    . ${DIRECTORY}/var/run/ossec-agentd.state >> ${DIRECTORY}/logs/upgrade.log 2>&1
+    . ${DIRECTORY}/var/run/wazuh-agentd.state >> ${DIRECTORY}/logs/upgrade.log 2>&1
     sleep 1
     COUNTER=$[COUNTER - 1]
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Status = "${status}". Remaining attempts: ${COUNTER}." >> ${DIRECTORY}/logs/upgrade.log
