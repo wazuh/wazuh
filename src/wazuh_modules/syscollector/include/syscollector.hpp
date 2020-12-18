@@ -68,7 +68,6 @@ private:
     std::string getCreateStatement() const;
     void registerWithRsync();
 
-    bool sleepFor();
     void scanHardware();
     void scanOs();
     void scanNetwork();

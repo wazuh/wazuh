@@ -763,12 +763,6 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
     txn.getDeletedRows(callback);
 }
 
-bool Syscollector::sleepFor()
-{
-    std::unique_lock<std::mutex> lock{m_mutex};
-    return !m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_running;});
-}
-
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
@@ -1105,11 +1099,12 @@ void Syscollector::scan()
 
 void Syscollector::syncLoop()
 {
+    std::unique_lock<std::mutex> lock{m_mutex};
     if (m_scanOnStart)
     {
         scan();
     }
-    while(sleepFor())
+    while(!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_running;}))
     {
         scan();
         //sync Rsync
@@ -1120,17 +1115,21 @@ void Syscollector::syncLoop()
 
 void Syscollector::push(const std::string& data)
 {
-    auto rawData{data};
-    Utils::replaceFirst(rawData, "dbsync ", "");
-    const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
-    try
+    std::unique_lock<std::mutex> lock{m_mutex};
+    if (!m_running)
     {
-        m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
-    }
-    // LCOV_EXCL_START
-    catch(const std::exception& ex)
-    {
-        m_logErrorFunction(ex.what());
+        auto rawData{data};
+        Utils::replaceFirst(rawData, "dbsync ", "");
+        const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+        try
+        {
+            m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
+        }
+        // LCOV_EXCL_START
+        catch(const std::exception& ex)
+        {
+            m_logErrorFunction(ex.what());
+        }
     }
     // LCOV_EXCL_STOP
 }
