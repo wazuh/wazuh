@@ -334,3 +334,33 @@ void *OSList_AddData(OSList *list, void *data)
 
     return ret;
 }
+
+void OSList_CleanNodes(OSList *list) {
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    if (list == NULL || list->free_data_function == NULL) {
+        w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+        w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+
+        return;
+    }
+
+    OSListNode *aux_node = NULL;
+
+    while(list->first_node != NULL) {
+        aux_node = list->first_node;
+        list->first_node = aux_node->next;
+        list->free_data_function(aux_node->data);
+        free(aux_node);
+    }
+
+    list->last_node = NULL;
+    list->cur_node = NULL;
+    list->first_node = NULL;
+
+    list->currently_size = 0;
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+}
