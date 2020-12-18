@@ -180,7 +180,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(packagePath, pkgType))->buildPackageData(jsPackage);
             if(UNKNOWN_VALUE != jsPackage.at("name"))
             {
-                // Only return valid packages
+                // Only return valid content packages
                 result.push_back(jsPackage);
             }
         }
@@ -190,26 +190,22 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
 
 nlohmann::json SysInfo::getPackages() const
 {
-    nlohmann::json ret;
+    nlohmann::json jsPackages;
 
     for(const auto& packageDirectory : s_mapPackagesDirectories)
     {
         const auto pkgDirectory { packageDirectory.first };
         if (Utils::existsDir(pkgDirectory))
         {
-            nlohmann::json package;
             if(std::string::npos != pkgDirectory.find("/Applications") ||
                std::string::npos != pkgDirectory.find("/Library"))
             {
                 // Standard packages location
-                getPackagesFromPath(pkgDirectory, packageDirectory.second, package);
-                ret.push_back(package);
+                getPackagesFromPath(pkgDirectory, packageDirectory.second, jsPackages);
             }
             else
             {
                 // Brew packages location
-                // Once brew packages implementation is done, "ret.push_back(package)" line should be moved
-                // outside the if/else
             }
         }
     }
