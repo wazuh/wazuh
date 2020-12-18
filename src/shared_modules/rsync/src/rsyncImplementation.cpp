@@ -66,6 +66,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
         auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 
         ChecksumContext checksumCtx;
+        checksumCtx.size = 1;
         checksumCtx.rightCtx.id = std::time(nullptr);
 
         if(!jsonFirstQueryResult.empty() && !jsonLastQueryResult.empty())
