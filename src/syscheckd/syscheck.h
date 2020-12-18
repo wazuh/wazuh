@@ -438,6 +438,13 @@ int init_regex(void);
 int add_audit_rules_syscheck(bool first_time);
 
 /**
+ * @brief Function the delete the audit rule for a specfic path
+ *
+ * @param path: Path of the configured rule.
+ */
+void remove_audit_rule_syscheck(const char *path);
+
+/**
  * @brief Read an audit event from socket
  *
  * @param [out] audit_sock The audit socket to read the events from
@@ -525,7 +532,7 @@ void get_parent_process_info(char *ppid, char ** const parent_name, char ** cons
  *
  */
 void audit_reload_rules(void);
-
+void audit_delete_configured_rule(const char *path);
 /**
  * @brief Parses an audit event and sends the corresponding alert message
  *

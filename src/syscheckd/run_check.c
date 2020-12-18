@@ -656,6 +656,10 @@ STATIC void fim_link_update(int pos, char *new_path) {
             return;
         }
     }
+    // Clean audit rule if monitored with whodata
+    if (syscheck.opts[pos] & WHODATA_ACTIVE) {
+        remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
+    }
 
     os_free(syscheck.symbolic_links[pos]);
     os_strdup(new_path, syscheck.symbolic_links[pos]);

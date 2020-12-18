@@ -28,16 +28,6 @@ typedef struct {
     char *key;  ///< Filter key.
 } w_audit_rule;
 
-/**
- * @struct w_audit_rules_list
- * @brief Stores the list of the Audit loaded rules.
- */
-typedef struct {
-    w_audit_rule **list; ///< List of loaded rules.
-    int used;            ///< Number of loaded rules.
-    int size;            ///< Size of the rules list.
-} w_audit_rules_list;
-
 
 typedef enum _audit_mode {
     AUDIT_ERROR = -1,
@@ -48,34 +38,21 @@ typedef enum _audit_mode {
 
 
 /**
- * @brief Init loaded rules list.
- *
- * @param initialSize Initial size of the list.
- * @return Pointer to w_audit_rules_list struct.
+ * @brief Allocate the memory for the rule_list and set it's free function.
  */
-w_audit_rules_list* audit_rules_list_init(int initialSize);
+void init_audit_rule_list();
 
 
 /**
  * @brief Adds a rule to loaded rules list.
  *
- * @param wlist Loaded rules list. This list must be initialized.
  * @param element Struct w_audit_rule to be added.
  */
-void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element);
+void audit_rules_list_append(w_audit_rule *element);
 
 
 /**
- * @brief Get loaded rules list from audit kernel. audit_free_list() must be called to free memory used.
- *
- * @param fd Audit netlink socket.
- * @return -1 on error and 1 on success.
- */
-int audit_get_rule_list(int fd);
-
-
-/**
- * @brief Checks if the audit rule is loaded. audit_get_rule_list() must be called before.
+ * @brief Checks if the audit rule is loaded.
  *
  * @param path Path of the folder.
  * @param perms Permission access type.
@@ -88,18 +65,19 @@ int search_audit_rule(const char *path, const char *perms, const char *key);
 
 
 /**
- * @brief Deallocates the memory used by the loaded rules list.
+ * @brief Deallocates the memory used by a rules list.
  *
  */
-void audit_free_list(void);
+void audit_rules_list_free();
 
 
 /**
- * @brief Deallocates the memory used by a rules list.
+ * @brief Get loaded rules list from audit kernel. audit_free_list() must be called to free memory used.
  *
- * @param wlist Pointer to the rule list to be deallocated.
+ * @param fd Audit netlink socket.
+ * @return -1 on error and 1 on success.
  */
-void audit_rules_list_free(w_audit_rules_list *wlist);
+int audit_get_rule_list(int fd);
 
 
 /**

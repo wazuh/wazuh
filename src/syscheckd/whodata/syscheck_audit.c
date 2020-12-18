@@ -53,6 +53,9 @@ volatile int audit_health_check_creation;
 
 static unsigned int count_reload_retries;
 
+//This variable controls if the the modification of the rule is made by syscheck.
+static int audit_rule_manipulation = false;
+
 #ifdef ENABLE_AUDIT
 
 static regex_t regexCompiled_uid;
@@ -208,7 +211,7 @@ int init_auditd_socket(void) {
 
 int add_audit_rules_syscheck(bool first_time) {
     unsigned int i = 0;
-    unsigned int rules_added = 0;
+    int rules_added = 0;
     int found;
     int retval;
     const char *directory = NULL;
@@ -692,7 +695,8 @@ void audit_parse(char *buffer) {
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
-            } else {
+            } else if (audit_rule_manipulation == false) {
+                // If the manipulation wasn't done by syscheck, increase the number of retries
                 mwarn(FIM_WARN_AUDIT_RULES_MODIFIED);
                 // Send alert
                 char msg_alert[512 + 1];
@@ -713,8 +717,8 @@ void audit_parse(char *buffer) {
                     audit_thread_active = 0;
                 }
             }
-
-            free(p_dir);
+            os_free(p_dir);
+            audit_rule_manipulation = false;
         }
         // Fallthrough
     case 2:
@@ -1155,12 +1159,17 @@ void audit_reload_rules(void) {
     int rules_added = add_audit_rules_syscheck(false);
     mdebug1(FIM_AUDIT_RELOADED_RULES, rules_added);
 }
+
+void remove_audit_rule_syscheck(const char *path) {
+    // Set the rule manipulation flag to true.
+    audit_rule_manipulation = true;
+    audit_delete_rule(path, AUDIT_KEY);
+}
 // LCOV_EXCL_STOP
 
 
 // LCOV_EXCL_START
 void *audit_reload_thread() {
-
     sleep(RELOAD_RULES_INTERVAL);
     while (audit_thread_active) {
         // Reload rules
@@ -1421,6 +1430,8 @@ void audit_read_events(int *audit_sock, int mode) {
 void clean_rules(void) {
     int i;
 
+    audit_thread_active = 0;
+
     w_mutex_lock(&audit_mutex);
     mdebug2(FIM_AUDIT_DELETE_RULE);
 
@@ -1429,7 +1440,7 @@ void clean_rules(void) {
             audit_delete_rule(syscheck.dir[i], AUDIT_KEY);
         }
     }
-
+    audit_rules_list_free();
     w_mutex_unlock(&audit_mutex);
 }
 
@@ -1471,7 +1482,8 @@ int audit_health_check(int audit_socket) {
     audit_health_check_creation = 0;
     unsigned int timer = 10;
 
-    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) { // -17 Means audit rule exist EEXIST
+     // -17 Means audit rule exist EEXIST
+    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != EEXIST) {
         mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
         return -1;
     }
