@@ -768,12 +768,6 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
     txn.getDeletedRows(callback);
 }
 
-bool Syscollector::sleepFor()
-{
-    std::unique_lock<std::mutex> lock{m_mutex};
-    return !m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_running;});
-}
-
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
@@ -879,17 +873,19 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_portsAll = portsAll;
     m_processes = processes;
     m_hotfixes = hotfixes;
-    m_running = false;
+
+    std::unique_lock<std::mutex> lock{m_mutex};
+    m_stopping = false;
     m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
     registerWithRsync();
-    syncLoop();
+    syncLoop(lock);
 }
 
 void Syscollector::destroy()
 {
     std::unique_lock<std::mutex> lock{m_mutex};
-    m_running = true;
+    m_stopping = true;
     m_cv.notify_all();
     lock.unlock();
 }
@@ -1153,14 +1149,14 @@ void Syscollector::sync()
     TRY_CATCH_TASK(syncProcesses);
 }
 
-void Syscollector::syncLoop()
+void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
     if (m_scanOnStart)
     {
         scan();
         sync();
     }
-    while(sleepFor())
+    while(!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_stopping;}))
     {
         scan();
         sync();
@@ -1171,17 +1167,21 @@ void Syscollector::syncLoop()
 
 void Syscollector::push(const std::string& data)
 {
-    auto rawData{data};
-    Utils::replaceFirst(rawData, "dbsync ", "");
-    const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
-    try
+    std::unique_lock<std::mutex> lock{m_mutex};
+    if (!m_stopping)
     {
-        m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
-    }
-    // LCOV_EXCL_START
-    catch(const std::exception& ex)
-    {
-        m_logErrorFunction(ex.what());
+        auto rawData{data};
+        Utils::replaceFirst(rawData, "dbsync ", "");
+        const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+        try
+        {
+            m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
+        }
+        // LCOV_EXCL_START
+        catch(const std::exception& ex)
+        {
+            m_logErrorFunction(ex.what());
+        }
     }
     // LCOV_EXCL_STOP
 }

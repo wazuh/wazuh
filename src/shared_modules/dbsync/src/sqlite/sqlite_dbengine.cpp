@@ -10,6 +10,7 @@
  */
 
 #include <fstream>
+#include <thread>
 #include "sqlite_dbengine.h"
 #include "stringHelper.h"
 #include "commonDefs.h"
@@ -436,17 +437,37 @@ void SQLiteDBEngine::initialize(const std::string& path,
 {
     if(!path.empty())
     {
-        if (cleanDB(path))
+        constexpr auto MAX_RETRY { 10 };
+        constexpr auto SECONDS_TO_RETRY { 10 };
+        const auto dbInitialization
         {
-            m_sqliteConnection = m_sqliteFactory->createConnection(path);
-            const auto createDBQueryList { Utils::split(tableStmtCreation,';') };
-            m_sqliteConnection->execute("PRAGMA temp_store = memory;");
-            m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
-            for (const auto& query : createDBQueryList)
+            [this, &tableStmtCreation](const std::string& dbPath) -> bool
             {
-                const auto& stmt { getStatement(query) };
-                stmt->step();
+                const bool previousDbRemoved { cleanDB(dbPath) };
+                if (previousDbRemoved)
+                {
+                    m_sqliteConnection = m_sqliteFactory->createConnection(dbPath);
+                    const auto createDBQueryList { Utils::split(tableStmtCreation,';') };
+                    m_sqliteConnection->execute("PRAGMA temp_store = memory;");
+                    m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
+                    for (const auto& query : createDBQueryList)
+                    {
+                        const auto& stmt { getStatement(query) };
+                        if (SQLITE_DONE != stmt->step())
+                        {
+                            throw dbengine_error { STEP_ERROR_CREATE_STMT };
+                        }
+                    }
+                }
+                return previousDbRemoved;
             }
+        };
+
+        auto initialized { dbInitialization(path) };
+        for (int i = 0; i < MAX_RETRY && !initialized; ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(SECONDS_TO_RETRY));
+            initialized = dbInitialization(path);
         }
     }
     
@@ -454,7 +475,6 @@ void SQLiteDBEngine::initialize(const std::string& path,
     {
         throw dbengine_error { EMPTY_DATABASE_PATH };
     }
-    
 }
 
 bool SQLiteDBEngine::cleanDB(const std::string& path) 

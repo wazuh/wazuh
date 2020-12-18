@@ -60,7 +60,8 @@ public:
     void destroy();
     void push(const std::string& data);
 private:
-    Syscollector() = default;
+    Syscollector()
+    : m_stopping { true } { }
     ~Syscollector() = default;
     Syscollector(const Syscollector&) = delete;
     Syscollector& operator=(const Syscollector&) = delete;
@@ -68,7 +69,6 @@ private:
     std::string getCreateStatement() const;
     void registerWithRsync();
 
-    bool sleepFor();
     void scanHardware();
     void scanOs();
     void scanNetwork();
@@ -81,7 +81,7 @@ private:
     void syncProcesses();
     void scan();
     void sync();
-    void syncLoop();
+    void syncLoop(std::unique_lock<std::mutex>& lock);
     std::shared_ptr<ISysInfo>                      m_spInfo;
     std::function<void(const std::string&)>        m_reportDiffFunction;
     std::function<void(const std::string&)>        m_reportSyncFunction;
@@ -96,7 +96,7 @@ private:
     bool                                           m_portsAll;
     bool                                           m_processes;
     bool                                           m_hotfixes;
-    bool                                           m_running;
+    bool                                           m_stopping;
     std::unique_ptr<DBSync>                        m_spDBSync;
     std::unique_ptr<RemoteSync>                    m_spRsync;
     std::condition_variable                        m_cv;
