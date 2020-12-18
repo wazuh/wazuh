@@ -22,62 +22,50 @@ class PKGWrapper final : public IPackageWrapper
 public:
     explicit PKGWrapper(const std::string& filePath)
       : m_filePath{filePath}
-    { }
+      , m_name{UNKNOWN_VALUE}
+      , m_version{UNKNOWN_VALUE}
+      , m_groups{UNKNOWN_VALUE}
+      , m_description{UNKNOWN_VALUE}
+      , m_architecture{UNKNOWN_VALUE}
+      , m_format{"pkg"}
+      , m_osPatch{UNKNOWN_VALUE}
+    {
+        getPkgData();
+    }
 
     ~PKGWrapper() = default;
 
     std::string name() const override
     {
-        nlohmann::json jsonData{};
-        getData(jsonData);
-        return jsonData.empty() ? UNKNOWN_VALUE
-                                : jsonData.at("name");
+        return m_name;
     }
     std::string version() const override
     {
-        nlohmann::json jsonData{};
-        getData(jsonData);
-        return jsonData.empty() ? UNKNOWN_VALUE
-                                : jsonData.at("version");
+        return m_version;
     }
     std::string groups() const override
     {
-        nlohmann::json jsonData{};
-        getData(jsonData);
-        return jsonData.empty() ? UNKNOWN_VALUE
-                                : jsonData.at("groups");
+        return m_groups;
     }
     std::string description() const override
     {
-        nlohmann::json jsonData{};
-        getData(jsonData);
-        return jsonData.empty() ? UNKNOWN_VALUE
-                                : jsonData.at("description");
+        return m_description;
     }
     std::string architecture() const override
     {
-        nlohmann::json jsonData{};
-        getData(jsonData);
-        return jsonData.empty() ? UNKNOWN_VALUE
-                                : jsonData.at("architecture");
+        return m_architecture;
     }
     std::string format() const override
     {
-        nlohmann::json jsonData{};
-        getData(jsonData);
-        return jsonData.empty() ? UNKNOWN_VALUE
-                                : jsonData.at("format");
+        return m_format;
     }
     std::string osPatch() const override
     {
-        nlohmann::json jsonData{};
-        getData(jsonData);
-        return jsonData.empty() ? UNKNOWN_VALUE
-                                : jsonData.at("os_patch");
+        return m_osPatch;
     }
 
 private:
-    void getData(nlohmann::json& data) const
+    void getPkgData()
     {
         std::fstream file {m_filePath, std::ios_base::in};
         static const auto getValueFnc
@@ -92,16 +80,6 @@ private:
         if (file.is_open())
         {
             std::string line;
-            nlohmann::json package;
-
-            std::string name         { UNKNOWN_VALUE };
-            std::string version      { UNKNOWN_VALUE };
-            std::string groups       { UNKNOWN_VALUE };
-            std::string description  { UNKNOWN_VALUE };
-            std::string architecture { UNKNOWN_VALUE };
-            std::string format       { UNKNOWN_VALUE };
-            std::string osPatch      { UNKNOWN_VALUE };
-
             while(std::getline(file, line))
             {
                 line = Utils::trim(line," \t");
@@ -109,40 +87,35 @@ private:
                 if (line == "<key>CFBundleName</key>" &&
                     std::getline(file, line))
                 {
-                    name = getValueFnc(line);
+                    m_name = getValueFnc(line);
                 }
                 else if (line == "<key>CFBundleShortVersionString</key>" &&
-                    std::getline(file, line))
+                         std::getline(file, line))
                 {
-                    version = getValueFnc(line);
+                    m_version = getValueFnc(line);
                 }
                 else if (line == "<key>LSApplicationCategoryType</key>" &&
-                    std::getline(file, line))
+                         std::getline(file, line))
                 {
-                    groups = getValueFnc(line);
+                    m_groups = getValueFnc(line);
                 }
                 else if (line == "<key>CFBundleIdentifier</key>" &&
-                    std::getline(file, line))
+                         std::getline(file, line))
                 {
-                    description = getValueFnc(line);
+                    m_description = getValueFnc(line);
                 }
-            }
-
-            if (UNKNOWN_VALUE != name)
-            {
-                package["name"]         = name;
-                package["version"]      = version;
-                package["groups"]       = groups;
-                package["description"]  = description;
-                package["architecture"] = UNKNOWN_VALUE;
-                package["format"]       = "pkg";
-                package["os_patch"]     = UNKNOWN_VALUE;
-                data.push_back(package);
             }
         }
     }
 
     std::string m_filePath;
+    std::string m_name;
+    std::string m_version;
+    std::string m_groups;
+    std::string m_description;
+    std::string m_architecture;
+    std::string m_format;
+    std::string m_osPatch;
 };
 
 #endif //_PKG_WRAPPER_H

@@ -216,11 +216,11 @@ nlohmann::json SysInfo::getPackages() const
     {
         const auto pkgDirectory { packageDirectory.first };
         nlohmann::json package{};
-        if(std::string::npos != pkgDirectory.contains("/Applications"))
+        if(std::string::npos != pkgDirectory.find("/Applications"))
         {
             getPackagesFromApplications(pkgDirectory, packageDirectory.second, package);
         }
-        else if(std::string::npos != pkgDirectory.contains("/Library"))
+        else if(std::string::npos != pkgDirectory.find("/Library"))
         {
             getPackagesFromLibrary(pkgDirectory, packageDirectory.second, package);
         }
