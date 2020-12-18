@@ -452,7 +452,10 @@ void SQLiteDBEngine::initialize(const std::string& path,
                     for (const auto& query : createDBQueryList)
                     {
                         const auto& stmt { getStatement(query) };
-                        stmt->step();
+                        if (SQLITE_DONE != stmt->step())
+                        {
+                            throw dbengine_error { STEP_ERROR_CREATE_STMT };
+                        }
                     }
                 }
                 return previousDbRemoved;

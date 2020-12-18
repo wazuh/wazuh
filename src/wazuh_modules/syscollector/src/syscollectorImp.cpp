@@ -868,11 +868,13 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_portsAll = portsAll;
     m_processes = processes;
     m_hotfixes = hotfixes;
+
+    std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
     m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
     registerWithRsync();
-    syncLoop();
+    syncLoop(lock);
 }
 
 void Syscollector::destroy()
@@ -1097,9 +1099,8 @@ void Syscollector::scan()
     TRY_CATCH_SCAN(scanProcesses);
 }
 
-void Syscollector::syncLoop()
+void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
     if (m_scanOnStart)
     {
         scan();

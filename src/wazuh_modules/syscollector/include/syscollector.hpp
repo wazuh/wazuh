@@ -60,7 +60,8 @@ public:
     void destroy();
     void push(const std::string& data);
 private:
-    Syscollector() = default;
+    Syscollector()
+    : m_stopping { true } { }
     ~Syscollector() = default;
     Syscollector(const Syscollector&) = delete;
     Syscollector& operator=(const Syscollector&) = delete;
@@ -75,7 +76,7 @@ private:
     void scanPorts();
     void scanProcesses();
     void scan();
-    void syncLoop();
+    void syncLoop(std::unique_lock<std::mutex>& lock);
     std::shared_ptr<ISysInfo>                      m_spInfo;
     std::function<void(const std::string&)>        m_reportDiffFunction;
     std::function<void(const std::string&)>        m_reportSyncFunction;
