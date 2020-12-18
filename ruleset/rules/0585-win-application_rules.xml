@@ -1,0 +1,3436 @@
+<!--
+  -  Windows Event Channel ruleset for the Application channel
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  -  ID range: 60600 - 61099
+-->
+
+<var name="MS_FREQ">8</var>
+
+<group name="windows,windows_application,">
+  <rule id="60600" level="0">
+    <if_sid>60003</if_sid>
+    <field name="win.system.severityValue">^INFORMATION$</field>
+    <description>Windows Application informational event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60601" level="0">
+    <if_sid>60003</if_sid>
+    <field name="win.system.severityValue">^WARNING$</field>
+    <description>Windows Application warning event</description>
+    <options>no_full_log</options>
+    <group>gpg13_4.12,</group>
+  </rule>
+
+  <rule id="60602" level="9">
+    <if_sid>60003</if_sid>
+    <field name="win.system.severityValue">^ERROR$</field>
+    <description>Windows Application error event</description>
+    <options>no_full_log</options>
+    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!--  Chrome Remote Desktop  -->
+  <rule id="60603" level="5">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^chromoting$</field>
+    <field name="win.system.message">\.*Access denied for client</field>
+    <description>Chrome Remote Desktop attempt - access denied $(win.eventdata.data)</description>
+    <options>no_full_log</options>
+    <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+  </rule>
+
+  <rule id="60604" level="5">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^chromoting$</field>
+    <field name="win.system.eventID">^1$</field>
+    <description>Chrome Remote Desktop attempt - Client connected $(win.eventdata.data)</description>
+    <options>no_full_log</options>
+    <group>gdpr_IV_32.2,</group>
+  </rule>
+
+  <rule id="60605" level="5">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^chromoting$</field>
+    <field name="win.system.eventID">^2$</field>
+    <description>Chrome Remote Desktop attempt - disconnected ($(win.eventdata.data))</description>
+    <options>no_full_log</options>
+    <group>gdpr_IV_32.2,</group>
+  </rule>
+
+  <!--{"win":{"system":{"providerName":"chromoting","eventID":"5","level":"4","task":"1","keywords":"0x80000000000000","systemTime":"2018-12-18T10:55:48.000000000Z","eventRecordID":"1801","channel":"Application","computer":"qnu","severityValue":"INFORMATION","message":"Hôte démarré pour l'utilisateur \\\"tinamay299@gmail.com\\\""},"eventdata":{"data":"user@gmail.com"}}}-->
+  <rule id="60606" level="5">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^chromoting$</field>
+    <field name="win.system.eventID">^5$</field>
+    <description>Chrome Remote Desktop attempt - started connection from $(win.eventdata.data)</description>
+    <options>no_full_log</options>
+    <group>gdpr_IV_32.2,</group>
+  </rule>
+
+  <rule id="60607" level="3">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-Defrag$</field>
+    <field name="win.system.eventID">^258$</field>
+    <description>Disk defragmenter successfully completed an analysis</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60608" level="4">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Windows Error Reporting$</field>
+    <field name="win.system.eventID">^1001$</field>
+    <description>Summary event of the report's signatures</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60609" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^MsiInstaller$</field>
+    <description>Group of MsiInstaller events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60610" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1040$</field>
+    <description>Windows Installer began an installation process</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60611" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^11724$|^1034$</field>
+    <options>alert_by_email</options>
+    <description>Application Uninstalled $(win.eventdata.data)</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60612" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^11707$|^1033$</field>
+    <options>alert_by_email</options>
+    <description>Application Installed $(win.eventdata.data)</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60613" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1001$</field>
+    <description>Request for product component failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60614" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1002$</field>
+    <description>Unexpected or missing value in key</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60615" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1003$</field>
+    <description>Unexpected or missing value in subkey</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60616" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1005$</field>
+    <description>Windows installer restarted to complete a configuration</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60617" level="4">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1007$</field>
+    <description>Installation not permitted by software restriction policy</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60618" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1008$</field>
+    <description>Installation not permitted due to an error in software restriction policy processing</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60619" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1012$</field>
+    <description>64-bit packages deployment is not supported for this version</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60620" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1014$</field>
+    <description>Windows Installer proxy information not correctly registered</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60621" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1015$</field>
+    <description>MsiInstaller: Failed to connect to server</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60622" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1016$</field>
+    <description>Detection of product feature component failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60623" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1018$|^1023$</field>
+    <description>Application cannot be installed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60624" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1019$</field>
+    <description>Update successfully removed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60625" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1020$|^1021$</field>
+    <description>Update could not be removed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60626" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1022$</field>
+    <description>Update installed successfully</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60627" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1024$</field>
+    <description>Update could not be installed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60628" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1025$</field>
+    <description>File in use by another program</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60629" level="7">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1026$|^1027$</field>
+    <description>The configuration data registry key, sub key or configuration data cache folder were not secured properly</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60630" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1029$</field>
+    <description>The product installation or update required a restart for all changes to take effect</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60631" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1030$</field>
+    <description>The application tried to install a more recent version of the protected Windows file</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60632" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1031$</field>
+    <description>Assembly component is in use</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60633" level="5">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1032$</field>
+    <description>Environment variables updated during installation generated an error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60634" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1033$</field>
+    <description>Windows Installer installed the product</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60635" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1035$</field>
+    <description>Windows installer reconfigured the product</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60636" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1036$</field>
+    <description>Windows installer installed an update</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60637" level="3">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1037$</field>
+    <description>Windows installer removed an update</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60638" level="0">
+    <if_sid>60609</if_sid>
+    <field name="win.system.eventID">^1038$</field>
+    <description>Windows installer requires a system restart</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60639" level="3">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^LocationNotifications$</field>
+    <field name="win.system.eventID">^1$</field>
+    <description>A program accessed information from a location sensor or default location</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60640" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-Security-SPP$</field>
+    <description>Group of SPP events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60641" level="5">
+    <if_sid>60640</if_sid>
+    <field name="win.system.eventID">^903$</field>
+    <description>Software Protection service stopped</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60642" level="3">
+    <if_sid>60640</if_sid>
+    <field name="win.system.eventID">^16384$</field>
+    <description>Software Protection service scheduled successfully</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60643" level="3">
+    <if_sid>60640</if_sid>
+    <field name="win.system.eventID">^8197$</field>
+    <description>SLUI.exe launched</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60644" level="3">
+    <if_sid>60640</if_sid>
+    <field name="win.system.eventID">^1016$</field>
+    <description>Proof of Purchase installed successfully</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60645" level="3">
+    <if_sid>60640</if_sid>
+    <field name="win.system.eventID">^8225$</field>
+    <description>The existing scheduler data does not match the expected data</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60646" level="5">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-Security-SPP$</field>
+    <field name="win.system.eventID">^8198$</field>
+    <description>License Activation (slui.exe) failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60647" level="4">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Application Hang$</field>
+    <field name="win.system.eventID">^1002$</field>
+    <description>Application stopped responding, program closed</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60648" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-Search$</field>
+    <description>Group of Windows Search events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60649" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3007$</field>
+    <description>Performance monitoring cannot be initialized</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60650" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3014$</field>
+    <description>Internal error generated by a component loaded in the system</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60651" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3024$</field>
+    <description>Cannot start update because the content sources cannot be accessed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60652" level="9">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3025$</field>
+    <description>Critical error: System low on resources</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60653" level="7">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3026$</field>
+    <description>Advise Status Change failed: System low on resources</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60654" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3034$</field>
+    <description>Registry version does not match with the expected one</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60655" level="3">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3052$</field>
+    <description>Crawl requested to be stopped</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60656" level="7">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3085$</field>
+    <description>Application network access account invalid</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60657" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3087$</field>
+    <description>Cannot flush gatherer files</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60658" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3088$</field>
+    <description>Cannot update checkpoint record</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60659" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3089$</field>
+    <description>Cannot save gatherer files</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60660" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3090$</field>
+    <description>Cannot restore gatherer files from the previous checkpoint</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60661" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3091$</field>
+    <description>Cannot read checkpoint record</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60662" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^3099$</field>
+    <description>Unable to terminate notifications normally</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60663" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^7011$</field>
+    <description>Directory location invalid</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60664" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^7013$</field>
+    <description>Disk full, update paused</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60665" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^7040$</field>
+    <description>Index data cannot be read</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60666" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^7066$</field>
+    <description>Missing directory configuration</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60667" level="5">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^7068$</field>
+    <description>Cannot read registry, registry keys missing</description>
+    <mitre>
+      <id>T1112</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60668" level="3">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^1003$</field>
+    <description>The Windows Search Service started</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60669" level="3">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^1013$</field>
+    <description>The Windows Search Service stopped normally</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60670" level="3">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^7064$</field>
+    <description>Performance monitoring cannot be initialized because the counters are not loaded or the shared memory object cannot be opened</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60671" level="3">
+    <if_sid>60648</if_sid>
+    <field name="win.system.eventID">^1010$</field>
+    <description>The Windows Search Service removed the old search index successfully</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60672" level="5">
+    <if_sid>60601</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-Search$</field>
+    <field name="win.system.eventID">^1008$</field>
+    <description>The Windows Search Service attempted to remove the old search index</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60673" level="3">
+    <if_sid>60600</if_sid>
+    <field name="win.system.eventID">^1$</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Search-ProfileNotify$</field>
+    <description>Windows Search Service indexed data for user successfully removed in response to user profile deletion</description>
+    <options>no_full_log</options>
+    <group>gdpr_IV_32.2,</group>
+  </rule>
+
+  <rule id="60674" level="3">
+    <if_sid>60600</if_sid>
+    <field name="win.system.eventID">^16$</field>
+    <field name="win.system.providerName">^Microsoft-Windows-Search-ProfileNotify$</field>
+    <description>Created default configuration for user</description>
+    <options>no_full_log</options>
+    <group>gdpr_IV_32.2,</group>
+  </rule>
+
+  <rule id="60675" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^VSS$</field>
+    <description>Group of VSS events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60676" level="3">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^8224$</field>
+    <description>The VSS service is shutting down due to idle timeout</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60677" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^11$|^13$</field>
+    <description>COM server cannot be started</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60678" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^12$</field>
+    <description>Unexpected error returned by DeleteVolumeMountPoint</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60679" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^14$</field>
+    <description>Error generated by registry user name definition</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60680" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^15$|^16$|^17$</field>
+    <description>Cannot interpret user name specified in registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60681" level="3">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^18$</field>
+    <description>Safe mode does not support Shadow Copy</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60682" level="4">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^19$</field>
+    <description>The EventSystem service is disabled or attempting to start during Safe Mode</description>
+    <mitre>
+      <id>T1031</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60683" level="7">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^20$|^21$</field>
+    <description>Volume Shadow Copy Service: COM+ database corrupted, writers will not receive events</description>
+    <mitre>
+      <id>T1031</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60684" level="3">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^26$</field>
+    <description>COM+ Event System service or COM+ System Application service disabled</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60685" level="3">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^27$</field>
+    <description>Volume Shadow Copy service disabled</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60686" level="3">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^28$</field>
+    <description>Microsoft Software Shadow Copy Provider service disabled</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60687" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^2004$</field>
+    <description>Shadow copy 6 timeout</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60688" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^4001$</field>
+    <description>Cannot find Diff Area for creating shadow copies</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60689" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^4609$</field>
+    <description>Bad return code detected during internal processing of the EventSystem service</description>
+    <mitre>
+      <id>T1031</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60690" level="4">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^5002$</field>
+    <description>System may be low on resources</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60691" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^5013$</field>
+    <description>Routine BackupEventLogW called by EventLogs failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60692" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^6004$</field>
+    <description>Sqllib error: Database not simple</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60693" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^6005$</field>
+    <description>SQL Shadow Copy configuration error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60694" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^6008$</field>
+    <description>Sqllib error: Failed to create VDS object</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60695" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^6013$</field>
+    <description>Sqllib error: OLEDB Error encountered calling IDBInitialize</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60696" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^7001$</field>
+    <description>VssAdmin: Unable to create a shadow copy</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60697" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^8193$</field>
+    <description>Unexpected error calling routine</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60698" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^8194$</field>
+    <description>Unexpected error querying for the IVssWriterCallback interface</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60699" level="3">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^8211$</field>
+    <description>Writer attempted to subscribe in safe mode</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60700" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^8213$</field>
+    <description>Volume Shadow Copy Service: Writers do not have enough privileges to create Shadow Copy</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60701" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^8213$</field>
+    <description>Cluster Service does not run under a user with sufficient access rights</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60702" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^8224$</field>
+    <description>The VSS service is shutting down due to idle timeout</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60703" level="3">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^8225$</field>
+    <description>The VSS service is shutting down due to a shutdown event from the Service Control Manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60704" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^12289$</field>
+    <description>OFO: Directory can't be removed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60705" level="5">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^VSS$</field>
+    <field name="win.system.eventID">^12290$</field>
+    <description>Volume Shadow Copy Service warning: ESENT ERROR</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60706" level="5">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^VSS$</field>
+    <field name="win.system.eventID">^12291$</field>
+    <description>Error creating or using the COM+ Writers publisher interface</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60707" level="5">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^VSS$</field>
+    <field name="win.system.eventID">^12292$</field>
+    <description>Error creating the Shadow Copy Provider COM class with CLSID</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60708" level="5">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^VSS$</field>
+    <field name="win.system.eventID">^12293$</field>
+    <description>Error calling a routine on a Shadow Copy Provider</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60709" level="4">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^12296$|^12297$|^12298$</field>
+    <description>System may be low on resources</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60710" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^12301$</field>
+    <description>Writer did not respond to a GatherWriterStatus call</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60711" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^12302$</field>
+    <description>Internal inconsistency detected in trying to contact shadow copy service writers</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60712" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^12305$</field>
+    <description>Volume/disk not connected or not found</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60713" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^12310$</field>
+    <description>Could not commit shadow copy</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60714" level="5">
+    <if_sid>60675</if_sid>
+    <field name="win.system.eventID">^12348$</field>
+    <description>VSS was denied access to the root</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60715" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^System Restore$</field>
+    <description>Group of System Restore events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60716" level="4">
+    <if_sid>60715</if_sid>
+    <field name="win.system.eventID">^8216$</field>
+    <description>Skipped creation of restore point for $(win.eventdata.data) as there is a previous restore point available</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60717" level="5">
+    <if_sid>60715</if_sid>
+    <field name="win.system.eventID">^8193$</field>
+    <description>Failed to create restore point</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60718" level="3">
+    <if_sid>60715</if_sid>
+    <field name="win.system.eventID">^8194$</field>
+    <description>Restore point successfully created</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60719" level="3">
+    <if_sid>60715</if_sid>
+    <field name="win.system.eventID">^8196$</field>
+    <description>System Restore enabled</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60720" level="3">
+    <if_sid>60715</if_sid>
+    <field name="win.system.eventID">^8198$</field>
+    <description>Successfully initialized System Restore</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60721" level="3">
+    <if_sid>60715</if_sid>
+    <field name="win.system.eventID">^8201$</field>
+    <description>Successfully restored system</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60722" level="3">
+    <if_sid>60715</if_sid>
+    <field name="win.system.eventID">^8211$</field>
+    <description>Successfully created scheduled restore point</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60723" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Application Error$</field>
+    <description>Group of Application Error events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60724" level="5">
+    <if_sid>60723</if_sid>
+    <field name="win.system.eventID">^100$|^1000$|^1001$|^1004$</field>
+    <description>Application faulted</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60725" level="5">
+    <if_sid>60723</if_sid>
+    <field name="win.system.eventID">^1010$</field>
+    <description>Fault bucket report</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60726" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-WMI$</field>
+    <description>Group of WMI events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60727" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^10$</field>
+    <description>Event filter could not be activated</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60728" level="5">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-WMI$</field>
+    <field name="win.system.eventID">^29$</field>
+    <description>WMI Service could not be initialized</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60729" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^43$</field>
+    <description>WMI ADAP failed to connect to namespace</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60730" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5611$</field>
+    <description>Inconsistent system shutdown detected</description>
+    <mitre>
+      <id>T1529</id>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60731" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5601$</field>
+    <description>The WMI service failed to load the repository files</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60732" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5612$</field>
+    <description>A quota reached a warning value, WMI stopped WMIPRVSE.EXE</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60733" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^4$</field>
+    <description>Error encountered trying to load MOF</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60734" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^21$</field>
+    <description>Event provider attempted to register a syntactically invalid query</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60735" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^22$</field>
+    <description>Event provider attempted to register an intrinsic event query</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60736" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^23$|^24$|^25$</field>
+    <description>Event provider attempted to register query</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60737" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^43$</field>
+    <description>WMI ADAP failed to connect to namespace</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60738" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^48$</field>
+    <description>WMI ADAP was unable to save object</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60739" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^58$|^59$</field>
+    <description>WMI ADAP was unable to create the Win32_Perf base class</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60740" level="3">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^63$</field>
+    <description>The provider has been registered in the WMI namespace</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60741" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5600$</field>
+    <description>The WMI Service detected an inconsistency with the WMI repository</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60742" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5601$</field>
+    <description>The WMI Service failed to load the repository files</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60743" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5605$</field>
+    <description>Access to namespace denied</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60744" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5606$</field>
+    <description>WMI Service could not deliver results asynchronously for the namespace</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60745" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5612$</field>
+    <description>WMI stopped WMIPRVSE.EXE because a quota reached a warning value</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60746" level="5">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5614$</field>
+    <description>WMI service was unable to locate the repository files during the service startup</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60747" level="3">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5615$</field>
+    <description>WMI Service started successfully</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60748" level="3">
+    <if_sid>60726</if_sid>
+    <field name="win.system.eventID">^5616$</field>
+    <description>WMI Core, Provider SubSystem and Event SubSystem initialized sucessfully</description>
+    <mitre>
+      <id>T1047</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60749" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-EventSystem$</field>
+    <description>Group of EventSystem events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60750" level="3">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4625$</field>
+    <field name="win.eventdata.param1">\.+</field>
+    <description>EventSystem supressed duplicate log entries for $(win.eventdata.param1) seconds</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60751" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4354$|^4356$</field>
+    <description>Event System failed to create an instance for the subscriber</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60752" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4357$</field>
+    <description>EventObjectChange event could not be fired, query criteria contains an error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60753" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4358$</field>
+    <description>The COM+ Event System could not fire an EventObjectChange event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60754" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4359$</field>
+    <description>The type library specified in EventClass could not be loaded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60755" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4361$</field>
+    <description>The COM+ Event System detected a corrupt IEventClass object</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60756" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4362$</field>
+    <description>The COM+ Event System detected a corrupt IEventSubscription object</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60757" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4609$|^4610$</field>
+    <description>The COM+ Event System detected a bad return code during its internal processing</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60758" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4611$</field>
+    <description>The COM+ Event System detected an unexpected null pointer during its internal processing</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60759" level="9">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4612$</field>
+    <description>The COM+ Event System ran out of memory during its internal processing</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60760" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4613$</field>
+    <description>The COM+ Event System detected an unexpected error from a Win32 API call</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60761" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4614$</field>
+    <description>The COM+ Event System detected an inconsistency in its internal state</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60762" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4615$</field>
+    <description>The COM+ Event System caught an exception</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60763" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4616$</field>
+    <description>The COM+ Event System caught an access violation</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60764" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4619$</field>
+    <description>The COM+ Event System could not store the per-user subscription</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60765" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4620$</field>
+    <description>The COM+ Event System detected an error trying to query object because the criteria string contained an error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60766" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4621$</field>
+    <description>The COM+ Event System could not remove the object</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60767" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4622$</field>
+    <description>The COM+ Event System could not marshal the subscriber for subscription</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60768" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4623$</field>
+    <description>The COM+ Event System failed to create an instance of the MultiInterfacePublisherFilter</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60769" level="5">
+    <if_sid>60749</if_sid>
+    <field name="win.system.eventID">^4624$</field>
+    <description>The COM+ Event System could not apply the filter criteria to subscription because the criteria string contained an error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60770" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Desktop Window Manager$</field>
+    <description>Group of Desktop Window Manager events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60771" level="5">
+    <if_sid>60770</if_sid>
+    <field name="win.system.eventID">^9002$</field>
+    <description>Unable to start Desktop Window Manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60772" level="5">
+    <if_sid>60770</if_sid>
+    <field name="win.system.eventID">^9003$</field>
+    <description>Unable to start Desktop Window Manager due to composited theme not used</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60773" level="5">
+    <if_sid>60770</if_sid>
+    <field name="win.system.eventID">^9009$</field>
+    <description>Desktop Window Manager exited with code $(win.eventdata.data)</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60774" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-Winlogon$</field>
+    <description>Group of Winlogon events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60775" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^6000$</field>
+    <description>$(win.eventdata.data) was unavailable to handle a notification event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60776" level="7">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^6003$</field>
+    <description>$(win.eventdata.data) was unavailable to handle a critical notification event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60777" level="3">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^7002$</field>
+    <description>User Logoff Notification for Customer Experience Improvement Program</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60778" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^1002$</field>
+    <description>The shell stopped unexpectedly</description>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60779" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^4002$</field>
+    <description>Logon hours restriction policy applied to the logged on user</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60780" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^4003$</field>
+    <description>Desktop switch failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60781" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^4005$|^4006$</field>
+    <description>Windows Logon process terminated unexpectedly</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60782" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^4007$</field>
+    <description>Windows Logon process failed to disconnect the user session</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60783" level="3">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^4101$</field>
+    <description>Windows license validated</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60784" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^4102$</field>
+    <description>Invalid Windows license</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60785" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^4103$</field>
+    <description>License activation failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60786" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^6001$</field>
+    <description>The winlogon notification subscriber failed a notification event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60787" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^6002$</field>
+    <description>Winlogon notification subscriber registration cannot be loaded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60788" level="9">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^6004$</field>
+    <description>The winlogon notification subscriber failed a critical notification event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60789" level="5">
+    <if_sid>60774</if_sid>
+    <field name="win.system.eventID">^4004$</field>
+    <description>The Windows logon process has failed to terminate currently logged on user's processes</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60790" level="4">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-User Profiles Service$</field>
+    <field name="win.system.eventID">^1530$</field>
+    <description>The registry file is still in use by other applications or services</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60791" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^User Profile$</field>
+    <description>Group of User Profile events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60792" level="5">
+    <if_sid>60791</if_sid>
+    <field name="win.system.eventID">^1508$</field>
+    <description>Unable to load registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60793" level="5">
+    <if_sid>60791</if_sid>
+    <field name="win.system.eventID">^1511$</field>
+    <description>Cannot find local profile, logging with temporary profile</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60794" level="3">
+    <if_sid>60791</if_sid>
+    <field name="win.system.eventID">^1525$</field>
+    <description>Offline Caching enabled on the Roaming Profile share</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60795" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^ESENT$</field>
+    <description>Group of ESENT events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60796" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^103$</field>
+    <description>The database engine stopped an instance</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60797" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^327$</field>
+    <description>The database engine detached a database</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60798" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^326$</field>
+    <description>The database engine attached a database</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60799" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^0$</field>
+    <description>Unexpected Win32 error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60800" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^215$</field>
+    <description>The backup was interrupted by the client or the connection failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60801" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^404$|^405$</field>
+    <description>Synchronous read page checksum error occurred</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60802" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^412$</field>
+    <description>Unable to read log header</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60803" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^100$</field>
+    <description>Database engine started</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60804" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^101$</field>
+    <description>Database engine stopped</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60805" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^102$</field>
+    <description>The database engine is starting a new instance</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60806" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^210$</field>
+    <description>Starting full backup</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60807" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^300$</field>
+    <description>The database engine is initiating recovery steps</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60808" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^301$</field>
+    <description>The database engine is replaying log file C:\Winnt\system32\wins\j50.log</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60809" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^302$</field>
+    <description>The database engine has completed recovery steps</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60810" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^411$</field>
+    <description>Log version stamp does not match database engine version stamp</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60811" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^427$</field>
+    <description>The database engine could not access a file</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60812" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^439$</field>
+    <description>Unable to write a shadowed header file</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60813" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^454$</field>
+    <description>Unable to read the log header</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60814" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^474$</field>
+    <description>The database page read failed verification due to a page checksum mismatch</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60815" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^476$</field>
+    <description>Failed verification for database page read</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60816" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^489$</field>
+    <description>An attempt to open the file for read only access failed with system error</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
+  </rule>
+
+  <rule id="60817" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^609$</field>
+    <description>Index cleanup of database initiated</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60818" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^614$</field>
+    <description>The secondary index WReplicaSetNameIndex of table ConfigTable may be corrupt</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60819" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^623$</field>
+    <description>The version store for this instance has reached its maximum size</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60820" level="3">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^2001$</field>
+    <description>Shadow copy 2 freeze started</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60821" level="4">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^2003$</field>
+    <description>Shadow copy 2 freeze stopped</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60822" level="5">
+    <if_sid>60795</if_sid>
+    <field name="win.system.eventID">^12290$</field>
+    <description>Volume Shadow Copy Service warning: Could not perform a backup</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60823" level="3">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-CEIP$</field>
+    <field name="win.system.eventID">^1005$</field>
+    <description>Customer Experience Improvement Program data successfully consolidated</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60824" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-CAPI2$</field>
+    <description>Group of CAPI2 events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60825" level="3">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^3$|^5$|^8$</field>
+    <description>Failed auto update retrieval of third-party root</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60826" level="5">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^11$|^4107$</field>
+    <description>Failed extract of third-party root list from auto update cab</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60827" level="5">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^513$</field>
+    <description>Cryptographic Services failed while processing the Onidentify call</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60828" level="3">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^1$</field>
+    <description>Successful auto update of third-party root certificate</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60829" level="3">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^2$</field>
+    <description>Successful auto update retrieval of third-party root list cab</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60830" level="3">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^4$</field>
+    <description>Successful auto update retrieval of third-party root certificate</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60831" level="4">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^6$</field>
+    <description>Reached crypt32 threshold of events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60832" level="3">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^7$</field>
+    <description>Successful auto update retrieval of third-party root list sequence number</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60833" level="3">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^12$</field>
+    <description>Successful auto delete of third-party root certificate</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60834" level="3">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <description>Successful auto property update of third-party root certificate</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60835" level="5">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^256$</field>
+    <description>The Cryptographic Services failed to initialize the Catalog Database</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60836" level="5">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^257$</field>
+    <description>The Cryptographic Services failed to initialize the Catalog Database. ESENT error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60837" level="5">
+    <if_sid>60824</if_sid>
+    <field name="win.system.eventID">^512$</field>
+    <description>The Cryptographic Services failed to initialize the VSS backup "System Writer" object</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60838" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-MSDTC$</field>
+    <description>Group of MSDTC events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60839" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4098$</field>
+    <description>Unable to translate the MS DTC error code to the appropiate MS DTC error message</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60840" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4099$</field>
+    <description>Permission denied to manage the MS DTC on this system</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60841" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4100$</field>
+    <description>Exception occurred while processing control requests from the Service Control Manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60842" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4101$</field>
+    <description>The MS DTC has the same unique identity as the local one</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60843" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4102$</field>
+    <description>MS DTC Transaction Manager could not be initialized</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60844" level="9">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4103$</field>
+    <description>MS DTC run out of memory</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60845" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4102$</field>
+    <description>MS DTC Transaction Manager could not be initialized</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60846" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4105$</field>
+    <description>Microsoft Distributed Transaction Coordinator service successfully removed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60847" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4106$</field>
+    <description>Could not install the MS DTC service</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60848" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4107$</field>
+    <description>MS DTC service could not be removed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60849" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4113$</field>
+    <description>MS DTC log path not found</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60850" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4114$</field>
+    <description>MS DTC Transaction Manager could not be loaded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60851" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4116$</field>
+    <description>MS DTC name object could not be created</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60852" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4117$</field>
+    <description>MS DTC user interface server object could not be initialized</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60853" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4118$</field>
+    <description>MS DTC user interface server object could not be loaded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60854" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4119$</field>
+    <description>MS DTC user interface server object does not support the requested interface</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60855" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4120$</field>
+    <description>MS DTC user interface name object could not be loaded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60856" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4121$</field>
+    <description>MS DTC Log Manager DLL could not be loaded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60857" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4124$</field>
+    <description>MS DTC Log file could not be decompressed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60858" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4125$</field>
+    <description>MS DTC log file is full and cannot accept new log records</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60859" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4126$</field>
+    <description>MS DTC log file attributes are invalid</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60860" level="4">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4127$</field>
+    <description>MS DTC log file has wrapped</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60861" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4129$</field>
+    <description>XA Transaction Manager attempted to locate the "GetXaSwitch" function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60862" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4137$</field>
+    <description>Could not force transaction outcome</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60863" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4138$</field>
+    <description>The specified transaction bridge CLSID is not a valid GUID</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60864" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4137$</field>
+    <description>Could not force transaction outcome</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60865" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4139$</field>
+    <description>An error occurred creating the transaction bridge</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60866" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4140$</field>
+    <description>An error occurred initializing the transaction bridge</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60867" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4141$</field>
+    <description>An error occurred starting the transaction bridge</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60868" level="4">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4142$</field>
+    <description>A log client has reported taking a checkpoint</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60869" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4147$</field>
+    <description>MS DTC has determined that the cluster service is configured</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60870" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4149$</field>
+    <description>Transaction not found</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60871" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4150$</field>
+    <description>The transaction is not a child transaction</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60872" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4151$</field>
+    <description>The MSDTC TM could not determine if an incoming connection request is from a remote machine</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60873" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4152$</field>
+    <description>Either the transaction is not committed or there are resource managers or subordinate MS DTC Transaction Managers still connected</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60874" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4153$</field>
+    <description>Could not resolve the transaction due to an unknown error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60875" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4154$</field>
+    <description>The MS DTC log file is unreadable</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60876" level="7">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4155$</field>
+    <description>MS DTC encountered an internal error and is terminating</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60877" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4157$</field>
+    <description>Could not stop the MS DTC service or one of its dependent services</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60878" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4160$</field>
+    <description>Invalid command line arguments</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60879" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4162$</field>
+    <description>The MS DTC log file is an incompatible version</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60880" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4165$</field>
+    <description>No transaction selected</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60881" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4166$</field>
+    <description>Exceeded maximum number of active transactions that the MS DTC log file can accomodate</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60882" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4169$|^4170$</field>
+    <description>MS DTC Transaction Manager is in an inconsistent state and cannot proceed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60883" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4171$</field>
+    <description>MS DTC Transaction Manager log write failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60884" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4172$|^4173$|^4174$|^4175$|^4176$|^4177$|^4178$|^4179$|
+            |^4180$|^4181$|^4182$|^4181$|^4182$|^4183$|^4184$|^4185$|^4186$|^4187$|^4188$|
+            |^4189$|^4190$|^4191$|^4192$|</field>
+    <description>MS DTC Transaction Manager start failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60885" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4193$</field>
+    <description>A resource manager performed recovery</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60886" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4194$</field>
+    <description>MS DTC XA Transaction Manager object could not be created</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60887" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4196$</field>
+    <description>MS DTC XA Transaction Manager could not start</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60888" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4198$</field>
+    <description>Could not locate the MS DTC TIP Gateway contact object</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60889" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4199$</field>
+    <description>MS DTC TIP Gateway initialization object could not be created</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60890" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4200$</field>
+    <description>MS DTC TIP Gateway failed to initialize</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60891" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4201$</field>
+    <description>MS DTC TIP Gateway failed to start</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60892" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4208$</field>
+    <description>Failed to initialize COM while trying to start MS DTC</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60893" level="9">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4209$</field>
+    <description>A critical error occurred in an MS DTC component, process terminating</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+  </rule>
+
+  <rule id="60894" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4211$</field>
+    <description>Failed to convert the caller provided TIP Transaction URL into a valid MS DTC Transaction Id</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60895" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4212$|^4213$</field>
+    <description>Unable to get the file name for the OLE Transactions Proxy</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60896" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4214$</field>
+    <description>The DllGetTransactionManagerCore function is missing from the OLE Transactions Proxy DLL</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60897" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4215$</field>
+    <description>Failed to connect to the registry on the remote MS DTC Transaction Manager's system</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60898" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4216$</field>
+    <description>Failed to open the registry key containing the list of transaction managers</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60899" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4217$</field>
+    <description>Failed to read the name of the default transaction manager from the registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60900" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4224$</field>
+    <description>Failed to open the registry key containing the name of the OLE Transactions Proxy DLL</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60901" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4225$</field>
+    <description>Failed to read the name of the OLE Transactions Proxy DLL from the registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60902" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4226$</field>
+    <description>Failed to start MS DTC via the MS DTC Proxy DLL</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60903" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4227$</field>
+    <description>Unable to start MS DTC because initialization of cluster support failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60904" level="8">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4229$</field>
+    <description>MS DTC TIP Gateway illegal transition</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60905" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4230$</field>
+    <description>MS DTC TIP Gateway invalid value</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60906" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4231$|^4232$</field>
+    <description>MS DTC TIP Gateway encountered error calling CoCreateInstance</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60907" level="9">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4233$</field>
+    <description>An MS DTC component was unable to allocate memory for a critical operation</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60908" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4240$|4241$|</field>
+    <description>The MS DTC Transaction Manager sent a TIP "ABORT COMMAND"</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60909" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4242$|4243$</field>
+    <description>The MS DTC Transaction Manager sent a TIP "PUSH COMMAND"</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60910" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4244$|^4245$</field>
+    <description>The MS DTC Transaction Manager sent a TIP "PREPARE COMMAND"</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60911" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4246$|^4247$</field>
+    <description>The MS DTC Transaction Manager sent a TIP "COMMIT, QUERY, or RECONNECT COMMAND"</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60912" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4248$</field>
+    <description>The MS DTC Transaction Manager received a TIP "ERROR COMMAND"</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60913" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4249$</field>
+    <description>The MS DTC Transaction Manager received an unknown or unexpected TIP command for an Active transaction</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60914" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4352$</field>
+    <description>The MS DTC Transaction Manager received a TIP "ERROR COMMAND" for a "Prepared" transaction</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60915" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4353$</field>
+    <description>The MS DTC Transaction Manager received an unexpected or unknown TIP command for a "Prepared" transaction</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60916" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4356$</field>
+    <description>Failed to initialize the MS DTC Communication Manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60917" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4357$</field>
+    <description>MS DTC is unable to communicate with MS DTC on a remote system</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60918" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4358$</field>
+    <description>The MS DTC Connection Manager is unable to register with RPC to use TCP/IP or UDP/IP</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60919" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4359$</field>
+    <description>MS DTC is unable to communicate with MS DTC on a remote system</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60920" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4360$</field>
+    <description>MS DTC was not able to allocate a console</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60921" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4361$</field>
+    <description>An incompletely initialized MS DTC log file was detected</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60922" level="9">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4362$</field>
+    <description>Illegal transition caused fatal error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60923" level="9">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4363$</field>
+    <description>Out of memory caused fatal error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60924" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4367$</field>
+    <description>Unexpected event occurred on synchronization object</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60925" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4368$</field>
+    <description>Unexpected error occurred in the MS DTC XA Transaction Manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60926" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4370$</field>
+    <description>MS DTC was unable to bind to the TIP socket</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60927" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4371$|^4372$</field>
+    <description>The MS DTC Transaction Manager sent a TIP "PULL COMMAND" to another transaction manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60928" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4374$</field>
+    <description>The MS DTC Transaction Manager received a TIP "ERROR COMMAND" for an Active transaction</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60929" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4375$</field>
+    <description>The MS DTC Transaction Manager received an unknown or unexpected TIP command for an Active transaction</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60930" level="4">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4378$</field>
+    <description>The existing cluster resource for MS DTC is not configured correctly</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60931" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4379$</field>
+    <description>The existing cluster resource for MS DTC is of a newer version</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60932" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4380$</field>
+    <description>The installation of MS DTC on this node used to be a part of cluster that had a newer version of MS DTC installed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60933" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4381$</field>
+    <description>MS DTC was unable to determine the version of the data associated with cluster support in the local registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60934" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4386$</field>
+    <description>MS DTC cannot start because it failed to initialize the log file for its first usage after a cluster install</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60935" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4399$</field>
+    <description>Could not establish connection to trace transaction</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60936" level="4">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4400$</field>
+    <description>No transaction is selected</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60937" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4401$</field>
+    <description>Transaction not found</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60938" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4402$</field>
+    <description>The version of the transaction manager is not compatible for this feature</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60939" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4403$</field>
+    <description>The attempt to dump the transaction to a trace file failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60940" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4404$</field>
+    <description>The initialization of the tracing infrastructure failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60941" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4405$</field>
+    <description>The attempt to create a new trace session failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60942" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4406$</field>
+    <description>The attempt to stop the existing trace session failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60943" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4407$</field>
+    <description>The attempt to flush the existing trace data failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60944" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4408$</field>
+    <description>The attempt to update the maximum buffer count of the existing trace session failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60945" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4409$</field>
+    <description>The infrastructure has reported that the number of trace events that have been lost until now is equal to $(win.eventdata.data)</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60946" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4410$</field>
+    <description>The thread launched to update the trace settings has failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60947" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4411$</field>
+    <description>The attempt to set the trace specific registry settings failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60948" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4412$</field>
+    <description>Failed to create a new trace session</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60949" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4413$</field>
+    <description>Failed to stop the existing trace session</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60950" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4414$</field>
+    <description>Failed to flush the existing trace data</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60951" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4415$</field>
+    <description>Failed to update the maximum buffer count of the existing trace session</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60952" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4416$</field>
+    <description>Failed to update all the trace settings in the registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60953" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4417$</field>
+    <description>Failed to load all the trace settings from the registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60954" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4418$</field>
+    <description>MS DTC Transaction Manager start failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60955" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4419$</field>
+    <description>MS DTC failed to load the system restore information</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60956" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4420$</field>
+    <description>MS DTC failed to process a system restore event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60957" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4421$</field>
+    <description>MS DTC failed to save the system restore information</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60958" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4422$</field>
+    <description>MS DTC has processed a system restore event</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60959" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4425$</field>
+    <description>The infrastructure has reported that an attempt to trace an event has failed cause of lack of enough buffer space</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60960" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4426$</field>
+    <description>Failed to read the needed name objects from the registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60961" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4427$</field>
+    <description>Failed to initialize the needed name objects</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60962" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4428$</field>
+    <description>Failed to stop MSDTC service or one of its dependent services</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60963" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4429$</field>
+    <description>Failed to set the security attributes on the MS DTC service</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60964" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4431$</field>
+    <description>Failed to stop the MS DTC service</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60965" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4432$</field>
+    <description>Failed to restart the MS DTC service</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60966" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4433$|^4434$|^4435$|^4436$</field>
+    <description>The MS DTC Transaction Manager is in an inconsistent state and cannot proceed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60967" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4437$</field>
+    <description>The account that the MS DTC is running under is invalid</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60968" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4438$</field>
+    <description>Failed to set the MS DTC service account information in the registry</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60969" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4440$</field>
+    <description>The MS DTC Service is terminating because it didn't startup in a timely manner</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60970" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4441$</field>
+    <description>A MS DTC component has encountered an internal error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60971" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4442$</field>
+    <description>MS DTC was unable to start because this version of dtc is less than the least valid version allowable</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60972" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4443$</field>
+    <description>MS DTC was unable to start because this version of dtc is not compatible with the version of MS DTC installed on another node of the cluster</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60973" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4444$</field>
+    <description>The XA Transaction Manager is in an inconsistent state and cannot proceed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60974" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4446$</field>
+    <description>Entering MSDTC log storage warning limits</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60975" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4447$</field>
+    <description>Leaving MSDTC log storage warning limits</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60976" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4448$</field>
+    <description>KTMRM service failed to load the system restore information</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60977" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4452$</field>
+    <description>Attempt to freeze the transaction manager failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60978" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4453$</field>
+    <description>Attempt to thaw the transaction manager failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60979" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4454$</field>
+    <description>Failed to prepare MSDTC for imaging</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60980" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4455$</field>
+    <description>Unexpected error when connecting to the Kernel Transaction Manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60981" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4456$</field>
+    <description>Unable to create a communication channel to the Kernel Transaction Manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60982" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4457$</field>
+    <description>MSDTC was unable to migrate its log during Windows upgrade</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60983" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4458$</field>
+    <description>MSDTC encountered an error during migration of contact identifiers</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60984" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^4459$</field>
+    <description>MSDTC encountered an error during Windows upgrade</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60985" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53252$</field>
+    <description>The maximum number of asynchronous checkpoints has been exceeded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60986" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53253$</field>
+    <description>The maximum number of log buffers in use has been reached</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60987" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53256$</field>
+    <description>MS DTC detected dirty log pages on recovery, and is reconstructing state from other pages</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60988" level="9">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53267$</field>
+    <description>Received unknown connection manager message type</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60989" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53274$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_commit function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60990" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53281$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_open function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60991" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53283$</field>
+    <description>DTC parameter values information</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60992" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53284$</field>
+    <description>The XA Transaction Manager attempted to load the XA resource manager DLL</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60993" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53285$</field>
+    <description>The XA Transaction Manager attempted to locate the "GetXaSwitch" function in the XA resource manager DLL</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60994" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53287$</field>
+    <description>MS DTC transaction outcome is unexpected</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60995" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53288$</field>
+    <description>The MS DTC XA Transaction Manager was unable to perform recovery</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60996" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53294$|^53295$|^53296$</field>
+    <description>Heuristic damage information</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60997" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53297$</field>
+    <description>The XA Transaction Manager attempted to perform recovery with the XA resource manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60998" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53298$</field>
+    <description>The XA Transaction Manager called the XA resource manager's xa_open function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="60999" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53299$</field>
+    <description>The XA Transaction Manager called the XA resource manager's xa_close function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61000" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53300$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_recover function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61001" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53301$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_commit function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61002" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53302$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_rollback function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61003" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53303$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_prepare function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61004" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53304$</field>
+    <description>The XA Transaction Manager called the "GetXaSwitch" function in the XA resource manager DLL</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61005" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53305$</field>
+    <description>The MS DTC XA Transaction Manager could not enroll with the MS DTC Transaction Manager on behalf of the XA resource manager</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61006" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53315$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_commit function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61007" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53316$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_rollback function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61008" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53317$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_prepare function</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61009" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53318$</field>
+    <description>The MS DTC XA Transaction Manager called the XA resource manager's xa_commit function with the TMONEPHASE flag set</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61010" level="3">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53319$</field>
+    <description>The value of XaTmMinWarmRecoveryInterval is greater than the value of XaTmMaxWarmRecoveryInterval</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61011" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53320$</field>
+    <description>During MS DTC installation, the attempt to preserve the old log file failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61012" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53321$</field>
+    <description>MS DTC has received an invalid message</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61013" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53322$</field>
+    <description>The connection manager in a MS DTC component has received an invalid message</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61014" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53323$</field>
+    <description>The MS DTC XA Transaction Manager failed attempting to decrypt information in a log record</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61015" level="5">
+    <if_sid>60838</if_sid>
+    <field name="win.system.eventID">^53325$</field>
+    <description>KtmRm has received an invalid message</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61016" level="0">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^.NET Runtime$</field>
+    <description>Group of .NET Runtime events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61017" level="9">
+    <if_sid>61016</if_sid>
+    <field name="win.system.eventID">^1026$</field>
+    <description>The process was terminated due to an unhandled exception</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1489</id>
+    </mitre>
+  </rule>
+
+  <rule id="61018" level="5">
+    <if_sid>61016</if_sid>
+    <field name="win.system.eventID">^0$</field>
+    <description>The description for Event ID 0 in Source .NET Runtime cannot be found</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61019" level="5">
+    <if_sid>61016</if_sid>
+    <field name="win.system.eventID">^1000$</field>
+    <description>.NET Runtime failed to load</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61020" level="5">
+    <if_sid>61016</if_sid>
+    <field name="win.system.eventID">^1022$</field>
+    <description>.NET Runtime - CLR 2.0 does not support profilers written for CLR 1.x</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61021" level="9">
+    <if_sid>61016</if_sid>
+    <field name="win.system.eventID">^1023$</field>
+    <description>.NET Runtime - Fatal Execution Engine Error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61022" level="5">
+    <if_sid>60602</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-LocationProvider$</field>
+    <field name="win.system.eventID">^2006$</field>
+    <description>There was an error with the Windows Location Provider database</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61023" level="3">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-LocationProvider$</field>
+    <field name="win.system.eventID">^2001$</field>
+    <description>Windows Location Provider started</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61024" level="3">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-LocationProvider$</field>
+    <field name="win.system.eventID">^2003$</field>
+    <description>The Windows Location Provider has shutdown</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61025" level="3">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-UserModePowerService$</field>
+    <field name="win.system.eventID">^12$</field>
+    <description>Process $(win.eventdata.processPath) has reset policy scheme from $(win.eventdata.oldSchemeGuid) to $(win.eventdata.newSchemeGuid)</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61026" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Application Management$</field>
+    <description>Group of Application Management events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61027" level="3">
+    <if_sid>61026</if_sid>
+    <field name="win.system.eventID">^101$</field>
+    <description>Assignment of application failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61028" level="5">
+    <if_sid>61026</if_sid>
+    <field name="win.system.eventID">^103$</field>
+    <description>The removal of the assignment of application from policy failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61029" level="3">
+    <if_sid>61026</if_sid>
+    <field name="win.system.eventID">^106$</field>
+    <description>Application was configured to upgrade another application</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61030" level="5">
+    <if_sid>61026</if_sid>
+    <field name="win.system.eventID">^107$</field>
+    <description>The execution of the setup program for an application failed</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1203</id>
+    </mitre>
+  </rule>
+
+  <rule id="61031" level="5">
+    <if_sid>61026</if_sid>
+    <field name="win.system.eventID">^108$</field>
+    <description>Failed to apply changes to software installation settings</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61032" level="3">
+    <if_sid>61026</if_sid>
+    <field name="win.system.eventID">^301$</field>
+    <description>The assignment of an application succeeded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61033" level="3">
+    <if_sid>61026</if_sid>
+    <field name="win.system.eventID">^303$</field>
+    <description>The removal of the assignment of an application succeeded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61034" level="3">
+    <if_sid>61026</if_sid>
+    <field name="win.system.eventID">^307$</field>
+    <description>The launch of the setup command for a program succeeded</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61035" level="5">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^DNSCache$</field>
+    <field name="win.system.eventID">^11050$</field>
+    <description>The DNS Client service could not contact any DNS servers for a repeated number of attempts</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61036" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Disk$</field>
+    <description>Group of Disk events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61037" level="7">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^7$</field>
+    <description>A device has a bad block</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61038" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^9$</field>
+    <description>A device did not respond within the timeout period</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61039" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^10$|^11$</field>
+    <description>The driver detected a controller error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61040" level="4">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^12$</field>
+    <description>A stripe set or volume set member listed in the configuration information was missing</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61041" level="4">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^13$</field>
+    <description>The fault tolerance driver configuration information is corrupted</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61042" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^14$</field>
+    <description>The FT set containing \Device\MissingMirror1Member0 cannot be used</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61043" level="3">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^15$</field>
+    <description>Mirror initialization or synchronization started</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61044" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^17$</field>
+    <description>VDS fails to launch provider</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61045" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^23$</field>
+    <description>Initialization of mirror failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61046" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^25$</field>
+    <description>DCOM error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61047" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^26$</field>
+    <description>The diskeeper defragmentation has stopped for drive c:</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61048" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^27$</field>
+    <description>The fault tolerant driver detected the system was shutdown dirty</description>
+    <mitre>
+      <id>T1529</id>
+    </mitre>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61049" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^32$</field>
+    <description>The driver detected that the device \Device\Harddisk2\DR2 has its write cache enabled</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61050" level="3">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^33$</field>
+    <description>Data was recovered using error correction code on device \device\harddisk0\partition2</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61051" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^34$</field>
+    <description>The driver disabled the write cache on a device</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61052" level="5">
+    <if_sid>61036</if_sid>
+    <field name="win.system.eventID">^41$</field>
+    <description>The file system structure on the disk is corrupt and unusable</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61053" level="3">
+    <field name="win.system.providerName">^EventCreate$</field>
+    <field name="win.system.eventID">^100$</field>
+    <description>Event created in the application log</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61054" level="0">
+    <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-EventCollector$</field>
+    <description>Group of EventCollector events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61055" level="5">
+    <if_sid>61054</if_sid>
+    <field name="win.system.eventID">^1$|^2$|^4$</field>
+    <description>The Subscription could not be activated on target machine due to communication error</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61056" level="5">
+    <if_sid>61054</if_sid>
+    <field name="win.system.eventID">^3$</field>
+    <description>The subscription has expired and will no longer be serviced</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61057" level="5">
+    <if_sid>61054</if_sid>
+    <field name="win.system.eventID">^6$</field>
+    <description>The Subscription could not publish events from target machine to the log file of this subscription</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61058" level="5">
+    <if_sid>61054</if_sid>
+    <field name="win.system.eventID">^501$</field>
+    <description>An event from target machine is lost and could not be delivered</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61059" level="5">
+    <if_sid>61054</if_sid>
+    <field name="win.system.eventID">^502$</field>
+    <description>The Subscription detects dropped events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61060" level="5">
+    <if_sid>60600,60601,60602</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-Perflib$</field>
+    <field name="win.system.eventID">^1008$</field>
+    <description>The Open Procedure for service Remote Access failed</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61061" level="10" frequency="$MS_FREQ" timeframe="240">
+    <if_matched_sid>60602</if_matched_sid>
+    <description>Multiple Windows error Application events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61062" level="10" frequency="$MS_FREQ" timeframe="120">
+    <if_matched_sid>60601</if_matched_sid>
+    <description>Multiple Windows warning Application events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61063" level="0">
+    <if_sid>60601</if_sid>
+    <field name="win.system.providerName">^Microsoft-Windows-SoftwareRestrictionPolicies$</field>
+    <description>Group of Microsoft-Windows-SoftwareRestrictionPolicies events</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61064" level="5">
+    <if_sid>61063</if_sid>
+    <field name="win.system.eventID">^865$</field>
+    <description>Access restricted by your Administrator by the default software restriction policy level</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61065" level="5">
+    <if_sid>61063</if_sid>
+    <field name="win.system.eventID">^866$</field>
+    <description>Access restricted by your Administrator by location with policy rule </description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61066" level="5">
+    <if_sid>61063</if_sid>
+    <field name="win.system.eventID">^867$</field>
+    <description>Access restricted by your Administrator by software publisher policy</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61067" level="5">
+    <if_sid>61063</if_sid>
+    <field name="win.system.eventID">^868$</field>
+    <description>Access restricted by your Administrator by policy rule</description>
+    <options>no_full_log</options>
+  </rule>
+
+  <rule id="61068" level="5">
+    <if_sid>61063</if_sid>
+    <field name="win.system.eventID">^882$</field>
+    <description>Access restricted by your Administrator by policy rule</description>
+    <options>no_full_log</options>
+  </rule>
+
+</group>

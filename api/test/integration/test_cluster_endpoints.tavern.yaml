@@ -2212,7 +2212,6 @@ stages:
               type: !anystr
               max_agents: !anystr
               openssl_support: !anystr
-              ruleset_version: !anystr
               tz_offset: !anystr
               tz_name: !anystr
           failed_items: []

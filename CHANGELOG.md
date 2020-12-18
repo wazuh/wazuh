@@ -8,6 +8,11 @@ All notable changes to this project will be documented in this file.
 - **Core:**
   - Rename daemons to new Wazuh standard. ([#6912](https://github.com/wazuh/wazuh/pull/6912))
 
+- **API:**
+  - Removed ruleset version from `GET /cluster/{node_id}/info` and `GET /manager/info` as it was deprecated. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
+
+- **Framework:**
+  - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
 
 ## [v4.1.0]
 

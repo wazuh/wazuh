@@ -1,0 +1,9 @@
+Apr 17 22:20:21 hostj named[312]: [ID 295310 daemon.notice] security: notice: dropping source port zero packet from [64.211.251.254].0
+Apr 17 22:20:21 hostj named[312]: [ID 295310 daemon.notice] security: notice: dropping source port zero packet from [64.211.251.254].0
+Apr 17 22:20:29 hostj named[312]: [ID 295310 daemon.notice] security: notice: dropping source port zero packet from [64.211.251.254].0
+Jan  6 13:39:19 drew named[128838]: dropping source port zero packet from [216.161.67.226].0
+Jan  6 13:39:23 drew named[128838]: dropping source port zero packet from [63.224.229.252].0
+Jan  6 13:39:25 drew named[128838]: dropping source port zero packet from [63.227.214.187].0
+named[3430]: dropping source port zero packet from [209.191.188.93].0
+named[3534]: dropping source port zero packet from [63.226.179.7].0
+named[20627]: dropping source port zero packet from [206.252.159.146].0 

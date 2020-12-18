@@ -154,8 +154,8 @@ def test_remove_files(tmp_data, parameters, expected_result):
 
 
 @pytest.mark.parametrize('rule_file, rule_path, rule_status', [
-    ('0015-ossec_rules.xml', 'etc/rules', 'enabled'),
-    ('0350-amazon_rules.xml', 'etc/rules', 'enabled'),
+    ('0015-ossec_rules.xml', 'ruleset/rules', 'enabled'),
+    ('0350-amazon_rules.xml', 'ruleset/rules', 'enabled'),
 ])
 def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
     """Test format_rule_decoder_file rule core function."""
