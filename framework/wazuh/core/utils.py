@@ -643,20 +643,21 @@ def check_remote_commands(data):
             for line in command_regex.findall(data)[0].split(split_section):
                 command_matches = re.match(r".*<(command|full_command)>(.*)</(command|full_command)>.*",
                                            line, flags=re.MULTILINE | re.DOTALL)
-                if command_matches and (line.count('<command>') > 1 or
-                         command_matches.group(2) not in api_conf['remote_commands'][section]['exceptions']):
+                if command_matches and \
+                        (line.count('<command>') > 1 or
+                         command_matches.group(2) not in
+                         configuration.api_conf['remote_commands'][section]['exceptions']):
                     raise WazuhError(1124)
         except IndexError:
             pass
 
-    api_conf = configuration.read_yaml_config()
-    if api_conf['remote_commands']['localfile']['enabled'] is not None and \
-            not api_conf['remote_commands']['localfile']['enabled']:
+    if configuration.api_conf['remote_commands']['localfile']['enabled'] is not None and \
+            not configuration.api_conf['remote_commands']['localfile']['enabled']:
         command_section = re.compile(r"<localfile>(.*)</localfile>", flags=re.MULTILINE | re.DOTALL)
         check_section(command_section, section='localfile', split_section='</localfile>')
 
-    if api_conf['remote_commands']['wodle_command']['enabled'] is not None and not \
-            api_conf['remote_commands']['wodle_command']['enabled']:
+    if configuration.api_conf['remote_commands']['wodle_command']['enabled'] is not None and not \
+            configuration.api_conf['remote_commands']['wodle_command']['enabled']:
         command_section = re.compile(r"<wodle name=\"command\">(.*)</wodle>", flags=re.MULTILINE | re.DOTALL)
         check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
 
