@@ -544,7 +544,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     if ((msg_length > (OS_MAXSTR - OS_HEADER_SIZE)) || (msg_length < 1)) {
         curr_time = time(0);
         if (curr_time - saved_time > 3600) {
-            merror("Incorrect message size: %lu", (unsigned long)msg_length);
+            merror("Incorrect message size: %s %lu", msg, (unsigned long)msg_length);
             saved_time = curr_time;
         }
         mdebug2(ENCSIZE_ERROR, msg);
