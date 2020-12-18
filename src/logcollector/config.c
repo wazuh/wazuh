@@ -11,6 +11,9 @@
 #include "shared.h"
 #include "logcollector.h"
 
+/* To string size of max-size option */
+#define OFFSET_SIZE 11
+
 int accept_remote;
 int lc_debug_level;
 #ifndef WIN32
@@ -114,6 +117,16 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
+
+        if (list[i].future == 1){
+            cJSON_AddStringToObject(file, "only-future-events", "yes");
+        } else {
+            char offset[OFFSET_SIZE] = {0};
+            sprintf(offset, "%ld", list[i].diff_max_size);
+            cJSON_AddStringToObject(file, "only-future-events", "no");
+            cJSON_AddStringToObject(file, "max-size", offset);
+        }
+
         if (list[i].target && *list[i].target) {
             cJSON *target = cJSON_CreateArray();
             for (j=0;list[i].target[j];j++) {
@@ -145,7 +158,14 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         if (list[i].ign && list[i].logformat != NULL && (strcmp(list[i].logformat,"command")==0 || strcmp(list[i].logformat,"full_command")==0)) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
         if (list[i].future && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddStringToObject(file,"only-future-events","yes");
         if (list[i].reconnect_time && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddNumberToObject(file,"reconnect_time",list[i].reconnect_time);
-
+        if (list[i].multiline) {
+            cJSON * multiline = cJSON_CreateObject();
+            cJSON_AddStringToObject(multiline, "match", multiline_attr_match_str(list[i].multiline->match_type));
+            cJSON_AddStringToObject(multiline, "replace", multiline_attr_replace_str(list[i].multiline->replace_type));
+            cJSON_AddStringToObject(multiline, "regex", w_expression_get_regex_pattern(list[i].multiline->regex));
+            cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
+            cJSON_AddItemToObject(file, "multiline_regex", multiline);
+        }
         cJSON_AddItemToArray(array, file);
         i++;
     }
@@ -234,6 +254,7 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"force_reload",force_reload);
     cJSON_AddNumberToObject(logcollector,"reload_interval",reload_interval);
     cJSON_AddNumberToObject(logcollector,"reload_delay",reload_delay);
+
 #ifndef WIN32
     cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);
 #endif

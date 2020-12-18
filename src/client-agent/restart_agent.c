@@ -24,11 +24,11 @@ static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 void * restartAgent() {
 
 	char req[] = "restart";
-	ssize_t length;
-
-	length = strlen(req);
 
 	#ifndef WIN32
+
+	ssize_t length;
+	length = strlen(req);
 
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
