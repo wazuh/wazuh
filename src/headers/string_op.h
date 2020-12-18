@@ -222,4 +222,15 @@ int os_snprintf(char *str, size_t size, const char *format, ...);
  */
 char * w_remove_substr(char *str, const char *sub);
 
+/**
+ * @brief Returns a copy of the first n characters of str.
+ * 
+ * If str is longer than n, only n characters are copied (a terminating character ('\0') is added).
+ * if n is zero an empty string is returned.
+ * @param str String to copy.
+ * @param n Maximum number of characters to copy.
+ * @return char* New string copy of str[:n] or NULL if str is null
+ */
+char * w_strndup(const char *str, size_t n);
+
 #endif

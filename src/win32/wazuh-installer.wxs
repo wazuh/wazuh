@@ -415,6 +415,7 @@
                         <Directory Id="FIM" Name="fim">
                             <Directory Id="FIM_DB" Name="db" />
                         </Directory>
+                        <Directory Id="LOGCOLLECTOR" Name="logcollector" />
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
@@ -476,6 +477,13 @@
                 <CreateFolder />
                 <RemoveFile Id="purgue_fim_db" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_fim_db_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="LOGCOLLECTOR">
+            <Component Id="CMP_LOGCOLLECTOR" Guid="88bdd977-56aa-4d15-9c6a-45eb86fdd12f" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_logcollector" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_logcollector_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="RULESET">
@@ -582,6 +590,7 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_FIM" />
             <ComponentRef Id="CMP_FIM_DB" />
+            <ComponentRef Id="CMP_LOGCOLLECTOR" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
             <ComponentRef Id="REMOVE_OLD_POLICIES" />

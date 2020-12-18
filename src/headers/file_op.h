@@ -41,7 +41,6 @@ typedef struct File {
     FILE *fp;
 } File;
 
-
 /**
  * @brief Set the program name. Must be done before *anything* else.
  *
@@ -459,6 +458,15 @@ int checkBinaryFile(const char *f_name);
  */
 int64_t w_ftell (FILE *x);
 
+/**
+ * @brief Set the current file position of the given stream.
+*        This is a wrapper for `fseek()` in UNIX and `_fseeki64()` in Windows.
+ * @param x File pointer.
+ * @param pos File position.
+ * @param mode Position used as reference for the offset: SEEK_SET, SEEK_CURRENT, SEEK_END
+ * @return  If successful, the function returns zero. Otherwise, it returns -1.
+ */
+int w_fseek(FILE *x, int64_t pos, int mode);
 
 /**
  * @brief Prevent children processes from inheriting a file pointer.
@@ -518,6 +526,16 @@ void w_ch_exec_dir();
  * @return File size or -1 on error.
  */
 DWORD FileSizeWin(const char * file);
+
+/**
+ * @brief Open a file
+ *
+ * This mode of opening the file allows reading \r\n instead of \n.
+ *
+ * @param file pathfile to open
+ * @return file descriptor on success, otherwise null.
+ */
+FILE * w_fopen_r(const char *file, const char * mode);
 
 #endif // Windows
 
