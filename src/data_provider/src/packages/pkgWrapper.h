@@ -21,8 +21,7 @@ class PKGWrapper final : public IPackageWrapper
 {
 public:
     explicit PKGWrapper(const std::string& filePath)
-      : m_filePath{filePath}
-      , m_name{UNKNOWN_VALUE}
+      : m_name{UNKNOWN_VALUE}
       , m_version{UNKNOWN_VALUE}
       , m_groups{UNKNOWN_VALUE}
       , m_description{UNKNOWN_VALUE}
@@ -30,7 +29,7 @@ public:
       , m_format{"pkg"}
       , m_osPatch{UNKNOWN_VALUE}
     {
-        getPkgData();
+        getPkgData(filePath);
     }
 
     ~PKGWrapper() = default;
@@ -65,9 +64,9 @@ public:
     }
 
 private:
-    void getPkgData()
+    void getPkgData(const std::string& filePath)
     {
-        std::fstream file {m_filePath, std::ios_base::in};
+        std::fstream file {filePath, std::ios_base::in};
         static const auto getValueFnc
         {
             [](const std::string& val)
@@ -108,7 +107,6 @@ private:
         }
     }
 
-    std::string m_filePath;
     std::string m_name;
     std::string m_version;
     std::string m_groups;
