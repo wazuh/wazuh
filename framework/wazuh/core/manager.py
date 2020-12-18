@@ -383,11 +383,12 @@ def update_api_conf(new_config):
         Dictionary with the new configuration.
     """
     if new_config:
+        'remote_commands' in new_config.keys() and new_config.pop('remote_commands')
         try:
             with open(common.api_config_path, 'r') as f:
                 # Avoid changing the "remote_commands" option through the Framework
                 previous_config = yaml.safe_load(f)
-                if 'remote_commands' in previous_config.keys():
+                if previous_config and 'remote_commands' in previous_config.keys():
                     new_config['remote_commands'] = previous_config['remote_commands']
             with open(common.api_config_path, 'w+') as f:
                 yaml.dump(new_config, f)
