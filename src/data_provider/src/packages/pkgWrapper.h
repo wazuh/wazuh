@@ -30,51 +30,52 @@ public:
     {
         nlohmann::json jsonData{};
         getData(jsonData);
-        return jsonData.empty() ? DEFAULT_STRING_VALUE
+        return jsonData.empty() ? UNKNOWN_VALUE
                                 : jsonData.at("name");
     }
     std::string version() const override
     {
         nlohmann::json jsonData{};
         getData(jsonData);
-        return jsonData.empty() ? DEFAULT_STRING_VALUE
+        return jsonData.empty() ? UNKNOWN_VALUE
                                 : jsonData.at("version");
     }
     std::string groups() const override
     {
         nlohmann::json jsonData{};
         getData(jsonData);
-        return jsonData.empty() ? DEFAULT_STRING_VALUE
+        return jsonData.empty() ? UNKNOWN_VALUE
                                 : jsonData.at("groups");
     }
     std::string description() const override
     {
         nlohmann::json jsonData{};
         getData(jsonData);
-        return jsonData.empty() ? DEFAULT_STRING_VALUE
+        return jsonData.empty() ? UNKNOWN_VALUE
                                 : jsonData.at("description");
     }
     std::string architecture() const override
     {
         nlohmann::json jsonData{};
         getData(jsonData);
-        return jsonData.empty() ? DEFAULT_STRING_VALUE
+        return jsonData.empty() ? UNKNOWN_VALUE
                                 : jsonData.at("architecture");
     }
     std::string format() const override
     {
         nlohmann::json jsonData{};
         getData(jsonData);
-        return jsonData.empty() ? DEFAULT_STRING_VALUE
+        return jsonData.empty() ? UNKNOWN_VALUE
                                 : jsonData.at("format");
     }
     std::string osPatch() const override
     {
         nlohmann::json jsonData{};
         getData(jsonData);
-        return jsonData.empty() ? DEFAULT_STRING_VALUE
-                                : jsonData.at("osPatch");
+        return jsonData.empty() ? UNKNOWN_VALUE
+                                : jsonData.at("os_patch");
     }
+
 private:
     void getData(nlohmann::json& data) const
     {
@@ -93,13 +94,13 @@ private:
             std::string line;
             nlohmann::json package;
 
-            std::string name         { DEFAULT_STRING_VALUE };
-            std::string version      { DEFAULT_STRING_VALUE };
-            std::string groups       { DEFAULT_STRING_VALUE };
-            std::string description  { DEFAULT_STRING_VALUE };
-            std::string architecture { DEFAULT_STRING_VALUE };
-            std::string format       { DEFAULT_STRING_VALUE };
-            std::string osPatch      { DEFAULT_STRING_VALUE };
+            std::string name         { UNKNOWN_VALUE };
+            std::string version      { UNKNOWN_VALUE };
+            std::string groups       { UNKNOWN_VALUE };
+            std::string description  { UNKNOWN_VALUE };
+            std::string architecture { UNKNOWN_VALUE };
+            std::string format       { UNKNOWN_VALUE };
+            std::string osPatch      { UNKNOWN_VALUE };
 
             while(std::getline(file, line))
             {

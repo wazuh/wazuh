@@ -17,7 +17,7 @@
 
 class BrewWrapper final : public IPackageWrapper
 {
-    public:
+public:
     explicit BrewWrapper(const std::string& /*fileName*/)
     { }
 
@@ -25,31 +25,31 @@ class BrewWrapper final : public IPackageWrapper
 
     std::string name() const override
     {
-        return DEFAULT_STRING_VALUE;
+        return UNKNOWN_VALUE;
     }
     std::string version() const override
     {
-        return DEFAULT_STRING_VALUE;
+        return UNKNOWN_VALUE;
     }
     std::string groups() const override
     {
-        return DEFAULT_STRING_VALUE;
+        return UNKNOWN_VALUE;
     }
     std::string description() const override
     {
-        return DEFAULT_STRING_VALUE;
+        return UNKNOWN_VALUE;
     }
     std::string architecture() const override
     {
-        return DEFAULT_STRING_VALUE;
+        return UNKNOWN_VALUE;
     }
     std::string format() const override
     {
-        return DEFAULT_STRING_VALUE;
+        return UNKNOWN_VALUE;
     }
     std::string osPatch() const override
     {
-        return DEFAULT_STRING_VALUE;
+        return UNKNOWN_VALUE;
     }
 };
 

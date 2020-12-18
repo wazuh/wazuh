@@ -168,19 +168,67 @@ std::string SysInfo::getSerialNumber() const
     return Utils::trim(rawData.substr(rawData.find(":")), " :\t\r\n");
 }
 
+static void getPackagesFromApplications(const std::string& pkgDirectory, const int pkgType, nlohmann::json& result)
+{
+    const auto packages {Utils::enumerateDir(pkgDirectory) };
+    for(const auto& package : packages)
+    {
+        if(Utils::endsWith(package, ".app"))
+        {
+            const auto packagePath { pkgDirectory + "/" + package + "/" + APP_INFO_PATH };
+            nlohmann::json jsPackage{};
+            FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(packagePath, pkgType))->buildPackageData(jsPackage);
+            if(UNKNOWN_VALUE != jsPackage.at("name"))
+            {
+                // Only return valid packages
+                result.push_back(jsPackage);
+            }
+        }
+        // else: invalid package
+    }
+}
+
+static void getPackagesFromLibrary(const std::string& pkgDirectory, const int pkgType, nlohmann::json& result)
+{
+    const auto packages {Utils::enumerateDir(pkgDirectory) };
+    for(const auto& package : packages)
+    {
+        if(Utils::endsWith(package, ".app"))
+        {
+            const auto packagePath { pkgDirectory + "/" + package };
+            nlohmann::json jsPackage{};
+            FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(packagePath, pkgType))->buildPackageData(jsPackage);
+            if(UNKNOWN_VALUE != jsPackage.at("name"))
+            {
+                // Only return valid packages
+                result.push_back(jsPackage);
+            }
+        }
+        // else: invalid package
+    }
+}
+
 nlohmann::json SysInfo::getPackages() const
 {
-    nlohmann::json ret;
+    nlohmann::json ret{};
 
     for(const auto& packageDirectory : s_mapPackagesDirectories)
     {
-        const auto files{Utils::enumerateDir(packageDirectory.first)};
-        for(const auto& file : files)
+        const auto pkgDirectory { packageDirectory.first };
+        nlohmann::json package{};
+        if(std::string::npos != pkgDirectory.contains("/Applications"))
         {
-            nlohmann::json package;
-            FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(file, packageDirectory.second))->buildPackageData(package);
-            ret.push_back(package);
+            getPackagesFromApplications(pkgDirectory, packageDirectory.second, package);
         }
+        else if(std::string::npos != pkgDirectory.contains("/Library"))
+        {
+            getPackagesFromLibrary(pkgDirectory, packageDirectory.second, package);
+        }
+        else
+        {
+            // Brew packages
+        }
+        ret.push_back(package);
     }
     return ret;
 }
