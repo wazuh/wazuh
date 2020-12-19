@@ -402,9 +402,9 @@ constexpr auto PORTS_SQL_STATEMENT
        process_name TEXT,
        checksum TEXT,
        item_id TEXT,
-       PRIMARY KEY (inode, protocol, local_port)) WITHOUT ROWID;)"
+       PRIMARY KEY (inode, protocol, local_ip, local_port)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> PORTS_ITEM_ID_FIELDS{"inode","protocol","local_port"};
+static const std::vector<std::string> PORTS_ITEM_ID_FIELDS{"inode","protocol","local_ip","local_port"};
 
 constexpr auto NETIFACE_START_CONFIG_STATEMENT
 {
