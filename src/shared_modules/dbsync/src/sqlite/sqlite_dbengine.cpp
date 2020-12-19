@@ -248,14 +248,25 @@ void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames)
                                                    " " +
                                                    STATUS_FIELD_TYPE +
                                                    " DEFAULT 1;")};
-                stmtAdd->step();
+                // LCOV_EXCL_START
+                if (SQLITE_ERROR == stmtAdd->step())
+                {
+                    throw dbengine_error{ STEP_ERROR_UPDATE_STATUS_FIELD };
+                }
+                // LCOV_EXCL_STOP
             }
             const auto& stmtInit { getStatement("UPDATE " +
                                                 table +
                                                 " SET " +
                                                 STATUS_FIELD_NAME +
                                                 "=0;")};
-            stmtInit->step();
+
+            // LCOV_EXCL_START
+            if (SQLITE_ERROR == stmtInit->step())
+            {
+                throw dbengine_error{ STEP_ERROR_ADD_STATUS_FIELD };
+            }
+            // LCOV_EXCL_STOP
         } 
         else
         {
@@ -280,7 +291,12 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
                                             " WHERE " +
                                             STATUS_FIELD_NAME +
                                             "=0;")};
-            stmt->step();
+            // LCOV_EXCL_START
+            if (SQLITE_ERROR == stmt->step())
+            {
+                throw dbengine_error{ STEP_ERROR_DELETE_STATUS_FIELD };
+            }
+            // LCOV_EXCL_STOP
         }
         else
         {
