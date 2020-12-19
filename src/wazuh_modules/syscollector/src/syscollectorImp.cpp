@@ -15,18 +15,18 @@
 #include "hashHelper.h"
 
 
-#define TRY_CATCH_SCAN(scan)                                            \
+#define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
 {                                                                       \
     try                                                                 \
     {                                                                   \
-        scan();                                                         \
+        task();                                                         \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
         if(m_logErrorFunction)                                          \
         {                                                               \
-            const std::string error{"scan: " + std::string{ex.what()}}; \
+            const std::string error{"task: " + std::string{ex.what()}}; \
             m_logErrorFunction(error);                                  \
         }                                                               \
     }                                                                   \
@@ -282,7 +282,7 @@ constexpr auto PROCESSES_SYNC_CONFIG_STATEMENT
 constexpr auto PROCESSES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_processes (
-    pid BIGINT,
+    pid TEXT,
     name TEXT,
     state TEXT,
     ppid BIGINT,
@@ -402,9 +402,9 @@ constexpr auto PORTS_SQL_STATEMENT
        process_name TEXT,
        checksum TEXT,
        item_id TEXT,
-       PRIMARY KEY (inode, protocol, local_port)) WITHOUT ROWID;)"
+       PRIMARY KEY (inode, protocol, local_ip, local_port)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> PORTS_ITEM_ID_FIELDS{"inode","protocol","local_port"};
+static const std::vector<std::string> PORTS_ITEM_ID_FIELDS{"inode","protocol","local_ip","local_port"};
 
 constexpr auto NETIFACE_START_CONFIG_STATEMENT
 {
@@ -699,7 +699,8 @@ static std::string getItemId(const nlohmann::json& item, const std::vector<std::
 static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
                                    const std::string& table,
                                    const nlohmann::json& values,
-                                   const std::function<void(const std::string&)> reportFunction)
+                                   const std::function<void(const std::string&)> reportFunction,
+                                   const std::function<void(const std::string&)> errorFunction)
 {
     const std::map<ReturnTypeCallback, std::string> operationsMap
     {
@@ -715,9 +716,13 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
     constexpr auto queueSize{4096};
     const auto callback
     {
-        [&table, &operationsMap, reportFunction](ReturnTypeCallback result, const nlohmann::json& data)
+        [&table, &operationsMap, reportFunction, errorFunction](ReturnTypeCallback result, const nlohmann::json& data)
         {
-            if (data.is_array())
+            if(result == DB_ERROR)
+            {
+                errorFunction(data.dump());
+            }
+            else if (data.is_array())
             {
                 for (const auto& item : data)
                 {
@@ -979,14 +984,24 @@ void Syscollector::scanNetwork()
                     protoTableDataList.push_back(protoTableData);
                 }
 
-                updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportDiffFunction);
-                updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportDiffFunction);
-                updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportDiffFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportDiffFunction, m_logErrorFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportDiffFunction, m_logErrorFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportDiffFunction, m_logErrorFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
         }
+    }
+}
+
+void Syscollector::syncNetwork()
+{
+    if (m_network)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
     }
 }
 
@@ -1016,14 +1031,26 @@ void Syscollector::scanPackages()
                     packages.push_back(item);
                 }
             }
-            updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportDiffFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportDiffFunction, m_logErrorFunction);
             m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
             if (m_hotfixes)
             {
                 constexpr auto tableHotfixes{"dbsync_hotfixes"};
-                updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction, m_logErrorFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
+        }
+    }
+}
+
+void Syscollector::syncPackages()
+{
+    if (m_packages)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+        if (m_hotfixes)
+        {
+            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
         }
     }
 }
@@ -1068,10 +1095,18 @@ void Syscollector::scanPorts()
                         }
                     }
                 }
-                updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportDiffFunction);
+                updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportDiffFunction, m_logErrorFunction);
                 m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
         }
+    }
+}
+
+void Syscollector::syncPorts()
+{
+    if (m_ports)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
     }
 }
 
@@ -1083,20 +1118,35 @@ void Syscollector::scanProcesses()
         const auto& processes{m_spInfo->processes()};
         if (!processes.is_null())
         {
-            updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportDiffFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+            updateAndNotifyChanges(m_spDBSync->handle(), table, processes, m_reportDiffFunction, m_logErrorFunction);
         }
+    }
+}
+
+void Syscollector::syncProcesses()
+{
+    if (m_processes)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
     }
 }
 
 void Syscollector::scan()
 {
-    TRY_CATCH_SCAN(scanHardware);
-    TRY_CATCH_SCAN(scanOs);
-    TRY_CATCH_SCAN(scanNetwork);
-    TRY_CATCH_SCAN(scanPackages);
-    TRY_CATCH_SCAN(scanPorts);
-    TRY_CATCH_SCAN(scanProcesses);
+    TRY_CATCH_TASK(scanHardware);
+    TRY_CATCH_TASK(scanOs);
+    TRY_CATCH_TASK(scanNetwork);
+    TRY_CATCH_TASK(scanPackages);
+    TRY_CATCH_TASK(scanPorts);
+    TRY_CATCH_TASK(scanProcesses);
+}
+
+void Syscollector::sync()
+{
+    TRY_CATCH_TASK(syncNetwork);
+    TRY_CATCH_TASK(syncPackages);
+    TRY_CATCH_TASK(syncPorts);
+    TRY_CATCH_TASK(syncProcesses);
 }
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
@@ -1104,11 +1154,12 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     if (m_scanOnStart)
     {
         scan();
+        sync();
     }
     while(!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&](){return m_stopping;}))
     {
         scan();
-        //sync Rsync
+        sync();
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);

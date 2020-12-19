@@ -62,7 +62,7 @@ static const std::map<std::string, int> s_mapPackagesDirectories =
 static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_t pid)
 {
     nlohmann::json jsProcessInfo{};
-    jsProcessInfo["pid"]        = pid;
+    jsProcessInfo["pid"]        = std::to_string(pid);
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
 
     const auto procState { s_mapTaskInfoState.find(taskInfo.pbsd.pbi_status) };

@@ -119,8 +119,8 @@ TEST_F(DBSyncPipelineFactoryTest, GetPipelineInvalidTxnContext)
 TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowInvalidData)
 {
     CallbackWrapper wrapper;
-    const auto& jsonInputNoTable{ R"({"data":[{"pid":4, "tid":100, "name":"System"}]})"};
-    const auto& jsonInputNoData{ R"({"table":"processes"})"};
+    const auto& jsonInputNoTable{ R"({"data":[{"name":"System","pid":4,"tid":100}],"exception":"[json.exception.out_of_range.403] key 'table' not found"})"};
+    const auto& jsonInputNoData{ R"({"exception":"[json.exception.out_of_range.403] key 'data' not found","table":"processes"})"};
     const auto resultFnc
     {
         [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)

@@ -173,6 +173,7 @@ void SQLiteDBEngine::syncTableRowData(const std::string& table,
     {
         if (getPrimaryKeysFromTable(table, primaryKeyList))
         {
+
             nlohmann::json bulkInsertJson;
             nlohmann::json bulkModifyJson;
             for (const auto& entry : data)

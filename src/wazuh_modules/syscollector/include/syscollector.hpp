@@ -75,7 +75,12 @@ private:
     void scanPackages();
     void scanPorts();
     void scanProcesses();
+    void syncNetwork();
+    void syncPackages();
+    void syncPorts();
+    void syncProcesses();
     void scan();
+    void sync();
     void syncLoop(std::unique_lock<std::mutex>& lock);
     std::shared_ptr<ISysInfo>                      m_spInfo;
     std::function<void(const std::string&)>        m_reportDiffFunction;
