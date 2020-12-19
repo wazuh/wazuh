@@ -1510,20 +1510,22 @@ bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
             int index = 1;
             for (column = kv_value->column_list; column ; column=column->next) {
                 if (!column->value.is_old_implementation) {
-                    if (column->value.is_pk) {
-                        if (FIELD_TEXT == column->value.type) {
-                            if (SQLITE_OK != sqlite3_bind_text(stmt, index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL)) {
-                                merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                    if (NULL != field_value) {
+                        if (column->value.is_pk) {
+                            if (FIELD_TEXT == column->value.type) {
+                                if (SQLITE_OK != sqlite3_bind_text(stmt, index, strcmp(field_value, "NULL") == 0 ? "" : field_value, -1, NULL)) {
+                                    merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                                }
+                            } else {
+                                if (SQLITE_OK != sqlite3_bind_int(stmt, index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
+                                    merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+                                }
                             }
-                        } else {
-                            if (SQLITE_OK != sqlite3_bind_int(stmt, index, strcmp(field_value, "NULL") == 0 ? 0 : atoi(field_value))) {
-                                merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-                            }
+                            ++index;
                         }
-                        ++index;
-                    }
-                    if (column->next && NULL != field_value) {
-                        field_value = strtok(NULL, FIELD_SEPARATOR_DBSYNC);
+                        if (column->next) {
+                            field_value = strtok(NULL, FIELD_SEPARATOR_DBSYNC);
+                        }
                     }
                 }
             }
