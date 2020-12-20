@@ -9,10 +9,6 @@ include_directories(${SRC_FOLDER}/external/nlohmann/)
 
 link_directories(${SRC_FOLDER}/external/procps/)
 
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH OFF)
-endif(APPLE)
-
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
