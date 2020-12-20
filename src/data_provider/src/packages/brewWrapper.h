@@ -14,43 +14,74 @@
 
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
+#include "stringHelper.h"
+#include "filesystemHelper.h"
 
 class BrewWrapper final : public IPackageWrapper
 {
 public:
-    explicit BrewWrapper(const std::string& /*fileName*/)
-    { }
+    explicit BrewWrapper(const PackageContext& ctx)
+      : m_name{ctx.package}
+      , m_version{Utils::splitIndex(ctx.version, '_', 0)}
+      , m_groups{UNKNOWN_VALUE}
+      , m_description{UNKNOWN_VALUE}
+      , m_architecture{UNKNOWN_VALUE}
+      , m_format{"pkg"}
+      , m_osPatch{UNKNOWN_VALUE}
+    {
+        const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
+        for (const auto& row : rows)
+        {
+            auto rowParsed { Utils::trim(row) };
+
+            if (Utils::startsWith(rowParsed, "desc "))
+            {
+                Utils::replaceFirst(rowParsed, "desc ", "");
+                Utils::replaceAll(rowParsed, "\"","");
+                m_description = rowParsed;
+                break;
+            }
+        }
+    }
 
     ~BrewWrapper() = default;
 
     std::string name() const override
     {
-        return UNKNOWN_VALUE;
+        return m_name;
     }
     std::string version() const override
     {
-        return UNKNOWN_VALUE;
+        return m_version;
     }
     std::string groups() const override
     {
-        return UNKNOWN_VALUE;
+        return m_groups;
     }
     std::string description() const override
     {
-        return UNKNOWN_VALUE;
+        return m_description;
     }
     std::string architecture() const override
     {
-        return UNKNOWN_VALUE;
+        return m_architecture;
     }
     std::string format() const override
     {
-        return UNKNOWN_VALUE;
+        return m_format;
     }
     std::string osPatch() const override
     {
-        return UNKNOWN_VALUE;
+        return m_osPatch;
     }
+private:
+    std::string m_name;
+    std::string m_version;
+    std::string m_groups;
+    std::string m_description;
+    std::string m_architecture;
+    std::string m_format;
+    std::string m_osPatch;
 };
 
 

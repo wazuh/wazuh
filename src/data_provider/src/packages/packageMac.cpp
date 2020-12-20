@@ -14,7 +14,7 @@
 #include "brewWrapper.h"
 #include "pkgWrapper.h"
 
-std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<std::string, int>& ctx)
+std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageContext, int>& ctx)
 {
     std::shared_ptr<IPackage> ret;
 
