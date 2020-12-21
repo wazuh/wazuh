@@ -241,7 +241,7 @@ int add_audit_rules_syscheck(bool first_time) {
                         }
                     }
                 } else if (found == 1) {
-                    mdebug1(FIM_AUDIT_RELOADED, directory);
+                    mdebug1(FIM_AUDIT_RULEDUP, directory);
                 } else {
                     merror(FIM_ERROR_WHODATA_CHECK_RULE);
                 }

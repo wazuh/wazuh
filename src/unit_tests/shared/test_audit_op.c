@@ -26,8 +26,9 @@
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
 #include "../headers/exec_op.h"
+#include "../headers/list_op.h"
 
-extern w_audit_rules_list *_audit_rules_list;
+extern OSList *audit_rules_list;
 
 /* auxiliary structs */
 
@@ -46,7 +47,7 @@ static int group_setup(void **state) {
 
 static int group_teardown(void **state) {
     test_mode = 0;
-    audit_free_list();
+    audit_rules_list_free();
     return 0;
 }
 
@@ -172,10 +173,7 @@ static void test_audit_get_rule_list(void **state) {
     int ret = audit_get_rule_list(0);
 
     assert_int_equal(ret, 1);
-    assert_non_null(_audit_rules_list);
-    assert_non_null(_audit_rules_list->list);
-    assert_int_equal(_audit_rules_list->used, 0);
-    assert_int_equal(_audit_rules_list->size, 25);
+    assert_non_null(audit_rules_list);
 }
 
 static void test_kernel_get_reply(void **state) {
@@ -216,14 +214,14 @@ static void test_audit_print_reply(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Audit rule loaded: -w  -p rwxa -k ");
 
     int ret = audit_print_reply(reply);
+    w_audit_rule *rule = (w_audit_rule *) OSList_GetFirstNode(audit_rules_list)->data;
 
     assert_int_equal(ret, 1);
-    assert_non_null(_audit_rules_list->list[0]);
-    assert_string_equal(_audit_rules_list->list[0]->path, "");
-    assert_string_equal(_audit_rules_list->list[0]->key, "");
-    assert_string_equal(_audit_rules_list->list[0]->perm, "rwxa");
-    assert_int_equal(_audit_rules_list->used, 1);
-    assert_int_equal(_audit_rules_list->size, 25);
+    assert_non_null(audit_rules_list->first_node);
+    assert_string_equal(rule->path, "");
+    assert_string_equal(rule->key, "");
+    assert_string_equal(rule->perm, "rwxa");
+    assert_int_equal(audit_rules_list->currently_size, 1);
 }
 
 static void test_audit_clean_path(void **state) {
@@ -323,11 +321,10 @@ static void test_audit_rules_list_append(void **state) {
         rule->path = strdup("/test/file");
         rule->key = strdup("key");
         rule->perm = strdup("rw");
-        audit_rules_list_append(_audit_rules_list, rule);
+        OSList_AddData(audit_rules_list, rule);
     }
 
-    assert_int_equal(_audit_rules_list->used, 31);
-    assert_int_equal(_audit_rules_list->size, 50);
+    assert_int_equal(audit_rules_list->currently_size, 31);
 }
 
 static void test_search_audit_rule(void **state) {

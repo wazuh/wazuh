@@ -819,19 +819,9 @@ void test_add_audit_rules_syscheck_not_added(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
-    // Audit added rules
-    will_return(__wrap_W_Vector_length, 3);
-
     // Rule already not added
     will_return(__wrap_search_audit_rule, 0);
 
-    // Add rule
-    will_return(__wrap_audit_add_rule, 1);
-    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
-    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
-    expect_function_call(__wrap_pthread_mutex_lock);
-    will_return(__wrap_W_Vector_insert_unique, 1);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6322): Reloaded audit rule for monitoring directory: '/var/test'");
 
@@ -850,6 +840,8 @@ void test_add_audit_rules_syscheck_not_added_new(void **state) {
     (void) state;
 
     char *entry = "/var/test";
+    char dbg_msg[OS_SIZE_128] = {0};
+
     syscheck.dir = calloc (2, sizeof(char *));
     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
@@ -868,22 +860,13 @@ void test_add_audit_rules_syscheck_not_added_new(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
-    // Audit added rules
-    will_return(__wrap_W_Vector_length, 3);
-
     // Rule already not added
     will_return(__wrap_search_audit_rule, 0);
 
     // Add rule
     will_return(__wrap_audit_add_rule, 1);
-    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
-    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
-    expect_function_call(__wrap_pthread_mutex_lock);
-    will_return(__wrap_W_Vector_insert_unique, 0);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6270): Added audit rule for monitoring directory: '/var/test'");
-
+    snprintf(dbg_msg, OS_SIZE_128, FIM_AUDIT_NEWRULE, entry);
+    expect_string(__wrap__mdebug1, formatted_msg, dbg_msg);
     int ret;
     ret = add_audit_rules_syscheck(0);
 
@@ -916,9 +899,6 @@ void test_add_audit_rules_syscheck_not_added_error(void **state) {
     will_return(__wrap_audit_close, 1);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
-
-    // Audit added rules
-    will_return(__wrap_W_Vector_length, 3);
 
     // Rule already not added
     will_return(__wrap_search_audit_rule, 0);
@@ -961,9 +941,6 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
-    // Audit added rules
-    will_return(__wrap_W_Vector_length, 3);
-
     // Rule already not added
     will_return(__wrap_search_audit_rule, 0);
 
@@ -983,10 +960,12 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state) {
 }
 
 
-void test_add_audit_rules_syscheck_added(void **state) {
+void test_add_audit_rules_syscheck_duplicate_entry(void **state) {
     (void) state;
 
     char *entry = "/var/test";
+    char buffer [OS_SIZE_128] = {0};
+
     syscheck.dir = calloc(2, sizeof(char *));
     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
@@ -1003,20 +982,10 @@ void test_add_audit_rules_syscheck_added(void **state) {
     // Audit close
     will_return(__wrap_audit_close, 1);
 
-    // Audit added rules
-    will_return(__wrap_W_Vector_length, 3);
-
     // Rule already added
     will_return(__wrap_search_audit_rule, 1);
-
-    // Add rule
-    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
-    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
-    expect_function_call(__wrap_pthread_mutex_lock);
-    will_return(__wrap_W_Vector_insert_unique, 0);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6271): Audit rule for monitoring directory '/var/test' already added.");
+    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_RULEDUP, entry);
+    expect_string(__wrap__mdebug1, formatted_msg, buffer);
 
     int ret;
     ret = add_audit_rules_syscheck(0);
@@ -1025,7 +994,7 @@ void test_add_audit_rules_syscheck_added(void **state) {
     free(syscheck.dir);
     free(syscheck.opts);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 0);
 }
 
 
@@ -1034,6 +1003,9 @@ void test_add_audit_rules_syscheck_max(void **state) {
 
     char *entry = "/var/test";
     char *entry2 = "/var/test2";
+    char dbg1[OS_SIZE_128] = {0};
+    char dbg2[OS_SIZE_128] = {0};
+
     syscheck.dir = calloc(3, sizeof(char *));
     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
     syscheck.dir[1] = calloc(strlen(entry2) + 2, sizeof(char));
@@ -1042,7 +1014,7 @@ void test_add_audit_rules_syscheck_max(void **state) {
     syscheck.opts = calloc(3, sizeof(int *));
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.opts[1] |= WHODATA_ACTIVE;
-    syscheck.max_audit_entries = 3;
+    syscheck.max_audit_entries = 1;
 
     // Audit open
     will_return(__wrap_audit_open, 1);
@@ -1053,15 +1025,16 @@ void test_add_audit_rules_syscheck_max(void **state) {
     // Audit close
     will_return(__wrap_audit_close, 1);
 
-    // Audit added rules
-    will_return(__wrap_W_Vector_length, 3);
+    // Audit search_audit_rule will be called 2 times.
+    will_return_always(__wrap_search_audit_rule, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(6640): Unable to monitor who-data for directory: '/var/test' - Maximum size permitted (3).");
+    // audit_add_rule_data
+    will_return_always(__wrap_audit_add_rule, 1);
 
-    // Audit added rules
-    will_return(__wrap_W_Vector_length, 3);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6640): Unable to monitor who-data for directory: '/var/test2' - Maximum size permitted (3).");
+    snprintf(dbg1, OS_SIZE_128, FIM_AUDIT_NEWRULE, entry);
+    snprintf(dbg2, OS_SIZE_128, FIM_ERROR_WHODATA_MAXNUM_WATCHES, entry2, syscheck.max_audit_entries);
+    expect_string(__wrap__mdebug1, formatted_msg, dbg1);
+    expect_string(__wrap__merror, formatted_msg, dbg2);
 
     int ret;
     ret = add_audit_rules_syscheck(0);
@@ -1071,7 +1044,7 @@ void test_add_audit_rules_syscheck_max(void **state) {
     free(syscheck.dir);
     free(syscheck.opts);
 
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 1);
 }
 
 
@@ -1539,6 +1512,9 @@ void test_audit_parse_delete(void **state) {
 
     // In audit_reload_rules()
     char *entry = "/var/test";
+    char dbg_msg1[OS_SIZE_128] = {0};
+    char dbg_msg2[OS_SIZE_128] = {0};
+
     syscheck.dir = calloc (2, sizeof(char *));
     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
@@ -1560,25 +1536,19 @@ void test_audit_parse_delete(void **state) {
     // Audit close
     will_return(__wrap_audit_close, 1);
 
-    // Audit added rules
-    will_return(__wrap_W_Vector_length, 3);
-
     // Rule already not added
     will_return(__wrap_search_audit_rule, 1);
-
-    // Add rule
-    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
-    expect_string(__wrap_W_Vector_insert_unique, element, "/var/test");
-    expect_function_call(__wrap_pthread_mutex_lock);
-    will_return(__wrap_W_Vector_insert_unique, 1);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 1");
+    snprintf(dbg_msg1, OS_SIZE_128, FIM_AUDIT_RULEDUP, entry);
+    expect_string(__wrap__mdebug1, formatted_msg, dbg_msg1);
+
+    snprintf(dbg_msg2, OS_SIZE_128, FIM_AUDIT_RELOADED_RULES, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, dbg_msg2);
 
     audit_parse(buffer);
 
@@ -1613,8 +1583,6 @@ void test_audit_parse_delete_recursive(void **state) {
     // Audit close
     will_return_always(__wrap_audit_close, 5);
 
-    // Audit added rules
-    will_return_always(__wrap_W_Vector_length, 3);
 
     // Rule already not added
     will_return_always(__wrap_search_audit_rule, 5);
@@ -2171,7 +2139,7 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
 
     hc_thread_active = 0;
 
-    will_return(__wrap_audit_add_rule, -17);
+    will_return(__wrap_audit_add_rule, EEXIST);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_START);
 
@@ -2208,7 +2176,7 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
 
     hc_thread_active = 0;
 
-    will_return(__wrap_audit_add_rule, -17);
+    will_return(__wrap_audit_add_rule, EEXIST);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_START);
 
@@ -2654,8 +2622,8 @@ int main(void) {
         cmocka_unit_test(test_audit_get_id_begin_error),
         cmocka_unit_test(test_audit_get_id_end_error),
         cmocka_unit_test(test_init_regex),
-        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_added, setup_add_audit_rules, teardown_add_audit_rules),
-        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_duplicate_entry, setup_add_audit_rules, teardown_add_audit_rules),
+        //cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_new, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_error, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_first_error, setup_add_audit_rules, teardown_add_audit_rules),
