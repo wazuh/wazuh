@@ -83,6 +83,7 @@ int audit_get_rule_list(int fd) {
     if (audit_rules_list == NULL) {
         init_audit_rule_list();
     }
+
     OSList_CleanNodes(audit_rules_list);
 
     int rc = audit_send(fd, AUDIT_LIST_RULES, NULL, 0);
