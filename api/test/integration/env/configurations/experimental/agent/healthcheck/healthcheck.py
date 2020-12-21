@@ -20,7 +20,7 @@ else:
 
     # If the last ciscat evaluation is taking more than 90 seconds,
     # restart the daemon so a new ciscat evaluation starts
-    if (datetime.now() - timestamp_last_ciscat_start) >= timedelta(seconds=90):
+    if (datetime.now() - timedelta(hours=1) - timestamp_last_ciscat_start) >= timedelta(seconds=90):
         os.system("/var/ossec/bin/wazuh-modulesd")
 
     exit(1)
