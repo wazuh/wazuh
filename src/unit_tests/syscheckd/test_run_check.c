@@ -593,6 +593,9 @@ void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
 
     expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
+
+    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
+
     expect_realtime_adddir_call(new_path, 0, 0);
     expect_fim_checker_call(new_path, 0, 0);
 
@@ -633,6 +636,9 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_lstat, 0);
 
     expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
+
+    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
+
     expect_fim_configuration_directory_call(pointed_folder, "file", -1);
     fim_link_check_delete(pos);
 
@@ -673,6 +679,8 @@ void test_fim_link_check_delete_noentry_error(void **state) {
     expect_string(__wrap_lstat, filename, pointed_folder);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
+
 
     errno = ENOENT;
 

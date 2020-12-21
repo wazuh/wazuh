@@ -89,4 +89,8 @@ int __wrap_audit_request_status(__attribute__((unused)) int fd) {
     return mock();
 }
 
+void __wrap_remove_audit_rule_syscheck(const char *path) {
+    check_expected(path);
+}
+
 #endif

@@ -45,7 +45,7 @@ void init_audit_rule_list() {
 
 void audit_rules_list_append(w_audit_rule *element) {
     if (element == NULL || audit_rules_list == NULL) {
-        return;
+        return; //LCOV_EXCL_LINE
     }
 
     OSList_AddData(audit_rules_list, element);
@@ -71,7 +71,7 @@ int search_audit_rule(const char *path, const char *perms, const char *key) {
 
 void audit_rules_list_free() {
     if (audit_rules_list == NULL) {
-        return;
+        return; //LCOV_EXCL_LINE
     }
 
     OSList_CleanNodes(audit_rules_list);
@@ -141,8 +141,7 @@ int audit_print_reply(struct audit_reply *rep) {
                 rule->path = strdup(path);
                 rule->perm = strdup(perms);
                 rule->key = strdup(key);
-
-                OSList_AddData(audit_rules_list, rule);
+                audit_rules_list_append(rule);
             }
         }
 

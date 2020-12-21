@@ -47,4 +47,6 @@ int __wrap_audit_update_watch_perms(struct audit_rule_data *rule,
 
 int __wrap_audit_request_status(int fd);
 
+void __wrap_remove_audit_rule_syscheck(const char *path);
+
 #endif
