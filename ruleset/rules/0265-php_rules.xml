@@ -1,0 +1,115 @@
+<!--
+  -  PHP rules
+  -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="apache,">
+  <rule id="31401" level="0">
+    <if_sid>31301, 30101</if_sid>
+    <match>PHP Warning: </match>
+    <description>PHP Warning message.</description>
+  </rule>
+
+  <rule id="31402" level="0">
+    <if_sid>31301, 30101</if_sid>
+    <match>PHP Fatal error: </match>
+    <description>PHP Fatal error.</description>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="31403" level="0">
+    <if_sid>31301, 30101</if_sid>
+    <match>PHP Parse error:</match>
+    <description>PHP Parse error.</description>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="31404" level="0">
+    <match>^PHP Warning: </match>
+    <description>PHP Warning message.</description>
+  </rule>
+
+  <rule id="31405" level="0">
+    <match>^PHP Fatal error: </match>
+    <description>PHP Fatal error.</description>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="31406" level="0">
+    <match>^PHP Parse error: </match>
+    <description>PHP Parse error.</description>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+
+  <!-- PHP Warnings
+    - PHP Warning:  urlencode() expects parameter 1 to be string, array given in
+    -->
+  <rule id="31410" level="3">
+    <if_sid>31401, 31404</if_sid>
+    <description>PHP Warning message.</description>
+  </rule>
+
+  <rule id="31411" level="6">
+    <if_sid>31410</if_sid>
+    <match> expects parameter 1 to be string, array given in</match>
+    <group>attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>PHP web attack.</description>
+    <mitre>
+      <id>T1102</id>
+    </mitre>
+  </rule>
+
+  <rule id="31412" level="5">
+    <if_sid>31410</if_sid>
+    <match>Failed opening|failed to open stream</match>
+    <description>PHP internal error (missing file).</description>
+    <options>alert_by_email</options>
+    <group>attack,pci_dss_6.5,gpg13_4.3,gdpr_IV_35.7.d,nist_800_53_SA.11,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,</group>
+  </rule>
+
+  <rule id="31413" level="5" ignore="1200">
+    <if_sid>31410</if_sid>
+    <match>bytes written, possibly out of free disk space in</match>
+    <description>PHP internal error (server out of space).</description>
+    <options>alert_by_email</options>
+    <mitre>
+      <id>T1488</id>
+    </mitre>
+    <group>low_diskspace,</group>
+    <group>attack,pci_dss_6.5,pci_dss_10.2.7,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.14,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+
+  <!-- PHP Fatal errors
+    - PHP Fatal error:  require_once() [<a href='function.require'>function.require</a>]: Failed opening require
+d 'includes/SkinTemplate.php'
+    -->
+  <rule id="31420" level="5">
+    <if_sid>31402, 31405</if_sid>
+    <description>PHP Fatal error.</description>
+  </rule>
+
+  <rule id="31421" level="5">
+    <if_sid>31420</if_sid>
+    <match>Failed opening required |Call to undefined function </match>
+    <description>PHP internal error (missing file or function).</description>
+    <options>alert_by_email</options>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+
+
+  <!-- PHP Parse error -->
+  <rule id="31430" level="5">
+    <if_sid>31403, 31406</if_sid>
+    <description>PHP Parse error.</description>
+    <options>alert_by_email</options>
+    <group>pci_dss_6.5,pci_dss_6.5.5,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_SA.11,nist_800_53_AU.6,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+</group>

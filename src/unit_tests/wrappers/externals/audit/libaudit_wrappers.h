@@ -44,4 +44,7 @@ int __wrap_audit_send(int fd,
 int __wrap_audit_update_watch_perms(struct audit_rule_data *rule,
                                     int perms);
 
+
+int __wrap_audit_request_status(int fd);
+
 #endif

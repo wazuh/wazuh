@@ -552,7 +552,6 @@ static void test_audit_manage_rules_action_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_audit_get_rule_list_error),

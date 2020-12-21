@@ -123,7 +123,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
             merror_exit("Insufficient memory.");
             break;
         case SEC_E_UNSUPPORTED_FUNCTION: // 0x80090302
-            merror_exit("Couldn't negotiate encryption protocol. Try to run ossec-authd with \"-a\" option.");
+            merror_exit("Couldn't negotiate encryption protocol. Try to run wazuh-authd with \"-a\" option.");
             break;
         case SEC_E_INTERNAL_ERROR:  // 0x80090304
             merror_exit("Internal error.");
@@ -142,7 +142,7 @@ void CreateSecureConnection(char *manager, int port, int *socket, CtxtHandle *co
         {
             read = recv(*socket, buffer + total_read, IO_BUFFER_SIZE - total_read, 0);
             if (read <= 0)
-                merror_exit("Could not get security token from server. Run ossec-authd with \"-a\" option and enable RC4 or 3DES cipher.");
+                merror_exit("Could not get security token from server. Run wazuh-authd with \"-a\" option and enable RC4 or 3DES cipher.");
 
             total_read += read;
         }

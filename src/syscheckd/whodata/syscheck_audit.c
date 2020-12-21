@@ -89,7 +89,6 @@ static regex_t regexCompiled_dev;
 
 
 int check_auditd_enabled(void) {
-
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
     proc_t *proc_info;
     int auditd_pid = -1;
@@ -213,9 +212,9 @@ int add_audit_rules_syscheck(bool first_time) {
     unsigned int i = 0;
     unsigned int rules_added = 0;
 
-    int fd = audit_open();
-    int res = audit_get_rule_list(fd);
-    audit_close(fd);
+    int auditd_fd = audit_open();
+    int res = audit_get_rule_list(auditd_fd);
+    audit_close(auditd_fd);
 
     if (!res) {
         merror(FIM_ERROR_WHODATA_READ_RULE);
@@ -271,6 +270,26 @@ int add_audit_rules_syscheck(bool first_time) {
     }
 
     return rules_added;
+}
+
+
+void audit_no_rules_to_realtime() {
+    int found;
+    int i;
+
+    for (i = 0; syscheck.dir[i] != NULL; i++) {
+        if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
+            continue;
+        }
+
+        found = search_audit_rule(fim_get_real_path(i), "wa", AUDIT_KEY);
+
+        if (found == 0) {   // No rule found
+            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, fim_get_real_path(i));
+            syscheck.opts[i] &= ~WHODATA_ACTIVE;
+            syscheck.opts[i] |= REALTIME_ACTIVE;
+        }
+    }
 }
 
 
@@ -434,6 +453,7 @@ int audit_init(void) {
 
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
+
     if (aupid <= 0) {
         mwarn(FIM_AUDIT_NORUNNING);
         return (-1);
@@ -479,6 +499,26 @@ int audit_init(void) {
     audit_added_dirs = W_Vector_init(20);
 
     add_audit_rules_syscheck(true);
+
+    // Change to realtime directories that don't have any rules when Auditd is in immutable mode
+    int auditd_fd = audit_open();
+    int au_mode = audit_is_enabled(auditd_fd);
+    audit_close(auditd_fd);
+
+    switch (au_mode) {
+    case AUDIT_IMMUTABLE:
+        audit_no_rules_to_realtime();
+        break;
+    case AUDIT_ERROR:
+        merror(FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
+        return -1;
+    case AUDIT_DISABLED:
+        mwarn(FIM_AUDIT_DISABLED);
+        return -1;
+    default:
+        break;
+    }
+
     atexit(clean_rules);
     auid_err_reported = 0;
 
@@ -1407,6 +1447,7 @@ void clean_rules(void) {
         W_Vector_free(audit_added_rules);
         audit_added_rules = NULL;
     }
+
     w_mutex_unlock(&audit_mutex);
 }
 
