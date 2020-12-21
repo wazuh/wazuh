@@ -1,0 +1,141 @@
+<!-- program_name tests -->
+<decoder name="test_pcre2_0">
+  <program_name type="osmatch">^(?i)test_</program_name>
+  <program_name type="osregex">pcre2_</program_name>
+  <program_name type="pcre2">0$</program_name>
+</decoder>
+
+<decoder name="test_pcre2_0_child">
+  <parent>test_pcre2_0</parent>
+  <regex type="pcre2">\S+ (\w+) (\w+)@(\d+.\d+.\d+.\d+):(\d+)</regex>
+  <regex> (\d+.\d+.\d+.\d+):(\d+)</regex>
+  <order>protocol,user,srcip,srcport,dstip,dstport</order>
+</decoder>
+
+<!-- regex tests  -->
+<decoder name="test_pcre2_1">
+  <program_name>^test_pcre2_1$</program_name>
+</decoder>
+
+<decoder name="test_pcre2_1_child">
+  <parent>test_pcre2_1</parent>
+  <regex>(?i)\S+ </regex>
+  <regex type="osregex">(\S+) </regex>
+  <regex>(\w+) </regex>
+  <regex type="pcre2">(\S+)</regex>
+  <order>url,action,querystring</order>
+</decoder>
+
+<!-- prematch tests-->
+<decoder name="test_pcre2_2">
+  <prematch type="osregex">(?i)test_pcre2_</prematch>
+  <prematch type="pcre2">2</prematch>
+</decoder>
+
+<decoder name="test_pcre2_2_child">
+  <parent>test_pcre2_2</parent>
+  <regex offset="after_parent">\S+ regex_example_(\d+)</regex>
+  <order>id</order>
+</decoder>
+
+<!-- action tests -->
+<decoder name="test_pcre2_3">
+  <program_name>^test_pcre2_3$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>action</order>
+</decoder>
+
+<!-- extra_data tests -->
+<decoder name="test_pcre2_4">
+  <program_name>^test_pcre2_4$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>extra_data</order>
+</decoder>
+
+<!-- id tests -->
+<decoder name="test_pcre2_5">
+  <program_name>^test_pcre2_5$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>id</order>
+</decoder>
+
+<!-- pre-decoding loaded fields -->
+<!-- location,hostname,program_name tests -->
+<decoder name="test_pcre2_6">
+  <program_name>^test_pcre2_6$</program_name>
+</decoder>
+
+<!-- match tests -->
+<decoder name="test_pcre2_7">
+  <program_name>^test_pcre2_7$</program_name>
+</decoder>
+
+<!-- protocol tests -->
+<decoder name="test_pcre2_8">
+  <program_name>^test_pcre2_8$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>protocol</order>
+</decoder>
+
+<!-- user tests -->
+<decoder name="test_pcre2_9">
+  <program_name>^test_pcre2_9$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>user</order>
+</decoder>
+
+<!-- url tests -->
+<decoder name="test_pcre2_10">
+  <program_name>^test_pcre2_10$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>url</order>
+</decoder>
+
+<!-- srcport tests -->
+<decoder name="test_pcre2_11">
+  <program_name>^test_pcre2_11$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>srcport</order>
+</decoder>
+
+<!-- dstport tests -->
+<decoder name="test_pcre2_12">
+  <program_name>^test_pcre2_12$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>dstport</order>
+</decoder>
+
+<!-- status tests -->
+<decoder name="test_pcre2_13">
+  <program_name>^test_pcre2_13$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>status</order>
+</decoder>
+
+<!-- system_name tests -->
+<decoder name="test_pcre2_14">
+  <program_name>^test_pcre2_14$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>system_name</order>
+</decoder>
+
+<!-- data tests -->
+<decoder name="test_pcre2_15">
+  <program_name>^test_pcre2_15$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>data</order>
+</decoder>
+
+<!-- srcgeoip tests -->
+<decoder name="test_pcre2_16">
+  <program_name>^test_pcre2_16$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>srcip</order>
+</decoder>
+
+ <!-- dstgeoip -->
+<decoder name="test_pcre2_17">
+  <program_name>^test_pcre2_17$</program_name>
+  <regex>\S+ (\S+)</regex>
+  <order>dstip</order>
+</decoder>

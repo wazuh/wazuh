@@ -1,0 +1,6 @@
+#unknown system 
+Feb 15 16:08:14 triumph PAM-securetty[741]: Couldn't open /etc/securetty
+Jan 26 21:01:23 test100 PAM-securetty[284]: Couldn't open /etc/securetty
+#Red hat
+Nov  7 21:01:17 enigma PAM-securetty[975]: Couldn't open /etc/securetty
+Apr 19 17:06:03 ecos2 PAM-securetty[1203]: Couldn't open /etc/securetty

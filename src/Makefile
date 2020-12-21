@@ -1859,7 +1859,7 @@ test_coverage: build_tests
 ###################
 
 test-rules:
-	( cd ../contrib/ossec-testing && sudo python runtests.py)
+	( cd ../ruleset/testing && sudo python runtests.py)
 
 
 ####################

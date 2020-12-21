@@ -1,0 +1,11 @@
+# From log analysis web site
+May 16 22:46:08 victim-host inetd[600]: /usr/lib/fs/cachefs/cachefsd: Segmentation Fault - core dumped
+May 16 22:46:21 victim-host last message repeated 7 times
+May 16 22:46:22 victim-host inetd[600]: /usr/lib/fs/cachefs/cachefsd: Bus Error - core dumped
+May 16 22:46:24 victim-host inetd[600]: /usr/lib/fs/cachefs/cachefsd: Segmentation Fault - core dumped
+May 16 22:46:56 victim-host inetd[600]: /usr/lib/fs/cachefs/cachefsd: Bus Error - core dumped
+May 16 22:46:59 victim-host last message repeated 1 time
+May 16 22:47:02 victim-host inetd[600]: /usr/lib/fs/cachefs/cachefsd: Segmentation Fault - core dumped
+May 16 22:47:07 victim-host last message repeated 3 times
+May 16 22:47:09 victim-host inetd[600]: /usr/lib/fs/cachefs/cachefsd: Hangup
+May 16 22:47:11 victim-host inetd[600]: /usr/lib/fs/cachefs/cachefsd: Segmentation Fault - core dumped

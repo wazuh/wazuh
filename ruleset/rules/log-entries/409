@@ -1,0 +1,7 @@
+#FreeBSD
+Feb 15 14:32:20 freebsd-1 sshd[1374]: Illegal user dcid from 192.168.1.2
+Feb 15 16:11:56 freebsd-1 sshd[2690]: Illegal user dcid from 192.168.10.153
+Aug  1 15:44:10 enigma sshd[13752]: Failed password for invalid user ss7 from 65.202.215.2 port 18546 ssh2
+Aug  1 15:44:10 enigma sshd[6682]: Failed password for invalid user ss7 from 65.202.215.2 port 18546 ssh2
+Aug  1 15:44:11 enigma sshd[6682]: Failed password for invalid user ss7 from 65.202.215.2 port 18546 ssh2
+Aug  1 15:44:11 enigma sshd[13752]: Failed password for invalid user ss7 from 65.202.215.2 port 18546 ssh2

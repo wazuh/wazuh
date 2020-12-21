@@ -156,4 +156,8 @@ WazuhUpgrade()
     rm -f $DIRECTORY/bin/ossec-remoted
     rm -f $DIRECTORY/bin/ossec-reportd
     rm -f $DIRECTORY/bin/ossec-syscheckd
+
+    # Remove existing ruleset version file
+
+    rm -f $DIRECTORY/ruleset/VERSION
 }
