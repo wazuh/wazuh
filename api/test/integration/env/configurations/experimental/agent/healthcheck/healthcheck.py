@@ -1,10 +1,26 @@
 import os
+from datetime import datetime, timedelta
 
-output_ciscat_scan = os.system("grep -q 'wazuh-modulesd:ciscat: INFO: Scan finished successfully.' /var/ossec/logs/ossec.log")
-output_ciscat_evaluation = os.system("grep -q 'wazuh-modulesd:ciscat: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
-output_sysc = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
+output_code_ciscat_scan = os.system(
+    "grep -q 'wazuh-modulesd:ciscat: INFO: Scan finished successfully.' /var/ossec/logs/ossec.log")
+output_code_ciscat_evaluation = os.system(
+    "grep -q 'wazuh-modulesd:ciscat: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
+output_code_sysc = os.system(
+    "grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
 
-if output_ciscat_scan == 0 and output_ciscat_evaluation == 0 and output_sysc == 0:
+if output_code_ciscat_scan == 0 and output_code_ciscat_evaluation == 0 and output_code_sysc == 0:
     exit(0)
 else:
+    # Check if the last ciscat evaluation started and did not finish
+    output_ciscat_start = os.popen(
+        "grep 'wazuh-modulesd:ciscat: INFO: Starting evaluation.' /var/ossec/logs/ossec.log").read().splitlines()
+    last_ciscat_start = output_ciscat_start[len(output_ciscat_start) - 1]
+
+    timestamp_last_ciscat_start = datetime.strptime(last_ciscat_start[:19], '%Y/%m/%d %H:%M:%S')
+
+    # If the last ciscat evaluation is taking more than 90 seconds,
+    # restart the daemon so a new ciscat evaluation starts
+    if (datetime.now() - timestamp_last_ciscat_start) >= timedelta(seconds=90):
+        os.system("/var/ossec/bin/wazuh-modulesd")
+
     exit(1)
