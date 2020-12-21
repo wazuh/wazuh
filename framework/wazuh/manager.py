@@ -50,7 +50,7 @@ def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_
     """Gets logs from ossec.log.
 
     :param level: Filters by log level: all, error or info.
-    :param tag: Filters by log category/tag (i.e. ossec-remoted).
+    :param tag: Filters by log category/tag (i.e. wazuh-remoted).
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort_by: Fields to sort the items by

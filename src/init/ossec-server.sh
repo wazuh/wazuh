@@ -23,8 +23,8 @@ fi
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-clusterd wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd wazuh-apid"
-OP_DAEMONS="wazuh-clusterd ossec-maild ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
+OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -267,7 +267,7 @@ start()
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
         fi
-        touch ${DIR}/var/run/ossec-analysisd.failed
+        touch ${DIR}/var/run/wazuh-analysisd.failed
         exit 1;
     fi
 
@@ -283,8 +283,8 @@ start()
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        ## If ossec-maild is disabled, don't try to start it.
-        if [ X"$i" = "Xossec-maild" ]; then
+        ## If wazuh-maild is disabled, don't try to start it.
+        if [ X"$i" = "Xwazuh-maild" ]; then
              grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
              if [ $? = 0 ]; then
                  continue
@@ -303,8 +303,8 @@ start()
                 continue
              fi
         fi
-        ## If ossec-authd is disabled, don't try to start it.
-        if [ X"$i" = "Xossec-authd" ]; then
+        ## If wazuh-authd is disabled, don't try to start it.
+        if [ X"$i" = "Xwazuh-authd" ]; then
              start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
              end_config="$(grep -n "</auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
              if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
@@ -544,7 +544,7 @@ restart)
     unlock
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
+    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
     stopa
     start

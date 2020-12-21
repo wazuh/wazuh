@@ -35,7 +35,7 @@ def init_argparse():
         dest='debug'
     )
     parser.add_argument(
-        "-U", help='Unit test. Refer to contrib/ossec-testing/runtests.py',
+        "-U", help='Unit test. Refer to ruleset/testing/runtests.py',
         nargs=1,
         metavar='rule:alert:decoder',
         dest='ut'
@@ -108,7 +108,7 @@ def main():
             logging.error('** Wazuh-logtest error ' + str(error))
             continue
         except ConnectionError:
-            logging.error('** Wazuh-logtest error when connecting with ossec-analysisd')
+            logging.error('** Wazuh-logtest error when connecting with wazuh-analysisd')
             continue
 
         # Check and alert to user if new session was created
@@ -211,7 +211,7 @@ class WazuhSocket:
 
 class WazuhLogtest:
     def __init__(self, location="stdin", log_format="syslog"):
-        """Top level class to interact with wazuh-logtest feature, part of ossec-analysisd
+        """Top level class to interact with wazuh-logtest feature, part of wazuh-analysisd
 
         Args:
             location (str, optional): log origin. Defaults to "master->/var/log/syslog".

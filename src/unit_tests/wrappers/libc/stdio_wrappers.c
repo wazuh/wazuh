@@ -16,6 +16,7 @@
 #include "headers/defs.h"
 #include "../common.h"
 
+fpos_t * test_position = NULL;
 
 extern int __real_fclose(FILE *_File);
 int __wrap_fclose(FILE *_File) {
@@ -45,12 +46,29 @@ char * __wrap_fgets (char * __s, int __n, FILE * __stream) {
         char *buffer = mock_type(char*);
         check_expected(__stream);
         if(buffer) {
-            strncpy(__s, buffer, __n);
+            size_t buff_len = strlen(buffer);
+            if (buff_len + 1 < (size_t) __n) {
+                strncpy(__s, buffer, buff_len + 1);
+            } else {
+                strncpy(__s, buffer, __n - 1);
+                __s[ __n - 1] = '\0';
+            }
             return __s;
         }
         return NULL;
     } else {
         return __real_fgets(__s, __n, __stream);
+    }
+}
+
+extern int __real_fgetpos(FILE *__restrict __stream, fpos_t * __pos);
+int __wrap_fgetpos (FILE *__restrict __stream, fpos_t * __pos) {
+    if(test_mode) {
+        check_expected(__stream);
+        memcpy(__pos, test_position, sizeof(fpos_t));
+        return mock();
+    } else {
+        return __real_fgetpos(__stream, __pos);
     }
 }
 
@@ -151,4 +169,29 @@ int __wrap_rename(const char *__old, const char *__new) {
     check_expected(__old);
     check_expected(__new);
     return mock();
+}
+
+void __wrap_clearerr (FILE *__stream) {
+    function_called();
+    check_expected(__stream);
+    return;
+}
+
+int __wrap_fileno (FILE *__stream) {
+    check_expected(__stream);
+    return mock();
+}
+
+extern int __real_fgetc(FILE * stream);
+int __wrap_fgetc(FILE * stream) {
+    if(test_mode) {
+        return mock_type(int);
+    } else {
+        return __real_fgetc(stream);
+    }
+}
+
+int __wrap__fseeki64(__attribute__ ((__unused__)) FILE *stream, \
+                     __attribute__ ((__unused__)) long offset, __attribute__ ((__unused__)) int whence){
+     return mock();
 }

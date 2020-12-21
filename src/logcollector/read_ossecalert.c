@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "headers/read-alert.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_it) {
@@ -25,6 +26,14 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     if (!al_data) {
         return (NULL);
     }
+
+    /* Obtain context to calculate hash */
+    SHA_CTX context;
+    os_sha1 output;
+    int64_t current_position = w_ftell(lf->fp);
+
+    OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, current_position);
+    w_update_file_status(lf->file, current_position, &context);
 
     memset(syslog_msg, '\0', OS_SIZE_2048 + 1);
 

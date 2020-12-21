@@ -58,6 +58,7 @@
 #define FIM_REGISTRY_UNSCANNED_VALUE_FAIL       "(6943): Failed to get unscanned registry values."
 #define FIM_REGISTRY_FAIL_TO_INSERT_VALUE       "(6944): Failed to insert value '%s %s\\%s'"
 #define FIM_REGISTRY_FAIL_TO_GET_KEY_ID         "(6945): Unable to get id for registry key '%s %s'"
+#define FIM_AUDIT_DISABLED                      "(6946): Audit is disabled."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
@@ -77,4 +78,11 @@
 #define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
                                                 "(decoder `%s`). Default value will be taken"
 
+/* Logcollector */
+#define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
+                                                "Default value will be taken"
+#define LOGCOLLECTOR_MULTILINE_SUPPORT          "(8001): log_format '%s' does not support multiline_regex option." \
+                                                " Will be ignored"
+#define LOGCOLLECTOR_MULTILINE_AGE_TIMEOUT      "(8002): 'age' cannot be less than 'timeout' in multiline_regex option."\
+                                                " 'age' will be ignored"
 #endif /* WARN_MESSAGES_H */

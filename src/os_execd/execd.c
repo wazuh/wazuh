@@ -680,7 +680,7 @@ static int CheckManagerConfiguration(char ** output) {
     int timeout = 2000;
     char command_in[PATH_MAX] = {0};
     char *output_msg = NULL;
-    char *daemons[] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd", "bin/ossec-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/ossec-agentlessd", "bin/ossec-integratord", "bin/ossec-dbd", "bin/ossec-csyslogd", NULL };
+    char *daemons[] = { "bin/wazuh-authd", "bin/wazuh-remoted", "bin/wazuh-execd", "bin/wazuh-analysisd", "bin/wazuh-logcollector", "bin/wazuh-integratord",  "bin/wazuh-syscheckd", "bin/wazuh-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/wazuh-agentlessd", "bin/wazuh-integratord", "bin/wazuh-dbd", "bin/wazuh-csyslogd", NULL };
     int i;
     ret_val = 0;
 

@@ -1,0 +1,13 @@
+# Terminal failure
+Apr 27 17:27:19 niban login(pam_unix)[1059]: authentication failure; logname=LOGIN uid=0 euid=0 tty=tty2 ruser= rhost=  user=root
+Apr 27 17:27:21 niban login[1059]: FAILED LOGIN 1 FROM (null) FOR root, Authentication failure
+# ssh (pam) failure
+Apr 27 17:33:59 niban sshd(pam_unix)[9420]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=niban.sfeng.sourcefire.com  user=dcid
+Apr 27 17:34:04 niban sshd(pam_unix)[9420]: 1 more authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=niban.sfeng.sourcefire.com  user=dcid
+# ssh failure root
+Apr 27 17:34:26 niban sshd(pam_unix)[9425]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=niban.sfeng.sourcefire.com  user=root
+
+# SSHD failed password
+Apr 27 17:34:04 niban sshd[9420]: Failed password for dcid from 10.4.12.26 port 40137 ssh2
+Apr 27 17:34:28 niban sshd[9425]: Failed password for root from 10.4.12.26 port 40138 ssh2
+
