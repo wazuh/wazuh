@@ -11,15 +11,15 @@ if [ "X${DIRECTORY}" = "X" ]; then
 fi
 
 start() {
-    ${DIRECTORY}/bin/ossec-control start
+    ${DIRECTORY}/bin/wazuh-control start
 }
 
 stop() {
-    ${DIRECTORY}/bin/ossec-control stop
+    ${DIRECTORY}/bin/wazuh-control stop
 }
 
 status() {
-    ${DIRECTORY}/bin/ossec-control status
+    ${DIRECTORY}/bin/wazuh-control status
 }
 
 case "$1" in

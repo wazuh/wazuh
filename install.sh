@@ -127,7 +127,7 @@ Install()
         fi
     fi
 
-    # If update, stop ossec
+    # If update, stop Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         echo "Stopping Wazuh..."
         UpdateStopOSSEC
@@ -152,7 +152,11 @@ Install()
         WazuhSetup
     fi
 
-    # If update, start OSSEC
+    # Calling the init script to start Wazuh during boot
+    runInit $INSTYPE ${update_only}
+    runinit_value=$?
+
+    # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
         # Update versions previous to Wazuh 1.2
@@ -161,9 +165,7 @@ Install()
         UpdateStartOSSEC
     fi
 
-    # Calling the init script  to start ossec hids during boot
-    runInit $INSTYPE ${update_only}
-    if [ $? = 1 ]; then
+    if [ $runinit_value = 1 ]; then
         notmodified="yes"
     elif [ "X$START_WAZUH" = "Xyes" ]; then
         echo "Starting Wazuh..."
@@ -1009,10 +1011,10 @@ main()
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/ossec-control start"
+    echo "      $INSTALLDIR/bin/wazuh-control start"
     echo ""
     echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/ossec-control stop"
+    echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
     echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
     echo ""
@@ -1073,7 +1075,7 @@ main()
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "      $INSTALLDIR/bin/ossec-control start"
+        echo "      $INSTALLDIR/bin/wazuh-control start"
         echo ""
     fi
 }
