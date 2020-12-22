@@ -1211,6 +1211,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* When the maximum number of directories monitored in the same tag is reached,
         the excess are discarded and warned */
         if (j++ >= MAX_DIR_SIZE){
+            mwarn(FIM_WARN_MAX_DIR_REACH, MAX_DIR_SIZE, tmp_dir);
             dir++;
             continue;
         }
@@ -1222,8 +1223,13 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         /* If it's an environment variable, expand it */
-        if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable){
-            for(int i = 0; env_variable[i]; i++) {
+        if (env_variable = get_paths_from_env_variable(tmp_dir), !env_variable){
+            os_calloc(2, sizeof(char *), env_variable);
+            os_strdup(tmp_dir, env_variable[0]);
+            env_variable[1] = NULL;
+        }
+        for (int i = 0; env_variable[i]; i++) {
+            if(strcmp(env_variable[i], "")) {
                 real_path = format_path(env_variable[i]);
                 if (real_path) {
 #ifdef WIN32
@@ -1236,11 +1242,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 } else {
                     mwarn(FIM_WARN_FORMAT_PATH, env_variable[i]);
                 }
-                os_free(env_variable[i]);
                 os_free(real_path);
             }
-        } else {
-            mwarn(FIM_WARN_ENV_VARIABLES, tmp_dir);
+            os_free(env_variable[i]);
         }
 
         os_free(env_variable);
@@ -1739,20 +1743,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         /* Get directories */
         else if (strcmp(node[i]->element, xml_directories) == 0) {
             char dirs[OS_MAXSTR];
-#ifdef WIN32
-            char *ptfile;
 
-            /* Change backslashes to forwardslashes on entry */
-            ptfile = strchr(node[i]->content, '/');
-            while (ptfile) {
-                *ptfile = '\\';
-                ptfile++;
-
-                ptfile = strchr(ptfile, '/');
-            }
-#endif
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
-
             if (!read_attr(syscheck,
                            dirs,
                            node[i]->attributes,
@@ -2466,10 +2458,8 @@ static char **get_paths_from_env_variable (char *environment_variable) {
     if(!ExpandEnvironmentStrings(environment_variable, expandedpath, PATH_MAX + 1)){
         merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
     }
-
     /* The env. variable may have multiples paths split by ; */
     paths = OS_StrBreak(';', expandedpath, MAX_DIR_SIZE);
-
 #else
     char *expandedpath = NULL;
 
@@ -2480,8 +2470,6 @@ static char **get_paths_from_env_variable (char *environment_variable) {
     if(expandedpath = getenv(environment_variable), expandedpath) {
         /* The env. variable may have multiples paths split by : */
         paths = OS_StrBreak(':', expandedpath, MAX_DIR_SIZE);
-    } else {
-        paths[0] = environment_variable;
     }
 
 #endif
@@ -2524,12 +2512,20 @@ static int process_option_regex(char *option, OSMatch ***syscheck_option, xml_no
 static void process_option(char ***syscheck_option, xml_node *node) {
 
     unsigned int counter_opt = 0;
+    char *real_path;
+    char *dir = strdup(node->content);
+    char *tmp_dir;
     char **new_opt = NULL;
 
+    tmp_dir = validate_path(dir);
+    if (!tmp_dir) {
+        return;
+    }
+
     /* We attempt to expand environment variables */
-    if (new_opt = get_paths_from_env_variable(node->content), !new_opt) {
+    if (new_opt = get_paths_from_env_variable(tmp_dir), !new_opt) {
         os_calloc(2, sizeof(char *), new_opt);
-        os_strdup(node->content, new_opt[0]);
+        os_strdup(dir, new_opt[0]);
         new_opt[1] = NULL;
     }
 
@@ -2540,12 +2536,17 @@ static void process_option(char ***syscheck_option, xml_node *node) {
     }
 
     for (int i = 0; new_opt[i]; i++) {
-        if (!os_IsStrOnArray(node->content, syscheck_option[0])) {
-            os_realloc(syscheck_option[0], sizeof(char *) * (counter_opt + 2),
-                        syscheck_option[0]);
-            os_strdup(new_opt[i], syscheck_option[0][counter_opt]);
-            syscheck_option[0][counter_opt + 1] = NULL;
-            counter_opt++;
+        if(strcmp(new_opt[i], "")) {
+            real_path = format_path(new_opt[i]);
+            if (real_path && !os_IsStrOnArray(dir, syscheck_option[0])) {
+                os_realloc(syscheck_option[0], sizeof(char *) * (counter_opt + 2), syscheck_option[0]);
+                os_strdup(real_path, syscheck_option[0][counter_opt]);
+                syscheck_option[0][counter_opt + 1] = NULL;
+                counter_opt++;
+            } else {
+                mwarn(FIM_WARN_FORMAT_PATH, new_opt[i]);
+            }
+            os_free(real_path);
         }
         os_free(new_opt[i]);
     }
