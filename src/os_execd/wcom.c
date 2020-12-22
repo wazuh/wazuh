@@ -199,10 +199,9 @@ size_t wcom_restart(char ** output) {
         char * minor = NULL;
         char * version = NULL;
         char * save_ptr = NULL;
-        w_strdup(__ossec_version, version);
+        w_strdup(__ossec_version + 1, version);
 
-        strtok_r(version, "v", &save_ptr);
-        major = strtok_r(NULL, ".", &save_ptr);
+        major = strtok_r(version, ".", &save_ptr);
         minor = strtok_r(NULL, ".", &save_ptr);
         if (!major || !minor) {
             merror("At WCOM restart: Unable to read agent version.");
