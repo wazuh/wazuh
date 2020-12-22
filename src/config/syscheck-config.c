@@ -728,6 +728,139 @@ clean_reg:
 }
 #endif /* WIN32 */
 
+char *validate_path(char *dir) {
+    char *tmp_dir = dir;
+
+    /* Remove spaces at the beginning and the end */
+    while (*tmp_dir == ' ') {
+        tmp_dir++;
+    }
+
+    char *tmp_str = tmp_dir + strlen(tmp_dir) - 1;
+    while(*tmp_str == ' ') {
+        *tmp_str = '\0';
+        tmp_str--;
+    }
+
+    if (!strcmp(tmp_dir,"")) {
+        mdebug2(FIM_EMPTY_DIRECTORIES_CONFIG);
+        return NULL;
+    }
+
+    return tmp_dir;
+}
+
+char *format_path(char *dir) {
+    char *real_path;
+    char *tmp_str;
+    char buffer[PATH_MAX];
+
+    if(!strcmp(dir, "") || dir == NULL) {
+        return NULL;
+    }
+
+#ifdef WIN32
+    /* Change forward slashes to backslashes on entry */
+    tmp_str = strchr(dir, '/');
+    while (tmp_str) {
+        *tmp_str = '\\';
+        tmp_str++;
+        tmp_str = strchr(tmp_str, '/');
+    }
+
+    if (!GetFullPathName(dir, PATH_MAX, buffer, NULL)) {
+        return NULL;
+    }
+    real_path = strdup(buffer);
+    str_lowercase(real_path);
+#else
+    real_path = strdup(dir);
+#endif
+
+    // Remove any trailling path separators
+    int path_length = strlen(real_path);
+#ifdef WIN32
+    if (path_length != 3) { // Drives need :\ attached in order to work properly
+#else
+    if (path_length != 1) {
+#endif
+        tmp_str = real_path + path_length - 1;
+        if (*tmp_str == PATH_SEP) {
+            *tmp_str = '\0';
+        }
+    }
+
+    return real_path;
+}
+
+#ifndef WIN32
+void check_wildcards_and_sym_links(syscheck_config *syscheck, char *real_path,
+                                   int opts, const char *restrictfile,
+                                   int recursion_limit, const char *clean_tag,
+                                   int tmp_diff_size) {
+    /* Check for glob */
+    /* The mingw32 builder used by travis.ci can't find glob.h
+        * Yet glob must work on actual win32.
+        */
+    if (strchr(real_path, '*') ||
+            strchr(real_path, '?') ||
+            strchr(real_path, '[')) {
+        int gindex = 0;
+        int gstatus;
+        glob_t g;
+
+        gstatus = glob(real_path, 0, NULL, &g);
+        if (gstatus == GLOB_NOMATCH) {
+            mdebug2(GLOB_NO_MATCH, real_path);
+            return;
+        } else if (gstatus != 0) {
+            merror(GLOB_ERROR, real_path);
+            return;
+        }
+
+        if (g.gl_pathv[0] == NULL) {
+            merror(GLOB_NFOUND, real_path);
+            return;
+        }
+
+        while (g.gl_pathv[gindex]) {
+            char *resolved_path = realpath(g.gl_pathv[gindex], NULL);
+
+            if (resolved_path != NULL) {
+                if (strcmp(resolved_path, g.gl_pathv[gindex]) != 0 && (opts & CHECK_FOLLOW)) {
+                    dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
+                                        g.gl_pathv[gindex], tmp_diff_size);
+                } else {
+                    dump_syscheck_file(syscheck, g.gl_pathv[gindex], opts, restrictfile, recursion_limit,
+                                        clean_tag, NULL, tmp_diff_size);
+                }
+
+                os_free(resolved_path);
+            } else {
+                mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
+                        g.gl_pathv[gindex], errno, strerror(errno));
+            }
+
+            gindex++;
+        }
+
+        globfree(&g);
+    } else {
+        char *resolved_path = realpath(real_path, NULL);
+
+        if (resolved_path != NULL && strcmp(resolved_path, real_path) != 0 && (opts & CHECK_FOLLOW)) {
+            dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
+                                real_path, tmp_diff_size);
+        } else {
+            dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
+                                tmp_diff_size);
+        }
+
+        os_free(resolved_path);
+    }
+}
+#endif
+
 /* Read directories attributes */
 static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs, char **g_values)
 {
@@ -767,7 +900,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE + 1); /* Max number */
     char **dir_org = dir;
     int i;
-    int j = 0;
 
     /* Dir can not be null */
     if (dir == NULL) {
@@ -1070,227 +1202,48 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     }
 
     /* Extract all directories */
-    char real_path[PATH_MAX + 1] = "";
-    char *tmp_str;
+    char *real_path;
     char *tmp_dir;
     char **env_variable;
-#ifdef WIN32
-    int retvalF;
-#endif
+    int j = 0;
 
     while (*dir) {
-        tmp_dir = *dir;
-
-        /* When the maximum number of directories monitored in the same tag is reached,
-           the excess are discarded and warned */
+            /* When the maximum number of directories monitored in the same tag is reached,
+        the excess are discarded and warned */
         if (j++ >= MAX_DIR_SIZE){
-            mwarn(FIM_WARN_MAX_DIR_REACH, MAX_DIR_SIZE, tmp_dir);
             dir++;
             continue;
         }
 
-        /* Remove spaces at the beginning and the end */
-        while (*tmp_dir == ' ') {
-            tmp_dir++;
-        }
-
-        tmp_str = tmp_dir + strlen(tmp_dir) - 1;
-        while(*tmp_str == ' ') {
-            *tmp_str = '\0';
-            tmp_str--;
-        }
-
-        if (!strcmp(tmp_dir,"")) {
-            mdebug2(FIM_EMPTY_DIRECTORIES_CONFIG);
+        tmp_dir = validate_path(*dir);
+        if (!tmp_dir) {
             dir++;
             continue;
         }
-
-#ifdef WIN32
 
         /* If it's an environment variable, expand it */
         if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable){
-
             for(int i = 0; env_variable[i]; i++) {
-                if(strcmp(env_variable[i], "")) {
-                    // Get absolute path cheking if the path is a drive without the backslash.
-                    if (strlen(env_variable[i]) == 2) {
-                        strcat(env_variable[i], "\\");
-                    }
-
-                    if (retvalF = GetFullPathName(env_variable[i], PATH_MAX, real_path, NULL), retvalF == 0) {
-                        retvalF = GetLastError();
-                        mwarn("Couldn't get full path name '%s' (%d):'%s'\n", env_variable[i], retvalF, win_strerror(retvalF));
-                        os_free(env_variable[i]);
-                        continue;
-                    }
-
-                    // Remove any trailling path separators
-                    int path_length = strlen(real_path);
-                    if (path_length != 3) { // Drives need :\ attached in order to work properly
-                        tmp_str = real_path + path_length - 1;
-                        if (*tmp_str == PATH_SEP) {
-                            *tmp_str = '\0';
-                        }
-                    }
-
-                    str_lowercase(real_path);
+                real_path = format_path(env_variable[i]);
+                if (real_path) {
+#ifdef WIN32
                     dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
-                                       tmp_diff_size);
+                            tmp_diff_size);
+#else
+                    check_wildcards_and_sym_links(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag,
+                            tmp_diff_size);
+#endif
+                } else {
+                    mwarn(FIM_WARN_FORMAT_PATH, env_variable[i]);
                 }
                 os_free(env_variable[i]);
+                os_free(real_path);
             }
-
-            os_free(env_variable);
-            dir++;
-            continue;
+        } else {
+            mwarn(FIM_WARN_ENV_VARIABLES, tmp_dir);
         }
 
-        /* Else, treat as a path */
-        /* Change forward slashes to backslashes on entry */
-        tmp_str = strchr(tmp_dir, '/');
-        while (tmp_str) {
-            *tmp_str = '\\';
-            tmp_str++;
-            tmp_str = strchr(tmp_str, '/');
-        }
-
-        // Get absolute path cheking if the path is a drive without the backslash.
-        if (strlen(tmp_dir) == 2) {
-            strcat(tmp_dir, "\\");
-        }
-
-        /* Get absolute path and monitor it */
-        retvalF = GetFullPathName(tmp_dir, PATH_MAX, real_path, NULL);
-        if (retvalF == 0) {
-            retvalF = GetLastError();
-            mwarn("Couldn't get full path name '%s' (%d):'%s'\n", tmp_dir, retvalF, win_strerror(retvalF));
-            os_free(restrictfile);
-            os_free(tag);
-            dir++;
-            continue;
-        }
-
-        // Remove any trailling path separators
-        int path_length = strlen(real_path);
-        if (path_length != 3) { // Drives need :\ attached in order to work properly
-            tmp_str = real_path + path_length - 1;
-            if (*tmp_str == PATH_SEP) {
-                *tmp_str = '\0';
-            }
-        }
-
-        str_lowercase(real_path);
-        dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
-                           tmp_diff_size);
-
-#else
-        /* If it's an environment variable, expand it */
-        if (*tmp_dir == '$') {
-            if(env_variable = get_paths_from_env_variable(tmp_dir), env_variable) {
-
-                for(int i = 0; env_variable[i]; i++) {
-                    if(strcmp(env_variable[i], "")) {
-                        // Remove any trailling path separators
-                        int path_length = strlen(env_variable[i]);
-                        if (path_length != 1) {
-                            tmp_str = env_variable[i] + path_length - 1;
-                            if (*tmp_str == PATH_SEP) {
-                                *tmp_str = '\0';
-                            }
-                        }
-
-                        dump_syscheck_file(syscheck, env_variable[i], opts, restrictfile, recursion_limit,
-                                            clean_tag, NULL, tmp_diff_size);
-                    }
-                    os_free(env_variable[i]);
-                }
-
-                os_free(env_variable);
-                dir++;
-                continue;
-            }
-        }
-
-        /* Else, check if it's a wildcard, hard/symbolic link or path of file/directory */
-        strncpy(real_path, tmp_dir, PATH_MAX);
-
-        // Remove any trailling path separators
-        int path_length = strlen(real_path);
-        if (path_length != 1) {
-            tmp_str = real_path + path_length - 1;
-            if (*tmp_str == PATH_SEP) {
-                *tmp_str = '\0';
-            }
-        }
-
-        /* Check for glob */
-        /* The mingw32 builder used by travis.ci can't find glob.h
-         * Yet glob must work on actual win32.
-         */
-        if (strchr(real_path, '*') ||
-                strchr(real_path, '?') ||
-                strchr(real_path, '[')) {
-            int gindex = 0;
-            int gstatus;
-            glob_t g;
-
-            gstatus = glob(tmp_dir, 0, NULL, &g);
-            if (gstatus == GLOB_NOMATCH) {
-                mdebug2(GLOB_NO_MATCH, tmp_dir);
-                dir++;
-                continue;
-            } else if (gstatus != 0) {
-                merror(GLOB_ERROR, tmp_dir);
-                dir++;
-                continue;
-            }
-
-            if (g.gl_pathv[0] == NULL) {
-                merror(GLOB_NFOUND, real_path);
-                dir++;
-                continue;
-            }
-
-            while (g.gl_pathv[gindex]) {
-                char *resolved_path = realpath(g.gl_pathv[gindex], NULL);
-
-                if (resolved_path != NULL) {
-                    if (strcmp(resolved_path, g.gl_pathv[gindex]) != 0 && (opts & CHECK_FOLLOW)) {
-                        dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
-                                           g.gl_pathv[gindex], tmp_diff_size);
-                    } else {
-                        dump_syscheck_file(syscheck, g.gl_pathv[gindex], opts, restrictfile, recursion_limit,
-                                           clean_tag, NULL, tmp_diff_size);
-                    }
-
-                    os_free(resolved_path);
-                } else {
-                    mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
-                            g.gl_pathv[gindex], errno, strerror(errno));
-                }
-
-                gindex++;
-            }
-
-            globfree(&g);
-        }
-        else {
-            char *resolved_path = realpath(real_path, NULL);
-
-            if (resolved_path != NULL && strcmp(resolved_path, real_path) != 0 && (opts & CHECK_FOLLOW)) {
-                dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
-                                   real_path, tmp_diff_size);
-            } else {
-                dump_syscheck_file(syscheck, real_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
-                                   tmp_diff_size);
-            }
-
-            os_free(resolved_path);
-        }
-#endif
-
-        /* Next entry */
+        os_free(env_variable);
         dir++;
     }
 
@@ -2517,10 +2470,6 @@ static char **get_paths_from_env_variable (char *environment_variable) {
     /* The env. variable may have multiples paths split by ; */
     paths = OS_StrBreak(';', expandedpath, MAX_DIR_SIZE);
 
-    for (int i = 0; paths[i]; i++) {
-        str_lowercase(paths[i]);
-    }
-
 #else
     char *expandedpath = NULL;
 
@@ -2531,6 +2480,8 @@ static char **get_paths_from_env_variable (char *environment_variable) {
     if(expandedpath = getenv(environment_variable), expandedpath) {
         /* The env. variable may have multiples paths split by : */
         paths = OS_StrBreak(':', expandedpath, MAX_DIR_SIZE);
+    } else {
+        paths[0] = environment_variable;
     }
 
 #endif
