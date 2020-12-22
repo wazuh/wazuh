@@ -532,7 +532,7 @@ void get_parent_process_info(char *ppid, char ** const parent_name, char ** cons
  *
  */
 void audit_reload_rules(void);
-void audit_delete_configured_rule(const char *path);
+
 /**
  * @brief Parses an audit event and sends the corresponding alert message
  *
@@ -560,6 +560,7 @@ void clean_rules(void);
  * @param buffer
  * @return 0 if no key is found, 1 if AUDIT_KEY is found, 2 if an existing key is found, 3 if AUDIT_HEALTHCHECK_KEY is found
  */
+
 int filterkey_audit_events(char *buffer);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;

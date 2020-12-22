@@ -225,8 +225,8 @@ int add_audit_rules_syscheck(bool first_time) {
 
     for(i = 0; syscheck.dir[i]; i++) {
         // Check if dir[i] is set in whodata mode
-        directory = fim_get_real_path(i);
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
+            directory = fim_get_real_path(i);
             // Add whodata directories until max_audit_entries is reached.
             if (rules_added < syscheck.max_audit_entries) {
                 if (found = search_audit_rule(directory, "wa", AUDIT_KEY), found == 0) {
@@ -247,7 +247,6 @@ int add_audit_rules_syscheck(bool first_time) {
                 }
             } else {
                 static bool reported = false;
-
                 if (first_time || !reported) {
                     merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
                 } else {
@@ -1437,7 +1436,7 @@ void clean_rules(void) {
 
     for (i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            audit_delete_rule(syscheck.dir[i], AUDIT_KEY);
+            audit_delete_rule(fim_get_real_path(i), AUDIT_KEY);
         }
     }
     audit_rules_list_free();
