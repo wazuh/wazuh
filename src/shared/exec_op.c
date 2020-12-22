@@ -122,6 +122,16 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             close(pipe_fd[1]);
             return NULL;
         }
+    } else if (flags & W_BIND_STDIN) {
+        if (pipe(pipe_fd) < 0) {
+            return NULL;
+        }
+
+        if (fp = fdopen(pipe_fd[1], "w"), !fp) {
+            close(pipe_fd[0]);
+            close(pipe_fd[1]);
+            return NULL;
+        }
     }
 
     os_calloc(1, sizeof(wfd_t), wfd);
@@ -146,9 +156,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));
         }
 
-        dup2(fd, STDIN_FILENO);
-
-        if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+        if (flags & (W_BIND_STDOUT | W_BIND_STDERR | W_BIND_STDIN)) {
             if (flags & W_BIND_STDOUT) {
                 dup2(pipe_fd[1], STDOUT_FILENO);
             } else {
@@ -161,11 +169,18 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
                 dup2(fd, STDERR_FILENO);
             }
 
+            if (flags & W_BIND_STDIN) {
+                dup2(pipe_fd[0], STDIN_FILENO);
+            } else {
+                dup2(fd, STDIN_FILENO);
+            }
+
             close(pipe_fd[0]);
             close(pipe_fd[1]);
         } else {
             dup2(fd, STDOUT_FILENO);
             dup2(fd, STDERR_FILENO);
+            dup2(fd, STDIN_FILENO);
         }
 
         close(fd);
@@ -180,6 +195,10 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             close(pipe_fd[1]);
         }
 
+        if (flags & W_BIND_STDIN) {
+            close(pipe_fd[0]);
+        }
+
         if (flags & W_APPEND_POOL) {
             wm_append_sid(pid);
             wfd->append_pool = 1;
@@ -191,7 +210,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 
     // Error
 
-    if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
+    if (flags & (W_BIND_STDOUT | W_BIND_STDERR | W_BIND_STDIN)) {
         fclose(wfd->file);
         close(pipe_fd[0]);
         close(pipe_fd[1]);
