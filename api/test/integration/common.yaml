@@ -18,6 +18,7 @@ variables:
 
   # delays
   restart_delay: 30
+  restart_delay_cluster: 60
   upgrade_delay: 45
   global_db_delay: 20
   active_reponse_delay: 5

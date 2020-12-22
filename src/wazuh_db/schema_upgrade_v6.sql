@@ -8,6 +8,42 @@
  * and/or modify it under the terms of GPLv2.
 */
 
+CREATE TABLE IF NOT EXISTS _fim_entry (
+    full_path TEXT NOT NULL PRIMARY KEY,
+    file TEXT,
+    type TEXT NOT NULL CHECK (type IN ('file', 'registry_key', 'registry_value')),
+    date INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+    changes INTEGER NOT NULL DEFAULT 1,
+    arch TEXT CHECK (arch IN (NULL, '[x64]', '[x32]')),
+    value_name TEXT,
+    value_type TEXT,
+    size INTEGER,
+    perm TEXT,
+    uid TEXT,
+    gid TEXT,
+    md5 TEXT,
+    sha1 TEXT,
+    uname TEXT,
+    gname TEXT,
+    mtime INTEGER,
+    inode INTEGER,
+    sha256 TEXT,
+    attributes TEXT,
+    symbolic_path TEXT,
+    checksum TEXT
+);
+
+INSERT INTO _fim_entry (full_path, file, type, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) SELECT file, file, CASE type WHEN 'registry' THEN 'registry_key' ELSE 'file' END, date, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path FROM fim_entry;
+
+DROP TABLE IF EXISTS fim_entry;
+ALTER TABLE _fim_entry RENAME TO fim_entry;
+
+CREATE INDEX IF NOT EXISTS fim_full_path_index ON fim_entry (full_path);
+CREATE INDEX IF NOT EXISTS fim_file_index ON fim_entry (file);
+CREATE INDEX IF NOT EXISTS fim_date_index ON fim_entry (date);
+
+ALTER TABLE sys_osinfo ADD COLUMN os_patch TEXT DEFAULT NULL;
+
 DELETE FROM sys_osinfo;
 DELETE FROM sys_netiface;
 DELETE FROM sys_netproto;
@@ -15,8 +51,6 @@ DELETE FROM sys_netaddr;
 DELETE FROM sys_programs;
 DELETE FROM sys_hotfixes;
 DELETE FROM sys_processes;
-
-ALTER TABLE sys_osinfo ADD COLUMN os_patch TEXT DEFAULT NULL;
 
 DROP TABLE sys_ports;
 CREATE TABLE IF NOT EXISTS sys_ports (

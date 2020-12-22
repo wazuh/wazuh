@@ -24,6 +24,11 @@ HANDLE wrap_CreateFile(LPCSTR lpFileName,
     return mock_type(HANDLE);
 }
 
+void expect_CreateFile_call(const char *filename, HANDLE ret) {
+    expect_string(wrap_CreateFile, lpFileName, filename);
+    will_return(wrap_CreateFile, (HANDLE)ret);
+}
+
 DWORD wrap_GetFileAttributesA(LPCSTR lpFileName) {
     check_expected(lpFileName);
     return mock();
@@ -74,4 +79,29 @@ WINBOOL wrap_FindNextVolumeW(HANDLE hFindVolume,
     check_expected(hFindVolume);
     wcsncpy(lpszVolumeName, mock_type(LPWSTR), cchBufferLength);
     return mock();
+}
+
+BOOL wrap_GetFileTime(HANDLE     hFile,
+                      LPFILETIME lpCreationTime,
+                      LPFILETIME lpLastAccessTime,
+                      LPFILETIME lpLastWriteTime) {
+    LPFILETIME lpft;
+
+    check_expected(hFile);
+    if (lpCreationTime){
+        lpft = mock_type(LPFILETIME);
+        lpCreationTime->dwLowDateTime = lpft->dwLowDateTime;
+        lpCreationTime->dwHighDateTime = lpft->dwHighDateTime;
+    }
+    if (lpLastAccessTime){
+        lpft = mock_type(LPFILETIME);
+        lpLastAccessTime->dwLowDateTime = lpft->dwLowDateTime;
+        lpLastAccessTime->dwHighDateTime = lpft->dwHighDateTime;
+    }
+    if (lpLastWriteTime){
+        lpft = mock_type(LPFILETIME);
+        lpLastWriteTime->dwLowDateTime = lpft->dwLowDateTime;
+        lpLastWriteTime->dwHighDateTime = lpft->dwHighDateTime;
+    }
+    return mock_type(BOOL);
 }

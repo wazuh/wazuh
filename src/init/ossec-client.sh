@@ -12,7 +12,7 @@ DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
 AUTHOR="Wazuh Inc."
-DAEMONS="wazuh-modulesd ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
+DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -271,7 +271,7 @@ restart)
     unlock
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
+    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
     stopa
     sleep 1

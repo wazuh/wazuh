@@ -21,7 +21,7 @@ if [ $? = 0 ]; then
 fi
 
 AUTHOR="Wazuh Inc."
-DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
+DAEMONS="wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
 INITCONF="/etc/ossec-init.conf"
 
 # Reverse order of daemons
@@ -219,8 +219,8 @@ start()
     TEST=$(${DIR}/bin/ossec-logtest -t  2>&1)
     echo $TEST
     if [ ! -z "$TEST" ]; then
-        echo "ossec-analysisd: Configuration error. Exiting."
-        touch ${DIR}/var/run/ossec-analysisd.failed
+        echo "wazuh-analysisd: Configuration error. Exiting."
+        touch ${DIR}/var/run/wazuh-analysisd.failed
         exit 1;
     fi
 
@@ -368,7 +368,7 @@ restart)
     unlock
     ;;
 reload)
-    DAEMONS=$(echo $DAEMONS | sed 's/ossec-execd//')
+    DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
     stopa
     start

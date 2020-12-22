@@ -49,12 +49,6 @@ wm_task_manager_upgrade_cancel_tasks* wm_task_manager_init_upgrade_cancel_tasks_
     return parameters;
 }
 
-wm_task_manager_task_result* wm_task_manager_init_task_result_parameters() {
-    wm_task_manager_task_result *parameters;
-    os_calloc(1, sizeof(wm_task_manager_task_result), parameters);
-    return parameters;
-}
-
 wm_task_manager_task* wm_task_manager_init_task() {
     wm_task_manager_task *task;
     os_calloc(1, sizeof(wm_task_manager_task), task);
@@ -102,13 +96,6 @@ void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrad
     }
 }
 
-void wm_task_manager_free_task_result_parameters(wm_task_manager_task_result* parameters) {
-    if (parameters) {
-        os_free(parameters->task_ids);
-        os_free(parameters);
-    }
-}
-
 void wm_task_manager_free_task(wm_task_manager_task* task) {
     if (task) {
         if (task->parameters) {
@@ -122,8 +109,6 @@ void wm_task_manager_free_task(wm_task_manager_task* task) {
                 wm_task_manager_free_upgrade_result_parameters((wm_task_manager_upgrade_result*)task->parameters);
             } else if (WM_TASK_UPGRADE_CANCEL_TASKS == task->command) {
                 wm_task_manager_free_upgrade_cancel_tasks_parameters((wm_task_manager_upgrade_cancel_tasks*)task->parameters);
-            } else if (WM_TASK_TASK_RESULT == task->command) {
-                wm_task_manager_free_task_result_parameters((wm_task_manager_task_result*)task->parameters);
             }
         }
         os_free(task);

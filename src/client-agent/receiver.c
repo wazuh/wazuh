@@ -130,6 +130,14 @@ int receive_msg()
                 ag_send_syscheck(tmp_msg + strlen(HC_SK));
                 continue;
             }
+            else if (strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_FIM_FILE));
+                continue;
+            }
+            else if (strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
+                ag_send_syscheck(tmp_msg + strlen(HC_FIM_REGISTRY));
+                continue;
+            }
 
             /* syscollector */
             else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
@@ -274,7 +282,7 @@ int receive_msg()
                                 if(!UnmergeFiles(file, SHAREDCFG_DIRPATH, OS_TEXT)){
                                     char msg_output[OS_MAXSTR];
 
-                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
+                                    snprintf(msg_output, OS_MAXSTR, "%c:%s:%s",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                     send_msg(msg_output, -1);
                                 }
                                 else if (agt->flags.remote_conf && !verifyRemoteConf()) {

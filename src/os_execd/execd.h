@@ -12,7 +12,7 @@
 #define EXECD_H
 
 #ifndef ARGV0
-#define ARGV0 "ossec-execd"
+#define ARGV0 "wazuh-execd"
 #endif
 
 /* Add/delete arguments for the commands */

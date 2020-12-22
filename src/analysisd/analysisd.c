@@ -8,12 +8,12 @@
  * Foundation.
 */
 
-/* ossec-analysisd
+/* wazuh-analysisd
  * Responsible for correlation and log decoding
  */
 
 #ifndef ARGV0
-#define ARGV0 "ossec-analysisd"
+#define ARGV0 "wazuh-analysisd"
 #endif
 
 #include "shared.h"
@@ -423,7 +423,7 @@ int main_analysisd(int argc, char **argv)
     /* Get server's hostname */
     memset(__shost, '\0', 512);
     if (gethostname(__shost, 512 - 1) != 0) {
-        strncpy(__shost, OSSEC_SERVER, 512 - 1);
+        strncpy(__shost, WAZUH_SERVER, 512 - 1);
     } else {
         char *_ltmp;
 

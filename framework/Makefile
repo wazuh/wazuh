@@ -41,6 +41,8 @@ install:
 	$(INSTALL_FILE) wazuh/core/cluster/*.py ${PREFIX}/framework/wazuh/core/cluster
 	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${PREFIX}/framework/wazuh/core/cluster/dapi
 
+#	Remove update_ruleset script when upgrading to >=4.2.0 (deprecated)
+	[ ! -e ${PREFIX}/bin/update_ruleset ] || $(RM_FILE) ${PREFIX}/bin/update_ruleset
 #	Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
 

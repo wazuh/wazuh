@@ -15,10 +15,10 @@
 #include <winsvc.h>
 
 #ifndef ARGV0
-#define ARGV0 "ossec-agent"
+#define ARGV0 "wazuh-agent"
 #endif
 
-static LPTSTR g_lpszServiceName        = "OssecSvc";
+static LPTSTR g_lpszServiceName        = "WazuhSvc";
 static LPTSTR g_lpszServiceDisplayName = "Wazuh";
 static LPTSTR g_lpszServiceDescription = "Wazuh Windows Agent";
 
@@ -83,7 +83,7 @@ int os_stop_service()
 
     /*
     * Sleep for a short period of time to avoid possible race-conditions with
-    * newer instances of ossec-agent.
+    * newer instances of wazuh-agent.
     */
     Sleep(300); //milliseconds
 
