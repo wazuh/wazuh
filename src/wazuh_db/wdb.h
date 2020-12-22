@@ -278,7 +278,7 @@ typedef struct wdb_config {
 typedef enum {
     WDB_FIM,                         ///< File integrity monitoring.
     WDB_FIM_FILE,                    ///< File integrity monitoring.
-    WDB_FIM_REGISTRY                 ///< Registry integrity monitoring.
+    WDB_FIM_REGISTRY,                ///< Registry integrity monitoring.
     WDB_SYSCOLLECTOR_PROCESSES,      ///< Processes integrity monitoring.
     WDB_SYSCOLLECTOR_PACKAGES,       ///< Packages integrity monitoring.
     WDB_SYSCOLLECTOR_HOTFIXES,       ///< Hotfixes integrity monitoring.
