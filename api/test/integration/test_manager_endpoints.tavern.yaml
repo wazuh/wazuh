@@ -820,6 +820,20 @@ stages:
     response:
       status_code: 400
 
+  # PUT /manager/api/config
+  - name: Modify API configuration (unknown field)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      json:
+        unknown:
+          path: "test"
+    response:
+      status_code: 400
+
   # Restart manager to apply changes
   - name: Restart manager
     request:
