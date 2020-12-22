@@ -1483,7 +1483,7 @@ int audit_health_check(int audit_socket) {
     unsigned int timer = 10;
 
      // -17 Means audit rule exist EEXIST
-    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != EEXIST) {
+    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) {
         mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
         return -1;
     }
