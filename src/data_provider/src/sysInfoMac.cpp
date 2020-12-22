@@ -28,7 +28,6 @@
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
-const std::string APP_INFO_PATH{"Contents/Info.plist"};
 
 using ProcessTaskInfo = struct proc_taskallinfo;
 
@@ -173,15 +172,37 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
     const auto packages {Utils::enumerateDir(pkgDirectory) };
     for(const auto& package : packages)
     {
-        if(Utils::endsWith(package, ".app"))
+        if(PKG == pkgType)
         {
-            const auto packagePath { pkgDirectory + "/" + package + "/" + APP_INFO_PATH };
-            nlohmann::json jsPackage;
-            FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(packagePath, pkgType))->buildPackageData(jsPackage);
-            if(UNKNOWN_VALUE != jsPackage.at("name"))
+            if(Utils::endsWith(package, ".app"))
             {
-                // Only return valid content packages
-                result.push_back(jsPackage);
+                nlohmann::json jsPackage;
+                FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
+                if(UNKNOWN_VALUE != jsPackage.at("name"))
+                {
+                    // Only return valid content packages
+                    result.push_back(jsPackage);
+                }
+            }
+        }
+        else if(BREW == pkgType)
+        {
+            if (!Utils::startsWith(package, "."))
+            {
+                const auto packageVersions {Utils::enumerateDir(pkgDirectory + "/" + package) };
+                for(const auto& version : packageVersions)
+                {
+                    if (!Utils::startsWith(version, "."))
+                    {
+                        nlohmann::json jsPackage;
+                        FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+                        if(UNKNOWN_VALUE != jsPackage.at("name"))
+                        {
+                            // Only return valid content packages
+                            result.push_back(jsPackage);
+                        }
+                    }
+                }
             }
         }
         // else: invalid package
@@ -197,16 +218,7 @@ nlohmann::json SysInfo::getPackages() const
         const auto pkgDirectory { packageDirectory.first };
         if (Utils::existsDir(pkgDirectory))
         {
-            if(std::string::npos != pkgDirectory.find("/Applications") ||
-               std::string::npos != pkgDirectory.find("/Library"))
-            {
-                // Standard packages location
-                getPackagesFromPath(pkgDirectory, packageDirectory.second, jsPackages);
-            }
-            else
-            {
-                // Brew packages location
-            }
+            getPackagesFromPath(pkgDirectory, packageDirectory.second, jsPackages);
         }
     }
     return jsPackages;

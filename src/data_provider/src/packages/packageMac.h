@@ -15,10 +15,17 @@
 #include "ipackageInterface.h"
 #include "ipackageWrapper.h"
 
+struct PackageContext
+{
+    std::string filePath;
+    std::string package;
+    std::string version;
+};
+
 class FactoryBSDPackage
 {
 public:
-    static std::shared_ptr<IPackage>create(const std::pair<std::string, int>& ctx);
+    static std::shared_ptr<IPackage>create(const std::pair<PackageContext, int>& ctx);
 };
 
 class BSDPackageImpl final : public IPackage
