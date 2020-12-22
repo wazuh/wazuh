@@ -177,6 +177,11 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
                 }
                 wm_agent_upgrade_free_agent_status_task(task);
                 break;
+            case WM_UPGRADE_RESULT:
+                if (agent_ids) {
+                    message = wm_agent_upgrade_process_upgrade_result_command(agent_ids);
+                }
+                break;
             default:
                 // Parsing error
                 if (!message) {

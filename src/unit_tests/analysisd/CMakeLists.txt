@@ -46,10 +46,6 @@ list(APPEND analysisd_flags "-Wl,--wrap,wdb_get_agent_labels")
 list(APPEND analysisd_names "test_mitre")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,_merror -Wl,--wrap,wdbc_query_parse_json")
 
-list(APPEND analysisd_names "test_expression")
-list(APPEND analysisd_flags "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
-                             -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile")
-
 list(APPEND analysisd_names "test_rules")
 LIST(APPEND analysisd_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_os_analysisd_add_logmsg")
 

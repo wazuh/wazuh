@@ -30,9 +30,10 @@ typedef enum _error_code {
     WM_TASK_SUCCESS = 0,
     WM_TASK_INVALID_MESSAGE,
     WM_TASK_INVALID_COMMAND,
-    WM_TASK_INVALID_STATUS,
     WM_TASK_DATABASE_NO_TASK,
     WM_TASK_DATABASE_ERROR,
+    WM_TASK_DATABASE_PARSE_ERROR,
+    WM_TASK_DATABASE_REQUEST_ERROR,
     WM_TASK_UNKNOWN_ERROR
 } error_code;
 
@@ -78,13 +79,6 @@ typedef struct _wm_task_manager_upgrade_cancel_tasks {
 } wm_task_manager_upgrade_cancel_tasks;
 
 /**
- * Definition of task result parameters
- */
-typedef struct _wm_task_manager_task_result {
-    int *task_ids;
-} wm_task_manager_task_result;
-
-/**
  * Definition of task structure
  */
 typedef struct _wm_task_manager_task {
@@ -112,6 +106,13 @@ size_t wm_task_manager_dispatch(const char *msg, char **response) __attribute__(
  * @return JSON object with the response for this task.
  * */
 cJSON* wm_task_manager_process_task(const wm_task_manager_task *task, int *error_code) __attribute__((nonnull));
+
+/**
+ * Set tasks status to TIMEOUT after they are IN PROGRESS for a long period of time.
+ * Delete entries older than a configurable period of time from the tasks DB.
+ * @param arg Module configuration.
+ * */
+void* wm_task_manager_clean_tasks(void *arg) __attribute__((nonnull));
 
 #endif
 #endif

@@ -37,12 +37,12 @@ static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_LOAD] = "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     [WDB_STMT_FIM_FIND_ENTRY] = "SELECT 1 FROM fim_entry WHERE file = ?",
-    [WDB_STMT_FIM_INSERT_ENTRY] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_FIM_INSERT_ENTRY2] = "INSERT OR REPLACE INTO fim_entry (file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_FIM_INSERT_ENTRY] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, full_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_FIM_INSERT_ENTRY2] = "INSERT OR REPLACE INTO fim_entry (file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, checksum, arch, value_name, value_type, full_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_FIM_UPDATE_ENTRY] = "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
-    [WDB_STMT_FIM_DELETE] = "DELETE FROM fim_entry WHERE file = ?;",
+    [WDB_STMT_FIM_DELETE] = "DELETE FROM fim_entry WHERE full_path = ?;",
     [WDB_STMT_FIM_UPDATE_DATE] = "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
-    [WDB_STMT_FIM_FIND_DATE_ENTRIES] = "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
+    [WDB_STMT_FIM_FIND_DATE_ENTRIES] = "SELECT full_path, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
     [WDB_STMT_FIM_GET_ATTRIBUTES] = "SELECT file, attributes from fim_entry WHERE attributes IS NOT '0';",
     [WDB_STMT_FIM_UPDATE_ATTRIBUTES] = "UPDATE fim_entry SET attributes = ? WHERE file = ?;",
     [WDB_STMT_OSINFO_INSERT] = "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -117,6 +117,14 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
     [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
     [WDB_STMT_MITRE_NAME_GET] = "SELECT name FROM attack WHERE id = ?;",
+    [WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? and type='file' ORDER BY file;",
+    [WDB_STMT_FIM_FILE_CLEAR] = "DELETE FROM fim_entry WHERE type='file';",
+    [WDB_STMT_FIM_FILE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE (file < ? OR file > ?) AND type = 'file';",
+    [WDB_STMT_FIM_FILE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE (file > ? AND file < ?) AND type = 'file';",
+    [WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND full_path BETWEEN ? AND ? ORDER BY full_path",
+    [WDB_STMT_FIM_REGISTRY_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_key' OR type='registry_value';",
+    [WDB_STMT_FIM_REGISTRY_DELETE_AROUND] = "DELETE FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND (full_path < ? OR full_path > ?);",
+    [WDB_STMT_FIM_REGISTRY_DELETE_RANGE] = "DELETE FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND (full_path > ? AND full_path < ?);",
     [WDB_STMT_ROOTCHECK_INSERT_PM] = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (?, ?, ?, ?, ?);",
     [WDB_STMT_ROOTCHECK_UPDATE_PM] = "UPDATE pm_event SET date_last = ? WHERE log = ?;",
     [WDB_STMT_ROOTCHECK_DELETE_PM] = "DELETE FROM pm_event;",
@@ -150,7 +158,14 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GET_AGENT_INFO] = "SELECT * FROM agent WHERE id = ?;",
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', sync_status = ? where connection_status != 'disconnected' AND connection_status != 'never_connected' AND id != 0;",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND connection_status = 'active' AND last_keepalive < ?;",
-    [WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE] = "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
+    [WDB_STMT_TASK_INSERT_TASK] = "INSERT INTO TASKS VALUES(NULL,?,?,?,?,?,?,?,?);",
+    [WDB_STMT_TASK_GET_LAST_AGENT_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ?;",
+    [WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ? AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
+    [WDB_STMT_TASK_UPDATE_TASK_STATUS] = "UPDATE TASKS SET STATUS = ?, LAST_UPDATE_TIME = ?, ERROR_MESSAGE = ? WHERE TASK_ID = ?;",
+    [WDB_STMT_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM TASKS WHERE STATUS = ?;",
+    [WDB_STMT_TASK_DELETE_OLD_TASKS] = "DELETE FROM TASKS WHERE CREATE_TIME <= ?;",
+    [WDB_STMT_TASK_DELETE_TASK] = "DELETE FROM TASKS WHERE TASK_ID = ?;",
+    [WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE TASKS SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "' AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? ORDER BY pid;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ?;",
@@ -373,6 +388,60 @@ success:
     wdb->refcount++;
 
 end:
+    w_mutex_unlock(&pool_mutex);
+    return wdb;
+}
+
+// Opens tasks database and stores it in DB pool. It returns a locked database or NULL
+wdb_t * wdb_open_tasks() {
+    char path[PATH_MAX + 1] = "";
+    sqlite3 *db = NULL;
+    wdb_t * wdb = NULL;
+
+    w_mutex_lock(&pool_mutex);
+
+    // Finds DB in pool
+    if (wdb = (wdb_t *)OSHash_Get(open_dbs, WDB_TASK_NAME), wdb) {
+        // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
+        w_mutex_lock(&wdb->mutex);
+        wdb->refcount++;
+        w_mutex_unlock(&pool_mutex);
+        return wdb;
+    } else {
+        // Try to open DB
+        snprintf(path, sizeof(path), "%s/%s.db", WDB_TASK_DIR, WDB_TASK_NAME);
+
+        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+            mdebug1("Tasks database not found, creating.");
+            sqlite3_close_v2(db);
+
+            // Creating database
+            if (OS_SUCCESS != wdb_create_file(path, schema_task_manager_sql)) {
+                merror("Couldn't create SQLite database '%s'", path);
+                w_mutex_unlock(&pool_mutex);
+                return wdb;
+            }
+
+            // Retry to open
+            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(db));
+                sqlite3_close_v2(db);
+                w_mutex_unlock(&pool_mutex);
+                return wdb;
+            }
+
+            wdb = wdb_init(db, WDB_TASK_NAME);
+            wdb_pool_append(wdb);
+        }
+        else {
+            wdb = wdb_init(db, WDB_TASK_NAME);
+            wdb_pool_append(wdb);
+        }
+    }
+
+    // The corresponding w_mutex_unlock(&wdb->mutex) is called in wdb_leave(wdb_t * wdb)
+    w_mutex_lock(&wdb->mutex);
+    wdb->refcount++;
     w_mutex_unlock(&pool_mutex);
     return wdb;
 }

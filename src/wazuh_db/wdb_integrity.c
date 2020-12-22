@@ -19,6 +19,8 @@
 
 static const char * COMPONENT_NAMES[] = {
     [WDB_FIM] = "fim",
+    [WDB_FIM_FILE] = "fim_file",
+    [WDB_FIM_REGISTRY] = "fim_registry",
     [WDB_SYSCOLLECTOR_PROCESSES] = "syscollector-processes",
     [WDB_SYSCOLLECTOR_PACKAGES] = "syscollector-packages",
     [WDB_SYSCOLLECTOR_HOTFIXES] = "syscollector-hotfixes",
@@ -58,6 +60,8 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
     assert(hexdigest != NULL);
 
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_SELECT_CHECKSUM_RANGE,
+                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE,
+                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
@@ -65,6 +69,7 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
                             [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE    };
+
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
@@ -129,6 +134,8 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
     assert(wdb != NULL);
 
     const int INDEXES_AROUND[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_AROUND,
+                                   [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_AROUND,
+                                   [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND,
@@ -137,6 +144,8 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
                                    [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND };
     const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE,
+                                  [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_RANGE,
+                                  [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE,
@@ -144,6 +153,7 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
                                   [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE };
+
     assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
     assert(component < sizeof(INDEXES_RANGE) / sizeof(int));
 
@@ -320,6 +330,8 @@ end:
 // Query a complete table clear
 int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payload) {
     const int INDEXES[] = { [WDB_FIM] = WDB_STMT_FIM_CLEAR,
+                            [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_CLEAR,
+                            [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_CLEAR,
                             [WDB_SYSCOLLECTOR_PROCESSES] = WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR,
                             [WDB_SYSCOLLECTOR_PACKAGES] = WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR,
                             [WDB_SYSCOLLECTOR_HOTFIXES] = WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR,
@@ -327,6 +339,7 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
                             [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_CLEAR,
                             [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_CLEAR,
                             [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR };
+
     assert(component < sizeof(INDEXES) / sizeof(int));
 
     int retval = -1;

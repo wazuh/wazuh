@@ -221,8 +221,7 @@ void test_getSyscheckConfig(void **state)
     will_return_always(__wrap_isChroot, 1);
 #endif
 
-    Read_Syscheck_Config("test_syscheck.conf");
-
+    Read_Syscheck_Config("test_syscheck_config.conf");
     ret = getSyscheckConfig();
     *state = ret;
 
@@ -233,7 +232,7 @@ void test_getSyscheckConfig(void **state)
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_items), 20);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 23);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 27);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -273,10 +272,11 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
+
 #if defined(TEST_SERVER) || defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_dir), 10);
+    assert_int_equal(cJSON_GetArraySize(sys_dir), 17);
 #endif
 
 
@@ -298,11 +298,15 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(sys_windows_audit_interval->valueint, 0);
 
     cJSON *sys_registry = cJSON_GetObjectItem(sys_items, "registry");
-    assert_int_equal(cJSON_GetArraySize(sys_registry), 33);
-    cJSON *sys_registry_ignore = cJSON_GetObjectItem(sys_items, "registry_ignore");
-    assert_int_equal(cJSON_GetArraySize(sys_registry_ignore), 11);
-    cJSON *sys_registry_ignore_sregex = cJSON_GetObjectItem(sys_items, "registry_ignore_sregex");
+    assert_int_equal(cJSON_GetArraySize(sys_registry), 42);
+    cJSON *sys_registry_ignore = cJSON_GetObjectItem(sys_items, "key_ignore");
+    assert_int_equal(cJSON_GetArraySize(sys_registry_ignore), 12);
+    cJSON *sys_registry_ignore_sregex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(sys_registry_ignore_sregex), 1);
+    cJSON *sys_registry_value_ignore = cJSON_GetObjectItem(sys_items, "value_ignore");
+    assert_int_equal(cJSON_GetArraySize(sys_registry_value_ignore), 5);
+    cJSON *sys_registry_value_ignore_sregex = cJSON_GetObjectItem(sys_items, "value_ignore_sregex");
+    assert_int_equal(cJSON_GetArraySize(sys_registry_value_ignore_sregex), 4);
 #endif
 
 #ifndef TEST_WINAGENT
@@ -432,9 +436,9 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *win_registry = cJSON_GetObjectItem(sys_items, "registry");
     assert_int_equal(cJSON_GetArraySize(win_registry), 33);
-    cJSON *win_registry_ignore = cJSON_GetObjectItem(sys_items, "registry_ignore");
+    cJSON *win_registry_ignore = cJSON_GetObjectItem(sys_items, "key_ignore");
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore), 11);
-    cJSON *win_registry_ignore_regex = cJSON_GetObjectItem(sys_items, "registry_ignore_sregex");
+    cJSON *win_registry_ignore_regex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore_regex), 1);
 #endif
 
@@ -547,7 +551,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(process_priority->valueint, 10);
 
     cJSON *synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
-    assert_int_equal(cJSON_GetArraySize(synchronization), 6);
+    assert_int_equal(cJSON_GetArraySize(synchronization), 7);
     cJSON *enabled = cJSON_GetObjectItem(synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "yes");
     cJSON *max_interval = cJSON_GetObjectItem(synchronization, "max_interval");

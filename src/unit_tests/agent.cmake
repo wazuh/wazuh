@@ -25,3 +25,4 @@ if(NOT ${uname} STREQUAL "Darwin")
 endif()
 
 add_subdirectory(wazuh_modules)
+add_subdirectory(logcollector)

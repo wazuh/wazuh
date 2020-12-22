@@ -39,5 +39,7 @@
 #define CFGA_DB_DUMP        "sca-dump"
 #define HC_SK               "syscheck "
 #define HC_SYSCOLLECTOR     "syscollector_"
+#define HC_FIM_FILE         "fim_file "
+#define HC_FIM_REGISTRY     "fim_registry "
 
 #endif /* RC_H */

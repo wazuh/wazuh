@@ -13,8 +13,7 @@
 
 #include "shared.h"
 #include "../logmsg.h"
-#include "os_regex/os_regex.h"
-#include "../expression.h"
+#include "expression.h"
 
 #define AFTER_PARENT    0x001   /* 1   */
 #define AFTER_PREMATCH  0x002   /* 2   */

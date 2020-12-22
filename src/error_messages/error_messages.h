@@ -23,7 +23,7 @@
 #define MKDIR_ERROR   "(1107): Could not create directory '%s' due to [(%d)-(%s)]."
 //#define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."
 #define THREAD_ERROR  "(1109): Unable to create new pthread."
-//#define READ_ERROR    "%s(1110): ERROR: Unable to read from socket."
+#define FWRITE_ERROR  "(1110): Could not write file '%s' due to [(%d)-(%s)]."
 #define WAITPID_ERROR "(1111): Error during waitpid()-call due to [(%d)-(%s)]."
 #define SETSID_ERROR  "(1112): Error during setsid()-call due to [(%d)-(%s)]."
 #define MUTEX_ERROR   "(1113): Unable to set pthread mutex."
@@ -31,7 +31,7 @@
 #define FREAD_ERROR   "(1115): Could not read from file '%s' due to [(%d)-(%s)]."
 #define FSEEK_ERROR   "(1116): Could not set position in file '%s' due to [(%d)-(%s)]."
 #define FILE_ERROR    "(1117): Error handling file '%s' (date)."
-#define FSTAT_ERROR   "(1117): Could not retrieve information of file '%s' due to [(%d)-(%s)]."
+#define FSTAT_ERROR   "(1118): Could not retrieve information of file '%s' due to [(%d)-(%s)]."
 #define FGETS_ERROR   "(1119): Invalid line on file '%s': %s."
 //#define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
 #define GLOB_ERROR    "(1121): Glob error. Invalid pattern: '%s'."
@@ -57,6 +57,8 @@
 #define GLOB_ERROR_WIN "(1141): Glob error. Invalid pattern: '%s' or no files found."
 #define NICE_ERROR      "(1142): Cannot set process priority: %s (%d)."
 #define RMDIR_ERROR     "(1143): Unable to delete folder '%s' due to [(%d)-(%s)]."
+#define ATEXIT_ERROR    "(1144): Unable to set exit function"
+
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
@@ -171,6 +173,10 @@
 
 /* Hash operation */
 #define HASH_ERROR      "(1295): Unable to create a new hash (calloc)."
+#define HCREATE_ERROR   "(1296): Unable to create a '%s' hash table"
+#define HSETSIZE_ERROR  "(1297): Unable to set size of '%s' hash table"
+#define HADD_ERROR      "(1298): Failure to add '%s' to '%s' hash table"
+#define HUPDATE_ERROR   "(1299): Failure to update '%s' to '%s' hash table"
 
 /* Log collector messages */
 #define MISS_LOG_FORMAT "(1901): Missing 'log_format' element."
@@ -201,6 +207,8 @@
 #define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
 #define EXCLUDE_FILE    "(1965): File excluded: '%s'."
 #define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
+#define LOCALFILE_REGEX "(1967): Syntax error on multiline_regex: '%s'"
+#define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -284,17 +292,20 @@
 #define XML_INV_MISSOPTS    "(7103): Missing agentless options."
 
 /* Database messages */
-#define DBINIT_ERROR    "(5201): Error initializing database handler."
-#define DBCONN_ERROR    "(5202): Error connecting to database '%s'(%s): ERROR: %s."
-#define DBQUERY_ERROR   "(5203): Error executing query '%s'. Error: '%s'."
-#define DB_GENERROR     "(5204): Database error. Unable to run query."
-#define DB_MISS_CONFIG  "(5205): Missing database configuration. "\
-                        "It requires host, user, pass and database."
-#define DB_CONFIGERR    "(5206): Database configuration error."
-#define DB_COMPILED     "(5207): OSSEC not compiled with support for '%s'."
-#define DB_MAINERROR    "(5208): Multiple database errors. Exiting."
-#define DB_CLOSING      "(5209): Closing connection to database."
-#define DB_ATTEMPT      "(5210): Attempting to reconnect to database."
+#define DBINIT_ERROR          "(5201): Error initializing database handler."
+#define DBCONN_ERROR          "(5202): Error connecting to database '%s'(%s): ERROR: %s."
+#define DBQUERY_ERROR         "(5203): Error executing query '%s'. Error: '%s'."
+#define DB_GENERROR           "(5204): Database error. Unable to run query."
+#define DB_MISS_CONFIG        "(5205): Missing database configuration. "\
+                              "It requires host, user, pass and database."
+#define DB_CONFIGERR          "(5206): Database configuration error."
+#define DB_COMPILED           "(5207): OSSEC not compiled with support for '%s'."
+#define DB_MAINERROR          "(5208): Multiple database errors. Exiting."
+#define DB_CLOSING            "(5209): Closing connection to database."
+#define DB_ATTEMPT            "(5210): Attempting to reconnect to database."
+#define DB_SQL_ERROR          "(5211): SQL error: '%s'"
+#define DB_TRANSACTION_ERROR  "(5212): Cannot begin transaction."
+#define DB_CACHE_ERROR        "(5213): Cannot cache statement."
 
 /* vulnerability-detector messages*/
 #define VU_FETCH_ERROR              "(5500): The '%s' database could not be fetched."
@@ -405,7 +416,7 @@
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY   "(6614): Real time call back called, but hash is empty."
 #define FIM_ERROR_UPDATE_ENTRY                      "(6615): Can't update entry invalid file '%s'."
 #define FIM_ERROR_REALTIME_MAXNUM_WATCHES           "(6616): Unable to add directory to real time monitoring: '%s' - Maximum size permitted."
-
+#define FIM_ERROR_AUDIT_MODE                        "(6617): Unable to get audit mode: %s (%d)."
 #define FIM_ERROR_REALTIME_INITIALIZE               "(6618): Unable to initialize real time file monitoring."
 #define FIM_ERROR_WHODATA_ADD_DIRECTORY             "(6619): Unable to add directory to whodata real time monitoring: '%s'. It will be monitored in Realtime"
 #define FIM_ERROR_WHODATA_AUDIT_SUPPORT             "(6620): Audit support not built. Whodata is not available."
@@ -495,11 +506,22 @@
 #define FIM_DB_ERROR_COUNT_RANGE                    "(6703): Couldn't get range size between '%s' and '%s'"
 #define FIM_DB_ERROR_GET_PATH                       "(6704): Couldn't get path of '%s'"
 #define FIM_DB_ERROR_SYNC_DB                        "(6705): Failed to synchronize database."
-#define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s row's path."
+#define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s %s row's path."
 #define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum."
 #define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
+#define FIM_ERROR_GET_ABSOLUTE_PATH                 "(6711): Cannot get absolute path of '%s': %s (%d)"
+#define FIM_ERROR_REMOVE_COLON                      "(6712): Cannot remove heading colon from full path '%s'"
+#define FIM_DIFF_DELETE_DIFF_FOLDER_ERROR           "(6713): Cannot remove diff folder for file: '%s'"
+#ifdef WIN32
+#define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6714): Command fc output an error"
+#else
+#define FIM_DIFF_COMMAND_OUTPUT_ERROR               "(6714): Command diff output an error"
+#endif
+#define FIM_DIFF_FILE_PATH_TOO_LONG                 "(6715): The path of the file monitored '%s' is too long to compute differences."
+#define FIM_WARN_OPEN_HANDLE_FILE                   "(6716): Could not open handle for '%s'. Error code: %lu"
+#define FIM_WARN_GET_FILETIME                       "(6717): Could not get the filetime of the file '%s'. Error code: %lu."
 
 /* Wazuh Logtest error messsages */
 #define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
@@ -577,12 +599,6 @@
 #define MOD_TASK_PARSE_KEY_ERROR                    "(8259): Invalid message. '%s' not found."
 #define MOD_TASK_INVALID_ELEMENT_ERROR              "(8260): Invalid element in array."
 #define MOD_TASK_DB_ERROR                           "(8261): Database error."
-
-#define MOD_TASK_CREATE_DB_ERROR                    "(8275): DB couldn't be checked or created."
-#define MOD_TASK_OPEN_DB_ERROR                      "(8276): DB couldn't be opened."
-#define MOD_TASK_SQL_ERROR                          "(8277): SQL error: '%s'"
-#define MOD_TASK_SQL_PREPARE_ERROR                  "(8278): Couldn't prepare SQL statement."
-#define MOD_TASK_SQL_STEP_ERROR                     "(8279): Couldn't execute SQL statement."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

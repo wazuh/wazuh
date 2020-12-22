@@ -440,7 +440,7 @@ class Agent:
         """
 
         manager_status = get_manager_status()
-        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+        is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd:
             if not is_authd_running:
@@ -603,7 +603,7 @@ class Agent:
                     raise WazuhError(1706, extra_message=ip)
 
         manager_status = get_manager_status()
-        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+        is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd:
             if not is_authd_running:
@@ -1217,7 +1217,7 @@ def core_upgrade_agents(agents_chunk, command='upgrade_result', wpk_repo=None, v
     msg['parameters'] = {k: v for k, v in msg['parameters'].items() if v is not None}
 
     # Send upgrading command
-    s = OssecSocket(common.UPGRADE_SOCKET) if not get_result else OssecSocket(common.TASKS_SOCKET)
+    s = OssecSocket(common.UPGRADE_SOCKET)
     s.send(dumps(msg).encode())
     data = loads(s.receive().decode())
     s.close()

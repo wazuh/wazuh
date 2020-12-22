@@ -35,6 +35,12 @@ cJSON* __wrap_cJSON_AddStringToObject(__attribute__ ((__unused__)) cJSON * const
     return mock_type(cJSON *);
 }
 
+cJSON* __wrap_cJSON_AddArrayToObject(__attribute__ ((__unused__)) cJSON * const object, 
+                              const char * const name) {
+    if (name) check_expected(name);
+    return mock_type(cJSON *);                            
+}
+
 cJSON* __wrap_cJSON_AddNumberToObject(__attribute__ ((__unused__)) cJSON * const object,
                                       const char * const name,
                                       const double number) {
@@ -81,16 +87,32 @@ cJSON * __wrap_cJSON_GetObjectItem(__attribute__ ((__unused__)) const cJSON * co
     return mock_type(cJSON *);
 }
 
+void expect_cJSON_GetObjectItem_call(cJSON *object) {
+    will_return(__wrap_cJSON_GetObjectItem, object);
+}
+
 char* __wrap_cJSON_GetStringValue(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(char*);
+}
+
+void expect_cJSON_GetStringValue_call(char *str) {
+    will_return(__wrap_cJSON_GetStringValue, str);
 }
 
 cJSON_bool __wrap_cJSON_IsNumber(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
 }
 
+void expect_cJSON_IsNumber_call(int ret) {
+    will_return(__wrap_cJSON_IsNumber, ret);
+}
+
 cJSON_bool __wrap_cJSON_IsObject(__attribute__ ((__unused__)) cJSON * item) {
     return mock_type(cJSON_bool);
+}
+
+void expect_cJSON_IsObject_call(int ret) {
+    will_return(__wrap_cJSON_IsObject, ret);
 }
 
 cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
@@ -99,6 +121,18 @@ cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
 
 char * __wrap_cJSON_PrintUnformatted(__attribute__ ((__unused__)) const cJSON *item) {
     return mock_type(char *);
+}
+
+char * __wrap_cJSON_Print(__attribute__ ((__unused__)) const cJSON *item) {
+    return mock_type(char *);
+}
+
+int __wrap_cJSON_GetArraySize(__attribute__ ((__unused__))  const cJSON *array) {
+    return mock();
+}
+
+cJSON * __wrap_cJSON_GetArrayItem(__attribute__ ((__unused__)) const cJSON *array, __attribute__ ((__unused__)) int index) {
+    return mock_type(cJSON*);
 }
 
 cJSON* __wrap_cJSON_Duplicate(__attribute__ ((__unused__)) const cJSON *item, __attribute__ ((__unused__)) int recurse) {

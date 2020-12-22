@@ -1175,27 +1175,6 @@ int wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status) {
     }
 }
 
-// Check the agent 0 status in the global database
-int wdb_global_check_manager_keepalive(wdb_t *wdb) {
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE) < 0) {
-        merror("DB(%s) Can't cache statement", wdb->id);
-        return -1;
-    }
-
-    sqlite3_stmt *stmt = wdb->stmt[WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE];
-
-    switch (sqlite3_step(stmt)) {
-    case SQLITE_ROW:
-        return sqlite3_column_int(stmt, 0);
-
-    case SQLITE_DONE:
-        return 0;
-
-    default:
-        return -1;
-    }
-}
-
 cJSON* wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_agent_id, const char* connection_status, wdbc_result* status) {
     //Prepare SQL query
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {

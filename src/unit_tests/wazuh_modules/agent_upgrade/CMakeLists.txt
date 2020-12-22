@@ -25,21 +25,21 @@ target_link_libraries(UPGRADE_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate agent upgrade tests
 list(APPEND upgrade_names "test_wm_agent_upgrade")
-list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,wm_agent_upgrade_start_agent_module -Wl,--wrap,wm_agent_upgrade_start_manager_module")
+list(APPEND upgrade_flags "-Wl,--wrap,_mtinfo -Wl,--wrap,wm_agent_upgrade_start_agent_module -Wl,--wrap,wm_agent_upgrade_start_manager_module -Wl,--wrap,getpid -Wl,--wrap,unlink")
 
 if(${TARGET} STREQUAL "server")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtinfo -Wl,--wrap,_mtdebug1 -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command -Wl,--wrap,wm_agent_upgrade_process_agent_result_command \
-                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,sleep -Wl,--wrap,CreateThread -Wl,--wrap,pthread_exit -Wl,--wrap,getpid")
+                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,wm_agent_upgrade_process_upgrade_result_command -Wl,--wrap,sleep -Wl,--wrap,CreateThread -Wl,--wrap,pthread_exit -Wl,--wrap,getpid")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_parsing")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mterror_exit -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_validate")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,wurl_http_get -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wurl_request -Wl,--wrap,sleep \
-                               -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid")
+                               -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_tasks")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Next \
@@ -63,21 +63,21 @@ if(${TARGET} STREQUAL "server")
                             -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wm_agent_upgrade_get_first_node -Wl,--wrap,wm_agent_upgrade_get_next_node -Wl,--wrap,wm_agent_upgrade_compare_versions -Wl,--wrap,wm_agent_upgrade_remove_entry \
                             -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom -Wl,--wrap,wm_agent_upgrade_validate_wpk_version \
                             -Wl,--wrap,linked_queue_push_ex -Wl,--wrap,linked_queue_pop_ex -Wl,--wrap,pthread_cond_signal -Wl,--wrap,pthread_cond_wait -Wl,--wrap,CreateThread \
-                            -Wl,--wrap,wm_agent_upgrade_parse_agent_upgrade_command_response -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid")
+                            -Wl,--wrap,wm_agent_upgrade_parse_agent_upgrade_command_response -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
 else()
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_agent")
     list(APPEND upgrade_flags "-Wl,--wrap,_mterror -Wl,--wrap,_mterror_exit -Wl,--wrap,_mtinfo -Wl,--wrap,_mtdebug1 -Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,sleep -Wl,--wrap,close \
                                -Wl,--wrap,isChroot -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,wm_agent_upgrade_process_command \
-                               -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,CreateThread")
+                               -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,CreateThread -Wl,--wrap,unlink -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_com")
     list(APPEND upgrade_flags "-Wl,--wrap,w_ref_parent_folder -Wl,--wrap,_merror -Wl,--wrap,w_wpk_unsign -Wl,--wrap,unlink -Wl,--wrap,getpid -Wl,--wrap,gzopen \
                                -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove \
                                -Wl,--wrap,gzclose -Wl,--wrap,gzread -Wl,--wrap,mkstemp -Wl,--wrap,atexit -Wl,--wrap,chmod -Wl,--wrap,stat -Wl,--wrap,_mterror \
                                -Wl,--wrap,OS_SHA1_File -Wl,--wrap,getDefine_Int -Wl,--wrap,cldir_ex -Wl,--wrap,UnmergeFiles -Wl,--wrap,wm_exec -Wl,--wrap,remove \
-                               -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtwarn")
+                               -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtwarn -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
 endif()
 

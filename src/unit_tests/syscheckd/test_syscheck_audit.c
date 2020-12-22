@@ -160,6 +160,51 @@ static int teardown_add_audit_rules(void **state) {
     return 0;
 }
 
+static int setup_syscheck_dir_links(void **state) {
+    syscheck.dir = calloc(2, sizeof(char *));
+    syscheck.opts = calloc(2, sizeof(int));
+
+    if (syscheck.dir == NULL) {
+        return -1;
+    }
+
+    if (setup_add_audit_rules(NULL) == -1) {
+        return -1;
+    }
+
+    syscheck.dir[0] = strdup("/test0");
+    syscheck.opts[0] |= WHODATA_ACTIVE;
+    syscheck.dir[1] = strdup("/test1");
+    syscheck.opts[1] |= WHODATA_ACTIVE;
+
+    return 0;
+}
+
+static int teardown_syscheck_dir_links(void **state) {
+    int i = 0;
+
+    for (i = 0; i <= 1; i++) {
+        if (syscheck.dir[i] != NULL) {
+            free(syscheck.dir[i]);
+            syscheck.dir[i] = NULL;
+        }
+    }
+
+    if (syscheck.dir != NULL) {
+        free(syscheck.dir);
+        syscheck.dir = NULL;
+    }
+
+    if (syscheck.opts != NULL) {
+        free(syscheck.opts);
+        syscheck.opts = NULL;
+    }
+
+    teardown_add_audit_rules(NULL);
+
+    return 0;
+}
+
 /* tests */
 
 
@@ -2563,6 +2608,28 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
     os_free(buffer);
 }
 
+void test_audit_no_rules_to_realtime(void **state) {
+    char error_msg[OS_SIZE_128];
+
+    will_return(__wrap_search_audit_rule, 0);
+
+    snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test0");
+    expect_string(__wrap__mwarn, formatted_msg, error_msg);
+
+    will_return(__wrap_search_audit_rule, 1);
+
+    audit_no_rules_to_realtime();
+
+    // Check that the options have been correctly changed
+    if (syscheck.opts[0] & WHODATA_ACTIVE) {
+        fail();
+    }
+
+    if (syscheck.opts[1] & REALTIME_ACTIVE) {
+        fail();
+    }
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -2638,6 +2705,7 @@ int main(void) {
         cmocka_unit_test(test_audit_health_check_fail_to_create_hc_file),
         cmocka_unit_test(test_audit_health_check_no_creation_event_detected),
         cmocka_unit_test_setup_teardown(test_audit_health_check_success, setup_hc_success, teardown_hc_success),
+        cmocka_unit_test_setup_teardown(test_audit_no_rules_to_realtime, setup_syscheck_dir_links, teardown_syscheck_dir_links),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

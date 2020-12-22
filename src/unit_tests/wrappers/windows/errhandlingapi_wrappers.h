@@ -18,4 +18,6 @@
 
 DWORD wrap_GetLastError(VOID);
 
+void expect_GetLastError_call(int error_code);
+
 #endif
