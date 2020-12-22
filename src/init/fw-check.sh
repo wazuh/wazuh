@@ -46,7 +46,7 @@ fi
 # If file is set and execute flag is set
 if [ ! "X$FILE" = "X" ]; then
     if [ $# -eq 1 ] && [ "X$1" = "Xexecute" ]; then
-        cp -pr ../active-response/firewalls/$FILE ../active-response/firewall-drop.sh
+        cp -pr active-response/firewalls/$FILE active-response/firewall-drop.sh
     fi
 fi
 
