@@ -564,8 +564,6 @@ BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
 BUILD_SERVER+=wazuh-analysisd
-BUILD_SERVER+=ossec-logtest
-BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=wazuh-dbd -
 BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
@@ -1431,7 +1429,7 @@ active-response/%.o: active-response/%.c
 
 #### Util ##########
 
-util_programs = syscheck_update clear_stats agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex parallel-regex
+util_programs = clear_stats agent_control verify-agent-conf wazuh-regex parallel-regex
 
 $(util_programs): $(BUILD_LIBS)
 
@@ -1444,9 +1442,6 @@ util_o := $(util_c:.c=.o)
 util/%.o: util/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./util -DARGV0=\"utils\" -c $^ -o $@
 
-syscheck_update: util/syscheck_update.o addagent/validate.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 clear_stats: util/clear_stats.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
@@ -1456,13 +1451,7 @@ verify-agent-conf: util/verify-agent-conf.o
 agent_control: util/agent_control.o addagent/validate.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-syscheck_control: util/syscheck_control.o addagent/validate.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-rootcheck_control: util/rootcheck_control.o addagent/validate.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-ossec-regex: util/ossec-regex.o
+wazuh-regex: util/wazuh-regex.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 parallel-regex: util/parallel-regex.o
@@ -1596,14 +1585,14 @@ all_analysisd_libs += decoders.a decoders-test.a decoders-live.a
 
 
 analysisd/decoders/%-test.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 analysisd/decoders/%-live.o: analysisd/decoders/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
@@ -1613,7 +1602,7 @@ analysisd/compiled_rules/compiled_rules.h: analysisd/compiled_rules/.function_li
 	./analysisd/compiled_rules/register_rule.sh build
 
 analysisd/compiled_rules/%-test.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/compiled_rules/%-live.o: analysisd/compiled_rules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
@@ -1640,28 +1629,21 @@ analysisd/output/%.o: analysisd/output/%.c
 
 
 
-analysisd_c := ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}
+analysisd_c := ${filter-out analysisd/analysisd.c, ${wildcard analysisd/*.c}}
 analysisd_o := ${analysisd_c:.c=.o}
 all_analysisd_o += ${analysisd_o}
 
 analysisd_test_o := $(analysisd_o:.o=-test.o)
 analysisd_live_o := $(analysisd_o:.o=-live.o)
-all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/testrule-test.o analysisd/analysisd-live.o analysisd/analysisd-test.o analysisd/makelists-live.o
+all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/analysisd-live.o analysisd/analysisd-test.o
 
 analysisd/%-live.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
 
 analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
-
-
-ossec-logtest: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
 
 wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-ossec-makelists: analysisd/makelists-live.o ${filter-out analysisd/state-live.o, ${analysisd_live_o}} ${format_o} alerts.a cdb.a decoders-live.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ### wazuh-modulesd ##
