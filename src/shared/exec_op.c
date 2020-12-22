@@ -55,6 +55,34 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 
         sinfo.hStdOutput = flags & W_BIND_STDOUT ? hPipe[1] : NULL;
         sinfo.hStdError = flags & W_BIND_STDERR ? hPipe[1] : NULL;
+    } else if (flags & W_BIND_STDIN) {
+        if (!CreatePipe(&hPipe[0], &hPipe[1], NULL, 0)) {
+            merror("CreatePipe(): %ld", GetLastError());
+            return NULL;
+        }
+
+        if (!SetHandleInformation(hPipe[0], HANDLE_FLAG_INHERIT, 1)) {
+            merror("SetHandleInformation(): %ld", GetLastError());
+            CloseHandle(hPipe[0]);
+            CloseHandle(hPipe[1]);
+            return NULL;
+        }
+
+        if (fd = _open_osfhandle((int)hPipe[1], 0), fd < 0) {
+            merror("_open_osfhandle(): %ld", GetLastError());
+            CloseHandle(hPipe[0]);
+            CloseHandle(hPipe[1]);
+            return NULL;
+        }
+
+        if (fp = _fdopen(fd, "w"), !fp) {
+            merror("_fdopen(): %ld", GetLastError());
+            _close(fd);
+            CloseHandle(hPipe[0]);
+            return NULL;
+        }
+
+        sinfo.hStdInput = hPipe[0];
     }
 
     // Format command string
@@ -81,7 +109,11 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 
         if (fp) {
             fclose(fp);
-            CloseHandle(hPipe[1]);
+            if (flags & W_BIND_STDIN) {
+                CloseHandle(hPipe[0]);
+            } else {
+                CloseHandle(hPipe[1]);
+            }
         }
 
         if(lpCommandLine) {
@@ -95,7 +127,11 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
     os_calloc(1, sizeof(wfd_t), wfd);
 
     if (fp) {
-        CloseHandle(hPipe[1]);
+        if (flags & W_BIND_STDIN) {
+            CloseHandle(hPipe[0]);
+        } else {
+            CloseHandle(hPipe[1]);
+        }
         wfd->file = fp;
     }
 
