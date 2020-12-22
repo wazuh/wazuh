@@ -333,7 +333,7 @@ int audit_manage_rules(int action, const char *path, const char *key) {
         goto end;
     }
 
-    if (retval <= 0) {
+    if (retval <= 0 && retval != -17) {
         mdebug2("Can't add or delete a rule (%d) = %s", retval, audit_errno_to_name(abs(retval)));
     }
 

@@ -211,11 +211,10 @@ int init_auditd_socket(void) {
 
 int add_audit_rules_syscheck(bool first_time) {
     unsigned int i = 0;
-    int rules_added = 0;
     int found;
     int retval;
     const char *directory = NULL;
-    int auditd_fd = audit_open();
+    int rules_added = 0;
     int res = audit_get_rule_list(auditd_fd);
     audit_close(auditd_fd);
 
@@ -233,12 +232,14 @@ int add_audit_rules_syscheck(bool first_time) {
                     if (retval = audit_add_rule(directory, AUDIT_KEY), retval > 0) {
                         mdebug1(FIM_AUDIT_NEWRULE, directory);
                         rules_added++;
-                    } else {
+                    } else if (retval != -17) {
                         if (first_time) {
                             mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
                         } else {
                             mdebug1(FIM_WARN_WHODATA_ADD_RULE, directory);
                         }
+                    } else {
+                        mdebug1(FIM_AUDIT_ALREADY_ADDED, real_path);
                     }
                 } else if (found == 1) {
                     mdebug1(FIM_AUDIT_RULEDUP, directory);
