@@ -816,9 +816,9 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
   ./init/fw-check.sh execute
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.py ${PREFIX}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/*.sh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/*.py ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run

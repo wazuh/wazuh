@@ -558,6 +558,7 @@ BUILD_SERVER+=wazuh-remoted
 BUILD_SERVER+=wazuh-agentd
 BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
+BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
 BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
@@ -577,6 +578,7 @@ BUILD_AGENT+=wazuh-logcollector
 BUILD_AGENT+=wazuh-syscheckd
 BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
+BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
 
 .PHONY: server local hybrid agent selinux
@@ -633,11 +635,11 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
-	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null.cmd > route-null.cmd
-	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null-2012.cmd > route-null-2012.cmd
-	cd win32/ && ./unix2dos.pl ../../active-response/win/netsh.cmd > netsh.cmd
-	cd win32/ && ./unix2dos.pl ../../active-response/win/netsh-win-2016.cmd > netsh-win-2016.cmd
-	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
+	cd win32/ && ./unix2dos.pl ../active-response/win/route-null.cmd > route-null.cmd
+	cd win32/ && ./unix2dos.pl ../active-response/win/route-null-2012.cmd > route-null-2012.cmd
+	cd win32/ && ./unix2dos.pl ../active-response/win/netsh.cmd > netsh.cmd
+	cd win32/ && ./unix2dos.pl ../active-response/win/netsh-win-2016.cmd > netsh-win-2016.cmd
+	cd win32/ && ./unix2dos.pl ../active-response/win/restart-ossec.cmd > restart-ossec.cmd
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis wazuh-installer.nsi
@@ -1410,6 +1412,21 @@ addagent/%.o: addagent/%.c
 manage_agents: ${addagent_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
+#### Active Response ####
+
+active_response_programs = ### AR program list
+
+$(active_response_programs): $(BUILD_LIBS)
+
+.PHONY: active-responses
+active-responses: ${active_response_programs}
+
+active_response_c := $(wildcard active-response/*.c)
+active_response_o := $(active_response_c:.c=.o)
+
+active-response/%.o: active-response/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
+
 #### Util ##########
 
 util_programs = clear_stats agent_control verify-agent-conf wazuh-regex parallel-regex
@@ -1981,6 +1998,7 @@ clean-internals: clean-unit-tests
 	rm -f ${report_o}
 	rm -f ${client_agent_o}
 	rm -f ${addagent_o}
+	rm -f ${active_response_o} ${active_response_programs}
 	rm -f ${util_o} ${util_programs}
 	rm -f ${rootcheck_o} rootcheck.a
 	rm -f ${syscheck_o} ${syscheck_eventchannel_o}
