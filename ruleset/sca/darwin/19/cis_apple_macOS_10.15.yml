@@ -814,7 +814,7 @@ checks:
 # not implemented - process - 5.17 Secure individual keychains and items (Manual)
 # not implemented - process - 5.18 Create specialized keychains for different purposes (Manual)
 
-#
+# jal
 # 5.19 System Integrity Protection status (Automated)
   - id: 17561 
     title: "System Integrity Protection status"
@@ -854,7 +854,7 @@ checks:
       - 'c:defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> 0'
       - 'c:defaults read /Library/Preferences/com.apple.loginwindow RetriesUntilHint -> r:does not exist'
 
-# 
+# jal
 # 6.1.3 Disable guest account login (Automated)
   - id: 17564 
     title: "Disable guest account login"
