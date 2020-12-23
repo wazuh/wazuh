@@ -987,9 +987,6 @@ void Syscollector::scanNetwork()
                 updateAndNotifyChanges(m_spDBSync->handle(), netIfaceTable,    ifaceTableDataList, m_reportDiffFunction, m_logErrorFunction);
                 updateAndNotifyChanges(m_spDBSync->handle(), netProtocolTable, protoTableDataList, m_reportDiffFunction, m_logErrorFunction);
                 updateAndNotifyChanges(m_spDBSync->handle(), netAddressTable,  addressTableDataList, m_reportDiffFunction, m_logErrorFunction);
-                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
-                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
-                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
         }
     }
@@ -1032,12 +1029,10 @@ void Syscollector::scanPackages()
                 }
             }
             updateAndNotifyChanges(m_spDBSync->handle(), tablePackages, packages, m_reportDiffFunction, m_logErrorFunction);
-            m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
             if (m_hotfixes)
             {
                 constexpr auto tableHotfixes{"dbsync_hotfixes"};
                 updateAndNotifyChanges(m_spDBSync->handle(), tableHotfixes, hotfixes, m_reportDiffFunction, m_logErrorFunction);
-                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
         }
     }
@@ -1096,7 +1091,6 @@ void Syscollector::scanPorts()
                     }
                 }
                 updateAndNotifyChanges(m_spDBSync->handle(), table, portsList, m_reportDiffFunction, m_logErrorFunction);
-                m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
             }
         }
     }
