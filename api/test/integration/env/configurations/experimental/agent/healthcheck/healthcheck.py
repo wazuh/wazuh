@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime, timedelta
 
 output_code_ciscat_scan = os.system(
@@ -21,6 +22,15 @@ else:
     # If the last ciscat evaluation is taking more than 150 seconds,
     # restart the daemon so a new ciscat evaluation starts
     if (datetime.now() - timestamp_last_ciscat_start) >= timedelta(seconds=150):
-        os.system("/var/ossec/bin/wazuh-modulesd")
+        # Kill the old wazuh-modulesd daemon
+        old_modulesd_pidfile = os.popen(
+            "ls /var/ossec/var/run/ | grep wazuh-modulesd-").read()
+        old_modulesd_pid = re.search(r'(\d+).pid$', old_modulesd_pidfile).group(1)
+        output_code_kill_modulesd = os.system(
+            "kill {}".format(old_modulesd_pid))
+
+        if output_code_kill_modulesd == 0:
+            # Start wazuh-modulesd daemon
+            os.system("/var/ossec/bin/wazuh-modulesd")
 
     exit(1)
