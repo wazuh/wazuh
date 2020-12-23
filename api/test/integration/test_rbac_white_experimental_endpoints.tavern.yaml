@@ -58,10 +58,12 @@ stages:
 ---
 test_name: GET /experimental/ciscat/results
 
+marks:
+  - xfail
+
 stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
-    skip: True
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
@@ -83,7 +85,6 @@ stages:
           total_failed_items: 0
 
   - name: Request a list of agents (Partially allowed, user aware)
-    skip: True
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
