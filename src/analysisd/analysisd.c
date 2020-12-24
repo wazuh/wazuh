@@ -267,15 +267,10 @@ static void help_analysisd(void)
     exit(1);
 }
 
-#ifndef TESTRULE
 #ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
 #endif
 int main(int argc, char **argv)
-#else
-__attribute__((noreturn))
-int main_analysisd(int argc, char **argv)
-#endif
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int debug_level = 0;
@@ -634,6 +629,7 @@ int main_analysisd(int argc, char **argv)
                 }
                 os_free(list_msg);
             }
+            mdebug1("Building CDB lists.");
             Lists_OP_MakeAll(0, 0, &os_analysisd_cdblists);
         }
 
@@ -815,13 +811,8 @@ int main_analysisd(int argc, char **argv)
 }
 
 /* Main function. Receives the messages(events) and analyze them all */
-#ifndef TESTRULE
 __attribute__((noreturn))
 void OS_ReadMSG(int m_queue)
-#else
-__attribute__((noreturn))
-void OS_ReadMSG_analysisd(int m_queue)
-#endif
 {
     Eventinfo *lf = NULL;
     int i;
