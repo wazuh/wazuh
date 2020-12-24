@@ -12729,7 +12729,7 @@ paths:
                     - scan:
                         id: 28643647
                         time: '2020-04-15T11:02:07Z'
-                      name: ossec-control
+                      name: wazuh-control
                       suser: root
                       nlwp: 1
                       pgrp: 1
@@ -12738,7 +12738,7 @@ paths:
                       utime: 0
                       egroup: root
                       ruser: root
-                      argvs: "/var/ossec/bin/ossec-control,restart"
+                      argvs: "/var/ossec/bin/wazuh-control,restart"
                       size: 1156
                       euser: root
                       processor: 6
@@ -13503,7 +13503,7 @@ paths:
                     - scan:
                         id: 28643647
                         time: '2020-04-15T11:02:07Z'
-                      name: ossec-control
+                      name: wazuh-control
                       suser: root
                       nlwp: 1
                       pgrp: 1
@@ -13512,7 +13512,7 @@ paths:
                       utime: 0
                       egroup: root
                       ruser: root
-                      argvs: "/var/ossec/bin/ossec-control,restart"
+                      argvs: "/var/ossec/bin/wazuh-control,restart"
                       size: 1156
                       euser: root
                       processor: 6

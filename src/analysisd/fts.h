@@ -14,13 +14,8 @@
 #include "eventinfo.h"
 
 /* FTS queues */
-#ifdef TESTRULE
-#define FTS_QUEUE "queue/fts/fts-queue"
-#define IG_QUEUE  "queue/fts/ig-queue"
-#else
 #define FTS_QUEUE "/queue/fts/fts-queue"
 #define IG_QUEUE  "/queue/fts/ig-queue"
-#endif
 
 /**
  * @brief Structure to save previous fts events
