@@ -1211,7 +1211,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* When the maximum number of directories monitored in the same tag is reached,
         the excess are discarded and warned */
         if (j++ >= MAX_DIR_SIZE){
-            mwarn(FIM_WARN_MAX_DIR_REACH, MAX_DIR_SIZE, tmp_dir);
+            mwarn(FIM_WARN_MAX_DIR_REACH, MAX_DIR_SIZE, *dir);
             dir++;
             continue;
         }
