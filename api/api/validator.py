@@ -14,7 +14,7 @@ from wazuh.core import common
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
 _symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\'"|=]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
-_array_names = re.compile(r'^[\w\-\.]+(,[\w\-\.]+)*$')
+_array_names = re.compile(r'^[\w\-\.%]+(,[\w\-\.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 _boolean = re.compile(r'^true$|^false$')
 _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
@@ -28,7 +28,7 @@ _ips = re.compile(
 _iso8601_date = (r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])$')
 _iso8601_date_time = (
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
-_names = re.compile(r'^[\w\-\.]+$')
+_names = re.compile(r'^[\w\-\.%]+$')
 _numbers = re.compile(r'^\d+$')
 _numbers_delete = re.compile(r'^\d+|all$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
