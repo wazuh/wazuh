@@ -656,10 +656,12 @@ STATIC void fim_link_update(int pos, char *new_path) {
             return;
         }
     }
+#ifdef ENABLE_AUDIT
     // Clean audit rule if monitored with whodata
     if (syscheck.opts[pos] & WHODATA_ACTIVE) {
         remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
     }
+#endif
 
     os_free(syscheck.symbolic_links[pos]);
     os_strdup(new_path, syscheck.symbolic_links[pos]);
@@ -673,9 +675,11 @@ STATIC void fim_link_check_delete(int pos) {
 
     if (w_stat(syscheck.symbolic_links[pos], &statbuf) < 0) {
         if (errno == ENOENT) {
+#ifdef ENABLE_AUDIT
             if (syscheck.opts[pos] & WHODATA_ACTIVE) {
                 remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
             }
+#endif
             syscheck.symbolic_links[pos] = NULL;
             return;
         }
@@ -687,9 +691,11 @@ STATIC void fim_link_check_delete(int pos) {
         if (syscheck.realtime && syscheck.realtime->dirtb) {
             fim_delete_realtime_watches(pos);
         }
+#ifdef ENABLE_AUDIT
         if (syscheck.opts[pos] & WHODATA_ACTIVE) {
             remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
         }
+#endif
         syscheck.symbolic_links[pos] = NULL;
     }
 }
