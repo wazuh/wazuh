@@ -4,6 +4,7 @@ import time
 
 import yaml
 
+output_file = '/configuration_files/agent_info_output'
 ADDR = '/var/ossec/queue/db/wdb'
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 sock.connect(ADDR)
@@ -32,7 +33,7 @@ def create_and_send_query(agent_info_file):
     with open(agent_info_file) as f:
         agent_info = yaml.safe_load(f)
 
-    with open('/configuration_files/agent_info_output', 'a+') as f:
+    with open(output_file, 'a+') as f:
         for agent in agent_info:
             # Add last_keepalive with epoch time
             try:
@@ -49,7 +50,7 @@ def create_and_send_query(agent_info_file):
                                    for key, value in agent['agent'].items()]) + \
                         f" WHERE id = {agent['extra_params']['agent_id']}"
                 # Send query to wdb
-                f.write(str(send_msg("global sql " + query)))
+                f.write(str(send_msg("global sql " + query)) + '\n')
             except KeyError:
                 pass
 
@@ -59,7 +60,7 @@ def create_and_send_query(agent_info_file):
                     query = f"INSERT INTO labels ('id', 'key', 'value') VALUES " \
                             f"({agent['extra_params']['agent_id']}, '{key}', '{value}')"
                     # Send query to wdb
-                    f.write(str(send_msg("global sql " + query)))
+                    f.write(str(send_msg("global sql " + query)) + '\n')
             except KeyError:
                 pass
 
