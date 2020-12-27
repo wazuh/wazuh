@@ -138,8 +138,7 @@ checks:
       - cis: ["2.1.2"]
     condition: any
     rules:
-      #- 'c:defaults read /Users/<username>/Library/Preferences/com.apple.systemuiserver menuExtras -> r:Bluetooth.menu'
-      - 'c:for d in /Users/*/ ; do (defaults read $d/Library/Preferences/com.apple.systemuiserver menuExtras); done -> r:Bluetooth.menu'
+      - 'c:defaults read /Users/<username>/Library/Preferences/com.apple.systemuiserver menuExtras -> r:Bluetooth.menu'
 
 # jal 
 # 2.2.1 Enable "Set time and date automatically" (Automated)
@@ -449,20 +448,7 @@ checks:
       - 'c:defaults read /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -> 0'
 
 # jal 
-# 2.5.9 Review Advertising settings (Manual)
-  - id: 17529
-    title: "Review Advertising settings"
-    description: "Apple provides a framework that allows advertisers to target Apple users and end users to tailor their tolerance for what is shared with advertisers and what amount of targeting they will accept. While many people prefer that when they see advertising it is relevant to them and their interests the detailed information that is available with data mining collected information available in repositories to advertisers is often disconcerting."
-    rationale: "Organizations should manage user provacy settings on managed devices to align with organizational policies and user data protection requirements."
-    remediation: "For each needed user, run the following command to enable limited ad tracking: sudo -u <username> defaults -currentHost write /Users/<username>/Library/Preferences/com.apple.Adlib.plist forceLimitAdTracking -bool true"
-    compliance:
-      - cis: ["2.5.9"]
-    condition: all
-    rules:
-      - 'c:for d in /Users/*/ ; do (defaults read $d/Library/Preferences/com.apple.AdLib.plist forceLimitAdTracking); done -> n:(\d) compare != 1'
-
-
-# jal
+# not implemented - SCA Limit -> 2.5.9 Review Advertising settings (Manual)
 # not implemented - process -> 2.6.1 iCloud configuration (Manual)
 # not implemented - process -> 2.6.2 iCloud keychain (Manual)
 # not implemented - process -> 2.6.3 iCloud Drive (Manual)
