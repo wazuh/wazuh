@@ -141,8 +141,7 @@ checks:
       - cis: ["2.1.2"]
     condition: any
     rules:
-      #- 'c:defaults read /Users/<username>/Library/Preferences/com.apple.systemuiserver menuExtras -> r:Bluetooth.menu'
-      - 'c:for d in /Users/*/ ; do (defaults read $d/Library/Preferences/com.apple.systemuiserver menuExtras); done -> r:Bluetooth.menu'
+      - 'c:defaults read /Users/<username>/Library/Preferences/com.apple.systemuiserver menuExtras -> r:Bluetooth.menu'
 
 
 # jal 
@@ -447,19 +446,7 @@ checks:
 
 
 # jal 
-# 2.5.9 Review Advertising settings (Manual)
-  - id: 17069 
-    title: "Review Advertising settings"
-    description: "Apple provides a framework that allows advertisers to target Apple users and end users to tailor their tolerance for what is shared with advertisers and what amount of targeting they will accept. While many people prefer that when they see advertising it is relevant to them and their interests the detailed information that is available with data mining collected information available in repositories to advertisers is often disconcerting."
-    rationale: "Organizations should manage user provacy settings on managed devices to align with organizational policies and user data protection requirements."
-    remediation: "For each needed user, run the following command to enable limited ad tracking: sudo -u <username> defaults -currentHost write /Users/<username>/Library/Preferences/com.apple.Adlib.plist forceLimitAdTracking -bool true"
-    compliance:
-      - cis: ["2.5.9"]
-    condition: all
-    rules:
-      - 'c:for d in /Users/*/ ; do (defaults read $d/Library/Preferences/com.apple.AdLib.plist forceLimitAdTracking); done -> n:(\d) compare != 1'
-
-
+# not implemented - SCA Limit -> 2.5.9 Review Advertising settings (Manual)
 # jal not implemented -> 2.6.1 iCloud configuration (Manual)
 # jal not implemented -> 2.6.2 iCloud keychain (Manual)
 # jal not implemented -> 2.6.3 iCloud Drive (Manual)
@@ -482,17 +469,6 @@ checks:
 
 # jal 
 # jal not implemented SCA limit -> 2.7.2 Time Machine Volumes Are Encrypted (Automated) 
-  # - id: 17029 
-  #   title: "Time Machine Volumes Are Encryptedp"
-  #   description: "One of the most important security tools for data protection on macOS is FileVault. With encryption in place it makes it difficult for an outside party to access your data if they get physical possession of the computer. One very large weakness in data protection with FileVault is the level of protection on backup volumes. If the internal drive is encrypted but the external backup volume that goes home in the same laptop bag is not it is self-defeating. Apple tries to make this mistake easily avoided by providing a checkbox to enable encryption when setting-up a time machine backup. Using this option does require some password management, particularly if a large drive is used with multiple computers. A unique complex password to unlock the drive can be stored in keychains on multiple systems for ease of use. While some portable drives may contain non-sensitive data and encryption may make interoperability with other systems difficult backup volumes should be protected just like boot volumes."
-  #   rationale: "Backup volumes need to be encrypted."
-  #   remediation: "You can set encryption through Disk Utility or diskutil in terminal."
-  #   compliance:
-  #     - cis: ["2.7.2"]
-  #   condition: all
-  #   rules:
-  #     - 'c:defaults read /Library/Preferences/com.apple.TimeMachine.plist AutoBackup -> 1'
-
 
 # jal 
 # 2.8 Disable Wake for network access (Automated) 
