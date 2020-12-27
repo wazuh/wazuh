@@ -56,7 +56,6 @@ checks:
     condition: all
     rules:
       - 'c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -> 1'
-# bool or int? there is some incongruence between audit and remediation steps on benchmark doc.
 
 # jal - UPDATED
 # 1.3 Enable app update installs (Automated)
@@ -70,7 +69,6 @@ checks:
     condition: all
     rules:
       - 'c:defaults read /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -> 1'
-# bool or int? there is some incongruence between audit and remediation steps on benchmark doc.
 
 # jal - UPDATED
 # 1.4 Enable app update installs (Automated)
@@ -84,7 +82,6 @@ checks:
     condition: all
     rules:
       - 'c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> 1'
-# bool or int? there is some incongruence between audit and remediation steps on benchmark doc.
 
 # jal - 
 # 1.5 Enable system data files and security update installs (Automated)
@@ -136,7 +133,7 @@ checks:
     title: "Show Bluetooth status in menu bar"
     description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
     rationale: "Enabling \"Show Bluetooth status in menu bar\" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, Discoverable, what paired devices exist and are currently active."
-    remediation: "Open a terminal session and enter the following command to enable Bluetooth status in the menu bar. sudo -u <username> defaults write /Users/<username>/Library/Preferences/com.apple.systemuiserver menuExtras - array-add "/System/Library/CoreServices/Menu Extras/Bluetooth.menu""
+    remediation: "Open a terminal session and enter the following command to enable Bluetooth status in the menu bar. sudo -u <username> defaults write /Users/<username>/Library/Preferences/com.apple.systemuiserver menuExtras - array-add \"/System/Library/CoreServices/Menu Extras/Bluetooth.menu\""
     compliance:
       - cis: ["2.1.2"]
     condition: any
@@ -182,7 +179,6 @@ checks:
     condition: all
     rules:
       - 'c:defaults -currentHost read com.apple.screensaver idleTime -> !r:does not exist'
-
 
 # jal 
 # 2.3.2 Secure screen saver corners (Automated) 
@@ -324,7 +320,7 @@ checks:
     rules:
       - 'not p:ARDAgent'
 
-# jal ***
+# jal
 # 2.4.10 Disable Content Caching (Automated)
   - id: 17021
     title: "Disable Content Caching"
@@ -336,19 +332,6 @@ checks:
     condition: all
     rules:
       - 'c:defaults read /Library/Preferences/com.apple.AssetCache.plist Activated -> 0'
-
-# jal - doesn't exists 
-# 2.5.1 Disable "Wake for network access" (Scored)
-  # - id: 9510 
-  #   title: "Disable \"Wake for network access\""
-  #   description: "This feature allows other users to be able to access your computer's shared resources, such as shared printers or iTunes playlists, even when your computer is in sleep mode. In a closed network when only authorized devices could wake a computer it could be valuable to wake computers in order to do management push activity. Where mobile workstations and agents exist the device will more likely check in to receive updates when already awake. Mobile devices should not be listening for signals on unmanaged network where untrusted devices could send wake signals."
-  #   rationale: "Disabling this feature mitigates the risk of an attacker remotely waking the system and gaining access."
-  #   remediation: "Run the following command in Terminal: sudo pmset -a womp 0"
-  #   compliance:
-  #     - cis: ["2.5.1"]
-  #   condition: none
-  #   rules:
-  #     - 'c:pmset -g -> r:womp && !r:\s0$'
 
 # jal 
 # 2.5.1.1 Enable FileVault (Automated)
@@ -444,15 +427,12 @@ checks:
     rules:
       - 'c:defaults read /Library/Application\ Support/CrashReporter/DiagnosticMessagesHistory.plist AutoSubmit -> 0'
 
-
 # jal 
 # not implemented - SCA Limit -> 2.5.9 Review Advertising settings (Manual)
 # jal not implemented -> 2.6.1 iCloud configuration (Manual)
 # jal not implemented -> 2.6.2 iCloud keychain (Manual)
 # jal not implemented -> 2.6.3 iCloud Drive (Manual)
 # jal not implemented -> 2.6.4 iCloud Drive Document and Desktop sync (Manual)
-
-
 
 # jal 
 # 2.7.1 Time Machine Auto-Backup (Automated) 
@@ -511,19 +491,6 @@ checks:
       - 'c:defaults read -app Terminal SecureKeyboardEntry -> 1'
       # - 'c:sudo -u <username> defaults read -app Terminal SecureKeyboardEntry -> 1'
 
-# jal -> doesn't exists
-# 2.11 Java 6 is not the default Java runtime (Scored)
-  # - id: 9516 
-  #   title: "Java 6 is not the default Java runtime"
-  #   description: "Apple had made Java part of the core Operating System for macOS. Apple is no longer providing Java updates for macOS and updated JREs and JDK are made available by Oracle.  The latest version of Java 6 made available by Apple has many unpatched vulnerabilities and should not be the default runtime for Java applets that request one from the Operating System"
-  #   rationale: "Java has been one of the most exploited environments and Java 6, which was provided as an OS component by Apple, is no longer maintained by Apple or Oracle. The old versions provided by Apple are both unsupported and missing the more modern security controls that have limited current exploits. The EOL version may still be installed and should be removed from the computer or not be in the default path."
-  #   remediation: "Java 6 can be removed completely or, if required Java applications will only work with Java 6, a custom path can be used. Apple is likely to finally pull the plug on Java 6 in upcoming macOS versions so any applications that still require Java 6 will likely soon be unavailable."
-  #   compliance:
-  #     - cis: ["2.11"]
-  #   condition: none
-  #   rules:
-  #     - 'c:/usr/libexec/java_home -> r:1.6.0'
-
 # jal
 # jal not implemented -> 2.11 Securely delete files as needed (Manual)
 
@@ -555,17 +522,6 @@ checks:
       - 'c:launchctl list -> r:com.apple.auditd'
 
 # jal not implemented -> 3.2 Configure Security Auditing Flags per local organizational requirements (Manual)
-# 3.2 Configure Security Auditing Flags (Scored)
-  # - id: 17035 
-  #   title: "Configure Security Auditing Flags"
-  #   description: "Auditing is the capture and maintenance of information about security-related events."
-  #   rationale: "Maintaining an audit trail of system activity logs can help identify configuration errors, troubleshoot service disruptions, and analyze compromises or attacks that have occurred, have begun, or are about to begin. Audit logs are necessary to provide a trail of evidence in case the system or network is compromised."
-  #   remediation: "1. Open a terminal session and edit the /etc/security/audit_control file  2. Find the line beginning with \"flags\"  3. Add the following flags: lo, ad, fd, fm, -all.  4. Save the file."
-  #   compliance:
-  #     - cis: ["3.2"]
-  #   condition: all
-  #   rules:
-  #     - 'f:/etc/security/audit_control -> r:^flags && r:lo && r:ad && r:fd && r:fm && r:-all'
 
 # jal 
 # 3.3 Retain install.log for 365 or more days with no maximum size (Automated)
@@ -581,7 +537,7 @@ checks:
       - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 365'
 
 # jal 
-# jal not implemented sca limit-> 3.4 Ensure security auditing retention (Automated) 17036
+# jal not implemented sca limit-> 3.4 Ensure security auditing retention (Automated) 
 
 # jal  
 # 3.5 Control access to audit records (Automated) 
@@ -657,7 +613,7 @@ checks:
       - 'f:/etc/exports'
 
 # jal 
-# jal not implemented - Users -> 5.1.1 Secure Home Folders (Automated) 17043
+# jal not implemented - Users -> 5.1.1 Secure Home Folders (Automated) 
 
 # jal 
 # 5.1.2 Check System Wide Applications for appropriate permissions (Automated) 
@@ -677,7 +633,7 @@ checks:
   - id: 17045 
     title: "Check System folder for world writable files"
     description: "Software sometimes insists on being installed in the /System Directory and have inappropriate world writable permissions."
-    rationale: "Folders in /System should not be world writable. The audit check excludes the "Drop Box" folder that is part of Apple's default user template."
+    rationale: "Folders in /System should not be world writable. The audit check excludes the \"Drop Box\" folder that is part of Apple's default user template."
     remediation: "Run the following command to set permissions so that folders are not world writable in the /System folder: sudo chmod -R o-w /Path/<baddirectory>"
     compliance:
       - cis: ["5.1.3"]
@@ -699,13 +655,13 @@ checks:
       - 'c:find /Library -type d -perm -2 -ls -> r:^$|Caches'
 
 # jal 
-# jal not implemented - SCA limit -> 5.2.1 Configure account lockout threshold (Automated) 17047
-# jal not implemented - SCA limit -> 5.2.2 Set a minimum password length (Automated) 17048
+# jal not implemented - SCA limit -> 5.2.1 Configure account lockout threshold (Automated) 
+# jal not implemented - SCA limit -> 5.2.2 Set a minimum password length (Automated) 
 # jal not implemented - SCA limit -> 5.2.4 Complex passwords must contain a Numeric Character (Manual)
 # jal not implemented - SCA limit -> 5.2.5 Complex passwords must contain a Special Character (Manual)
 # jal not implemented - SCA limit -> 5.2.6 Complex passwords must uppercase and lowercase letters (Manual)
-# jal not implemented - SCA limit -> 5.2.7 Password Age (Automated) 17049
-# jal not implemented - SCA limit -> 5.2.8 Password History (Automated) 17050
+# jal not implemented - SCA limit -> 5.2.7 Password Age (Automated) 
+# jal not implemented - SCA limit -> 5.2.8 Password History (Automated) 
 
 # jal 
 # 5.3 Reduce the sudo timeout period (Automated) 17051
@@ -724,7 +680,7 @@ checks:
 # jal not implemented - SCA Limit -> 5.4 Automatically lock the login keychain for inactivity (Manual) 
 
 # jal 
-# 5.5 Use a separate timestamp for each user/tty combo (Automated) 17052
+# 5.5 Use a separate timestamp for each user/tty combo (Automated) 
   - id: 17052
     title: "Use a separate timestamp for each user/tty combo"
     description: "Using tty tickets ensures that a user must enter the sudo password in each Terminal session. With sudo versions 1.8 and higher, introduced in 10.12, the default value is to have tty tickets for each interface so that root access is limited to a specific terminal. The default configuration can be overwritten or not configured correctly on earlier versions of macOS."
@@ -770,9 +726,9 @@ checks:
 # jal not implemented - Not a command - 5.9 Require a password to wake the computer from sleep or screen saver (Manual)
 
 # jal
-# jal not implemented - SCA Limit -> 5.10 Ensure system is set to hibernate (Automated) 17055
-# jal not implemented - SCA Limit -> 5.11 Require an administrator password to access system-wide preferences (Automated) 17056
-# jal not implemented - SCA Limit -> 5.12 Disable ability to login to another user's active and locked session (Automated) 17057 
+# jal not implemented - SCA Limit -> 5.10 Ensure system is set to hibernate (Automated) 
+# jal not implemented - SCA Limit -> 5.11 Require an administrator password to access system-wide preferences (Automated) 
+# jal not implemented - SCA Limit -> 5.12 Disable ability to login to another user's active and locked session (Automated)  
 
 # 5.13 Create a custom message for the Login Screen (Automated) 17058
   - id: 17058
@@ -798,7 +754,10 @@ checks:
     rules:
       - 'c:cat /Library/Security/PolicyBanner.* -> !r:^$'
 
-# jal not implemented - SCA Limit -> 5.15 Do not enter a password-related hint (Automated) 17060
+# jal 
+# not implemented - SCA Limit -> 5.15 Do not enter a password-related hint (Automated) 
+
+# jal
 # 5.16 Disable Fast User Switching (Manual)
   - id: 17070
     title: "Disable Fast User Switching" 
@@ -812,8 +771,9 @@ checks:
       - 'c:defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> r:does not exist'
       - 'c:defaults read /Library/Preferences/.GlobalPreferences.plist MultipleSessionEnabled -> 0'
 
-# jal not implemented - process - 5.17 Secure individual keychains and items (Manual)
-# jal not implemented - process - 5.18 Create specialized keychains for different purposes (Manual)
+# jal 
+# not implemented - process - 5.17 Secure individual keychains and items (Manual)
+# not implemented - process - 5.18 Create specialized keychains for different purposes (Manual)
 
 # jal
 # 5.19 System Integrity Protection status (Automated)
@@ -827,7 +787,6 @@ checks:
     condition: all
     rules:
       - 'c:/usr/bin/csrutil status -> r:^System Integrity Protection status: enabled'
-
 
 # jal 
 # 6.1.1 Display login window as name and password (Automated) 17062
