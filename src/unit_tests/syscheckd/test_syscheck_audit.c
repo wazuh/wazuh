@@ -801,6 +801,8 @@ void test_add_audit_rules_syscheck_not_added(void **state) {
     (void) state;
 
     char *entry = "/var/test";
+    char buffer[OS_SIZE_128] = {0};
+
     syscheck.dir = calloc (2, sizeof(char *));
     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
@@ -822,8 +824,9 @@ void test_add_audit_rules_syscheck_not_added(void **state) {
     // Rule already not added
     will_return(__wrap_search_audit_rule, 0);
 
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6322): Reloaded audit rule for monitoring directory: '/var/test'");
+    will_return(__wrap_audit_add_rule, -17);
+    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_ALREADY_ADDED, syscheck.dir[0]);
+    expect_string(__wrap__mdebug1, formatted_msg, buffer);
 
     int ret;
     ret = add_audit_rules_syscheck(0);
@@ -832,7 +835,7 @@ void test_add_audit_rules_syscheck_not_added(void **state) {
     free(syscheck.dir[0]);
     free(syscheck.dir);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 0);
 }
 
 
@@ -2623,7 +2626,7 @@ int main(void) {
         cmocka_unit_test(test_audit_get_id_end_error),
         cmocka_unit_test(test_init_regex),
         cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_duplicate_entry, setup_add_audit_rules, teardown_add_audit_rules),
-        //cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added, setup_add_audit_rules, teardown_add_audit_rules),
+        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_new, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_error, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_first_error, setup_add_audit_rules, teardown_add_audit_rules),
