@@ -49,3 +49,12 @@
 # Enable features under development
 # experimental_features: no
 
+# Enable remote commands
+# remote_commands:
+#   localfile:
+#     enabled: yes
+#     exceptions: []
+#
+#   wodle_command:
+#     enabled: yes
+#     exceptions: []
