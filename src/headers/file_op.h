@@ -625,4 +625,6 @@ int w_is_compressed_bz2_file(const char * path);
  */
 int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 #endif /* CLIENT */
+
+char * bin_path(char * arg);
 #endif /* FILE_OP_H */

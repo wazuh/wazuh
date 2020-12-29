@@ -17,6 +17,7 @@ static void wm_cleanup();               // Cleanup function, called on exiting.
 static void wm_handler(int signum);     // Action on signal.
 
 static int flag_foreground = 0;         // Running in foreground.
+char * binary_path;
 
 // Main function
 
@@ -29,6 +30,7 @@ int main(int argc, char **argv)
     gid_t gid;
     const char *group = GROUPGLOBAL;
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
+    binary_path = bin_path(argv[0]);
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -157,8 +159,9 @@ void wm_setup()
 
     // Change working directory
 
-    if (chdir(DEFAULTDIR) < 0)
+    if (chdir(binary_path) < 0) {
         merror_exit("chdir(): %s", strerror(errno));
+    }
 
     if (wm_check() < 0) {
         minfo("No configuration defined. Exiting...");
