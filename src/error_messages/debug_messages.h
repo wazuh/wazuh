@@ -92,6 +92,7 @@
 #define VU_METADATA_CLEAN     "(5484): Cleaning metadata for target '%s'"
 #define VU_UNS_OS             "(5485): Agent '%.3d' has an unsupported OS: '%s'"
 #define VU_PACKAGE_TP_SOURCE  "(5486): Discarded package '%s' from a third-party source ('%s') for agent '%.3d'"
+#define VU_MAX_INVALID_VULNS  "(5487): Feed '%s' has too many invalid or duplicated vulnerabilities."
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
