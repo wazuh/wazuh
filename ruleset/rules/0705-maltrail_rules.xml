@@ -32,4 +32,13 @@
         <description>High critical Maltrail event triggered</description>
     </rule>
 
+    <rule id="64524" level="12" frequency="10" timeframe="120">
+        <if_matched_sid>64523</if_matched_sid>
+        <field name="severity">2</field>
+        <description>Too many critical Maltrail events triggered, possible infection detected.</description>
+        <mitre>
+            <id>T1584</id>
+        </mitre>
+    </rule>
+
 </group>
