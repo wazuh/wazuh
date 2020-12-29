@@ -230,7 +230,7 @@ public:
     : m_interfaceAddress{ addrs }
     , m_gateway{UNKNOWN_VALUE}
     , m_metrics{UNKNOWN_VALUE}
-    , m_scanTime{Utils::getTimestamp(std::time(nullptr))}
+    , m_scanTime{Utils::getCurrentTimestamp()}
     { 
         if (!addrs)
         {

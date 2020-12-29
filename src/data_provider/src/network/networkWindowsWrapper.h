@@ -56,7 +56,7 @@ public:
         , m_interfaceAddress(addrs)
         , m_currentUnicastAddress(unicastAddress)
         , m_adapterInfo(adapterInfo)
-        , m_scanTime(Utils::getTimestamp(std::time(nullptr)))
+        , m_scanTime(Utils::getCurrentTimestamp())
     {
         if (!addrs)
         {

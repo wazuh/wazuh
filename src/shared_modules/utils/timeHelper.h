@@ -38,6 +38,11 @@ namespace Utils
         timestamp += std::to_string(localTime->tm_sec);
         return timestamp;
     }
+
+    static std::string getCurrentTimestamp()
+    {
+        return getTimestamp(std::time(nullptr));
+    }
 };
 
 #endif // _TIME_HELPER_H

@@ -31,7 +31,7 @@ public:
       , m_architecture{UNKNOWN_VALUE}
       , m_format{"pkg"}
       , m_osPatch{UNKNOWN_VALUE}
-      , m_scanTime{Utils::getTimestamp(std::time(nullptr))}
+      , m_scanTime{Utils::getCurrentTimestamp()}
     {
         getPkgData(ctx.filePath+ "/" + ctx.package + "/" + APP_INFO_PATH);
     }

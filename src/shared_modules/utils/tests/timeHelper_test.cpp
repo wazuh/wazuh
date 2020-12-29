@@ -19,20 +19,26 @@ void TimeUtilsTest::TearDown() {};
 
 TEST_F(TimeUtilsTest, CheckTimestamp) 
 {
+    const auto currentTimestamp { Utils::getCurrentTimestamp() };
     const auto timestamp { Utils::getTimestamp(std::time(nullptr)) };
+    EXPECT_FALSE(currentTimestamp.empty());
     EXPECT_FALSE(timestamp.empty());
 }
 
 TEST_F(TimeUtilsTest, CheckTimestampValidFormat)
 {
     const auto dateFormatRegexStr { "[0-9]{4}/([1-9]|1[0-2])/([1-9]|[1-2][0-9]|3[0-1]) (2[0-3]|1[0-9]|[0-9]):([0-9]|[1-5][0-9]):([1-5][0-9]|[0-9])" };
+    const auto currentTimestamp { Utils::getCurrentTimestamp() };
     const auto timestamp { Utils::getTimestamp(std::time(nullptr)) };
+    EXPECT_TRUE(std::regex_match(currentTimestamp, std::regex(dateFormatRegexStr)));
     EXPECT_TRUE(std::regex_match(timestamp, std::regex(dateFormatRegexStr)));
 }
 
 TEST_F(TimeUtilsTest, CheckTimestampInvalidFormat)
 {
     const auto dateFormatRegexStr { "[0-9]{4}/([1-9]|1[0-2])/([1-9]|[1-2][0-9]|3[0-1])(2[0-3]|1[0-9]|[0-9]):([0-9]|[1-5][0-9]):([1-5][0-9]|[0-9])" };
+    const auto currentTimestamp { Utils::getCurrentTimestamp() };
     const auto timestamp { Utils::getTimestamp(std::time(nullptr)) };
+    EXPECT_FALSE(std::regex_match(currentTimestamp, std::regex(dateFormatRegexStr)));
     EXPECT_FALSE(std::regex_match(timestamp, std::regex(dateFormatRegexStr)));
 }

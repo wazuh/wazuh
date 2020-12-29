@@ -29,7 +29,7 @@ public:
       , m_architecture{UNKNOWN_VALUE}
       , m_format{"pkg"}
       , m_osPatch{UNKNOWN_VALUE}
-      , m_scanTime{Utils::getTimestamp(std::time(nullptr))}
+      , m_scanTime{Utils::getCurrentTimestamp()}
     {
         const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
         for (const auto& row : rows)

@@ -240,7 +240,7 @@ SysOsInfoProviderWindows::SysOsInfoProviderWindows()
 , m_name{getName()}
 , m_machine{getMachine()}
 , m_nodeName{getNodeName()}
-, m_scanTime{Utils::getTimestamp(std::time(nullptr))}
+, m_scanTime{Utils::getCurrentTimestamp()}
 { 
 }
 std::string SysOsInfoProviderWindows::name() const

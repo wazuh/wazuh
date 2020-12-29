@@ -64,7 +64,7 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     nlohmann::json jsProcessInfo{};
     jsProcessInfo["pid"]        = std::to_string(pid);
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
-    jsProcessInfo["scan_time"]  = Utils::getTimestamp(std::time(nullptr));
+    jsProcessInfo["scan_time"]  = Utils::getCurrentTimestamp();
 
     const auto procState { s_mapTaskInfoState.find(taskInfo.pbsd.pbi_status) };
     jsProcessInfo["state"]      = (procState != s_mapTaskInfoState.end())
@@ -278,7 +278,7 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["version"] = uts.version;
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;
-        ret["scan_time"] = Utils::getTimestamp(std::time(nullptr));
+        ret["scan_time"] = Utils::getCurrentTimestamp();
     }
     return ret;
 }

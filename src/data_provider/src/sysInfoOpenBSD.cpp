@@ -113,7 +113,7 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["os_name"] = "BSD";
         ret["os_platform"] = "bsd";
         ret["os_version"] = UNKNOWN_VALUE;
-        ret["scan_time"] = Utils::getTimestamp(std::time(nullptr));
+        ret["scan_time"] = Utils::getCurrentTimestamp();
     }
     if (uname(&uts) >= 0)
     {

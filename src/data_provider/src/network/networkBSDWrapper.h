@@ -47,7 +47,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     public:
     explicit NetworkBSDInterface(ifaddrs* addrs)
     : m_interfaceAddress{addrs}
-    , m_scanTime{Utils::getTimestamp(std::time(nullptr))}
+    , m_scanTime{Utils::getCurrentTimestamp()}
     { 
         if (!addrs)
         {
