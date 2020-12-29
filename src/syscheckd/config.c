@@ -61,7 +61,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.key_ignore_regex = NULL;
     syscheck.value_ignore = NULL;
     syscheck.value_ignore_regex = NULL;
-    syscheck.max_fd_win_rt  = 0;
+    syscheck.max_fd_win_rt  = 256;
     syscheck.registry_nodiff = NULL;
     syscheck.registry_nodiff_regex = NULL;
     syscheck.enable_registry_synchronization = 1;
@@ -82,6 +82,11 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.comp_estimation_perc = 0.9;    // 90%
     syscheck.disk_quota_full_msg = true;
     syscheck.audit_key = NULL;
+    syscheck.rt_delay = 5;
+    syscheck.max_depth = 256;
+    syscheck.file_max_size = 0;
+    syscheck.sym_checker_interval = 600;
+    syscheck.max_audit_entries = 256;
 
     mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
