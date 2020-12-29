@@ -66,7 +66,7 @@ public:
     {
         return m_osPatch;
     }
-    std::string osPatch() const override
+    std::string scanTime() const override
     {
         return m_scanTime;
     }
