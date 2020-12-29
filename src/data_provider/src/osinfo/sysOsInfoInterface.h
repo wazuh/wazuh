@@ -29,6 +29,7 @@ public:
     virtual std::string release() const = 0;
     virtual std::string machine() const = 0;
     virtual std::string nodeName() const = 0;
+    virtual std::string scanTime() const = 0;
     // LCOV_EXCL_STOP
 };
 
@@ -49,6 +50,7 @@ public:
         output["hostname"] = osInfoProvider->nodeName();
         output["os_release"] = osInfoProvider->release();
         output["architecture"] = osInfoProvider->machine();
+        output["scan_time"] = osInfoProvider->scanTime();
     }
 };
 

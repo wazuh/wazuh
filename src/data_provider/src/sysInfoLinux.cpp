@@ -12,6 +12,7 @@
 #include <iostream>
 #include "sharedDefs.h"
 #include "stringHelper.h"
+#include "timeHelper.h"
 #include "filesystemHelper.h"
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
@@ -74,6 +75,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     // Current process information
     jsProcessInfo["pid"]        = std::to_string(process->tid);
     jsProcessInfo["name"]       = process->cmd;
+    jsProcessInfo["scan_time"]  = Utils::getCurrentTimestamp();
     jsProcessInfo["state"]      = &process->state;
     jsProcessInfo["ppid"]       = process->ppid;
     jsProcessInfo["utime"]      = process->utime;
@@ -194,6 +196,7 @@ static nlohmann::json parsePackage(const std::vector<std::string>& entries)
         ret["version"]      = version;
         ret["format"]       = "deb";
         ret["os_patch"]     = UNKNOWN_VALUE;
+        ret["scan_time"]    = Utils::getCurrentTimestamp();
     }
     return ret;
 }
@@ -311,6 +314,7 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         ret["architecture"] = architecture;
         ret["format"]       = "rpm";
         ret["os_patch"]     = UNKNOWN_VALUE;
+        ret["scan_time"]    = Utils::getCurrentTimestamp();
     }
     return ret;
 }
@@ -491,6 +495,7 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["os_name"] = "Linux";
         ret["os_platform"] = "linux";
         ret["os_version"] = UNKNOWN_VALUE;
+        ret["scan_time"] = Utils::getCurrentTimestamp();
     }
     if (uname(&uts) >= 0)
     {

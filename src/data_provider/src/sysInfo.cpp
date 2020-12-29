@@ -18,6 +18,7 @@ nlohmann::json SysInfo::hardware()
     ret["cpu_name"] = getCpuName();
     ret["cpu_cores"] = getCpuCores();
     ret["cpu_MHz"] = getCpuMHz();
+    ret["scan_time"] = Utils::getCurrentTimestamp();
     getMemory(ret);
     return ret;
 }

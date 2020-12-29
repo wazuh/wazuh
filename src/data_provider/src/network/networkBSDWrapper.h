@@ -27,6 +27,7 @@
 #include "networkHelper.h"
 #include "makeUnique.h"
 #include "sharedDefs.h"
+#include "timeHelper.h"
 
 static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 {
@@ -41,24 +42,32 @@ static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
     ifaddrs* m_interfaceAddress;
+    const std::string m_scanTime;
  
     public:
     explicit NetworkBSDInterface(ifaddrs* addrs)
-    : m_interfaceAddress(addrs)
+    : m_interfaceAddress{addrs}
+    , m_scanTime{Utils::getCurrentTimestamp()}
     { 
         if (!addrs)
         {
             throw std::runtime_error { "Nullptr instances of network interface" };
         }
     }
+
     std::string name() const override
     {
-        return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "unknown";
+        return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : UNKNOWN_VALUE;
+    }
+
+    std::string scanTime() const override
+    {
+        return m_scanTime;
     }
 
     std::string adapter() const override
     {
-        return "unknown";
+        return UNKNOWN_VALUE;
     }
 
     int family() const override
@@ -116,7 +125,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string gateway() const override
     {
-        std::string retVal = "unknown";
+        std::string retVal = UNKNOWN_VALUE;
         size_t tableSize { 0 };
         int mib[] = { CTL_NET, PF_ROUTE, 0, PF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
 
@@ -153,17 +162,17 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string metrics() const override
     {
-        return "unknown";
+        return UNKNOWN_VALUE;
     }
 
     std::string metricsV6() const override
     {
-        return "unknown";
+        return UNKNOWN_VALUE;
     }
 
     std::string dhcp() const override
     {
-        return "unknown";
+        return UNKNOWN_VALUE;
     }
 
     std::string mtu() const override

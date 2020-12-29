@@ -42,12 +42,14 @@ static int decode_dbsync( char const *agent_id, char *msg_type, cJSON * logJSON,
 static OSDecoderInfo *sysc_decoder = NULL;
 
 static const char* HOTFIXES_FIELDS[] = { 
-    "hotfix", 
+    "scan_time",
+    "hotfix",
     "checksum",
     NULL 
 };
 
-static const char* PACKAGES_FIELDS[] = { 
+static const char* PACKAGES_FIELDS[] = {
+    "scan_time",
     "format",
     "name",
     "priority",
@@ -71,7 +73,8 @@ static const char* PACKAGES_FIELDS[] = {
 };
 
     
-static const char* PROCESSES_FIELDS[] = { 
+static const char* PROCESSES_FIELDS[] = {
+    "scan_time",
     "pid",
     "name",
     "state",
@@ -104,7 +107,8 @@ static const char* PROCESSES_FIELDS[] = {
     NULL
 };
 
-static const char* PORTS_FIELDS[] = { 
+static const char* PORTS_FIELDS[] = {
+    "scan_time",
     "protocol",
     "local_ip",
     "local_port",
@@ -121,7 +125,8 @@ static const char* PORTS_FIELDS[] = {
     NULL 
 };
 
-static const char* NETWORK_IFACE_FIELDS[] = { 
+static const char* NETWORK_IFACE_FIELDS[] = {
+    "scan_time",
     "name",
     "adapter",
     "type",
@@ -163,7 +168,8 @@ static const char* NETWORK_ADDRESS_FIELDS[] = {
     NULL 
 };
 
-static const char* HARDWARE_FIELDS[] = { 
+static const char* HARDWARE_FIELDS[] = {
+    "scan_time",
     "board_serial", 
     "cpu_name", 
     "cpu_cores", 
@@ -174,7 +180,8 @@ static const char* HARDWARE_FIELDS[] = {
     NULL 
 };
 
-static const char* OS_FIELDS[] = { 
+static const char* OS_FIELDS[] = {
+    "scan_time",
     "host_name",
     "architecture",
     "os_name",

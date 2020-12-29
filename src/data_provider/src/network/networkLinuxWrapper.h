@@ -20,6 +20,7 @@
 #include "filesystemHelper.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
+#include "timeHelper.h"
 
 #ifndef ARPHRD_TUNNEL
 #define ARPHRD_TUNNEL	768		/* IPIP tunnel.  */
@@ -169,6 +170,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
     ifaddrs* m_interfaceAddress;
     std::string m_gateway;
     std::string m_metrics;
+    const std::string m_scanTime;
 
     static std::string getNameInfo(const sockaddr* inputData, const socklen_t socketLen)
     {
@@ -193,7 +195,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
  
     static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         const auto value { fields.at(RHInterfaceConfig::Value) };
 
         const auto it { DHCP_STATUS.find(value) };
@@ -226,8 +228,9 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 public:
     explicit NetworkLinuxInterface(ifaddrs* addrs)
     : m_interfaceAddress{ addrs }
-    , m_gateway{"unknown"}
-    , m_metrics{"unknown"}
+    , m_gateway{UNKNOWN_VALUE}
+    , m_metrics{UNKNOWN_VALUE}
+    , m_scanTime{Utils::getCurrentTimestamp()}
     { 
         if (!addrs)
         {
@@ -269,9 +272,14 @@ public:
         return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "";
     }
 
+    std::string scanTime() const override
+    {
+        return m_scanTime;
+    }
+
     std::string adapter() const override
     {
-        return "unknown";
+        return UNKNOWN_VALUE;
     }
 
     int family() const override
@@ -335,13 +343,13 @@ public:
 
     std::string metricsV6() const override
     {
-        return "unknown";
+        return UNKNOWN_VALUE;
     }
 
     std::string dhcp() const override
     {
         auto fileData { Utils::getFileContent(WM_SYS_IF_FILE) };
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         const auto family { this->family() };
         const auto ifName { this->name() };
         if (!fileData.empty())

@@ -470,7 +470,7 @@ void test_syscollector_dbsync_hotfixes_valid_msg_with_separator_character(void *
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hotfixes MODIFIED KB12?3456|abcdef?0123456789|";
+    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB12?3456|abcdef?0123456789|";
     const char *result = "ok";
     int sock = 1;
 
@@ -488,7 +488,7 @@ void test_syscollector_dbsync_hotfixes_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hotfixes MODIFIED KB123456|abcdef0123456789|";
+    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB123456|abcdef0123456789|";
     const char *result = "ok";
     int sock = 1;
 
@@ -505,7 +505,7 @@ void test_syscollector_dbsync_packages_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync packages MODIFIED 1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|";
+    const char *query = "agent 001 dbsync packages MODIFIED NULL|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|";
     const char *result = "ok";
     int sock = 1;
 
@@ -523,7 +523,7 @@ void test_syscollector_dbsync_processes_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync processes MODIFIED 18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
+    const char *query = "agent 001 dbsync processes MODIFIED NULL|18|19|20|21|22|23|24|25|26|27|28|29|30|31|32|33|34|35|36|37|38|39|40|41|42|43|44|45|46|";
     const char *result = "ok";
     int sock = 1;
 
@@ -541,7 +541,7 @@ void test_syscollector_dbsync_ports_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync ports MODIFIED 47|48|49|50|51|52|53|54|55|56|57|58|59|";
+    const char *query = "agent 001 dbsync ports MODIFIED NULL|47|48|49|50|51|52|53|54|55|56|57|58|59|";
     const char *result = "ok";
     int sock = 1;
 
@@ -559,7 +559,7 @@ void test_syscollector_dbsync_network_iface_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync network_iface MODIFIED 59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
+    const char *query = "agent 001 dbsync network_iface MODIFIED NULL|59|60|61|62|63|64|65|66|67|68|69|70|71|72|73|74|";
     const char *result = "ok";
     int sock = 1;
 
@@ -613,7 +613,7 @@ void test_syscollector_dbsync_hardware_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hardware MODIFIED 86|87|88|89|90|91|92|";
+    const char *query = "agent 001 dbsync hardware MODIFIED NULL|86|87|88|89|90|91|92|";
     const char *result = "ok";
     int sock = 1;
 
@@ -631,7 +631,7 @@ void test_syscollector_dbsync_os_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync os MODIFIED 93|94|95|96|97|98|99|100|101|102|103|104|105|106|";
+    const char *query = "agent 001 dbsync os MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|";
     const char *result = "ok";
     int sock = 1;
 
@@ -651,7 +651,7 @@ void test_syscollector_dbsync_valid_msg_query_error(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hotfixes MODIFIED KB123456|abcdef0123456789|";
+    const char *query = "agent 001 dbsync hotfixes MODIFIED NULL|KB123456|abcdef0123456789|";
     const char *result = "fail";
     int sock = 1;
 

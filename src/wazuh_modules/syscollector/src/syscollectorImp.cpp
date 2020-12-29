@@ -948,6 +948,7 @@ void Syscollector::scanNetwork()
                     ifaceTableData["tx_dropped"] = item.at("tx_dropped");
                     ifaceTableData["rx_dropped"] = item.at("rx_dropped");
                     ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
+                    ifaceTableData["scan_time"]  = item.at("scan_time");
                     ifaceTableDataList.push_back(ifaceTableData);
 
                     // "dbsync_network_protocol" table data to update and notify
