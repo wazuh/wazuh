@@ -934,7 +934,7 @@ InstallLocal()
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/tasks
 
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
+    ${MAKEBIN} wpython INSTALLDIR=${PREFIX} TARGET=${INSTYPE}
 
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
 
