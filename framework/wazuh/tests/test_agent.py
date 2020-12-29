@@ -305,7 +305,7 @@ def test_agent_delete_agents_different_status(socket_mock, send_mock):
 
 
 @pytest.mark.parametrize('name, agent_id, key', [
-    ('agent-1', '001', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f'),
+    ('agent-1', '011', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f'),
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
 ])
 @patch('wazuh.core.agent.fcntl.lockf')
