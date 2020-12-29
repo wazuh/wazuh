@@ -41,7 +41,8 @@ def start(foreground, root, config_file):
     from api import validator
     from api.api_exception import APIError
     from api.constants import CONFIG_FILE_PATH
-    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging
+    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
+        set_secure_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
@@ -128,7 +129,8 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=False,
                 pass_context_arg_name='request',
-                options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging]})
+                options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging,
+                                         set_secure_headers]})
 
     # Enable CORS
     if api_conf['cors']['enabled']:
