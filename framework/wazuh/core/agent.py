@@ -358,8 +358,10 @@ class Agent:
         self.manager = None
         self.node_name = None
         self.registerIP = ip
+        self.lock_file = None
+        self.lock_acquired = False
 
-        # if the method has only been called with an ID parameter, no new agent should be added.
+        # If the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
         if name is not None and ip is not None:
             self._add(name=name, ip=ip, id=id, key=key, force=force, use_only_authd=use_only_authd)
@@ -375,6 +377,17 @@ class Agent:
 
         return dictionary
 
+    def _acquire_client_keys_lock(self):
+        self.lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
+        fcntl.lockf(self.lock_file, fcntl.LOCK_EX)
+        self.lock_acquired = True
+
+    def _release_client_keys_lock(self):
+        fcntl.lockf(self.lock_file, fcntl.LOCK_UN)
+        self.lock_file.close()
+        self.lock_file = None
+        self.lock_acquired = False
+
     def load_info_from_db(self, select=None):
         """Gets attributes of existing agent.
         """
@@ -384,7 +397,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhResourceNotFound(1701)
+            raise WazuhResourceNotFound(1701, extra_message=self.id)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -478,46 +491,58 @@ class Agent:
         # Check if agent exists
         self.load_info_from_db()
 
-        f_keys_temp = '{0}.tmp'.format(common.client_keys)
+        client_keys_entries = []
+        # Check if id exists in client.keys
+        if self.lock_acquired:
+            # If the lock is already acquired there is a client.keys file change in progress as part of a registration
+            # and the void entry will be written there instead of here.
+            pending_client_keys_update = True
+        else:
+            pending_client_keys_update = False
+            self._acquire_client_keys_lock()
 
         try:
             agent_found = False
-            with open(common.client_keys) as client_keys, open(f_keys_temp, 'w') as client_keys_tmp:
-                try:
-                    for line in client_keys.readlines():
-                        id, name, ip, key = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
-                        if self.id == id and name[0] not in '#!':
-                            if not purge:
-                                client_keys_tmp.write('{0} !{1} {2} {3}\n'.format(id, name, ip, key))
-
-                            agent_found = True
+            with open(common.client_keys) as f_k:
+                for line in f_k.readlines():
+                    line = line.rstrip()
+                    if line:
+                        if not line.startswith('#') and not line.startswith(' '):
+                            try:
+                                entry_id, entry_name, entry_ip, entry_key = line.split(' ')
+                            except ValueError:
+                                # Bad entries will be ignored and not rewritten to the new file
+                                continue
                         else:
-                            client_keys_tmp.write(line)
-                except Exception as e:
-                    remove(f_keys_temp)
-                    raise e
-
-            if not agent_found:
-                remove(f_keys_temp)
-                raise WazuhError(1701, extra_message=str(self.id))
-            else:
-                f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
-                chmod(f_keys_temp, f_keys_st.st_mode)
+                            # Ignore void entries, but preserve them
+                            client_keys_entries.append(line)
+                            continue
+                        if self.id == entry_id and not (entry_name.startswith('#') or entry_name.startswith('!')):
+                            # If not purging then create a void entry
+                            agent_found = True
+                            if not purge:
+                                client_keys_entries.append(
+                                    '{0} !{1} {2} {3}'.format(entry_id, entry_name, entry_ip, entry_key))
+                        else:
+                            client_keys_entries.append(line)
         except Exception as e:
             raise WazuhInternalError(1746, extra_message=str(e))
 
-        # Tell wazuhbd to delete agent database
+        if not agent_found:
+            raise WazuhResourceNotFound(1701, extra_message=self.id)
+
+        # Tell wazuh-db to delete agent database
         wdb_backend_conn = WazuhDBBackend(self.id).connect_to_db()
         wdb_backend_conn.delete_agents_db([self.id])
 
+        # Remove agent from groups
         try:
-            # remove agent from groups
             wdb_conn = WazuhDBConnection()
             wdb_conn.run_wdb_command(f'global sql DELETE FROM belongs WHERE id_agent = {self.id}')
         except Exception as e:
             raise WazuhInternalError(1747, extra_message=str(e))
 
+        # Clean up agent files
         try:
             # Remove rid file
             rids_file = path.join(common.ossec_path, 'queue/rids', self.id)
@@ -567,11 +592,22 @@ class Agent:
                             remove(agent_file)
                     elif not path.exists(backup_file):
                         safe_move(agent_file, backup_file, permissions=0o660)
-
-            # Overwrite client.keys
-            safe_move(f_keys_temp, common.client_keys, permissions=0o640)
         except Exception as e:
             raise WazuhInternalError(1748, extra_message=str(e))
+
+        # Update client.keys file and release the lock only if there are no other pending changes
+        if not pending_client_keys_update:
+            # Write temporary client.keys file
+            f_keys_temp = '{0}.tmp'.format(common.client_keys)
+            with open(f_keys_temp, 'a') as f_kt:
+                client_keys_entries.append('')
+                f_kt.writelines('\n'.join(client_keys_entries))
+
+            # Overwrite client.keys
+            f_keys_st = stat(common.client_keys)
+            safe_move(f_keys_temp, common.client_keys, permissions=f_keys_st.st_mode)
+
+            self._release_client_keys_lock()
 
         return 'Agent was successfully deleted'
 
@@ -609,12 +645,18 @@ class Agent:
             if not is_authd_running:
                 raise WazuhInternalError(1726)
 
-        if not is_authd_running:
-            data = self._add_manual(name, ip, id, key, force)
-        else:
-            data = self._add_authd(name, ip, id, key, force)
-
-        return data
+        try:
+            if not is_authd_running:
+                self._add_manual(name, ip, id, key, force)
+            else:
+                self._add_authd(name, ip, id, key, force)
+        except WazuhException as e:
+            raise e
+        except Exception as e:
+            raise WazuhError(1725, extra_message=str(e))
+        finally:
+            if self.lock_acquired:
+                self._release_client_keys_lock()
 
     def _add_authd(self, name, ip, id=None, key=None, force=-1):
         """Adds an agent to OSSEC using authd.
@@ -678,12 +720,26 @@ class Agent:
         """
         # Check arguments
         if id:
-            id = id.zfill(3)
+            agent_id = id.zfill(3)
+        else:
+            agent_id = None
 
-        if key and len(key) < 64:
-            raise WazuhError(1709)
+        if key:
+            if len(key) < 64:
+                raise WazuhError(1709)
+            else:
+                agent_key = key
+        else:
+            epoch_time = int(time())
+            str1 = "{0}{1}{2}".format(epoch_time, name, platform())
+            str2 = "{0}{1}".format(ip, agent_id)
+            hash1 = hashlib.md5(str1.encode())
+            hash1.update(urandom(64))
+            hash2 = hashlib.md5(str2.encode())
+            hash1.update(urandom(64))
+            agent_key = hash1.hexdigest() + hash2.hexdigest()
 
-        force = force if type(force) == int else int(force)
+        force = int(force)
 
         # Check manager name
         wdb_conn = WazuhDBConnection()
@@ -692,96 +748,77 @@ class Agent:
         if name == manager_name:
             raise WazuhError(1705, extra_message=name)
 
-        # Check if ip, name or id exist in client.keys
+        # Never allow duplication or replacement of an agent id. Check before running through the client.keys to avoid
+        # deleting an entry with duplicate name or ip and then find out that the id was already present
+        if agent_id in get_agents_info():
+            raise WazuhError(1708, agent_id)
+
+        client_keys_entries = []
+        # Check if ip or name exist in client.keys
         last_id = 0
-        lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
-        fcntl.lockf(lock_file, fcntl.LOCK_EX)
+        self._acquire_client_keys_lock()
         with open(common.client_keys) as f_k:
-            try:
-                for line in f_k.readlines():
-                    if not line.strip():  # ignore empty lines
+            for line in f_k.readlines():
+                line = line.rstrip()
+                if line:
+                    if not line.startswith('#') and not line.startswith(' '):
+                        try:
+                            entry_id, entry_name, entry_ip, entry_key = line.split(' ')
+                        except ValueError:
+                            # Bad entries will be ignored and not rewritten to the new file
+                            continue
+                    else:
+                        # Ignore void entries, but preserve them
+                        client_keys_entries.append(line)
                         continue
 
-                    if line[0] in '# ':  # starts with # or ' '
+                    # Update last_id with highest seen value
+                    if int(entry_id) > last_id:
+                        last_id = int(entry_id)
+
+                    # Ignore void entries, but preserve them
+                    if entry_name.startswith('#') or entry_name.startswith('!'):
+                        client_keys_entries.append(line)
                         continue
 
-                    line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
-
-                    line_id = int(line_data[0])
-                    if last_id < line_id:
-                        last_id = line_id
-
-                    if line_data[1][0] in '#!':  # name starts with # or !
-                        continue
-
-                    check_remove = 0
-                    if id and id == line_data[0]:
-                        raise WazuhError(1708, extra_message=id)
-                    if name == line_data[1]:
-                        if force < 0:
-                            raise WazuhError(1705, extra_message=name)
+                    # Detect entries with duplicate name or ip
+                    if name == entry_name or (ip != 'any' and ip == entry_ip):
+                        # If force is non-negative then we check to remove the agent using value of force as the max age
+                        # in seconds
+                        if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
+                            # Call _remove_manual directly since we are already in _add_manual and will handle releasing
+                            # the lock properly when complete.
+                            Agent(entry_id)._remove_manual(backup=True)
+                            # We add a void entry since remove_agent will not update client.keys with a change in
+                            # progress
+                            client_keys_entries.append(
+                                '{0} !{1} {2} {3}'.format(entry_id, entry_name, entry_ip, entry_key))
                         else:
-                            check_remove = 1
-                    if ip != 'any' and ip == line_data[2]:
-                        if force < 0:
-                            raise WazuhError(1706, extra_message=ip)
-                        else:
-                            check_remove = 2
-
-                    if check_remove:
-                        if force == 0 or Agent.check_if_delete_agent(line_data[0], force):
-                            Agent(line_data[0]).remove(backup=True)
-                        else:
-                            if check_remove == 1:
+                            # If force is negative or the agent is not older than the max age we raise an error based
+                            # on the duplicate field.
+                            if name == entry_name:
                                 raise WazuhError(1705, extra_message=name)
                             else:
                                 raise WazuhError(1706, extra_message=ip)
+                    else:
+                        # Preserve the entry if it is not a duplicate
+                        client_keys_entries.append(line)
 
-                if not id:
-                    agent_id = str(last_id + 1).zfill(3)
-                else:
-                    agent_id = id
+        # If id not specified then create a new id 1 greater than the last id created.
+        if not agent_id:
+            agent_id = str(last_id + 1).zfill(3)
 
-                if not key:
-                    # Generate key
-                    epoch_time = int(time())
-                    str1 = "{0}{1}{2}".format(epoch_time, name, platform())
-                    str2 = "{0}{1}".format(ip, agent_id)
-                    hash1 = hashlib.md5(str1.encode())
-                    hash1.update(urandom(64))
-                    hash2 = hashlib.md5(str2.encode())
-                    hash1.update(urandom(64))
-                    agent_key = hash1.hexdigest() + hash2.hexdigest()
-                else:
-                    agent_key = key
+        # Write temporary client.keys file
+        f_keys_temp = '{0}.tmp'.format(common.client_keys)
+        with open(f_keys_temp, 'a') as f_kt:
+            client_keys_entries.append('')
+            f_kt.writelines('\n'.join(client_keys_entries))
+            f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
 
-                # Tmp file
-                f_keys_temp = '{0}.tmp'.format(common.client_keys)
-                open(f_keys_temp, 'a').close()
-
-                f_keys_st = stat(common.client_keys)
-                chown(f_keys_temp, common.ossec_uid(), common.ossec_gid())
-                chmod(f_keys_temp, f_keys_st.st_mode)
-
-                copyfile(common.client_keys, f_keys_temp)
-
-                # Write key
-                with open(f_keys_temp, 'a') as f_kt:
-                    f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
-
-                # Overwrite client.keys
-                safe_move(f_keys_temp, common.client_keys, permissions=f_keys_st.st_mode)
-            except WazuhException as ex:
-                fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                lock_file.close()
-                raise ex
-            except Exception as e:
-                fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                lock_file.close()
-                raise WazuhError(1725, extra_message=str(e))
-
-            fcntl.lockf(lock_file, fcntl.LOCK_UN)
-            lock_file.close()
+        # Overwrite client.keys
+        f_keys_st = stat(common.client_keys)
+        safe_move(f_keys_temp, common.client_keys, permissions=f_keys_st.st_mode)
+        self._release_client_keys_lock()
 
         self.id = agent_id
         self.internal_key = agent_key
@@ -902,19 +939,23 @@ class Agent:
         :return: True if time from last connection is greater thant <seconds>.
         """
         remove_agent = False
-        agent_info = Agent(id=id).get_basic_information()
 
-        if 'lastKeepAlive' in agent_info:
-            if agent_info['lastKeepAlive'] == 0:
-                remove_agent = True
-            else:
-                if isinstance(agent_info['lastKeepAlive'], datetime):
-                    last_date = agent_info['lastKeepAlive']
-                else:
-                    last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
-                difference = (datetime.utcnow() - last_date).total_seconds()
-                if difference >= seconds:
+        # Always return true for 0 seconds to prevent any possible races
+        if seconds == 0:
+            remove_agent = True
+        else:
+            agent_info = Agent(id=id).get_basic_information()
+            if 'lastKeepAlive' in agent_info:
+                if agent_info['lastKeepAlive'] == 0:
                     remove_agent = True
+                else:
+                    if isinstance(agent_info['lastKeepAlive'], datetime):
+                        last_date = agent_info['lastKeepAlive']
+                    else:
+                        last_date = datetime.strptime(agent_info['lastKeepAlive'], '%Y-%m-%d %H:%M:%S')
+                    difference = (datetime.utcnow() - last_date).total_seconds()
+                    if difference >= seconds:
+                        remove_agent = True
 
         return remove_agent
 
