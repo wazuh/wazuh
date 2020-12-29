@@ -86,10 +86,6 @@ typedef struct _Eventinfo {
     /* SYSCHECK Results variables */
     syscheck_event_t event_type;
     char *filename;
-    char *mode;
-    char *hard_links;
-    char *sk_tag;
-    char *sym_path;
     char *perm_before;
     char *md5_before;
     char *sha1_before;
@@ -202,7 +198,7 @@ void Free_Eventinfo(Eventinfo *lf);
 
 /**
  * @brief Clear the memory if the eventinfo was not added to the stateful memory
- * 
+ *
  * @param lf Eventinfo to free
  */
 void w_free_event_info(Eventinfo *lf);

@@ -1573,10 +1573,8 @@ static void test_sk_fill_event_full_event(void **state) {
     assert_string_equal(data->lf->process_id, "process_id");
     assert_string_equal(data->lf->fields[FIM_PROC_ID].value, "process_id");
 
-    assert_string_equal(data->lf->sk_tag, "tag");
     assert_string_equal(data->lf->fields[FIM_TAG].value, "tag");
 
-    assert_string_equal(data->lf->sym_path, "symbolic_path");
     assert_string_equal(data->lf->fields[FIM_SYM_PATH].value, "symbolic_path");
 }
 
@@ -1637,10 +1635,8 @@ static void test_sk_fill_event_empty_event(void **state) {
     assert_null(data->lf->process_id);
     assert_null(data->lf->fields[FIM_PROC_ID].value);
 
-    assert_null(data->lf->sk_tag);
     assert_null(data->lf->fields[FIM_TAG].value);
 
-    assert_null(data->lf->sym_path);
     assert_null(data->lf->fields[FIM_SYM_PATH].value);
 }
 
@@ -1703,10 +1699,8 @@ static void test_sk_fill_event_win_perm(void **state) {
     assert_null(data->lf->process_id);
     assert_null(data->lf->fields[FIM_PROC_ID].value);
 
-    assert_null(data->lf->sk_tag);
     assert_null(data->lf->fields[FIM_TAG].value);
 
-    assert_null(data->lf->sym_path);
     assert_null(data->lf->fields[FIM_SYM_PATH].value);
 }
 

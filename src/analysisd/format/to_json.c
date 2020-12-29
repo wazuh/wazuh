@@ -314,8 +314,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddStringToObject(file_diff, "mode", lf->fields[FIM_MODE].value);
         }
 
-        if (lf->sym_path && *lf->sym_path) {
-            cJSON_AddStringToObject(file_diff, "symbolic_path", lf->sym_path);
+        if (lf->fields[FIM_SYM_PATH].value && *lf->fields[FIM_SYM_PATH].value) {
+            cJSON_AddStringToObject(file_diff, "symbolic_path", lf->fields[FIM_SYM_PATH].value);
         }
 
         if (lf->fields[FIM_REGISTRY_ARCH].value) {
@@ -441,13 +441,13 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         } else if(lf->diff && strcmp(lf->diff, "")) {
             cJSON_AddStringToObject(file_diff, "diff", lf->diff);
         }
-        if(lf->sk_tag) {
-            if (strcmp(lf->sk_tag, "") != 0) {
+        if(lf->fields[FIM_TAG].value) {
+            if (strcmp(lf->fields[FIM_TAG].value, "") != 0) {
                 cJSON *tags = cJSON_CreateArray();
                 cJSON_AddItemToObject(file_diff, "tags", tags);
                 char * tag;
                 char * aux_tags;
-                os_strdup(lf->sk_tag, aux_tags);
+                os_strdup(lf->fields[FIM_TAG].value, aux_tags);
                 tag = strtok_r(aux_tags, ",", &saveptr);
                 while (tag != NULL) {
                     cJSON_AddItemToArray(tags, cJSON_CreateString(tag));

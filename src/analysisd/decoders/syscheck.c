@@ -1257,13 +1257,11 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
                 os_strdup(object->valuestring, lf->filename);
                 os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
             } else if (strcmp(object->string, "mode") == 0) {
-                os_strdup(object->valuestring, lf->mode);
-                os_strdup(lf->mode, lf->fields[FIM_MODE].value);
+                os_strdup(object->valuestring, lf->fields[FIM_MODE].value);
             } else if (strcmp(object->string, "type") == 0) {
                 event_type = object->valuestring;
             } else if (strcmp(object->string, "tags") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
-                os_strdup(object->valuestring, lf->sk_tag);
             } else if (strcmp(object->string, "content_changes") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_DIFF].value);
             } else if (strcmp(object->string, "arch") == 0) {

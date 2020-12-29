@@ -2798,7 +2798,6 @@ static void test_fim_process_alert_no_tags(void **state) {
     assert_int_equal(input->lf->event_type, FIM_ADDED);
     assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
-    assert_null(input->lf->sk_tag);
     assert_null(input->lf->fields[FIM_TAG].value);
 }
 

@@ -270,10 +270,10 @@ void OS_Log(Eventinfo *lf, FILE * fp)
             fprintf(fp, "\nWhat changed:\n%s\n", lf->fields[FIM_DIFF].value);
         }
 
-        if (lf->sk_tag) {
-            if (strcmp(lf->sk_tag, "") != 0) {
+        if (lf->fields[FIM_TAG].value) {
+            if (strcmp(lf->fields[FIM_TAG].value, "") != 0) {
                 char * tags;
-                os_strdup(lf->sk_tag, tags);
+                os_strdup(lf->fields[FIM_TAG].value, tags);
                 fprintf(fp, "\nTags:\n");
                 char * tag;
                 tag = strtok_r(tags, ",", &saveptr);

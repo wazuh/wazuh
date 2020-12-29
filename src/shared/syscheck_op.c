@@ -465,12 +465,10 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if(sum->tag) {
-        os_strdup(sum->tag, lf->sk_tag);
         os_strdup(sum->tag, lf->fields[FIM_TAG].value);
     }
 
     if(sum->symbolic_path) {
-        os_strdup(sum->symbolic_path, lf->sym_path);
         os_strdup(sum->symbolic_path, lf->fields[FIM_SYM_PATH].value);
     }
 }

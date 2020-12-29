@@ -686,7 +686,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->decoder_info = NULL_Decoder;
 
     lf->filename = NULL;
-    lf->mode = NULL;
     lf->perm_before = NULL;
     lf->md5_before = NULL;
     lf->sha1_before = NULL;
@@ -704,8 +703,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->diff = NULL;
     lf->previous = NULL;
     lf->labels = NULL;
-    lf->sk_tag = NULL;
-    lf->sym_path = NULL;
 
     lf->user_id = NULL;
     lf->user_name = NULL;
@@ -886,15 +883,6 @@ void Free_Eventinfo(Eventinfo *lf)
 
     if (lf->filename) {
         free(lf->filename);
-    }
-    if (lf->mode) {
-        free(lf->mode);
-    }
-    if (lf->sk_tag) {
-        free(lf->sk_tag);
-    }
-    if (lf->sym_path) {
-        free(lf->sym_path);
     }
     if (lf->perm_before) {
         free(lf->perm_before);
@@ -1239,16 +1227,8 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->filename,lf_cpy->filename);
     }
 
-    if (lf->mode) {
-        os_strdup(lf->mode, lf_cpy->mode);
-    }
-
     if (lf->perm_before) {
         os_strdup(lf->perm_before, lf_cpy->perm_before);
-    }
-
-    if (lf->sk_tag){
-        os_strdup(lf->sk_tag, lf_cpy->sk_tag);
     }
 
     if(lf->md5_before){
@@ -1364,8 +1344,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         }
         lf_cpy->last_events[index] = NULL;
     }
-
-    w_strdup(lf->sym_path, lf_cpy->sym_path);
 
     lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
