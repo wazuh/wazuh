@@ -11,6 +11,7 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
+#include "timeHelper.h"
 #include "osinfo/sysOsParsers.h"
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
@@ -106,6 +107,7 @@ nlohmann::json SysInfo::getPackages() const
             package["description"] = data[4];
             package["format"] = "pkg";
             package["os_patch"] = UNKNOWN_VALUE;
+            package["scan_time"] = Utils::getTimestamp(std::time(nullptr));
             ret.push_back(package);
         }
     }
@@ -128,6 +130,7 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["os_name"] = "BSD";
         ret["os_platform"] = "bsd";
         ret["os_version"] = "unknown";
+        ret["scan_time"] = Utils::getTimestamp(std::time(nullptr));
     }
     if (uname(&uts) >= 0)
     {

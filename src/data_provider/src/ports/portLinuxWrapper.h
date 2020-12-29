@@ -234,6 +234,7 @@ class LinuxPortWrapper final : public IPortWrapper
         }
         return retVal;
     }
+
     std::string processName() const override
     {
         return {};
@@ -242,6 +243,11 @@ class LinuxPortWrapper final : public IPortWrapper
     int32_t pid() const override
     {
         return {};
+    }
+
+    std::string scanTime() const override
+    {
+        return Utils::getTimestamp(std::time(nullptr));
     }
 };
 

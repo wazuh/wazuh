@@ -25,6 +25,7 @@
 #define EXPORTED
 #endif
 
+#include "timeHelper.h"
 #include "sysInfoInterface.h"
 
 constexpr auto KByte{1024};

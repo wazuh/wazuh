@@ -39,6 +39,7 @@ public:
         port["state"] = m_spPortRawData->state();
         port["pid"] = m_spPortRawData->pid();
         port["process_name"] = m_spPortRawData->processName();
+        port["scan_time"] = m_spPortRawData->scanTime();
     }
 };
 #endif // _PORT_IMPL_H

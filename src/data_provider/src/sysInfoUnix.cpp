@@ -13,6 +13,7 @@
 #include "osinfo/sysOsParsers.h"
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
+#include "timeHelper.h"
 #include "sharedDefs.h"
 
 static void getOsInfoFromUname(nlohmann::json& info)
@@ -37,6 +38,7 @@ static void getOsInfoFromUname(nlohmann::json& info)
         info["os_name"] = "Unix";
         info["os_platform"] = "Unix";
         info["os_version"] = UNKNOWN_VALUE;
+        info["scan_time"] = Utils::getTimestamp(std::time(nullptr));
     }
 }
 

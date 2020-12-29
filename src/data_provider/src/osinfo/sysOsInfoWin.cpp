@@ -15,6 +15,7 @@
 #include "sysOsInfoWin.h"
 #include "sysOsInfoWin.h"
 #include "stringHelper.h"
+#include "timeHelper.h"
 #include "registryHelper.h"
 
 static std::string getVersion(const bool isMinor = false)
@@ -239,6 +240,7 @@ SysOsInfoProviderWindows::SysOsInfoProviderWindows()
 , m_name{getName()}
 , m_machine{getMachine()}
 , m_nodeName{getNodeName()}
+, m_scanTime{Utils::getTimestamp(std::time(nullptr))}
 { 
 }
 std::string SysOsInfoProviderWindows::name() const
@@ -272,4 +274,8 @@ std::string SysOsInfoProviderWindows::machine() const
 std::string SysOsInfoProviderWindows::nodeName() const
 {
     return m_nodeName;
+}
+std::string SysOsInfoProviderWindows::scanTime() const
+{
+    return m_scanTime;
 }

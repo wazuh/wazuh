@@ -16,6 +16,7 @@
 #include "stringHelper.h"
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
+#include "timeHelper.h"
 
 const std::string APP_INFO_PATH{"Contents/Info.plist"};
 
@@ -30,6 +31,7 @@ public:
       , m_architecture{UNKNOWN_VALUE}
       , m_format{"pkg"}
       , m_osPatch{UNKNOWN_VALUE}
+      , m_scanTime{Utils::getTimestamp(std::time(nullptr))}
     {
         getPkgData(ctx.filePath+ "/" + ctx.package + "/" + APP_INFO_PATH);
     }
@@ -63,6 +65,10 @@ public:
     std::string osPatch() const override
     {
         return m_osPatch;
+    }
+    std::string osPatch() const override
+    {
+        return m_scanTime;
     }
 
 private:
@@ -114,8 +120,9 @@ private:
     std::string m_groups;
     std::string m_description;
     std::string m_architecture;
-    std::string m_format;
+    const std::string m_format;
     std::string m_osPatch;
+    const std::string m_scanTime;
 };
 
 #endif //_PKG_WRAPPER_H

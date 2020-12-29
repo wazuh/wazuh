@@ -85,6 +85,7 @@ void BSDNetworkImpl<AF_LINK>::buildNetworkData(nlohmann::json& network)
     /* Get stats of interface */
 
     network["name"] = m_interfaceAddress->name();
+    network["scan_time"] = m_interfaceAddress->scanTime();
     network["adapter"] = m_interfaceAddress->adapter();
     network["state"] = m_interfaceAddress->state();
     network["type"] = m_interfaceAddress->type();

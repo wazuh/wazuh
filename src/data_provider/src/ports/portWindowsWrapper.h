@@ -59,6 +59,7 @@ class WindowsPortWrapper final : public IPortWrapper
     const uint32_t m_state;
     const uint32_t m_pid;
     const std::string m_processName;
+    const std::string m_scanTime;
 
     static std::string getIpAddress(const DWORD addr)
     {
@@ -98,6 +99,7 @@ class WindowsPortWrapper final : public IPortWrapper
     , m_state { data.dwState }
     , m_pid { data.dwOwningPid }
     , m_processName { getProcessName(processDataList, data.dwOwningPid) }
+    , m_scanTime { Utils::getTimestamp(std::time(nullptr)) }
     { }
 
     WindowsPortWrapper(const _MIB_TCP6ROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
@@ -109,6 +111,7 @@ class WindowsPortWrapper final : public IPortWrapper
     , m_state { data.dwState }
     , m_pid { data.dwOwningPid }
     , m_processName { getProcessName(processDataList, data.dwOwningPid) }
+    , m_scanTime { Utils::getTimestamp(std::time(nullptr)) }
     { }
 
     WindowsPortWrapper(const _MIB_UDPROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
@@ -119,6 +122,7 @@ class WindowsPortWrapper final : public IPortWrapper
     , m_state { 0 }
     , m_pid { data.dwOwningPid }
     , m_processName { getProcessName(processDataList, data.dwOwningPid) }
+    , m_scanTime { Utils::getTimestamp(std::time(nullptr)) }
     { }
 
     WindowsPortWrapper(const _MIB_UDP6ROW_OWNER_PID& data, const std::map<pid_t, std::string>& processDataList)
@@ -129,6 +133,7 @@ class WindowsPortWrapper final : public IPortWrapper
     , m_state { 0 }
     , m_pid { data.dwOwningPid }
     , m_processName { getProcessName(processDataList, data.dwOwningPid) }
+    , m_scanTime { Utils::getTimestamp(std::time(nullptr)) }
     { }
 
     ~WindowsPortWrapper() = default;
@@ -182,6 +187,10 @@ class WindowsPortWrapper final : public IPortWrapper
     std::string processName() const override
     {
         return m_processName;
+    }
+    std::string scanTime() const override
+    {
+        return m_scanTime;
     }
 };
 

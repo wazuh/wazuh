@@ -153,9 +153,15 @@ class BSDPortWrapper final : public IPortWrapper
     {
         return m_processInformation.pid;
     }
+
     std::string processName() const override
     {
         return m_processInformation.processName;
+    }
+
+    std::string scanTime() const override
+    {
+        return Utils::getTimestamp(std::time(nullptr));
     }
 };
 

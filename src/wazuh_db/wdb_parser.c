@@ -14,14 +14,14 @@
 
 static struct column_list const TABLE_HOTFIXES[] = {
     { .value = {FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HOTFIXES[1] },
-    { .value = {FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_HOTFIXES[2] },
+    { .value = {FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HOTFIXES[2] },
     { .value = {FIELD_TEXT, 3, false, true, "hotfix" }, .next = &TABLE_HOTFIXES[3] },
     { .value = {FIELD_TEXT, 4, false, false, "checksum" }, .next = NULL },
 };
 
 static struct column_list const TABLE_PROCESSES[] = {
     { .value = { FIELD_INTEGER, 1,true,false, "scan_id" }, .next = &TABLE_PROCESSES[1] },
-    { .value = { FIELD_TEXT, 2,true,false, "scan_time" }, .next = &TABLE_PROCESSES[2] },
+    { .value = { FIELD_TEXT, 2,false,false, "scan_time" }, .next = &TABLE_PROCESSES[2] },
     { .value = { FIELD_TEXT, 3,false,true, "pid" }, .next = &TABLE_PROCESSES[3] },
     { .value = { FIELD_TEXT, 4,false,false,"name" }, .next = &TABLE_PROCESSES[4] },
     { .value = { FIELD_TEXT, 5,false,false,"state" }, .next = &TABLE_PROCESSES[5] },
@@ -55,7 +55,7 @@ static struct column_list const TABLE_PROCESSES[] = {
 
 static struct column_list const TABLE_NETIFACE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_NETIFACE[1] } ,
-    { .value = { FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_NETIFACE[2] } ,
+    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_NETIFACE[2] } ,
     { .value = { FIELD_TEXT, 3, false, true, "name" }, .next = &TABLE_NETIFACE[3] } ,
     { .value = { FIELD_TEXT, 4, false, false, "adapter" }, .next = &TABLE_NETIFACE[4] } ,
     { .value = { FIELD_TEXT, 5, false, false, "type" }, .next = &TABLE_NETIFACE[5] } ,
@@ -98,7 +98,7 @@ static struct column_list const TABLE_NETADDR[] = {
 
 static struct column_list const TABLE_PORTS[] = {
     { .value = { FIELD_INTEGER,1, true, false, "scan_id" }, .next = &TABLE_PORTS[1]},
-    { .value = { FIELD_TEXT,2, true, false, "scan_time" }, .next = &TABLE_PORTS[2]},
+    { .value = { FIELD_TEXT,2, false, false, "scan_time" }, .next = &TABLE_PORTS[2]},
     { .value = { FIELD_TEXT,3, false, true, "protocol" }, .next = &TABLE_PORTS[3]},
     { .value = { FIELD_TEXT,4, false, true, "local_ip" }, .next = &TABLE_PORTS[4]},
     { .value = { FIELD_INTEGER,5, false, true, "local_port" }, .next = &TABLE_PORTS[5]},
@@ -116,7 +116,7 @@ static struct column_list const TABLE_PORTS[] = {
 
 static struct column_list const TABLE_PACKAGES[] = {
     { .value = { FIELD_INTEGER, 1, true, true, "scan_id" }, .next = &TABLE_PACKAGES[1] },
-    { .value = { FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_PACKAGES[2] },
+    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_PACKAGES[2] },
     { .value = { FIELD_TEXT, 3, false, false, "format" }, .next = &TABLE_PACKAGES[3] },
     { .value = { FIELD_TEXT, 4, false, true, "name" }, .next = &TABLE_PACKAGES[4] },
     { .value = { FIELD_TEXT, 5, false, false, "priority" }, .next = &TABLE_PACKAGES[5] },
@@ -140,7 +140,7 @@ static struct column_list const TABLE_PACKAGES[] = {
 
 static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_OS[1] },
-    { .value = { FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_OS[2] },
+    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_OS[2] },
     { .value = { FIELD_TEXT, 3, false, false, "hostname" }, .next = &TABLE_OS[3] },
     { .value = { FIELD_TEXT, 4, false, false, "architecture" }, .next = &TABLE_OS[4] },
     { .value = { FIELD_TEXT, 5, false, false, "os_name" }, .next = &TABLE_OS[5] },
@@ -159,7 +159,7 @@ static struct column_list const TABLE_OS[] = {
 
 static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HARDWARE[1] },
-    { .value = { FIELD_TEXT, 2, true, false, "scan_time" }, .next = &TABLE_HARDWARE[2] }, 
+    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HARDWARE[2] }, 
     { .value = { FIELD_TEXT, 3, false, false, "board_serial" }, .next = &TABLE_HARDWARE[3] },
     { .value = { FIELD_TEXT, 4, false, false, "cpu_name" }, .next = &TABLE_HARDWARE[4] },
     { .value = { FIELD_INTEGER, 5, false, false, "cpu_cores" }, .next = &TABLE_HARDWARE[5] },

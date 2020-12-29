@@ -27,6 +27,7 @@ public:
     std::string release() const override;
     std::string machine() const override;
     std::string nodeName() const override;
+    std::string scanTime() const override;
 private:
     const std::string m_majorVersion;
     const std::string m_minorVersion;
@@ -36,6 +37,7 @@ private:
     const std::string m_name;
     const std::string m_machine;
     const std::string m_nodeName;
+    const std::string m_scanTime;
 };
 
 
