@@ -128,17 +128,7 @@ checks:
       - 'c:system_profiler SPBluetoothDataType -> r:Connectable: Yes'
 
 # jal 
-# 2.1.2 Show Bluetooth status in menu bar (Automated) 
-  - id: 18007
-    title: "Show Bluetooth status in menu bar"
-    description: "By showing the Bluetooth status in the menu bar, a small Bluetooth icon is placed in the menu bar. This icon quickly shows the status of Bluetooth, and can allow the user to quickly turn Bluetooth on or off."
-    rationale: "Enabling \"Show Bluetooth status in menu bar\" is a security awareness method that helps understand the current state of Bluetooth, including whether it is enabled, Discoverable, what paired devices exist and are currently active."
-    remediation: "Open a terminal session and enter the following command to enable Bluetooth status in the menu bar. sudo -u <username> defaults write /Users/<username>/Library/Preferences/com.apple.systemuiserver menuExtras - array-add \"/System/Library/CoreServices/Menu Extras/Bluetooth.menu\""
-    compliance:
-      - cis: ["2.1.2"]
-    condition: any
-    rules:
-      - 'c:defaults read /Users/<username>/Library/Preferences/com.apple.systemuiserver menuExtras -> r:Bluetooth.menu'
+# not implemented - SCA Limit -> 2.1.2 Show Bluetooth status in menu bar (Automated) 
 
 # jal 
 # 2.2.1 Enable "Set time and date automatically" (Automated)
@@ -249,7 +239,7 @@ checks:
     compliance:
       - cis: ["2.4.4"]
     references:
-      - http://support.apple.com/kb/PH11450
+      - https://support.apple.com/kb/PH11450
     condition: all
     rules:
       - 'c:system_profiler SPPrintersDataType | grep -e Sharing -> r:System Printer Sharing:\s*\t*Yes'
@@ -790,7 +780,7 @@ checks:
       - cis: ["5.14"]
     condition: all
     rules:
-      - 'c:cat /Library/Security/PolicyBanner.* -> !r:^$'
+      - 'd:/Library/Security -> r:^PolicyBanner'
 
 # jal
 # not implemented - SCA Limit -> 5.15 Do not enter a password-related hint (Automated) 
