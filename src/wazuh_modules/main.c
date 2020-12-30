@@ -27,7 +27,6 @@ int main(int argc, char **argv)
     int test_config = 0;
     wmodule *cur_module;
     gid_t gid;
-    const char *group = GROUPGLOBAL;
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
     /* Set the name */
@@ -66,17 +65,6 @@ int main(int argc, char **argv)
             nowDebug();
             wm_debug--;
         }
-    }
-
-    /* Check if the group given is valid */
-    gid = Privsep_GetGroup(group);
-    if (gid == (gid_t) - 1) {
-        merror_exit(USER_ERROR, "", group, strerror(errno), errno);
-    }
-
-    /* Privilege separation */
-    if (Privsep_SetGroup(gid) < 0) {
-        merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
     // Setup daemon
