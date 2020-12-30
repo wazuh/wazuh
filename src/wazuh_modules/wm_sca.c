@@ -2966,7 +2966,7 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
 
         But rest assured, if the fork dies the memory is recalled by the OS.
     */
-    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
+    os_calloc(OS_MAXSTR + 1, sizeof(char), buffer);
 
     while (1) {
         if (recv = OS_RecvUnix(cfga_queue, OS_MAXSTR, buffer),recv) {
@@ -3023,6 +3023,7 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
         }
     }
 
+    os_free(buffer);
     return NULL;
 }
 #endif
