@@ -26,7 +26,6 @@ int main(int argc, char **argv)
     int wm_debug = 0;
     int test_config = 0;
     wmodule *cur_module;
-    gid_t gid;
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
     /* Set the name */
