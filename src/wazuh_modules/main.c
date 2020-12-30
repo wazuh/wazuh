@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     if (test_config)
         exit(EXIT_SUCCESS);
 
-    minfo("Process started.");
+    minfo(STARTUP_MSG, (int)getpid());
 
     // Run modules
 
