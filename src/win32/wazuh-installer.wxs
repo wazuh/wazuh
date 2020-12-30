@@ -68,7 +68,7 @@
         <Property Id="WixShellExecTarget" Value="[#WIN32UI.EXE]" />
         <Property Id="ARPNOMODIFY" Value="yes" />
         <Property Id="ARPNOREPAIR" Value="yes" />
-        <Property Id="ApplicationFolderName" Value="ossec-agent" />
+        <Property Id="ApplicationFolderName" Value="wazuh-agent" />
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
@@ -279,7 +279,7 @@
         </InstallExecuteSequence>
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
-                <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
+                <Directory Id="APPLICATIONFOLDER" Name="wazuh-agent">
                     <Component Id="REGISTRY_INSTALL_DIR" Guid="63E18998-4DBB-4C34-A1AD-09AA809A1C15" KeyPath="yes">
                         <RegistryValue Root="HKLM" Key="SOFTWARE\[Manufacturer]\[ProductName]" Id="WazuhInstallDirProperty" Name="WazuhInstallDir" Type="string" Value="[APPLICATIONFOLDER]" />
                     </Component>

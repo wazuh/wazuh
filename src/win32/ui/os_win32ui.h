@@ -25,7 +25,7 @@
 #define OSSECLOGS       "ossec.log"
 #define HELPTXT         "help.txt"
 #define SENDER_FILE     "rids\\sender_counter"
-#define DEFDIR          "C:\\Program Files\\ossec-agent"
+#define DEFDIR          "C:\\Program Files\\wazuh-agent"
 
 /* Status messages */
 #define ST_RUNNING          "Running"
