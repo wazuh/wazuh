@@ -704,17 +704,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->previous = NULL;
     lf->labels = NULL;
 
-    lf->user_id = NULL;
-    lf->user_name = NULL;
-    lf->group_id = NULL;
-    lf->group_name = NULL;
-    lf->process_name = NULL;
-    lf->audit_uid = NULL;
-    lf->audit_name = NULL;
-    lf->effective_uid = NULL;
-    lf->effective_name = NULL;
-    lf->ppid = NULL;
-    lf->process_id = NULL;
     lf->is_a_copy = 0;
     lf->last_events = NULL;
     lf->r_firedtimes = -1;
@@ -913,48 +902,6 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->attributes_before) {
         free(lf->attributes_before);
-    }
-    if (lf->user_id) {
-        free(lf->user_id);
-    }
-    if (lf->user_name) {
-        free(lf->user_name);
-    }
-    if (lf->group_id) {
-        free(lf->group_id);
-    }
-    if (lf->group_name) {
-        free(lf->group_name);
-    }
-    if (lf->process_name) {
-        free(lf->process_name);
-    }
-    if (lf->cwd) {
-        free(lf->cwd);
-    }
-    if (lf->audit_uid) {
-        free(lf->audit_uid);
-    }
-    if (lf->audit_name) {
-        free(lf->audit_name);
-    }
-    if (lf->effective_uid) {
-        free(lf->effective_uid);
-    }
-    if (lf->effective_name) {
-        free(lf->effective_name);
-    }
-    if (lf->parent_name) {
-        free(lf->parent_name);
-    }
-    if (lf->parent_cwd) {
-        free(lf->parent_cwd);
-    }
-    if (lf->ppid) {
-        free(lf->ppid);
-    }
-    if (lf->process_id) {
-        free(lf->process_id);
     }
     if (lf->diff) {
         free(lf->diff);
@@ -1268,49 +1215,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     }
 
     /* Whodata fields */
-    if (lf->user_id){
-        os_strdup(lf->user_id, lf_cpy->user_id);
-    }
-
-    if (lf->user_name){
-        os_strdup(lf->user_name, lf_cpy->user_name);
-    }
-
-    if (lf->group_id){
-        os_strdup(lf->group_id, lf_cpy->group_id);
-    }
-
-    if (lf->group_name){
-        os_strdup(lf->group_name, lf_cpy->group_name);
-    }
-
-    if (lf->process_name){
-        os_strdup(lf->process_name, lf_cpy->process_name);
-    }
-
-    if (lf->audit_uid){
-        os_strdup(lf->audit_uid, lf_cpy->audit_uid);
-    }
-
-    if (lf->audit_name){
-        os_strdup(lf->audit_name, lf_cpy->audit_name);
-    }
-
-    if (lf->effective_uid){
-        os_strdup(lf->effective_uid, lf_cpy->effective_uid);
-    }
-
-    if (lf->effective_name){
-        os_strdup(lf->effective_name, lf_cpy->effective_name);
-    }
-
-    if (lf->ppid){
-        os_strdup(lf->ppid, lf_cpy->ppid);
-    }
-
-    if (lf->process_id){
-        os_strdup(lf->process_id, lf_cpy->process_id);
-    }
 
     lf_cpy->mtime_before = lf->mtime_before;
     lf_cpy->mtime_after = lf->mtime_after;
