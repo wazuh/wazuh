@@ -102,6 +102,10 @@ Install()
         LIB_FLAG="USE_FRAMEWORK_LIB=yes"
     fi
 
+    if [ "X${DIST_NAME}" = "Xarch" ]; then
+        ALPM_FLAG="USE_ALPM=yes"
+    fi
+
     # Makefile
     echo " - ${runningmake}"
     echo ""
@@ -119,7 +123,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${ALPM_FLAG} ${LIB_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
