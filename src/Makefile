@@ -52,6 +52,7 @@ SELINUX_POLICY=selinux/wazuh.pp
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
+USE_ALPM?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -346,6 +347,10 @@ ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
 	OSSEC_LIBS+=-lGeoIP
 endif # USE_GEOIP
 
+ifneq (,$(filter ${USE_ALPM},YES auto yes y Y 1))
+	DEFINES+=-DLIBALPM
+	OSSEC_LIBS+=-lalpm
+endif # USE_ALPM
 
 MI :=
 PI :=
@@ -494,6 +499,9 @@ help: failtarget
 	@echo "Geoip support: "
 	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
+	@echo "Arch Linux support: "
+	@echo "   make USE_ALPM=yes            Build with Arch Linux agent support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo
 	@echo "User options: "
 	@echo "   make OSSEC_GROUP=ossec       Set ossec group"
 	@echo "   make OSSEC_USER=ossec        Set ossec user"
@@ -525,6 +533,7 @@ settings:
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:          ${USE_GEOIP}"
+	@echo "    USE_ALPM:           ${USE_ALPM}"
 	@echo "    USE_PRELUDE:        ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:        ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"

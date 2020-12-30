@@ -18,6 +18,10 @@
 
 #if defined(__linux__)
 
+#if defined(LIBALPM)
+#include <alpm.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -328,6 +332,9 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
     int random_id = os_random();
     char * end_dpkg = NULL;
     char * end_rpm = NULL;
+#if defined(LIBALPM)
+    char * end_pacman = NULL;
+#endif
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -351,8 +358,28 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
             mterror(WM_SYS_LOGTAG, "Unable to get rpm packages due to: %s", strerror(errno));
         }
     }
+#if defined(LIBALPM)
+    if ((dir = opendir("/var/lib/pacman/"))){
+        closedir(dir);
+        if (end_pacman = sys_pacman_packages(queue_fd, LOCATION, random_id), !end_pacman) {
+            mterror(WM_SYS_LOGTAG, "Unable to get pacman packages due to: %s", strerror(errno));
+        }
+    }
 
+    if (end_pacman) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_pacman);
+        wm_sendmsg(usec, queue_fd, end_pacman, LOCATION, SYSCOLLECTOR_MQ);
+        free(end_pacman);
+        if (end_rpm) {
+            free(end_rpm);
+        }
+        if (end_dpkg) {
+            free(end_dpkg);
+        }
+    } else if (end_rpm) {
+#else
     if (end_rpm) {
+#endif
         mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_rpm);
         wm_sendmsg(usec, queue_fd, end_rpm, LOCATION, SYSCOLLECTOR_MQ);
 
@@ -366,6 +393,77 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
         free(end_dpkg);
     }
 }
+
+#if defined(LIBALPM)
+char * sys_pacman_packages(int queue_fd, const char* LOCATION, int random_id){
+    char *timestamp = w_get_timestamp(time(NULL));
+    cJSON *object = NULL;
+    cJSON *package = NULL;
+    int usec = 1000000 / wm_max_eps;
+
+    alpm_handle_t *handle;
+    alpm_db_t *db_local;
+    alpm_errno_t err;
+    alpm_pkg_t *pkg;
+    alpm_list_t *i;
+
+    handle = alpm_initialize("/", "/var/lib/pacman", &err);
+    if (NULL == handle) {
+        mtwarn(WM_SYS_LOGTAG, "Could not initialize alpm");
+        return NULL;
+    }
+
+    db_local = alpm_get_localdb(handle);
+    if (NULL == db_local) {
+        alpm_release(handle);
+        mtwarn(WM_SYS_LOGTAG, "Could not open pacman local db");
+        return NULL;
+    }
+
+    for (i = alpm_db_get_pkgcache(db_local); i; i = alpm_list_next(i)) {
+        pkg = i->data;
+
+        object = cJSON_CreateObject();
+        package = cJSON_CreateObject();
+        cJSON_AddStringToObject(object, "type", "program");
+        cJSON_AddNumberToObject(object, "ID", random_id);
+        cJSON_AddStringToObject(object, "timestamp", timestamp);
+        cJSON_AddItemToObject(object, "program", package);
+
+        cJSON_AddStringToObject(package, "format", "pkg"); // FIXME: Using the pkg in order to support older server versions (in the future this should be replaced with the "pacman" format
+        cJSON_AddStringToObject(package, "name", alpm_pkg_get_name(pkg));
+        cJSON_AddStringToObject(package, "version", alpm_pkg_get_version(pkg));
+        cJSON_AddStringToObject(package, "description", alpm_pkg_get_desc(pkg));
+        cJSON_AddStringToObject(package, "architecture", alpm_pkg_get_arch(pkg));
+        cJSON_AddNumberToObject(package, "size", alpm_pkg_get_isize(pkg) / 1024); // Bytes to KBytes
+
+
+        char *installt = w_get_timestamp((time_t)alpm_pkg_get_installdate(pkg));
+        cJSON_AddStringToObject(package, "install_time", installt);
+        free(installt);
+
+        char *string;
+        string = cJSON_PrintUnformatted(object);
+        mtdebug2(WM_SYS_LOGTAG, "sys_pacman_packages() sending '%s'", string);
+        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(object);
+        free(string);
+    }
+    alpm_release(handle);
+
+    object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "program_end");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+    char *end_msg;
+    end_msg = cJSON_PrintUnformatted(object);
+    cJSON_Delete(object);
+    free(timestamp);
+
+    return end_msg;
+}
+#endif
 
 char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
