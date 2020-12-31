@@ -1764,6 +1764,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_symlink_scan_interval = "symlink_scan_interval";
 #ifndef WIN32
     const char *xml_max_audit_entries = "max_audit_entries";
+#else
+    const char *xml_max_fd_win_rt = "max_fd_win_rt";
 #endif
 
     /* Configuration example
@@ -2258,6 +2260,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             if (get_xml_int(node[i], 1, 2592000, &syscheck->sym_checker_interval) == OS_INVALID) {
                 return (OS_INVALID);
             }
+#ifdef WIN32
+        } else if (strcmp(node[i]->element, xml_max_fd_win_rt) == 0) {
+            if (get_xml_int(node[i], 1, 1024, &syscheck->max_fd_win_rt) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+#endif
         } else if (strcmp(node[i]->element, xml_file_max_size) == 0) {
             char * end;
             unsigned int value = strtol(node[i]->content, &end, 10);

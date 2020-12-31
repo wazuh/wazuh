@@ -84,7 +84,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.audit_key = NULL;
     syscheck.rt_delay = 5;
     syscheck.max_depth = 256;
-    syscheck.file_max_size = 0;
+    syscheck.file_max_size = 1024;
     syscheck.sym_checker_interval = 600;
     syscheck.max_audit_entries = 256;
 
@@ -158,7 +158,6 @@ int Read_Syscheck_Config(const char *cfgfile)
     if ((syscheck.dir[0] == NULL) && (syscheck.registry[0].entry == NULL)) {
         return (1);
     }
-    syscheck.max_fd_win_rt = getDefine_Int("syscheck", "max_fd_win_rt", 1, 1024);
 #endif
 
     return (0);
