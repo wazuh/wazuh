@@ -1146,6 +1146,8 @@ void Syscollector::sync()
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
+    //this will send integrity clears to the server.
+    sync();
     if (m_scanOnStart)
     {
         scan();
