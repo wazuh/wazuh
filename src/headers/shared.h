@@ -273,6 +273,6 @@ extern const char *__local_name;
 #include "bzip2_op.h"
 #include "enrollment_op.h"
 
-extern char * binary_path;
+char *binary_path;
 
 #endif /* SHARED_H */

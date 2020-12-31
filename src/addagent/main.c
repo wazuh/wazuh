@@ -87,7 +87,8 @@ int main(int argc, char **argv)
     const char *cmdimport = NULL;
     const char *cmdbulk = NULL;
 #ifndef WIN32
-    const char *dir = DEFAULTDIR;
+    binary_path = bin_path(argv[0]);
+    const char *dir = binary_path;
     const char *group = GROUPGLOBAL;
     gid_t gid;
 #else

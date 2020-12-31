@@ -32,7 +32,7 @@ static void help_monitord()
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", binary_path);
     print_out("    -n          Disable agent monitoring.");
     print_out("    -w <sec>    Time (sec.) to wait before rotating logs and alerts.");
     print_out(" ");
@@ -45,7 +45,8 @@ int main(int argc, char **argv)
     int no_agents = 0;
     uid_t uid;
     gid_t gid;
-    const char *dir  = DEFAULTDIR;
+    binary_path = bin_path(argv[0]);
+    const char *dir = binary_path;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;

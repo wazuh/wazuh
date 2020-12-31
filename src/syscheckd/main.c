@@ -45,6 +45,7 @@ int main(int argc, char **argv)
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
     const char *group = GROUPGLOBAL;
+    binary_path = bin_path(argv[0]);
 #ifdef ENABLE_AUDIT
     audit_thread_active = 0;
     whodata_alerts = 0;
@@ -154,8 +155,8 @@ int main(int argc, char **argv)
         nowDaemon();
         goDaemon();
     } else {
-        if (chdir(DEFAULTDIR) == -1) {
-            merror_exit(CHDIR_ERROR, DEFAULTDIR, errno, strerror(errno));
+        if (chdir(binary_path) == -1) {
+            merror_exit(CHDIR_ERROR, binary_path, errno, strerror(errno));
         }
     }
 

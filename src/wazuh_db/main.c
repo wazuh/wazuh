@@ -33,6 +33,7 @@ int main(int argc, char ** argv) {
     int run_foreground = 0;
     int i;
     int status;
+    binary_path = bin_path(argv[0]);
 
     pthread_t thread_dealer;
     pthread_t * worker_pool = NULL;
@@ -110,7 +111,7 @@ int main(int argc, char ** argv) {
     // Reset template. Basically, remove queue/db/.template.db
     // The prefix is needed here, because we are not yet chrooted
     char path_template[OS_FLSIZE + 1];
-    snprintf(path_template, sizeof(path_template), "%s/%s/%s", DEFAULTDIR, WDB2_DIR, WDB_PROF_NAME);
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", binary_path, WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed: %s", path_template);
 
@@ -137,8 +138,8 @@ int main(int argc, char ** argv) {
 
         // Change root
 
-        if (Privsep_Chroot(DEFAULTDIR) < 0) {
-            merror_exit(CHROOT_ERROR, DEFAULTDIR, errno, strerror(errno));
+        if (Privsep_Chroot(binary_path) < 0) {
+            merror_exit(CHROOT_ERROR, binary_path, errno, strerror(errno));
         }
 
         if (Privsep_SetUser(uid) < 0) {
