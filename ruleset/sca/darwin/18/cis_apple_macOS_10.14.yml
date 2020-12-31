@@ -829,9 +829,9 @@ checks:
     condition: any
     rules:
       - 'c:defaults read /Library/Preferences/com.apple.AppleFileServer guestAccess -> 0'
-      - 'defaults read /Library/Preferences/SystemConfiguration/com.apple.smb.server AllowGuestAccess -> 0'
+      - 'c:defaults read /Library/Preferences/SystemConfiguration/com.apple.smb.server AllowGuestAccess -> 0'
       - 'c:defaults read /Library/Preferences/com.apple.AppleFileServer guestAccess -> r:does not exist'
-      - 'defaults read /Library/Preferences/SystemConfiguration/com.apple.smb.server AllowGuestAccess -> r:does not exist'
+      - 'c:defaults read /Library/Preferences/SystemConfiguration/com.apple.smb.server AllowGuestAccess -> r:does not exist'
 
 # jal
 # 6.1.5 Remove Guest home folder (Automated)
