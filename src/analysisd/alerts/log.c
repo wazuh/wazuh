@@ -186,6 +186,8 @@ void OS_Log(Eventinfo *lf, FILE * fp)
 
     if (lf->fields[FIM_FILE].value) {
         fprintf(fp, "Attributes:\n");
+        long aux_time;
+        char *end = NULL;
 
         if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value) {
             fprintf(fp, " - Size: %s\n", lf->fields[FIM_SIZE].value);
@@ -195,22 +197,29 @@ void OS_Log(Eventinfo *lf, FILE * fp)
             fprintf(fp, " - Permissions: %s\n", lf->fields[FIM_PERM].value);
         }
 
-        if (lf->mtime_after) {
-            fprintf(fp, " - Date: %s", ctime_r(&lf->mtime_after, buf_ptr));
+        if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value) {
+            aux_time = strtol(lf->fields[FIM_MTIME].value, &end, 10);
+            if (aux_time > 0 || end == '\0') {
+                fprintf(fp, " - Date: %s", ctime_r(&aux_time, buf_ptr));
+            }
         }
+
         if (lf->inode_after) {
             fprintf(fp, " - Inode: %ld\n", lf->inode_after);
         }
+
         if (lf->fields[FIM_UID].value && lf->fields[FIM_UNAME].value) {
             if (*lf->fields[FIM_UNAME].value) {
                 fprintf(fp, " - User: %s (%s)\n", lf->fields[FIM_UNAME].value, lf->fields[FIM_UID].value);
             }
         }
+
         if (lf->fields[FIM_GID].value && lf->fields[FIM_GNAME].value) {
             if (*lf->fields[FIM_GNAME].value) {
                 fprintf(fp, " - Group: %s (%s)\n", lf->fields[FIM_GNAME].value, lf->fields[FIM_GID].value);
             }
         }
+
         if (lf->fields[FIM_MD5].value) {
             if (strcmp(lf->fields[FIM_MD5].value, "xxx") && *lf->fields[FIM_MD5].value) {
                 fprintf(fp, " - MD5: %s\n", lf->fields[FIM_MD5].value);

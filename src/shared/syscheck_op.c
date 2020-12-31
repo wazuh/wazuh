@@ -374,7 +374,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if (sum->mtime) {
-        lf->mtime_after = sum->mtime;
         os_calloc(20, sizeof(char), lf->fields[FIM_MTIME].value);
         snprintf(lf->fields[FIM_MTIME].value, 20, "%ld", sum->mtime);
     }

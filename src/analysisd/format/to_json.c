@@ -302,6 +302,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
     }
 
     if(lf->fields[FIM_FILE].value) {
+        long aux_time;
+        char *end = NULL;
+
         file_diff = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "syscheck", file_diff);
         cJSON_AddStringToObject(file_diff, "path", lf->fields[FIM_FILE].value);
@@ -418,15 +421,19 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddStringToObject(file_diff, "gname_after", lf->fields[FIM_GNAME].value);
         }
 
-        if (lf->mtime_before && lf->mtime_before != lf->mtime_after) {
+        if (lf->mtime_before && w_long_str(lf->mtime_before) != lf->fields[FIM_MTIME].value) {
             char mtime[25];
             strftime(mtime, 20, "%FT%T%z", localtime_r(&lf->mtime_before, &tm_result));
             cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
         }
-        if (lf->mtime_after) {
-            char mtime[25];
-            strftime(mtime, 20, "%FT%T%z", localtime_r(&lf->mtime_after, &tm_result));
-            cJSON_AddStringToObject(file_diff, "mtime_after", mtime);
+
+        if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value) {
+            aux_time = strtol(lf->fields[FIM_MTIME].value, &end, 10);
+            if (aux_time > 0 || end == '\0') {
+                char mtime[25];
+                strftime(mtime, 20, "%FT%T%z", localtime_r(&aux_time, &tm_result));
+                cJSON_AddStringToObject(file_diff, "mtime_after", mtime);
+            }
         }
 
         if (lf->inode_before && lf->inode_before != lf->inode_after) {

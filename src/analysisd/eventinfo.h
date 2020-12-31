@@ -95,7 +95,6 @@ typedef struct _Eventinfo {
     char *uname_before;
     char *gname_before;
     long mtime_before;
-    long mtime_after;
     long inode_before;
     long inode_after;
     char *attributes_before;

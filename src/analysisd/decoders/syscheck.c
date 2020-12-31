@@ -1525,8 +1525,8 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
         fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->fields[FIM_GID].value);
         fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->gname_before, lf->fields[FIM_GNAME].value);
 
-        if (lf->mtime_before != lf->mtime_after) {
-            snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%ld', now it is '%ld'\n", lf->mtime_before, lf->mtime_after);
+        if (w_long_str(lf->mtime_before) != lf->fields[FIM_MTIME].value) {
+            snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%ld', now it is '%s'\n", lf->mtime_before, lf->fields[FIM_MTIME].value);
         }
         if (lf->inode_before != lf->inode_after) {
             snprintf(change_inode, sizeof(change_inode), "Old inode was: '%ld', now it is '%ld'\n", lf->inode_before, lf->inode_after);
@@ -1694,7 +1694,6 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
             } else if (!strcmp(attr_it->string, "mtime")) {
                 if (new_state) {
                     lf->fields[FIM_MTIME].value = w_long_str((long) attr_it->valuedouble);
-                    lf->mtime_after = (long)attr_it->valuedouble;
                 } else {
                     lf->mtime_before = (long) attr_it->valuedouble;
                 }

@@ -695,7 +695,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->uname_before = NULL;
     lf->gname_before = NULL;
     lf->mtime_before = 0;
-    lf->mtime_after = 0;
     lf->inode_before = 0;
     lf->inode_after = 0;
     lf->attributes_before = NULL;
@@ -1209,7 +1208,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     /* Whodata fields */
 
     lf_cpy->mtime_before = lf->mtime_before;
-    lf_cpy->mtime_after = lf->mtime_after;
     lf_cpy->inode_before = lf->inode_before;
     lf_cpy->inode_after = lf->inode_after;
     lf_cpy->r_firedtimes = lf->r_firedtimes;
