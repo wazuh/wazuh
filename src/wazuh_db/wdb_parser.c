@@ -12,6 +12,8 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
+const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE = "legacy";
+
 static struct column_list const TABLE_HOTFIXES[] = {
     { .value = {FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HOTFIXES[1] },
     { .value = {FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HOTFIXES[2] },
@@ -2641,7 +2643,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
         else
             rx_dropped = strtol(next,NULL,10);
 
-        if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, NULL, NULL, FALSE), result < 0) {
+        if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Network information.");
         } else {
@@ -2770,7 +2772,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
         else
             metric = strtol(next,NULL,10);
 
-        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, NULL, NULL, FALSE), result < 0) {
+        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
             mdebug1("Cannot save netproto information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netproto information.");
         } else {
@@ -2883,7 +2885,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         else
             broadcast = next;
 
-        if (result = wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast, NULL, NULL, FALSE), result < 0) {
+        if (result = wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
             mdebug1("Cannot save netaddr information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
@@ -3519,7 +3521,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         else
             process = next;
 
-        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, NULL, NULL, FALSE), result < 0) {
+        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Port information.");
         } else {
@@ -3814,7 +3816,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
         else
             os_patch = next;
 
-        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, NULL, NULL, os_patch, FALSE), result < 0) {
+        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, os_patch, FALSE), result < 0) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
@@ -3905,7 +3907,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
         hotfix = curr;
         *next++ = '\0';
 
-        if (result = wdb_hotfix_save(wdb, scan_id, scan_time, hotfix, NULL, FALSE), result < 0) {
+        if (result = wdb_hotfix_save(wdb, scan_id, scan_time, hotfix, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("Cannot save Hotfix information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Hotfix information.");
         } else {
@@ -4396,7 +4398,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         else
             processor = strtol(next,NULL,10);
 
-        if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor, NULL, FALSE), result < 0) {
+        if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("Cannot save Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Process information.");
         } else {
