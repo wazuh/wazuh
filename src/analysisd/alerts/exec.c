@@ -51,8 +51,8 @@ void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *a
     }
 
     /* Get filename */
-    if (lf->filename) {
-        filename = os_shell_escape(lf->filename);
+    if (lf->fields[FIM_FILE].value) {
+        filename = os_shell_escape(lf->fields[FIM_FILE].value);
     }
 
     /* Get extra_args */

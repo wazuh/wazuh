@@ -301,10 +301,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         cJSON_AddStringToObject(agent, "id", lf->agent_id);
     }
 
-    if(lf->filename) {
+    if(lf->fields[FIM_FILE].value) {
         file_diff = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "syscheck", file_diff);
-        cJSON_AddStringToObject(file_diff, "path", lf->filename);
+        cJSON_AddStringToObject(file_diff, "path", lf->fields[FIM_FILE].value);
 
         if (lf->fields[FIM_HARD_LINKS].value && *lf->fields[FIM_HARD_LINKS].value) {
             cJSON_AddItemToObject(file_diff, "hard_links", cJSON_Parse(lf->fields[FIM_HARD_LINKS].value));
@@ -579,7 +579,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         cJSON* decoder;
 
         // Dynamic fields, except for syscheck events
-        if (lf->fields && !lf->filename) {
+        if (lf->fields && !lf->fields[FIM_FILE].value) {
             for (i = 0; i < lf->nfields; i++) {
                 if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);

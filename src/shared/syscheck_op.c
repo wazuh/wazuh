@@ -336,7 +336,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     assert(f_name != NULL);
     assert(sum != NULL);
 
-    os_strdup(f_name, lf->filename);
     os_strdup(f_name, lf->fields[FIM_FILE].value);
 
     if (sum->size) {

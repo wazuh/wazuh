@@ -685,7 +685,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->group_node_to_delete = NULL;
     lf->decoder_info = NULL_Decoder;
 
-    lf->filename = NULL;
     lf->perm_before = NULL;
     lf->md5_before = NULL;
     lf->sha1_before = NULL;
@@ -870,9 +869,6 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->fields);
     }
 
-    if (lf->filename) {
-        free(lf->filename);
-    }
     if (lf->perm_before) {
         free(lf->perm_before);
     }
@@ -1169,10 +1165,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     /* SYSCHECK Results variables */
     lf_cpy->event_type = lf->event_type;
-
-    if(lf->filename){
-        os_strdup(lf->filename,lf_cpy->filename);
-    }
 
     if (lf->perm_before) {
         os_strdup(lf->perm_before, lf_cpy->perm_before);

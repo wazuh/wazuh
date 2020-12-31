@@ -1254,7 +1254,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         switch (object->type) {
         case cJSON_String:
             if (strcmp(object->string, "path") == 0) {
-                os_strdup(object->valuestring, lf->filename);
                 os_strdup(object->valuestring, lf->fields[FIM_FILE].value);
             } else if (strcmp(object->string, "mode") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_MODE].value);
@@ -1356,7 +1355,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         break;
 
     case FIM_DELETED:
-        fim_send_db_delete(sdb, lf->agent_id, lf->filename);
+        fim_send_db_delete(sdb, lf->agent_id, lf->fields[FIM_FILE].value);
 
     default:
         ;

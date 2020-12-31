@@ -510,11 +510,11 @@ void OS_PreludeLog(const Eventinfo *lf)
                              idmef_analyzer_ref
                              (prelude_client_get_analyzer(prelude_client)),
                              IDMEF_LIST_PREPEND);
-    mdebug1("lf->filename = %s.", lf->filename);
-    if (lf->filename) {
+    mdebug1("lf->fields[FIM_FILE].value = %s.", lf->fields[FIM_FILE].value);
+    if (lf->fields[FIM_FILE].value) {
         FileAccess_PreludeLog(idmef,
                               "original",
-                              lf->filename,
+                              lf->fields[FIM_FILE].value,
                               lf->md5_before,
                               lf->sha1_before,
                               lf->sha256_before,
@@ -523,7 +523,7 @@ void OS_PreludeLog(const Eventinfo *lf)
                               lf->perm_before);
         FileAccess_PreludeLog(idmef,
                               "current",
-                              lf->filename,
+                              lf->fields[FIM_FILE].value,
                               lf->fields[FIM_MD5].value,
                               lf->fields[FIM_SHA1].value,
                               lf->fields[FIM_SHA256].value,

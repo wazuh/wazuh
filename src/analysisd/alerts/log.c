@@ -184,7 +184,7 @@ void OS_Log(Eventinfo *lf, FILE * fp)
 
     /* FIM events */
 
-    if (lf->filename) {
+    if (lf->fields[FIM_FILE].value) {
         fprintf(fp, "Attributes:\n");
 
         if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value) {
@@ -287,7 +287,7 @@ void OS_Log(Eventinfo *lf, FILE * fp)
     }
 
     // Dynamic fields, except for syscheck events
-    if (lf->fields && !lf->filename) {
+    if (lf->fields && !lf->fields[FIM_FILE].value) {
         for (i = 0; i < lf->nfields; i++) {
             if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
                 fprintf(fp, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);
