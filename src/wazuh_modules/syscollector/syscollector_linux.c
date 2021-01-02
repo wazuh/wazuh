@@ -430,7 +430,7 @@ char * sys_pacman_packages(int queue_fd, const char* LOCATION, int random_id){
         cJSON_AddStringToObject(object, "timestamp", timestamp);
         cJSON_AddItemToObject(object, "program", package);
 
-        cJSON_AddStringToObject(package, "format", "pkg"); // FIXME: Using the pkg in order to support older server versions (in the future this should be replaced with the "pacman" format
+        cJSON_AddStringToObject(package, "format", "pacman");
         cJSON_AddStringToObject(package, "name", alpm_pkg_get_name(pkg));
         cJSON_AddStringToObject(package, "version", alpm_pkg_get_version(pkg));
         cJSON_AddStringToObject(package, "description", alpm_pkg_get_desc(pkg));

@@ -235,6 +235,23 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_REDHAT;
+    } else if (strcasestr(feed, vu_feed_tag[FEED_ARCH])) {
+        if (!version) {
+            retval = OS_INVALID;
+            goto end;
+        }
+        if (!strcmp(version, "0")) {
+            os_index = CVE_ARCH;
+            os_strdup(version, upd->version);
+            upd->dist_tag_ref = FEED_ARCH;
+            upd->dist_ext = vu_feed_ext[FEED_ARCH];
+            upd->dist_ref = FEED_ARCH;
+            upd->json_format = 1;
+        } else {
+            merror("Invalid Arch Linux version '%s'", version);
+            retval = OS_INVALID;
+            goto end;
+        }
     } else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
         os_index = CVE_MSU;
         upd->dist_tag_ref = FEED_MSU;
@@ -947,7 +964,8 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
 char wm_vuldet_provider_type(char *pr_name) {
     if (strcasestr(pr_name, vu_feed_tag[FEED_CANONICAL]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
-        strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
+        strcasestr(pr_name, vu_feed_tag[FEED_REDHAT]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_ARCH])) {
         return 0;
     } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_MSU])) {
