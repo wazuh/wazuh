@@ -1058,6 +1058,13 @@ char* ParseRuleComment(Eventinfo *lf) {
             field = lf->systemname;
         }
 
+        // Find pre-decoding fields
+        else if (strcmp(var, "program_name") == 0) {
+            field = lf->program_name;
+        } else if (strcmp(var, "hostname") == 0) {
+            field = lf->hostname;
+        }
+
         // Find dynamic fields
 
         else {
