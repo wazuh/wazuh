@@ -556,6 +556,9 @@ os_info *get_unix_version()
                     break;
                 }
             }
+            if (info->os_version == NULL) {
+                os_strdup("rolling", info->os_version);
+            }
             regfree(&regexCompiled);
             fclose(version_release);
         // Ubuntu
