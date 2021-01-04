@@ -3358,27 +3358,31 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 
 char *bin_path(char *arg) {
     char buf[2048];
+    char *buff = buf;
     ssize_t len;
+
     if ((len = readlink("/proc/self/exe", buf, sizeof(buf))) > 0) {
         buf[len] = '\0';
         dirname(buf);
-        strtok(buf, "bin");
+        buff = w_strtok_r_str_delim("bin", &buff);
     }
     else if ((len = readlink("/proc/curproc/file", buf, sizeof(buf))) > 0) {
         buf[len] = '\0';
         dirname(buf);
-        strtok(buf, "bin");
+        buff = w_strtok_r_str_delim("bin", &buff);
     }
     else if ((len = readlink("/proc/self/path/a.out", buf, sizeof(buf))) > 0) {
         buf[len] = '\0';
         dirname(buf);
-        strtok(buf, "bin");
+        buff = w_strtok_r_str_delim("bin", &buff);
     }
     else {
-        char *path_arg = strdup(arg);
+        char *path_arg = arg;
+        path_arg = realpath(arg, NULL);
         dirname(path_arg);
-        strtok(path_arg, "bin");
+        path_arg = w_strtok_r_str_delim("bin", &path_arg);
         return path_arg;
     }
-    return strdup(buf);
+    
+    return buff;
 }
