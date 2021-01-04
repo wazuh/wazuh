@@ -30,7 +30,7 @@ for sh_file in /configuration_files/*.sh; do
   . $sh_file
 done
 
-/var/ossec/bin/ossec-control restart
+/var/ossec/bin/wazuh-control restart
 
 sleep 1
 

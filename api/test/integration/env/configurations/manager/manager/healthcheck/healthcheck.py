@@ -10,12 +10,12 @@ def check(result):
 
 
 def get_master_health():
-    os.system("/var/ossec/bin/ossec-control status > /tmp/daemons.txt")
+    os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     return check(os.popen("diff -q /tmp/daemons.txt /configuration_files/healthcheck/master_daemons_check.txt").read())
 
 
 def get_worker_health():
-    os.system("/var/ossec/bin/ossec-control status > /tmp/daemons.txt")
+    os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
     return check(os.popen("diff -q /tmp/daemons.txt /configuration_files/healthcheck/worker_daemons_check.txt").read())
 
 

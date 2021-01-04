@@ -14,7 +14,7 @@
 #include "mail_list.h"
 
 #ifndef ARGV0
-#define ARGV0 "ossec-maild"
+#define ARGV0 "wazuh-maild"
 #endif
 
 /* Global variables */

@@ -440,7 +440,7 @@ class Agent:
         """
 
         manager_status = get_manager_status()
-        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+        is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd:
             if not is_authd_running:
@@ -603,7 +603,7 @@ class Agent:
                     raise WazuhError(1706, extra_message=ip)
 
         manager_status = get_manager_status()
-        is_authd_running = 'ossec-authd' in manager_status and manager_status['ossec-authd'] == 'running'
+        is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd:
             if not is_authd_running:

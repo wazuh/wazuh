@@ -18,5 +18,7 @@
 typedef char os_sha1[41];
 
 int __wrap_OS_SHA1_File(const char *fname, os_sha1 output, int mode);
+int __wrap_OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, ssize_t nbytes);
+void __wrap_OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf);
 
 #endif

@@ -145,7 +145,9 @@ if(NOT ${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc \
                                      -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user \
                                      -Wl,--wrap,get_group -Wl,--wrap,realpath -Wl,--wrap,readlink -Wl,--wrap,fread \
-                                     -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid -Wl,--wrap,FOREVER")
+                                     -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid \
+                                     -Wl,--wrap,FOREVER -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+
 else()
   list(APPEND syscheckd_event_tests_names "test_win_whodata")
   list(APPEND syscheckd_event_tests_flags "-Wl,--wrap=_mdebug2,--wrap=_merror,--wrap=_mdebug1,--wrap=_mwarn \
@@ -158,7 +160,8 @@ else()
                                            -Wl,--wrap=fim_checker,--wrap=OSHash_Get,--wrap=os_random \
                                            -Wl,--wrap=convert_windows_string,--wrap=OSHash_Get_ex,--wrap=FOREVER \
                                            -Wl,--wrap=fflush,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=fprintf \
-                                           -Wl,--wrap=fgets -Wl,--wrap=wstr_split -Wl,--wrap=pthread_rwlock_wrlock")
+                                           -Wl,--wrap=fgets -Wl,--wrap=wstr_split -Wl,--wrap=pthread_rwlock_wrlock \
+					                                 -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 endif()
 
 set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat,--wrap=_mdebug1 \
@@ -167,7 +170,8 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap
                            -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
                            -Wl,--wrap,rename -Wl,--wrap,system -Wl,--wrap,fseek -Wl,--wrap,remove,--wrap=fprintf \
                            -Wl,--wrap=fgets -Wl,--wrap,atexit -Wl,--wrap,getpid,--wrap=_mdebug2,--wrap=rmdir_ex,--wrap=rename_ex \
-                           -Wl,--wrap,_minfo,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid")
+                           -Wl,--wrap,_minfo,--wrap=DirSize,--wrap=remove_empty_folders,--wrap=abspath,--wrap=getpid \
+                           -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 
 list(APPEND syscheckd_tests_names "test_fim_diff_changes")
 if(${TARGET} STREQUAL "agent")
