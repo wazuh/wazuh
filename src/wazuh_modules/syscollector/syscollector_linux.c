@@ -18,9 +18,7 @@
 
 #if defined(__linux__)
 
-#if defined(LIBALPM)
 #include <alpm.h>
-#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -332,9 +330,7 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
     int random_id = os_random();
     char * end_dpkg = NULL;
     char * end_rpm = NULL;
-#if defined(LIBALPM)
     char * end_pacman = NULL;
-#endif
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -358,7 +354,6 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
             mterror(WM_SYS_LOGTAG, "Unable to get rpm packages due to: %s", strerror(errno));
         }
     }
-#if defined(LIBALPM)
     if ((dir = opendir("/var/lib/pacman/"))){
         closedir(dir);
         if (end_pacman = sys_pacman_packages(queue_fd, LOCATION, random_id), !end_pacman) {
@@ -377,9 +372,6 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
             free(end_dpkg);
         }
     } else if (end_rpm) {
-#else
-    if (end_rpm) {
-#endif
         mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_rpm);
         wm_sendmsg(usec, queue_fd, end_rpm, LOCATION, SYSCOLLECTOR_MQ);
 
@@ -394,7 +386,6 @@ void sys_packages_linux(int queue_fd, const char* LOCATION) {
     }
 }
 
-#if defined(LIBALPM)
 char * sys_pacman_packages(int queue_fd, const char* LOCATION, int random_id){
     char *timestamp = w_get_timestamp(time(NULL));
     cJSON *object = NULL;
@@ -463,7 +454,6 @@ char * sys_pacman_packages(int queue_fd, const char* LOCATION, int random_id){
 
     return end_msg;
 }
-#endif
 
 char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 

@@ -240,7 +240,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             retval = OS_INVALID;
             goto end;
         }
-        if (!strcmp(version, "0")) {
+        if (!strcmp(version, "rolling")) {
             os_index = CVE_ARCH;
             os_strdup(version, upd->version);
             upd->dist_tag_ref = FEED_ARCH;

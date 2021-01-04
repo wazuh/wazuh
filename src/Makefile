@@ -34,6 +34,8 @@ EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
+EXTERNAL_PACMAN=external/pacman-5.2.2/
+EXTERNAL_LIBARCHIVE=external/libarchive-3.5.1/
 endif
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
@@ -52,7 +54,6 @@ SELINUX_POLICY=selinux/wazuh.pp
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
 USE_GEOIP?=no
-USE_ALPM?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -89,7 +90,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 #		DEFINES+=-DUSE_MAGIC
-		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
+		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB} -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		OSSEC_LIBS+=-lrt -ldl -lm
 #		OSSEC_LDFLAGS+=-lmagic
@@ -347,11 +348,6 @@ ifneq (,$(filter ${USE_GEOIP},YES auto yes y Y 1))
 	OSSEC_LIBS+=-lGeoIP
 endif # USE_GEOIP
 
-ifneq (,$(filter ${USE_ALPM},YES auto yes y Y 1))
-	DEFINES+=-DLIBALPM
-	OSSEC_LIBS+=-lalpm
-endif # USE_ALPM
-
 MI :=
 PI :=
 ifdef DATABASE
@@ -499,9 +495,6 @@ help: failtarget
 	@echo "Geoip support: "
 	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
-	@echo "Arch Linux support: "
-	@echo "   make USE_ALPM=yes            Build with Arch Linux agent support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo
 	@echo "User options: "
 	@echo "   make OSSEC_GROUP=ossec       Set ossec group"
 	@echo "   make OSSEC_USER=ossec        Set ossec user"
@@ -533,7 +526,6 @@ settings:
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:          ${USE_GEOIP}"
-	@echo "    USE_ALPM:           ${USE_ALPM}"
 	@echo "    USE_PRELUDE:        ${USE_PRELUDE}"
 	@echo "    USE_INOTIFY:        ${USE_INOTIFY}"
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
@@ -666,6 +658,8 @@ SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
+PACMAN_LIB  = $(EXTERNAL_PACMAN)lib/libalpm/.libs/libalpm.a
+LIBARCHIVE_LIB  = $(EXTERNAL_LIBARCHIVE).libs/libarchive.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
@@ -686,7 +680,7 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
 
-EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(PACMAN_LIB) $(LIBARCHIVE_LIB)
 endif
 endif
 ifeq (${uname_S},Darwin)
@@ -852,6 +846,26 @@ $(EXTERNAL_LIBDB)Makefile:
 	cd ${EXTERNAL_LIBDB} && CPPFLAGS=-fPIC ../dist/configure --with-cryptography=no --disable-queue --disable-heap --disable-partition --disable-mutexsupport --disable-replication --disable-verify --disable-statistics
 endif
 
+#### libarchive ######
+
+ifeq (${uname_S},Linux)
+${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
+	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
+
+$(EXTERNAL_LIBARCHIVE)Makefile:
+	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib
+endif
+
+#### Pacman ######
+
+ifeq (${uname_S},Linux)
+${PACMAN_LIB}: $(EXTERNAL_PACMAN)Makefile
+	 ${MAKE} -C $(EXTERNAL_PACMAN)/lib/libalpm
+
+$(EXTERNAL_PACMAN)Makefile:
+	cd ${EXTERNAL_PACMAN} && ./autogen.sh && CPPFLAGS=-fPIC ./configure --without-gpgme --without-libcurl
+endif
+
 #### Audit lib ####
 
 ${AUDIT_LIB}: $(EXTERNAL_AUDIT)Makefile
@@ -925,7 +939,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 libpcre2 libplist
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml pacman libarchive openssl procps sqlite zlib audit-userspace msgpack bzip2 libpcre2 libplist
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -933,6 +947,18 @@ VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
 
 .PHONY: deps
 deps: $(EXTERNAL_TAR)
+
+external/libarchive.tar.gz:
+	$(CURL) $@ https://www.libarchive.org/downloads/libarchive-3.5.1.tar.gz
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
+
+external/pacman.tar.gz:
+	$(CURL) $@ https://git.archlinux.org/pacman.git/snapshot/pacman-5.2.2.tar.gz
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
+	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
+	rm $(patsubst %.gz,%,$@)
 
 external/$(CPYTHON).tar.gz:
 ifneq (,$(PRECOMPILED_RES))
@@ -1958,6 +1984,14 @@ ifneq ($(wildcard external/*/*),)
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
+endif
+
+ifneq ($(wildcard external/libarchive-3.5.1/*),)
+	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
+endif
+
+ifneq ($(wildcard external/pacman-5.2.2/*),)
+	cd ${EXTERNAL_PACMAN} && ${MAKE} clean
 endif
 endif
 

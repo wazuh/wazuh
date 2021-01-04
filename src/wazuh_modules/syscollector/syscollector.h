@@ -166,9 +166,7 @@ void sys_ports_windows(const char* LOCATION, int check_all);
 void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
 char * sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
 char * sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
-#ifdef LIBALPM
 char * sys_pacman_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
-#endif
 
 #ifdef WIN32
 // Installed programs inventory for Windows
