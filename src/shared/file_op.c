@@ -3361,6 +3361,9 @@ char *bin_path(char *arg) {
     char buf[2048] = {0};
     char *buff = buf;
     ssize_t len = 0;
+    #ifdef __MACH__
+    pid_t pid = getpid();
+    #endif
 
     if ((len = readlink("/proc/self/exe", buf, sizeof(buf))) > 0) {
         dirname(buf);
@@ -3374,6 +3377,11 @@ char *bin_path(char *arg) {
         dirname(buf);
         buff = w_strtok_r_str_delim("bin", &buff);
     }
+    #ifdef __MACH__
+    else if (proc_pidpath(pid, buf, sizeof(buf)) > 0) {
+        buff = w_strtok_r_str_delim("bin", &buff);
+    }
+    #endif
     else {
         buff = NULL;
         if (buff = realpath(arg, NULL), buff == NULL) {
