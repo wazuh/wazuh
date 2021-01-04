@@ -27,7 +27,6 @@ Index: ossec-hids-2.8.2/Makefile
 +	rm -f src/Config.OS
 +	rm -f src/analysisd/compiled_rules/compiled_rules.h
 +	rm -f src/isbigendian.c
-+	rm -f src/analysisd/ossec-makelists
 +	rm -f src/analysisd/ossec-logtest
 +	rm -f src/isbigendian
 +
@@ -47,15 +46,12 @@ Index: ossec-hids-2.8.2/Makefile
 +	cp -p contrib/ossec-eps.sh $(DIR)/contrib/
 +	cp -pr bin/ossec* $(DIR)/bin/
 +	cp -pr bin/manage_agents $(DIR)/bin/
-+	cp -pr bin/syscheck_update $(DIR)/bin/
 +	cp -pr bin/verify-agent-conf $(DIR)/bin/
 +	cp -pr bin/clear_stats $(DIR)/bin/
 +	cp -pr bin/list_agents $(DIR)/bin/
 +	cp -pr bin/agent_control $(DIR)/bin/
-+	cp -pr bin/syscheck_control $(DIR)/bin/
-+	cp -pr bin/rootcheck_control $(DIR)/bin/
 +	cp -pr contrib/util.sh $(DIR)/bin/
-+	cp -pr src/init/ossec-server.sh $(DIR)/bin/ossec-control
++	cp -pr src/init/wazuh-server.sh $(DIR)/bin/wazuh-control
 +	cp -pr etc/decoder.xml $(DIR)/etc/
 +	chmod -x $(DIR)/etc/decoder.xml
 +	cp -pr etc/local_decoder.xml $(DIR)/etc/ > /dev/null 2>&1 || /bin/true

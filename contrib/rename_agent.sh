@@ -26,7 +26,7 @@ if [ -z ${IPADDR} ]; then
 fi
 
 # stop OSSEC
-/var/ossec/bin/ossec-control stop
+/var/ossec/bin/wazuh-control stop
 
 # Update the key record
 sed -i $KEYFILE -e "s/${1}/${2}/"
@@ -61,4 +61,4 @@ if [ -e "syscheck/.(${1}) ${IPADDR}->syscheck.cpt" ]; then
 fi
 
 # Restart OSSEC
-/var/ossec/bin/ossec-control start
+/var/ossec/bin/wazuh-control start

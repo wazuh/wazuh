@@ -1,8 +1,8 @@
 /var/ossec/bin/agent-auth      -- system_u:object_r:ossec_admin_exec_t:s0
 /var/ossec/bin/manage_client   -- system_u:object_r:ossec_admin_exec_t:s0
-/var/ossec/bin/ossec-client.sh -- system_u:object_r:ossec_admin_exec_t:s0
+/var/ossec/bin/wazuh-client.sh -- system_u:object_r:ossec_admin_exec_t:s0
 /var/ossec/bin/ossec-configure -- system_u:object_r:ossec_admin_exec_t:s0
-/var/ossec/bin/ossec-control      system_u:object_r:ossec_admin_exec_t:s0
+/var/ossec/bin/wazuh-control      system_u:object_r:ossec_admin_exec_t:s0
 /var/ossec/bin/ossec-fix-id.sh -- system_u:object_r:ossec_admin_exec_t:s0
 
 /var/ossec/bin/ossec-logcollector    system_u:object_r:ossec_logcollector_exec_t:s0
