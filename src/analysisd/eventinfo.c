@@ -638,7 +638,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->dstuser = NULL;
     lf->id = NULL;
     lf->status = NULL;
-    lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
     lf->extra_data = NULL;
@@ -840,9 +839,6 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->id) {
         free(lf->id);
-    }
-    if (lf->command) {
-        free(lf->command);
     }
     if (lf->url) {
         free(lf->url);
@@ -1161,10 +1157,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->status){
         os_strdup(lf->status,lf_cpy->status);
-    }
-
-    if(lf->command){
-        os_strdup(lf->command,lf_cpy->command);
     }
 
     if(lf->url){
