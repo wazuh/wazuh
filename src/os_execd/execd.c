@@ -601,7 +601,9 @@ static void ExecdStart(int q)
 
                 /* Create the timeout entry */
                 os_calloc(1, sizeof(timeout_data), timeout_entry);
+                os_calloc(2, sizeof(char *), timeout_entry->command);
                 os_strdup(cmd[0], timeout_entry->command[0]);
+                timeout_entry->command[1] = NULL;
                 timeout_entry->parameters = cJSON_PrintUnformatted(json_root);
                 timeout_entry->time_of_addition = curr_time;
                 timeout_entry->time_to_block = timeout_value;
