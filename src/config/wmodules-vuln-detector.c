@@ -240,11 +240,11 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             retval = OS_INVALID;
             goto end;
         }
-        if (!strcmp(version, "rolling")) {
+        if (!strcmp(version, "1") || strcasestr(version, vu_feed_tag[FEED_ROLLING])) {
             os_index = CVE_ARCH;
             os_strdup(version, upd->version);
-            upd->dist_tag_ref = FEED_ARCH;
-            upd->dist_ext = vu_feed_ext[FEED_ARCH];
+            upd->dist_tag_ref = FEED_ROLLING;
+            upd->dist_ext = vu_feed_ext[FEED_ROLLING];
             upd->dist_ref = FEED_ARCH;
             upd->json_format = 1;
         } else {
