@@ -133,7 +133,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
-		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB} -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}
+		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB} -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 		OSSEC_LIBS+=-lrt -ldl -lm
@@ -798,7 +798,7 @@ SQLITE_LIB  = $(EXTERNAL_SQLITE)libsqlite3.a
 JSON_LIB    = $(EXTERNAL_JSON)libcjson.a
 PROCPS_LIB  = $(EXTERNAL_PROCPS)/libproc.a
 DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
-PACMAN_LIB  = $(EXTERNAL_PACMAN)lib/libalpm/.libs/libalpm.a
+LIBALPM_LIB  = $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
 LIBARCHIVE_LIB  = $(EXTERNAL_LIBARCHIVE).libs/libarchive.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
@@ -820,7 +820,7 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
 
-EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(PACMAN_LIB) $(LIBARCHIVE_LIB)
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
 endif
 endif
 ifeq (${uname_S},Darwin)
@@ -999,17 +999,31 @@ ${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
 	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
 
 $(EXTERNAL_LIBARCHIVE)Makefile:
-	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib
+	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl
 endif
 
-#### Pacman ######
+#### libalpm ######
 
 ifeq (${uname_S},Linux)
-${PACMAN_LIB}: $(EXTERNAL_PACMAN)Makefile
-	 ${MAKE} -C $(EXTERNAL_PACMAN)/lib/libalpm
 
-$(EXTERNAL_PACMAN)Makefile:
-	cd ${EXTERNAL_PACMAN} && ./autogen.sh && CPPFLAGS=-fPIC ./configure --without-gpgme --without-libcurl
+# we compile libalpm manually because pacman has a lot of dependencies and we only want to compile a few files
+LIBALPM_LDCONFIG=`which ldconfig`
+LIBALPM_CFLAGS=-DSYSHOOKDIR=\"/usr/share/libalpm/hooks\" \
+			    -DLDCONFIG=\"${LIBALPM_LDCONFIG}\" \
+			    -DFSSTATSTYPE="struct statvfs" \
+			    -DSCRIPTLET_SHELL=\"/bin/sh\" \
+			    -DHAVE_SYS_STATVFS_H \
+			    -DLIB_VERSION=\"\" \
+			    -DPATH_MAX=4096 \
+			    -DHAVE_STRNLEN \
+			    -DHAVE_LIBSSL \
+			    -I../../../../${EXTERNAL_LIBARCHIVE}libarchive \
+			    -I. \
+			    -fPIC
+${LIBALPM_LIB}:
+	cd ${EXTERNAL_PACMAN}lib/libalpm && \
+	$(CC) -c *.c ${LIBALPM_CFLAGS} && \
+	ar rcs libalpm.a *.o
 endif
 
 #### Audit lib ####
@@ -1117,7 +1131,7 @@ external/libarchive.tar.gz:
 	rm $(patsubst %.gz,%,$@)
 
 external/pacman.tar.gz:
-	$(CURL) $@ https://git.archlinux.org/pacman.git/snapshot/pacman-5.2.2.tar.gz
+	$(CURL) $@ https://sources.archlinux.org/other/pacman/pacman-5.2.2.tar.gz
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
