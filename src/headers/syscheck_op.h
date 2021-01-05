@@ -285,37 +285,43 @@ const char *get_group(int gid);
 
 /**
  * @brief Retrieves the user name of the owner of a registry in Windows.
- * Also sets the user ID associated to that user.
+ * Also sets the ID associated to that user.
+ *
+ * @post *sid is always allocated and must be freed after usage.
  *
  * @param path Registry path to check the owner of.
  * @param sid The user ID associated to the user.
  * @param hndl Handle for the registry to check the owner of.
  *
- * @return The user name on success, NULL on failure.
+ * @return The user name on success, an empty string on failure.
  */
 char *get_registry_user(const char *path, char **sid, HANDLE hndl);
 
 /**
  * @brief Retrieves the user name of the owner of a file in Windows.
- * Also sets the user ID associated to that user.
+ * Also sets the ID associated to that user.
+ *
+ * @post *sid is always allocated and must be freed after usage.
  *
  * @param path File path to check the owner of.
  * @param sid The user ID associated to the user.
  *
- * @return The user name on success, NULL on failure.
+ * @return The user name on success, an empty string on failure.
  */
 char *get_file_user(const char *path, char **sid);
 
 /**
  * @brief Retrieves the user name of the owner of a file or registry in Windows.
- * Also sets the user ID associated to that user.
+ * Also sets the ID associated to that user.
+ *
+ * @post *sid is always allocated and must be freed after usage.
  *
  * @param path File or registry path to check the owner of.
  * @param sid The user ID associated to the user.
- * @param hndl Handle of the file or registry to check the owner of (NULL for files).
+ * @param hndl Handle of the file or registry to check the owner of.
  * @param object_type Type of the object to check the owner of (SE_FILE_OBJECT or SE_REGISTRY_KEY).
  *
- * @return The user name on success, NULL on failure.
+ * @return The user name on success, an empty string on failure.
  */
 char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_type);
 
