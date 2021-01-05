@@ -1017,7 +1017,8 @@ LIBALPM_CFLAGS=-DSYSHOOKDIR=\"/usr/share/libalpm/hooks\" \
 			    -DPATH_MAX=4096 \
 			    -DHAVE_STRNLEN \
 			    -DHAVE_LIBSSL \
-			    -I../../../../${EXTERNAL_LIBARCHIVE}libarchive \
+			    -I${ROUTE_PATH}/${EXTERNAL_LIBARCHIVE}libarchive \
+				-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
 			    -I. \
 			    -fPIC
 ${LIBALPM_LIB}:

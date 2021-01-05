@@ -557,7 +557,7 @@ os_info *get_unix_version()
                 }
             }
             if (info->os_version == NULL) {
-                os_strdup("rolling", info->os_version);
+                os_strdup("1.0 (rolling)", info->os_version);
             }
             regfree(&regexCompiled);
             fclose(version_release);
