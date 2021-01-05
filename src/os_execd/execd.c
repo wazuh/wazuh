@@ -66,7 +66,7 @@ static void execd_shutdown(int sig)
         mdebug2("Delete pending AR: '%s' '%s'", list_entry->command[0], list_entry->parameters);
         wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
         if (wfd) {
-            fwrite(list_entry->parameters, 1, sizeof(list_entry->parameters), wfd->file);
+            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
             wpclose(wfd);
         } else {
             merror("Could not launch command %s (%d)", strerror(errno), errno);
@@ -277,9 +277,7 @@ static void ExecdStart(int q)
     while (1) {
         cJSON *json_root = NULL;
         char *name = NULL;
-        char *cmd[2];
-        cmd[0] = NULL;
-        cmd[1] = NULL;
+        char *cmd[2] = { NULL, NULL };
         char *cmd_parameters = NULL;
         int timeout_value;
         int added_before = 0;
@@ -289,11 +287,10 @@ static void ExecdStart(int q)
         while (childcount) {
             int wp;
             wp = waitpid((pid_t) - 1, NULL, WNOHANG);
-            if (wp < 0) {
+            if (wp < 0 && errno != ECHILD) {
                 merror(WAITPID_ERROR, errno, strerror(errno));
                 break;
             }
-
             /* if = 0, we still need to wait for the child process */
             else if (wp == 0) {
                 break;
@@ -325,7 +322,7 @@ static void ExecdStart(int q)
 
                 wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
                 if (wfd) {
-                    fwrite(list_entry->parameters, 1, sizeof(list_entry->parameters), wfd->file);
+                    fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
                     wpclose(wfd);
                 } else {
                     merror("Could not launch command %s (%d)", strerror(errno), errno);
@@ -550,7 +547,7 @@ static void ExecdStart(int q)
 
             wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
             if (wfd) {
-                fwrite(cmd_parameters, 1, sizeof(cmd_parameters), wfd->file);
+                fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
                 wpclose(wfd);
             } else {
                 merror("Could not launch command %s (%d)", strerror(errno), errno);
