@@ -63,8 +63,8 @@ static void execd_shutdown(int sig)
 
         list_entry = (timeout_data *)timeout_node->data;
 
-        mdebug2("Delete pending AR: '%s' '%s'", list_entry->command, list_entry->parameters);
-        wfd_t *wfd = wpopenv(list_entry->command, &list_entry->command, W_BIND_STDIN);
+        mdebug2("Delete pending AR: '%s' '%s'", list_entry->command[0], list_entry->parameters);
+        wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
         if (wfd) {
             fwrite(list_entry->parameters, 1, sizeof(list_entry->parameters), wfd->file);
             wpclose(wfd);
@@ -215,11 +215,24 @@ int main(int argc, char **argv)
  */
 void FreeTimeoutEntry(timeout_data *timeout_entry)
 {
+    char **tmp_str;
+
     if (!timeout_entry) {
         return;
     }
 
-    os_free(timeout_entry->command);
+    tmp_str = timeout_entry->command;
+
+    /* Clear the command arguments */
+    if (tmp_str) {
+        while (*tmp_str) {
+            os_free(*tmp_str);
+            *tmp_str = NULL;
+            tmp_str++;
+        }
+        os_free(timeout_entry->command);
+    }
+
     os_free(timeout_entry->parameters);
 
     os_free(timeout_entry);
@@ -264,7 +277,9 @@ static void ExecdStart(int q)
     while (1) {
         cJSON *json_root = NULL;
         char *name = NULL;
-        char *command = NULL;
+        char *cmd[2];
+        cmd[0] = NULL;
+        cmd[1] = NULL;
         char *cmd_parameters = NULL;
         int timeout_value;
         int added_before = 0;
@@ -303,12 +318,12 @@ static void ExecdStart(int q)
             if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
 
                 mdebug1("Executing command '%s %s' after a timeout of '%ds'",
-                    list_entry->command,
+                    list_entry->command[0],
                     list_entry->parameters ? list_entry->parameters : "",
                     list_entry->time_to_block
                 );
 
-                wfd_t *wfd = wpopenv(list_entry->command, &list_entry->command, W_BIND_STDIN);
+                wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
                 if (wfd) {
                     fwrite(list_entry->parameters, 1, sizeof(list_entry->parameters), wfd->file);
                     wpclose(wfd);
@@ -450,17 +465,17 @@ static void ExecdStart(int q)
         }
 
         /* Get command to execute */
-        command = GetCommandbyName(name, &timeout_value);
-        if (!command) {
+        cmd[0] = GetCommandbyName(name, &timeout_value);
+        if (!cmd[0]) {
             ReadExecConfig();
-            command = GetCommandbyName(name, &timeout_value);
-            if (!command) {
+            cmd[0] = GetCommandbyName(name, &timeout_value);
+            if (!cmd[0]) {
                 merror(EXEC_INV_NAME, name);
                 cJSON_Delete(json_root);
                 continue;
             }
         }
-        if (command[0] == '\0') {
+        if (cmd[0][0] == '\0') {
             cJSON_Delete(json_root);
             continue;
         }
@@ -474,7 +489,7 @@ static void ExecdStart(int q)
                 timeout_data *list_entry;
 
                 list_entry = (timeout_data *)timeout_node->data;
-                if (strcmp(list_entry->command, command) == 0) {
+                if (strcmp(list_entry->command[0], cmd[0]) == 0) {
                     /* Means we executed this command before and we don't need to add it again */
                     added_before = 1;
 
@@ -486,7 +501,7 @@ static void ExecdStart(int q)
                         char *ntimes = NULL;
                         char rkey[256];
                         rkey[255] = '\0';
-                        snprintf(rkey, 255, "%s", command);
+                        snprintf(rkey, 255, "%s", cmd[0]);
 
                         if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
                             int ntimes_int = 0;
@@ -531,9 +546,9 @@ static void ExecdStart(int q)
             cmd_parameters = cJSON_PrintUnformatted(json_root);
 
             /* Execute command */
-            mdebug1("Executing command '%s %s'", command, cmd_parameters ? cmd_parameters : "");
+            mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
 
-            wfd_t *wfd = wpopenv(command, &command, W_BIND_STDIN);
+            wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
             if (wfd) {
                 fwrite(cmd_parameters, 1, sizeof(cmd_parameters), wfd->file);
                 wpclose(wfd);
@@ -549,7 +564,7 @@ static void ExecdStart(int q)
                 char *ntimes = NULL;
                 char rkey[256];
                 rkey[255] = '\0';
-                snprintf(rkey, 255, "%s", command);
+                snprintf(rkey, 255, "%s", cmd[0]);
 
                 if (repeated_hash != NULL) {
                     if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
@@ -589,14 +604,14 @@ static void ExecdStart(int q)
 
                 /* Create the timeout entry */
                 os_calloc(1, sizeof(timeout_data), timeout_entry);
-                os_strdup(command, timeout_entry->command);
+                os_strdup(cmd[0], timeout_entry->command[0]);
                 timeout_entry->parameters = cJSON_PrintUnformatted(json_root);
                 timeout_entry->time_of_addition = curr_time;
                 timeout_entry->time_to_block = timeout_value;
 
                 /* Add command to the timeout list */
                 mdebug1("Adding command '%s %s' to the timeout list, with a timeout of '%ds'.",
-                    timeout_entry->command,
+                    timeout_entry->command[0],
                     timeout_entry->parameters,
                     timeout_entry->time_to_block
                 );

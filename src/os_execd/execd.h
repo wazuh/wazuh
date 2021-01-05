@@ -65,7 +65,7 @@ void * wcom_main(void * arg);
 typedef struct _timeout_data {
     time_t time_of_addition;
     int time_to_block;
-    char *command;
+    char **command;
     char *parameters;
 } timeout_data;
 
