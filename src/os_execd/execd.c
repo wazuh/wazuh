@@ -69,7 +69,7 @@ static void execd_shutdown(int sig)
             fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
             wpclose(wfd);
         } else {
-            merror("Could not launch command %s (%d)", strerror(errno), errno);
+            merror(EXEC_CMD_FAIL, strerror(errno), errno);
         }
 
         /* Delete current node - already sets the pointer to next */
@@ -325,7 +325,7 @@ static void ExecdStart(int q)
                     fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
                     wpclose(wfd);
                 } else {
-                    merror("Could not launch command %s (%d)", strerror(errno), errno);
+                    merror(EXEC_CMD_FAIL, strerror(errno), errno);
                 }
 
                 /* Delete current node - already sets the pointer to next */
@@ -550,7 +550,7 @@ static void ExecdStart(int q)
                 fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
                 wpclose(wfd);
             } else {
-                merror("Could not launch command %s (%d)", strerror(errno), errno);
+                merror(EXEC_CMD_FAIL, strerror(errno), errno);
                 os_free(cmd_parameters);
                 cJSON_Delete(json_root);
                 continue;
@@ -558,12 +558,12 @@ static void ExecdStart(int q)
 
             /* We don't need to add to the list if the timeout_value == 0 */
             if (timeout_value) {
-                char *ntimes = NULL;
-                char rkey[256];
-                rkey[255] = '\0';
-                snprintf(rkey, 255, "%s", cmd[0]);
-
                 if (repeated_hash != NULL) {
+                    char *ntimes = NULL;
+                    char rkey[256];
+                    rkey[255] = '\0';
+                    snprintf(rkey, 255, "%s", cmd[0]);
+
                     if ((ntimes = (char *) OSHash_Get(repeated_hash, rkey))) {
                         int ntimes_int = 0;
                         int i2 = 0;
