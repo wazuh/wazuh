@@ -15,5 +15,15 @@
 #include "active-response.h"
 
 void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar);
+const char* get_ip(const Eventinfo *lf);
+void getActiveResponseInString(const Eventinfo *lf, 
+                                const active_response *ar, 
+                                const char *ip, 
+                                const char *user, 
+                                char *filename,
+                                char *extra_args,
+                                char *temp_msg);
+void get_exec_msg(const Eventinfo *lf, const active_response *ar, const char *temp_msg, char *exec_msg);
+
 
 #endif /* EXEC_H */
