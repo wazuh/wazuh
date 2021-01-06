@@ -102,10 +102,6 @@ Install()
         LIB_FLAG="USE_FRAMEWORK_LIB=yes"
     fi
 
-    if [ "X${DIST_NAME}" = "Xarch" ]; then
-        ALPM_FLAG="USE_ALPM=yes"
-    fi
-
     # Makefile
     echo " - ${runningmake}"
     echo ""
