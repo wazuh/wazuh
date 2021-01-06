@@ -16,6 +16,13 @@
 #include "../external/cJSON/cJSON.h"
 #include "execd.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
 time_t pending_upg = 0;
 
@@ -83,6 +90,9 @@ static void execd_shutdown(int sig)
     HandleSIG(sig);
 }
 
+#ifdef WAZUH_UNIT_TESTING
+__attribute((weak))
+#endif
 int main(int argc, char **argv)
 {
     int c;
@@ -626,6 +636,10 @@ static void ExecdStart(int q)
 
         os_free(cmd_parameters);
         cJSON_Delete(json_root);
+
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
     }
 }
 
