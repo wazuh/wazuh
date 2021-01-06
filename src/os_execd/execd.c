@@ -538,7 +538,7 @@ static void ExecdStart(int q)
         if (!added_before) {
             /* Command parameters */
             cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
-            cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString("wazuh-execd"));
+            cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
             cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
             cmd_parameters = cJSON_PrintUnformatted(json_root);
 
