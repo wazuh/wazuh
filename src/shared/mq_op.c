@@ -113,6 +113,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
     char tmpstr[OS_MAXSTR + 1];
     time_t mtime;
     char * _message = NULL;
+    int retval = 0;
 
     _message = log_builder_build(mq_log_builder, target->format, message, locmsg);
 
@@ -163,7 +164,7 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
             } else {
                 mdebug2("Discarding event from '%s' due to connection issue with '%s'", locmsg, target->log_socket->name);
                 free(_message);
-                return 0;
+                return 1;
             }
         }
 
@@ -192,13 +193,14 @@ int SendMSGtoSCK(int queue, const char *message, const char *locmsg, __attribute
                 merror("Cannot send message to socket '%s'. (Retry)", target->log_socket->name);
                 SendMSG(queue, "Cannot send message to socket.", "logcollector", LOCALFILE_MQ);
             }
+            retval = 1;
         }
 
         free(_message);
-        return (0);
+        return (retval);
     }
     free(_message);
-    return (0);
+    return (retval);
 }
 
 #else

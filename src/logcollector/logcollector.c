@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "state.h"
 #include <math.h>
 #include <pthread.h>
 
@@ -363,6 +364,12 @@ void LogCollectorStart()
 
     //Save status localfiles to disk
     w_save_file_status();
+
+    /* Initialize state component */
+    w_logcollector_state_init();
+
+    /* Create the state thread */
+    w_create_thread(w_logcollector_state_main, NULL);
 
     // Initialize message queue's log builder
     mq_log_builder_init();
@@ -1800,6 +1807,9 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     w_msg_queue_t *msg;
     int i;
     char *file_cpy;
+    int result;
+
+    w_logcollector_state_update_file(file, size);
 
     for (i = 0; targets[i].log_socket; i++)
     {
@@ -1811,7 +1821,11 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
 
         if (msg) {
             os_strdup(file, file_cpy);
-            w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
+            result = w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
+
+            if (result < 0) {
+                w_logcollector_state_update_target(file,targets[i].log_socket->name, true);
+            }
         }
     }
 
@@ -1896,6 +1910,7 @@ void * w_output_thread(void * args){
     char *queue_name = args;
     w_message_t *message;
     w_msg_queue_t *msg_queue;
+    int result;
 
     if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
         mwarn("Could not found the '%s'.", queue_name);
@@ -1916,7 +1931,8 @@ void * w_output_thread(void * args){
             // When dealing with this type of messages we don't want any of them to be lost
             // Continuously attempt to reconnect to the queue and send the message.
 
-            if(SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
+            if(result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
+                result != 0) {
                 #ifdef CLIENT
                 merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #else
@@ -1928,21 +1944,26 @@ void * w_output_thread(void * args){
 
                 minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
 
-                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
+                if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
+                    result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
                     #ifdef CLIENT
                     merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
                     #else
                     merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
                     #endif
+                    result = 1;
                 }
             }
+
+            w_logcollector_state_update_target(message->file, message->log_target->log_socket->name, result == 1);
 
         } else {
             const int MAX_RETRIES = 3;
             int retries = 0;
             while (retries < MAX_RETRIES) {
-                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
+                if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
+                    result < 0) {
                     merror(QUEUE_SEND);
 
                     sleep(sleep_time);
@@ -1954,6 +1975,9 @@ void * w_output_thread(void * args){
                     break;
                 }
             }
+
+            w_logcollector_state_update_target(message->file, message->log_target->log_socket->location, result == 1);
+
             if (retries == MAX_RETRIES) {
                 merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
             }
