@@ -10,7 +10,7 @@
 #include "config.h"
 #include "format/to_json.h"
 
-#define VERSION "1.0"
+#define VERSION 1
 #ifndef ARGV0
 #define ARGV0 "wazuh-analysisd"
 #endif
@@ -28,21 +28,25 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     cJSON *_object = NULL;
     cJSON *_array = NULL;
     cJSON *json_alert = NULL;
+    char* node_name = NULL;
 
     cJSON *message = cJSON_CreateObject();
-    if (message == NULL){
+    if (message == NULL) {
         merror("Failed to create active response JSON");
-        return 1;
+        return OS_INVALID;
     }
 
-    cJSON_AddStringToObject(message, "version", VERSION);
-    
+    cJSON_AddNumberToObject(message, "version", VERSION);
+
     _object = cJSON_CreateObject();
     cJSON_AddItemToObject(message, "origin", _object);
-    cJSON_AddStringToObject(_object, "name", ar->name);
-    cJSON_AddStringToObject(_object, "module", ARGV0);
 
-    cJSON_AddStringToObject(message, "command", ar->command);
+    node_name = get_node_name();
+    cJSON_AddStringToObject(_object, "name", node_name ? node_name : "");
+    os_free(node_name);
+
+    cJSON_AddStringToObject(_object, "module", ARGV0);
+    cJSON_AddStringToObject(message, "command", ar->name);
 
     _object = cJSON_CreateObject();
     cJSON_AddItemToObject(message, "parameters", _object);
@@ -51,14 +55,12 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     cJSON_AddItemToObject(_object, "extra_args", _array);
 
     // ar->ar_cmd->extra_args will be split by " ;,"
-    if (ar->ar_cmd->extra_args)
-    {
+    if (ar->ar_cmd->extra_args) {
         char str[OS_SIZE_1024];
         char * pch;
         strcpy(str, ar->ar_cmd->extra_args);
         pch = strtok (str," ;,");
-        while (pch != NULL)
-        {
+        while (pch != NULL) {
             cJSON_AddItemToArray(_array, cJSON_CreateString(pch));
             pch = strtok (NULL, " ;,");
         }
@@ -69,12 +71,30 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     if (json_alert == NULL) {
         merror("Cannot parse alert JSON");
         cJSON_Delete(message);
-        return 1;
+        return OS_INVALID;
     }
     cJSON_AddItemToObject(_object, "alert", json_alert);
 
     strcpy(temp_msg, cJSON_PrintUnformatted(message));
+    
+    // Clean up Memory
     cJSON_Delete(message);
 
-    return 0;
+    return OS_SUCCESS;
+}
+
+/**
+ * @return char*, remember to free memory after return.
+ */
+char *get_node_name()
+{
+    char* node_name = NULL;
+    OS_XML xml;
+
+    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+    if (OS_ReadXML(DEFAULTCPATH, &xml) >= 0) {
+        node_name = OS_GetOneContentforElement(&xml, xml_node);
+    }
+    OS_ClearXML(&xml);
+    return node_name;
 }
