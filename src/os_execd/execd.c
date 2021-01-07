@@ -30,14 +30,18 @@ time_t pending_upg = 0;
 
 /* Prototypes */
 static void help_execd(void) __attribute__((noreturn));
-static void execd_shutdown(int sig) __attribute__((noreturn));
-static void ExecdStart(int q) __attribute__((noreturn));
-static int CheckManagerConfiguration(char ** output);
+STATIC void execd_shutdown(int sig) __attribute__((noreturn));
+#ifdef WAZUH_UNIT_TESTING
+STATIC void ExecdStart(int q);
+#else
+STATIC void ExecdStart(int q) __attribute__((noreturn));
+#endif
+STATIC int CheckManagerConfiguration(char ** output);
 
 /* Global variables */
-static OSList *timeout_list;
-static OSListNode *timeout_node;
-static OSHash *repeated_hash;
+STATIC OSList *timeout_list;
+STATIC OSListNode *timeout_node;
+STATIC OSHash *repeated_hash;
 
 
 /* Print help statement */
@@ -59,7 +63,7 @@ static void help_execd()
 }
 
 /* Shut down execd properly */
-static void execd_shutdown(int sig)
+STATIC void execd_shutdown(int sig)
 {
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
@@ -251,7 +255,7 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
 #ifndef WIN32
 
 /* Main function on the execd. Does all the data receiving, etc. */
-static void ExecdStart(int q)
+STATIC void ExecdStart(int q)
 {
     int i, childcount = 0;
     time_t curr_time;
@@ -641,9 +645,19 @@ static void ExecdStart(int q)
         break;
     #endif
     }
+
+#ifdef WAZUH_UNIT_TESTING
+    timeout_node = OSList_GetFirstNode(timeout_list);
+    while (timeout_node) {
+        FreeTimeoutEntry((timeout_data *)timeout_node->data);
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+    }
+    os_free(timeout_list);
+#endif
 }
 
-static int CheckManagerConfiguration(char ** output) {
+STATIC int CheckManagerConfiguration(char ** output) {
     int ret_val;
     int result_code;
     int timeout = 2000;

@@ -25,7 +25,10 @@ if(${TARGET} STREQUAL "winagent")
     list(APPEND execd_flags " ")
 else()
     list(APPEND execd_names "test_execd")
-    list(APPEND execd_flags " ")
+    list(APPEND execd_flags "-Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,time -Wl,--wrap,select -Wl,--wrap,OS_RecvUnix \
+                             -Wl,--wrap,ReadExecConfig -Wl,--wrap,GetCommandbyName -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fwrite \
+                             -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek \
+                             -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
 endif()
 
 list(LENGTH execd_names count)

@@ -54,6 +54,15 @@ int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
     return mock();
 }
 
+int __wrap_OS_RecvUnix(int socket, int sizet, char *ret) {
+    check_expected(socket);
+    check_expected(sizet);
+
+    strncpy(ret, mock_type(char*), sizet);
+
+    return mock();
+}
+
 char *__wrap_OS_GetHost(const char *host, __attribute__((unused)) unsigned int attempts) {
     check_expected(host);
     return mock_ptr_type(char *);
