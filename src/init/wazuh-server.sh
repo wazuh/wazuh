@@ -12,6 +12,13 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
+# These variables will be replaced during the installation process
+NAME="TEMP_NAME"
+VERSION="TEMP_VERSION"
+REVISION="TEMP_REVISION"
+DATE="TEMP_DATE"
+TYPE="TEMP_TYPE"
+
 ###  Do not modify bellow here ###
 
 # Getting additional processes
@@ -29,8 +36,6 @@ OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 OP_SDAEMONS=$(echo $OP_DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
-[ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
