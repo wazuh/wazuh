@@ -3392,6 +3392,7 @@ char *bin_path(char *arg) {
         dirname(buff);
         buff = w_strtok_r_str_delim("bin", &buff);
     }
+    os_strdup(buff, buff);
 
     return buff;
 }
