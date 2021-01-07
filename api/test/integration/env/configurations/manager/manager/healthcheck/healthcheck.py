@@ -3,21 +3,19 @@ import socket
 
 
 def check(result):
-    if "differ" in result:
-        return 1
-    else:
+    if result == 0:
         return 0
+    else:
+        return 1
 
 
 def get_master_health():
-    os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
-    return check(os.popen("diff -q /tmp/daemons.txt /configuration_files/healthcheck/master_daemons_check.txt").read())
-
-
-def get_worker_health():
-    os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
-    return check(os.popen("diff -q /tmp/daemons.txt /configuration_files/healthcheck/worker_daemons_check.txt").read())
+    os.system("/var/ossec/bin/ossec-control status > /tmp/daemons.txt")
+    check0 = check(os.system("diff -q /tmp/daemons.txt /configuration_files/healthcheck/master_daemons_check.txt"))
+    check1 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    return check0 or check1
 
 
 if __name__ == "__main__":
-    exit(get_master_health()) if socket.gethostname() == 'wazuh-master' else exit(get_worker_health())
+    # Workers are not needed in this test, so the exit code is set to 0 (healthy).
+    exit(get_master_health()) if socket.gethostname() == 'wazuh-master' else exit(0)

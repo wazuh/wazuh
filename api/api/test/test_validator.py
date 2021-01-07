@@ -26,8 +26,8 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     (100, _alphanumeric_param),
     # names
     ('alphanumeric1_param2', _alphanumeric_param),
-    ('file_1,file_2,file-3', _array_names),
-    ('file-test_name1', _names),
+    ('file_%1,file_2,file-3', _array_names),
+    ('file%1-test_name1', _names),
     # IPs
     ('192.168.122.255', _ips),
     ('any', _ips),

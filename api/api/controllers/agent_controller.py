@@ -902,17 +902,6 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentInsertedModel.get_kwargs(request)
 
-    # Get IP if not given
-    if not f_kwargs['ip']:
-        if configuration.api_conf['behind_proxy_server']:
-            try:
-                f_kwargs['ip'] = request.headers['X-Forwarded-For']
-            except KeyError:
-                raise_if_exc(WazuhError(1120))
-        else:
-            peername = request.transport.get_extra_info('peername')
-            if peername is not None:
-                f_kwargs['ip'], _ = peername
     f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,

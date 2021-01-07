@@ -13,7 +13,7 @@ from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, validate_cdb_list, \
-    get_api_conf, update_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf
+    get_api_conf, update_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, prettify_xml
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
@@ -131,6 +131,8 @@ def upload_file(path=None, content=None, overwrite=False):
         if not overwrite and exists(join(common.ossec_path, path)):
             raise WazuhError(1905)
         elif overwrite and exists(join(common.ossec_path, path)):
+            # Check if the content is valid
+            not re.match(r'^etc/lists', path) and prettify_xml(content)
             delete_file(path=path)
 
         # For CDB lists
