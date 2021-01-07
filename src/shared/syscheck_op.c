@@ -682,6 +682,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
     char *result;
 
     if (hndl == INVALID_HANDLE_VALUE) {
+        os_strdup("", *sid);
         *AcctName = '\0';
         goto end;
     }
@@ -701,7 +702,7 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
     }
 
     if (!ConvertSidToStringSid(pSidOwner, &local_sid)) {
-        *sid = NULL;
+        os_strdup("", *sid);
         mdebug1("The user's SID could not be extracted.");
     } else {
         os_strdup(local_sid, *sid);
@@ -745,7 +746,7 @@ end:
         LocalFree(pSD);
     }
 
-    result = wstr_replace((const char*)&AcctName, " ", "\\ ");
+    result = wstr_replace(AcctName, " ", "\\ ");
 
     return result;
 }
@@ -952,11 +953,12 @@ char *get_registry_group(char **sid, HANDLE hndl) {
         dwSecurityInfoErrorCode = GetLastError();
         merror("GetSecurityInfo error = %lu", dwSecurityInfoErrorCode);
         *GrpName = '\0';
+        os_strdup("", *sid);
         goto end;
     }
 
     if (!ConvertSidToStringSid(pSidGroup, &local_sid)) {
-        *sid = NULL;
+        os_strdup("", *sid);
         mdebug1("The user's SID could not be extracted.");
     } else {
         os_strdup(local_sid, *sid);
@@ -997,7 +999,7 @@ end:
         LocalFree(pSD);
     }
 
-    result = wstr_replace((const char*)&GrpName, " ", "\\ ");
+    result = wstr_replace(GrpName, " ", "\\ ");
 
     return result;
 }
