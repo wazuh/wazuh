@@ -175,6 +175,7 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\queue\diff"
     CreateDirectory "$INSTDIR\queue\fim"
     CreateDirectory "$INSTDIR\queue\fim\db"
+    CreateDirectory "$INSTDIR\queue\syscollector"
     CreateDirectory "$INSTDIR\queue\syscollector\db"
     CreateDirectory "$INSTDIR\queue\logcollector"
     CreateDirectory "$INSTDIR\incoming"

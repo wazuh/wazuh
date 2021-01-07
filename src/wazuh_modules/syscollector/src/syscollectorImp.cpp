@@ -14,7 +14,6 @@
 #include <iostream>
 #include "stringHelper.h"
 #include "hashHelper.h"
-#include "filesystemHelper.h"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -878,23 +877,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
-    std::string localSyscollectorDB { SYSCOLLECTOR_DB_PATH };
-    localSyscollectorDB += "/";
-    localSyscollectorDB += SYSCOLLECTOR_DB;
-    /*try
-    {
-        if (!Utils::existsDir(SYSCOLLECTOR_DB_PATH))
-        {        
-            Utils::createDir(SYSCOLLECTOR_DB_PATH);
-            localDB  = SYSCOLLECTOR_DB_PATH;
-            localDB += SYSCOLLECTOR_DB;            
-        }
-    }
-    catch(const std::exception& ex)
-    {
-        std::cerr << ex.what() << std::endl;
-    }*/
-    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, localSyscollectorDB, getCreateStatement());
+    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, SYSCOLLECTOR_DB_DISK_PATH, getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
     registerWithRsync();
     syncLoop(lock);
