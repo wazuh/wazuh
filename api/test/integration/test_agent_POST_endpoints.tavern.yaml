@@ -206,7 +206,7 @@ test_name: POST /groups/{group_id}
 
 stages:
 
-    # POST /groups?group_id=group4
+    # POST /groups
   - name: Create a group called group4
     request:
       verify: False
@@ -214,15 +214,15 @@ stages:
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        group_id: group4
+      json:
+        group_id: "group4"
     response:
       status_code: 200
       json:
         message: !anystr
     delay_after: !float "{global_db_delay}"
 
-    # POST /groups?group_id=group1
+    # POST /groups
   - name: Try to create a group that already exists
     request:
       verify: False
@@ -230,14 +230,14 @@ stages:
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        group_id: group1
+      json:
+        group_id: "group1"
     response:
       status_code: 400
       json:
         error: 1711
 
-    # POST /groups?group_id=;wrong_name
+    # POST /groups
   - name: Try to create a group with an invalid name
     request:
       verify: False
@@ -245,8 +245,8 @@ stages:
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        group_id: ';wrong_name'
+      json:
+        group_id: ";wrong_name"
     response:
       status_code: 400
       json:

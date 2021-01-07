@@ -13,6 +13,7 @@ from api.encoder import dumps, prettify
 from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
+from api.models.group_added_model import GroupAddedModel
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -693,15 +694,23 @@ async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def post_group(request, group_id, pretty=False, wait_for_complete=False):
+async def post_group(request, pretty=False, wait_for_complete=False):
     """Create a new group.
+    
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :return: ApiResponse
+    Returns
+    -------
+    ApiResponse
     """
-    f_kwargs = {'group_id': group_id}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await GroupAddedModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=agent.create_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
