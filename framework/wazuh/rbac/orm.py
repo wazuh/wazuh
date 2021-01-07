@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.orm.exc import UnmappedInstanceError
+from wazuh.core.utils import safe_move
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
@@ -2809,6 +2810,7 @@ def check_database_integrity():
         os.chmod(database, 0o640)
 
     try:
+        logger.info('Checking RBAC database integrity...')
         if os.path.exists(_auth_db_file):
             logger.info(f'{_auth_db_file} file was detected')
             set_permission(_auth_db_file)
@@ -2845,8 +2847,8 @@ def check_database_integrity():
                     db_manager.delete_orphans(_tmp_db_file)
                     db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
                     db_manager.close_sessions()
-                    os.remove(_auth_db_file)
-                    os.rename(_tmp_db_file, _auth_db_file)
+                    safe_move(_auth_db_file, f'{_auth_db_file}.bkp', permissions=0o640)
+                    safe_move(_tmp_db_file, _auth_db_file, permissions=0o640)
                     logger.info(f'{_auth_db_file} database upgraded successfully.')
 
         # If database does not exists it means this is a fresh installation and must be created properly
@@ -2861,10 +2863,12 @@ def check_database_integrity():
             logger.info(f'{_auth_db_file} database created successfully')
 
     except Exception as e:
-        logger.error('Error during the database migration. Restoring the previous database.')
+        logger.error('Error during the database migration. Restoring the previous database file.')
         logger.error(f'Error details: {str(e)}')
         db_manager.delete_orphans(_tmp_db_file)
         db_manager.close_sessions()
+    else:
+        logger.info('RBAC database integrity check finished successfully.')
 
     # Remove tmp database if present
     os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
