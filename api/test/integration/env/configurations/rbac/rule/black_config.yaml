@@ -3,6 +3,5 @@
   - rules:read
   resources:
   - rule:file:0010-rules_config.xml
-  - rule:file:0015-ossec_rules.xml
   - rule:file:0610-win-ms_logs_rules.xml
   effect: deny

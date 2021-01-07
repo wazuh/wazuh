@@ -26,20 +26,21 @@
     <if_sid>7500</if_sid>
     <id>$MCAFEE_INFO</id>
     <description>McAfee Windows AV informational event.</description>
+    <group>pci_dss_10.6.1</group>
   </rule>
 
   <rule id="7502" level="3">
     <if_sid>7500</if_sid>
     <id>$MCAFEE_WARN</id>
     <description>McAfee Windows AV warning event.</description>
-    <group>gpg13_4.12,</group>
+    <group>gpg13_4.12,pci_dss_10.6.1,hipaa_164.312.b</group>
   </rule>
 
   <rule id="7503" level="4">
     <if_sid>7500</if_sid>
     <id>$MCAFEE_ERROR</id>
     <description>McAfee Windows AV error event.</description>
-    <group>gpg13_4.3,</group>
+    <group>gpg13_4.3,pci_dss_10.6.1,hipaa_164.312.b</group>
   </rule>
 
   <rule id="7504" level="12">
@@ -119,7 +120,6 @@
   <rule id="7514" level="5">
     <if_sid>7505</if_sid>
     <match>contains the EICAR test file</match>
-    <options>alert_by_email</options>
     <description>McAfee Windows AV - EICAR test file detected.</description>
   </rule>
 

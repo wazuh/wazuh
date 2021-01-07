@@ -269,7 +269,7 @@ stages:
       verify: False
       <<: *get_decoders
       params:
-        q: 'name=agent-upgrade;position=2'
+        q: 'name=agent-upgrade;position=8'
     response:
       status_code: 200
       json:
@@ -278,7 +278,7 @@ stages:
           affected_items:
             - <<: *full_items_array
               name: 'agent-upgrade'
-              position: 2
+              position: 8
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
@@ -289,7 +289,7 @@ stages:
       verify: False
       <<: *get_decoders
       params:
-        q: 'details.prematch.pattern~wazuh;filename=0005-wazuh_decoders.xml;position<5'
+        q: 'details.prematch.pattern~wazuh;filename=0005-wazuh_decoders.xml;position<1'
     response:
       status_code: 200
       json:
