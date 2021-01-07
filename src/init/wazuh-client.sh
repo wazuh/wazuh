@@ -10,16 +10,19 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 
+# These variables will be replaced during the installation process
+NAME="TEMP_NAME"
+VERSION="TEMP_VERSION"
+REVISION="TEMP_REVISION"
+DATE="TEMP_DATE"
+TYPE="TEMP_TYPE"
+
 ###  Do not modify bellow here ###
 AUTHOR="Wazuh Inc."
 DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
-INITCONF="/etc/ossec-init.conf"
-
-[ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
