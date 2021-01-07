@@ -215,6 +215,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Syscheck directory */
 #define SYSCHECK_DIR    "/queue/syscheck"
 
+/* Syscollector directory */
+#define SYSCOLLECTOR_DB_DIR    "/queue/syscollector/db/"
+#define SYSCOLLECTOR_DB_PATH   DEFAULTDIR SYSCOLLECTOR_DB_DIR
+
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 

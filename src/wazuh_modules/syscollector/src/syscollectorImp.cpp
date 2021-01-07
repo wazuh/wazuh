@@ -8,12 +8,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "defs.h"
 #include "syscollector.hpp"
 #include "json.hpp"
 #include <iostream>
 #include "stringHelper.h"
 #include "hashHelper.h"
-
+#include "filesystemHelper.h"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -31,6 +32,8 @@ do                                                                      \
         }                                                               \
     }                                                                   \
 }while(0)
+
+constexpr auto SYSCOLLECTOR_DB { "local.db" };
 
 constexpr auto HOTFIXES_SQL_STATEMENT
 {
@@ -659,7 +662,6 @@ constexpr auto NETADDRESS_SYNC_CONFIG_STATEMENT
     )"
 };
 
-
 constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_address (
@@ -876,7 +878,23 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
-    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
+    std::string localSyscollectorDB { SYSCOLLECTOR_DB_PATH };
+    localSyscollectorDB += "/";
+    localSyscollectorDB += SYSCOLLECTOR_DB;
+    /*try
+    {
+        if (!Utils::existsDir(SYSCOLLECTOR_DB_PATH))
+        {        
+            Utils::createDir(SYSCOLLECTOR_DB_PATH);
+            localDB  = SYSCOLLECTOR_DB_PATH;
+            localDB += SYSCOLLECTOR_DB;            
+        }
+    }
+    catch(const std::exception& ex)
+    {
+        std::cerr << ex.what() << std::endl;
+    }*/
+    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, localSyscollectorDB, getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
     registerWithRsync();
     syncLoop(lock);
@@ -889,6 +907,7 @@ void Syscollector::destroy()
     m_cv.notify_all();
     lock.unlock();
 }
+
 void Syscollector::scanHardware()
 {
     if (m_hardware)
@@ -900,6 +919,7 @@ void Syscollector::scanHardware()
         m_reportDiffFunction(msg.dump());
     }
 }
+
 void Syscollector::scanOs()
 {
     if(m_os)
