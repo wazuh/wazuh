@@ -427,6 +427,17 @@ char * sys_pacman_packages(int queue_fd, const char* LOCATION, int random_id){
         cJSON_AddStringToObject(package, "description", alpm_pkg_get_desc(pkg));
         cJSON_AddStringToObject(package, "architecture", alpm_pkg_get_arch(pkg));
         cJSON_AddNumberToObject(package, "size", alpm_pkg_get_isize(pkg) / 1024); // Bytes to KBytes
+        const char *packager = alpm_pkg_get_packager(pkg);
+        if (strcmp(packager, "Unknown Packager")) {
+            /* There isn't a good way to find out what is the vendor.
+             * This way should find out which packages were installed
+             * from a repository as long a the PACKAGER variable hasn't
+             * been set in /etc/makepkg.conf.
+             * If the PACKAGER variable has been set all the packages
+             * on this system will be treated as an os package and will
+             * be compared to the Arch feed only */
+            cJSON_AddStringToObject(package, "vendor", "Arch");
+        }
 
 
         char *installt = w_get_timestamp((time_t)alpm_pkg_get_installdate(pkg));
