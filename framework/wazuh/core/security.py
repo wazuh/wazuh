@@ -2,11 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-import os
 import yaml
 
-
-import api.configuration as configuration
 import api.middlewares as middlewares
 
 from api.authentication import change_secret

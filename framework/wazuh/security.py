@@ -233,12 +233,12 @@ def remove_users(user_ids, resource_type: ResourceType = ResourceType.USER) -> A
                 result.add_failed_item(id_=user_id, error=WazuhError(5008))
                 continue
             user = auth.get_user_id(user_id)
-            query = auth.delete_user(user_id, resource_type=resource_type)
-            if not query:
+            status = auth.delete_user(user_id, resource_type=resource_type)
+            if not status:
                 result.add_failed_item(id_=user_id, error=WazuhError(5001))
-            elif query == SecurityError.ADMIN_RESOURCES:
+            elif status == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=user_id, error=WazuhError(5004))
-            elif query == SecurityError.RELATIONSHIP_ERROR:
+            elif status == SecurityError.RELATIONSHIP_ERROR:
                 result.add_failed_item(id_=user_id, error=WazuhError(4025))
             elif user:
                 with TokenManager() as tm:

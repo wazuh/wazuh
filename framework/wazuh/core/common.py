@@ -29,6 +29,7 @@ except (FileNotFoundError, PermissionError):
         'wazuh_version': ''
     }
 
+
 @lru_cache(maxsize=None)
 def load_spec():
     with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r', encoding='utf-8') as stream:

@@ -716,8 +716,9 @@ class AuthenticationManager:
             Creation time for this resource. Specified during a migration.
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
@@ -759,14 +760,15 @@ class AuthenticationManager:
             Enable authorization context login method for the new user
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
         bool:
-            True if the user has been modify successfully. False otherwise
+            True if the user has been modified successfully. False otherwise
         """
         try:
             user = self.session.query(User).filter_by(id=user_id).first()
@@ -797,8 +799,9 @@ class AuthenticationManager:
             Unique user id
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
@@ -1013,8 +1016,9 @@ class RolesManager:
             ID of the role to be deleted
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
@@ -1090,8 +1094,9 @@ class RolesManager:
             New name for the role
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         Returns
         -------
@@ -1199,8 +1204,9 @@ class RulesManager:
             Creation time for this resource. Specified during a migration.
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
@@ -1236,8 +1242,9 @@ class RulesManager:
             Id of the rule.
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         Returns
         -------
@@ -1314,8 +1321,9 @@ class RulesManager:
             Dictionary with the rule itself.
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
@@ -1428,8 +1436,9 @@ class PoliciesManager:
             Creation time for this resource. Specified during a migration.
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
@@ -1487,8 +1496,9 @@ class PoliciesManager:
             ID of the policy to be deleted
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
@@ -1567,8 +1577,9 @@ class PoliciesManager:
             New policy for the Policy
         resource_type : ResourceType
             Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
@@ -2029,7 +2040,7 @@ class RolesPoliciesManager:
                 else:
                     return SecurityError.ALREADY_EXIST
             return SecurityError.ADMIN_RESOURCES
-        except IntegrityError as e:
+        except IntegrityError:
             self.session.rollback()
             return SecurityError.INVALID
 
@@ -2589,7 +2600,7 @@ class DatabaseManager:
             self.sessions[session].delete(orphan)
 
     def close_sessions(self):
-        """Closes every session and dispose every engine"""
+        """Close every session and dispose every engine"""
         for session in self.sessions:
             self.sessions[session].close()
         for engine in self.engines:
@@ -2827,7 +2838,7 @@ def check_database_integrity():
                     db_manager.migrate_data(source=_auth_db_file, target=_tmp_db_file, from_id=cloud_reserved_range,
                                             to_id=max_id_reserved, resource_type=ResourceType.PROTECTED,
                                             check_default=False)
-                    db_manager.migrate_data(source=_auth_db_file,target=_tmp_db_file, from_id=max_id_reserved + 1,
+                    db_manager.migrate_data(source=_auth_db_file, target=_tmp_db_file, from_id=max_id_reserved + 1,
                                             resource_type=ResourceType.USER)
 
                     # Apply changes and replace database
