@@ -188,7 +188,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 // agt_info contains "Wazuh vX.X.X", only the last part is needed.
                 version = strchr(agt_info->version, 'v');
 
-                if(strcmp(version, NEW_AR_MECHANISM) <= 0) {
+                if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
                     if(getActiveResponseInJSON(lf, ar, msg)) {
                         goto cleanup;
                     }   
