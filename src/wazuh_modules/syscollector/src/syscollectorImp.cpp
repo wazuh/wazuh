@@ -32,8 +32,6 @@ do                                                                      \
     }                                                                   \
 }while(0)
 
-constexpr auto SYSCOLLECTOR_DB { "local.db" };
-
 constexpr auto HOTFIXES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hotfixes(
