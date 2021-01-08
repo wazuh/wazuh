@@ -120,7 +120,7 @@ runInit()
 
         echo " - ${systemis} Darwin."
         echo " - ${modifiedinit}"
-        sh ./src/init/darwin-init.sh
+        sh ./src/init/darwin-init.sh ${INSTALLDIR}
         return 0;
     fi
 
