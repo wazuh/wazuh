@@ -57,8 +57,6 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    write_debug_file (input);
-
     // Parsing Input
     if (input_json = cJSON_ParseWithOpts(input, &json_err, 0), !input_json) {
         write_debug_file ("Cannot parse input to json");
@@ -66,7 +64,7 @@ int main (int argc, char **argv) {
     }
 
     // Detect version
-    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_Object)) {
+    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_String)) {
         write_debug_file ("Cannot get 'version' from json");
         cJSON_Delete(input_json);
         return OS_INVALID;
@@ -81,7 +79,6 @@ int main (int argc, char **argv) {
 
     // Detect command
     command_json = cJSON_GetObjectItem(input_json, "command");
-    write_debug_file(cJSON_PrintUnformatted(command_json));
     if (command_json && (command_json->type == cJSON_String)) {
         os_strdup(command_json->valuestring, action);
     } else {

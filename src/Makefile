@@ -1439,13 +1439,14 @@ $(active_response_programs): $(BUILD_LIBS)
 active-responses: ${active_response_programs}
 
 active_response_c := $(wildcard active-response/*.c)
+active_response_c := $(wildcard active-response/firewalls/*.c)
 active_response_o := $(active_response_c:.c=.o)
 
 active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
 
-default-firewall-drop: active-response/default-firewall-drop.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+default-firewall-drop: active-response/firewalls/default-firewall-drop.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Util ##########
 
