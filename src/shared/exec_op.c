@@ -146,7 +146,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 #else
 
     pid_t pid;
-    int pipe_fd[2];
+    int pipe_fd[2] = { 0, 0 };
 
     if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
         if (pipe(pipe_fd) < 0) {
