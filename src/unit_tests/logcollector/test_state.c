@@ -29,6 +29,7 @@ void w_logcollector_state_init();
 char * w_logcollector_state_get();
 cJSON * _w_logcollector_generate_state(lc_states_t * state, bool restart);
 void _w_logcollector_state_update_file(lc_states_t * state, char * fpath, uint64_t bytes);
+void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
 
 /* setup/teardown */
 
@@ -351,7 +352,8 @@ void test__w_logcollector_generate_state_one_target_restart(void ** state) {
 // Test _w_logcollector_state_update_file
 void test__w_logcollector_state_update_file_new_data(void ** state) {
 
-    lc_states_t stat;
+    lc_states_t stat = {0};
+    stat.states = (OSHash *) 2;
 
     expect_value(__wrap_OSHash_Get, self, stat.states);
     expect_string(__wrap_OSHash_Get, key, "/test_path");
@@ -367,7 +369,8 @@ void test__w_logcollector_state_update_file_new_data(void ** state) {
 
 void test__w_logcollector_state_update_file_update(void ** state) {
     
-    lc_states_t stat;
+    lc_states_t stat = {0};
+    stat.states = (OSHash *) 2;
     lc_state_file_t data = {0};
 
     expect_value(__wrap_OSHash_Get, self, stat.states);
@@ -380,6 +383,11 @@ void test__w_logcollector_state_update_file_update(void ** state) {
 
     assert_int_equal(data.bytes, 100);
     assert_int_equal(data.events, 1);
+}
+
+// w_logcollector_state_update_file
+void test_w_logcollector_state_update_file_null(void ** state) {
+    w_logcollector_state_update_file(NULL, 500);
 }
 
 int main(void) {
@@ -402,6 +410,10 @@ int main(void) {
         // Tests _w_logcollector_state_update_file
         cmocka_unit_test(test__w_logcollector_state_update_file_new_data),
         cmocka_unit_test(test__w_logcollector_state_update_file_update),
+        
+        // Tests w_logcollector_state_update_file
+        cmocka_unit_test(test_w_logcollector_state_update_file_null),
+        //cmocka_unit_test(test_w_logcollector_state_update_file_ok),
 
     };
 
