@@ -2600,9 +2600,9 @@ STATIC void w_initialize_file_status() {
     FILE * fd = NULL;
 
     if (fd = fopen(LOCALFILE_STATUS_PATH, "r"), fd != NULL) {
-        char str[OS_MAXSTR];
+        char str[OS_MAXSTR] = {0};
 
-        if (fread(str, 1, OS_MAXSTR, fd) < 1) {
+        if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
             merror(FREAD_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
             clearerr(fd);
         } else {
