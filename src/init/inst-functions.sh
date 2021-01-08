@@ -329,7 +329,7 @@ GenerateInitConf()
 GenerateService()
 {    
     SERVICE_TEMPLATE=./src/init/templates/${1}
-    sed "s|WAZUH_HOME|${INSTALLDIR}|" ${SERVICE_TEMPLATE}
+    sed "s|WAZUH_HOME|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
 }
 
 ##########
