@@ -262,7 +262,9 @@ char * w_logcollector_state_get() {
 
     w_mutex_lock(&g_lc_pritty_stats_mutex);
 
-    os_strdup(g_lc_pritty_stats, state_str);
+    if (g_lc_pritty_stats != NULL){
+        os_strdup(g_lc_pritty_stats, state_str);
+    }
 
     w_mutex_unlock(&g_lc_pritty_stats_mutex);
 
