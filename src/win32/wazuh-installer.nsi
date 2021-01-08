@@ -503,6 +503,7 @@ Section "Uninstall"
     Delete "$INSTDIR\rsync.dll"
     Delete "$INSTDIR\sysinfo.dll"
     Delete "$INSTDIR\syscollector.dll"
+    Delete "$INSTDIR\queue\syscollector\db\local.db"
     Delete "$INSTDIR\ruleset\sca\*"
     Delete "$INSTDIR\ruleset\*"
 
