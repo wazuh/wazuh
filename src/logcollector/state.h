@@ -29,10 +29,14 @@ void w_logcollector_state_init();
 
 /**
  * @brief Logcollector state main thread function
- *
- * @return void* default return value for thread function prototype
+ * @param args optional parameter (unused)
+ * @return void* default return value for thread function prototype (unused)
  */
-void * w_logcollector_state_main();
+#ifdef WIN32
+DWORD WINAPI w_logcollector_state_main(__attribute__((unused)) void * args);
+#else
+void * w_logcollector_state_main(__attribute__((unused)) void * args);
+#endif
 
 /**
  * @brief Update/register current drop count for a target belonging to a particular file

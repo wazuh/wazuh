@@ -18,8 +18,8 @@
 #endif
 
 /**
- * @brief state key: location option value, value: lc_state_file_t
- * key: location option value, value: lc_state_file_t
+ * @brief state storage structure
+ * key: location option value. value: lc_state_file_t
  */
 typedef struct {
     time_t start;    ///< initial state timestamp
@@ -94,7 +94,11 @@ STATIC void _w_logcollector_state_update_target(lc_states_t * state, char * fpat
  */
 STATIC void w_logcollector_state_dump();
 
-void * w_logcollector_state_main() {
+#ifdef WIN32
+DWORD WINAPI w_logcollector_state_main(__attribute__((unused)) void * args) {
+#else
+void * w_logcollector_state_main(__attribute__((unused)) void * args) {
+#endif
 
     int interval = getDefine_Int("logcollector", "state_interval", 1, 3600);
 
@@ -103,8 +107,9 @@ void * w_logcollector_state_main() {
         w_logcollector_generate_state();
         w_logcollector_state_dump();
     }
-
+#ifndef WIN32
     return NULL;
+#endif
 }
 
 static void w_logcollector_state_dump() {
@@ -297,7 +302,7 @@ cJSON * _w_logcollector_generate_state(lc_states_t * state, bool restart) {
         // Files
         cJSON * lc_stats_file = cJSON_CreateObject();
         cJSON_AddItemToObject(lc_stats_file, "targets", lc_stats_targets_array);
-        cJSON_AddStringToObject(lc_stats_file, "path", hash_node->key);
+        cJSON_AddStringToObject(lc_stats_file, "location", hash_node->key);
         cJSON_AddNumberToObject(lc_stats_file, "bytes", data->bytes);
         cJSON_AddNumberToObject(lc_stats_file, "events", data->events);
         if (restart) {

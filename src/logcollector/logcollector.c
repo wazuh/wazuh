@@ -369,7 +369,16 @@ void LogCollectorStart()
     w_logcollector_state_init();
 
     /* Create the state thread */
+#ifndef WIN32
     w_create_thread(w_logcollector_state_main, NULL);
+#else
+    w_create_thread(NULL,
+                     0,
+                     w_logcollector_state_main,
+                     NULL,
+                     0,
+                     NULL);
+#endif
 
     // Initialize message queue's log builder
     mq_log_builder_init();
@@ -1930,9 +1939,9 @@ void * w_output_thread(void * args){
         if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
             // When dealing with this type of messages we don't want any of them to be lost
             // Continuously attempt to reconnect to the queue and send the message.
-
-            if(result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
-                result != 0) {
+            result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
+                                  message->queue_mq, message->log_target);
+            if (result != 0) {
                 #ifdef CLIENT
                 merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
                 #else
@@ -1956,14 +1965,17 @@ void * w_output_thread(void * args){
                 }
             }
 
-            w_logcollector_state_update_target(message->file, message->log_target->log_socket->name, result == 1);
+            w_logcollector_state_update_target(message->file, 
+                                               message->log_target->log_socket->name,
+                                               result == 1);
 
         } else {
             const int MAX_RETRIES = 3;
             int retries = 0;
             while (retries < MAX_RETRIES) {
-                if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
-                    result < 0) {
+                result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
+                                      message->queue_mq, message->log_target);
+                if (result < 0) {
                     merror(QUEUE_SEND);
 
                     sleep(sleep_time);
@@ -1976,7 +1988,9 @@ void * w_output_thread(void * args){
                 }
             }
 
-            w_logcollector_state_update_target(message->file, message->log_target->log_socket->location, result == 1);
+            w_logcollector_state_update_target(message->file,
+                                               message->log_target->log_socket->name,
+                                               result == 1);
 
             if (retries == MAX_RETRIES) {
                 merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
