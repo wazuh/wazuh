@@ -41,6 +41,16 @@ list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,ff
                                 -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
                                 -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,_mwarn -Wl,--wrap,fgetpos")
 
+list(APPEND logcollector_names "test_state")
+list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
+                                -Wl,--wrap,fgetpos -Wl,--wrap,time -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Add \
+                                -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Delete_ex \
+                                -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Update \
+                                -Wl,--wrap,OSHash_setSize -Wl,--wrap,OSHash_Begin -Wl,--wrap,_merror_exit \
+                                -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray \
+                                -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject \
+                                -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,ctime")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")

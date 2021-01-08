@@ -52,7 +52,6 @@ pthread_mutex_t g_lc_raw_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_prit
 pthread_mutex_t g_lc_pritty_stats_mutex =
     PTHREAD_MUTEX_INITIALIZER; ///< g_lc_states_* structs mutual exclusion mechanism
 
-const char * LOGCOLLECTOR_STATE_DESCRIPTION = "logcollector_state"; ///< String identifier for errors
 
 /**
  * @brief Trigger the generation of states
@@ -112,7 +111,7 @@ void * w_logcollector_state_main(__attribute__((unused)) void * args) {
 #endif
 }
 
-static void w_logcollector_state_dump() {
+STATIC void w_logcollector_state_dump() {
 
     char * lc_state_str = w_logcollector_state_get();
 
@@ -120,7 +119,7 @@ static void w_logcollector_state_dump() {
 
     if (lc_state_file = fopen(LOGCOLLECTOR_STATE_PATH, "w"), lc_state_file != NULL) {
         if (fwrite(lc_state_str, sizeof(char), strlen(lc_state_str), lc_state_file) < 1) {
-            merror(FREAD_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
+            merror(FWRITE_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
         }
         fclose(lc_state_file);
     }
@@ -198,6 +197,7 @@ void _w_logcollector_state_update_file(lc_states_t * state, char * fpath, uint64
         OSHash_Add(state->states, fpath, data);
     }
 }
+
 void _w_logcollector_state_update_target(lc_states_t * state, char * fpath, char * target, bool dropped) {
 
     lc_state_file_t * data = NULL;

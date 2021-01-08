@@ -19,7 +19,9 @@
 #define LOGCOLLECTOR_STATE_PATH DEFAULTDIR LOGCOLLECTOR_STATE
 #endif
 
-#define LOGCOLLECTOR_STATE_FILES_MAX 440000 // Double of max value of logcollector.queue_size
+// Double of max value of logcollector.queue_size
+#define LOGCOLLECTOR_STATE_FILES_MAX   440000               ///< max amount of localfiles location for states
+#define LOGCOLLECTOR_STATE_DESCRIPTION "logcollector_state" ///< String identifier for errors
 
 /**
  * @brief Initialize storing structures
