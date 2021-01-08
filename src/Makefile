@@ -87,13 +87,12 @@ ifneq (${TARGET},winagent)
 		DEFINES+=-D${uname_S}
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
-#		DEFINES+=-DUSE_MAGIC
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 		OSSEC_LIBS+=-lrt -ldl -lm
-#		OSSEC_LDFLAGS+=-lmagic
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
-#		OSSEC_LDFLAGS+=-lmagic
+		AR_LDFLAGS+=-pthread -lrt -ldl
 		OSSEC_CFLAGS+=-Wl,--start-group
 		USE_AUDIT=yes
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
@@ -102,6 +101,7 @@ endif
 ifeq (${CHECK_ARCHLINUX},YES)
 		ARCH_FLAGS+=-lnghttp2 -lbrotlidec -lpsl
 		OSSEC_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
+		AR_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
 else
 ifeq (${uname_S},AIX)
@@ -109,6 +109,7 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
+		AR_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/vac/bin
 		CC=gcc
 else
@@ -119,11 +120,13 @@ ifeq (${uname_S},SunOS)
 ifneq (${uname_P},sparc)
 ifneq ($(uname_R),5.10)
 		OSSEC_LDFLAGS+=-z relax=secadj
+		AR_LDFLAGS+=-z relax=secadj
 else
 		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
 endif
 endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread
 		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 		CC=gcc
@@ -137,6 +140,8 @@ ifeq (${uname_S},Darwin)
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
+		AR_LDFLAGS+=-pthread
+		AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
 		SHARED=dylib
 		OSSEC_LIBS+=-framework Security
 else
@@ -146,12 +151,17 @@ ifeq (${uname_S},FreeBSD)
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		AR_LDFLAGS+=-pthread
+		AR_LDFLAGS+=-L/usr/local/lib
+		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 else
 ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		AR_LDFLAGS+=-pthread
+		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 else
 ifeq (${uname_S},OpenBSD)
 		DEFINES+=-DOpenBSD
@@ -159,6 +169,9 @@ ifeq (${uname_S},OpenBSD)
 		OSSEC_LDFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-L/usr/local/lib
 		OSSEC_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../lib'
+		AR_LDFLAGS+=-pthread
+		AR_LDFLAGS+=-L/usr/local/lib
+		AR_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../../lib'
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -167,11 +180,14 @@ ifeq (${uname_S},HP-UX)
 		DEFINES+=-DOS_BIG_ENDIAN
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-lrt
+		AR_LDFLAGS+=-lrt
 ifeq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
+		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 endif
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
+		AR_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
@@ -190,6 +206,7 @@ else
 		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
+		AR_LDFLAGS+=-pthread
 endif # winagent
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -217,6 +234,7 @@ endif #DEBUG
 
 OSSEC_CFLAGS+=${OFLAGS}
 OSSEC_LDFLAGS+=${OFLAGS}
+AR_LDFLAGS+=${OFLAGS}
 
 ifneq (,$(filter ${CLEANFULL},YES yes y Y 1))
 	DEFINES+=-DCLEANFULL
@@ -240,6 +258,7 @@ OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) 
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
+AR_LDFLAGS += ${LDFLAGS}
 OSSEC_LIBS += $(LIBS)
 
 CCCOLOR="\033[34m"
@@ -337,7 +356,6 @@ endif # USE_PRELUDE
 
 ifneq (,$(filter ${USE_ZEROMQ},YES auto yes y Y 1))
 	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
-	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
 	OSSEC_LIBS+=-lzmq -lczmq
 endif # USE_ZEROMQ
 
@@ -1041,6 +1059,9 @@ wrappers_wazuh_o := $(wrappers_wazuh_c:.c=.o)
 wrappers_wazuh_os_crypto_c := $(wildcard unit_tests/wrappers/wazuh/os_crypto/*.c)
 wrappers_wazuh_os_crypto_o := $(wrappers_wazuh_os_crypto_c:.c=.o)
 
+wrappers_wazuh_os_execd_c := $(wildcard unit_tests/wrappers/wazuh/os_execd/*.c)
+wrappers_wazuh_os_execd_o := $(wrappers_wazuh_os_execd_c:.c=.o)
+
 wrappers_wazuh_os_net_c := $(wildcard unit_tests/wrappers/wazuh/os_net/*.c)
 wrappers_wazuh_os_net_o := $(wrappers_wazuh_os_net_c:.c=.o)
 
@@ -1082,7 +1103,6 @@ wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
-	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 
@@ -1098,6 +1118,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_execd_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_xml_o}
@@ -1730,8 +1751,6 @@ install_mitre: install_python
 CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
 LIBS_TEST=-lcmocka
 
-# LIBS_TEST = -lcheck -lm -lrt -lsubunit
-
 unit_tests/wrappers/%.o: unit_tests/wrappers/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
@@ -1775,6 +1794,9 @@ unit_tests/wrappers/wazuh/%.o: unit_tests/wrappers/wazuh/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/wazuh/os_crypto/%.o: unit_tests/wrappers/wazuh/os_crypto/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/wazuh/os_execd/%.o: unit_tests/wrappers/wazuh/os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/wazuh/os_net/%.o: unit_tests/wrappers/wazuh/os_net/%.c
@@ -2030,6 +2052,7 @@ clean-unit-tests:
 	rm -f ${wrappers_posix_o}
 	rm -f ${wrappers_wazuh_o}
 	rm -f ${wrappers_wazuh_os_crypto_o}
+	rm -f ${wrappers_wazuh_os_execd_o}
 	rm -f ${wrappers_wazuh_os_net_o}
 	rm -f ${wrappers_wazuh_os_regex_o}
 	rm -f ${wrappers_wazuh_os_xml_o}
