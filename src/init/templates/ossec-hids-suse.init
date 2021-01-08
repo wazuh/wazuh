@@ -44,17 +44,6 @@ rc_reset
 # with force-reload (in case signalling is not supported) are
 # considered a success.
 
-
-# Reading ossec init conf.
-if [ -f /etc/ossec-init.conf ]; then
-    . /etc/ossec-init.conf
-fi
-
-if [ "X${DIRECTORY}" = "X" ]; then
-    DIRECTORY="/var/ossec"
-fi
-
-
 # Just to make sure ossec is installed ...
 CONTROL="$DIRECTORY/bin/wazuh-control"
 
@@ -63,15 +52,15 @@ test -x $CONTROL || { echo "$CONTROL not installed";
     else exit 5; fi; }
 
 start() {
-    ${DIRECTORY}/bin/wazuh-control start
+    WAZUH_HOME/bin/wazuh-control start
 }
 
 stop() {
-    ${DIRECTORY}/bin/wazuh-control stop
+    WAZUH_HOME/bin/wazuh-control stop
 }
 
 status() {
-    ${DIRECTORY}/bin/wazuh-control status
+    WAZUH_HOME/bin/wazuh-control status
 }
 
 case "$1" in
