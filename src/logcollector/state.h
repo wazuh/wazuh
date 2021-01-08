@@ -13,7 +13,7 @@
 #include "shared.h"
 
 #ifdef WIN32
-#define LOGCOLLECTOR_STATE_PATH "var\\run\\wazuh-logcollector.state"
+#define LOGCOLLECTOR_STATE_PATH "wazuh-logcollector.state"
 #else
 #define LOGCOLLECTOR_STATE      "/var/run/wazuh-logcollector.state"
 #define LOGCOLLECTOR_STATE_PATH DEFAULTDIR LOGCOLLECTOR_STATE
