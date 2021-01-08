@@ -12,6 +12,7 @@
 #include "logcollector.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
+#include "state.h"
 
 
 size_t lccom_dispatch(char * command, char ** output){
@@ -33,11 +34,26 @@ size_t lccom_dispatch(char * command, char ** output){
         }
         return lccom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "getstate") == 0) {
+        return lccom_getstate(output);
     } else {
         mdebug1("LCCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
+}
+
+size_t lccom_getstate(char ** output) {
+    char * state_str = NULL;
+    if (state_str = w_logcollector_state_get(), state_str == NULL){
+        mdebug1("At LCCOM getstate: Could not process the request");
+        os_strdup("err Could not process the request", *output);
+    } else {
+        os_strdup("ok", *output);
+        wm_strcat(output, state_str, ' ');
+        os_free(state_str);
+    }
+    return strlen(*output);
 }
 
 size_t lccom_getconfig(const char * section, char ** output) {
