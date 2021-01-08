@@ -1431,7 +1431,7 @@ manage_agents: ${addagent_o}
 
 #### Active Response ####
 
-active_response_programs = ### AR program list
+active_response_programs = default-firewall-drop
 
 $(active_response_programs): $(BUILD_LIBS)
 
@@ -1443,6 +1443,9 @@ active_response_o := $(active_response_c:.c=.o)
 
 active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
+
+default-firewall-drop: active-response/default-firewall-drop.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Util ##########
 
