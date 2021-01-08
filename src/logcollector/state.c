@@ -122,6 +122,8 @@ STATIC void w_logcollector_state_dump() {
             merror(FWRITE_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
         }
         fclose(lc_state_file);
+    } else {
+        merror(FOPEN_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
     }
 
     os_free(lc_state_str);
@@ -194,7 +196,16 @@ void _w_logcollector_state_update_file(lc_states_t * state, char * fpath, uint64
     data->bytes += bytes;
 
     if (OSHash_Update(state->states, fpath, data) != 1) {
-        OSHash_Add(state->states, fpath, data);
+        if (OSHash_Add(state->states, fpath, data) != 2) {
+            lc_state_target_t ** target = data->targets;
+            while (*target != NULL) {
+                os_free(*target);
+                target++;
+            }
+            os_free(data->targets);
+            os_free(data);
+            merror(HUPDATE_ERROR, fpath, LOGCOLLECTOR_STATE_DESCRIPTION);
+        }
     }
 }
 
@@ -231,7 +242,16 @@ void _w_logcollector_state_update_target(lc_states_t * state, char * fpath, char
     }
 
     if (OSHash_Update(state->states, fpath, data) != 1) {
-        OSHash_Add(state->states, fpath, data);
+        if (OSHash_Add(state->states, fpath, data) != 2) {
+            lc_state_target_t ** target = data->targets;
+            while (*target != NULL) {
+                os_free(*target);
+                target++;
+            }
+            os_free(data->targets);
+            os_free(data);
+            merror(HUPDATE_ERROR, fpath, LOGCOLLECTOR_STATE_DESCRIPTION);
+        }
     }
 }
 
