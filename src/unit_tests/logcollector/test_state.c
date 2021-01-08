@@ -30,6 +30,7 @@ char * w_logcollector_state_get();
 cJSON * _w_logcollector_generate_state(lc_states_t * state, bool restart);
 void _w_logcollector_state_update_file(lc_states_t * state, char * fpath, uint64_t bytes);
 void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
+void _w_logcollector_state_update_target(lc_states_t * state, char * fpath, char * target, bool dropped);
 
 /* setup/teardown */
 
@@ -54,7 +55,7 @@ char * __wrap_ctime (const time_t *__timer) {
 
 /* tests */
 
-// w_logcollector_state_init
+/* w_logcollector_state_init */
 void test_w_logcollector_state_init_fail_hash_create_global(void ** state) {
 
     os_free(g_lc_states_global);
@@ -193,7 +194,7 @@ void test_w_logcollector_state_init_ok(void ** state) {
     os_free(g_lc_states_interval);
 }
 
-// w_logcollector_state_get_null
+/* w_logcollector_state_get_null */
 void test_w_logcollector_state_get_null(void ** state) {
 
     os_free(g_lc_pritty_stats);
@@ -213,7 +214,7 @@ void test_w_logcollector_state_get_non_null(void ** state) {
     os_free(g_lc_pritty_stats);
 }
 
-// Test _w_logcollector_generate_state
+/* Test _w_logcollector_generate_state */
 void test__w_logcollector_generate_state_fail_get_node(void ** state) {
 
     lc_states_t stats = {.states = (OSHash *) 2};
@@ -349,7 +350,7 @@ void test__w_logcollector_generate_state_one_target_restart(void ** state) {
     assert_int_equal(stats.start, 2525);
 }
 
-// Test _w_logcollector_state_update_file
+/* Test _w_logcollector_state_update_file */
 void test__w_logcollector_state_update_file_new_data(void ** state) {
 
     lc_states_t stat = {0};
@@ -362,7 +363,7 @@ void test__w_logcollector_state_update_file_new_data(void ** state) {
     will_return(__wrap_OSHash_Update, 0);
 
     expect_value(__wrap_OSHash_Add, key, "/test_path");
-    will_return(__wrap_OSHash_Add, 0);
+    will_return(__wrap_OSHash_Add, 2);
 
     _w_logcollector_state_update_file(&stat, "/test_path", 100);
 }
@@ -385,9 +386,167 @@ void test__w_logcollector_state_update_file_update(void ** state) {
     assert_int_equal(data.events, 1);
 }
 
-// w_logcollector_state_update_file
+/* w_logcollector_state_update_file */
 void test_w_logcollector_state_update_file_null(void ** state) {
     w_logcollector_state_update_file(NULL, 500);
+
+}
+
+/* _w_logcollector_state_update_target */
+void test__w_logcollector_state_update_target_get_file_stats_fail(void ** state) {
+    
+    lc_states_t stats = {0};
+
+    char * fpath = "/test_path";
+    char * target = "test";
+
+    bool dropped = false;
+
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, NULL);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    _w_logcollector_state_update_target(&stats, fpath, target, dropped);
+
+}
+
+void test__w_logcollector_state_update_target_find_target_fail(void ** state) {
+
+    lc_states_t * stats = NULL;
+    os_calloc(1, sizeof(lc_states_t), stats);
+    stats->states = (OSHash *) 2;
+    stats->start = (time_t) 2020;
+
+    lc_state_target_t * target;
+    os_calloc(1, sizeof(lc_state_target_t), target);
+    target->drops = 10;
+    os_strdup("test", target->name);
+
+    lc_state_target_t ** target_array;
+    os_calloc(2, sizeof(lc_state_target_t *), target_array);
+    target_array[0] = target;
+    
+    lc_state_file_t * data;
+    os_calloc(1, sizeof(lc_state_file_t), data);
+    data->targets = target_array;
+    data->bytes = 100;
+    data->events = 5;
+
+    char * fpath = "/test_path";
+    char * target_str = "test2";
+
+    bool dropped = false;
+
+    expect_value(__wrap_OSHash_Get, self, stats->states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, data);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    _w_logcollector_state_update_target(stats, fpath, target_str, dropped);
+
+}
+
+void test__w_logcollector_state_update_target_find_target_ok(void ** state) {
+
+    lc_states_t stats = {.states = (OSHash *) 2, .start = (time_t) 2020};
+    lc_state_target_t target = {.drops = 10, .name = "test"};
+    lc_state_target_t * target_array[2] = {&target, NULL};
+
+    lc_state_file_t data = {.targets = (lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+
+    char * fpath = "/test_path";
+    char * target_str = "test";
+
+    bool dropped = false;
+
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, &data);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
+
+}
+
+void test__w_logcollector_state_update_target_dropped_true(void ** state) {
+
+    lc_states_t stats = {.states = (OSHash *) 2, .start = (time_t) 2020};
+    lc_state_target_t target = {.drops = 10, .name = "test"};
+    lc_state_target_t * target_array[2] = {&target, NULL};
+
+    lc_state_file_t data = {.targets = (lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+
+    char * fpath = "/test_path";
+    char * target_str = "test";
+
+    bool dropped = true;
+
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, &data);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
+
+}
+
+void test__w_logcollector_state_update_target_OSHash_Update_fail(void ** state) {
+
+    lc_states_t stats = {.states = (OSHash *) 2, .start = (time_t) 2020};
+    lc_state_target_t target = {.drops = 10, .name = "test"};
+    lc_state_target_t * target_array[2] = {&target, NULL};
+
+    lc_state_file_t data = {.targets = (lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+
+    char * fpath = "/test_path";
+    char * target_str = "test";
+
+    bool dropped = true;
+
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, &data);
+
+    will_return(__wrap_OSHash_Update, 0);
+
+    expect_value(__wrap_OSHash_Add, key, "/test_path");
+    will_return(__wrap_OSHash_Add, 2);
+
+    _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
+
+}
+
+void test__w_logcollector_state_update_target_OSHash_Add_fail(void ** state) {
+
+    lc_states_t stats = {.states = (OSHash *) 2};
+    lc_state_target_t target = {.drops = 10, .name = "test"};
+    lc_state_target_t * target_array[2] = {&target, NULL};
+
+    lc_state_file_t data = {.targets = (lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+
+    char * fpath = "/test_path";
+    char * target_str = "test";
+
+    bool dropped = true;
+
+    expect_value(__wrap_OSHash_Get, self, stats.states);
+    expect_string(__wrap_OSHash_Get, key, fpath);
+    will_return(__wrap_OSHash_Get, &data);
+
+    will_return(__wrap_OSHash_Update, 0);
+
+    expect_value(__wrap_OSHash_Add, key, "/test_path");
+    will_return(__wrap_OSHash_Add, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "TEST");
+
+    _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
+
 }
 
 int main(void) {
@@ -414,6 +573,14 @@ int main(void) {
         // Tests w_logcollector_state_update_file
         cmocka_unit_test(test_w_logcollector_state_update_file_null),
         //cmocka_unit_test(test_w_logcollector_state_update_file_ok),
+
+        // Tests _w_logcollector_state_update_target
+        cmocka_unit_test(test__w_logcollector_state_update_target_get_file_stats_fail),
+        cmocka_unit_test(test__w_logcollector_state_update_target_find_target_fail),
+        cmocka_unit_test(test__w_logcollector_state_update_target_find_target_ok),
+        cmocka_unit_test(test__w_logcollector_state_update_target_dropped_true),
+        cmocka_unit_test(test__w_logcollector_state_update_target_OSHash_Update_fail),
+        cmocka_unit_test(test__w_logcollector_state_update_target_OSHash_Add_fail),
 
     };
 
