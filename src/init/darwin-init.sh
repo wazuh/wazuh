@@ -41,22 +41,18 @@ launchctl load $SERVICE
 echo '
 #!/bin/sh
 . /etc/rc.common
-. /etc/ossec-init.conf
-if [ "X${DIRECTORY}" = "X" ]; then
-    DIRECTORY="/Library/Ossec"
-fi
 
 StartService ()
 {
-        ${DIRECTORY}/bin/wazuh-control start
+        '${INSTALLDIR}'/bin/wazuh-control start
 }
 StopService ()
 {
-        ${DIRECTORY}/bin/wazuh-control stop
+        '${INSTALLDIR}'/bin/wazuh-control stop
 }
 RestartService ()
 {
-        ${DIRECTORY}/bin/wazuh-control restart
+        '${INSTALLDIR}'/bin/wazuh-control restart
 }
 RunService "$1"
 ' > $STARTUP_SCRIPT
@@ -96,19 +92,13 @@ chmod u=rw-,go=r-- $STARTUP
 
 echo '#!/bin/sh
 
-. /etc/ossec-init.conf
-
-if [ "X${DIRECTORY}" = "X" ]; then
-    DIRECTORY="/Library/Ossec"
-fi
-
 capture_sigterm() {
-    ${DIRECTORY}/bin/wazuh-control stop
+    '${INSTALLDIR}'/bin/wazuh-control stop
     exit $?
 }
 
-if ! ${DIRECTORY}/bin/wazuh-control start; then
-    ${DIRECTORY}/bin/wazuh-control stop
+if ! '${INSTALLDIR}'/bin/wazuh-control start; then
+    '${INSTALLDIR}'/bin/wazuh-control stop
 fi
 
 while : ; do
