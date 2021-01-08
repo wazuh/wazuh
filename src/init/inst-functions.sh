@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is free software; you can redistribute it
@@ -699,11 +699,10 @@ InstallCommon()
         OSSEC_CONF_SRC='../etc/ossec-local.conf'
     fi
 
-    sed "s/TEMP_NAME/${NAME}/
-         s/TEMP_VERSION/${VERSION}/
+    sed "s/TEMP_VERSION/${VERSION}/
          s/TEMP_REVISION/${REVISION}/
-         s/TEMP_DATE/${DATE}/
-         s/TEMP_TYPE/${TYPE}/"\
+         s/TEMP_DATE/`date`/
+         s/TEMP_INSTYPE/${INSTYPE}/"\
         ${OSSEC_CONTROL_SRC_TEMPLATE} > ./init/wazuh-control.sh.tmp
 
     OSSEC_CONTROL_SRC='./init/wazuh-control.sh.tmp'

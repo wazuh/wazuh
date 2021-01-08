@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -11,11 +11,10 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 # These variables will be replaced during the installation process
-NAME="TEMP_NAME"
 VERSION="TEMP_VERSION"
 REVISION="TEMP_REVISION"
 DATE="TEMP_DATE"
-TYPE="TEMP_TYPE"
+TYPE="TEMP_INSTYPE"
 
 ###  Do not modify bellow here ###
 AUTHOR="Wazuh Inc."
@@ -97,7 +96,7 @@ unlock()
 help()
 {
     # Help message
-    echo "Usage: $0 {start|stop|restart|status}";
+    echo "Usage: $0 {start|stop|restart|status|info [-v -r -d -t]}";
     exit 1;
 }
 
@@ -285,6 +284,22 @@ status)
     lock
     status
     unlock
+    ;;
+info)
+    if [ "X$2" = "X" ]; then
+        echo "VERSION=\"${VERSION}\""
+        echo "REVISION=\"${REVISION}\""
+        echo "DATE=\"${DATE}\""
+        echo "TYPE=\"${TYPE}\""
+    else
+        case "$2" in
+            -v) echo "${VERSION}" ;;
+            -r) echo "${REVISION}" ;;
+            -d) echo "${DATE}" ;;
+            -t) echo "${TYPE}" ;;
+             *) echo "Invalid flag: $2" && help ;;
+        esac
+    fi
     ;;
 help)
     help
