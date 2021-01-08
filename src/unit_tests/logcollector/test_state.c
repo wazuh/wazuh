@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
+#include "../wrappers/posix/pthread_wrappers.h"
 
 // selfcontained
 void w_logcollector_state_init();
@@ -31,6 +32,7 @@ cJSON * _w_logcollector_generate_state(lc_states_t * state, bool restart);
 void _w_logcollector_state_update_file(lc_states_t * state, char * fpath, uint64_t bytes);
 void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
 void _w_logcollector_state_update_target(lc_states_t * state, char * fpath, char * target, bool dropped);
+void w_logcollector_state_update_target(char * fpath, char * target, bool dropped);
 
 /* setup/teardown */
 
@@ -198,6 +200,8 @@ void test_w_logcollector_state_init_ok(void ** state) {
 void test_w_logcollector_state_get_null(void ** state) {
 
     os_free(g_lc_pritty_stats);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     assert_null(w_logcollector_state_get());
 }
 
@@ -205,6 +209,9 @@ void test_w_logcollector_state_get_non_null(void ** state) {
 
     os_free(g_lc_pritty_stats);
     g_lc_pritty_stats = strdup("hi!");
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     char * retval = w_logcollector_state_get();
 
@@ -387,6 +394,32 @@ void test__w_logcollector_state_update_file_update(void ** state) {
 }
 
 /* w_logcollector_state_update_file */
+void test__w_logcollector_state_update_file_fail_update(void ** state) {
+    
+    lc_states_t stat = {0};
+    stat.states = (OSHash *) 2;
+
+    lc_state_file_t * data = NULL;
+    os_calloc(1, sizeof(lc_state_file_t), data);
+    os_calloc(2, sizeof(lc_state_target_t *), data->targets);
+    os_calloc(1, sizeof(lc_state_target_t), data->targets[0]);
+
+    expect_value(__wrap_OSHash_Get, self, stat.states);
+    expect_string(__wrap_OSHash_Get, key, "/test_path");
+    will_return(__wrap_OSHash_Get, data);
+
+    will_return(__wrap_OSHash_Update, 0);
+    expect_value(__wrap_OSHash_Add, key, "/test_path");
+    will_return(__wrap_OSHash_Add, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1299): Failure to update '/test_path' to 'logcollector_state' hash table");
+
+    _w_logcollector_state_update_file(&stat, "/test_path", 100);
+
+}
+
+/* w_logcollector_state_update_file */
 void test_w_logcollector_state_update_file_null(void ** state) {
     w_logcollector_state_update_file(NULL, 500);
 
@@ -446,6 +479,11 @@ void test__w_logcollector_state_update_target_find_target_fail(void ** state) {
     will_return(__wrap_OSHash_Update, 1);
 
     _w_logcollector_state_update_target(stats, fpath, target_str, dropped);
+
+    os_free(target->name);
+    os_free(target);
+    os_free(data->targets);
+    os_free(data);
 
 }
 
@@ -524,10 +562,20 @@ void test__w_logcollector_state_update_target_OSHash_Update_fail(void ** state) 
 void test__w_logcollector_state_update_target_OSHash_Add_fail(void ** state) {
 
     lc_states_t stats = {.states = (OSHash *) 2};
-    lc_state_target_t target = {.drops = 10, .name = "test"};
-    lc_state_target_t * target_array[2] = {&target, NULL};
+    lc_state_target_t * target;
+    os_calloc(1, sizeof(lc_state_target_t), target);
+    target->drops = 10;
+    target->name = "test";
 
-    lc_state_file_t data = {.targets = (lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+    lc_state_target_t ** target_array;
+    os_calloc(2, sizeof(lc_state_target_t*), target_array);
+    target_array[0] = target;
+
+    lc_state_file_t * data;
+    os_calloc(1, sizeof(lc_state_file_t), data);
+    data->targets = target_array;
+    data->bytes = 100;
+    data->events = 5;
 
     char * fpath = "/test_path";
     char * target_str = "test";
@@ -536,17 +584,98 @@ void test__w_logcollector_state_update_target_OSHash_Add_fail(void ** state) {
 
     expect_value(__wrap_OSHash_Get, self, stats.states);
     expect_string(__wrap_OSHash_Get, key, fpath);
-    will_return(__wrap_OSHash_Get, &data);
+    will_return(__wrap_OSHash_Get, data);
 
     will_return(__wrap_OSHash_Update, 0);
 
     expect_value(__wrap_OSHash_Add, key, "/test_path");
     will_return(__wrap_OSHash_Add, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "TEST");
+    expect_string(__wrap__merror, formatted_msg, "(1299): Failure to update '/test_path' to 'logcollector_state' hash table");
 
     _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
 
+}
+
+void test_w_logcollector_state_update_file_ok(void ** state) {
+
+    os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
+    g_lc_states_global->states = (OSHash *) 2;
+    os_calloc(1, sizeof(lc_states_t), g_lc_states_interval);
+    g_lc_states_interval->states = (OSHash *) 3;
+
+    lc_state_file_t data = {0};
+    lc_state_file_t data2 = {.bytes = 10, .events = 5};
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get, self, g_lc_states_global->states);
+    expect_string(__wrap_OSHash_Get, key, "/test_path");
+    will_return(__wrap_OSHash_Get, &data);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    expect_value(__wrap_OSHash_Get, self, g_lc_states_interval->states);
+    expect_string(__wrap_OSHash_Get, key, "/test_path");
+    will_return(__wrap_OSHash_Get, &data2);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    w_logcollector_state_update_file("/test_path", 500);
+
+    assert_int_equal(data.bytes, 500);
+    assert_int_equal(data.events, 1);
+    assert_int_equal(data2.bytes, 510);
+    assert_int_equal(data2.events, 6);
+    os_free(g_lc_states_global);
+    os_free(g_lc_states_interval);
+}
+
+// Tests w_logcollector_state_update_target
+void test_w_logcollector_state_update_target_null_target(void ** state) {
+    w_logcollector_state_update_target("test path", NULL, false);
+}
+
+void test_w_logcollector_state_update_target_null_path(void ** state) {
+    w_logcollector_state_update_target(NULL, "test_target", false);
+}
+
+void test_w_logcollector_state_update_target_ok(void ** state) {
+
+    os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
+    g_lc_states_global->states = (OSHash *) 2;
+    os_calloc(1, sizeof(lc_states_t), g_lc_states_interval);
+    g_lc_states_interval->states = (OSHash *) 3;
+
+    lc_state_target_t target = {.drops = 10, .name = "test_target"};
+    lc_state_target_t * target_array[2] = {&target, NULL};
+    lc_state_file_t data = {.targets = (lc_state_target_t **) &target_array, .bytes = 100, .events = 5};
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_value(__wrap_OSHash_Get, self, g_lc_states_global->states);
+    expect_string(__wrap_OSHash_Get, key, "test_path");
+    will_return(__wrap_OSHash_Get, &data);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    lc_state_target_t target2 = {.drops = 10, .name = "test_target"};
+    lc_state_target_t * target_array2[2] = {&target, NULL};
+    lc_state_file_t data2 = {.targets = (lc_state_target_t **) &target_array2, .bytes = 100, .events = 5};
+
+    expect_value(__wrap_OSHash_Get, self, g_lc_states_interval->states);
+    expect_string(__wrap_OSHash_Get, key, "test_path");
+    will_return(__wrap_OSHash_Get, &data2);
+
+    will_return(__wrap_OSHash_Update, 1);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    w_logcollector_state_update_target("test_path", "test_target", false);
+
+    os_free(g_lc_states_global);
+    os_free(g_lc_states_interval);
 }
 
 int main(void) {
@@ -569,10 +698,11 @@ int main(void) {
         // Tests _w_logcollector_state_update_file
         cmocka_unit_test(test__w_logcollector_state_update_file_new_data),
         cmocka_unit_test(test__w_logcollector_state_update_file_update),
+        cmocka_unit_test(test__w_logcollector_state_update_file_fail_update),
         
         // Tests w_logcollector_state_update_file
         cmocka_unit_test(test_w_logcollector_state_update_file_null),
-        //cmocka_unit_test(test_w_logcollector_state_update_file_ok),
+        cmocka_unit_test(test_w_logcollector_state_update_file_ok),
 
         // Tests _w_logcollector_state_update_target
         cmocka_unit_test(test__w_logcollector_state_update_target_get_file_stats_fail),
@@ -582,6 +712,10 @@ int main(void) {
         cmocka_unit_test(test__w_logcollector_state_update_target_OSHash_Update_fail),
         cmocka_unit_test(test__w_logcollector_state_update_target_OSHash_Add_fail),
 
+        // Tests w_logcollector_state_update_target
+        cmocka_unit_test(test_w_logcollector_state_update_target_null_path),
+        cmocka_unit_test(test_w_logcollector_state_update_target_null_target),
+        cmocka_unit_test(test_w_logcollector_state_update_target_ok),
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

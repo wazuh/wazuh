@@ -48,9 +48,10 @@ list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,ff
                                 -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Delete_ex \
                                 -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Update \
                                 -Wl,--wrap,OSHash_setSize -Wl,--wrap,OSHash_Begin -Wl,--wrap,_merror_exit \
-                                -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray \
+                                -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,_merror \
                                 -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject \
-                                -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,ctime")
+                                -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,ctime \
+                                -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
