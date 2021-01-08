@@ -6,6 +6,7 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+INSTALLATION_PATH=${1}
 SERVICE=/Library/LaunchDaemons/com.wazuh.agent.plist
 STARTUP=/Library/StartupItems/WAZUH/StartupParameters.plist
 LAUNCHER_SCRIPT=/Library/StartupItems/WAZUH/launcher.sh
@@ -44,15 +45,15 @@ echo '
 
 StartService ()
 {
-        '${INSTALLDIR}'/bin/wazuh-control start
+        '${INSTALLATION_PATH}'/bin/wazuh-control start
 }
 StopService ()
 {
-        '${INSTALLDIR}'/bin/wazuh-control stop
+        '${INSTALLATION_PATH}'/bin/wazuh-control stop
 }
 RestartService ()
 {
-        '${INSTALLDIR}'/bin/wazuh-control restart
+        '${INSTALLATION_PATH}'/bin/wazuh-control restart
 }
 RunService "$1"
 ' > $STARTUP_SCRIPT
@@ -93,12 +94,12 @@ chmod u=rw-,go=r-- $STARTUP
 echo '#!/bin/sh
 
 capture_sigterm() {
-    '${INSTALLDIR}'/bin/wazuh-control stop
+    '${INSTALLATION_PATH}'/bin/wazuh-control stop
     exit $?
 }
 
-if ! '${INSTALLDIR}'/bin/wazuh-control start; then
-    '${INSTALLDIR}'/bin/wazuh-control stop
+if ! '${INSTALLATION_PATH}'/bin/wazuh-control start; then
+    '${INSTALLATION_PATH}'/bin/wazuh-control stop
 fi
 
 while : ; do
