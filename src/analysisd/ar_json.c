@@ -28,7 +28,9 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     cJSON *_object = NULL;
     cJSON *_array = NULL;
     cJSON *json_alert = NULL;
-    char* node_name = NULL;
+    char *node_name = NULL;
+    char *alert_string = NULL;
+    char *msg = NULL;
 
     cJSON *message = cJSON_CreateObject();
     if (message == NULL) {
@@ -50,7 +52,7 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
 
     _object = cJSON_CreateObject();
     cJSON_AddItemToObject(message, "parameters", _object);
-    
+
     _array = cJSON_CreateArray();
     cJSON_AddItemToObject(_object, "extra_args", _array);
 
@@ -65,9 +67,11 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
             pch = strtok (NULL, " ;,");
         }
     }
-    
+
     // We use the JSON created for the alert and embed it in the message.
-    json_alert = cJSON_Parse(Eventinfo_to_jsonstr(lf, false));
+    alert_string = Eventinfo_to_jsonstr(lf, false);
+    json_alert = cJSON_Parse(alert_string);
+    os_free(alert_string);
     if (json_alert == NULL) {
         merror("Cannot parse alert JSON");
         cJSON_Delete(message);
@@ -75,8 +79,10 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     }
     cJSON_AddItemToObject(_object, "alert", json_alert);
 
-    strcpy(temp_msg, cJSON_PrintUnformatted(message));
-    
+    msg = cJSON_PrintUnformatted(message);
+    strcpy(temp_msg, msg);
+    os_free(msg);
+
     // Clean up Memory
     cJSON_Delete(message);
 

@@ -31,13 +31,16 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
     char *filename = NULL;
     char *extra_args = NULL;
 
+    memset(exec_msg, 0, OS_SIZE_8192 + 1);
+    memset(msg, 0, OS_SIZE_8192 + 1);
+
     /* Clean the IP */
     ip = "-";
     if (lf->srcip && (ar->ar_cmd->expect & SRCIP)) {
         ip = get_ip(lf);
         if(ip == NULL) {
             return;
-        }       
+        }
     }
 
     /* Get username */
@@ -70,22 +73,22 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
         }
         if (OS_SendUnix(execq, exec_msg, 0) < 0) {
             merror("Error communicating with execd.");
-        }       
+        }
     }
 
     /* Active Response to the forwarder */
     else if ((Config.ar & REMOTE_AR)) {
 
-        /* We need to identify the version of Wazuh installed on the agents because 
-         * if the agents version is <4.2, it is necessary to send legacy 
-         * message in string format. Instead if the agent version is >=4.2, 
+        /* We need to identify the version of Wazuh installed on the agents because
+         * if the agents version is <4.2, it is necessary to send legacy
+         * message in string format. Instead if the agent version is >=4.2,
          * we need to send the new message in JSON format.*/
 
         if (ar->location & ALL_AGENTS) {
 
             int sock = -1;
             int *id_array = NULL;
-            
+
             id_array = wdb_get_all_agents(FALSE, &sock);
             if(!id_array) {
                 merror("Unable to get agent's ID array.");
@@ -96,7 +99,11 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             for (size_t i = 0; id_array[i] != -1; i++) {
                 cJSON *json_agt_info = NULL;
                 cJSON *json_agt_version = NULL;
+                char c_agent_id[OS_SIZE_16];
                 char *agt_version = NULL;
+
+                memset(exec_msg, 0, OS_SIZE_8192 + 1);
+                memset(msg, 0, OS_SIZE_8192 + 1);
 
                 json_agt_info = wdb_get_agent_info(id_array[i], &sock);
                 if (!json_agt_info) {
@@ -110,43 +117,48 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                     agt_version = json_agt_version->valuestring;
                 } else {
                     merror("Failed to get agent '%d' version.", id_array[i]);
+                    cJSON_Delete(json_agt_info);
                     continue;
                 }
-                
+
                 // agt_version contains "Wazuh vX.X.X", only the last part is needed.
                 char *version = strchr(agt_version, 'v');
                 if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
                     if(getActiveResponseInJSON(lf, ar, msg)) {
+                        cJSON_Delete(json_agt_info);
                         continue;
-                    }    
+                    }
                 } else {
                     getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                 }
-                    
-                get_exec_msg(lf, ar, msg, exec_msg);
-                if (exec_msg == NULL) {
-                    continue;
-                }    
+
+                snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
+                get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
+
+                if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
+                    merror("Error communicating with ar queue.");
+                }
+
+                cJSON_Delete(json_agt_info);
             }
+
             os_free(id_array);
             wdbc_close(&sock);
-            
+
         } else {
-            
-            char *version = NULL;
-            agent_info *agt_info = NULL;
+
+            char c_agent_id[OS_SIZE_16];
+            int agt_id = OS_INVALID;
             int flag_to_local_agent = false;
 
             if (ar->location & SPECIFIC_AGENT) {
-                agt_info = get_agent_info(NULL, NULL, ar->agent_id);
+                agt_id = atoi(ar->agent_id);
 
-            } else if(ar->location & REMOTE_AGENT) {
-                if(lf->location[0] == '(') {
+            } else if (ar->location & REMOTE_AGENT) {
+                if (lf->location[0] == '(') {
                     int sock = -1;
-                    int i_agent_id = 0;
-                    char c_agent_id[OS_SIZE_16];
-
                     char *location = lf->location;
+
                     char *hostname = extract_word_between_two_words(location, "(", ")");
                     if(!hostname) {
                         merror("Unable to extract hostname from the string between the two words");
@@ -160,66 +172,77 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                         goto cleanup;
                     }
 
-                    i_agent_id = wdb_find_agent(hostname, ip_remote_agent, &sock);
+                    agt_id = wdb_find_agent(hostname, ip_remote_agent, &sock);
 
                     os_free(hostname);
                     os_free(ip_remote_agent);
                     wdbc_close(&sock);
 
-                    if(i_agent_id == OS_INVALID) {
-                        merror("Unable to get agent's ID array from %s.", location);
-                        goto cleanup;
-                    }
-
-                    snprintf(c_agent_id, OS_SIZE_16, "%.3d", i_agent_id);
-                    agt_info = get_agent_info(NULL, NULL, c_agent_id);
                 } else {
-                    /*This flag means that the agent that will receive the message is the local one. 
+                    /*This flag means that the agent that will receive the message is the local one.
                     * That is why the message is sent directly in JSON format.*/
                     flag_to_local_agent = true;
                 }
             }
 
             if(flag_to_local_agent == false) {
-                if (!agt_info || !agt_info->version) {
+                int sock = -1;
+                cJSON *json_agt_info = NULL;
+                cJSON *json_agt_version = NULL;
+                char *agt_version = NULL;
+
+                if(agt_id == OS_INVALID) {
+                    merror("Unable to get agent ID.");
                     goto cleanup;
                 }
 
-                // agt_info contains "Wazuh vX.X.X", only the last part is needed.
-                version = strchr(agt_info->version, 'v');
+                json_agt_info = wdb_get_agent_info(agt_id, &sock);
+                wdbc_close(&sock);
+                if (!json_agt_info) {
+                    merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
+                    goto cleanup;
+                }
 
+                json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+
+                if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
+                    agt_version = json_agt_version->valuestring;
+                } else {
+                    merror("Failed to get agent '%d' version.", agt_id);
+                    cJSON_Delete(json_agt_info);
+                    goto cleanup;
+                }
+
+                // agt_version contains "Wazuh vX.X.X", only the last part is needed.
+                char *version = strchr(agt_version, 'v');
                 if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
                     if(getActiveResponseInJSON(lf, ar, msg)) {
+                        cJSON_Delete(json_agt_info);
                         goto cleanup;
-                    }   
+                    }
                 } else {
-                    getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);     
+                    getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                 }
+
+                cJSON_Delete(json_agt_info);
+
             } else {
                 if(getActiveResponseInJSON(lf, ar, msg)) {
                     goto cleanup;
-                }  
-            }
-     
-            get_exec_msg(lf, ar, msg, exec_msg);
-            if (exec_msg == NULL) {
-                goto cleanup;
-            }
-        }
-
-        if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
-            if ((*arq = StartMQ(ARQUEUE, WRITE, 1)) > 0) {
-                int rc;
-                if ((rc = OS_SendUnix(*arq, exec_msg, 0)) < 0){
-                    if (rc == OS_SOCKBUSY) {
-                        merror("AR socket busy.");
-                    } else {
-                        merror("AR socket error (shutdown?).");
-                    }
-                    merror("Error communicating with ar queue (%d).", rc);
                 }
             }
-        } 
+
+            if(agt_id == OS_INVALID) {
+                get_exec_msg(lf, ar, NULL, msg, exec_msg);
+            } else {
+                snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
+                get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
+            }
+
+            if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
+                merror("Error communicating with ar queue.");
+            }
+        }
     }
 
     cleanup:
@@ -245,16 +268,16 @@ char *extract_word_between_two_words(const char* sentence, const char* word1, co
     if(!p1) {
         return NULL;
     }
-    p1++;
-    
+    p1 = p1 + strlen(word1);
+
     const char *p2 = strstr(p1, word2);
     if(!p2) {
         return NULL;
     }
-        
+
     size_t len = p2-p1;
-    
-    char *word = NULL; 
+
+    char *word = NULL;
     os_malloc(sizeof(char)*(len+1), word);
     strncpy(word, p1, len);
     word[len] = '\0';
@@ -303,7 +326,7 @@ const char* get_ip(const Eventinfo *lf)
     }
     return ip;
 }
-        
+
 /**
  * @brief Build the string message
  *
@@ -316,12 +339,12 @@ const char* get_ip(const Eventinfo *lf)
  * @param[out] temp_msg Message in string format.
  * @return void.
  */
-void getActiveResponseInString( const Eventinfo *lf, 
-                                const active_response *ar, 
-                                const char *ip, 
-                                const char *user, 
+void getActiveResponseInString( const Eventinfo *lf,
+                                const active_response *ar,
+                                const char *ip,
+                                const char *user,
                                 char *filename,
-                                char *extra_args, 
+                                char *extra_args,
                                 char *temp_msg)
 {
     snprintf(temp_msg, OS_SIZE_1024,
@@ -342,13 +365,14 @@ void getActiveResponseInString( const Eventinfo *lf,
  *
  * @param[in] lf Event information.
  * @param[in] ar Active Response information.
+ * @param[in] agent_id Agent ID to identify where the AR will be executed.
  * @param[in] msg Message that can be in JSON or string format
  * @param[out] exec_msg Complete massage containing the message and the header.
  * @return void.
  */
-void get_exec_msg(const Eventinfo *lf, const active_response *ar, const char *msg, char *exec_msg)
+void get_exec_msg(const Eventinfo *lf, const active_response *ar, char *agent_id, const char *msg, char *exec_msg)
 {
-    char temp_msg[OS_SIZE_1024 + 1];
+    char temp_msg[OS_SIZE_1024 + 1] = "\0";
 
     /* If lf->location start with a ( was generated by remote agent and its
     * ID is included in lf->location if missing then it must have been
@@ -357,8 +381,8 @@ void get_exec_msg(const Eventinfo *lf, const active_response *ar, const char *ms
         strcpy(exec_msg, "(local_source) ");
     }
 
-    /* As now there are 2 different message formats (the JSON and the string) 
-    * ALL_AGENTS are not available, instead of that, we need to send a SPECIFIC 
+    /* As now there are 2 different message formats (the JSON and the string)
+    * ALL_AGENTS are not available, instead of that, we need to send a SPECIFIC
     * message to each agent after checking the agent version. */
     snprintf(temp_msg, OS_SIZE_1024,
             "%s %c%c%c %s",
@@ -366,9 +390,9 @@ void get_exec_msg(const Eventinfo *lf, const active_response *ar, const char *ms
             NONE_C,
             (ar->location & REMOTE_AGENT) ? REMOTE_AGENT_C : NONE_C,
             (ar->location & SPECIFIC_AGENT || ar->location & ALL_AGENTS) ? SPECIFIC_AGENT_C : NONE_C,
-            ar->agent_id != NULL ? ar->agent_id : "(null)");
+            agent_id != NULL ? agent_id : "(null)");
 
     strcat(exec_msg, temp_msg);
-    strcat(exec_msg, " ");   
-    strcat(exec_msg, msg);    
+    strcat(exec_msg, " ");
+    strcat(exec_msg, msg);
 }
