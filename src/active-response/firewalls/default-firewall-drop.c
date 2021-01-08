@@ -27,6 +27,7 @@ static void unlock (const char *lock_path);
 void write_debug_file (const char *msg);
 static int get_ip_version (char * ip);
 pid_t saved_pid = -1;
+char lock_path[PATH_MAX];
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -211,7 +212,7 @@ int main (int argc, char **argv) {
                 }
             }
         }
-        //unlock(NULL);
+        unlock(lock_path);
 
         return 0;
 
@@ -364,7 +365,6 @@ static void lock (const char *filename) {
 
     // Providing a lock.
     while (flag){
-        char lock_path[PATH_MAX];
         char lock_pid_path[PATH_MAX];
         char cwd_buff[PATH_MAX];
         char *cwd;
