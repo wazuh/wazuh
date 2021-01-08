@@ -5,13 +5,7 @@
 
 opts="${opts} status configtest"
 
-# Finding where ossec is installed
-. /etc/ossec-init.conf
-if [ "X${DIRECTORY}" = "X" ]; then
-    DIRECTORY="/var/ossec"
-fi
-
-OSSEC_CONTROL="${DIRECTORY}/bin/wazuh-control"
+OSSEC_CONTROL="WAZUH_HOME/bin/wazuh-control"
 
 depend() {
     need net
@@ -25,7 +19,7 @@ configtest() {
 }
 
 checkconfig() {
-    CONFIGFILE="${CONFIGFILE:-${DIRECTORY}/etc/ossec.conf}"
+    CONFIGFILE="${CONFIGFILE:-WAZUH_HOME/etc/ossec.conf}"
     if [ ! -r "${CONFIGFILE}" ]; then
         eerror "Unable to read configuration file: ${CONFIGFILE}"
         return 1
