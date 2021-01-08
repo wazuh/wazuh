@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -13,11 +13,10 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # These variables will be replaced during the installation process
-NAME="TEMP_NAME"
 VERSION="TEMP_VERSION"
 REVISION="TEMP_REVISION"
 DATE="TEMP_DATE"
-TYPE="TEMP_TYPE"
+TYPE="TEMP_INSTYPE"
 
 ###  Do not modify bellow here ###
 
@@ -114,7 +113,7 @@ help()
 {
     # Help message
     echo ""
-    echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable}";
+    echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable|info [-v -r -d -t]}";
     echo ""
     echo "    -j    Use JSON output."
     exit 1;
@@ -560,9 +559,6 @@ status)
     status
     unlock
     ;;
-help)
-    help
-    ;;
 enable)
     lock
     enable $action $arg;
@@ -572,6 +568,34 @@ disable)
     lock
     disable $action $arg;
     unlock
+    ;;
+info)
+    if [ "X${arg}" = "X" ]; then
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":0,"data":['
+            echo -n '{"VERSION":"'${VERSION}'"},'
+            echo -n '{"REVISION":"'${REVISION}'"},'
+            echo -n '{"DATE":"'${DATE}'"},'
+            echo -n '{"TYPE":"'${TYPE}'"}'
+            echo -n ']}'
+        else
+            echo "VERSION=\"${VERSION}\""
+            echo "REVISION=\"${REVISION}\""
+            echo "DATE=\"${DATE}\""
+            echo "TYPE=\"${TYPE}\""
+        fi
+    else
+        case "${arg}" in
+            -v) echo "${VERSION}" ;;
+            -r) echo "${REVISION}" ;;
+            -d) echo "${DATE}" ;;
+            -t) echo "${TYPE}" ;;
+             *) echo "Invalid flag: ${arg}" && help ;;
+        esac
+    fi
+    ;;
+help)
+    help
     ;;
 *)
     help
