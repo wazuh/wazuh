@@ -11,8 +11,8 @@ from unittest.mock import patch
 from api.validator import check_cdb_list, check_exp, check_xml, _alphanumeric_param, \
     _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,\
     _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,\
-    _sort_param, _timeframe_type, _type_format, _yes_no_boolean, format_etc_file_path, _etc_file_path, \
-    _etc_and_ruleset_file_path, _etc_and_ruleset_path, allowed_fields, is_safe_path
+    _sort_param, _timeframe_type, _type_format, _yes_no_boolean, format_edit_files_path, _edit_files_path, \
+    _delete_files_path, _get_files_path, _get_dirnames_path, allowed_fields, is_safe_path
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -60,9 +60,10 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
     ('/var/ossec/etc/internal_options', _paths),
     ('/var/ossec/etc/rules/local_rules.xml', _paths),
     # relative paths
-    ('etc/ossec.conf', _etc_file_path),
-    ('etc/rules/new_rules2.xml', _etc_and_ruleset_file_path),
-    ('etc/lists/new_lists3', _etc_and_ruleset_path),
+    ('etc/ossec.conf', _edit_files_path),
+    ('etc/rules/new_rules2.xml', _get_files_path),
+    ('etc/decoders/new_decoder3.xml', _get_files_path),
+    ('etc/lists/new_lists3', _get_dirnames_path),
 ])
 def test_validation_check_exp_ok(exp, regex_name):
     """Verify that check_exp() returns True with correct params"""
@@ -107,11 +108,17 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('/var/ossec/etc/internal_options$', _paths),
     ('/var/ossec/etc/rules/local_rules.xml()', _paths),
     # relative paths
-    ('etc/internal_options', _etc_and_ruleset_path),
-    ('../../path', _etc_and_ruleset_path),
-    ('/var/ossec/etc/lists/new_lists3', _etc_and_ruleset_path),
-    ('../ossec', _etc_and_ruleset_path),
-    ('etc/rules/../../../dir', _etc_and_ruleset_path)
+    ('etc/internal_options', _get_dirnames_path),
+    ('../../path', _get_dirnames_path),
+    ('/var/ossec/etc/lists/new_lists3', _get_dirnames_path),
+    ('../ossec', _get_dirnames_path),
+    ('etc/rules/../../../dir', _get_dirnames_path),
+    ('ruleset/rules/0010-rules_config.xml', _delete_files_path),
+    ('etc/ossec.conf', _delete_files_path),
+    ('etc/lists/../../../../../../var/ossec/etc/client.keys', _get_files_path),
+    ('ruleset/decoders/../../../../../../var/ossec/ruleset/rules/0016-wazuh_rules.xml', _edit_files_path),
+    ('ruleset/decoders/0040-auditd_decoders.xml', _edit_files_path),
+    ('etc/rules/no_xml.something', _edit_files_path)
 ])
 def test_validation_check_exp_ko(exp, regex_name):
     """Verify that check_exp() returns False with incorrect params"""
@@ -125,8 +132,8 @@ def test_validation_check_exp_ko(exp, regex_name):
     ('etc/ossec.conf')
 ])
 def test_validation_paths_ok(relative_path):
-    """Verify that format_etc_file_path() returns True with correct params"""
-    assert format_etc_file_path(relative_path)
+    """Verify that format_edit_files_path() returns True with correct params"""
+    assert format_edit_files_path(relative_path)
 
 
 @pytest.mark.parametrize('relative_path', [
@@ -136,8 +143,8 @@ def test_validation_paths_ok(relative_path):
     ('etc/internal_options')
 ])
 def test_validation_paths_ko(relative_path):
-    """Verify that format_etc_file_path() returns False with incorrect params"""
-    assert not format_etc_file_path(relative_path)
+    """Verify that format_edit_files_path() returns False with incorrect params"""
+    assert not format_edit_files_path(relative_path)
 
 
 @pytest.mark.parametrize('cdb_list', [
@@ -196,10 +203,10 @@ def test_is_safe_path():
 @pytest.mark.parametrize('value, format', [
     ("test.33alphanumeric:", "alphanumeric"),
     ("cGVwZQ==", "base64"),
-    ("etc/lists/list.csv", "etc_file_path"),
-    ("etc/decoders/dec35.xml", "etc_and_ruleset_file_path"),
-    ("etc/decoders/test/dec35.xml", "etc_and_ruleset_file_path"),
-    ("etc/decoders", "etc_and_ruleset_path"),
+    ("etc/lists/list_me", "delete_files_path"),
+    ("etc/decoders/dec35.xml", "edit_files_path"),
+    ("etc/decoders/test/dec35.xml", "edit_files_path"),
+    ("etc/decoders", "get_dirnames_path"),
     ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4", "hash"),
     ("file_test-33.xml", "names"),
     ("651403650840", "numbers"),
@@ -235,8 +242,13 @@ def test_validation_json_ok(value, format):
 @pytest.mark.parametrize('value, format', [
     ("~test.33alphanumeric:", "alphanumeric"),
     ("cGVwZQ===", "base64"),
-    ("etc/../lists/list.csv", "etc_and_ruleset_file_path"),
-    ("/etc/decoders/dec35.xml", "etc_and_ruleset_file_path"),
+    ("etc/../lists/list.csv", "edit_files_path"),
+    ("/etc/decoders/dec35.xml", "edit_files_path"),
+    ("/etc/decoders/../../dec35.xml", "edit_files_path"),
+    ("/etc/decoders./dec35.xml", "delete_files_path"),
+    ("/etc/ossec.conf", "delete_files_path"),
+    ("/etc/client.keys", "get_files_path"),
+    ("/etc/ossec.conf", "edit_files_path"),
     ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4.", "hash"),
     ("../../file_test-33.xml", "names"),
     ("a651403650840", "numbers"),
