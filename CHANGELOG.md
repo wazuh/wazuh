@@ -1,7 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.0.3] - 
+## [v4.0.4] 
+
+### Fixed
+
+### Added
+
+### Changed
+
+## [v4.0.3] - 2020-11-30
 
 ### Fixed
 
