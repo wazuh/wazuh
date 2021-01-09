@@ -254,37 +254,6 @@ _update_config_default_result_kwargs = {
 }
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
-                  post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
-def update_api_config(updated_config=None):
-    """Update or restore current API configuration.
-
-    Update the shared configuration object "api_conf"  wih
-    "updated_config" and then overwrite the content of api.yaml.
-
-    Parameters
-    ----------
-    updated_config : dict
-        Dictionary with the new configuration.
-
-    Returns
-    -------
-    result : AffectedItemsWazuhResult
-        Confirmation/Error message.
-    """
-    result = AffectedItemsWazuhResult(**_update_config_default_result_kwargs)
-
-    try:
-        update_api_conf(updated_config)
-        result.affected_items.append(node_id)
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
-
-
 _restart_default_result_kwargs = {
     'all_msg': f"Restart request sent to {' all specified nodes' if node_id != ' manager' else ''}",
     'some_msg': "Could not send restart request to some specified nodes",

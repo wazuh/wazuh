@@ -362,56 +362,6 @@ async def get_api_config(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_api_config(request, pretty=False, wait_for_complete=False):
-    """Update current API configuration with the given one.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    # Check body parameters
-    Body.validate_content_type(request, expected_content_type='application/json')
-
-    try:
-        f_kwargs = {"updated_config": await request.json()}
-    except JSONDecodeError:
-        raise_if_exc(WazuhError(code=1018))
-
-    dapi = DistributedAPI(f=manager.update_api_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def delete_api_config(request, pretty=False, wait_for_complete=False):
-    """Restore default API configuration.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    default_config = {key: configuration.default_api_configuration[key] for key in manager.allowed_api_fields}
-
-    f_kwargs = {"updated_config": default_config}
-
-    dapi = DistributedAPI(f=manager.update_api_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
 async def put_restart(request, pretty=False, wait_for_complete=False):
     """Restart manager or local_node.
 
