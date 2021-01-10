@@ -227,7 +227,7 @@ def validate_cdb_list(path):
     :return: True if CDB list is OK, False otherwise
     """
     full_path = join(common.ossec_path, path)
-    regex_cdb = re.compile(r'^[^:]+:[^:]*$')
+    regex_cdb = re.compile(r'^[^:\s]+:[^:]*$')
     try:
         with open(full_path) as f:
             for line in f:

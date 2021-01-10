@@ -35,10 +35,11 @@ _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
-_etc_file_path = re.compile(r'^etc\/(ossec\.conf|(rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\.\/]+)$')
-_etc_and_ruleset_file_path = re.compile(
-    r'(^etc\/ossec\.conf$)|(^(etc|ruleset)\/(decoders|rules)\/[\w\-\/]+\.{1}xml$)|(^etc\/lists\/[\w\-\.\/]+)$')
-_etc_and_ruleset_path = re.compile(r'(^(etc|ruleset)\/(decoders|rules|lists(\/[\w\-\_]+)*))$')
+_edit_files_path = re.compile(r'^etc\/(ossec\.conf|(rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\/]+)$')
+_delete_files_path = re.compile(r'^etc\/((rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\/]+(\.cdb|))$')
+_get_files_path = re.compile(
+    r'(^etc\/ossec\.conf$)|(^(etc|ruleset)\/(decoders|rules)\/[\w\-]+\.{1}xml$)|(^etc\/lists\/[\w\-\/]+)$')
+_get_dirnames_path = re.compile(r'^(((etc|ruleset)\/(decoders|rules)[\w\-\/]*)|(etc\/lists[\w\-\/]*))$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
@@ -74,23 +75,6 @@ def check_xml(xml_string: str) -> bool:
     return True
 
 
-def check_cdb_list(cdb_list: str) -> bool:
-    """
-    Function to check if a CDB list is well formed
-    :param cdb_list: CDB list to check
-    :return: True if CDB list is OK, False otherwise
-    """
-    cdb_list_splitted = cdb_list.split('\n')
-    line = 1
-
-    for elem in cdb_list_splitted:
-        if not _cdb_list.match(elem):
-            return False
-        line += 1
-
-    return True
-
-
 def allowed_fields(filters: Dict) -> List:
     """
     Returns a list with allowed fields
@@ -108,10 +92,28 @@ def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: b
     :param follow_symlinks: True if path is relative, False if it is absolute
     :return: True if path is correct, False otherwise
     """
-    # resolves symbolic links
+    # Protect path
+    if './' in path or '../' in path:
+        return False
+
+    # Resolve symbolic links
     if follow_symlinks:
         full_path = common.ossec_path + path
         return os.path.realpath(full_path).startswith(basedir)
+
+    return os.path.abspath(path).startswith(basedir)
+
+
+def is_wazuh_path(path: str, basedir: str = common.ossec_path) -> bool:
+    """
+    Check if an absolute path is inside Wazuh installation directory
+    :param path: Path to be checked
+    :param basedir: Wazuh installation directory
+    :return: True if path is correct, False otherwise
+    """
+    # Protect path
+    if './' in path or '../' in path:
+        return False
 
     return os.path.abspath(path).startswith(basedir)
 
@@ -131,43 +133,56 @@ def format_base64(value):
     return check_exp(value, _base64)
 
 
-@draft4_format_checker.checks("etc_file_path")
-def format_etc_file_path(relative_path):
-    """
-    Function to check if a relative path file is allowed
-    :param relative_path: file path string to check
-    :return: True if path is OK, False otherwise
-    """
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _etc_file_path)
-
-
-@draft4_format_checker.checks("etc_and_ruleset_file_path")
-def format_etc_and_ruleset_file_path(relative_path):
-    """
-    Function to check if a relative path file is allowed
-    :param relative_path: file path string to check
-    :return: True if path is OK, False otherwise
-    """
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _etc_and_ruleset_file_path)
-
-
-@draft4_format_checker.checks("etc_and_ruleset_path")
+@draft4_format_checker.checks("edit_files_path")
 def format_edit_files_path(relative_path):
     """
-    Function to check if a relative path is allowed
+    Function to check if a relative path file is allowed to be uploaded or edited
+    :param relative_path: file path string to check
+    :return: True if path is OK, False otherwise
+    """
+    if not is_safe_path(relative_path):
+        return False
+
+    return check_exp(relative_path, _edit_files_path)
+
+
+@draft4_format_checker.checks("delete_files_path")
+def format_delete_files_path(relative_path):
+    """
+    Function to check if a relative path file is allowed to be deleted
+    :param relative_path: file path string to check
+    :return: True if path is OK, False otherwise
+    """
+    if not is_safe_path(relative_path):
+        return False
+
+    return check_exp(relative_path, _delete_files_path)
+
+
+@draft4_format_checker.checks("get_files_path")
+def format_get_files_path(relative_path):
+    """
+    Function to check if a relative path file is allowed to be read
+    :param relative_path: file path string to check
+    :return: True if path is OK, False otherwise
+    """
+    if not is_safe_path(relative_path):
+        return False
+
+    return check_exp(relative_path, _get_files_path)
+
+
+@draft4_format_checker.checks("get_dirnames_path")
+def format_get_dirnames_path(relative_path):
+    """
+    Function to check if a relative path is allowed to be read
     :param relative_path: path string to check
     :return: True if path is OK, False otherwise
     """
     if not is_safe_path(relative_path):
         return False
 
-    return check_exp(relative_path, _etc_and_ruleset_path)
+    return check_exp(relative_path, _get_dirnames_path)
 
 
 @draft4_format_checker.checks("hash")
@@ -192,6 +207,15 @@ def format_numbers_delete(value):
 
 @draft4_format_checker.checks("path")
 def format_path(value):
+    if not is_safe_path(value):
+        return False
+    return check_exp(value, _paths)
+
+
+@draft4_format_checker.checks("wazuh_path")
+def format_wazuh_path(value):
+    if not is_wazuh_path(value):
+        return False
     return check_exp(value, _paths)
 
 

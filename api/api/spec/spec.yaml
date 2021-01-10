@@ -1214,7 +1214,7 @@ components:
           description: "Name of the file"
         relative_dirname:
           type: string
-          format: etc_path
+          format: paths
           description: "Folder path where the file is located. This path is relative to the Wazuh installation path"
 
     RulesetStatus:
@@ -4444,11 +4444,19 @@ components:
     edit_files_path:
       in: query
       name: path
-      description: "Filepath to upload/delete file. (Relative to wazuh installation folder)"
+      description: "Filepath to upload/edit file. (Relative to wazuh installation folder)"
       required: true
       schema:
         type: string
-        format: etc_file_path
+        format: edit_files_path
+    delete_files_path:
+      in: query
+      name: path
+      description: "Filepath to delete file. (Relative to wazuh installation folder)"
+      required: true
+      schema:
+        type: string
+        format: delete_files_path
     get_files_path:
       in: query
       name: path
@@ -4456,14 +4464,14 @@ components:
       required: true
       schema:
         type: string
-        format: etc_and_ruleset_file_path
-    etc_and_ruleset_path:
+        format: get_files_path
+    get_dirnames_path:
       in: query
       name: relative_dirname
       description: "Filter by relative directory name"
       schema:
         type: string
-        format: etc_and_ruleset_path
+        format: get_dirnames_path
     overwrite:
       in: query
       name: overwrite
@@ -5017,7 +5025,7 @@ components:
       required: True
       schema:
         type: string
-        format: path
+        format: wazuh_path
     installer:
       in: query
       name: installer
@@ -8686,7 +8694,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/edit_files_path'
+        - $ref: '#/components/parameters/delete_files_path'
       responses:
         '200':
           description: "Confirmation message"
@@ -8697,7 +8705,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "etc/ossec.conf"
+                    - "etc/rules/custom_rules.xml"
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -8882,7 +8890,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/filename'
       responses:
         '200':
@@ -8970,7 +8978,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/filename'
       responses:
         '200':
@@ -9939,7 +9947,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/edit_files_path'
+        - $ref: '#/components/parameters/delete_files_path'
       responses:
         '200':
           description: "Confirmation message"
@@ -9952,7 +9960,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "etc/ossec.conf"
+                    - "etc/rules/custom_rule.xml"
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -10360,7 +10368,7 @@ paths:
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
         - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/pci_dss'
         - $ref: '#/components/parameters/gdpr'
         - $ref: '#/components/parameters/gpg13'
@@ -10557,7 +10565,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
@@ -11112,7 +11120,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
@@ -11181,7 +11189,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
