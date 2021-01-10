@@ -121,6 +121,20 @@ def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: b
     return os.path.abspath(path).startswith(basedir)
 
 
+def is_wazuh_path(path: str, basedir: str = common.ossec_path) -> bool:
+    """
+    Check if an absolute path is inside Wazuh installation directory
+    :param path: Path to be checked
+    :param basedir: Wazuh installation directory
+    :return: True if path is correct, False otherwise
+    """
+    # Protect path
+    if './' in path or '../' in path:
+        return False
+
+    return os.path.abspath(path).startswith(basedir)
+
+
 @draft4_format_checker.checks("alphanumeric")
 def format_alphanumeric(value):
     return check_exp(value, _alphanumeric_param)
@@ -210,6 +224,15 @@ def format_numbers_delete(value):
 
 @draft4_format_checker.checks("path")
 def format_path(value):
+    if not is_safe_path(value):
+        return False
+    return check_exp(value, _paths)
+
+
+@draft4_format_checker.checks("wazuh_path")
+def format_wazuh_path(value):
+    if not is_wazuh_path(value):
+        return False
     return check_exp(value, _paths)
 
 
