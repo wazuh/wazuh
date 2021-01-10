@@ -70,6 +70,18 @@ static int test_teardown(void **state) {
     return OS_SUCCESS;
 }
 
+static int test_setup_word_between_two_words(void **state) {
+    char *word = NULL;
+    *state = word;
+    return OS_SUCCESS;
+}
+
+static int test_teardown_word_between_two_words(void **state) {
+    char *word  = (char *)*state;
+    os_free(word);
+    return OS_SUCCESS;
+}
+
 void test_specific_agent_success_json(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
@@ -146,35 +158,68 @@ void test_specific_agent_success_fail_agt_info1(void **state)
     OS_Exec(execq, arq, data->lf, data->ar);
 }
 
-void test_extract_word_between_two_words_1(void **state){
+void test_extract_word_between_two_words_ok_1(void **state){
 
-    char *word = NULL;
+    char *word  = (char *)*state;
     char *s= "(ubuntu) any->syscheck";
 
     word = extract_word_between_two_words(s, "(", ")");
     assert_string_equal(word, "ubuntu");
-
-    os_free(word);
 }
 
-void test_extract_word_between_two_words_2(void **state){
-
-    char *word = NULL;
+void test_extract_word_between_two_words_ok_2(void **state){
+    char *word  = (char *)*state;
     char *s= "(ubuntu) any->syscheck";
 
     word = extract_word_between_two_words(s, "any", "syscheck");
     assert_string_equal(word, "->");
 
-    os_free(word);
 }
 
-void test_extract_word_between_two_words_3(void **state){
+void test_extract_word_between_two_words_fail_1(void **state){
 
     char *word = NULL;
     char *s= "(ubuntu) any->syscheck";
 
     word = extract_word_between_two_words(s, ")", "(");
     assert_null(word);
+}
+
+void test_extract_word_between_two_words_fail_2(void **state){
+
+    char *word = NULL;
+    char *s= "(ubuntu) any->syscheck";
+
+    word = extract_word_between_two_words(s, "!", "(");
+    assert_null(word);
+}
+
+void test_getActiveResponseInJSON_extra_args(void **state){
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *json_msj = NULL;
+
+    char msg[OS_SIZE_8192 + 1];
+    char *c_device = NULL;
+    const char *alert_info = "[{\"test\":\"test\"}]";
+    char *extra_args = "-arg1 --arg2 arg3 \\; cat /etc/passwd";
+    char *result = "[\"-arg1\",\"--arg2\",\"arg3\",\"cat\",\"/etc/passwd\"]";
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
+
+    getActiveResponseInJSON(data->lf, data->ar, extra_args, msg);
+
+    cJSON * root = cJSON_Parse(msg);
+    cJSON * deviceData = cJSON_GetObjectItem(root,"parameters");
+    if(deviceData) {
+       cJSON *device = deviceData->child;
+       if(device) {
+           c_device = cJSON_PrintUnformatted(device);
+       }
+    }
+    cJSON_Delete(root);
+
+    assert_string_equal(c_device, result);
+
 }
 
 int main(void)
@@ -186,9 +231,13 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_specific_agent_success_fail_agt_info1, test_setup, test_teardown),
 
         // extract_word_between_two_words
-        cmocka_unit_test(test_extract_word_between_two_words_1),
-        cmocka_unit_test(test_extract_word_between_two_words_2),
-        cmocka_unit_test(test_extract_word_between_two_words_3),
+        cmocka_unit_test_setup_teardown(test_extract_word_between_two_words_ok_1, test_setup_word_between_two_words, test_teardown_word_between_two_words),
+        cmocka_unit_test_setup_teardown(test_extract_word_between_two_words_ok_2, test_setup_word_between_two_words, test_teardown_word_between_two_words),
+        cmocka_unit_test(test_extract_word_between_two_words_fail_1),
+        cmocka_unit_test(test_extract_word_between_two_words_fail_2),
+
+        // getActiveResponseInJSON
+        cmocka_unit_test_setup_teardown(test_getActiveResponseInJSON_extra_args, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
