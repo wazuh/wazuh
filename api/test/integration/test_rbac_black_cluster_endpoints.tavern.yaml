@@ -627,7 +627,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Delete rules file (Allow) (Allow)
+  - name: Delete ossec.conf file worker1 (Allow) (Denied regex)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
@@ -637,9 +637,9 @@ stages:
       params:
         path: etc/ossec.conf
     response:
-      status_code: 200
+      status_code: 400
 
-  - name: Delete ossec.conf file (Deny) (Deny)
+  - name: Delete ossec.conf file worker2 (Deny) (Denied regex)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
@@ -649,7 +649,7 @@ stages:
       params:
         path: etc/ossec.conf
     response:
-      <<: *permission_denied
+      status_code: 400
 
 ---
 test_name: GET /cluster/api/config

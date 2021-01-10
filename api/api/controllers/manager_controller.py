@@ -4,20 +4,16 @@
 
 import datetime
 import logging
-from json.decoder import JSONDecodeError
 
 from aiohttp import web
 
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api import configuration
-from api.api_exception import APIError
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.exception import WazuhError
 
 logger = logging.getLogger('wazuh')
 
