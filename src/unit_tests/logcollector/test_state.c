@@ -871,9 +871,9 @@ void test_w_logcollector_state_dump_ok(void ** state) {
 /* w_logcollector_state_main */
 void test_w_logcollector_state_main(void ** state) {
 
-    will_return(__wrap_getDefine_Int, 105);
+    int interval = 105;
     will_return(__wrap_FOREVER, 1);
-    expect_value(__wrap_sleep, seconds, 105);
+    expect_value(__wrap_sleep, seconds, interval);
 
     // w_logcollector_generate_state
     os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
@@ -1001,7 +1001,7 @@ void test_w_logcollector_state_main(void ** state) {
 
     will_return(__wrap_FOREVER, 0);
 
-    w_logcollector_state_main(NULL);
+    w_logcollector_state_main((void *) &interval);
 
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);

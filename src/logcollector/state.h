@@ -31,7 +31,7 @@ void w_logcollector_state_init();
 
 /**
  * @brief Logcollector state main thread function
- * @param args optional parameter (unused)
+ * @param args optional parameter. state interval value
  * @return void* default return value for thread function prototype (unused)
  */
 #ifdef WIN32

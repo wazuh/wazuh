@@ -96,6 +96,7 @@ int force_reload;
 int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
+int state_interval;
 OSHash * msg_queues_table;
 
 ///< To asociate the path, the position to read, and the hash key of lines read.
@@ -370,12 +371,12 @@ void LogCollectorStart()
 
     /* Create the state thread */
 #ifndef WIN32
-    w_create_thread(w_logcollector_state_main, NULL);
+    w_create_thread(w_logcollector_state_main, (void *) &state_interval);
 #else
     w_create_thread(NULL,
                      0,
                      w_logcollector_state_main,
-                     NULL,
+                     (void *) &state_interval,
                      0,
                      NULL);
 #endif

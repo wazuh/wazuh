@@ -98,8 +98,8 @@ DWORD WINAPI w_logcollector_state_main(__attribute__((unused)) void * args) {
 #else
 void * w_logcollector_state_main(__attribute__((unused)) void * args) {
 #endif
-
-    int interval = getDefine_Int("logcollector", "state_interval", 1, 3600);
+    
+    int interval = * (int *) args; 
 
     while (FOREVER()) {
         sleep(interval);
