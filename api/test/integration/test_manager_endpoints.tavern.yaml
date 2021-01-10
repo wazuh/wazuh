@@ -1667,6 +1667,33 @@ stages:
           total_failed_items: 1
 
   # PUT /manager/files
+  - name: Try to upload CDB list with a whitespace in the keys (overwrite=true)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "import os #:l\nos.system('our custom payload') #:l\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list2
+        overwrite: True
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1800
+              id:
+                - 'etc/lists/new-list2'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /manager/files
   - name: Try to upload invalid file to invalid path through ossec.conf path
     request:
       verify: False

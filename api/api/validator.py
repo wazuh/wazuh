@@ -75,23 +75,6 @@ def check_xml(xml_string: str) -> bool:
     return True
 
 
-def check_cdb_list(cdb_list: str) -> bool:
-    """
-    Function to check if a CDB list is well formed
-    :param cdb_list: CDB list to check
-    :return: True if CDB list is OK, False otherwise
-    """
-    cdb_list_splitted = cdb_list.split('\n')
-    line = 1
-
-    for elem in cdb_list_splitted:
-        if not _cdb_list.match(elem):
-            return False
-        line += 1
-
-    return True
-
-
 def allowed_fields(filters: Dict) -> List:
     """
     Returns a list with allowed fields

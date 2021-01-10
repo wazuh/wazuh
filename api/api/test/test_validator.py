@@ -6,9 +6,8 @@
 import jsonschema as js
 import os
 import pytest
-from unittest.mock import patch
 
-from api.validator import check_cdb_list, check_exp, check_xml, _alphanumeric_param, \
+from api.validator import check_exp, check_xml, _alphanumeric_param, \
     _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,\
     _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,\
     _sort_param, _timeframe_type, _type_format, _yes_no_boolean, format_edit_files_path, _edit_files_path, \
@@ -201,25 +200,6 @@ def test_validation_get_paths_ok(relative_path):
 def test_validation_get_paths_ko(relative_path):
     """Verify that format_get_files_path() returns False with incorrect params"""
     assert not format_get_files_path(relative_path)
-
-
-@pytest.mark.parametrize('cdb_list', [
-    ('audit-wazuh-w:write \n audit-wazuh-r:read \n audit-wazuh-a:attribute \n'
-     'audit-wazuh-x:execute \n audit-wazuh-c:command')
-])
-def test_validation_cdb_list_ok(cdb_list):
-    """Verify that check_cdb_list() returns True with correct params"""
-    assert check_cdb_list(cdb_list)
-
-
-@pytest.mark.parametrize('cdb_list', [
-    (':write \n audit-wazuh-r:read \n audit-wazuh-a:attribute'),
-    ('audit-wazuh:write \n $variable:read \n audit-wazuh-a:attribute'),
-    ('import os #:l \n os.system("our custom payload") #:l')
-])
-def test_validation_cdb_list_ko(cdb_list):
-    """Verify that check_cdb_list() returns False with incorrect params"""
-    assert not check_cdb_list(cdb_list)
 
 
 @pytest.mark.parametrize('xml_file', [
