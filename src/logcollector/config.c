@@ -255,6 +255,7 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"force_reload",force_reload);
     cJSON_AddNumberToObject(logcollector,"reload_interval",reload_interval);
     cJSON_AddNumberToObject(logcollector,"reload_delay",reload_delay);
+    cJSON_AddNumberToObject(logcollector, "exclude_files_interval", free_excluded_files_interval);
     cJSON_AddNumberToObject(logcollector, "state_interval", state_interval);
 
 #ifndef WIN32
