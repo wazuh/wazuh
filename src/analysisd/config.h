@@ -42,7 +42,7 @@ cJSON *getRulesConfig(void);
 void _getRulesListJSON(RuleNode *list, cJSON *array);
 cJSON *getAnalysisInternalOptions(void);
 cJSON *getManagerLabelsConfig(void);
-int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *temp_msg);
+int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg);
 char *get_node_name();
 
 #endif /* CONFIG_H */

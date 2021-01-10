@@ -23,7 +23,7 @@
  * @param[out] temp_msg Message in JSON format.
  * @return int, 0 on success or 1 on failure.
  */
-int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *temp_msg)
+int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg)
 {
     cJSON *_object = NULL;
     cJSON *_array = NULL;
@@ -56,15 +56,17 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     _array = cJSON_CreateArray();
     cJSON_AddItemToObject(_object, "extra_args", _array);
 
-    // ar->ar_cmd->extra_args will be split by " ;,"
-    if (ar->ar_cmd->extra_args) {
+    // extra_args will be split by " " and "\"
+    if (extra_args) {
         char str[OS_SIZE_1024];
         char * pch;
-        strcpy(str, ar->ar_cmd->extra_args);
-        pch = strtok (str," ;,");
+        strcpy(str, extra_args);
+        pch = strtok (str," ");
         while (pch != NULL) {
-            cJSON_AddItemToArray(_array, cJSON_CreateString(pch));
-            pch = strtok (NULL, " ;,");
+            if(pch[0] != '\\') {
+                cJSON_AddItemToArray(_array, cJSON_CreateString(pch));
+            }
+            pch = strtok (NULL, " ");
         }
     }
 

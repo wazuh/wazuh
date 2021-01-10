@@ -18,7 +18,6 @@
 #include "os_execd/execd.h"
 #include "eventinfo.h"
 #include "wazuh_db/wdb.h"
-#include "../../remoted/remoted.h"
 
 #define NEW_AR_MECHANISM "v4.2.0"
 
@@ -68,7 +67,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
         if (!(Config.ar & LOCAL_AR)) {
             goto cleanup;
         }
-        if(getActiveResponseInJSON(lf, ar, exec_msg)) {
+        if(getActiveResponseInJSON(lf, ar, extra_args, exec_msg)) {
             goto cleanup;
         }
         if (OS_SendUnix(execq, exec_msg, 0) < 0) {
@@ -124,7 +123,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 // agt_version contains "Wazuh vX.X.X", only the last part is needed.
                 char *version = strchr(agt_version, 'v');
                 if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
-                    if(getActiveResponseInJSON(lf, ar, msg)) {
+                    if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
                         cJSON_Delete(json_agt_info);
                         continue;
                     }
@@ -216,7 +215,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 // agt_version contains "Wazuh vX.X.X", only the last part is needed.
                 char *version = strchr(agt_version, 'v');
                 if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
-                    if(getActiveResponseInJSON(lf, ar, msg)) {
+                    if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
                         cJSON_Delete(json_agt_info);
                         goto cleanup;
                     }
@@ -227,7 +226,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 cJSON_Delete(json_agt_info);
 
             } else {
-                if(getActiveResponseInJSON(lf, ar, msg)) {
+                if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
                     goto cleanup;
                 }
             }
