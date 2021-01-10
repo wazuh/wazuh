@@ -12,7 +12,8 @@ from api.validator import check_cdb_list, check_exp, check_xml, _alphanumeric_pa
     _array_numbers, _array_names, _boolean, _dates, _empty_boolean, _hashes,\
     _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _search_param,\
     _sort_param, _timeframe_type, _type_format, _yes_no_boolean, format_edit_files_path, _edit_files_path, \
-    _delete_files_path, _get_files_path, _get_dirnames_path, allowed_fields, is_safe_path
+    format_delete_files_path, _delete_files_path, format_get_files_path, _get_files_path, _get_dirnames_path, \
+    allowed_fields, is_safe_path
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -131,7 +132,7 @@ def test_validation_check_exp_ko(exp, regex_name):
     ('etc/lists/new_list'),
     ('etc/ossec.conf')
 ])
-def test_validation_paths_ok(relative_path):
+def test_validation_edit_paths_ok(relative_path):
     """Verify that format_edit_files_path() returns True with correct params"""
     assert format_edit_files_path(relative_path)
 
@@ -142,9 +143,64 @@ def test_validation_paths_ok(relative_path):
     ('etc/decoders/decoder'),
     ('etc/internal_options')
 ])
-def test_validation_paths_ko(relative_path):
+def test_validation_edit_paths_ko(relative_path):
     """Verify that format_edit_files_path() returns False with incorrect params"""
     assert not format_edit_files_path(relative_path)
+
+
+@pytest.mark.parametrize('relative_path', [
+    ('etc/rules/new_rule.xml'),
+    ('etc/decoders/new_decoder.xml'),
+    ('etc/lists/new_list'),
+    ('etc/lists/new_list.cdb')
+])
+def test_validation_delete_paths_ok(relative_path):
+    """Verify that format_delete_files_path() returns True with correct params"""
+    assert format_delete_files_path(relative_path)
+
+
+@pytest.mark.parametrize('relative_path', [
+    ('etc/rules/../new_rule.xml'),
+    ('etc/decoders/new_decoder.x1ml'),
+    ('etc/lists/new_list.something'),
+    ('etc/lists/new_list.something.cdbb'),
+    ('etc/ossec.conf'),
+    ('etc/client'),
+    ('api/configuration/security/jwt_secret'),
+    ('etc/lists/malicious.py'),
+    ('ruleset/rules/rule.xml'),
+    ('ruleset/decoders/decoder.xml'),
+])
+def test_validation_delete_paths_ko(relative_path):
+    """Verify that format_delete_files_path() returns False with incorrect params"""
+    assert not format_delete_files_path(relative_path)
+
+
+@pytest.mark.parametrize('relative_path', [
+    ('etc/rules/new_rule.xml'),
+    ('etc/decoders/new_decoder.xml'),
+    ('etc/lists/new_list'),
+    ('etc/ossec.conf'),
+    ('ruleset/rules/rule.xml'),
+    ('ruleset/decoders/decoder.xml'),
+])
+def test_validation_get_paths_ok(relative_path):
+    """Verify that format_get_files_path() returns True with correct params"""
+    assert format_get_files_path(relative_path)
+
+
+@pytest.mark.parametrize('relative_path', [
+    ('etc/rules/../new_rule.xml'),
+    ('etc/decoders/new_decoder.x1ml'),
+    ('etc/lists/new_list.something'),
+    ('etc/lists/new_list.something.cdbb'),
+    ('etc/client'),
+    ('api/configuration/security/jwt_secret'),
+    ('etc/lists/malicious.py'),
+])
+def test_validation_get_paths_ko(relative_path):
+    """Verify that format_get_files_path() returns False with incorrect params"""
+    assert not format_get_files_path(relative_path)
 
 
 @pytest.mark.parametrize('cdb_list', [
@@ -158,7 +214,8 @@ def test_validation_cdb_list_ok(cdb_list):
 
 @pytest.mark.parametrize('cdb_list', [
     (':write \n audit-wazuh-r:read \n audit-wazuh-a:attribute'),
-    ('audit-wazuh:write \n $variable:read \n audit-wazuh-a:attribute')
+    ('audit-wazuh:write \n $variable:read \n audit-wazuh-a:attribute'),
+    ('import os #:l \n os.system("our custom payload") #:l')
 ])
 def test_validation_cdb_list_ko(cdb_list):
     """Verify that check_cdb_list() returns False with incorrect params"""
@@ -196,8 +253,13 @@ def test_allowed_fields():
 def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
     assert is_safe_path('/api/configuration/api.yaml')
+    assert is_safe_path('etc/rules/local_rules.xml', follow_symlinks=False)
+    assert is_safe_path('etc/ossec.conf', follow_symlinks=True)
+    assert is_safe_path('ruleset/decoders/decoder.xml', follow_symlinks=False)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent')
-    assert is_safe_path('api/configuration/api.yaml', follow_symlinks=False)
+    assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', follow_symlinks=True)
+    assert not is_safe_path('./etc/rules/rule.xml', follow_symlinks=False)
+    assert not is_safe_path('./ruleset/decoders/decoder.xml./', follow_symlinks=False)
 
 
 @pytest.mark.parametrize('value, format', [

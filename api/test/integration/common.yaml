@@ -45,6 +45,9 @@ variables:
   corrupted_rules_file:
     "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
 
+  invalid_file:
+    "import os #:l\nos.system('do something bad') #:l"
+
   file_xml:
     <agent_config>
     <labels>

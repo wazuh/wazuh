@@ -36,7 +36,7 @@ _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
 _edit_files_path = re.compile(r'^etc\/(ossec\.conf|(rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\/]+)$')
-_delete_files_path = re.compile(r'^etc\/((rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\/]+)$')
+_delete_files_path = re.compile(r'^etc\/((rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\/]+(\.cdb|))$')
 _get_files_path = re.compile(
     r'(^etc\/ossec\.conf$)|(^(etc|ruleset)\/(decoders|rules)\/[\w\-]+\.{1}xml$)|(^etc\/lists\/[\w\-\/]+)$')
 _get_dirnames_path = re.compile(r'^(((etc|ruleset)\/(decoders|rules)[\w\-\/]*)|(etc\/lists[\w\-\/]*))$')

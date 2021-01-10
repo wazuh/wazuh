@@ -1039,7 +1039,7 @@ stages:
         contents: !anystr
 
   # GET /manager/files
-  - name: Get file with wrong path
+  - name: Try to get file with wrong path
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1055,7 +1055,7 @@ stages:
         title: !anystr
 
   # GET /manager/files
-  - name: Get file with empty path
+  - name: Try to get file with empty path
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1071,7 +1071,7 @@ stages:
         title: !anystr
 
   # GET /manager/files
-  - name: Get unexisting rules file with right path
+  - name: Try to get unexisting rules file with right path
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1086,7 +1086,7 @@ stages:
         error: 1906
 
   # GET /manager/files
-  - name: Get unexisting decoder file with right path
+  - name: Try to get unexisting decoders file with right path
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1101,7 +1101,7 @@ stages:
         error: 1906
 
   # GET /manager/files
-  - name: Get unexisting list file with right path
+  - name: Try to get unexisting lists file with right path
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1114,6 +1114,175 @@ stages:
       status_code: 400
       json:
         error: 1906
+
+  # GET /manager/files
+  - name: Try to get invalid file through lists path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/../../../../../../var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through custom decoders path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/../../../../../../var/ossec/api/configuration/security/jwt_secret
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through custom rules path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/../../../../../var/ossec/api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through ossec.conf path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf/../../../../../var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through ruleset rules path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/rules/../../../../../var/ossec/api/configuration/security/jwt_secret
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through ruleset rules path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/decoders/../../../../../var/ossec/api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through shared groups path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/shared/../../../../../var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through relative path (client.keys)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/client.keys
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through relative path (jwt_secret)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: api/configuration/security/jwt_secret
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through relative path (wazuh-apid script)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through absolute path (client.keys)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: /var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through absolute path (jwt_secret)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: /var/ossec/api/configuration/security/jwt_secret
+    response:
+      status_code: 400
+
+  # GET /manager/files
+  - name: Try to get invalid file through absolute path (wazuh-apid script)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: /var/ossec/api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
 
 ---
 test_name: PUT /manager/files
@@ -1237,6 +1406,22 @@ stages:
           total_failed_items: 0
 
   # PUT /manager/files
+  - name: Try to upload valid rule to default ruleset
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: ruleset/rules/0010-rules_config.xml
+        overwrite: True
+    response:
+      status_code: 400
+
+  # PUT /manager/files
   - name: Upload rules with XML syntax error (overwrite=true)
     request:
       verify: False
@@ -1336,6 +1521,22 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+  # PUT /manager/files
+  - name: Try to upload valid decoder to default ruleset
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        path: ruleset/decoders/0005-wazuh_decoders.xml
+        overwrite: True
+    response:
+      status_code: 400
 
   # PUT /manager/files
   - name: Upload decoder with XML syntax error (overwrite=true)
@@ -1465,6 +1666,118 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+  # PUT /manager/files
+  - name: Try to upload invalid file to invalid path through ossec.conf path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "{invalid_file}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/ossec.conf/../../../../../var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # PUT /manager/files
+  - name: Try to upload invalid file to invalid path through custom rules path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "{invalid_file}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/rules/../../../../../var/ossec/api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
+
+  # PUT /manager/files
+  - name: Try to upload invalid file to invalid path through custom decoders path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "{invalid_file}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/decoders/../../../../../var/ossec/api/configuration/security/jwt_secret
+    response:
+      status_code: 400
+
+  # PUT /manager/files
+  - name: Try to upload invalid file to invalid path through lists path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "{invalid_file}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/lists/../../../../../var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # PUT /manager/files
+  - name: Try to upload invalid file to invalid path through shared groups path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "{invalid_file}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/shared/../../../../../var/ossec/api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
+
+  # PUT /manager/files
+  - name: Try to upload invalid file to ruleset rules
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "{invalid_file}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: ruleset/rules/invalid.xml
+    response:
+      status_code: 400
+
+  # PUT /manager/files
+  - name: Try to upload invalid file to ruleset decoders
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: PUT
+      data: "{invalid_file}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: ruleset/decoders/invalid.xml
+    response:
+      status_code: 400
+
 ---
 test_name: DELETE /manager/files
 
@@ -1492,7 +1805,7 @@ stages:
           total_failed_items: 0
 
   # DELETE /manager/files
-  - name: Delete unexisting rules file
+  - name: Try to delete unexisting rules file
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1537,7 +1850,7 @@ stages:
           total_failed_items: 0
 
   # DELETE /manager/files
-  - name: Delete unexisting decoder file
+  - name: Try to delete unexisting decoder file
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1582,7 +1895,7 @@ stages:
           total_failed_items: 0
 
   # DELETE /manager/files
-  - name: Delete unexisting CDB list file
+  - name: Try to delete unexisting CDB list file
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/files"
@@ -1604,6 +1917,188 @@ stages:
                 - 'etc/lists/unexisting-list'
           total_affected_items: 0
           total_failed_items: 1
+
+  # DELETE /manager/files
+  - name: Try to delete ossec.conf
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete ruleset rules file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/rules/0015-ossec_rules.xml
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete ruleset decoders file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: ruleset/decoders/0006-json_decoders.xml
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file through custom rules path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/rules/../../../../../../var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file through custom decoders path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/decoders/../../../../../../var/ossec/api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file through lists path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/lists/../../../../../../var/ossec/api/configuration/security/jwt_secret
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file through shared groups path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/shared/../../../../../../var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file through ossec.conf path
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/ossec.conf/../../../../../../var/ossec/api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file using relative path (client.keys)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: etc/client.keys
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file using relative path (jwt_secret)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: api/configuration/security/jwt_secret
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file using relative path (wazuh-apid script)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file using absolute path (client.keys)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: /var/ossec/etc/client.keys
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file using absolute path (jwt_secret)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: /var/ossec/api/configuration/security/jwt_secret
+    response:
+      status_code: 400
+
+  # DELETE /manager/files
+  - name: Try to delete invalid file using absolute path (wazuh-apid script)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        path: /var/ossec/api/scripts/wazuh-apid.py
+    response:
+      status_code: 400
 
 ---
 test_name: GET /manager/configuration/validation (OK)
