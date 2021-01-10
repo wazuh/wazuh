@@ -101,7 +101,7 @@ void * w_logcollector_state_main(__attribute__((unused)) void * args) {
 
     int interval = getDefine_Int("logcollector", "state_interval", 1, 3600);
 
-    while (1) {
+    while (FOREVER()) {
         sleep(interval);
         w_logcollector_generate_state();
         w_logcollector_state_dump();

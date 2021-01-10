@@ -51,7 +51,9 @@ list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,ff
                                 -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,_merror \
                                 -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject \
                                 -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,ctime \
-                                -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock")
+                                -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
+                                -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,getDefine_Int \
+                                -Wl,--wrap,FOREVER -Wl,--wrap,sleep -Wl,--wrap,getpid")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
