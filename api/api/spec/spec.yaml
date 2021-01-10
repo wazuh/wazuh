@@ -5025,7 +5025,7 @@ components:
       required: True
       schema:
         type: string
-        format: path
+        format: wazuh_path
     installer:
       in: query
       name: installer
@@ -8705,7 +8705,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "etc/ossec.conf"
+                    - "etc/rules/custom_rules.xml"
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -9960,7 +9960,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "etc/ossec.conf"
+                    - "etc/rules/custom_rule.xml"
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
