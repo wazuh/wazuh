@@ -51,7 +51,7 @@ static int test_setup(void **state) {
     init_data->ar->name = "restart-ossec0";
     init_data->ar->ar_cmd->expect = 0;
     init_data->ar->ar_cmd->extra_args = NULL;
-    init_data->ar->location = 4;
+    init_data->ar->location = 0;
     init_data->ar->agent_id = "002";
     init_data->ar->command = "restart-ossec";
 
@@ -91,6 +91,8 @@ void test_specific_agent_success_json(void **state)
     int exec_id = 2;
 
     char *version = "v4.2.0";
+    data->ar->location = SPECIFIC_AGENT;
+
     cJSON *agent_info_array = cJSON_CreateArray();
     cJSON *agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(agent_info, "version", version);
@@ -119,10 +121,10 @@ void test_specific_agent_success_string(void **state)
     int execq;
     int *arq;
     int exec_id = 2;
-    cJSON *json_agt_info = cJSON_CreateObject();
-    cJSON *agente = cJSON_CreateObject();
 
     char *version = "v4.0.0";
+    data->ar->location = SPECIFIC_AGENT;
+
     cJSON *agent_info_array = cJSON_CreateArray();
     cJSON *agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(agent_info, "version", version);
@@ -149,11 +151,121 @@ void test_specific_agent_success_fail_agt_info1(void **state)
     int execq;
     int *arq;
     int exec_id = 2;
+    data->ar->location = SPECIFIC_AGENT;
 
     Config.ar = 1;
 
     expect_value(__wrap_wdb_get_agent_info, id, exec_id);
     will_return(__wrap_wdb_get_agent_info, NULL);
+
+    OS_Exec(execq, arq, data->lf, data->ar);
+}
+
+void test_remote_agent_success_json(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq;
+    int *arq;
+    int exec_id = 2;
+
+    char *version = "v4.2.0";
+    data->ar->location = REMOTE_AGENT;
+
+    cJSON *agent_info_array = cJSON_CreateArray();
+    cJSON *agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "version", version);
+    cJSON_AddItemToArray(agent_info_array, agent_info);
+
+    char *exec_msg =    "(ubuntu) any->syscheck NRN 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+
+    Config.ar = 1;
+
+    expect_string(__wrap_wdb_find_agent, name, "ubuntu");
+    expect_string(__wrap_wdb_find_agent, ip, "any");
+    will_return(__wrap_wdb_find_agent, exec_id);
+
+    expect_value(__wrap_wdb_get_agent_info, id, exec_id);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array);
+
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
+
+    OS_Exec(execq, arq, data->lf, data->ar);
+}
+
+void test_remote_agent_success_string(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq;
+    int *arq;
+    int exec_id = 2;
+
+    char *version = "v4.0.0";
+    data->ar->location = REMOTE_AGENT;
+
+    cJSON *agent_info_array = cJSON_CreateArray();
+    cJSON *agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "version", version);
+    cJSON_AddItemToArray(agent_info_array, agent_info);
+
+    char *exec_msg = "(ubuntu) any->syscheck NRN 002 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck - -";
+
+    Config.ar = 1;
+    __crt_ftell = 80794;
+
+    expect_string(__wrap_wdb_find_agent, name, "ubuntu");
+    expect_string(__wrap_wdb_find_agent, ip, "any");
+    will_return(__wrap_wdb_find_agent, exec_id);
+
+    expect_value(__wrap_wdb_get_agent_info, id, exec_id);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array);
+
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(execq, arq, data->lf, data->ar);
+}
+
+void test_remote_agent_success_fail_agt_info1(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq;
+    int *arq;
+    int exec_id = 2;
+    data->ar->location = REMOTE_AGENT;
+
+    Config.ar = 1;
+
+    expect_string(__wrap_wdb_find_agent, name, "ubuntu");
+    expect_string(__wrap_wdb_find_agent, ip, "any");
+    will_return(__wrap_wdb_find_agent, exec_id);
+
+    expect_value(__wrap_wdb_get_agent_info, id, exec_id);
+    will_return(__wrap_wdb_get_agent_info, NULL);
+
+    OS_Exec(execq, arq, data->lf, data->ar);
+}
+
+void test_remote_agent_success_fail_find_agent1(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq;
+    int *arq;
+    int exec_id = 2;
+    data->ar->location = REMOTE_AGENT;
+
+    Config.ar = 1;
+
+    expect_string(__wrap_wdb_find_agent, name, "ubuntu");
+    expect_string(__wrap_wdb_find_agent, ip, "any");
+    will_return(__wrap_wdb_find_agent, OS_INVALID);
 
     OS_Exec(execq, arq, data->lf, data->ar);
 }
@@ -229,6 +341,12 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_specific_agent_success_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_specific_agent_success_string, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_specific_agent_success_fail_agt_info1, test_setup, test_teardown),
+
+        // REMOTE_AGENT
+        cmocka_unit_test_setup_teardown(test_remote_agent_success_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_remote_agent_success_string, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_remote_agent_success_fail_agt_info1, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_remote_agent_success_fail_find_agent1, test_setup, test_teardown),
 
         // extract_word_between_two_words
         cmocka_unit_test_setup_teardown(test_extract_word_between_two_words_ok_1, test_setup_word_between_two_words, test_teardown_word_between_two_words),
