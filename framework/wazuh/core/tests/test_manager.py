@@ -445,27 +445,3 @@ def test_get_api_config():
     """Checks that get_api_config method is returning current api_conf dict."""
     result = get_api_conf()
     assert result == {'experimental_features': True}
-
-
-@patch('wazuh.core.manager.yaml.dump')
-@patch('wazuh.core.manager.open')
-def test_update_api_conf(mock_open, mock_yaml):
-    """Verify whether update_api_conf correctly updates shared api_conf dict.
-
-    It also checks that the configuration is updated in the api.yaml file
-    only if the node type is master.
-    """
-    old_config = {'experimental_features': False, 'cache': {'enabled': False, 'time': 0.75}}
-    new_config = {'experimental_features': True, 'cache': {'enabled': True}}
-
-    with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
-        update_api_conf(new_config=new_config)
-
-        mock_open.assert_called_once(), '"Open" should be called, but it was not.'
-        mock_yaml.assert_called_once_with(new_config, ANY), '"Yaml.dump" should be called with updated config.'
-
-
-def test_update_api_conf_ko():
-    """Verify whether update_api_conf raises expected exception."""
-    with pytest.raises(WazuhException, match=f'.* 1105 .*'):
-        update_api_conf(new_config=None)

@@ -232,7 +232,7 @@ class AccessModel(Model):
 
 
 class APIConfigurationModel(Body):
-    """API configuration model."""
+    """API configuration model. Deprecated since v4.0.4, we maintain Model"""
     def __init__(self, behind_proxy_server=None, https=None, logs=None, cors=None,
                  cache=None, use_only_authd=None, drop_privileges=None, experimental_features=None, access=None):
         self.swagger_types = {

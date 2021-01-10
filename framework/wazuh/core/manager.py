@@ -358,21 +358,3 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
 def get_api_conf():
     """Return current API configuration."""
     return copy.deepcopy(configuration.api_conf)
-
-
-def update_api_conf(new_config):
-    """Update the API.yaml file.
-
-    Parameters
-    ----------
-    new_config : dict
-        Dictionary with the new configuration.
-    """
-    if new_config:
-        try:
-            with open(common.api_config_path, 'w+') as f:
-                yaml.dump(new_config, f)
-        except IOError:
-            raise WazuhInternalError(1005)
-    else:
-        raise WazuhError(1105)
