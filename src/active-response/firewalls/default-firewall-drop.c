@@ -15,6 +15,8 @@
 
 
 #define LOG_FILE "/logs/active-responses.log"
+#define LOCK_PATH "/active-response/bin/fw-drop"
+#define LOCK_FILE "/active-response/bin/fw-drop/pid"
 #define IP4TABLES "/sbin/iptables"
 #define IP6TABLES "/sbin/ip6tables"
 #define ECHO "/bin/echo"
@@ -50,10 +52,20 @@ int main (int argc, char **argv) {
     const char *json_err;
     struct utsname uname_buffer;
     int res;
+    char **filename;
 
     input[BUFFERSIZE -1] = '\0';
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
         write_debug_file ("Cannot read input from stdin");
+        return OS_INVALID;
+    }
+
+    // Reading filename
+    filename = OS_StrBreak('.', basename(argv[0]), sizeof(basename(argv[0])));
+    if (filename == NULL) {
+        log_msg[LOGSIZE -1] = '\0';
+        snprintf(log_msg, LOGSIZE -1 , "Cannot read filename: %s (%d)", strerror(errno), errno);
+        write_debug_file (log_msg);
         return OS_INVALID;
     }
 
@@ -166,7 +178,7 @@ int main (int argc, char **argv) {
 
         // Executing and exiting
         int count = 0;
-        lock(basename(argv[0]));
+        lock(filename[0]);
         bool flag = true;
         while (flag) {
             snprintf(command, COMMANDSIZE - 1, "%s %s", iptables, arg1);
@@ -363,13 +375,10 @@ static void lock (const char *filename) {
     // Providing a lock.
     while (flag){
         char lock_pid_path[PATH_MAX];
-        char cwd_buff[PATH_MAX];
-        char *cwd;
         FILE *pid_file;
         pid_t current_pid;
-        cwd = getcwd(cwd_buff, PATH_MAX);
-        snprintf(lock_path, PATH_MAX - 1, "%s/fw-drop", cwd);
-        snprintf(lock_pid_path, PATH_MAX - 1, "%s/fw-drop/pid", cwd);
+        snprintf(lock_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_PATH);
+        snprintf(lock_pid_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_FILE);
 
         if (mkdir(lock_path, S_IRWXG) == 0) {
             // Lock acquired (setting the pid)
@@ -390,7 +399,7 @@ static void lock (const char *filename) {
 
             if (read == 1) {
                 if (saved_pid == -1) {
-                saved_pid = current_pid;
+                    saved_pid = current_pid;
                 }
 
                 if (current_pid == saved_pid) {
@@ -410,7 +419,7 @@ static void lock (const char *filename) {
         // So i increments 2 by 2 if the pid does not change.
         // If the pid keeps changing, we will increments one
         // by one and fail after MAX_ITERACTION
-        if (i == max_iteration) {
+        if (i >= max_iteration) {
             bool kill = false;
             char output_buf[BUFFERSIZE];
             char command[COMMANDSIZE];
