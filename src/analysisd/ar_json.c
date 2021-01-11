@@ -20,6 +20,7 @@
  *
  * @param[in] lf Event information.
  * @param[in] ar Active Response information.
+ * @param[in] extra_args Extra arguments escaped.
  * @param[out] temp_msg Message in JSON format.
  * @return int, 0 on success or 1 on failure.
  */

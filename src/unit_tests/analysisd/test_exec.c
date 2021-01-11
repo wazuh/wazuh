@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_agent_wrappers.h"
 #include "../../analysisd/eventinfo.h"
 #include "../../analysisd/config.h"
@@ -24,14 +25,7 @@ typedef struct test_struct {
     active_response *ar;
 } test_struct_t;
 
-int __wrap_OS_SendUnix(__attribute__((unused)) int socket, const char *msg, __attribute__((unused)) int size) {
-    check_expected(msg);
-    return mock();
-}
-
-char * __wrap_Eventinfo_to_jsonstr(__attribute__((unused)) const Eventinfo *lf, __attribute__((unused)) bool force_full_log) {
-    return mock_type(char*);
-}
+// Setup / Teardown
 
 static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
@@ -70,6 +64,34 @@ static int test_teardown(void **state) {
     return OS_SUCCESS;
 }
 
+// Wrappers
+
+int __wrap_OS_SendUnix(int socket, const char *msg, int size) {
+    check_expected(socket);
+    check_expected(msg);
+    check_expected(size);
+
+    return mock();
+}
+
+int __wrap_OS_ReadXML(const char *file, OS_XML *_lxml) {
+    return mock();
+}
+
+char* __wrap_OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name) {
+    return mock_type(char *);
+}
+
+void __wrap_OS_ClearXML(OS_XML *_lxml) {
+    return;
+}
+
+char * __wrap_Eventinfo_to_jsonstr(__attribute__((unused)) const Eventinfo *lf, __attribute__((unused)) bool force_full_log) {
+    return mock_type(char*);
+}
+
+// Tests
+
 static int test_setup_word_between_two_words(void **state) {
     char *word = NULL;
     *state = word;
@@ -86,8 +108,8 @@ void test_specific_agent_success_json(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
-    int execq;
-    int *arq;
+    int execq = 10;
+    int arq = 11;
     int exec_id = 2;
 
     char *version = "v4.2.0";
@@ -98,28 +120,37 @@ void test_specific_agent_success_json(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
-    char *exec_msg =    "(ubuntu) any->syscheck NNS 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    char *exec_msg = "(ubuntu) any->syscheck NNS 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
     const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+    char *node = NULL;
+
+    os_strdup("node01", node);
 
     Config.ar = 1;
 
     expect_value(__wrap_wdb_get_agent_info, id, exec_id);
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
-    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
-    will_return(__wrap_OS_SendUnix, 1);
-
     will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
 
-    OS_Exec(execq, arq, data->lf, data->ar);
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
 }
 
 void test_specific_agent_success_string(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
-    int execq;
-    int *arq;
+    int execq = 10;
+    int arq = 11;
     int exec_id = 2;
 
     char *version = "v4.0.0";
@@ -138,19 +169,22 @@ void test_specific_agent_success_string(void **state)
     expect_value(__wrap_wdb_get_agent_info, id, exec_id);
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
+    expect_value(__wrap_OS_SendUnix, socket, arq);
     expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(execq, arq, data->lf, data->ar);
+    OS_Exec(execq, &arq, data->lf, data->ar);
 }
 
 void test_specific_agent_success_fail_agt_info1(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
-    int execq;
-    int *arq;
+    int execq = 10;
+    int arq = 11;
     int exec_id = 2;
+
     data->ar->location = SPECIFIC_AGENT;
 
     Config.ar = 1;
@@ -158,15 +192,17 @@ void test_specific_agent_success_fail_agt_info1(void **state)
     expect_value(__wrap_wdb_get_agent_info, id, exec_id);
     will_return(__wrap_wdb_get_agent_info, NULL);
 
-    OS_Exec(execq, arq, data->lf, data->ar);
+    expect_string(__wrap__merror, formatted_msg, "Failed to get agent '2' information from Wazuh DB.");
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
 }
 
 void test_remote_agent_success_json(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
-    int execq;
-    int *arq;
+    int execq = 10;
+    int arq = 11;
     int exec_id = 2;
 
     char *version = "v4.2.0";
@@ -177,8 +213,11 @@ void test_remote_agent_success_json(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
-    char *exec_msg =    "(ubuntu) any->syscheck NRN 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    char *exec_msg = "(ubuntu) any->syscheck NRN 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
     const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+    char *node = NULL;
+
+    os_strdup("node01", node);
 
     Config.ar = 1;
 
@@ -189,20 +228,26 @@ void test_remote_agent_success_json(void **state)
     expect_value(__wrap_wdb_get_agent_info, id, exec_id);
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
+    expect_value(__wrap_OS_SendUnix, socket, arq);
     expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
     will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
 
-    OS_Exec(execq, arq, data->lf, data->ar);
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
 }
 
 void test_remote_agent_success_string(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
-    int execq;
-    int *arq;
+    int execq = 10;
+    int arq = 11;
     int exec_id = 2;
 
     char *version = "v4.0.0";
@@ -225,19 +270,22 @@ void test_remote_agent_success_string(void **state)
     expect_value(__wrap_wdb_get_agent_info, id, exec_id);
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
+    expect_value(__wrap_OS_SendUnix, socket, arq);
     expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    OS_Exec(execq, arq, data->lf, data->ar);
+    OS_Exec(execq, &arq, data->lf, data->ar);
 }
 
 void test_remote_agent_success_fail_agt_info1(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
-    int execq;
-    int *arq;
+    int execq = 10;
+    int arq = 11;
     int exec_id = 2;
+
     data->ar->location = REMOTE_AGENT;
 
     Config.ar = 1;
@@ -249,7 +297,9 @@ void test_remote_agent_success_fail_agt_info1(void **state)
     expect_value(__wrap_wdb_get_agent_info, id, exec_id);
     will_return(__wrap_wdb_get_agent_info, NULL);
 
-    OS_Exec(execq, arq, data->lf, data->ar);
+    expect_string(__wrap__merror, formatted_msg, "Failed to get agent '2' information from Wazuh DB.");
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
 }
 
 void test_remote_agent_success_fail_find_agent1(void **state)
@@ -257,7 +307,7 @@ void test_remote_agent_success_fail_find_agent1(void **state)
     test_struct_t *data  = (test_struct_t *)*state;
 
     int execq;
-    int *arq;
+    int arq = 11;
     int exec_id = 2;
     data->ar->location = REMOTE_AGENT;
 
@@ -267,7 +317,9 @@ void test_remote_agent_success_fail_find_agent1(void **state)
     expect_string(__wrap_wdb_find_agent, ip, "any");
     will_return(__wrap_wdb_find_agent, OS_INVALID);
 
-    OS_Exec(execq, arq, data->lf, data->ar);
+    expect_string(__wrap__merror, formatted_msg, "Unable to get agent ID.");
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
 }
 
 void test_extract_word_between_two_words_ok_1(void **state){
@@ -277,6 +329,8 @@ void test_extract_word_between_two_words_ok_1(void **state){
 
     word = extract_word_between_two_words(s, "(", ")");
     assert_string_equal(word, "ubuntu");
+
+    os_free(word);
 }
 
 void test_extract_word_between_two_words_ok_2(void **state){
@@ -286,6 +340,7 @@ void test_extract_word_between_two_words_ok_2(void **state){
     word = extract_word_between_two_words(s, "any", "syscheck");
     assert_string_equal(word, "->");
 
+    os_free(word);
 }
 
 void test_extract_word_between_two_words_fail_1(void **state){
@@ -315,8 +370,15 @@ void test_getActiveResponseInJSON_extra_args(void **state){
     const char *alert_info = "[{\"test\":\"test\"}]";
     char *extra_args = "-arg1 --arg2 arg3 \\; cat /etc/passwd";
     char *result = "[\"-arg1\",\"--arg2\",\"arg3\",\"cat\",\"/etc/passwd\"]";
+    char *node = NULL;
+
+    os_strdup("node01", node);
 
     will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
 
     getActiveResponseInJSON(data->lf, data->ar, extra_args, msg);
 
@@ -332,6 +394,7 @@ void test_getActiveResponseInJSON_extra_args(void **state){
 
     assert_string_equal(c_device, result);
 
+    os_free(c_device);
 }
 
 int main(void)
