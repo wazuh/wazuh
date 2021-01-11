@@ -71,7 +71,7 @@ INSERT INTO policies VALUES(4,'agents_read_agents','{"actions": ["agent:read"], 
 INSERT INTO policies VALUES(5,'agents_read_groups','{"actions": ["group:read"], "resources": ["group:id:*"], "effect": "allow"}','2020-06-16 14:34:31.668318');
 INSERT INTO policies VALUES(6,'agents_commands_agents','{"actions": ["active-response:command"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.676223');
 INSERT INTO policies VALUES(7,'security_all_resourceless','{"actions": ["security:create", "security:create_user", "security:read_config", "security:update_config", "security:revoke"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.684085');
-INSERT INTO policies VALUES(8,'security_all_security','{"actions": ["security:read", "security:update", "security:delete"], "resources": ["role:id:*", "policy:id:*", "user:id:*"], "effect": "allow"}','2020-06-16 14:34:31.691953');
+INSERT INTO policies VALUES(8,'security_all_security','{"actions": ["security:read", "security:update", "security:delete"], "resources": ["role:id:*", "rule:id:*", "policy:id:*", "user:id:*"], "effect": "allow"}','2020-06-16 14:34:31.691953');
 INSERT INTO policies VALUES(9,'users_all_resourceless','{"actions": ["security:create_user", "security:revoke"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.699822');
 INSERT INTO policies VALUES(10,'users_all_users','{"actions": ["security:read", "security:update", "security:delete"], "resources": ["user:id:*"], "effect": "allow"}','2020-06-16 14:34:31.707888');
 INSERT INTO policies VALUES(11,'ciscat_read_ciscat','{"actions": ["ciscat:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.716023');
