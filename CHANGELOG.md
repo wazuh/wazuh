@@ -3,11 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.0.4] 
 
-### Fixed
-
 ### Added
+- **API:**
+  - Added missing secure headers for API responses. ([#7024](https://github.com/wazuh/wazuh/issues/7024))
 
 ### Changed
+
+### Fixed
 
 ## [v4.0.3] - 2020-11-30
 
