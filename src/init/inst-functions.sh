@@ -689,20 +689,15 @@ InstallCommon()
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
-        OSSEC_CONTROL_SRC_TEMPLATE='./init/wazuh-server.sh'
+        OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
         OSSEC_CONF_SRC='../etc/ossec-server.conf'
     elif [ ${INSTYPE} = 'agent' ]; then
-        OSSEC_CONTROL_SRC_TEMPLATE='./init/wazuh-client.sh'
+        OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
         OSSEC_CONF_SRC='../etc/ossec-agent.conf'
     elif [ ${INSTYPE} = 'local' ]; then
-        OSSEC_CONTROL_SRC_TEMPLATE='./init/wazuh-local.sh'
+        OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
         OSSEC_CONF_SRC='../etc/ossec-local.conf'
     fi
-
-    sed "s/TEMP_DATE/`date`/
-         s/TEMP_INSTYPE/${INSTYPE}/" ${OSSEC_CONTROL_SRC_TEMPLATE} > ./init/wazuh-control.sh.tmp
-
-    OSSEC_CONTROL_SRC='./init/wazuh-control.sh.tmp'
 
     if [ ! ${PREFIX} = ${INSTALLDIR} ]; then
         PREFIX=${INSTALLDIR}
@@ -754,9 +749,6 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
-
-  # Removing the wazuh-control.sh.tmp file
-  rm ${OSSEC_CONTROL_SRC}
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
