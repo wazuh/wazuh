@@ -11,7 +11,7 @@ Bugs should be sent to the Wazuh mailling list
 (https://groups.google.com/forum/#!forum/wazuh). Please, make sure to include
 the following information:
 
--Output of WAZUH_HOME/bin/wazuh-control info
+-Output of "WAZUH_HOME/bin/wazuh-control info"
 -Content of /var/ossec/etc/ossec.conf
 -Content of /var/ossec/logs/ossec.log
 -Operating system name/version (uname -a if Unix)
