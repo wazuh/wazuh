@@ -454,7 +454,7 @@ wait_pid() {
     return 0
 }
 
-stopa()
+stop()
 {
     checkpid;
     first=true
@@ -509,6 +509,30 @@ stopa()
     fi
 }
 
+info()
+{
+    if [ "X${1}" = "X" ]; then
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":0,"data":['
+            echo -n '{"WAZUH_VERSION":"'${VERSION}'"},'
+            echo -n '{"WAZUH_REVISION":"'${REVISION}'"},'
+            echo -n '{"WAZUH_TYPE":"'${TYPE}'"}'
+            echo -n ']}'
+        else
+            echo "WAZUH_VERSION=\"${VERSION}\""
+            echo "WAZUH_REVISION=\"${REVISION}\""
+            echo "WAZUH_TYPE=\"${TYPE}\""
+        fi
+    else
+        case "${1}" in
+            -v) echo "${VERSION}" ;;
+            -r) echo "${REVISION}" ;;
+            -t) echo "${TYPE}" ;;
+             *) echo "Invalid flag: ${1}" && help ;;
+        esac
+    fi
+}
+
 ### MAIN HERE ###
 
 if [ "$1" = "-j" ]; then
@@ -529,7 +553,7 @@ start)
     ;;
 stop)
     lock
-    stopa
+    stop
     unlock
     ;;
 restart)
@@ -537,9 +561,9 @@ restart)
     testconfig
     lock
     if [ $USE_JSON = true ]; then
-        stopa > /dev/null 2>&1
+        stop > /dev/null 2>&1
     else
-        stopa
+        stop
     fi
     start
     rm -f ${DIR}/var/run/.restart
@@ -548,7 +572,7 @@ restart)
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
-    stopa
+    stop
     start
     unlock
     ;;
@@ -568,26 +592,7 @@ disable)
     unlock
     ;;
 info)
-    if [ "X${arg}" = "X" ]; then
-        if [ $USE_JSON = true ]; then
-            echo -n '{"error":0,"data":['
-            echo -n '{"VERSION":"'${VERSION}'"},'
-            echo -n '{"REVISION":"'${REVISION}'"},'
-            echo -n '{"TYPE":"'${TYPE}'"}'
-            echo -n ']}'
-        else
-            echo "VERSION=\"${VERSION}\""
-            echo "REVISION=\"${REVISION}\""
-            echo "TYPE=\"${TYPE}\""
-        fi
-    else
-        case "${arg}" in
-            -v) echo "${VERSION}" ;;
-            -r) echo "${REVISION}" ;;
-            -t) echo "${TYPE}" ;;
-             *) echo "Invalid flag: ${arg}" && help ;;
-        esac
-    fi
+    info $arg
     ;;
 help)
     help

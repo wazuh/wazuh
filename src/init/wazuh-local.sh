@@ -318,7 +318,7 @@ wait_pid() {
     return 0
 }
 
-stopa()
+stop()
 {
     checkpid;
     for i in ${DAEMONS}; do
@@ -349,6 +349,30 @@ stopa()
     echo "$NAME $VERSION Stopped"
 }
 
+info()
+{
+    if [ "X${1}" = "X" ]; then
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":0,"data":['
+            echo -n '{"WAZUH_VERSION":"'${VERSION}'"},'
+            echo -n '{"WAZUH_REVISION":"'${REVISION}'"},'
+            echo -n '{"WAZUH_TYPE":"'${TYPE}'"}'
+            echo -n ']}'
+        else
+            echo "WAZUH_VERSION=\"${VERSION}\""
+            echo "WAZUH_REVISION=\"${REVISION}\""
+            echo "WAZUH_TYPE=\"${TYPE}\""
+        fi
+    else
+        case "${1}" in
+            -v) echo "${VERSION}" ;;
+            -r) echo "${REVISION}" ;;
+            -t) echo "${TYPE}" ;;
+             *) echo "Invalid flag: ${1}" && help ;;
+        esac
+    fi
+}
+
 ### MAIN HERE ###
 
 case "$1" in
@@ -360,20 +384,20 @@ start)
     ;;
 stop)
     lock
-    stopa
+    stop
     unlock
     ;;
 restart)
     testconfig
     lock
-    stopa
+    stop
     start
     unlock
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
-    stopa
+    stop
     start
     unlock
     ;;
@@ -393,18 +417,7 @@ disable)
     unlock
     ;;
 info)
-    if [ "X$2" = "X" ]; then
-        echo "VERSION=\"${VERSION}\""
-        echo "REVISION=\"${REVISION}\""
-        echo "TYPE=\"${TYPE}\""
-    else
-        case $2 in
-            -v) echo "${VERSION}" ;;
-            -r) echo "${REVISION}" ;;
-            -t) echo "${TYPE}" ;;
-             *) echo "Invalid flag: $2" && help ;;
-        esac
-    fi
+    info $arg
     ;;
 help)
     help
