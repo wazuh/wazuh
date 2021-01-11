@@ -84,7 +84,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.audit_key = NULL;
     syscheck.rt_delay = 5;
     syscheck.max_depth = 256;
-    syscheck.file_max_size = 1024;
+    syscheck.file_max_size = 1024UL * 1024UL * 1024UL;
     syscheck.sym_checker_interval = 600;
     syscheck.max_audit_entries = 256;
 
@@ -309,11 +309,16 @@ cJSON *getSyscheckConfig(void) {
     } else {
         cJSON_AddStringToObject(whodata,"startup_healthcheck","no");
     }
+
+    cJSON_AddNumberToObject(whodata, "max_audit_entries", syscheck.max_audit_entries);
+
     cJSON_AddItemToObject(syscfg,"whodata",whodata);
 #endif
 
 #ifdef WIN32
     cJSON_AddNumberToObject(syscfg, "windows_audit_interval", syscheck.wdata.interval_scan);
+
+    cJSON_AddNumberToObject(syscfg, "max_fd_win_rt", syscheck.max_fd_win_rt);
 
     if (syscheck.registry) {
         cJSON *rg = cJSON_CreateArray();
@@ -504,6 +509,10 @@ cJSON *getSyscheckConfig(void) {
     // Add sql database information
     cJSON_AddStringToObject(syscfg, "database", syscheck.database_store ? "memory" : "disk");
 
+    cJSON_AddNumberToObject(syscfg, "rt_delay", syscheck.rt_delay);
+    cJSON_AddNumberToObject(syscfg, "default_max_depth", syscheck.max_depth);
+    cJSON_AddNumberToObject(syscfg, "symlink_scan_interval", syscheck.sym_checker_interval);
+    cJSON_AddNumberToObject(syscfg, "file_max_size", syscheck.file_max_size);
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 
@@ -517,16 +526,7 @@ cJSON *getSyscheckInternalOptions(void) {
 
     cJSON *syscheckd = cJSON_CreateObject();
 
-    cJSON_AddNumberToObject(syscheckd,"rt_delay",syscheck.rt_delay);
-    cJSON_AddNumberToObject(syscheckd,"default_max_depth",syscheck.max_depth);
-    cJSON_AddNumberToObject(syscheckd,"symlink_scan_interval",syscheck.sym_checker_interval);
     cJSON_AddNumberToObject(syscheckd,"debug",sys_debug_level);
-    cJSON_AddNumberToObject(syscheckd,"file_max_size",syscheck.file_max_size);
-#ifdef WIN32
-    cJSON_AddNumberToObject(syscheckd,"max_fd_win_rt",syscheck.max_fd_win_rt);
-#else
-    cJSON_AddNumberToObject(syscheckd,"max_audit_entries",syscheck.max_audit_entries);
-#endif
 
     cJSON_AddItemToObject(internals,"syscheck",syscheckd);
 
