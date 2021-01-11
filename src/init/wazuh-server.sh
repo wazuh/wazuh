@@ -16,9 +16,8 @@ PLIST=${DIR}/bin/.process_list;
 VERSION="v4.2.0"
 REVISION="40200"
 TYPE="server"
-DATE="TEMP_DATE"
 
-###  Do not modify bellow here ###
+###  Do not modify below here ###
 
 # Getting additional processes
 ls -la ${PLIST} > /dev/null 2>&1
@@ -574,20 +573,17 @@ info)
             echo -n '{"error":0,"data":['
             echo -n '{"VERSION":"'${VERSION}'"},'
             echo -n '{"REVISION":"'${REVISION}'"},'
-            echo -n '{"DATE":"'${DATE}'"},'
             echo -n '{"TYPE":"'${TYPE}'"}'
             echo -n ']}'
         else
             echo "VERSION=\"${VERSION}\""
             echo "REVISION=\"${REVISION}\""
-            echo "DATE=\"${DATE}\""
             echo "TYPE=\"${TYPE}\""
         fi
     else
         case "${arg}" in
             -v) echo "${VERSION}" ;;
             -r) echo "${REVISION}" ;;
-            -d) echo "${DATE}" ;;
             -t) echo "${TYPE}" ;;
              *) echo "Invalid flag: ${arg}" && help ;;
         esac
