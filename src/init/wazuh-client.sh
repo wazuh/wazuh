@@ -14,9 +14,8 @@ DIR=`dirname $PWD`;
 VERSION="v4.2.0"
 REVISION="40200"
 TYPE="agent"
-DATE="TEMP_DATE"
 
-###  Do not modify bellow here ###
+###  Do not modify below here ###
 AUTHOR="Wazuh Inc."
 DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
 
@@ -289,13 +288,11 @@ info)
     if [ "X$2" = "X" ]; then
         echo "VERSION=\"${VERSION}\""
         echo "REVISION=\"${REVISION}\""
-        echo "DATE=\"${DATE}\""
         echo "TYPE=\"${TYPE}\""
     else
         case "$2" in
             -v) echo "${VERSION}" ;;
             -r) echo "${REVISION}" ;;
-            -d) echo "${DATE}" ;;
             -t) echo "${TYPE}" ;;
              *) echo "Invalid flag: $2" && help ;;
         esac
