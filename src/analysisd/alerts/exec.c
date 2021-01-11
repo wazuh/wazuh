@@ -131,14 +131,14 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                     getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                 }
 
+                cJSON_Delete(json_agt_info);
+
                 snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
                 get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
 
                 if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
                     merror("Error communicating with ar queue.");
                 }
-
-                cJSON_Delete(json_agt_info);
             }
 
             os_free(id_array);
@@ -146,97 +146,76 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 
         } else {
 
+            int sock = -1;
+            cJSON *json_agt_info = NULL;
+            cJSON *json_agt_version = NULL;
             char c_agent_id[OS_SIZE_16];
+            char *agt_version = NULL;
             int agt_id = OS_INVALID;
-            int flag_to_local_agent = false;
 
             if (ar->location & SPECIFIC_AGENT) {
                 agt_id = atoi(ar->agent_id);
 
             } else if (ar->location & REMOTE_AGENT) {
-                if (lf->location[0] == '(') {
-                    int sock = -1;
-                    char *location = lf->location;
+                char *location = lf->location;
 
-                    char *hostname = extract_word_between_two_words(location, "(", ")");
-                    if(!hostname) {
-                        merror("Unable to extract hostname from the string between the two words");
-                        goto cleanup;
-                    }
+                char *hostname = extract_word_between_two_words(location, "(", ")");
+                if(!hostname) {
+                    merror("Unable to extract hostname from the string between the two words");
+                    goto cleanup;
+                }
 
-                    char *ip_remote_agent = extract_word_between_two_words(location, " ", "-");
-                    if(!ip_remote_agent) {
-                        merror("Unable to extract ip from the string between the two words");
-                        os_free(hostname);
-                        goto cleanup;
-                    }
-
-                    agt_id = wdb_find_agent(hostname, ip_remote_agent, &sock);
-
+                char *ip_remote_agent = extract_word_between_two_words(location, " ", "-");
+                if(!ip_remote_agent) {
+                    merror("Unable to extract ip from the string between the two words");
                     os_free(hostname);
-                    os_free(ip_remote_agent);
-                    wdbc_close(&sock);
-
-                } else {
-                    /*This flag means that the agent that will receive the message is the local one.
-                    * That is why the message is sent directly in JSON format.*/
-                    flag_to_local_agent = true;
-                }
-            }
-
-            if(flag_to_local_agent == false) {
-                int sock = -1;
-                cJSON *json_agt_info = NULL;
-                cJSON *json_agt_version = NULL;
-                char *agt_version = NULL;
-
-                if(agt_id == OS_INVALID) {
-                    merror("Unable to get agent ID.");
                     goto cleanup;
                 }
 
-                json_agt_info = wdb_get_agent_info(agt_id, &sock);
+                agt_id = wdb_find_agent(hostname, ip_remote_agent, &sock);
+
+                os_free(hostname);
+                os_free(ip_remote_agent);
                 wdbc_close(&sock);
-                if (!json_agt_info) {
-                    merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
-                    goto cleanup;
-                }
-
-                json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
-
-                if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
-                    agt_version = json_agt_version->valuestring;
-                } else {
-                    merror("Failed to get agent '%d' version.", agt_id);
-                    cJSON_Delete(json_agt_info);
-                    goto cleanup;
-                }
-
-                // agt_version contains "Wazuh vX.X.X", only the last part is needed.
-                char *version = strchr(agt_version, 'v');
-                if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
-                    if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
-                        cJSON_Delete(json_agt_info);
-                        goto cleanup;
-                    }
-                } else {
-                    getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
-                }
-
-                cJSON_Delete(json_agt_info);
-
-            } else {
-                if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
-                    goto cleanup;
-                }
             }
 
             if(agt_id == OS_INVALID) {
-                get_exec_msg(lf, ar, NULL, msg, exec_msg);
-            } else {
-                snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
-                get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
+                merror("Unable to get agent ID.");
+                goto cleanup;
             }
+
+            json_agt_info = wdb_get_agent_info(agt_id, &sock);
+            wdbc_close(&sock);
+            if (!json_agt_info) {
+                merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
+                goto cleanup;
+            }
+
+            json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+
+            if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
+                agt_version = json_agt_version->valuestring;
+            } else {
+                merror("Failed to get agent '%d' version.", agt_id);
+                cJSON_Delete(json_agt_info);
+                goto cleanup;
+            }
+
+            // agt_version contains "Wazuh vX.X.X", only the last part is needed.
+            char *version = strchr(agt_version, 'v');
+            if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
+                if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                    cJSON_Delete(json_agt_info);
+                    goto cleanup;
+                }
+            } else {
+                getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
+            }
+
+            cJSON_Delete(json_agt_info);
+
+            snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
+            get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
 
             if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
                 merror("Error communicating with ar queue.");
@@ -371,27 +350,15 @@ void getActiveResponseInString( const Eventinfo *lf,
  */
 void get_exec_msg(const Eventinfo *lf, const active_response *ar, char *agent_id, const char *msg, char *exec_msg)
 {
-    char temp_msg[OS_SIZE_1024 + 1] = "\0";
-
-    /* If lf->location start with a ( was generated by remote agent and its
-    * ID is included in lf->location if missing then it must have been
-    * generated by the local analysisd, so prepend a false id tag */
-    if (lf->location[0] != '(') {
-        strcpy(exec_msg, "(local_source) ");
-    }
-
     /* As now there are 2 different message formats (the JSON and the string)
     * ALL_AGENTS are not available, instead of that, we need to send a SPECIFIC
     * message to each agent after checking the agent version. */
-    snprintf(temp_msg, OS_SIZE_1024,
-            "%s %c%c%c %s",
+    snprintf(exec_msg, OS_SIZE_1024,
+            "%s %c%c%c %s %s",
             lf->location,
             NONE_C,
             (ar->location & REMOTE_AGENT) ? REMOTE_AGENT_C : NONE_C,
             (ar->location & SPECIFIC_AGENT || ar->location & ALL_AGENTS) ? SPECIFIC_AGENT_C : NONE_C,
-            agent_id != NULL ? agent_id : "(null)");
-
-    strcat(exec_msg, temp_msg);
-    strcat(exec_msg, " ");
-    strcat(exec_msg, msg);
+            agent_id != NULL ? agent_id : "(null)",
+            msg);
 }

@@ -90,8 +90,6 @@ char * __wrap_Eventinfo_to_jsonstr(__attribute__((unused)) const Eventinfo *lf, 
     return mock_type(char*);
 }
 
-// Tests
-
 static int test_setup_word_between_two_words(void **state) {
     char *word = NULL;
     *state = word;
@@ -104,13 +102,152 @@ static int test_teardown_word_between_two_words(void **state) {
     return OS_SUCCESS;
 }
 
+// Tests
+
+void test_server_success_json(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+
+    data->ar->location = AS_ONLY;
+
+    char *exec_msg = "{\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+    char *node = NULL;
+
+    os_strdup("node01", node);
+
+    Config.ar = 2;
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
+
+    expect_value(__wrap_OS_SendUnix, socket, execq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
+}
+
+void test_all_agents_success_json_string(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+
+    char *version_1 = "v4.2.0";
+    char *version_2 = "v4.0.0";
+    data->ar->location = ALL_AGENTS;
+
+    cJSON *agent_info_array_1 = cJSON_CreateArray();
+    cJSON *agent_info_1 = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info_1, "version", version_1);
+    cJSON_AddItemToArray(agent_info_array_1, agent_info_1);
+
+    char *exec_msg_1 = "(ubuntu) any->syscheck NNS 003 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    const char *alert_info_1 = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+    char *node_1 = NULL;
+
+    os_strdup("node01", node_1);
+
+    cJSON *agent_info_array_2 = cJSON_CreateArray();
+    cJSON *agent_info_2 = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info_2, "version", version_2);
+    cJSON_AddItemToArray(agent_info_array_2, agent_info_2);
+
+    char *exec_msg = "(ubuntu) any->syscheck NNS 005 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck - -";
+
+    Config.ar = 1;
+    __crt_ftell = 80794;
+
+    int *array = NULL;
+    os_malloc(sizeof(int)*3, array);
+    array[0] = 3;
+    array[1] = 5;
+    array[2] = OS_INVALID;
+
+    expect_value(__wrap_wdb_get_all_agents, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents, array);
+
+    // Alert 1
+
+    expect_value(__wrap_wdb_get_agent_info, id, array[0]);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array_1);
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info_1));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node_1);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg_1);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    // Alert 2
+
+    expect_value(__wrap_wdb_get_agent_info, id, array[1]);
+    will_return(__wrap_wdb_get_agent_info, agent_info_array_2);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
+}
+
+void test_all_agents_success_fail_agt_info1(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+
+    data->ar->location = ALL_AGENTS;
+
+    Config.ar = 1;
+
+    int *array = NULL;
+    os_malloc(sizeof(int)*3, array);
+    array[0] = 3;
+    array[1] = 5;
+    array[2] = OS_INVALID;
+
+    expect_value(__wrap_wdb_get_all_agents, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents, array);
+
+    // Alert 1
+
+    expect_value(__wrap_wdb_get_agent_info, id, array[0]);
+    will_return(__wrap_wdb_get_agent_info, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Failed to get agent '3' information from Wazuh DB.");
+
+    // Alert 2
+
+    expect_value(__wrap_wdb_get_agent_info, id, array[1]);
+    will_return(__wrap_wdb_get_agent_info, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "Failed to get agent '5' information from Wazuh DB.");
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
+}
+
 void test_specific_agent_success_json(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
     int execq = 10;
     int arq = 11;
-    int exec_id = 2;
 
     char *version = "v4.2.0";
     data->ar->location = SPECIFIC_AGENT;
@@ -128,7 +265,7 @@ void test_specific_agent_success_json(void **state)
 
     Config.ar = 1;
 
-    expect_value(__wrap_wdb_get_agent_info, id, exec_id);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(data->ar->agent_id));
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
     will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
@@ -151,7 +288,6 @@ void test_specific_agent_success_string(void **state)
 
     int execq = 10;
     int arq = 11;
-    int exec_id = 2;
 
     char *version = "v4.0.0";
     data->ar->location = SPECIFIC_AGENT;
@@ -166,7 +302,7 @@ void test_specific_agent_success_string(void **state)
     Config.ar = 1;
     __crt_ftell = 80794;
 
-    expect_value(__wrap_wdb_get_agent_info, id, exec_id);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(data->ar->agent_id));
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
 
     expect_value(__wrap_OS_SendUnix, socket, arq);
@@ -183,13 +319,12 @@ void test_specific_agent_success_fail_agt_info1(void **state)
 
     int execq = 10;
     int arq = 11;
-    int exec_id = 2;
 
     data->ar->location = SPECIFIC_AGENT;
 
     Config.ar = 1;
 
-    expect_value(__wrap_wdb_get_agent_info, id, exec_id);
+    expect_value(__wrap_wdb_get_agent_info, id, atoi(data->ar->agent_id));
     will_return(__wrap_wdb_get_agent_info, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Failed to get agent '2' information from Wazuh DB.");
@@ -400,6 +535,13 @@ void test_getActiveResponseInJSON_extra_args(void **state){
 int main(void)
 {
     const struct CMUnitTest tests[] = {
+        // LOCAL
+        cmocka_unit_test_setup_teardown(test_server_success_json, test_setup, test_teardown),
+
+        // ALL_AGENTS
+        cmocka_unit_test_setup_teardown(test_all_agents_success_json_string, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_all_agents_success_fail_agt_info1, test_setup, test_teardown),
+
         // SPECIFIC_AGENT
         cmocka_unit_test_setup_teardown(test_specific_agent_success_json, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_specific_agent_success_string, test_setup, test_teardown),
