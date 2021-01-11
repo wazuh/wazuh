@@ -28,20 +28,23 @@ static void lock (const char *filename);
 static void unlock (const char *lock_path);
 void write_debug_file (const char *msg);
 static int get_ip_version (char * ip);
-pid_t saved_pid = -1;
-char lock_path[PATH_MAX];
+static void free_vars ();
+
+static pid_t saved_pid = -1;
+static char lock_path[PATH_MAX];
+static char *srcip;
+static char *action;
+static char *iptables;
+static char **filename;
+static cJSON *input_json = NULL;
 
 int main (int argc, char **argv) {
     (void)argc;
     char input[BUFFERSIZE];
-    char *srcip;
-    char *action;
-    char *iptables;
     char arg1[COMMANDSIZE];
     char arg2[COMMANDSIZE];
     char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
-    cJSON *input_json = NULL;
     cJSON *origin_json = NULL;
     cJSON *version_json = NULL;
     cJSON *command_json = NULL;
@@ -52,7 +55,6 @@ int main (int argc, char **argv) {
     const char *json_err;
     struct utsname uname_buffer;
     int res;
-    char **filename;
 
     input[BUFFERSIZE -1] = '\0';
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
@@ -78,14 +80,14 @@ int main (int argc, char **argv) {
     // Detect version
     if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_String)) {
         write_debug_file ("Cannot get 'version' from json");
-        cJSON_Delete(input_json);
+        free_vars();
         return OS_INVALID;
     }
 
     // Detect origin
     if (origin_json = cJSON_GetObjectItem(input_json, "origin"), !origin_json || (origin_json->type != cJSON_Object)) {
         write_debug_file ("Cannot get 'origin' from json");
-        cJSON_Delete(input_json);
+        free_vars();
         return OS_INVALID;
     }
 
@@ -95,33 +97,34 @@ int main (int argc, char **argv) {
         os_strdup(command_json->valuestring, action);
     } else {
         write_debug_file ("Invalid 'command' from json");
-        cJSON_Delete(input_json);
+        free_vars();
         return OS_INVALID;
     }
 
     if (strcmp("add", action) && strcmp("delete", action)) {
         write_debug_file ("Invalid value of 'command'");
+        free_vars();
         return OS_INVALID;
     }
 
     // Detect parameters
     if (parameters_json = cJSON_GetObjectItem(input_json, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
         write_debug_file ("Cannot get 'parameters' from json");
-        cJSON_Delete(input_json);
+        free_vars();
         return OS_INVALID;
     }
 
     // Detect Alert
     if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
         write_debug_file ("Cannot get 'alert' from parameters");
-        cJSON_Delete(input_json);
+        free_vars();
         return OS_INVALID;
     }
 
     // Detect data
     if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
         write_debug_file ("Cannot get 'data' from alert");
-        cJSON_Delete(input_json);
+        free_vars();
         return OS_INVALID;
     }
 
@@ -131,24 +134,26 @@ int main (int argc, char **argv) {
         os_strdup(srcip_json->valuestring, srcip);
     } else {
         write_debug_file ("Invalid 'srcip' from data");
-        cJSON_Delete(input_json);
+        free_vars();
         return OS_INVALID;
     }
 
     int ip_version = get_ip_version(srcip);
     if (ip_version == 4) {
-        iptables = strdup(IP4TABLES);
+        os_strdup(IP4TABLES, iptables);
     } else if (ip_version == 6) {
-        iptables = strdup(IP6TABLES);
+        os_strdup(IP6TABLES, iptables);
     } else {
         log_msg[LOGSIZE -1] = '\0';
         snprintf(log_msg, LOGSIZE -1 , "Unable to run active response (invalid IP: '%s').", srcip);
         write_debug_file (log_msg);
+        free_vars();
         return OS_INVALID;
     }
 
     if (uname(&uname_buffer) != 0){
         write_debug_file ("Cannot get system name");
+        free_vars();
         return OS_INVALID;
     }
 
@@ -171,9 +176,10 @@ int main (int argc, char **argv) {
                 log_msg[LOGSIZE -1] = '\0';
                 snprintf(log_msg, LOGSIZE -1 , "The iptables file '%s' is not accessible: %s (%d)", iptables_path, strerror(errno), errno);
                 write_debug_file (log_msg);
+                free_vars();
                 return OS_INVALID;
             }
-            iptables = strdup(iptables_path);
+            os_strdup(iptables_path, iptables);
         }
 
         // Executing and exiting
@@ -223,8 +229,6 @@ int main (int argc, char **argv) {
         }
         unlock(lock_path);
 
-        return 0;
-
     } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
         char *ipfarg = NULL;
 
@@ -269,8 +273,6 @@ int main (int argc, char **argv) {
         snprintf(command, COMMANDSIZE - 1, "eval %s %s| %s", ECHO, arg2, ipfarg);
         res = system(command);
 
-        return 0;
-
     } else if (!strcmp("AIX", uname_buffer.sysname)){
         char genfilt_path[20] = "/usr/sbin/genfilt";
         char lsfilt_path[20] = "/usr/sbin/lsfilt";
@@ -283,7 +285,7 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The genfilt file '%s' is not accessible: %s (%d)", genfilt_path, strerror(errno), errno);
             write_debug_file (log_msg);
-            return -1;
+            return OS_INVALID;
         }
 
         // Checking if lsfilt is present
@@ -291,7 +293,7 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The lsfilt file '%s' is not accessible: %s (%d)", lsfilt_path, strerror(errno), errno);
             write_debug_file (log_msg);
-            return -1;
+            return OS_INVALID;
         }
 
         // Checking if mkfilt is present
@@ -299,7 +301,7 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The mkfilt file '%s' is not accessible: %s (%d)", mkfilt_path, strerror(errno), errno);
             write_debug_file (log_msg);
-            return -1;
+            return OS_INVALID;
         }
 
         // Checking if rmfilt is present
@@ -307,7 +309,7 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The rmfilt file '%s' is not accessible: %s (%d)", rmfilt_path, strerror(errno), errno);
             write_debug_file (log_msg);
-            return -1;
+            return OS_INVALID;
         }
 
         if (!strcmp("add", action)) {
@@ -356,14 +358,24 @@ int main (int argc, char **argv) {
 
     } else {
         write_debug_file("Invalid system");
-        return -1;
+
+        free_vars();
+        return OS_INVALID;
     }
 
-    free(srcip);
-    free(action);
-    free(iptables);
+    free_vars();
 
     return 0;
+}
+
+static void free_vars (){
+    cJSON_Delete(input_json);
+    os_free(srcip);
+    os_free(action);
+    os_free(iptables);
+    os_free(filename[1]);
+    os_free(filename[0]);
+    os_free(filename);
 }
 
 static void lock (const char *filename) {
