@@ -12,11 +12,11 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
-# These variables will be replaced during the installation process
-VERSION="TEMP_VERSION"
-REVISION="TEMP_REVISION"
+# Installation info
+VERSION="v4.2.0"
+REVISION="40200"
+TYPE="server"
 DATE="TEMP_DATE"
-TYPE="TEMP_INSTYPE"
 
 ###  Do not modify bellow here ###
 
@@ -28,7 +28,6 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-INITCONF="/etc/ossec-init.conf"
 DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
 OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
 

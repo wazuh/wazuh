@@ -699,15 +699,8 @@ InstallCommon()
         OSSEC_CONF_SRC='../etc/ossec-local.conf'
     fi
 
-    # Reading from files again to prevent an error during upgrade
-    VERSION_FROM_FILE=`cat ../${VERSION_FILE}`
-    REVISION_FROM_FILE=`cat ../${REVISION_FILE}`
-
-    sed "s/TEMP_VERSION/${VERSION_FROM_FILE}/
-         s/TEMP_REVISION/${REVISION_FROM_FILE}/
-         s/TEMP_DATE/`date`/
-         s/TEMP_INSTYPE/${INSTYPE}/"\
-        ${OSSEC_CONTROL_SRC_TEMPLATE} > ./init/wazuh-control.sh.tmp
+    sed "s/TEMP_DATE/`date`/
+         s/TEMP_INSTYPE/${INSTYPE}/" ${OSSEC_CONTROL_SRC_TEMPLATE} > ./init/wazuh-control.sh.tmp
 
     OSSEC_CONTROL_SRC='./init/wazuh-control.sh.tmp'
 

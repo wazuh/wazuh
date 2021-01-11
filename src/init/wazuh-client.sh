@@ -10,11 +10,11 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 
-# These variables will be replaced during the installation process
-VERSION="TEMP_VERSION"
-REVISION="TEMP_REVISION"
+# Installation info
+VERSION="v4.2.0"
+REVISION="40200"
+TYPE="agent"
 DATE="TEMP_DATE"
-TYPE="TEMP_INSTYPE"
 
 ###  Do not modify bellow here ###
 AUTHOR="Wazuh Inc."
