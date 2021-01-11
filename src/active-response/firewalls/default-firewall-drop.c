@@ -230,7 +230,7 @@ int main (int argc, char **argv) {
         unlock(lock_path);
 
     } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
-        char *ipfarg = NULL;
+        char ipfarg[COMMANDSIZE];
 
         // Checking if ipfilter is present
         char *ipfilter_path = NULL;
@@ -259,12 +259,14 @@ int main (int argc, char **argv) {
 
         arg1[COMMANDSIZE -1] = '\0';
         arg2[COMMANDSIZE -1] = '\0';
+        ipfarg[COMMANDSIZE -1] = '\0';
+
         snprintf(arg1, COMMANDSIZE -1, "\"@1 block out quick from any to %s\"", srcip);
         snprintf(arg2, COMMANDSIZE -1, "\"@1 block in quick from %s to any\"", srcip);
         if (!strcmp("add", action)) {
-            os_strdup("${IPFILTER} -f -", ipfarg);
+            snprintf(ipfarg, COMMANDSIZE -1,"%s -f -", ipfilter_path);
         } else {
-            os_strdup("${IPFILTER} -rf -", ipfarg);
+            snprintf(ipfarg, COMMANDSIZE -1,"%s -rf -", ipfilter_path);
         }
 
         // Executing it
