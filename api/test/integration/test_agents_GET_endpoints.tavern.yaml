@@ -490,7 +490,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        node_name: test_node_name
+        node_name: test_node_name%
     response:
       status_code: 200
       json:
@@ -503,7 +503,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        node_name: test_node_name_%
+        node_name: test_node_name_*
     response:
       status_code: 400
       json:
