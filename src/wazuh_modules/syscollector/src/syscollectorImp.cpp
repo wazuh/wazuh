@@ -8,12 +8,12 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include "defs.h"
 #include "syscollector.hpp"
 #include "json.hpp"
 #include <iostream>
 #include "stringHelper.h"
 #include "hashHelper.h"
-
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -659,7 +659,6 @@ constexpr auto NETADDRESS_SYNC_CONFIG_STATEMENT
     )"
 };
 
-
 constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_address (
@@ -876,7 +875,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
-    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, "syscollector.db", getCreateStatement());
+    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, SYSCOLLECTOR_DB_DISK_PATH, getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
     registerWithRsync();
     syncLoop(lock);
@@ -889,6 +888,7 @@ void Syscollector::destroy()
     m_cv.notify_all();
     lock.unlock();
 }
+
 void Syscollector::scanHardware()
 {
     if (m_hardware)
@@ -900,6 +900,7 @@ void Syscollector::scanHardware()
         m_reportDiffFunction(msg.dump());
     }
 }
+
 void Syscollector::scanOs()
 {
     if(m_os)

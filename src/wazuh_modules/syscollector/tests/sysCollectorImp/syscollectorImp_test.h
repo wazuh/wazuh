@@ -13,8 +13,8 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SyscollectorImpTest : public ::testing::Test {
-
+class SyscollectorImpTest : public ::testing::Test
+{
 protected:
 
     SyscollectorImpTest() = default;
