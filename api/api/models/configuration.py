@@ -98,7 +98,7 @@ class CORSModel(Model):
             'source_route': str,
             'expose_headers': str,
             'allow_headers': bool,
-            'allow_credentials': str
+            'allow_credentials': bool
         }
 
         self.attribute_map = {

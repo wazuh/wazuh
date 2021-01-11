@@ -2437,6 +2437,7 @@ components:
     APIconfiguration:
       type: object
       minProperties: 1
+      additionalProperties: false
       properties:
         access:
           description: API Security Options

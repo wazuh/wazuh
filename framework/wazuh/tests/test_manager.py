@@ -152,8 +152,9 @@ def test_ossec_log_summary():
 ])
 @patch('wazuh.manager.delete_file')
 @patch('wazuh.manager.upload_xml')
+@patch('wazuh.core.manager.check_remote_commands')
 @patch('wazuh.manager.upload_list')
-def test_upload_file(mock_list, mock_xml, mock_delete, path, overwrite):
+def test_upload_file(mock_list, mock_remote_commands, mock_xml, mock_delete, path, overwrite):
     """Tests uploading a file to the manager
 
     Parameters
