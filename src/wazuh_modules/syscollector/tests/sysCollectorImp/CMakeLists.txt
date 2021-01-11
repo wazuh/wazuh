@@ -14,6 +14,8 @@ file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
 file(GLOB SYSCOLLECTOR_IMP_SRC
     "${CMAKE_SOURCE_DIR}/src/syscollectorImp.cpp")
 
+add_definitions(-DWAZUH_UNIT_TESTING)
+
 add_executable(syscollectorimp_unit_test 
     ${SYSCOLLECTOR_IMP_UNIT_TEST_SRC}
     ${SYSCOLLECTOR_IMP_SRC})

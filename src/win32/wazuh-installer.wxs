@@ -440,6 +440,9 @@
                         <Directory Id="FIM" Name="fim">
                             <Directory Id="FIM_DB" Name="db" />
                         </Directory>
+                        <Directory Id="SYSCOLLECTOR" Name="syscollector">
+                            <Directory Id="SYSCOLLECTOR_DB" Name="syscollector_db" />
+                        </Directory>
                         <Directory Id="LOGCOLLECTOR" Name="logcollector" />
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
@@ -502,6 +505,20 @@
                 <CreateFolder />
                 <RemoveFile Id="purgue_fim_db" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_fim_db_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="SYSCOLLECTOR">
+            <Component Id="CMP_SYSCOLLECTOR" Guid="7349FCE4-D0BF-4D63-86A0-84FCAFD071B8" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_syscollector" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_syscollector_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="SYSCOLLECTOR_DB">
+            <Component Id="CMP_SYSCOLLECTOR_DB" Guid="A32AB5A9-0545-4262-B651-6F732CA57E5A" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_syscollector_db" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_syscollector_db_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="LOGCOLLECTOR">
@@ -618,6 +635,8 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_FIM" />
             <ComponentRef Id="CMP_FIM_DB" />
+            <ComponentRef Id="CMP_SYSCOLLECTOR" />
+            <ComponentRef Id="CMP_SYSCOLLECTOR_DB" />
             <ComponentRef Id="CMP_LOGCOLLECTOR" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
