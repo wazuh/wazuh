@@ -966,6 +966,7 @@ void Syscollector::scanNetwork()
                         // "dbsync_network_address" table data to update and notify
                         addressTableData["iface"]   = item.at("name");
                         addressTableData["proto"]   = "IPv4";
+                        addressTableData["item_id"] = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                         addressTableDataList.push_back(addressTableData);
                     }
 
