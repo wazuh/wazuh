@@ -19,7 +19,9 @@ All notable changes to this project will be documented in this file.
 - **API:**
   - Fixed spec regexes for paths used in /manager/files and /cluster/{node_id}/files endpoints. ([#7131](https://github.com/wazuh/wazuh/issues/7131))
 - **Framework:**
-  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7135](https://github.com/wazuh/wazuh/issues/7135))  
+  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7135](https://github.com/wazuh/wazuh/issues/7135))
+- **Core:**
+  - Fixed the purge of the Redhat vulnerabilities database before updating it. ([#7133](https://github.com/wazuh/wazuh/pull/7133))
 
 ## [v4.0.3] - 2020-11-30
 
