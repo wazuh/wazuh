@@ -4,12 +4,22 @@ All notable changes to this project will be documented in this file.
 ## [v4.0.4] 
 
 ### Added
+
 - **API:**
-  - Added missing secure headers for API responses. ([#7024](https://github.com/wazuh/wazuh/issues/7024))
+  - Added missing secure headers for API responses. ([#7138](https://github.com/wazuh/wazuh/issues/7138))
+  - Added new config option to disable uploading configurations containing remote commands. ([#7134](https://github.com/wazuh/wazuh/issues/7134))
 
 ### Changed
 
+- **API:**
+  - Deprecated endpoints to restore and update API configuration file. ([#7132](https://github.com/wazuh/wazuh/issues/7132))
+
 ### Fixed
+
+- **API:**
+  - Fixed spec regexes for paths used in /manager/files and /cluster/{node_id}/files endpoints. ([#7131](https://github.com/wazuh/wazuh/issues/7131))
+- **Framework:**
+  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7135](https://github.com/wazuh/wazuh/issues/7135))  
 
 ## [v4.0.3] - 2020-11-30
 
