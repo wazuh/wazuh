@@ -12,11 +12,11 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
-# These variables will be replaced during the installation process
-VERSION="TEMP_VERSION"
-REVISION="TEMP_REVISION"
+# Installation info
+VERSION="v4.2.0"
+REVISION="40200"
+TYPE="local"
 DATE="TEMP_DATE"
-TYPE="TEMP_INSTYPE"
 
 ###  Do not modify bellow here ###
 
@@ -28,7 +28,6 @@ fi
 
 AUTHOR="Wazuh Inc."
 DAEMONS="wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
-INITCONF="/etc/ossec-init.conf"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
