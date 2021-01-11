@@ -244,7 +244,8 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The ipfilter file '%s' is not accessible: %s (%d)", ipfilter_path, strerror(errno), errno);
             write_debug_file (log_msg);
-            return -1;
+            free_vars();
+            return OS_INVALID;
         }
 
         // Checking if echo is present
@@ -252,7 +253,8 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The echo file '%s' is not accessible: %s (%d)", ECHO, strerror(errno), errno);
             write_debug_file (log_msg);
-            return -1;
+            free_vars();
+            return OS_INVALID;
         }
 
         arg1[COMMANDSIZE -1] = '\0';
@@ -285,6 +287,7 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The genfilt file '%s' is not accessible: %s (%d)", genfilt_path, strerror(errno), errno);
             write_debug_file (log_msg);
+            free_vars();
             return OS_INVALID;
         }
 
@@ -293,6 +296,7 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The lsfilt file '%s' is not accessible: %s (%d)", lsfilt_path, strerror(errno), errno);
             write_debug_file (log_msg);
+            free_vars();
             return OS_INVALID;
         }
 
@@ -301,6 +305,7 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The mkfilt file '%s' is not accessible: %s (%d)", mkfilt_path, strerror(errno), errno);
             write_debug_file (log_msg);
+            free_vars();
             return OS_INVALID;
         }
 
@@ -309,6 +314,7 @@ int main (int argc, char **argv) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The rmfilt file '%s' is not accessible: %s (%d)", rmfilt_path, strerror(errno), errno);
             write_debug_file (log_msg);
+            free_vars();
             return OS_INVALID;
         }
 
