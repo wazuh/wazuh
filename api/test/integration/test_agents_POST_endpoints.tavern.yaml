@@ -472,7 +472,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agent_name: 'wrong%name'
+        agent_name: 'wrong*name'
     response:
       status_code: 400
       json:
