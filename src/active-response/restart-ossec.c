@@ -9,7 +9,12 @@
 
 #include "shared.h"
 
+#ifndef WIN32
 #define LOG_FILE "/logs/active-responses.log"
+#else
+#define LOG_FILE "active-response\\active-responses.log"
+#endif
+
 #define BUFFERSIZE 4096
 #define LOGSIZE 5120
 #define PATHSIZE 512
@@ -92,7 +97,12 @@ void write_debug_file(const char *msg) {
     char path[PATHSIZE];
     char *timestamp = w_get_timestamp(time(NULL));
 
+#ifndef WIN32
     snprintf(path, PATHSIZE, "%s%s", isChroot() ? "" : DEFAULTDIR, LOG_FILE);
+#else
+    snprintf(path, PATHSIZE, "%s", LOG_FILE);
+#endif
+
     FILE *ar_log_file = fopen(path, "a");
 
     fprintf(ar_log_file, "%s: %s\n", timestamp, msg);
