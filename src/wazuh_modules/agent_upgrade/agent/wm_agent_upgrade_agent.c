@@ -238,7 +238,10 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
 
     FILE *result_file = fopen(PATH, "r");
     if (result_file) {
-        fgets(buffer, 20, result_file);
+        if (fgets(buffer, 20, result_file) == NULL) {
+            fclose(result_file);
+            return true;
+        }
         fclose(result_file);
 
         wm_upgrade_agent_state state;
