@@ -756,7 +756,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
     /* Variables for extract options */
     char *restrictfile = NULL;
-    int recursion_limit = syscheck->max_depth;
+    int recursion_limit = -1;   // Set the default recursion level after reading all configuration files
     char *tag = NULL;
     char *clean_tag = NULL;
     char **attrs = g_attrs;
@@ -975,13 +975,11 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 merror(XML_VALUEERR, xml_recursion_level, *values);
                 goto out_free;
             }
+
             recursion_limit = (unsigned int) atoi(*values);
-            if (recursion_limit < 0) {
-                mwarn("Invalid recursion level value: %d. Setting default (%d).", recursion_limit, syscheck->max_depth);
-                recursion_limit = syscheck->max_depth;
-            } else if (recursion_limit > MAX_DEPTH_ALLOWED) {
+            if (recursion_limit > MAX_DEPTH_ALLOWED) {
                 mwarn("Recursion level '%d' exceeding limit. Setting %d.", recursion_limit, MAX_DEPTH_ALLOWED);
-                recursion_limit = syscheck->max_depth;
+                recursion_limit = -1;
             }
         }
         /* Check tag */

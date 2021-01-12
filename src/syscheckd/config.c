@@ -103,21 +103,20 @@ int Read_Syscheck_Config(const char *cfgfile)
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
 
-    // Check directories options to determine whether to start the whodata thread or not
+    // Do some last minute adjustments to the configuration.
     if (syscheck.dir) {
         for (it = 0; syscheck.dir[it]; it++) {
+            // Check directories options to determine whether to start the whodata thread or not
             if (syscheck.opts[it] & WHODATA_ACTIVE) {
                 syscheck.enable_whodata = 1;
-
-                break;  // Exit loop with the first whodata directory
             }
-        }
-    }
 
-    if (syscheck.diff_size_limit) {
-        for (it = 0; syscheck.diff_size_limit[it]; it++) {
             if (syscheck.diff_size_limit[it] == -1) {
                 syscheck.diff_size_limit[it] = syscheck.file_size_limit;
+            }
+
+            if (syscheck.recursion_level[it] == -1) {
+                syscheck.recursion_level[it] = syscheck.max_depth;
             }
         }
     }
