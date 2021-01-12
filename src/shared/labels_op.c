@@ -98,7 +98,7 @@ wlabel_t* labels_parse(cJSON *json_labels) {
     cJSON *json_key = NULL;
     cJSON *json_value = NULL;
     wlabel_t *labels = NULL;
-    label_flags_t flags = {0};
+    label_flags_t flags = {.hidden = 0};
     size_t size = 0;
 
     if (json_labels && json_labels->child) {

@@ -2253,7 +2253,10 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         mdebug1(OPEN_UNABLE, current->file);
                     }
 
-                    clearerr(current->fp);
+                    if (current->fp) {
+                        clearerr(current->fp);
+                    }
+
                     w_mutex_unlock(&current->mutex);
                 }
             }
