@@ -797,12 +797,11 @@ char *format_path(char *dir) {
 }
 
 #ifndef WIN32
-char **expand_wildcards(const char *path){
+char **expand_wildcards(const char *path) {
     /* Check for glob */
     /* The mingw32 builder used by travis.ci can't find glob.h
      * Yet glob must work on actual win32. */
     char **paths;
-    os_calloc(1, sizeof(char **), paths);
 
     if (strchr(path, '*') ||
         strchr(path, '?') ||
@@ -824,6 +823,7 @@ char **expand_wildcards(const char *path){
             return NULL;
         }
 
+        os_calloc(g.gl_pathc + 1, sizeof(char *), paths);
         for (int gindex = 0; g.gl_pathv[gindex]; gindex++) {
             paths[gindex] = realpath(g.gl_pathv[gindex], NULL);
 
@@ -835,6 +835,7 @@ char **expand_wildcards(const char *path){
 
         globfree(&g);
     } else {
+        os_calloc(2, sizeof(char *), paths);
         os_strdup(path, paths[0]);
     }
 
@@ -1215,7 +1216,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                             tmp_diff_size);
 #else
                     char **paths = expand_wildcards(clean_path);
-                    for (int i = 0; paths[i]; i++){
+                    for (int i = 0; paths[i]; i++) {
                         if (paths[i] != NULL && strcmp(paths[i], clean_path) != 0 && (opts & CHECK_FOLLOW)) {
                             dump_syscheck_file(syscheck, paths[i], opts, restrictfile, recursion_limit, clean_tag,
                                                 clean_path, tmp_diff_size);
@@ -2443,7 +2444,7 @@ static char **get_paths_from_env_variable (char *environment_variable) {
 #ifdef WIN32
     char expandedpath[PATH_MAX + 1];
 
-    if (!ExpandEnvironmentStrings(environment_variable, expandedpath, PATH_MAX + 1)){
+    if (!ExpandEnvironmentStrings(environment_variable, expandedpath, PATH_MAX + 1)) {
         merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
     }
     /* The env. variable may have multiples paths split by ; */
@@ -2451,18 +2452,18 @@ static char **get_paths_from_env_variable (char *environment_variable) {
 #else
     char *expandedpath = NULL;
 
-    if (environment_variable[0] == '$'){
+    if (environment_variable[0] == '$') {
         environment_variable++;
     }
 
-    if (expandedpath = getenv(environment_variable), expandedpath){
+    if (expandedpath = getenv(environment_variable), expandedpath) {
         /* The env. variable may have multiples paths split by : */
         paths = OS_StrBreak(':', expandedpath, MAX_DIR_SIZE);
     }
 
 #endif
 
-    if (paths == NULL){
+    if (paths == NULL) {
         os_calloc(2, sizeof(char *), paths);
         os_strdup(environment_variable, paths[0]);
         paths[1] = NULL;
