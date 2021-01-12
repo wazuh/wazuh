@@ -160,4 +160,8 @@ WazuhUpgrade()
     # Remove existing ruleset version file
 
     rm -f $DIRECTORY/ruleset/VERSION
+
+    # Remove old Active Response scripts
+
+    rm -f $DIRECTORY/active-response/bin/restart-ossec.sh
 }

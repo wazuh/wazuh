@@ -393,6 +393,9 @@
                             <Component Id="NETSH_WIN_2016.CMD" DiskId="1" Guid="B2011FD2-3F82-4FFD-B6C3-32665037C4EA">
                                 <File Id="NETSH_WIN_2016.CMD" Name="netsh-win-2016.cmd" Source="netsh-win-2016.cmd" />
                             </Component>
+                            <Component Id="REMOVE_OLD_AR" Guid="E1915364-2E49-4B74-8DF9-5D6CC3B27DF0">
+                                <RemoveFile Id="AR_RESTART_OSSEC_CMD" Name="restart-ossec.cmd" On="install" />
+                            </Component>
                         </Directory>
                         <Component Id="ACTIVE_RESPONSES.LOG" DiskId="1" Guid="249F3287-B69D-46F0-8888-3FED24998E07">
                             <File Id="ACTIVE_RESPONSES.LOG" Name="active-responses.log" Source="active-responses.log" />
@@ -587,7 +590,7 @@
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
-            <ComponentRef Id="RESTART_OSSEC.CMD" />
+            <ComponentRef Id="RESTART_OSSEC.EXE" />
             <ComponentRef Id="ROUTE_NULL.CMD" />
             <ComponentRef Id="ROUTE_NULL_2012.CMD" />
             <ComponentRef Id="NETSH.CMD" />
@@ -620,6 +623,7 @@
             <ComponentRef Id="CMP_UPGRADE" />
             <ComponentRef Id="CMP_SHARED" />
             <ComponentRef Id="REMOVE_OLD_NSIS" />
+            <ComponentRef Id="REMOVE_OLD_AR" />
             <ComponentRef Id="HELP_WIN.TXT" />
             <ComponentRef Id="VERSION" />
             <ComponentRef Id="REVISION" />
