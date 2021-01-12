@@ -96,6 +96,7 @@ int main(int argc, char **argv)
 
     /* Read internal options */
     read_internal(debug_level);
+
     mdebug1(STARTED_MSG);
 
     /* Check if the configuration is present */

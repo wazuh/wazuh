@@ -20,8 +20,8 @@ static int process_option_regex(char *option, OSMatch ***syscheck_option, xml_no
 static void process_option(char ***syscheck_option, xml_node *node);
 /* Set check_all options in a directory/file */
 static void fim_set_check_all(int *opt);
-/* Extraxt the int value of an string */
-static int get_xml_int(xml_node *node, int min, int max, int *save_variable);
+/* Extracts an integer value from an xml element */
+static int get_xml_int(xml_node *node, int min, int max, int default_value);
 
 
 void organize_syscheck_dirs(syscheck_config *syscheck)
@@ -1762,11 +1762,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_default_max_depth = "default_max_depth";
     const char *xml_file_max_size = "file_max_size";
     const char *xml_symlink_scan_interval = "symlink_scan_interval";
-#ifndef WIN32
     const char *xml_max_audit_entries = "max_audit_entries";
-#else
     const char *xml_max_fd_win_rt = "max_fd_win_rt";
-#endif
 
     /* Configuration example
         <directories check_all="yes">/etc,/usr/bin</directories>
@@ -2168,11 +2165,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         OS_ClearNode(children);
                         return(OS_INVALID);
                     }
-#ifndef WIN32
                 } else if (strcmp(children[j]->element, xml_max_audit_entries) == 0) {
-                    if (get_xml_int(children[j], 1, 256, &syscheck->max_audit_entries) == OS_INVALID) {
-                        return (OS_INVALID);
-                    }
+#ifndef WIN32
+                    syscheck->max_audit_entries = get_xml_int(children[j], 1, 256, 256);
 #endif
                 } else if (strcmp(children[j]->element, xml_restart_audit) == 0) {
                     if(strcmp(children[j]->content, "yes") == 0)
@@ -2249,32 +2244,17 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 return(OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_rt_delay) == 0) {
-            if (get_xml_int(node[i], 0, 1000, &syscheck->rt_delay) == OS_INVALID) {
-                return (OS_INVALID);
-            }
+            syscheck->rt_delay = get_xml_int(node[i], 0, 1000, 5);
         } else if (strcmp(node[i]->element, xml_default_max_depth) == 0) {
-            if (get_xml_int(node[i], 1, 320, &syscheck->max_depth) == OS_INVALID) {
-                return (OS_INVALID);
-            }
+            syscheck->max_depth = get_xml_int(node[i], 1, 320, 256);
         } else if (strcmp(node[i]->element, xml_symlink_scan_interval) == 0) {
-            if (get_xml_int(node[i], 1, 2592000, &syscheck->sym_checker_interval) == OS_INVALID) {
-                return (OS_INVALID);
-            }
-#ifdef WIN32
+            syscheck->sym_checker_interval = get_xml_int(node[i], 1, 2592000, 600);
         } else if (strcmp(node[i]->element, xml_max_fd_win_rt) == 0) {
-            if (get_xml_int(node[i], 1, 1024, &syscheck->max_fd_win_rt) == OS_INVALID) {
-                return (OS_INVALID);
-            }
+#ifdef WIN32
+            syscheck->max_fd_win_rt = get_xml_int(node[i], 1, 1024, 256);
 #endif
         } else if (strcmp(node[i]->element, xml_file_max_size) == 0) {
-            char * end;
-            unsigned int value = strtol(node[i]->content, &end, 10);
-
-            if (value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->file_max_size = value;
-            }
+            syscheck->file_max_size = (size_t)get_xml_int(node[i], 0, 4095, 1024) * 1024UL * 1024UL;
         } else {
             mwarn(XML_INVELEM, node[i]->element);
         }
@@ -2660,17 +2640,21 @@ static void fim_set_check_all(int *opt) {
 #endif
 }
 
-static int get_xml_int(xml_node *node, int min, int max, int *save_variable) {
-    char *end = NULL;
-    int aux = 0;
-    errno = 0;
+static int get_xml_int(xml_node *node, int min, int max, int default_value) {
+    int retval = 0;
 
-    aux = strtol(node->content, &end, 10);
-    // Check if strtol failed or if it didn't find any integer.
-    if (aux < min || aux > max || *end) {
-        merror(XML_VALUEERR, node->element, node->content);
-        return (OS_INVALID);
+    if (OS_StrIsNum(node->content) == FALSE) {
+        mwarn(FIM_CONFIG_DEFAULT, node->content, node->element, default_value);
+        return default_value;
     }
-    *save_variable = aux;
-    return 0;
+
+    retval = atol(node->content);
+
+    // Check if strtol failed or the returned value is out of bounds.
+    if (retval < min || retval > max) {
+        mwarn(FIM_CONFIG_DEFAULT, node->content, node->element, default_value);
+        return default_value;
+    }
+
+    return retval;
 }
