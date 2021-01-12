@@ -110,7 +110,8 @@ async def get_healthcheck(request, pretty=False, wait_for_complete=False, nodes_
                           logger=logger,
                           local_client_arg='lc',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -342,7 +343,8 @@ async def get_stats_analysisd_node(request, node_id, pretty=False, wait_for_comp
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          basic_services=['wazuh-analysisd']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -367,7 +369,8 @@ async def get_stats_remoted_node(request, node_id, pretty=False, wait_for_comple
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          basic_services=['wazuh-remoted']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -572,7 +575,8 @@ async def put_restart(request, pretty=False, wait_for_complete=False, nodes_list
                           logger=logger,
                           broadcasting=nodes_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          basic_services=['wazuh-execd']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -598,7 +602,8 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False, no
                           logger=logger,
                           broadcasting=nodes_list == '*',
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          basic_services=['wazuh-execd']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -626,7 +631,8 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
+                          nodes=nodes,
+                          basic_services=['wazuh-execd']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

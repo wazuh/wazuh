@@ -175,7 +175,8 @@ async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-analysisd']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -196,7 +197,8 @@ async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-remoted']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -417,7 +419,8 @@ async def get_manager_config_ondemand(request, component, pretty=False, wait_for
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-execd']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

@@ -36,7 +36,7 @@ class DistributedAPI:
     def __init__(self, f: Callable, logger: logging.getLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
                  debug: bool = False, request_type: str = 'local_master', current_user: str = '',
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
-                 broadcasting: bool = False, basic_services: tuple = None, local_client_arg: str = None,
+                 broadcasting: bool = False, basic_services = None, local_client_arg: str = None,
                  rbac_permissions: Dict = None, nodes: list = None):
         """Class constructor.
 
@@ -89,13 +89,10 @@ class DistributedAPI:
         self.rbac_permissions = rbac_permissions if rbac_permissions is not None else {'rbac_mode': 'black'}
         self.current_user = current_user
         self.nodes = nodes if nodes is not None else list()
-        if not basic_services:
-            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db')
-            if common.install_type != "local":
-                self.basic_services += ('wazuh-remoted',)
+        if basic_services is None:
+            self.basic_services = []
         else:
             self.basic_services = basic_services
-
         self.local_clients = []
         self.local_client_arg = local_client_arg
         self.threadpool = ThreadPoolExecutor(max_workers=1)

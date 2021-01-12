@@ -50,7 +50,8 @@ async def clear_syscheck_database(request, pretty=False, wait_for_complete=False
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -106,7 +107,8 @@ async def get_cis_cat_results(request, pretty=False, wait_for_complete=False, ag
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -154,7 +156,8 @@ async def get_hardware_info(request, pretty=False, wait_for_complete=False, agen
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -206,7 +209,8 @@ async def get_network_address_info(request, pretty=False, wait_for_complete=Fals
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -261,7 +265,8 @@ async def get_network_interface_info(request, pretty=False, wait_for_complete=Fa
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -310,7 +315,8 @@ async def get_network_protocol_info(request, pretty=False, wait_for_complete=Fal
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -362,7 +368,8 @@ async def get_os_info(request, pretty=False, wait_for_complete=False, agents_lis
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -413,7 +420,8 @@ async def get_packages_info(request, pretty=False, wait_for_complete=False, agen
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -471,7 +479,8 @@ async def get_ports_info(request, pretty=False, wait_for_complete=False, agents_
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -542,7 +551,8 @@ async def get_processes_info(request, pretty=False, wait_for_complete=False, age
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -584,7 +594,8 @@ async def get_hotfixes_info(request, pretty=False, wait_for_complete=False, agen
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

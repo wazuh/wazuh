@@ -66,7 +66,8 @@ async def get_sca_agent(request, agent_id=None, pretty=False, wait_for_complete=
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -162,7 +163,8 @@ async def get_sca_checks(request, agent_id=None, pretty=False, wait_for_complete
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 

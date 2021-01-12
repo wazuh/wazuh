@@ -69,7 +69,8 @@ async def get_agents_ciscat_results(request, agent_id: str, pretty: bool = False
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     response = raise_if_exc(await dapi.distribute_function())
 

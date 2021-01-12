@@ -35,7 +35,8 @@ async def put_rootcheck(request, pretty=False, wait_for_complete=False, agents_l
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db', 'wazuh-remoted']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -63,7 +64,8 @@ async def delete_rootcheck(request, pretty=False, wait_for_complete=False, agent
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -126,7 +128,8 @@ async def get_rootcheck_agent(request, pretty=False, wait_for_complete=False, ag
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -153,7 +156,8 @@ async def get_last_scan_agent(request, pretty=False, wait_for_complete=False, ag
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-db']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
