@@ -39,3 +39,9 @@ int* __wrap_wdb_get_agents_by_connection_status(const char* status, __attribute_
     check_expected(status);
     return mock_ptr_type(int*);
 }
+
+int* __wrap_wdb_get_all_agents(bool include_manager, __attribute__((unused)) int *sock) {
+    check_expected(include_manager);
+
+    return mock_ptr_type(int*);
+}
