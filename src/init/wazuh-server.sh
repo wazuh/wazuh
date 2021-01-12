@@ -111,7 +111,7 @@ help()
 {
     # Help message
     echo ""
-    echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable|info [-v -r -d -t]}";
+    echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable|info [-v -r -t]}";
     echo ""
     echo "    -j    Use JSON output."
     exit 1;
