@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -12,7 +12,12 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
-###  Do not modify bellow here ###
+# Installation info
+VERSION="v4.2.0"
+REVISION="40200"
+TYPE="server"
+
+###  Do not modify below here ###
 
 # Getting additional processes
 ls -la ${PLIST} > /dev/null 2>&1
@@ -22,15 +27,12 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-INITCONF="/etc/ossec-init.conf"
 DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
 OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 OP_SDAEMONS=$(echo $OP_DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
-[ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -109,7 +111,7 @@ help()
 {
     # Help message
     echo ""
-    echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable}";
+    echo "Usage: $0 [-j] {start|stop|restart|status|enable|disable|info [-v -r -t]}";
     echo ""
     echo "    -j    Use JSON output."
     exit 1;
@@ -452,7 +454,7 @@ wait_pid() {
     return 0
 }
 
-stopa()
+stop()
 {
     checkpid;
     first=true
@@ -507,6 +509,30 @@ stopa()
     fi
 }
 
+info()
+{
+    if [ "X${1}" = "X" ]; then
+        if [ $USE_JSON = true ]; then
+            echo -n '{"error":0,"data":['
+            echo -n '{"WAZUH_VERSION":"'${VERSION}'"},'
+            echo -n '{"WAZUH_REVISION":"'${REVISION}'"},'
+            echo -n '{"WAZUH_TYPE":"'${TYPE}'"}'
+            echo -n ']}'
+        else
+            echo "WAZUH_VERSION=\"${VERSION}\""
+            echo "WAZUH_REVISION=\"${REVISION}\""
+            echo "WAZUH_TYPE=\"${TYPE}\""
+        fi
+    else
+        case "${1}" in
+            -v) echo "${VERSION}" ;;
+            -r) echo "${REVISION}" ;;
+            -t) echo "${TYPE}" ;;
+             *) echo "Invalid flag: ${1}" && help ;;
+        esac
+    fi
+}
+
 ### MAIN HERE ###
 
 if [ "$1" = "-j" ]; then
@@ -527,7 +553,7 @@ start)
     ;;
 stop)
     lock
-    stopa
+    stop
     unlock
     ;;
 restart)
@@ -535,9 +561,9 @@ restart)
     testconfig
     lock
     if [ $USE_JSON = true ]; then
-        stopa > /dev/null 2>&1
+        stop > /dev/null 2>&1
     else
-        stopa
+        stop
     fi
     start
     rm -f ${DIR}/var/run/.restart
@@ -546,7 +572,7 @@ restart)
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
-    stopa
+    stop
     start
     unlock
     ;;
@@ -554,9 +580,6 @@ status)
     lock
     status
     unlock
-    ;;
-help)
-    help
     ;;
 enable)
     lock
@@ -567,6 +590,12 @@ disable)
     lock
     disable $action $arg;
     unlock
+    ;;
+info)
+    info $arg
+    ;;
+help)
+    help
     ;;
 *)
     help
