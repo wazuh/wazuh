@@ -56,7 +56,8 @@ int StartMQ(const char *key, short int type, short int n_attempts) __attribute__
  * @return
  * UNIX -> 0 if file descriptor is still available
  * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
- * WIN32 -> 0
+ * WIN32 -> 0 on success
+ * WIN32 -> -1 on error
  * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
  */
 
@@ -71,8 +72,9 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attr
  * @param loc  queue location (WIN32)
  * @param target logtarget ptr with the socket information
  * @return
+ * UNIX ->  1 message was discarded
  * UNIX -> -1 invalid protocol or cannot create socket
- * UNIX ->  0 message was sent or discarded
+ * UNIX ->  0 message was sent
  * WIN32 -> -1 invalid target
  * WIN32 -> 0 valid target
  * Notes: (UNIX) If the message is not sent because the socket is busy, the return code will be 0

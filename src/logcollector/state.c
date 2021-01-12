@@ -1,11 +1,10 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
- * Copyright (C) 2009 Trend Micro Inc.
- * All right reserved.
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
 
 #include "state.h"
@@ -45,13 +44,12 @@ typedef struct {
     lc_state_target_t ** targets; ///< array of poiters to file's different targets
 } lc_state_file_t;
 
+/* Global variables */
 char * g_lc_pritty_stats;           ///< string that store single line formated JSON with states
 lc_states_t * g_lc_states_global;   ///< global state struct storage
 lc_states_t * g_lc_states_interval; ///< interval state struct storage
 pthread_mutex_t g_lc_raw_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_pritty_stats mutual exclusion mechanism
-pthread_mutex_t g_lc_pritty_stats_mutex =
-    PTHREAD_MUTEX_INITIALIZER; ///< g_lc_states_* structs mutual exclusion mechanism
-
+pthread_mutex_t g_lc_pritty_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_states_* structs mutual exclusion mechanism
 
 /**
  * @brief Trigger the generation of states
@@ -98,8 +96,8 @@ DWORD WINAPI w_logcollector_state_main(__attribute__((unused)) void * args) {
 #else
 void * w_logcollector_state_main(__attribute__((unused)) void * args) {
 #endif
-    
-    int interval = * (int *) args; 
+
+    int interval = *(int *) args; 
 
     while (FOREVER()) {
         sleep(interval);
@@ -130,7 +128,7 @@ STATIC void w_logcollector_state_dump() {
 }
 
 void w_logcollector_state_init() {
-
+    
     os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
     os_calloc(1, sizeof(lc_states_t), g_lc_states_interval);
 
@@ -282,7 +280,7 @@ char * w_logcollector_state_get() {
 
     w_mutex_lock(&g_lc_pritty_stats_mutex);
 
-    if (g_lc_pritty_stats != NULL){
+    if (g_lc_pritty_stats != NULL) {
         os_strdup(g_lc_pritty_stats, state_str);
     }
 

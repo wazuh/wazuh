@@ -157,6 +157,9 @@ void LogCollectorStart()
         merror(ATEXIT_ERROR);
     }
 
+        /* Initialize state component */
+    w_logcollector_state_init();
+
     set_sockets();
     files_lock_init();
 
@@ -365,9 +368,6 @@ void LogCollectorStart()
 
     //Save status localfiles to disk
     w_save_file_status();
-
-    /* Initialize state component */
-    w_logcollector_state_init();
 
     /* Create the state thread */
 #ifndef WIN32
@@ -1943,12 +1943,13 @@ void * w_output_thread(void * args){
             result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
                                   message->queue_mq, message->log_target);
             if (result != 0) {
-                #ifdef CLIENT
-                merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
-                #else
-                merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
-                #endif
-
+                if (result == 0) {
+#ifdef CLIENT
+                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
+#else
+                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
+#endif
+                }
                 // Retry to connect infinitely.
                 logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
@@ -1957,11 +1958,13 @@ void * w_output_thread(void * args){
                 if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
                     result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
-                    #ifdef CLIENT
-                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
-                    #else
-                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
-                    #endif
+                    if (result == 0) {
+#ifdef CLIENT
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+#else
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+#endif
+                    }
                     result = 1;
                 }
             }
@@ -1973,6 +1976,7 @@ void * w_output_thread(void * args){
         } else {
             const int MAX_RETRIES = 3;
             int retries = 0;
+            result = 1;
             while (retries < MAX_RETRIES) {
                 result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
                                       message->queue_mq, message->log_target);

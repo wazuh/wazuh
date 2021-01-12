@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "state.h"
 
 #ifdef WIN32
 
@@ -465,9 +466,14 @@ void readel(os_el *el, int printit)
                          el_domain,
                          computer_name,
                          descriptive_msg != NULL ? descriptive_msg : el_string);
+                
+                w_logcollector_state_update_file(el->name, strlen(final_msg));
 
                 if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
                     merror(QUEUE_SEND);
+                    w_logcollector_state_update_target(el->name, "agent", true);
+                } else {
+                    w_logcollector_state_update_target(el->name, "agent", false);
                 }
             }
 
