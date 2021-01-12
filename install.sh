@@ -138,15 +138,6 @@ Install()
 
     cd ../
 
-    # Generate the /etc/ossec-init.conf
-    VERSION=`cat ${VERSION_FILE}`
-    REVISION=`cat ${REVISION_FILE}`
-    chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
-    GenerateInitConf > ${OSSEC_INIT}
-    chmod 640 ${OSSEC_INIT}
-    chown root:ossec ${OSSEC_INIT}
-    ln -sf ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
-
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then
         WazuhSetup
@@ -1066,8 +1057,8 @@ main()
         echo "   https://documentation.wazuh.com/"
         echo ""
 
-    elif [ "X$INSTYPE" = "Xagent" ]; then  
-        echo ""      
+    elif [ "X$INSTYPE" = "Xagent" ]; then
+        echo ""
         echo " - ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""
