@@ -1,0 +1,35 @@
+#!/bin/ksh
+#
+# name: ossec
+# purpose: Init script for ossec-hids
+# Copyright (C) 2015-2020, Wazuh Inc.
+# Aug. 07 2008 Chris Cuevas
+#
+
+case "$1" in
+start)
+    if [ -f WAZUH_HOME/bin/wazuh-control ]; then
+        echo "Starting Wazuh"
+        WAZUH_HOME/bin/wazuh-control start
+    fi
+    ;;
+stop)
+    if [ -f WAZUH_HOME/bin/wazuh-control ]; then
+        echo "Stopping Wazuh"
+        WAZUH_HOME/bin/wazuh-control stop
+    fi
+    ;;
+status)
+    if [ -f WAZUH_HOME/bin/wazuh-control ]; then
+        WAZUH_HOME/bin/wazuh-control status
+    fi
+    ;;
+restart)
+    if [ -f WAZUH_HOME/bin/wazuh-control ]; then
+        WAZUH_HOME/bin/wazuh-control restart
+    fi
+    ;;
+*)
+    echo "Usage: $0 (start | stop |restart | status)"
+    exit 1
+esac

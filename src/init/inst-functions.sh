@@ -324,6 +324,15 @@ GenerateInitConf()
 }
 
 ##########
+# GenerateService() $1=template
+##########
+GenerateService()
+{    
+    SERVICE_TEMPLATE=./src/init/templates/${1}
+    sed "s|WAZUH_HOME|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
+}
+
+##########
 # WriteAgent() $1="no_locafiles" or empty
 ##########
 WriteAgent()
