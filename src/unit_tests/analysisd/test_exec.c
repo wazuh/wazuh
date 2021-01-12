@@ -43,7 +43,6 @@ static int test_setup(void **state) {
     init_data->lf->location = "(ubuntu) any->syscheck";
 
     init_data->ar->name = "restart-ossec0";
-    init_data->ar->ar_cmd->expect = 0;
     init_data->ar->ar_cmd->extra_args = NULL;
     init_data->ar->location = 0;
     init_data->ar->agent_id = "002";

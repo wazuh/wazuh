@@ -6,7 +6,7 @@
 
   <command>
     <name>restart-ossec</name>
-    <executable>restart-ossec.sh</executable>
+    <executable>restart-ossec</executable>
   </command>
 
   <command>
