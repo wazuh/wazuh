@@ -7,7 +7,7 @@ import glob
 import hashlib
 import json
 import operator
-import re
+import regex as re
 import shutil
 import stat
 import sys
