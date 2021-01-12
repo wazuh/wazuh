@@ -46,6 +46,7 @@ def start(foreground, root, config_file):
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
+    from wazuh.core.cluster.utils import read_config
     from wazuh.rbac.orm import check_database_integrity
 
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
@@ -126,7 +127,11 @@ def start(foreground, root, config_file):
 
     # Load the SPEC file into memory to use as a reference for future calls
     common.load_spec()
-    check_database_integrity()
+
+    # Check RBAC database integrity in Master node only
+    if read_config()['node_type'] == 'master':
+        check_database_integrity()
+
     # Set up API
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     app = connexion.AioHttpApp(__name__, host=api_conf['host'],

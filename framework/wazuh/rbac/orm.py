@@ -28,9 +28,6 @@ from api.constants import SECURITY_PATH
 import wazuh.core.common as common
 
 import logging
-
-logger = logging.getLogger('wazuh-api')
-
 # Max reserved ID value
 max_id_reserved = 99
 cloud_reserved_range = 39
@@ -310,7 +307,7 @@ class User(_Base):
                 'roles': self._get_roles_id(), 'allow_run_as': self.allow_run_as}
 
     def to_dict(self, session=None):
-        """Return the information of one policy and the roles that have assigned
+        """Return the information of one user and the roles that have assigned
 
         Returns
         -------
@@ -319,7 +316,8 @@ class User(_Base):
         with UserRolesManager(session=session) as urm:
             return {'id': self.id, 'username': self.username,
                     'allow_run_as': self.allow_run_as,
-                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=self.id)]}
+                    'roles': [role.id for role in urm.get_all_roles_from_user(user_id=self.id)],
+                    'resource_type': self.resource_type}
 
 
 class Roles(_Base):
@@ -695,7 +693,7 @@ class AuthenticationManager:
         self.session = session if session else sessionmaker(
             bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
 
-    def add_user(self, username: str, password: str, user_id: int = None, hash_password: bool = True,
+    def add_user(self, username: str, password: str, user_id: int = None, hash_password: bool = False,
                  allow_run_as: bool = False, created_at: DateTime = None, resource_type: ResourceType = None,
                  check_default: bool = True) -> bool:
         """Creates a new user if it does not exist.
@@ -709,8 +707,8 @@ class AuthenticationManager:
         user_id : int
             ID of the user to add. A new ID will be assigned in case no ID is provided. Used during database migrations.
         hash_password : bool
-            Determines if the specified password must be stored hashed or as provided in 'password'. This is used during
-            database migrations.
+            True if the provided password is already hashed and should be stored as is.
+            False if the provided password is NOT hashed and must be hashed before storing it.
         allow_run_as : bool
             Flag that indicates if the user can log into the API throw an authorization context
         created_at : DateTime
@@ -2634,7 +2632,7 @@ class DatabaseManager:
             default_users = yaml.safe_load(stream)
             with AuthenticationManager(self.sessions[database]) as auth:
                 for d_username, payload in default_users[next(iter(default_users))].items():
-                    auth.add_user(username=d_username, password=generate_password_hash(payload['password']),
+                    auth.add_user(username=d_username, password=payload['password'],
                                   allow_run_as=payload['allow_run_as'], resource_type=resource_type,
                                   check_default=False)
 
@@ -2725,7 +2723,6 @@ class DatabaseManager:
 
         old_users = self.sessions[source].execute(
             f'SELECT username, password, allow_run_as, created_at, id FROM users {id_range};').fetchall()
-
         with AuthenticationManager(self.sessions[target]) as auth_manager:
             for user in old_users:
                 auth_manager.add_user(username=user[0],
@@ -2733,6 +2730,7 @@ class DatabaseManager:
                                       allow_run_as=user[2],
                                       created_at=format_datetime(user[3]),
                                       user_id=user[4],
+                                      hash_password=True,
                                       resource_type=resource_type,
                                       check_default=check_default)
         old_roles = self.sessions[source].execute(f'SELECT name, created_at, id FROM roles {id_range};').fetchall()
@@ -2804,11 +2802,12 @@ class DatabaseManager:
 
 
 def check_database_integrity():
-    """Check if the database needs to be upgraded or created."""
+    """Check if the rbac database needs to be upgraded or created."""
     def set_permission(database):
         chown(database, 'ossec', 'ossec')
         os.chmod(database, 0o640)
 
+    logger = logging.getLogger('wazuh-api')
     try:
         logger.info('Checking RBAC database integrity...')
         if os.path.exists(_auth_db_file):
@@ -2847,6 +2846,7 @@ def check_database_integrity():
                     db_manager.delete_orphans(_tmp_db_file)
                     db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
                     db_manager.close_sessions()
+                    # Create a backup file for development purposes and overwrite the old one
                     safe_move(_auth_db_file, f'{_auth_db_file}.bkp', permissions=0o640)
                     safe_move(_tmp_db_file, _auth_db_file, permissions=0o640)
                     logger.info(f'{_auth_db_file} database upgraded successfully.')

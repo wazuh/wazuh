@@ -180,7 +180,7 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
     AffectedItemsWazuhResult:
         Status message
     """
-    if password is None and allow_run_as is None:
+    if password is None and allow_run_as is None and resource_type is None:
         raise WazuhError(4001)
     if password:
         if len(password) > 64 or len(password) < 8:
@@ -190,7 +190,16 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
-        status = auth.update_user(int(user_id[0]), password, allow_run_as, resource_type=resource_type)
+        user = auth.get_user_id(int(user_id[0]))
+        status = False
+
+        if user:
+            if user['resource_type'] == ResourceType.USER.value or (
+                    resource_type and user['resource_type'] == resource_type.value):
+                status = auth.update_user(int(user_id[0]), password, allow_run_as, resource_type=resource_type)
+            else:
+                status = SecurityError.ADMIN_RESOURCES
+
         if status is False:
             result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5001))
         elif status == SecurityError.ADMIN_RESOURCES:
