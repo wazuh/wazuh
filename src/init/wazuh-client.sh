@@ -95,7 +95,7 @@ unlock()
 help()
 {
     # Help message
-    echo "Usage: $0 {start|stop|restart|status|info [-v -r -d -t]}";
+    echo "Usage: $0 {start|stop|restart|status|info [-v -r -t]}";
     exit 1;
 }
 
@@ -251,18 +251,10 @@ stop()
 
 info()
 {
-    if [ "X${1}" = "X" ]; then
-        if [ $USE_JSON = true ]; then
-            echo -n '{"error":0,"data":['
-            echo -n '{"WAZUH_VERSION":"'${VERSION}'"},'
-            echo -n '{"WAZUH_REVISION":"'${REVISION}'"},'
-            echo -n '{"WAZUH_TYPE":"'${TYPE}'"}'
-            echo -n ']}'
-        else
-            echo "WAZUH_VERSION=\"${VERSION}\""
-            echo "WAZUH_REVISION=\"${REVISION}\""
-            echo "WAZUH_TYPE=\"${TYPE}\""
-        fi
+     if [ "X${1}" = "X" ]; then
+        echo "VERSION=\"${VERSION}\""
+        echo "REVISION=\"${REVISION}\""
+        echo "TYPE=\"${TYPE}\""
     else
         case "${1}" in
             -v) echo "${VERSION}" ;;
@@ -274,6 +266,8 @@ info()
 }
 
 ### MAIN HERE ###
+
+arg=$2
 
 case "$1" in
 start)
