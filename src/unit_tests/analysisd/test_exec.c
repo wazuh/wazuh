@@ -161,7 +161,7 @@ void test_all_agents_success_json_string(void **state)
     cJSON_AddStringToObject(agent_info_2, "version", version_2);
     cJSON_AddItemToArray(agent_info_array_2, agent_info_2);
 
-    char *exec_msg = "(ubuntu) any->syscheck NNS 005 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck - -";
+    char *exec_msg = "(ubuntu) any->syscheck NNS 005 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
     __crt_ftell = 80794;
@@ -296,7 +296,7 @@ void test_specific_agent_success_string(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
-    char *exec_msg = "(ubuntu) any->syscheck NNS 002 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck - -";
+    char *exec_msg = "(ubuntu) any->syscheck NNS 002 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
     __crt_ftell = 80794;
@@ -392,7 +392,7 @@ void test_remote_agent_success_string(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
-    char *exec_msg = "(ubuntu) any->syscheck NRN 002 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck - -";
+    char *exec_msg = "(ubuntu) any->syscheck NRN 002 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
     __crt_ftell = 80794;

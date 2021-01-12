@@ -1103,6 +1103,7 @@ wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
+	AR_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 
 	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
