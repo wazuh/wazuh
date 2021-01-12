@@ -241,7 +241,8 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['001'], ['file', 'size', 'mtime'], None, False),
     (['001'], None, {'inode': '15470536'}, True),
     (['001'], ['file', 'size'], {'hash': '15470536'}, False),
-    (['001'], None, {'date': '2019-05-21 12:10:20'}, True)
+    (['001'], None, {'date': '2019-05-21 12:10:20'}, True),
+    (['001'], None, {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
 ])
 @patch('socket.socket.connect')
 @patch('wazuh.common.wdb_path', new=test_data_path)
