@@ -7,9 +7,9 @@ After=network.target network-online.target
 Type=forking
 LimitNOFILE=65536
 
-ExecStart=/usr/bin/env WAZUH_HOME/bin/wazuh-control start
-ExecStop=/usr/bin/env WAZUH_HOME/bin/wazuh-control stop
-ExecReload=/usr/bin/env WAZUH_HOME/bin/wazuh-control reload
+ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control start
+ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop
+ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control reload
 KillMode=none
 RemainAfterExit=yes
 
