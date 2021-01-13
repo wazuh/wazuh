@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Deprecated endpoints to restore and update API configuration file. ([#7132](https://github.com/wazuh/wazuh/issues/7132))
+  - Default expiration time of the JWT token set to 15 minutes. ([#7167](https://github.com/wazuh/wazuh/pull/7167)) 
 
 ### Fixed
 
