@@ -210,7 +210,9 @@ size_t wcom_restart(char ** output) {
             break;
         }
 #else
-        char *cmd[2] = { "restart-ossec.exe", NULL };
+        static char command[OS_FLSIZE];
+        snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, "restart-ossec.exe");
+        char *cmd[2] = { command, NULL };
         char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"wazuh-execd\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{}}}";
         wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
         if (wfd) {

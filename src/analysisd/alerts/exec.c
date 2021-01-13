@@ -121,7 +121,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 // New AR mechanism is not supported in versions prior to 4.2.0
                 char *save_ptr = NULL;
                 strtok_r(agt_version, "v", &save_ptr);
-                char *major = strtok_r(NULL, ".", &save_ptr);;
+                char *major = strtok_r(NULL, ".", &save_ptr);
                 char *minor = strtok_r(NULL, ".", &save_ptr);
                 if (!major || !minor) {
                     merror("Unable to read agent version.");
@@ -210,7 +210,8 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 
             // New AR mechanism is not supported in versions prior to 4.2.0
             char *save_ptr = NULL;
-            char *major = strtok_r(agt_version, ".", &save_ptr);;
+            strtok_r(agt_version, "v", &save_ptr);
+            char *major = strtok_r(NULL, ".", &save_ptr);
             char *minor = strtok_r(NULL, ".", &save_ptr);
             if (!major || !minor) {
                 merror("Unable to read agent version.");

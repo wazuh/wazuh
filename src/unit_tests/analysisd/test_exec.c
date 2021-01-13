@@ -141,8 +141,8 @@ void test_all_agents_success_json_string(void **state)
     int execq = 10;
     int arq = 11;
 
-    char *version_1 = "v4.2.0";
-    char *version_2 = "v4.0.0";
+    char *version_1 = "Wazuh v4.2.0";
+    char *version_2 = "Wazuh v4.0.0";
     data->ar->location = ALL_AGENTS;
 
     cJSON *agent_info_array_1 = cJSON_CreateArray();
@@ -248,7 +248,7 @@ void test_specific_agent_success_json(void **state)
     int execq = 10;
     int arq = 11;
 
-    char *version = "v4.2.0";
+    char *version = "Wazuh v4.2.0";
     data->ar->location = SPECIFIC_AGENT;
 
     cJSON *agent_info_array = cJSON_CreateArray();
@@ -288,7 +288,7 @@ void test_specific_agent_success_string(void **state)
     int execq = 10;
     int arq = 11;
 
-    char *version = "v4.0.0";
+    char *version = "Wazuh v4.0.0";
     data->ar->location = SPECIFIC_AGENT;
 
     cJSON *agent_info_array = cJSON_CreateArray();
@@ -339,7 +339,7 @@ void test_remote_agent_success_json(void **state)
     int arq = 11;
     int exec_id = 2;
 
-    char *version = "v4.2.0";
+    char *version = "Wazuh v4.2.0";
     data->ar->location = REMOTE_AGENT;
 
     cJSON *agent_info_array = cJSON_CreateArray();
@@ -384,7 +384,7 @@ void test_remote_agent_success_string(void **state)
     int arq = 11;
     int exec_id = 2;
 
-    char *version = "v4.0.0";
+    char *version = "Wazuh v4.0.0";
     data->ar->location = REMOTE_AGENT;
 
     cJSON *agent_info_array = cJSON_CreateArray();
