@@ -113,6 +113,10 @@ typedef enum fim_fields {
     FIM_PROC_ID,
     FIM_TAG,
     FIM_SYM_PATH,
+    FIM_REGISTRY_ARCH,
+    FIM_REGISTRY_VALUE_NAME,
+    FIM_REGISTRY_VALUE_TYPE,
+    FIM_ENTRY_TYPE,
     FIM_NFIELDS
 } fim_fields;
 
@@ -234,14 +238,6 @@ int sk_build_sum(const sk_sum_t *sum, char *output, size_t size);
 int remove_empty_folders(const char *path);
 
 /**
- * @brief Delete path file and all empty folders above
- *
- * @param path The path from which to delete
- * @return 0 on success, -1 on failure
- */
-int delete_target_file(const char *path);
-
-/**
  * @brief Frees from memory a sk_sum_t structure
  *
  * @param [out] sum The sk_sum_t object to be freed
@@ -288,14 +284,46 @@ const char *get_group(int gid);
 #else
 
 /**
- * @brief Retrieves the user name of the owner of a file in Windows
- * Also sets the user ID associated to that user
+ * @brief Retrieves the user name of the owner of a registry in Windows.
+ * Also sets the ID associated to that user.
  *
- * @param [in] path File path to check the owner of
- * @param [out] sid The user ID associated to the user
- * @return The user name on success, NULL on failure
+ * @post *sid is always allocated and must be freed after usage.
+ *
+ * @param path Registry path to check the owner of.
+ * @param sid The user ID associated to the user.
+ * @param hndl Handle for the registry to check the owner of.
+ *
+ * @return The user name on success, an empty string on failure.
  */
-char *get_user(const char *path, char **sid);
+char *get_registry_user(const char *path, char **sid, HANDLE hndl);
+
+/**
+ * @brief Retrieves the user name of the owner of a file in Windows.
+ * Also sets the ID associated to that user.
+ *
+ * @post *sid is always allocated and must be freed after usage.
+ *
+ * @param path File path to check the owner of.
+ * @param sid The user ID associated to the user.
+ *
+ * @return The user name on success, an empty string on failure.
+ */
+char *get_file_user(const char *path, char **sid);
+
+/**
+ * @brief Retrieves the user name of the owner of a file or registry in Windows.
+ * Also sets the ID associated to that user.
+ *
+ * @post *sid is always allocated and must be freed after usage.
+ *
+ * @param path File or registry path to check the owner of.
+ * @param sid The user ID associated to the user.
+ * @param hndl Handle of the file or registry to check the owner of.
+ * @param object_type Type of the object to check the owner of (SE_FILE_OBJECT or SE_REGISTRY_KEY).
+ *
+ * @return The user name on success, an empty string on failure.
+ */
+char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_type);
 
 /**
  * @brief Check if a directory exists
@@ -329,6 +357,36 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
  * @return The group name on success, an empty string on failure
  */
 const char *get_group(__attribute__((unused)) int gid);
+
+/**
+ * @brief Retrieves the group name and gid of a registry key.
+ * Also sets the group ID associated to that group.
+ *
+ * @param sid The user ID associated to the group.
+ * @param hndl Handle for the registry to check the group of.
+ *
+ * @return The user name on success, NULL on failure.
+*/
+char *get_registry_group(char **sid, HANDLE hndl);
+
+/**
+ * @brief Retrieves the permissions of a registry key.
+ *
+ * @param hndl Handle for the registry key to check the permissions of.
+ * @param perm_key Permissions associated to the registry key.
+ *
+ * @return Permissions in perm_key. ERROR_SUCCESS on success, different otherwise
+*/
+DWORD get_registry_permissions(HKEY hndl, char *perm_key);
+
+/**
+ * @brief Get last modification time from registry key.
+ *
+ * @param hndl Handle for the registry key to check the permissions of.
+ *
+ * @return Last modification time of registry key in POSIX format.
+*/
+unsigned int get_registry_mtime(HKEY hndl);
 
 /**
  * @brief Copy ACE information into buffer

@@ -19,10 +19,10 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
 from wazuh.core.exception import WazuhError
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh-api')
 
 
-async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status='all',
+async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status=None,
                         older_than="7d"):
     """Delete all agents or a list of them with optional criteria based on the status or time of the last connection.
 
@@ -902,17 +902,6 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentInsertedModel.get_kwargs(request)
 
-    # Get IP if not given
-    if not f_kwargs['ip']:
-        if configuration.api_conf['behind_proxy_server']:
-            try:
-                f_kwargs['ip'] = request.headers['X-Forwarded-For']
-            except KeyError:
-                raise_if_exc(WazuhError(1120))
-        else:
-            peername = request.transport.get_extra_info('peername')
-            if peername is not None:
-                f_kwargs['ip'], _ = peername
     f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,

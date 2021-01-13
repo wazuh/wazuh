@@ -18,4 +18,6 @@
 
 WINBOOL wrap_ConvertSidToStringSid(PSID Sid, LPSTR *StringSid);
 
+void expect_ConvertSidToStringSid_call(LPSTR StringSid, int ret_value);
+
 #endif

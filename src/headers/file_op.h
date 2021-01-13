@@ -496,6 +496,15 @@ int get_creation_date(char *dir, SYSTEMTIME *utc);
 
 
 /**
+ * @brief Get the modification date object. (Windows)
+ *
+ * @param file Path of the file.
+ * @return time_t date of modification format.
+ */
+time_t get_UTC_modification_time(const char *file);
+
+
+/**
  * @brief Move to the directory where this executable lives in. (Windows)
  *
  */

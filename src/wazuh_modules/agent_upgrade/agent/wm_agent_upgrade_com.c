@@ -385,10 +385,12 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 
     if (wm_exec(installer_j, &out, &status, req_timeout, NULL) < 0) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_COMMAND_ERROR, "upgrade", installer_j);
+        os_free(out);
         return wm_agent_upgrade_command_ack(ERROR_EXEC, error_messages[ERROR_EXEC]);
     } else {
         char status_str[5];
         sprintf(status_str, "%d", status);
+        os_free(out);
         return wm_agent_upgrade_command_ack(ERROR_OK, status_str);
     }
 }

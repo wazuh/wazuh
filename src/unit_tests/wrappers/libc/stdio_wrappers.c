@@ -26,6 +26,10 @@ int __wrap_fclose(FILE *_File) {
         return __real_fclose(_File);
     }
 }
+void expect_fclose(FILE *_File, int ret) {
+    expect_value(__wrap_fclose, _File, _File);
+    will_return(__wrap_fclose, ret);
+}
 
 extern int __real_fflush(FILE *__stream);
 int __wrap_fflush(FILE *__stream) {
@@ -60,8 +64,13 @@ FILE* __wrap_fopen(const char* path, const char* mode) {
         return __real_fopen(path, mode);
     }
 }
+void expect_fopen(const char* path, const char* mode, FILE *fp) {
+    expect_string(__wrap_fopen, path, path);
+    expect_string(__wrap_fopen, mode, mode);
+    will_return(__wrap_fopen, fp);
+}
 
-int __wrap_fprintf (FILE *__stream, const char *__format, ...) {
+int __wrap_fprintf(FILE *__stream, const char *__format, ...) {
     char formatted_msg[OS_MAXSTR];
     va_list args;
     int ret;
@@ -82,13 +91,35 @@ int __wrap_fprintf (FILE *__stream, const char *__format, ...) {
     return ret;
 }
 
+void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret) {
+#ifndef WIN32
+    expect_value(__wrap_fprintf, __stream, __stream);
+    expect_string(__wrap_fprintf, formatted_msg, formatted_msg);
+    will_return(__wrap_fprintf, ret);
+#else
+    expect_value(wrap_fprintf, __stream, __stream);
+    expect_string(wrap_fprintf, formatted_msg, formatted_msg);
+    will_return(wrap_fprintf, ret);
+#endif
+}
+
 extern size_t __real_fread(void *ptr, size_t size, size_t n, FILE *stream);
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream) {
     if (test_mode) {
         strncpy((char *) ptr, mock_type(char *), n);
-        return mock();
+        size_t ret = mock();
+        if (ret > n){
+            return n;
+        } else {
+            return ret;
+        }
     }
     return __real_fread(ptr, size, n, stream);
+}
+
+void expect_fread(char *file, size_t ret) {
+    will_return(__wrap_fread, file);
+    will_return(__wrap_fread, ret);
 }
 
 extern int __real_fseek(FILE *stream, long offset, int whence);

@@ -62,6 +62,7 @@ if(${TARGET} STREQUAL "winagent")
   configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" NEWLINE_STYLE WIN32)
   configure_file("test_local_internal_options.conf" "syscheckd/local_internal_options.conf" NEWLINE_STYLE WIN32)
   configure_file("test_syscheck_top_level_win.conf" "syscheckd/test_syscheck_top_level.conf" NEWLINE_STYLE WIN32)
+  configure_file("test_syscheck_config_win.conf" "syscheckd/test_syscheck_config.conf" NEWLINE_STYLE WIN32)
 else()
   configure_file("test_syscheck.conf" "syscheckd/test_syscheck.conf" COPYONLY)
   configure_file("test_syscheck_max_dir.conf" "syscheckd/test_syscheck_max_dir.conf" COPYONLY)
@@ -71,6 +72,7 @@ else()
   configure_file("test_internal_options.conf" "syscheckd/internal_options.conf" COPYONLY)
   configure_file("test_local_internal_options.conf" "syscheckd/local_internal_options.conf" COPYONLY)
   configure_file("test_syscheck_top_level.conf" "syscheckd/test_syscheck_top_level.conf" COPYONLY)
+  configure_file("test_syscheck.conf" "syscheckd/test_syscheck_config.conf" COPYONLY)
 endif()
 
 # Coverage
@@ -104,7 +106,7 @@ add_custom_target(coverage
 
     # Add baseline counters
     COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info --rc lcov_branch_coverage=1 --output-file coverage.total
-    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*" --rc lcov_branch_coverage=1 --output-file coverage.info.cleaned
+    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*" --remove coverage.total "*unit_tests/*" --rc lcov_branch_coverage=1 --output-file coverage.info.cleaned
 
     # Generate HTML report
     COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --legend coverage.info.cleaned

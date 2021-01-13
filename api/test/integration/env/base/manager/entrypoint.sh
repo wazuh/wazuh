@@ -34,9 +34,18 @@ done
 
 sleep 1
 
+# Master-only configuration
 if [ "$3" == "master" ]; then
-  /var/ossec/framework/python/bin/python3 /configuration_files/master_only/update_agent_info.py
+  for py_file in /configuration_files/master_only/*.py; do
+    /var/ossec/framework/python/bin/python3 $py_file
+  done
+
+  for sh_file in /configuration_files/master_only/*.sh; do
+    . $sh_file
+  done
 fi
+
+sqlite3 /var/ossec/api/configuration/security/rbac.db < /configuration_files/base_security_test.sql
 
 # RBAC configuration
 for sql_file in /configuration_files/*.sql; do

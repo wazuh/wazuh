@@ -59,6 +59,9 @@ stages:
 ---
 test_name: GET /experimental/ciscat/results
 
+marks:
+  - xfail
+
 stages:
 
   - name: Request all agents (Partially allowed, user agnostic)
@@ -349,7 +352,7 @@ stages:
   - name:  Request all agents (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages?wait_for_complete=true"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

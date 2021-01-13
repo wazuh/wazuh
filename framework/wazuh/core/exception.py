@@ -93,6 +93,8 @@ class WazuhException(Exception):
                               'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
                               'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
         1123: {'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
+        1124: {'message': 'Remote command detected',
+               'remediation': f'To solve this issue please enable the remote commands in the API settings or add an exception: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#remote-commands-configuration'},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -390,6 +392,8 @@ class WazuhException(Exception):
         2005: {'message': 'Could not connect to wdb socket'},
         2006: {'message': 'Received JSON from Wazuh DB is not correctly formatted'},
         2007: {'message': 'Error retrieving data from Wazuh DB'},
+        2008: {'message': 'Corrupted RBAC database',
+               'remediation': 'Restart the Wazuh service to restore the RBAC database to default'},
 
         # Cluster
         3000: 'Cluster',

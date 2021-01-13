@@ -32,14 +32,20 @@ WINBOOL wrap_GetSecurityDescriptorDacl(PSECURITY_DESCRIPTOR pSecurityDescriptor,
                                        PACL *pDacl,
                                        LPBOOL lpbDaclDefaulted);
 
+void expect_GetSecurityDescriptorDacl_call(int fDaclPresent, PACL *pDacl, int ret_value);
+
 WINBOOL wrap_GetAclInformation(PACL pAcl,
                                LPVOID pAclInformation,
                                DWORD nAclInformationLength,
                                ACL_INFORMATION_CLASS dwAclInformationClass);
 
+void expect_GetAclInformation_call(LPVOID pAclInformation, int ret_value);
+
 WINBOOL wrap_GetAce(PACL pAcl,
                     DWORD dwAceIndex,
                     LPVOID *pAce);
+
+void expect_GetAce_call(LPVOID *pAce, int ret_value);
 
 WINBOOL wrap_AdjustTokenPrivileges(HANDLE TokenHandle,
                                    WINBOOL DisableAllPrivileges,

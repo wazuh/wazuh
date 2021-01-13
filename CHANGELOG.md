@@ -5,51 +5,52 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Allow negation of expressions in rules ([#6258](https://github.com/wazuh/wazuh/pull/6258))
-- Support for PCRE2 regular expressions in rules and decoders ([#6480](https://github.com/wazuh/wazuh/pull/6480))
-- Added new **ruleset test module**. Allow testing and verification of rules and decoders using Wazuh User Interface. ([#5337](https://github.com/wazuh/wazuh/issues/5337))
-
-- Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
-- Added new **task module**. This module stores and manages all the tasks that are executed in the agents or managers. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
-- Let the time interval to detect that an agent got disconnected configurable. Deprecate parameter `DISCON_TIME`. ([#6396](https://github.com/wazuh/wazuh/pull/6396))
-- Added support to macOS in Vulnerability Detector. ([#6532](https://github.com/wazuh/wazuh/pull/6532))
-
+- **Core:**
+  - Allow negation of expressions in rules. ([#6258](https://github.com/wazuh/wazuh/pull/6258))
+  - Support for PCRE2 regular expressions in rules and decoders. ([#6480](https://github.com/wazuh/wazuh/pull/6480))
+  - Added new **ruleset test module**. Allow testing and verification of rules and decoders using Wazuh User Interface. ([#5337](https://github.com/wazuh/wazuh/issues/5337))
+  - Added new **upgrade module**. WPK upgrade feature has been moved to this module, which offers support for cluster architecture and simultaneous upgrades. ([#5387](https://github.com/wazuh/wazuh/issues/5387))
+  - Added new **task module**. This module stores and manages all the tasks that are executed in the agents or managers. ([#5386](https://github.com/wazuh/wazuh/issues/5386))
+  - Let the time interval to detect that an agent got disconnected configurable. Deprecate parameter `DISCON_TIME`. ([#6396](https://github.com/wazuh/wazuh/pull/6396))
+  - Added support to macOS in Vulnerability Detector. ([#6532](https://github.com/wazuh/wazuh/pull/6532))
+  - Added the capability to perform FIM on values in the Windows Registry. ([#6735](https://github.com/wazuh/wazuh/pull/6735))
 - **API:**
   - Added endpoints to query and manage Rootcheck data. ([#6496](https://github.com/wazuh/wazuh/pull/6496))
-  - Added new endpoints to run the logtest tool and delete a logtest session ([#5984](https://github.com/wazuh/wazuh/pull/5984))
-  - Added new framework modules to use the logtest tool ([#5870](https://github.com/wazuh/wazuh/pull/5870))
-
+  - Added new endpoint to check status of tasks. ([#6029](https://github.com/wazuh/wazuh/issues/6029))
+  - Added new endpoints to run the logtest tool and delete a logtest session. ([#5984](https://github.com/wazuh/wazuh/pull/5984))
+  - Added debug2 mode for API log and improved debug mode. ([#6822](https://github.com/wazuh/wazuh/pull/6822))
+  - Added missing secure headers for API responses. ([#7024](https://github.com/wazuh/wazuh/issues/7024))
+  - Added new config option to disable uploading configurations containing remote commands. ([#7016](https://github.com/wazuh/wazuh/issues/7016))
 - **AWS Module:**
   - Added support for AWS load balancers (Application Load Balancer, Classic Load Balancer and Network Load Balancer). ([#6034](https://github.com/wazuh/wazuh/issues/6034))
-
 - **Framework:**
+  - Added new framework modules to use the logtest tool. ([#5870](https://github.com/wazuh/wazuh/pull/5870))
   - Improved `q` parameter on rules, decoders and cdb-lists modules to allow multiple nested fields. ([#6560](https://github.com/wazuh/wazuh/pull/6560))
 
 ### Changed
 
-- Removed the limit of agents that a manager can support. ([#6097](https://github.com/wazuh/wazuh/issues/6097))
-  - Migration of rootcheck results to Wazuh DB to remove the files with the results of each agent. ([#6096](https://github.com/wazuh/wazuh/issues/6096))
-  - Designed new mechanism to close RIDS files when agents are disconnected. ([#6112](https://github.com/wazuh/wazuh/issues/6112))
-- Moved CA configuration section to verify WPK signatures from `active-response` section to `agent-upgrade` section. ([#5929](https://github.com/wazuh/wazuh/issues/5929))
-
+- **Core:**
+  - Removed the limit of agents that a manager can support. ([#6097](https://github.com/wazuh/wazuh/issues/6097))
+    - Migration of rootcheck results to Wazuh DB to remove the files with the results of each agent. ([#6096](https://github.com/wazuh/wazuh/issues/6096))
+    - Designed new mechanism to close RIDS files when agents are disconnected. ([#6112](https://github.com/wazuh/wazuh/issues/6112))
+  - Moved CA configuration section to verify WPK signatures from `active-response` section to `agent-upgrade` section. ([#5929](https://github.com/wazuh/wazuh/issues/5929))
+  - Changed error message to debug when multiple daemons attempt to remove an agent simultaneously ([#6185](https://github.com/wazuh/wazuh/pull/6185))
+  - Changed error message to warning when the agent fails to reach a module. ([#5817](https://github.com/wazuh/wazuh/pull/5817))
 - **API:**
+  - Changed the `status` parameter behavior in the `DELETE /agents` endpoint to enhance security. ([#6829](https://github.com/wazuh/wazuh/pull/6829))
   - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536))
-
+  - Improved input validation regexes for `names` and `array_names`. ([#7015](https://github.com/wazuh/wazuh/issues/7015))
 - **Framework:**
   - Refactored framework to work with new upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
   - Refactored agent upgrade CLI to work with new ugprade module. It distributes petitions in a clustered environment. ([#5675](https://github.com/wazuh/wazuh/issues/5675))
   - Changed rule and decoder details structure to support PCRE2. ([#6318](https://github.com/wazuh/wazuh/issues/6318))
-  - Changed access to agent's status ([#6326](https://github.com/wazuh/wazuh/issues/6326))
+  - Changed access to agent's status. ([#6326](https://github.com/wazuh/wazuh/issues/6326))
   - Improved AWS Config integration to avoid performance issues by removing alert fields with variables such as Instance ID in its name. ([#6537](https://github.com/wazuh/wazuh/issues/6537))
 
 ### Fixed
 
-- Fixed a `cluster_control` bug that caused an error message when running `wazuh-clusterd` in foreground. ([#6724](https://github.com/wazuh/wazuh/pull/6724))
-
-- **API:**
-  - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
 - **Core:**
-  - Fixed error in Analysisd when getting the ossec group ID ([#6688](https://github.com/wazuh/wazuh/pull/6688))
+  - Fixed error in Analysisd when getting the ossec group ID. ([#6688](https://github.com/wazuh/wazuh/pull/6688))
   - Prevented FIM from reporting configuration error when setting patterns that match no files. ([#6187](https://github.com/wazuh/wazuh/pull/6187))
   - Fixed the array parsing when building JSON alerts. ([#6687](https://github.com/wazuh/wazuh/pull/6687))
   - Added Firefox ESR to the CPE helper to distinguish it from Firefox when looking for vulnerabilities. ([#6610](https://github.com/wazuh/wazuh/pull/6610))
@@ -58,9 +59,16 @@ All notable changes to this project will be documented in this file.
   - Fixed the validation of hotfixes gathered by Syscollector. ([#6706](https://github.com/wazuh/wazuh/pull/6706))
   - Fixed the reading of the Linux OS version when `/etc/os-release` doesn't provide it. ([#6674](https://github.com/wazuh/wazuh/pull/6674))
   - Fixed a false positive when comparing the minor target of CentOS packages in Vulnerability Detector. ([#6709](https://github.com/wazuh/wazuh/pull/6709))
-
-### Removed
-
+  - Fixed a zombie process leak in Modulesd when using commands without a timeout. ([#6719](https://github.com/wazuh/wazuh/pull/6719))
+  - Fixed a race condition in Remoted that might create agent-group files with wrong permissions. ([#6833](https://github.com/wazuh/wazuh/pull/6833))
+  - Fixed a warning log in Wazuh DB when upgrading the global database. ([#6697](https://github.com/wazuh/wazuh/pull/6697))
+  - Fixed a bug in FIM on Windows that caused false positive due to changes in the host timezone or the daylight saving time when monitoring files in a FAT32 filesystem. ([#6801](https://github.com/wazuh/wazuh/pull/6801))
+  - Fixed the purge of the Redhat vulnerabilities database before updating it. ([#7050](https://github.com/wazuh/wazuh/pull/7050))
+- **API:**
+  - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+- **Framework:**
+  - Fixed a `cluster_control` bug that caused an error message when running `wazuh-clusterd` in foreground. ([#6724](https://github.com/wazuh/wazuh/pull/6724))
+  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7062](https://github.com/wazuh/wazuh/pull/7062))  
 
 ## [v4.0.3] - 2020-11-30
 
@@ -357,7 +365,8 @@ All notable changes to this project will be documented in this file.
 - Make Logcollector continuously attempt to reconnect with the agent daemon. ([#4435](https://github.com/wazuh/wazuh/pull/4435))
 - Make Windows agents to send the keep-alive independently. ([#4077](https://github.com/wazuh/wazuh/pull/4077))
 - Do not enforce source IP checking by default in the registration process. ([#4083](https://github.com/wazuh/wazuh/pull/4083))
-- Updated API manager/configuration endpoint to also return the new synchronization and whodata syscheck fields ([#4818](https://github.com/wazuh/wazuh/pull/4818))
+- Updated API manager/configuration endpoint to also return the new synchronization and whodata syscheck fields ([#4241](https://github.com/wazuh/wazuh/pull/4241))
+- Disabled the chroot jail in Agentd on UNIX.
 
 ### Fixed
 

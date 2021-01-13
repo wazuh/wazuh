@@ -1291,6 +1291,64 @@ void test_wm_agent_upgrade_parse_message_upgrade_agent_status_task_error(void **
     assert_string_equal(error, "{\"error\":3,\"data\":[{\"error\":3,\"message\":\"Parameter \\\"message\\\" should be a string\"}],\"message\":\"JSON parameter not recognized\"}");
 }
 
+void test_wm_agent_upgrade_parse_message_upgrade_result_success(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    void* task = NULL;
+    char *buffer = "{"
+                   "   \"command\": \"upgrade_result\","
+                   "   \"parameters\": {"
+                   "        \"agents\":[10,11]"
+                   "    }"
+                   "}";
+
+    int command = wm_agent_upgrade_parse_message(buffer, &task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, WM_UPGRADE_RESULT);
+    assert_non_null(agent_ids);
+    assert_int_equal(agent_ids[0], 10);
+    assert_int_equal(agent_ids[1], 11);
+    assert_int_equal(agent_ids[2], -1);
+    assert_null(task);
+    assert_null(error);
+}
+
+void test_wm_agent_upgrade_parse_message_upgrade_result_agent_error(void **state)
+{
+    char *error = NULL;
+    int* agent_ids = NULL;
+    void* task = NULL;
+    char *buffer = "{"
+                   "   \"command\": \"upgrade_result\","
+                   "   \"parameters\": {"
+                   "        \"agents\":[\"10\"],"
+                   "        \"error\":0,"
+                   "        \"message\":\"Success\","
+                   "        \"status\":\"Done\""
+                   "    }"
+                   "}";
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Agent id not recognized'");
+
+    int command = wm_agent_upgrade_parse_message(buffer, &task, &agent_ids, &error);
+
+    state[0] = (void*)error;
+    state[1] = (void*)agent_ids;
+    state[2] = NULL;
+
+    assert_int_equal(command, OS_INVALID);
+    assert_null(agent_ids);
+    assert_null(task);
+    assert_non_null(error);
+    assert_string_equal(error, "{\"error\":3,\"data\":[{\"error\":3,\"message\":\"Agent id not recognized\"}],\"message\":\"JSON parameter not recognized\"}");
+}
+
 void test_wm_agent_upgrade_parse_message_invalid_command(void **state)
 {
     char *error = NULL;
@@ -1456,6 +1514,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_agent_status_success, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_agent_status_agent_error, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_agent_status_task_error, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_result_success, teardown_parse_agents),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_upgrade_result_agent_error, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_command, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_agents, teardown_parse_agents),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_message_invalid_json, teardown_parse_agents),

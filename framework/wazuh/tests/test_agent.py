@@ -66,7 +66,7 @@ def send_msg_to_wdb(msg, raw=False):
         {'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}, 'count': 1},
         {'os': {'name': 'unknown', 'platform': 'unknown', 'version': 'unknown'}, 'count': 2}]),
 ])
-@patch('wazuh.core.agent.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
+@patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_items):
@@ -280,7 +280,7 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, ol
         List of expected agent ID's returned by
     """
     mock_remove.side_effect = remove_msg
-    result = delete_agents(agent_list, older_than=older_than)
+    result = delete_agents(agent_list, status='all', older_than=older_than)
     assert result.affected_items == sorted(expected_items), \
         f'"Affected_items" does not match. Should be "{result.affected_items}".'
     if result.failed_items:
@@ -305,7 +305,7 @@ def test_agent_delete_agents_different_status(socket_mock, send_mock):
 
 
 @pytest.mark.parametrize('name, agent_id, key', [
-    ('agent-1', '001', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f'),
+    ('agent-1', '011', 'b3650e11eba2f27er4d160c69de533ee7eed601636a85ba2455d53a90927747f'),
     ('a' * 129, '002', 'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d')
 ])
 @patch('wazuh.core.agent.fcntl.lockf')

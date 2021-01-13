@@ -212,7 +212,7 @@
     <mitre>
       <id>T1492</id>
     </mitre>
-    <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>syscheck,syscheck_entry_modified,syscheck_file,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="553" level="7">
@@ -223,14 +223,14 @@
       <id>T1107</id>
       <id>T1485</id>
     </mitre>
-    <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>syscheck,syscheck_entry_deleted,syscheck_file,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="554" level="5">
     <category>ossec</category>
     <decoded_as>syscheck_new_entry</decoded_as>
     <description>File added to the system.</description>
-    <group>syscheck,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>syscheck,syscheck_entry_added,syscheck_file,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="555" level="7">
@@ -293,10 +293,9 @@
 
   <rule id="594" level="5">
     <category>ossec</category>
-    <if_sid>550</if_sid>
-    <hostname>syscheck-registry</hostname>
-    <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Integrity Checksum Changed</description>
+    <decoded_as>syscheck_registry_key_modified</decoded_as>
+    <group>syscheck,syscheck_entry_modified,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Key Integrity Checksum Changed</description>
     <mitre>
       <id>T1492</id>
     </mitre>
@@ -304,10 +303,9 @@
 
   <rule id="597" level="5">
     <category>ossec</category>
-    <if_sid>553</if_sid>
-    <hostname>syscheck-registry</hostname>
-    <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Entry Deleted.</description>
+    <decoded_as>syscheck_registry_key_deleted</decoded_as>
+    <group>syscheck,syscheck_entry_deleted,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Key Entry Deleted.</description>
     <mitre>
       <id>T1107</id>
       <id>T1485</id>
@@ -316,10 +314,9 @@
 
   <rule id="598" level="5">
     <category>ossec</category>
-    <if_sid>554</if_sid>
-    <hostname>syscheck-registry</hostname>
-    <group>syscheck,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-    <description>Registry Entry Added to the System</description>
+    <decoded_as>syscheck_registry_key_added</decoded_as>
+    <group>syscheck,syscheck_entry_added,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Key Entry Added to the System</description>
   </rule>
 
   <!-- active response rules
@@ -397,6 +394,34 @@
     <if_sid>700</if_sid>
     <match>INFO: </match>
     <description>Ignore informational messages (usually at startup)</description>
+  </rule>
+
+  <rule id="750" level="5">
+    <category>ossec</category>
+    <decoded_as>syscheck_registry_value_modified</decoded_as>
+    <group>syscheck,syscheck_entry_modified,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Value Integrity Checksum Changed</description>
+    <mitre>
+      <id>T1492</id>
+    </mitre>
+  </rule>
+
+  <rule id="751" level="5">
+    <category>ossec</category>
+    <decoded_as>syscheck_registry_value_deleted</decoded_as>
+    <group>syscheck,syscheck_entry_deleted,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Value Entry Deleted.</description>
+    <mitre>
+      <id>T1107</id>
+      <id>T1485</id>
+    </mitre>
+  </rule>
+
+  <rule id="752" level="5">
+    <category>ossec</category>
+    <decoded_as>syscheck_registry_value_added</decoded_as>
+    <group>syscheck,syscheck_entry_added,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>Registry Value Entry Added to the System</description>
   </rule>
 
 </group>
