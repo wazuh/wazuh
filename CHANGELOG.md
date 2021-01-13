@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - **API:**
   - Added missing secure headers for API responses. ([#7138](https://github.com/wazuh/wazuh/issues/7138))
   - Added new config option to disable uploading configurations containing remote commands. ([#7134](https://github.com/wazuh/wazuh/issues/7134))
+  - Added new config option to choose the TLS protocol. Default value `TLSv1.2`. ([#7164](https://github.com/wazuh/wazuh/issues/7164))
 
 ### Changed
 
