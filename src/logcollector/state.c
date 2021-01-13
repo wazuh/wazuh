@@ -16,34 +16,6 @@
 #define STATIC static
 #endif
 
-/**
- * @brief state storage structure
- * key: location option value. value: lc_state_file_t
- */
-typedef struct {
-    time_t start;    ///< initial state timestamp
-    OSHash * states; ///< state storage
-} lc_states_t;
-
-/**
- * @brief target state storage
- *
- */
-typedef struct {
-    char * name;    ///< target name
-    uint64_t drops; ///< drop count
-} lc_state_target_t;
-
-/**
- * @brief file state storage
- *
- */
-typedef struct {
-    uint64_t bytes;               ///< bytes count
-    uint64_t events;              ///< events count
-    lc_state_target_t ** targets; ///< array of poiters to file's different targets
-} lc_state_file_t;
-
 /* Global variables */
 cJSON * g_lc_json_stats;           ///< string that store single line formated JSON with states
 lc_states_t * g_lc_states_global;   ///< global state struct storage

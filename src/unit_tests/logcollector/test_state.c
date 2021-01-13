@@ -15,7 +15,7 @@
 #include <time.h>
 
 #include "../../headers/shared.h"
-#include "../../logcollector/state.c"
+#include "../../logcollector/state.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
@@ -26,7 +26,7 @@
 #include "../wrappers/posix/pthread_wrappers.h"
 
 void w_logcollector_state_init();
-char * w_logcollector_state_get();
+cJSON * w_logcollector_state_get();
 cJSON * _w_logcollector_generate_state(lc_states_t * state, bool restart);
 void _w_logcollector_state_update_file(lc_states_t * state, char * fpath, uint64_t bytes);
 void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
@@ -35,7 +35,9 @@ void w_logcollector_state_update_target(char * fpath, char * target, bool droppe
 void w_logcollector_generate_state();
 void w_logcollector_state_dump();
 void * w_logcollector_state_main(__attribute__((unused)) void * args);
-
+extern cJSON * g_lc_json_stats;
+extern lc_states_t * g_lc_states_global;
+extern lc_states_t * g_lc_states_interval;
 /* setup/teardown */
 
 static int setup_group(void ** state) {
@@ -201,7 +203,7 @@ void test_w_logcollector_state_init_ok(void ** state) {
 /* w_logcollector_state_get_null */
 void test_w_logcollector_state_get_null(void ** state) {
 
-    os_free(g_lc_pritty_stats);
+    //os_free(g_lc_pritty_stats);
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     assert_null(w_logcollector_state_get());
@@ -209,8 +211,8 @@ void test_w_logcollector_state_get_null(void ** state) {
 
 void test_w_logcollector_state_get_non_null(void ** state) {
 
-    os_free(g_lc_pritty_stats);
-    g_lc_pritty_stats = strdup("hi!");
+    //os_free(g_lc_pritty_stats);
+    //g_lc_pritty_stats = strdup("hi!");
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -220,7 +222,7 @@ void test_w_logcollector_state_get_non_null(void ** state) {
     assert_string_equal("hi!", retval);
 
     os_free(retval);
-    os_free(g_lc_pritty_stats);
+    //os_free(g_lc_pritty_stats);
 }
 
 /* Test _w_logcollector_generate_state */
@@ -797,14 +799,14 @@ void test_w_logcollector_generate_state_ok(void ** state) {
     assert_int_equal(g_lc_states_interval->start, 2525);
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
-    os_free(g_lc_pritty_stats);
+    //os_free(g_lc_pritty_stats);
 }
 
 /* w_logcollector_state_dump */
 void test_w_logcollector_state_dump_fail_open(void ** state) {
 
-    os_free(g_lc_pritty_stats);
-    g_lc_pritty_stats = strdup("hi!");
+    //os_free(g_lc_pritty_stats);
+    //g_lc_pritty_stats = strdup("hi!");
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -819,13 +821,13 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
 
     w_logcollector_state_dump();
 
-    os_free(g_lc_pritty_stats);
+    //os_free(g_lc_pritty_stats);
 }
 
 void test_w_logcollector_state_dump_fail_write(void ** state) {
 
-    os_free(g_lc_pritty_stats);
-    g_lc_pritty_stats = strdup("hi!");
+    //os_free(g_lc_pritty_stats);
+    //g_lc_pritty_stats = strdup("hi!");
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -844,13 +846,13 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
 
     w_logcollector_state_dump();
 
-    os_free(g_lc_pritty_stats);
+    //os_free(g_lc_pritty_stats);
 }
 
 void test_w_logcollector_state_dump_ok(void ** state) {
 
-    os_free(g_lc_pritty_stats);
-    g_lc_pritty_stats = strdup("hi!");
+    //os_free(g_lc_pritty_stats);
+    //g_lc_pritty_stats = strdup("hi!");
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -865,7 +867,7 @@ void test_w_logcollector_state_dump_ok(void ** state) {
 
     w_logcollector_state_dump();
 
-    os_free(g_lc_pritty_stats);
+    //os_free(g_lc_pritty_stats);
 }
 
 /* w_logcollector_state_main */
@@ -1005,7 +1007,7 @@ void test_w_logcollector_state_main(void ** state) {
 
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
-    os_free(g_lc_pritty_stats);
+    //os_free(g_lc_pritty_stats);
 }
 
 int main(void) {

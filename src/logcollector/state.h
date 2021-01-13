@@ -19,8 +19,36 @@
 #endif
 
 // Double of max value of logcollector.queue_size
-#define LOGCOLLECTOR_STATE_FILES_MAX   440000               ///< max amount of localfiles location for states
+#define LOGCOLLECTOR_STATE_FILES_MAX   200200               ///< max amount of localfiles location for states
 #define LOGCOLLECTOR_STATE_DESCRIPTION "logcollector_state" ///< String identifier for errors
+
+/**
+ * @brief state storage structure
+ * key: location option value. value: lc_state_file_t
+ */
+typedef struct {
+    time_t start;    ///< initial state timestamp
+    OSHash * states; ///< state storage
+} lc_states_t;
+
+/**
+ * @brief target state storage
+ *
+ */
+typedef struct {
+    char * name;    ///< target name
+    uint64_t drops; ///< drop count
+} lc_state_target_t;
+
+/**
+ * @brief file state storage
+ *
+ */
+typedef struct {
+    uint64_t bytes;               ///< bytes count
+    uint64_t events;              ///< events count
+    lc_state_target_t ** targets; ///< array of poiters to file's different targets
+} lc_state_file_t;
 
 /**
  * @brief Initialize storing structures
