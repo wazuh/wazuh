@@ -32,7 +32,7 @@ static void help_remoted()
     print_out("    -u <user>   User to run as (default: %s)", REMUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", binary_path);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -m          Avoid creating shared merged file (read only)");
     print_out(" ");
     exit(1);
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 
     const char *cfg = DEFAULTCPATH;
     binary_path = bin_path(argv[0]);
-    const char *dir = binary_path;
+    const char *dir = DEFAULTDIR;
     const char *user = REMUSER;
     const char *group = GROUPGLOBAL;
 

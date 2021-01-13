@@ -158,7 +158,7 @@ void wm_setup()
 
     // Change working directory
 
-    if (chdir(binary_path) < 0) {
+    if (chdir(DEFAULTDIR) < 0) {
         merror_exit("chdir(): %s", strerror(errno));
     }
 

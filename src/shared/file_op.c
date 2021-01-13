@@ -3358,32 +3358,9 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 
 #ifndef WIN32
 char *bin_path(char *arg) {
-    char buf[2048] = {0};
-    char *buff = buf;
-    ssize_t len = 0;
-    #ifdef __MACH__
-    pid_t pid = getpid();
-    #endif
+    char *buff = NULL;
 
-    if ((len = readlink("/proc/self/exe", buf, sizeof(buf))) > 0) {
-        dirname(buf);
-        buff = w_strtok_r_str_delim("bin", &buff);
-    }
-    else if ((len = readlink("/proc/curproc/file", buf, sizeof(buf))) > 0) {
-        dirname(buf);
-        buff = w_strtok_r_str_delim("bin", &buff);
-    }
-    else if ((len = readlink("/proc/self/path/a.out", buf, sizeof(buf))) > 0) {
-        dirname(buf);
-        buff = w_strtok_r_str_delim("bin", &buff);
-    }
-    #ifdef __MACH__
-    else if (proc_pidpath(pid, buf, sizeof(buf)) > 0) {
-        buff = w_strtok_r_str_delim("bin", &buff);
-    }
-    #endif
-    else {
-        buff = NULL;
+    if (arg != NULL) {
         if (buff = realpath(arg, NULL), buff == NULL) {
             mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
             return NULL;
@@ -3392,7 +3369,6 @@ char *bin_path(char *arg) {
         dirname(buff);
         buff = w_strtok_r_str_delim("bin", &buff);
     }
-    os_strdup(buff, buff);
 
     return buff;
 }

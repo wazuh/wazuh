@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
     binary_path = bin_path(argv[0]);
-    char *dir = binary_path;
+    char *dir = DEFAULTDIR;
     char *user = MAILUSER;
     char *group = GROUPGLOBAL;
     char *cfg = DEFAULTCPATH;
