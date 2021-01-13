@@ -252,6 +252,9 @@ int main(int argc, char **argv)
                 if (strcmp(r_name, "restart-ossec0") == 0) {
                     continue;
                 }
+                if (strcmp(r_name, "restart-wazuh0") == 0) {
+                    continue;
+                }
                 printf("\n   Response name: %s, command: %s", r_name, r_cmd);
             }
 

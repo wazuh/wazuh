@@ -211,7 +211,7 @@ size_t wcom_restart(char ** output) {
         }
 #else
         static char command[OS_FLSIZE];
-        snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, "restart-ossec.exe");
+        snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, "restart-wazuh.exe");
         char *cmd[2] = { command, NULL };
         char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"wazuh-execd\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{}}}";
         wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);

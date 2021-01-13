@@ -66,7 +66,7 @@ src/wazuh-syscheckd
 src/wazuh-integratord
 
 # Active responses
-src/restart-ossec
+src/restart-wazuh
 
 # Windows agent
 src/win32/*.exe

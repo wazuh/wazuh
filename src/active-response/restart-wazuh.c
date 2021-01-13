@@ -30,7 +30,7 @@ int main (void) {
 	const char *json_err;
 	int ret = OS_SUCCESS;
 
-	write_debug_file("Executing 'restart-ossec' program");
+	write_debug_file("Executing 'restart-wazuh' program");
 
 	// Reading input
     input[BUFFERSIZE-1] = '\0';

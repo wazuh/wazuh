@@ -42,11 +42,11 @@ static int test_setup(void **state) {
     init_data->lf->generated_rule->sigid = 554;
     init_data->lf->location = "(ubuntu) any->syscheck";
 
-    init_data->ar->name = "restart-ossec0";
+    init_data->ar->name = "restart-wazuh0";
     init_data->ar->ar_cmd->extra_args = NULL;
     init_data->ar->location = 0;
     init_data->ar->agent_id = "002";
-    init_data->ar->command = "restart-ossec";
+    init_data->ar->command = "restart-wazuh";
 
     *state = init_data;
     return OS_SUCCESS;
@@ -112,7 +112,7 @@ void test_server_success_json(void **state)
 
     data->ar->location = AS_ONLY;
 
-    char *exec_msg = "{\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    char *exec_msg = "{\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-wazuh0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
     const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
     char *node = NULL;
 
@@ -150,7 +150,7 @@ void test_all_agents_success_json_string(void **state)
     cJSON_AddStringToObject(agent_info_1, "version", version_1);
     cJSON_AddItemToArray(agent_info_array_1, agent_info_1);
 
-    char *exec_msg_1 = "(ubuntu) any->syscheck NNS 003 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    char *exec_msg_1 = "(ubuntu) any->syscheck NNS 003 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-wazuh0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
     const char *alert_info_1 = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
     char *node_1 = NULL;
 
@@ -161,7 +161,7 @@ void test_all_agents_success_json_string(void **state)
     cJSON_AddStringToObject(agent_info_2, "version", version_2);
     cJSON_AddItemToArray(agent_info_array_2, agent_info_2);
 
-    char *exec_msg = "(ubuntu) any->syscheck NNS 005 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
+    char *exec_msg = "(ubuntu) any->syscheck NNS 005 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
     __crt_ftell = 80794;
@@ -256,7 +256,7 @@ void test_specific_agent_success_json(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
-    char *exec_msg = "(ubuntu) any->syscheck NNS 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    char *exec_msg = "(ubuntu) any->syscheck NNS 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-wazuh0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
     const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
     char *node = NULL;
 
@@ -296,7 +296,7 @@ void test_specific_agent_success_string(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
-    char *exec_msg = "(ubuntu) any->syscheck NNS 002 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
+    char *exec_msg = "(ubuntu) any->syscheck NNS 002 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
     __crt_ftell = 80794;
@@ -347,7 +347,7 @@ void test_remote_agent_success_json(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
-    char *exec_msg = "(ubuntu) any->syscheck NRN 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-ossec0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    char *exec_msg = "(ubuntu) any->syscheck NRN 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-wazuh0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
     const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
     char *node = NULL;
 
@@ -392,7 +392,7 @@ void test_remote_agent_success_string(void **state)
     cJSON_AddStringToObject(agent_info, "version", version);
     cJSON_AddItemToArray(agent_info_array, agent_info);
 
-    char *exec_msg = "(ubuntu) any->syscheck NRN 002 restart-ossec0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
+    char *exec_msg = "(ubuntu) any->syscheck NRN 002 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
 
     Config.ar = 1;
     __crt_ftell = 80794;
