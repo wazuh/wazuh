@@ -33,7 +33,8 @@ default_api_configuration = {
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
-        "ca": "api/configuration/ssl/ca.crt"
+        "ca": "api/configuration/ssl/ca.crt",
+        "ssl_cipher": "TLSv1.2"
     },
     "logs": {
         "level": "info",
