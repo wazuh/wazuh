@@ -31,16 +31,14 @@ isUpdate()
     fi
 
     # Checking if Wazuh is installed in the default directory
-    ls -la "$DEFAULT_DIR" > /dev/null 2>&1
-    if [ $? = 0 ]; then
+    if [ -d "$DEFAULT_DIR" ]; then
         OLDINSTALLDIR="$DEFAULT_DIR"
         echo "${TRUE}"
         return 0;
     fi
 
     # Checking if Wazuh is installed in the directory set by the user
-    ls -la "$INSTALLDIR" > /dev/null 2>&1
-    if [ $? = 0 ]; then
+    if [ -d "$INSTALLDIR" ]; then
         OLDINSTALLDIR="$INSTALLDIR"
         echo "${TRUE}"
         return 0;
@@ -68,7 +66,7 @@ isUpdate()
 
         if [ -f "$SERVICE_UNIT_PATH" ]; then
             OLDINSTALLDIR=`sed -n 's/^ExecStart=\/usr\/bin\/env \(.*\)\/bin\/wazuh-control start$/\1/p' $SERVICE_UNIT_PATH`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -85,7 +83,7 @@ isUpdate()
         if [ -d /etc/rc.d/init.d ]; then
             if [ -f /etc/rc.d/init.d/${service} ]; then
                 OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
-                if [ -f "$OLDINSTALLDIR" ]; then
+                if [ -d "$OLDINSTALLDIR" ]; then
                     echo "${TRUE}"
                     return 0;
                 else
@@ -102,7 +100,7 @@ isUpdate()
     if [ -r "/etc/gentoo-release" ]; then
         if [ -f /etc/init.d/${service} ]; then
             OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -118,7 +116,7 @@ isUpdate()
     if [ -r "/etc/SuSE-release" ]; then
         if [ -f /etc/init.d/${service} ]; then
             OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -134,7 +132,7 @@ isUpdate()
     if [ -r "/etc/slackware-version" ]; then
         if [ -f /etc/rc.d/rc.${service} ]; then
             OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/rc.${service}`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -150,7 +148,7 @@ isUpdate()
     if [ "X${NUNAME}" = "XDarwin" ]; then
         if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
             OLDINSTALLDIR=`sed -n 's/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -166,7 +164,7 @@ isUpdate()
     if [ "X${UN}" = "XSunOS" ]; then
         if [ -f /etc/init.d/${service} ]; then
             OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -182,7 +180,7 @@ isUpdate()
     if [ "X${UN}" = "XHP-UX" ]; then
         if [ -f /sbin/init.d/${service} ]; then
             OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /sbin/init.d/${service}`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -198,7 +196,7 @@ isUpdate()
     if [ "X${UN}" = "XAIX" ]; then
         if [ -f /etc/rc.d/init.d/${service} ]; then
             OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -216,7 +214,7 @@ isUpdate()
         grep wazuh-control /etc/rc.local > /dev/null 2>&1
         if [ $? = 0 ]; then
             OLDINSTALLDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.local`
-            if [ -f "$OLDINSTALLDIR" ]; then
+            if [ -d "$OLDINSTALLDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -233,7 +231,7 @@ isUpdate()
             grep wazuh-control /etc/rc.d/rc.local > /dev/null 2>&1
             if [ $? = 0 ]; then
                 OLDINSTALLDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.d/rc.local`
-                if [ -f "$OLDINSTALLDIR" ]; then
+                if [ -d "$OLDINSTALLDIR" ]; then
                     echo "${TRUE}"
                     return 0;
                 else
@@ -248,7 +246,7 @@ isUpdate()
         elif [ -d "/etc/rc.d/init.d" ]; then
             if [ -f /etc/rc.d/init.d/${service} ]; then
                 OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
-                if [ -f "$OLDINSTALLDIR" ]; then
+                if [ -d "$OLDINSTALLDIR" ]; then
                     echo "${TRUE}"
                     return 0;
                 else
@@ -263,7 +261,7 @@ isUpdate()
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
             if [ -f /etc/init.d/${service} ]; then
             OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
-                if [ -f "$OLDINSTALLDIR" ]; then
+                if [ -d "$OLDINSTALLDIR" ]; then
                     echo "${TRUE}"
                     return 0;
                 else
