@@ -19,7 +19,8 @@ custom_api_configuration = {
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
-        "ca": "api/configuration/ssl/ca.crt"
+        "ca": "api/configuration/ssl/ca.crt",
+        "tls_protocol": "TLSv1.1"
     },
     "logs": {
         "level": "DEBUG",
@@ -52,7 +53,7 @@ custom_incomplete_configuration = {
 def check_config_values(config, read_config, default_config):
     for k in default_config.keys() - read_config.keys():
         if isinstance(default_config[k], str):
-            assert config[k] == default_config[k].lower()
+            assert config[k].lower() == default_config[k].lower()
         elif isinstance(default_config[k], dict):
             check_config_values(config[k], read_config.get(k, {}), default_config[k])
         else:
