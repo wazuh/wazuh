@@ -23,6 +23,7 @@ else
     fi
 fi
 
+OSSEC_INIT="/etc/ossec-init.conf"
 HOST=`hostname`
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
