@@ -587,10 +587,6 @@ setInstallDir()
 ##########
 setEnv()
 {
-    echo ""
-    echo "3- ${settingupenv}."
-
-
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
 
     echo ""
@@ -949,6 +945,7 @@ main()
             case $ANY in
                 $yes)
                     update_only="yes"
+                    INSTALLDIR="$OLDINSTALLDIR"
                     break;
                     ;;
                 $no)

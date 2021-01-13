@@ -283,19 +283,17 @@ isUpdate()
 
 doUpdatecleanup()
 {
-    . ${OSSEC_INIT}
-
-    if [ "X$DIRECTORY" = "X" ]; then
-        echo "# ($FUNCNAME) ERROR: The variable DIRECTORY wasn't set." 1>&2
+    if [ "X$INSTALLDIR" = "X" ]; then
+        echo "# ($FUNCNAME) ERROR: The variable INSTALLDIR wasn't set." 1>&2
         echo "${FALSE}"
         return 1;
     fi
 
     # Checking if the directory is valid.
     _dir_pattern_update="^/[-a-zA-Z0-9/\.-]{3,128}$"
-    echo $DIRECTORY | grep -E "$_dir_pattern_update" > /dev/null 2>&1
+    echo $INSTALLDIR | grep -E "$_dir_pattern_update" > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-        echo "# ($FUNCNAME) ERROR: directory name ($DIRECTORY) doesn't match the pattern $_dir_pattern_update" 1>&2
+        echo "# ($FUNCNAME) ERROR: directory name ($INSTALLDIR) doesn't match the pattern $_dir_pattern_update" 1>&2
         echo "${FALSE}"
         return 1;
     fi
