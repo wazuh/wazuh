@@ -19,8 +19,6 @@
 #include "eventinfo.h"
 #include "wazuh_db/wdb.h"
 
-#define NEW_AR_MECHANISM "v4.2.0"
-
 void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar)
 {
     char exec_msg[OS_SIZE_8192 + 1];
@@ -120,15 +118,24 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                     continue;
                 }
 
-                // agt_version contains "Wazuh vX.X.X", only the last part is needed.
-                char *version = strchr(agt_version, 'v');
-                if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
-                    if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
-                        cJSON_Delete(json_agt_info);
-                        continue;
-                    }
+                // New AR mechanism is not supported in versions prior to 4.2.0
+                char *save_ptr = NULL;
+                strtok_r(agt_version, "v", &save_ptr);
+                char *major = strtok_r(NULL, ".", &save_ptr);;
+                char *minor = strtok_r(NULL, ".", &save_ptr);
+                if (!major || !minor) {
+                    merror("Unable to read agent version.");
+                    cJSON_Delete(json_agt_info);
+                    continue;
                 } else {
-                    getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
+                    if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
+                        getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
+                    } else {
+                        if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                            cJSON_Delete(json_agt_info);
+                            continue;
+                        }
+                    }
                 }
 
                 cJSON_Delete(json_agt_info);
@@ -201,15 +208,23 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 goto cleanup;
             }
 
-            // agt_version contains "Wazuh vX.X.X", only the last part is needed.
-            char *version = strchr(agt_version, 'v');
-            if(strcmp(version, NEW_AR_MECHANISM) >= 0) {
-                if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
-                    cJSON_Delete(json_agt_info);
-                    goto cleanup;
-                }
+            // New AR mechanism is not supported in versions prior to 4.2.0
+            char *save_ptr = NULL;
+            char *major = strtok_r(agt_version, ".", &save_ptr);;
+            char *minor = strtok_r(NULL, ".", &save_ptr);
+            if (!major || !minor) {
+                merror("Unable to read agent version.");
+                cJSON_Delete(json_agt_info);
+                goto cleanup;
             } else {
-                getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
+                if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
+                    getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
+                } else {
+                    if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                        cJSON_Delete(json_agt_info);
+                        goto cleanup;
+                    }
+                }
             }
 
             cJSON_Delete(json_agt_info);

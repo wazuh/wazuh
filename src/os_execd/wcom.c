@@ -188,36 +188,10 @@ size_t wcom_restart(char ** output) {
 
     if (lock <= 0) {
 #ifndef WIN32
-
         char *exec_cmd[3] = { DEFAULTDIR "/bin/wazuh-control", "restart", NULL};
         if (isChroot()) {
             strcpy(exec_cmd[0], "/bin/wazuh-control");
         }
-
-        // wazuh-control is not supported in versions prior to 4.2.0
-        char * major = NULL;
-        char * minor = NULL;
-        char * version = NULL;
-        char * save_ptr = NULL;
-        w_strdup(__ossec_version + 1, version);
-
-        major = strtok_r(version, ".", &save_ptr);
-        minor = strtok_r(NULL, ".", &save_ptr);
-        if (!major || !minor) {
-            merror("At WCOM restart: Unable to read agent version.");
-            os_free(version);
-            os_strdup("err Reading agent's version", *output);
-            return strlen(*output);
-        } else {
-            if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
-                if (isChroot()) {
-                    exec_cmd[0] = "/bin/ossec-control";
-                } else {
-                    exec_cmd[0] = DEFAULTDIR "/bin/ossec-control";
-                }
-            }
-        }
-        os_free(version);
 
         switch (fork()) {
             case -1:
@@ -236,8 +210,16 @@ size_t wcom_restart(char ** output) {
             break;
         }
 #else
-        char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.exe\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
-        ExecCmd_Win32(exec_cm);
+        char *cmd[2] = { "restart-ossec.exe", NULL };
+        char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"wazuh-execd\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{}}}";
+        wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
+        if (wfd) {
+            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
+            wpclose(wfd);
+        } else {
+            merror("At WCOM restart: Cannot execute restart process");
+            os_strdup("err Cannot execute restart process", *output);
+        }
 #endif
     } else {
         minfo(LOCK_RES, (int)lock);
