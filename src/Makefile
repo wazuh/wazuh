@@ -1452,7 +1452,7 @@ active-response/%.o: active-response/%.c
 default-firewall-drop: active-response/firewalls/default-firewall-drop.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-disable-account: active-response/disable-account.o
+disable-account: active-response/disable-account.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Util ##########
