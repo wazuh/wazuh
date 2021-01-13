@@ -728,6 +728,7 @@ stages:
                   cert: !anystr
                   use_ca: !anybool
                   ca: !anystr
+                  ssl_cipher: !anystr
                 logs:
                   level: !anystr
                   path: !anystr

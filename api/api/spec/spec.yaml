@@ -9902,6 +9902,7 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                          ssl_cipher: "TLSv1.2"
                         access:
                           max_login_attempts: 50
                           block_time: 300

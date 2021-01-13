@@ -20,7 +20,7 @@ custom_api_configuration = {
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
         "ca": "api/configuration/ssl/ca.crt",
-        "tls_protocol": "TLSv1.1"
+        "ssl_cipher": "TLSv1.1"
     },
     "logs": {
         "level": "DEBUG",

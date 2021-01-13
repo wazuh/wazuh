@@ -73,21 +73,21 @@ def start(foreground, root, config_file):
                 logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
 
             # Load SSL context
-            allowed_tls_protocols = {
+            allowed_ssl_ciphers = {
                 'tls': ssl.PROTOCOL_TLS,
                 'tlsv1': ssl.PROTOCOL_TLSv1,
                 'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
                 'tlsv1.2': ssl.PROTOCOL_TLSv1_2
             }
             try:
-                tls_protocol = allowed_tls_protocols[api_conf['https']['tls_protocol'].lower()]
+                ssl_cipher = allowed_ssl_ciphers[api_conf['https']['ssl_cipher'].lower()]
             except (KeyError, AttributeError):
                 # KeyError: invalid string value
                 # AttributeError: invalid boolean value
-                logger.error(str(APIError(2003, details='TLS protocol is not valid. Allowed values: '
+                logger.error(str(APIError(2003, details='SSL cipher is not valid. Allowed values: '
                                                         'TLS, TLSv1, TLSv1.1, TLSv1.2')))
                 sys.exit(1)
-            ssl_context = ssl.SSLContext(protocol=tls_protocol)
+            ssl_context = ssl.SSLContext(protocol=ssl_cipher)
             if api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(api_conf['https']['ca'])
