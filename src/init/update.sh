@@ -7,22 +7,180 @@
 FALSE="false"
 TRUE="true"
 
+##########
+# Checks whether this is an update by verifying if Wazuh is installed in the default
+# directory, the one specified by the user, or the services files exists.
+#
+# isUpdate()
+##########
 isUpdate()
 {
-    ls -la ${OSSEC_INIT} > /dev/null 2>&1
+    # Checking if Wazuh is installed in the default directory
+    ls -la $DEFAULT_DIR > /dev/null 2>&1
     if [ $? = 0 ]; then
-        . ${OSSEC_INIT}
-        if [ "X$DIRECTORY" = "X" ]; then
-            echo "# ($FUNCNAME) ERROR: The variable DIRECTORY wasn't set" 1>&2
+        echo "${TRUE}"
+        return 0;
+    fi
+    # Checking if Wazuh is installed in the directory set by the user
+    ls -la $INSTALLDIR > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        echo "${TRUE}"
+        return 0;
+    fi
+
+    # Checking if the Wazuh services files exists
+    if [ "X$INSTYPE" = "Xserver" ]; then
+        service="wazuh-manager"
+    else
+        service="wazuh-$INSTYPE"
+    fi
+    # Checking for Systemd
+    if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
+        if [ "X$INSTYPE" = "Xserver" ] || [ "X$INSTYPE" = "Xlocal" ]; then
+            type=manager
+        else
+            type=agent
+        fi
+        # RHEL 8 services should be installed in /usr/lib/systemd/system/
+        if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" = "8" ] || [ "${DIST_NAME}" = "centos" -a "${DIST_VER}" = "8" ]; then
+            SERVICE_UNIT_PATH=/usr/lib/systemd/system/wazuh-$type.service
+        else
+            SERVICE_UNIT_PATH=/etc/systemd/system/wazuh-$type.service
+        fi
+
+        if [ -f $SERVICE_UNIT_PATH ]; then
+            echo "${TRUE}"
+            return 0;
+        else
             echo "${FALSE}"
             return 1;
         fi
-        ls -la $DIRECTORY > /dev/null 2>&1
+    fi
+    # Checking for Redhat system.
+    if [ -r "/etc/redhat-release" ]; then
+        if [ -d /etc/rc.d/init.d ]; then
+            if [ -f /etc/rc.d/init.d/${service} ]; then
+                echo "${TRUE}"
+                return 0;
+            else
+                echo "${FALSE}"
+                return 1;
+            fi
+        fi
+    fi
+    # Checking for Gentoo
+    if [ -r "/etc/gentoo-release" ]; then
+        if [ -f /etc/init.d/${service} ]; then
+            echo "${TRUE}"
+            return 0;
+        else
+            echo "${FALSE}"
+            return 1;
+        fi
+    fi
+    # Checking for Suse
+    if [ -r "/etc/SuSE-release" ]; then
+        if [ -f /etc/init.d/${service} ]; then
+            echo "${TRUE}"
+            return 0;
+        else
+            echo "${FALSE}"
+            return 1;
+        fi
+    fi
+    # Checking for Slackware
+    if [ -r "/etc/slackware-version" ]; then
+        if [ -f /etc/rc.d/rc.${service} ]; then
+            echo "${TRUE}"
+            return 0;
+        else
+            echo "${FALSE}"
+            return 1;
+        fi
+    fi
+    # Checking for Darwin
+    if [ "X${NUNAME}" = "XDarwin" ]; then
+        if [ -f /Library/LaunchDaemons/com.wazuh.agent.plist ]; then
+            echo "${TRUE}"
+            return 0;
+        else
+            echo "${FALSE}"
+            return 1;
+        fi
+    fi
+    # Checking for SunOS
+    if [ "X${UN}" = "XSunOS" ]; then
+        if [ -f /etc/init.d/${service} ]; then
+            echo "${TRUE}"
+            return 0;
+        else
+            echo "${FALSE}"
+            return 1;
+        fi
+    fi
+    # Checking for HP-UX
+    if [ "X${UN}" = "XHP-UX" ]; then
+        if [ -f /sbin/init.d/${service} ]; then
+            echo "${TRUE}"
+            return 0;
+        else
+            echo "${FALSE}"
+            return 1;
+        fi
+    fi
+    # Checking for AIX
+    if [ "X${UN}" = "XAIX" ]; then
+        if [ -f /etc/rc.d/init.d/${service} ]; then
+            echo "${TRUE}"
+            return 0;
+        else
+            echo "${FALSE}"
+            return 1;
+        fi
+    fi
+    # Checking for BSD
+    if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
+        # Checking for the presence of wazuh-control on rc.local
+        grep wazuh-control /etc/rc.local > /dev/null 2>&1
         if [ $? = 0 ]; then
             echo "${TRUE}"
             return 0;
+        else
+            echo "${FALSE}"
+            return 1;
+        fi
+    elif [ "X${NUNAME}" = "XLinux" ]; then
+        # Checking for Linux
+        if [ -e "/etc/rc.d/rc.local" ]; then
+            grep wazuh-control /etc/rc.d/rc.local > /dev/null 2>&1
+            if [ $? = 0 ]; then
+                echo "${TRUE}"
+                return 0;
+            else
+                echo "${FALSE}"
+                return 1;
+            fi
+        # Checking for Linux (SysV)
+        elif [ -d "/etc/rc.d/init.d" ]; then
+            if [ -f /etc/rc.d/init.d/${service} ]; then
+                echo "${TRUE}"
+                return 0;
+            else
+                echo "${FALSE}"
+                return 1;
+            fi
+        # Checking for Debian (Ubuntu or derivative)
+        elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
+            if [ -f /etc/init.d/${service} ]; then
+                echo "${TRUE}"
+                return 0;
+            else
+                echo "${FALSE}"
+                return 1;
+            fi
         fi
     fi
+
     echo "${FALSE}"
     return 1;
 }
