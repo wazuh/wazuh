@@ -825,12 +825,7 @@ char **expand_wildcards(const char *path) {
 
         os_calloc(g.gl_pathc + 1, sizeof(char *), paths);
         for (int gindex = 0; g.gl_pathv[gindex]; gindex++) {
-            paths[gindex] = realpath(g.gl_pathv[gindex], NULL);
-
-            if (paths[gindex] == NULL) {
-                mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
-                        g.gl_pathv[gindex], errno, strerror(errno));
-            }
+            os_strdup(g.gl_pathv[gindex], paths[gindex]);
         }
 
         globfree(&g);
@@ -1208,35 +1203,48 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         env_variable = get_paths_from_env_variable(tmp_dir);
 
         for (int i = 0; env_variable[i]; i++) {
-            if(strcmp(env_variable[i], "")) {
-                clean_path = format_path(env_variable[i]);
-                if (clean_path) {
-#ifdef WIN32
-                    dump_syscheck_file(syscheck, clean_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
-                            tmp_diff_size);
-#else
-                    char **paths = expand_wildcards(clean_path);
-                    for (int i = 0; paths[i]; i++) {
-                        if (paths[i] != NULL && strcmp(paths[i], clean_path) != 0 && (opts & CHECK_FOLLOW)) {
-                            dump_syscheck_file(syscheck, paths[i], opts, restrictfile, recursion_limit, clean_tag,
-                                                clean_path, tmp_diff_size);
-                        } else {
-                            dump_syscheck_file(syscheck, clean_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
-                                                tmp_diff_size);
-                        }
-                        os_free(paths[i]);
-                    }
-                    os_free(paths);
-#endif
-                } else {
-                    mwarn(FIM_WARN_FORMAT_PATH, env_variable[i]);
-                }
-                os_free(clean_path);
+            if(*env_variable[i] == '\0') {
+                mwarn(FIM_WARN_FORMAT_PATH, env_variable[i]);
+                continue;
             }
-            os_free(env_variable[i]);
-        }
 
-        os_free(env_variable);
+            clean_path = format_path(env_variable[i]);
+            if (clean_path == NULL) {
+                continue;
+            }
+#ifdef WIN32
+            dump_syscheck_file(syscheck, clean_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
+                    tmp_diff_size);
+#else
+            char **paths = expand_wildcards(clean_path);
+            if (paths == NULL) {
+                os_free(clean_path);
+                continue;
+            }
+            for (int i = 0; paths[i]; i++) {
+                char *resolved_path = realpath(paths[i], NULL);
+
+                if (resolved_path == NULL) {
+                    mdebug1("Could not check the real path of '%s' due to [(%d)-(%s)].",
+                            paths[i], errno, strerror(errno));
+                    dump_syscheck_file(syscheck, paths[i], opts, restrictfile, recursion_limit, clean_tag, NULL,
+                                       tmp_diff_size);
+                } else if (strcmp(resolved_path, paths[i]) != 0 && (opts & CHECK_FOLLOW)) {
+                    dump_syscheck_file(syscheck, resolved_path, opts, restrictfile, recursion_limit, clean_tag,
+                                       paths[i], tmp_diff_size);
+                } else {
+                    dump_syscheck_file(syscheck, paths[i], opts, restrictfile, recursion_limit, clean_tag, NULL,
+                                       tmp_diff_size);
+                }
+
+                os_free(resolved_path);
+                os_free(paths[i]);
+            }
+            os_free(paths);
+#endif
+            os_free(clean_path);
+        }
+        free_strarray(env_variable);
         dir++;
     }
 
