@@ -341,15 +341,23 @@ int main (int argc, char **argv) {
             FILE *fp = popen(command, "r");
             if (fp) {
                 while (fgets(output_buf, BUFFERSIZE, fp) != NULL) {
-                    // removing a specific rule is not so easy :(
-                    //eval ${LSFILT} -v 4 -O  | ${GREP} ${IP} | 
-                    //while read -r LINE
-                    //do
-                    //    RULEID=`${ECHO} ${LINE} | cut -f 1 -d "|"`
-                    //    let RULEID=${RULEID}+1
-                    //    ARG1=" -v 4 -n ${RULEID}"
-                    //    eval ${RMFILT} ${ARG1}
-                    //done
+                    // removing a specific rule
+                    char out_buf[BUFFERSIZE];
+                    snprintf(command, 1023, "%s %s | cut -f 1 -d \"|\"", ECHO, output_buf);
+                    FILE *fp2 = popen(command, "r");
+                    if ((fgets(out_buf, BUFFERSIZE, fp2) != NULL)){
+                        int rule_id = atoi(out_buf) + 1;
+                        arg1[COMMANDSIZE -1] = '\0';
+                        snprintf(arg1, COMMANDSIZE -1, " -v 4 -n %d", rule_id);
+                        command[COMMANDSIZE -1] = '\0';
+                        snprintf(command, COMMANDSIZE - 1, "eval %s %s", rmfilt_path, arg1);
+                        res = system(command);
+                    } else {
+                        write_debug_file("Cannot remove rule");
+                    }
+
+                    pclose(fp2);
+
                 }
 
                 pclose(fp);
