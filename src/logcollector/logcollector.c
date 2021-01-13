@@ -1147,7 +1147,7 @@ void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
     current->ign = 0;
-
+    w_logcollector_state_update_file(current->file, 0);
     /* Initialize the files */
     if (current->ffile) {
 
@@ -1167,6 +1167,7 @@ void set_read(logreader *current, int i, int j) {
     if (current->target) {
         while (current->target[tg]) {
             mdebug1("Socket target for '%s' -> %s", current->file, current->target[tg]);
+            w_logcollector_state_update_target(current->file, current->target[tg], false);
             tg++;
         }
     }

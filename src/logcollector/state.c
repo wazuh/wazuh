@@ -45,11 +45,11 @@ typedef struct {
 } lc_state_file_t;
 
 /* Global variables */
-char * g_lc_pritty_stats;           ///< string that store single line formated JSON with states
+cJSON * g_lc_json_stats;           ///< string that store single line formated JSON with states
 lc_states_t * g_lc_states_global;   ///< global state struct storage
 lc_states_t * g_lc_states_interval; ///< interval state struct storage
-pthread_mutex_t g_lc_raw_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_pritty_stats mutual exclusion mechanism
-pthread_mutex_t g_lc_pritty_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_states_* structs mutual exclusion mechanism
+pthread_mutex_t g_lc_raw_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_json_stats mutual exclusion mechanism
+pthread_mutex_t g_lc_json_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_states_* structs mutual exclusion mechanism
 
 /**
  * @brief Trigger the generation of states
@@ -110,8 +110,10 @@ void * w_logcollector_state_main(__attribute__((unused)) void * args) {
 }
 
 STATIC void w_logcollector_state_dump() {
-
-    char * lc_state_str = w_logcollector_state_get();
+    
+    cJSON * lc_state_json = w_logcollector_state_get();
+    char * lc_state_str = cJSON_Print(lc_state_json);
+    cJSON_Delete(lc_state_json);
 
     FILE * lc_state_file = NULL;
 
@@ -190,8 +192,10 @@ void _w_logcollector_state_update_file(lc_states_t * state, char * fpath, uint64
         os_calloc(1, sizeof(lc_state_target_t *), data->targets);
     }
 
-    data->events++;
-    data->bytes += bytes;
+    if (bytes > 0){
+        data->events++;
+        data->bytes += bytes;
+    }
 
     if (OSHash_Update(state->states, fpath, data) != 1) {
         if (OSHash_Add(state->states, fpath, data) != 2) {
@@ -255,38 +259,34 @@ void _w_logcollector_state_update_target(lc_states_t * state, char * fpath, char
 
 void w_logcollector_generate_state() {
 
-    w_mutex_lock(&g_lc_pritty_stats_mutex);
+    w_mutex_lock(&g_lc_json_stats_mutex);
     w_mutex_lock(&g_lc_raw_stats_mutex);
 
-    os_free(g_lc_pritty_stats);
-
-    cJSON * lc_stats_json = cJSON_CreateObject();
+    cJSON_Delete(g_lc_json_stats);
+ 
+    g_lc_json_stats = cJSON_CreateObject();
     cJSON * lc_stats_json_global = _w_logcollector_generate_state(g_lc_states_global, false);
-    cJSON_AddItemToObject(lc_stats_json, "global", lc_stats_json_global);
+    cJSON_AddItemToObject(g_lc_json_stats, "global", lc_stats_json_global);
     cJSON * lc_stats_json_interval = _w_logcollector_generate_state(g_lc_states_interval, true);
-    cJSON_AddItemToObject(lc_stats_json, "interval", lc_stats_json_interval);
-
-    g_lc_pritty_stats = cJSON_PrintUnformatted(lc_stats_json);
-
-    cJSON_Delete(lc_stats_json);
-
+    cJSON_AddItemToObject(g_lc_json_stats, "interval", lc_stats_json_interval);
+    
     w_mutex_unlock(&g_lc_raw_stats_mutex);
-    w_mutex_unlock(&g_lc_pritty_stats_mutex);
+    w_mutex_unlock(&g_lc_json_stats_mutex);
 }
 
-char * w_logcollector_state_get() {
+cJSON * w_logcollector_state_get() {
 
-    char * state_str = NULL;
+    cJSON * json_state = NULL;
 
-    w_mutex_lock(&g_lc_pritty_stats_mutex);
+    w_mutex_lock(&g_lc_json_stats_mutex);
 
-    if (g_lc_pritty_stats != NULL) {
-        os_strdup(g_lc_pritty_stats, state_str);
+    if (g_lc_json_stats != NULL) {
+        json_state = cJSON_Duplicate(g_lc_json_stats, true);
     }
 
-    w_mutex_unlock(&g_lc_pritty_stats_mutex);
+    w_mutex_unlock(&g_lc_json_stats_mutex);
 
-    return state_str;
+    return json_state;
 }
 
 cJSON * _w_logcollector_generate_state(lc_states_t * state, bool restart) {

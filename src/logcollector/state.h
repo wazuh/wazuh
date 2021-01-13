@@ -59,9 +59,9 @@ void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
 /**
  * @brief Get a string with current state in JSON format
  *
- * @return char* allocated string with current state.
+ * @return cJSON* allocated object with current state.
  * The string is heap allocated memory that must be freed by the caller.
  */
-char * w_logcollector_state_get();
+cJSON * w_logcollector_state_get();
 
 #endif /* LOGCOLLECTOR_STAT_H */
