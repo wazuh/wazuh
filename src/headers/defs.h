@@ -112,8 +112,25 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define GROUPGLOBAL     "ossec"
 #endif
 
+#ifndef FALLBACKDIR
+#define FALLBACKDIR     "/var/ossec"
+#endif
+
+/* Default directory - Checked at runtime */
+#ifndef WIN32
 #ifndef DEFAULTDIR
-#define DEFAULTDIR      "/var/ossec"
+#define DEFAULTDIR      ({ \
+    struct stat wazuh_homedir_test; \
+    char *wazuh_homedir = (binary_path == NULL)? bin_path(NULL) : binary_path; \
+    if ((wazuh_homedir != NULL) { \
+        if (stat(wazuh_homedir, &wazuh_homedir_test) < 0 || !S_ISDIR(wazuh_homedir_test.st_mode)) wazuh_homedir = FALLBACKDIR; \
+    } else { \
+        wazuh_homedir = FALLBACKDIR; \
+    } \
+    binary_path = wazuh_homedir; \
+    wazuh_homedir; \
+})
+#endif
 #endif
 
 /* Default queue */

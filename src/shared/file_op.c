@@ -3382,7 +3382,7 @@ char *bin_path(char *arg) {
         buff = w_strtok_r_str_delim("bin", &buff);
     }
     #endif
-    else {
+    else if (arg != NULL) {
         buff = NULL;
         if (buff = realpath(arg, NULL), buff == NULL) {
             mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
@@ -3392,7 +3392,7 @@ char *bin_path(char *arg) {
         dirname(buff);
         buff = w_strtok_r_str_delim("bin", &buff);
     }
-    os_strdup(buff, buff);
+    w_strdup(buff, buff);
 
     return buff;
 }
