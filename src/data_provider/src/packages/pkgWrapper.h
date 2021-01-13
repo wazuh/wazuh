@@ -17,8 +17,10 @@
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "timeHelper.h"
+#include "plist/plist.h"
 
-const std::string APP_INFO_PATH{"Contents/Info.plist"};
+static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
+static const std::string PLIST_BINARY_START { "bplist00"            };
 
 class PKGWrapper final : public IPackageWrapper
 {
@@ -87,7 +89,13 @@ private:
         if (file.is_open())
         {
             std::string line;
-            while(std::getline(file, line))
+            if (std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START))
+            {
+                // Apple binary plist - let's convert it to XML format
+                binaryToXML();
+            }
+
+            while(!line.empty() && std::getline(file, line))
             {
                 line = Utils::trim(line," \t");
 
@@ -113,6 +121,15 @@ private:
                 }
             }
         }
+    }
+
+    void binaryToXML()
+    {
+
+        plist_t rootNode { nullptr };
+
+        // plist_from_bin
+        // plist_to_xml
     }
 
     std::string m_name;
