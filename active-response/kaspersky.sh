@@ -11,18 +11,17 @@
 #
 ##
 
-
-. /etc/ossec-init.conf 2> /dev/null || exit 1
-
+SCRIPT=$(readlink -f "$0")
+S_PATH=$(dirname "$SCRIPT")
 python2="/usr/bin/python"
 python3="/usr/bin/python3"
 
 if [ -f "$python2" ]
 then
-        python $DIRECTORY/active-response/bin/kaspersky.py "$@"
+        python ${S_PATH}/kaspersky.py "$@"
 elif [ -f "$python3" ]
 then
-        python3 $DIRECTORY/active-response/bin/kaspersky.py "$@"
+        python3 ${S_PATH}/kaspersky.py "$@"
 else
         echo "Python binary not found"
 fi
