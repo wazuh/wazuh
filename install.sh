@@ -558,17 +558,14 @@ ConfigureServer()
 }
 
 ##########
-# setEnv()
+# setInstallDir()
 ##########
-setEnv()
+setInstallDir()
 {
-    echo ""
-    echo "2- ${settingupenv}."
-
     echo ""
     if [ "X${USER_DIR}" = "X" ]; then
         while [ 1 ]; do
-            $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
+            $ECHO "1- ${wheretoinstall} [$INSTALLDIR]: "
             read ANSWER
             if [ ! "X$ANSWER" = "X" ]; then
                 echo $ANSWER |grep -E "^/[a-zA-Z0-9./_-]{3,128}$">/dev/null 2>&1
@@ -583,6 +580,15 @@ setEnv()
     else
         INSTALLDIR=${USER_DIR}
     fi
+}
+
+##########
+# setEnv()
+##########
+setEnv()
+{
+    echo ""
+    echo "3- ${settingupenv}."
 
 
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
@@ -858,6 +864,68 @@ main()
         read ANY
     fi
 
+    # Setting up the installation directory
+    setInstallDir
+
+    # Setting up the installation type
+    hybrid="hybrid"
+    HYBID=""
+    hybridm=`echo ${hybrid} | cut -b 1`
+    serverm=`echo ${server} | cut -b 1`
+    localm=`echo ${local} | cut -b 1`
+    agentm=`echo ${agent} | cut -b 1`
+    helpm=`echo ${help} | cut -b 1`
+
+    # If user install type is not set, ask for it.
+    if [ "X${USER_INSTALL_TYPE}" = "X" ]; then
+
+        # Loop for the installation options
+        while [ 1 ]
+        do
+            echo ""
+            $ECHO "2- ${whattoinstall} "
+
+            read ANSWER
+            case $ANSWER in
+
+                ${helpm}|${help})
+                    catMsg "0x102-installhelp"
+                ;;
+
+                ${server}|${serverm}|"manager"|"m")
+                    echo ""
+                    echo "  - ${serverchose}."
+                    INSTYPE="server"
+                    break;
+                ;;
+
+                ${agent}|${agentm}|"a")
+                    echo ""
+                    echo "  - ${clientchose}."
+                    INSTYPE="agent"
+                    break;
+                ;;
+
+                ${hybrid}|${hybridm})
+                    echo ""
+                    echo "  - ${serverchose} (hybrid)."
+                    INSTYPE="server"
+                    HYBID="go"
+                    break;
+                ;;
+                ${local}|${localm})
+                    echo ""
+                    echo "  - ${localchose}."
+                    INSTYPE="local"
+                    break;
+                ;;
+            esac
+        done
+
+    else
+        INSTYPE=${USER_INSTALL_TYPE}
+    fi
+
     . ./src/init/update.sh
     # Is this an update?
     if [ "`isUpdate`" = "${TRUE}" -a "x${USER_CLEANINSTALL}" = "x" ]; then
@@ -915,64 +983,6 @@ main()
 
         fi
         echo ""
-    fi
-
-    hybrid="hybrid"
-    HYBID=""
-    hybridm=`echo ${hybrid} | cut -b 1`
-    serverm=`echo ${server} | cut -b 1`
-    localm=`echo ${local} | cut -b 1`
-    agentm=`echo ${agent} | cut -b 1`
-    helpm=`echo ${help} | cut -b 1`
-
-    # If user install type is not set, ask for it.
-    if [ "X${USER_INSTALL_TYPE}" = "X" ]; then
-
-        # Loop for the installation options
-        while [ 1 ]
-        do
-            echo ""
-            $ECHO "1- ${whattoinstall} "
-
-            read ANSWER
-            case $ANSWER in
-
-                ${helpm}|${help})
-                    catMsg "0x102-installhelp"
-                ;;
-
-                ${server}|${serverm}|"manager"|"m")
-                    echo ""
-                    echo "  - ${serverchose}."
-                    INSTYPE="server"
-                    break;
-                ;;
-
-                ${agent}|${agentm}|"a")
-                    echo ""
-                    echo "  - ${clientchose}."
-                    INSTYPE="agent"
-                    break;
-                ;;
-
-                ${hybrid}|${hybridm})
-                    echo ""
-                    echo "  - ${serverchose} (hybrid)."
-                    INSTYPE="server"
-                    HYBID="go"
-                    break;
-                ;;
-                ${local}|${localm})
-                    echo ""
-                    echo "  - ${localchose}."
-                    INSTYPE="local"
-                    break;
-                ;;
-            esac
-        done
-
-    else
-        INSTYPE=${USER_INSTALL_TYPE}
     fi
 
 
