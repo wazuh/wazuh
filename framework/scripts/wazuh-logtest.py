@@ -5,6 +5,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import subprocess
 import sys
 import socket
 import logging
@@ -384,22 +385,38 @@ class WazuhLogtest:
 
 
 class Wazuh:
-    def get_initconfig(field, path="/etc/ossec-init.conf"):
-        """Get Wazuh information from installation file
+    def get_install_path():
+        """Get Wazuh installation path, obtained relative to the path of this file
+
+        Returns:
+            str: install_path
+        """
+        return os.path.abspath(os.path.join(__file__, "../../.."))
+
+    def get_info(field):
+        """Get Wazuh information from wazuh-control
 
         Args:
             field (str): field to get
-            path (str, optional): information file. Defaults to "/etc/ossec-init.conf".
 
         Returns:
             str: field value
         """
-        initconf = dict()
-        with open(path) as f:
-            for line in f.readlines():
-                key, value = line.rstrip("\n").split("=")
-                initconf[key] = value.replace("\"", "")
-        return initconf[field]
+        wazuh_control = os.path.join(Wazuh.get_install_path(), "bin/wazuh-control")
+        wazuh_env_vars = dict()
+        try:
+            proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
+            (stdout, stderr) = proc.communicate() 
+        except:            
+            return "ERROR"
+
+        env_variables = stdout.decode().rsplit("\n")
+        env_variables.remove("")
+        for env_variable in env_variables:
+            key, value = env_variable.split("=")
+            wazuh_env_vars[key] = value.replace("\"", "")
+        
+        return wazuh_env_vars[field]
 
     def get_version_str():
         """Get Wazuh version string
@@ -407,7 +424,7 @@ class Wazuh:
         Returns:
             str: version
         """
-        return Wazuh.get_initconfig('VERSION')
+        return Wazuh.get_info('WAZUH_VERSION')
 
     def get_description():
         """Get Wazuh description, contact info and version

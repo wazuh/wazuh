@@ -27,7 +27,7 @@ class MultiOrderedDict(OrderedDict):
             super(MultiOrderedDict, self).__setitem__(key, value)
 
 
-def getOssecConfig(wazuh_home):   
+def getWazuhInfo(wazuh_home):   
     wazuh_control = os.path.join(wazuh_home, "bin/wazuh-control") 
     wazuh_env_vars = {}
     try:
@@ -37,7 +37,7 @@ def getOssecConfig(wazuh_home):
         print "Seems like there is no Wazuh installation."
         return None
 
-    env_variables=stdout.rsplit("\n")
+    env_variables = stdout.rsplit("\n")
     env_variables.remove("")
     for env_variable in env_variables:
         key, value = env_variable.split("=")
@@ -174,8 +174,8 @@ if __name__ == "__main__":
         if not selective_test.endswith('.ini'):
             selective_test += '.ini'
     
-    wazuh_config = getOssecConfig(args.wazuh_home)
-    if wazuh_config is None:
+    wazuh_info = getWazuhInfo(args.wazuh_home)
+    if wazuh_info is None:
         sys.exit(1)
 
     for sig in (signal.SIGABRT, signal.SIGINT, signal.SIGTERM):
