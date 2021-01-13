@@ -21,6 +21,7 @@ isUpdate()
         echo "${TRUE}"
         return 0;
     fi
+
     # Checking if Wazuh is installed in the directory set by the user
     ls -la $INSTALLDIR > /dev/null 2>&1
     if [ $? = 0 ]; then

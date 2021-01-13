@@ -602,7 +602,13 @@ setEnv()
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         CEXTRA="$CEXTRA -DLOCAL"
     fi
+}
 
+##########
+# askForDetele()
+##########
+askForDetele()
+{
     if [ -d "$INSTALLDIR" ]; then
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
             echo ""
