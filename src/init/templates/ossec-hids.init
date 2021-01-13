@@ -5,16 +5,19 @@
 # Author:       Daniel B. Cid <dcid@ossec.net>
 # Modified for slackware by Jack S. Lai
 
+WAZUH_HOME=WAZUH_HOME_TMP
+WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
+
 start() {
-    WAZUH_HOME/bin/wazuh-control start
+    ${WAZUH_CONTROL} start
 }
 
 stop() {
-    WAZUH_HOME/bin/wazuh-control stop
+    ${WAZUH_CONTROL} stop
 }
 
 status() {
-    WAZUH_HOME/bin/wazuh-control status
+    ${WAZUH_CONTROL} status
 }
 
 case "$1" in

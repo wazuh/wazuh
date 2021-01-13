@@ -15,9 +15,12 @@ export LANG=C
 
 . /etc/init.d/functions
 
+WAZUH_HOME=WAZUH_HOME_TMP
+WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
+
 start() {
     echo -n "Starting Wazuh: "
-    WAZUH_HOME/bin/wazuh-control start > /dev/null
+    ${WAZUH_CONTROL} start > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
         success
@@ -30,7 +33,7 @@ start() {
 
 stop() {
     echo -n "Stopping Wazuh: "
-    WAZUH_HOME/bin/wazuh-control stop > /dev/null
+    ${WAZUH_CONTROL} stop > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
         success
@@ -42,7 +45,7 @@ stop() {
 }
 
 status() {
-    WAZUH_HOME/bin/wazuh-control status
+    ${WAZUH_CONTROL} status
     RETVAL=$?
     return $RETVAL
 }

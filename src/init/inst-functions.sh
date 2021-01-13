@@ -327,9 +327,9 @@ GenerateInitConf()
 # GenerateService() $1=template
 ##########
 GenerateService()
-{    
+{
     SERVICE_TEMPLATE=./src/init/templates/${1}
-    sed "s|WAZUH_HOME|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
+    sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
 }
 
 ##########
