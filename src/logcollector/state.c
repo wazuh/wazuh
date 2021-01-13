@@ -17,11 +17,11 @@
 #endif
 
 /* Global variables */
-cJSON * g_lc_json_stats;           ///< string that store single line formated JSON with states
+cJSON * g_lc_json_stats;           ///< JSON representation of states
 lc_states_t * g_lc_states_global;   ///< global state struct storage
 lc_states_t * g_lc_states_interval; ///< interval state struct storage
-pthread_mutex_t g_lc_raw_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_json_stats mutual exclusion mechanism
-pthread_mutex_t g_lc_json_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_states_* structs mutual exclusion mechanism
+pthread_mutex_t g_lc_raw_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_states_* structs mutual exclusion mechanism
+pthread_mutex_t g_lc_json_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_json_stats mutual exclusion mechanism
 
 /**
  * @brief Trigger the generation of states
@@ -87,10 +87,16 @@ STATIC void w_logcollector_state_dump() {
     char * lc_state_str = cJSON_Print(lc_state_json);
     cJSON_Delete(lc_state_json);
 
+    // Add trailing newline
+    size_t len = strlen(lc_state_str);
+    os_realloc(lc_state_str, len + 2, lc_state_str);
+    lc_state_str[len] = '\n';
+    lc_state_str[len + 1] = '\0';
+
     FILE * lc_state_file = NULL;
 
     if (lc_state_file = fopen(LOGCOLLECTOR_STATE_PATH, "w"), lc_state_file != NULL) {
-        if (fwrite(lc_state_str, sizeof(char), strlen(lc_state_str), lc_state_file) < 1) {
+        if (fwrite(lc_state_str, sizeof(char), len + 1, lc_state_file) < 1) {
             merror(FWRITE_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
         }
         fclose(lc_state_file);

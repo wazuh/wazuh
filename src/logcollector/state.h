@@ -85,10 +85,10 @@ void w_logcollector_state_update_target(char * fpath, char * target, bool droppe
 void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
 
 /**
- * @brief Get a string with current state in JSON format
+ * @brief Get current state in JSON format
  *
  * @return cJSON* allocated object with current state.
- * The string is heap allocated memory that must be freed by the caller.
+ * The cJSON* is heap allocated memory that must be freed by the caller using cJSON_Delete.
  */
 cJSON * w_logcollector_state_get();
 
