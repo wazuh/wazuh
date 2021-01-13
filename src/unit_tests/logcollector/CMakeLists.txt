@@ -52,8 +52,15 @@ list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,ff
                                 -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject \
                                 -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,ctime \
                                 -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
-                                -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,getDefine_Int \
-                                -Wl,--wrap,FOREVER -Wl,--wrap,sleep -Wl,--wrap,getpid")
+                                -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_Print -Wl,--wrap,getDefine_Int \
+                                -Wl,--wrap,FOREVER -Wl,--wrap,sleep -Wl,--wrap,getpid -Wl,--wrap,cJSON_Duplicate")
+
+list(APPEND logcollector_names "test_lccom")
+list(APPEND logcollector_flags "-Wl,--wrap,w_logcollector_state_get -Wl,--wrap,cJSON_CreateObject \
+                                -Wl,--wrap,_mdebug1 -Wl,--wrap,cJSON_AddNumberToObject \
+                                -Wl,--wrap,cJSON_AddObjectToObject -Wl,--wrap,cJSON_AddStringToObject \
+                                -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_PrintUnformatted \
+                                -Wl,--wrap,cJSON_Delete")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")

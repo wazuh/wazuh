@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -38,6 +38,7 @@ void * w_logcollector_state_main(__attribute__((unused)) void * args);
 extern cJSON * g_lc_json_stats;
 extern lc_states_t * g_lc_states_global;
 extern lc_states_t * g_lc_states_interval;
+
 /* setup/teardown */
 
 static int setup_group(void ** state) {
@@ -200,10 +201,10 @@ void test_w_logcollector_state_init_ok(void ** state) {
     os_free(g_lc_states_interval);
 }
 
-/* w_logcollector_state_get_null */
+/* w_logcollector_state_get */
 void test_w_logcollector_state_get_null(void ** state) {
 
-    //os_free(g_lc_pritty_stats);
+    g_lc_json_stats = NULL;
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     assert_null(w_logcollector_state_get());
@@ -211,18 +212,18 @@ void test_w_logcollector_state_get_null(void ** state) {
 
 void test_w_logcollector_state_get_non_null(void ** state) {
 
-    //os_free(g_lc_pritty_stats);
-    //g_lc_pritty_stats = strdup("hi!");
+    cJSON * expect_retval = (cJSON *) 3;
+    g_lc_json_stats = (cJSON *) 5;
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_cJSON_Duplicate, expect_retval);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    char * retval = w_logcollector_state_get();
+    cJSON * retval = w_logcollector_state_get();
 
-    assert_string_equal("hi!", retval);
+    assert_ptr_not_equal(g_lc_json_stats, retval);
+    assert_ptr_equal(expect_retval, retval);
 
-    os_free(retval);
-    //os_free(g_lc_pritty_stats);
 }
 
 /* Test _w_logcollector_generate_state */
@@ -690,6 +691,8 @@ void test_w_logcollector_generate_state_ok(void ** state) {
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_function_call(__wrap_cJSON_Delete);
+
     will_return_always(__wrap_cJSON_CreateObject, (cJSON *) 10);
 
     expect_value(__wrap_OSHash_Begin, self, g_lc_states_global->states);
@@ -784,8 +787,6 @@ void test_w_logcollector_generate_state_ok(void ** state) {
     will_return(__wrap_time, (time_t) 2525);
 
     expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_123456"));
-    expect_function_call(__wrap_cJSON_Delete);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -799,17 +800,17 @@ void test_w_logcollector_generate_state_ok(void ** state) {
     assert_int_equal(g_lc_states_interval->start, 2525);
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
-    //os_free(g_lc_pritty_stats);
 }
 
 /* w_logcollector_state_dump */
 void test_w_logcollector_state_dump_fail_open(void ** state) {
 
-    //os_free(g_lc_pritty_stats);
-    //g_lc_pritty_stats = strdup("hi!");
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_cJSON_Duplicate, (cJSON *) 3);
     expect_function_call(__wrap_pthread_mutex_unlock);
+    will_return(__wrap_cJSON_Print, strdup("Test 123"));
+    expect_function_call(__wrap_cJSON_Delete);
 
     expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE_PATH);
     expect_string(__wrap_fopen, mode, "w");
@@ -821,16 +822,15 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
 
     w_logcollector_state_dump();
 
-    //os_free(g_lc_pritty_stats);
 }
 
 void test_w_logcollector_state_dump_fail_write(void ** state) {
 
-    //os_free(g_lc_pritty_stats);
-    //g_lc_pritty_stats = strdup("hi!");
-
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_cJSON_Duplicate, (cJSON *) 3);
     expect_function_call(__wrap_pthread_mutex_unlock);
+    will_return(__wrap_cJSON_Print, strdup("Test 123"));
+    expect_function_call(__wrap_cJSON_Delete);
 
     expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE_PATH);
     expect_string(__wrap_fopen, mode, "w");
@@ -851,11 +851,11 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
 
 void test_w_logcollector_state_dump_ok(void ** state) {
 
-    //os_free(g_lc_pritty_stats);
-    //g_lc_pritty_stats = strdup("hi!");
-
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_cJSON_Duplicate, (cJSON *) 3);
     expect_function_call(__wrap_pthread_mutex_unlock);
+    will_return(__wrap_cJSON_Print, strdup("Test 123"));
+    expect_function_call(__wrap_cJSON_Delete);
 
     expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE_PATH);
     expect_string(__wrap_fopen, mode, "w");
@@ -867,7 +867,6 @@ void test_w_logcollector_state_dump_ok(void ** state) {
 
     w_logcollector_state_dump();
 
-    //os_free(g_lc_pritty_stats);
 }
 
 /* w_logcollector_state_main */
@@ -890,6 +889,8 @@ void test_w_logcollector_state_main(void ** state) {
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    expect_function_call(__wrap_cJSON_Delete);
+
     will_return_always(__wrap_cJSON_CreateObject, (cJSON *) 10);
 
     expect_value(__wrap_OSHash_Begin, self, g_lc_states_global->states);
@@ -984,14 +985,15 @@ void test_w_logcollector_state_main(void ** state) {
     will_return(__wrap_time, (time_t) 2525);
 
     expect_function_call(__wrap_cJSON_AddItemToObject);
-    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_123456"));
-    expect_function_call(__wrap_cJSON_Delete);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_cJSON_Duplicate, (cJSON *) 3);
     expect_function_call(__wrap_pthread_mutex_unlock);
+    will_return(__wrap_cJSON_Print, strdup("Test 123"));
+    expect_function_call(__wrap_cJSON_Delete);
 
     expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE_PATH);
     expect_string(__wrap_fopen, mode, "w");

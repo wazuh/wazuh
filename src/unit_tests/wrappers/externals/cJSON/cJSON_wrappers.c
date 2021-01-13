@@ -49,6 +49,12 @@ cJSON* __wrap_cJSON_AddNumberToObject(__attribute__ ((__unused__)) cJSON * const
     return mock_type(cJSON *);
 }
 
+cJSON* __wrap_cJSON_AddObjectToObject(cJSON * const object, const char * const name) {
+    if (name) check_expected(name);
+    check_expected(object);
+    return mock_type(cJSON *);
+}
+
 #ifdef WIN32
 cJSON * __stdcall __wrap_cJSON_CreateArray(void) {
     return mock_type(cJSON *);
