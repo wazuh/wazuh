@@ -820,6 +820,7 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/*.py ${PREFIX}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} default-firewall-drop ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} disable-account ${PREFIX}/active-response/bin/
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
