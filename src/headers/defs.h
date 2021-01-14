@@ -218,15 +218,15 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Syscollector normalization configs */
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
-#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH "queue/syscollector/norm_config.json"
-#else
-#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH DEFAULTDIR "/queue/syscollector/norm_config.json"
-#endif // WIN32
-#else
-#ifdef WIN32
 #define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH    ".\\norm_config.json"
 #else
 #define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH    "./norm_config.json"
+#endif // WIN32
+#else
+#ifdef WIN32
+#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH "queue/syscollector/norm_config.json"
+#else
+#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH DEFAULTDIR "/queue/syscollector/norm_config.json"
 #endif // WIN32
 #endif // WAZUH_UNIT_TESTING
 

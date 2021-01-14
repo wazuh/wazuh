@@ -13,6 +13,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <memory>
+#include "defs.h"
 #include "dbsync.h"
 #include "rsync.h"
 #include "sysInfo.hpp"
@@ -69,6 +70,9 @@ int main(int /*argc*/, const char** /*argv[]*/)
                                       reportDiffFunction,
                                       reportSyncFunction,
                                       errorLogFunction,
+                                      SYSCOLLECTOR_DB_DISK_PATH,
+                                      SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
+                                      SYSCOLLECTOR_NORM_TYPE,
                                       15ul,
                                       true,
                                       true,

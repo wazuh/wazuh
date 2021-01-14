@@ -47,6 +47,9 @@ public:
               const std::function<void(const std::string&)> reportDiffFunction,
               const std::function<void(const std::string&)> reportSyncFunction,
               const std::function<void(const std::string&)> logErrorFunction,
+              const std::string& dbPath,
+              const std::string& normalizerConfigPath,
+              const std::string& normalizerType,
               const unsigned int inverval = 3600ul,
               const bool scanOnStart = true,
               const bool hardware = true,
@@ -101,7 +104,7 @@ private:
     std::unique_ptr<RemoteSync>                    m_spRsync;
     std::condition_variable                        m_cv;
     std::mutex                                     m_mutex;
-    SysNormalizer                                  m_normalizer;
+    std::unique_ptr<SysNormalizer>                 m_spNormalizer;
 };
 
 

@@ -18,6 +18,7 @@ link_directories(${SRC_FOLDER}/external/openssl/)
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
+add_definitions(-DWAZUH_UNIT_TESTING)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 

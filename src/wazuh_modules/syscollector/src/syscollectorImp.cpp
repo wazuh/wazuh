@@ -8,7 +8,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "defs.h"
 #include "syscollector.hpp"
 #include "json.hpp"
 #include <iostream>
@@ -779,7 +778,6 @@ Syscollector::Syscollector()
 , m_processes { false }
 , m_hotfixes { false }
 , m_stopping { true }
-, m_normalizer{SYSCOLLECTOR_NORM_CONFIG_DISK_PATH, SYSCOLLECTOR_NORM_TYPE}
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -862,6 +860,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
                         const std::function<void(const std::string&)> reportSyncFunction,
                         const std::function<void(const std::string&)> logErrorFunction,
+                        const std::string& dbPath,
+                        const std::string& normalizerConfigPath,
+                        const std::string& normalizerType,
                         const unsigned int interval,
                         const bool scanOnStart,
                         const bool hardware,
@@ -890,8 +891,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
-    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, SYSCOLLECTOR_DB_DISK_PATH, getCreateStatement());
+    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
+    m_spNormalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
     registerWithRsync();
     syncLoop(lock);
 }
@@ -1032,7 +1034,7 @@ void Syscollector::scanPackages()
         {
             const auto& normalizedPackagesData
             {
-                m_normalizer.normalize("packages", m_normalizer.removeExcluded("packages", packagesData))
+                m_spNormalizer->normalize("packages", m_spNormalizer->removeExcluded("packages", packagesData))
             };
             for (auto item : normalizedPackagesData)
             {
