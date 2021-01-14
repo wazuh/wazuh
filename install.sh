@@ -599,9 +599,9 @@ setEnv()
 }
 
 ##########
-# askForDetele()
+# askForDelete()
 ##########
-askForDetele()
+askForDelete()
 {
     if [ -d "$INSTALLDIR" ]; then
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
@@ -621,31 +621,6 @@ askForDetele()
                     echo "Error deleting ${INSTALLDIR}"
                     exit 2;
                 fi
-                ;;
-            $nomatch)
-                if [ "X$PREINSTALLEDDIR" != "X" ]; then
-                    echo "WARNING! The installation can't proceed without removing already installed versions. Exiting."
-                    exit 2;
-                fi
-                ;;
-        esac
-    elif [ -d "$PREINSTALLEDDIR" ]; then
-        $ECHO "    - WARNING! The installation can't proceed without removing already installed versions. Should I delete it? ($yes/$no) [$no]: "
-        read ANSWER
-
-        case $ANSWER in
-            $yesmatch)
-                echo "      Stopping Wazuh..."
-                UpdateStopOSSEC
-                rm -rf $PREINSTALLEDDIR
-                if [ ! $? = 0 ]; then
-                    echo "Error deleting ${PREINSTALLEDDIR}"
-                    exit 2;
-                fi
-                ;;
-            $nomatch)
-                echo "Exiting."
-                exit 2;
                 ;;
         esac
     fi
@@ -889,8 +864,65 @@ main()
         read ANY
     fi
 
-    # Setting up the installation directory
-    setInstallDir
+    . ./src/init/update.sh
+    # Is this an update?
+    if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
+        echo ""
+        ct="1"
+        while [ $ct = "1" ]; do
+            ct="0"
+            $ECHO " - ${wanttoupdate} ($yes/$no): "
+            if [ "X${USER_UPDATE}" = "X" ]; then
+                read ANY
+            else
+                ANY=$yes
+            fi
+
+            case $ANY in
+                $yes)
+                    update_only="yes"
+                    break;
+                    ;;
+                $no)
+                    echo "The installation can't proceed without removing already installed versions. Exiting."
+                    exit 0;
+                    ;;
+                  *)
+                    ct="1"
+                    ;;
+            esac
+        done
+
+
+        # Do some of the update steps.
+        if [ "X${update_only}" = "Xyes" ]; then
+            . ./src/init/update.sh
+
+            if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
+                # Disabling update
+                echo ""
+                echo "${unabletoupdate}"
+                sleep 5;
+                update_only=""
+            else
+                # Get update
+                USER_DIR="$PREINSTALLEDDIR"
+                USER_INSTALL_TYPE=`getPreinstalledType`
+                USER_OLD_VERSION=`getPreinstalledVersion`
+                USER_OLD_NAME=`getPreinstalledName`
+                USER_DELETE_DIR="$nomatch"
+            fi
+
+            ct="1"
+
+            # We dont need to update the rules on agent installs
+            if [ "X${USER_INSTALL_TYPE}" = "Xagent" ]; then
+                ct="0"
+            fi
+
+        fi
+        echo ""
+    fi
 
     # Setting up the installation type
     hybrid="hybrid"
@@ -951,71 +983,14 @@ main()
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
-    . ./src/init/update.sh
-    # Is this an update?
-    if [ "`getPreinstalledDir`" = "${TRUE}" -a "x${USER_CLEANINSTALL}" = "x" ]; then
-        echo ""
-        ct="1"
-        while [ $ct = "1" ]; do
-            ct="0"
-            $ECHO " - ${wanttoupdate} ($yes/$no): "
-            if [ "X${USER_UPDATE}" = "X" ]; then
-                read ANY
-            else
-                ANY=$yes
-            fi
-
-            case $ANY in
-                $yes)
-                    update_only="yes"
-                    INSTALLDIR="$PREINSTALLEDDIR"
-                    break;
-                    ;;
-                $no)
-                    break;
-                    ;;
-                  *)
-                    ct="1"
-                    ;;
-            esac
-        done
-
-
-        # Do some of the update steps.
-        if [ "X${update_only}" = "Xyes" ]; then
-            . ./src/init/update.sh
-
-            if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
-                # Disabling update
-                echo ""
-                echo "${unabletoupdate}"
-                sleep 5;
-                update_only=""
-            else
-                # Get update
-                USER_DIR="$PREINSTALLEDDIR"
-                USER_INSTALL_TYPE=`getPreinstalledType`
-                USER_OLD_VERSION=`getPreinstalledVersion`
-                USER_OLD_NAME=`getPreinstalledName`
-                USER_DELETE_DIR="$nomatch"
-            fi
-
-            ct="1"
-
-            # We dont need to update the rules on agent installs
-            if [ "X${USER_INSTALL_TYPE}" = "Xagent" ]; then
-                ct="0"
-            fi
-
-        fi
-        echo ""
-    fi
+    # Setting up the installation directory
+    setInstallDir
 
     # Setting up the environment
     setEnv
 
     # Ask to remove the current installations if exist
-    askForDetele
+    askForDelete
 
     # Configuring the system (based on the installation type)
     if [ "X${update_only}" = "X" ]; then

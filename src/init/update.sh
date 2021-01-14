@@ -26,54 +26,19 @@ doUpdatecleanup()
 }
 
 ##########
-# Checks if Wazuh is installed in the default directory, the one
-# specified by the user, or the one in the services files (if exists).
+# Checks if Wazuh is installed by taking the installdir from the services
+# files (if exists) and taking into account the installation type.
 #
-# getPreinstalledDir()
+# getPreinstalledDirByType()
 ##########
-getPreinstalledDir()
+getPreinstalledDirByType()
 {
-    # Checking ossec-init.conf for old wazuh versions
-    if [ -f "${OSSEC_INIT}" ]; then
-        . ${OSSEC_INIT}
-        if [ "X$DIRECTORY" = "X" ]; then
-            echo "# ($FUNCNAME) ERROR: The variable DIRECTORY wasn't set in the old Wazuh installation." 1>&2
-            echo "${FALSE}"
-            return 1;
-        fi
-        if [ -d "$DIRECTORY" ]; then
-            PREINSTALLEDDIR="$DIRECTORY"
-            echo "${TRUE}"
-            return 0;
-        fi
-    fi
-
-    # Checking if Wazuh is installed in the default directory
-    if [ -d "$DEFAULT_DIR" ]; then
-        PREINSTALLEDDIR="$DEFAULT_DIR"
-        echo "${TRUE}"
-        return 0;
-    fi
-
-    # Checking if Wazuh is installed in the directory set by the user
-    if [ -d "$INSTALLDIR" ]; then
-        PREINSTALLEDDIR="$INSTALLDIR"
-        echo "${TRUE}"
-        return 0;
-    fi
-
-    # Checking if the Wazuh services files exists
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        service="wazuh-manager"
-    else
-        service="wazuh-$INSTYPE"
-    fi
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-        if [ "X$INSTYPE" = "Xserver" ] || [ "X$INSTYPE" = "Xlocal" ]; then
-            type=manager
+        if [ "X$service" = "Xwazuh-manager" ] || [ "X$service" = "Xwazuh-local" ]; then #manager, hibrid or local
+            type="manager"
         else
-            type=agent
+            type="agent"
         fi
         # RHEL 8 services should be installed in /usr/lib/systemd/system/
         if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" = "8" ] || [ "${DIST_NAME}" = "centos" -a "${DIST_VER}" = "8" ]; then
@@ -85,14 +50,11 @@ getPreinstalledDir()
         if [ -f "$SERVICE_UNIT_PATH" ]; then
             PREINSTALLEDDIR=`sed -n 's/^ExecStart=\/usr\/bin\/env \(.*\)\/bin\/wazuh-control start$/\1/p' $SERVICE_UNIT_PATH`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     fi
@@ -102,14 +64,11 @@ getPreinstalledDir()
             if [ -f /etc/rc.d/init.d/${service} ]; then
                 PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
                 if [ -d "$PREINSTALLEDDIR" ]; then
-                    echo "${TRUE}"
                     return 0;
                 else
-                    echo "${FALSE}"
                     return 1;
                 fi
             else
-                echo "${FALSE}"
                 return 1;
             fi
         fi
@@ -119,14 +78,11 @@ getPreinstalledDir()
         if [ -f /etc/init.d/${service} ]; then
             PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     fi
@@ -135,14 +91,11 @@ getPreinstalledDir()
         if [ -f /etc/init.d/${service} ]; then
             PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     fi
@@ -151,14 +104,11 @@ getPreinstalledDir()
         if [ -f /etc/rc.d/rc.${service} ]; then
             PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/rc.${service}`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     fi
@@ -167,14 +117,11 @@ getPreinstalledDir()
         if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
             PREINSTALLEDDIR=`sed -n 's/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     fi
@@ -183,14 +130,11 @@ getPreinstalledDir()
         if [ -f /etc/init.d/${service} ]; then
             PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     fi
@@ -199,14 +143,11 @@ getPreinstalledDir()
         if [ -f /sbin/init.d/${service} ]; then
             PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /sbin/init.d/${service}`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     fi
@@ -215,14 +156,11 @@ getPreinstalledDir()
         if [ -f /etc/rc.d/init.d/${service} ]; then
             PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     fi
@@ -233,14 +171,11 @@ getPreinstalledDir()
         if [ $? = 0 ]; then
             PREINSTALLEDDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.local`
             if [ -d "$PREINSTALLEDDIR" ]; then
-                echo "${TRUE}"
                 return 0;
             else
-                echo "${FALSE}"
                 return 1;
             fi
         else
-            echo "${FALSE}"
             return 1;
         fi
     elif [ "X${NUNAME}" = "XLinux" ]; then
@@ -250,14 +185,11 @@ getPreinstalledDir()
             if [ $? = 0 ]; then
                 PREINSTALLEDDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.d/rc.local`
                 if [ -d "$PREINSTALLEDDIR" ]; then
-                    echo "${TRUE}"
                     return 0;
                 else
-                    echo "${FALSE}"
                     return 1;
                 fi
             else
-                echo "${FALSE}"
                 return 1;
             fi
         # Checking for Linux (SysV)
@@ -265,14 +197,11 @@ getPreinstalledDir()
             if [ -f /etc/rc.d/init.d/${service} ]; then
                 PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
                 if [ -d "$PREINSTALLEDDIR" ]; then
-                    echo "${TRUE}"
                     return 0;
                 else
-                    echo "${FALSE}"
                     return 1;
                 fi
             else
-                echo "${FALSE}"
                 return 1;
             fi
         # Checking for Debian (Ubuntu or derivative)
@@ -280,20 +209,57 @@ getPreinstalledDir()
             if [ -f /etc/init.d/${service} ]; then
                 PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
                 if [ -d "$PREINSTALLEDDIR" ]; then
-                    echo "${TRUE}"
                     return 0;
                 else
-                    echo "${FALSE}"
                     return 1;
                 fi
             else
-                echo "${FALSE}"
                 return 1;
             fi
         fi
     fi
 
-    echo "${FALSE}"
+    return 1;
+}
+
+##########
+# Checks if Wazuh is installed by trying with each installation type. If it finds
+# an installation, it sets the PREINSTALLEDDIR variable.
+#
+# getPreinstalledDir()
+##########
+getPreinstalledDir()
+{
+    # Checking ossec-init.conf for old wazuh versions
+    if [ -f "${OSSEC_INIT}" ]; then
+        . ${OSSEC_INIT}
+        if [ "X$DIRECTORY" = "X" ]; then
+            return 1;
+        fi
+        if [ -d "$DIRECTORY" ]; then
+            PREINSTALLEDDIR="$DIRECTORY"
+            return 0;
+        fi
+    else
+        # Getting preinstalled dir for Wazuh manager and Hibrid installations
+        service="wazuh-manager"
+        if getPreinstalledDirByType; then
+            return 0;
+        fi
+
+        # Getting preinstalled dir for Wazuh agent installations
+        service="wazuh-agent"
+        if getPreinstalledDirByType; then
+            return 0;
+        fi
+
+        # Getting preinstalled dir for Wazuh agent installations
+        service="wazuh-local"
+        if getPreinstalledDirByType; then
+            return 0;
+        fi
+    fi
+
     return 1;
 }
 
