@@ -93,34 +93,10 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
     return logger_file
 
 
-def get_wazuh_paths() -> tuple:
-    """Get Wazuh paths from ossec-init file."""
-    # regular expressions for getting path and version
-    re_path = re.compile(r'^(DIRECTORY){1}={1}\"{1}([\w\/.]+)\"{1}$')
-    re_version = re.compile(r'^(VERSION){1}={1}\"{1}([\w\/.]+)\"{1}$')
-    # initialize variables
-    wazuh_path = None
-    wazuh_version = None
-    try:
-        with open('/etc/ossec-init.conf') as f:
-            lines = f.readlines()
-            for line in lines:
-                path = re.search(re_path, line)
-                version = re.search(re_version, line)
-                if path:
-                    wazuh_path = path.group(2)
-                    continue
-                if version:
-                    wazuh_version = version.group(2)
-    except FileNotFoundError as e:
-        logger.critical('Wazuh installation not found')
-        raise e
+def get_wazuh_path() -> str:
+    """Get Wazuh installation path, obtained relative to the path of this file"""
+    return os.path.abspath(os.path.join(__file__, "../../.."))
 
-    if not (wazuh_path and wazuh_version):
-        error_message = "Error reading '/etc/ossec-init.conf' file. " \
-            "Wodle cannot start"
-        raise Exception(error_message)
-
-    wazuh_queue = os.path.join(wazuh_path, 'queue', 'ossec', 'queue')
-
-    return wazuh_path, wazuh_version, wazuh_queue
+def get_wazuh_queue() -> str:
+    """Get Wazuh queue"""
+    return os.path.join(get_wazuh_path(), 'queue', 'ossec', 'queue')
