@@ -8,13 +8,17 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <cstdio>
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
+
+constexpr auto SYSCOLLECTOR_DB_PATH{"TEMP.db"};
 
 void SyscollectorImpTest::SetUp() {};
 
 void SyscollectorImpTest::TearDown()
 {
+    std::remove(SYSCOLLECTOR_DB_PATH);
 };
 
 using ::testing::_;
@@ -52,7 +56,14 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 5);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5);
         }
     };
 
@@ -77,7 +88,14 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 100);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          100);
         }
     };
 
@@ -102,7 +120,14 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, false);
         }
     };
 
@@ -127,7 +152,14 @@ TEST_F(SyscollectorImpTest, noHardware)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false);
         }
     };
 
@@ -152,7 +184,14 @@ TEST_F(SyscollectorImpTest, noOs)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, false);
         }
     };
 
@@ -177,7 +216,14 @@ TEST_F(SyscollectorImpTest, noNetwork)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, false);
         }
     };
 
@@ -202,7 +248,14 @@ TEST_F(SyscollectorImpTest, noPackages)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, true, false);
         }
     };
 
@@ -227,7 +280,14 @@ TEST_F(SyscollectorImpTest, noPorts)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, true, true, false);
         }
     };
 
@@ -252,7 +312,14 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, true, true, true, false);
         }
     };
 
@@ -277,7 +344,14 @@ TEST_F(SyscollectorImpTest, noProcesses)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, true, true, true, true, false);
         }
     };
 
@@ -303,7 +377,14 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 3600, true, true, true, true, true, true, true, true, false);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, true, true, true, true, true, false);
         }
     };
 
@@ -332,7 +413,14 @@ TEST_F(SyscollectorImpTest, scanOnInverval)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 1);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1);
         }
     };
 
@@ -363,7 +451,14 @@ TEST_F(SyscollectorImpTest, pushMessageOk)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 1);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -393,7 +488,14 @@ TEST_F(SyscollectorImpTest, pushMessageInvalid)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 1);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -423,7 +525,14 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
     {
         [&spInfoWrapper]()
         {
-            Syscollector::instance().init(spInfoWrapper, reportFunction, reportFunction, reportFunction, 1);
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          reportFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          1);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
