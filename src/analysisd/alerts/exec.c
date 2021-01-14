@@ -19,6 +19,8 @@
 #include "eventinfo.h"
 #include "wazuh_db/wdb.h"
 
+static const char* get_ip(const Eventinfo *lf);
+
 void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar)
 {
     char exec_msg[OS_SIZE_8192 + 1];
@@ -58,10 +60,10 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
     /* Active Response on the server
      * The response must be here if the ar->location is set to AS
      * or the ar->location is set to local (REMOTE_AGENT) and the
-     * event location is from here.
+     * event is from here.
      */
     if ((ar->location & AS_ONLY) ||
-            ((ar->location & REMOTE_AGENT) && (lf->location[0] != '(')) ) {
+            ((ar->location & REMOTE_AGENT) && !strcmp(lf->agent_id, "000"))) {
         if (!(Config.ar & LOCAL_AR)) {
             goto cleanup;
         }
@@ -164,26 +166,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 agt_id = atoi(ar->agent_id);
 
             } else if (ar->location & REMOTE_AGENT) {
-                char *location = lf->location;
-
-                char *hostname = extract_word_between_two_words(location, "(", ")");
-                if(!hostname) {
-                    merror("Unable to extract hostname from the string between the two words");
-                    goto cleanup;
-                }
-
-                char *ip_remote_agent = extract_word_between_two_words(location, " ", "-");
-                if(!ip_remote_agent) {
-                    merror("Unable to extract ip from the string between the two words");
-                    os_free(hostname);
-                    goto cleanup;
-                }
-
-                agt_id = wdb_find_agent(hostname, ip_remote_agent, &sock);
-
-                os_free(hostname);
-                os_free(ip_remote_agent);
-                wdbc_close(&sock);
+                agt_id = atoi(lf->agent_id);
             }
 
             if(agt_id == OS_INVALID) {
@@ -249,43 +232,12 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 }
 
 /**
- * @brief extract word from a string between two words
- *
- * @param[in] sentence The string where the words are found.
- * @param[in] word1 Word on the left side of the word to extract.
- * @param[in] word2 Word on the right side of the word to extract.
- * @return The word to extract or NULL on failure, remember to free memory after return
- */
-char *extract_word_between_two_words(const char* sentence, const char* word1, const char* word2)
-{
-    const char *p1 = strstr(sentence, word1);
-    if(!p1) {
-        return NULL;
-    }
-    p1 = p1 + strlen(word1);
-
-    const char *p2 = strstr(p1, word2);
-    if(!p2) {
-        return NULL;
-    }
-
-    size_t len = p2-p1;
-
-    char *word = NULL;
-    os_malloc(sizeof(char)*(len+1), word);
-    strncpy(word, p1, len);
-    word[len] = '\0';
-
-    return word;
-}
-
-/**
  * @brief get the IP.
  *
  * @param[in] lf Event information.
  * @return const char* on success or NULL on failure.
  */
-const char* get_ip(const Eventinfo *lf)
+static const char* get_ip(const Eventinfo *lf)
 {
     const char *ip;
     ip = "-";
