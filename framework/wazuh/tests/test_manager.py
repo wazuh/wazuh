@@ -266,32 +266,6 @@ def test_get_api_config():
     assert result['data']['affected_items'][0]['node_name'] == 'manager', 'Not expected node name'
 
 
-@patch('wazuh.core.manager.yaml.safe_load')
-@patch('wazuh.core.manager.yaml.dump')
-@patch('wazuh.core.manager.open')
-def test_update_api_config(mock_open, mock_yaml, mock_safe_load):
-    """Checks that update_api_config method is updating current api_conf dict and returning expected result."""
-    old_config = {'experimental_features': True}
-    new_config = {'experimental_features': False}
-
-    with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
-        result = update_api_config(updated_config=new_config)
-
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
-        assert result.render()['data']['total_failed_items'] == 0, 'Total_failed_items should be 0.'
-        assert old_config != new_config, 'Old configuration should be equal to new configuration.'
-        mock_yaml.assert_called_once_with(new_config, ANY)
-
-
-def test_update_api_config_ko():
-    """Checks that update_api_config method is returning expected fail."""
-    with patch('wazuh.core.manager.configuration.api_conf'):
-        result = update_api_config()
-
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
-        assert result.render()['data']['total_failed_items'] == 1, 'Total_failed_items should be 1.'
-
-
 @patch('socket.socket')
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('wazuh.core.cluster.utils.open')

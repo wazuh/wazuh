@@ -162,7 +162,7 @@ def healthcheck_procedure(module: str):
         os.popen(f'cp -rf {agent_folder} {os.path.join(tmp_content, "agent")}')
 
 
-def change_rbac_mode(rbac_mode: str):
+def change_rbac_mode(rbac_mode: str = 'white'):
     """Modify security.yaml in base folder to change RBAC mode for the current test.
 
     Parameters

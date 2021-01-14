@@ -82,7 +82,32 @@ All notable changes to this project will be documented in this file.
   - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
 - **Framework:**
   - Fixed a `cluster_control` bug that caused an error message when running `wazuh-clusterd` in foreground. ([#6724](https://github.com/wazuh/wazuh/pull/6724))
-  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7062](https://github.com/wazuh/wazuh/pull/7062))  
+  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7062](https://github.com/wazuh/wazuh/pull/7062))
+
+
+## [v4.0.4]
+
+### Added
+
+- **API:**
+  - Added missing secure headers for API responses. ([#7138](https://github.com/wazuh/wazuh/issues/7138))
+  - Added new config option to disable uploading configurations containing remote commands. ([#7134](https://github.com/wazuh/wazuh/issues/7134))
+  - Added new config option to choose the SSL ciphers. Default value `TLSv1.2`. ([#7164](https://github.com/wazuh/wazuh/issues/7164))
+
+### Changed
+
+- **API:**
+  - Deprecated endpoints to restore and update API configuration file. ([#7132](https://github.com/wazuh/wazuh/issues/7132))
+  - Default expiration time of the JWT token set to 15 minutes. ([#7167](https://github.com/wazuh/wazuh/pull/7167))
+
+### Fixed
+
+- **API:**
+  - Fixed spec regexes for paths used in /manager/files and /cluster/{node_id}/files endpoints. ([#7131](https://github.com/wazuh/wazuh/issues/7131))
+- **Framework:**
+  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7135](https://github.com/wazuh/wazuh/issues/7135))
+- **Core:**
+  - Fixed the purge of the Redhat vulnerabilities database before updating it. ([#7133](https://github.com/wazuh/wazuh/pull/7133))
 
 ## [v4.0.3] - 2020-11-30
 

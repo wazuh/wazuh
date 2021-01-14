@@ -448,6 +448,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
 
         if (retval != ERROR_SUCCESS) {
             mwarn(FIM_EXTRACT_PERM_FAIL, path, retval);
+            os_strdup("", key->perm);
         } else {
             key->perm = decode_win_permissions(permissions);
         }

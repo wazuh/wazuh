@@ -295,7 +295,6 @@ stages:
     response:
       <<: *permission_allowed
 
-
 ---
 test_name: GET /manager/api/config
 
@@ -306,40 +305,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
       method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /manager/api/config
-
-stages:
-
-  - name: Modify API configuration (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      json:
-        cache:
-          enabled: false
-          time: 1
-    response:
-      <<: *permission_denied
-
----
-test_name: DELETE /manager/api/config
-
-stages:
-
-  - name: Restore API config (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
-      method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:

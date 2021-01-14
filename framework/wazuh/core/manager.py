@@ -241,7 +241,7 @@ def validate_cdb_list(path):
     :return: True if CDB list is OK, False otherwise
     """
     full_path = join(common.ossec_path, path)
-    regex_cdb = re.compile(r'^[^:]+:[^:]*$')
+    regex_cdb = re.compile(r'^[^:\s]+:[^:]*$')
     try:
         with open(full_path) as f:
             for line in f:
@@ -372,27 +372,3 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
 def get_api_conf():
     """Return current API configuration."""
     return copy.deepcopy(configuration.api_conf)
-
-
-def update_api_conf(new_config):
-    """Update the API.yaml file.
-
-    Parameters
-    ----------
-    new_config : dict
-        Dictionary with the new configuration.
-    """
-    if new_config:
-        'remote_commands' in new_config.keys() and new_config.pop('remote_commands')
-        try:
-            with open(common.api_config_path, 'r') as f:
-                # Avoid changing the "remote_commands" option through the Framework
-                previous_config = yaml.safe_load(f)
-                if previous_config and 'remote_commands' in previous_config.keys():
-                    new_config['remote_commands'] = previous_config['remote_commands']
-            with open(common.api_config_path, 'w+') as f:
-                yaml.dump(new_config, f)
-        except IOError:
-            raise WazuhInternalError(1005)
-    else:
-        raise WazuhError(1105)

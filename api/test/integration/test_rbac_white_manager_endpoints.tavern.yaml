@@ -277,40 +277,6 @@ stages:
       status_code: 200
 
 ---
-test_name: PUT /manager/api/config
-
-stages:
-
-  - name: Modify API configuration (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      json:
-        cache:
-          enabled: false
-          time: 1
-    response:
-      status_code: 200
-
----
-test_name: DELETE /manager/api/config
-
-stages:
-
-  - name: Restore API config (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/api/config"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-
----
 test_name: PUT /manager/restart
 
 stages:
