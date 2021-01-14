@@ -589,9 +589,7 @@ setEnv()
 {
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
 
-    echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
-
 
     if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
@@ -623,6 +621,31 @@ askForDetele()
                     echo "Error deleting ${INSTALLDIR}"
                     exit 2;
                 fi
+                ;;
+            $nomatch)
+                if [ "X$PREINSTALLEDDIR" != "X" ]; then
+                    echo "WARNING! The installation can't proceed without removing already installed versions. Exiting."
+                    exit 2;
+                fi
+                ;;
+        esac
+    elif [ -d "$PREINSTALLEDDIR" ]; then
+        $ECHO "    - WARNING! The installation can't proceed without removing already installed versions. Should I delete it? ($yes/$no) [$no]: "
+        read ANSWER
+
+        case $ANSWER in
+            $yesmatch)
+                echo "      Stopping Wazuh..."
+                UpdateStopOSSEC
+                rm -rf $PREINSTALLEDDIR
+                if [ ! $? = 0 ]; then
+                    echo "Error deleting ${PREINSTALLEDDIR}"
+                    exit 2;
+                fi
+                ;;
+            $nomatch)
+                echo "Exiting."
+                exit 2;
                 ;;
         esac
     fi
@@ -930,7 +953,7 @@ main()
 
     . ./src/init/update.sh
     # Is this an update?
-    if [ "`isUpdate`" = "${TRUE}" -a "x${USER_CLEANINSTALL}" = "x" ]; then
+    if [ "`getPreinstalledDir`" = "${TRUE}" -a "x${USER_CLEANINSTALL}" = "x" ]; then
         echo ""
         ct="1"
         while [ $ct = "1" ]; do
@@ -945,7 +968,7 @@ main()
             case $ANY in
                 $yes)
                     update_only="yes"
-                    INSTALLDIR="$OLDINSTALLDIR"
+                    INSTALLDIR="$PREINSTALLEDDIR"
                     break;
                     ;;
                 $no)
@@ -970,11 +993,11 @@ main()
                 update_only=""
             else
                 # Get update
-                USER_INSTALL_TYPE=`getPreinstalled`
-                USER_DIR=`getPreinstalledDir`
-                USER_DELETE_DIR="$nomatch"
+                USER_DIR="$PREINSTALLEDDIR"
+                USER_INSTALL_TYPE=`getPreinstalledType`
                 USER_OLD_VERSION=`getPreinstalledVersion`
                 USER_OLD_NAME=`getPreinstalledName`
+                USER_DELETE_DIR="$nomatch"
             fi
 
             ct="1"
@@ -988,10 +1011,11 @@ main()
         echo ""
     fi
 
-
     # Setting up the environment
     setEnv
 
+    # Ask to remove the current installations if exist
+    askForDetele
 
     # Configuring the system (based on the installation type)
     if [ "X${update_only}" = "X" ]; then

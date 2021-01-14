@@ -7,13 +7,31 @@
 FALSE="false"
 TRUE="true"
 
+doUpdatecleanup()
+{
+    if [ "X$INSTALLDIR" = "X" ]; then
+        echo "# ($FUNCNAME) ERROR: The variable INSTALLDIR wasn't set." 1>&2
+        echo "${FALSE}"
+        return 1;
+    fi
+
+    # Checking if the directory is valid.
+    _dir_pattern_update="^/[-a-zA-Z0-9/\.-]{3,128}$"
+    echo $INSTALLDIR | grep -E "$_dir_pattern_update" > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
+        echo "# ($FUNCNAME) ERROR: directory name ($INSTALLDIR) doesn't match the pattern $_dir_pattern_update" 1>&2
+        echo "${FALSE}"
+        return 1;
+    fi
+}
+
 ##########
-# Checks whether this is an update by verifying if Wazuh is installed in the default
-# directory, the one specified by the user, or the services files exists.
+# Checks if Wazuh is installed in the default directory, the one
+# specified by the user, or the one in the services files (if exists).
 #
-# isUpdate()
+# getPreinstalledDir()
 ##########
-isUpdate()
+getPreinstalledDir()
 {
     # Checking ossec-init.conf for old wazuh versions
     if [ -f "${OSSEC_INIT}" ]; then
@@ -24,7 +42,7 @@ isUpdate()
             return 1;
         fi
         if [ -d "$DIRECTORY" ]; then
-            OLDINSTALLDIR="$DIRECTORY"
+            PREINSTALLEDDIR="$DIRECTORY"
             echo "${TRUE}"
             return 0;
         fi
@@ -32,14 +50,14 @@ isUpdate()
 
     # Checking if Wazuh is installed in the default directory
     if [ -d "$DEFAULT_DIR" ]; then
-        OLDINSTALLDIR="$DEFAULT_DIR"
+        PREINSTALLEDDIR="$DEFAULT_DIR"
         echo "${TRUE}"
         return 0;
     fi
 
     # Checking if Wazuh is installed in the directory set by the user
     if [ -d "$INSTALLDIR" ]; then
-        OLDINSTALLDIR="$INSTALLDIR"
+        PREINSTALLEDDIR="$INSTALLDIR"
         echo "${TRUE}"
         return 0;
     fi
@@ -65,8 +83,8 @@ isUpdate()
         fi
 
         if [ -f "$SERVICE_UNIT_PATH" ]; then
-            OLDINSTALLDIR=`sed -n 's/^ExecStart=\/usr\/bin\/env \(.*\)\/bin\/wazuh-control start$/\1/p' $SERVICE_UNIT_PATH`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^ExecStart=\/usr\/bin\/env \(.*\)\/bin\/wazuh-control start$/\1/p' $SERVICE_UNIT_PATH`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -82,8 +100,8 @@ isUpdate()
     if [ -r "/etc/redhat-release" ]; then
         if [ -d /etc/rc.d/init.d ]; then
             if [ -f /etc/rc.d/init.d/${service} ]; then
-                OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
-                if [ -d "$OLDINSTALLDIR" ]; then
+                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
+                if [ -d "$PREINSTALLEDDIR" ]; then
                     echo "${TRUE}"
                     return 0;
                 else
@@ -99,8 +117,8 @@ isUpdate()
     # Checking for Gentoo
     if [ -r "/etc/gentoo-release" ]; then
         if [ -f /etc/init.d/${service} ]; then
-            OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -115,8 +133,8 @@ isUpdate()
     # Checking for Suse
     if [ -r "/etc/SuSE-release" ]; then
         if [ -f /etc/init.d/${service} ]; then
-            OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -131,8 +149,8 @@ isUpdate()
     # Checking for Slackware
     if [ -r "/etc/slackware-version" ]; then
         if [ -f /etc/rc.d/rc.${service} ]; then
-            OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/rc.${service}`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/rc.${service}`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -147,8 +165,8 @@ isUpdate()
     # Checking for Darwin
     if [ "X${NUNAME}" = "XDarwin" ]; then
         if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
-            OLDINSTALLDIR=`sed -n 's/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -163,8 +181,8 @@ isUpdate()
     # Checking for SunOS
     if [ "X${UN}" = "XSunOS" ]; then
         if [ -f /etc/init.d/${service} ]; then
-            OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -179,8 +197,8 @@ isUpdate()
     # Checking for HP-UX
     if [ "X${UN}" = "XHP-UX" ]; then
         if [ -f /sbin/init.d/${service} ]; then
-            OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /sbin/init.d/${service}`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /sbin/init.d/${service}`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -195,8 +213,8 @@ isUpdate()
     # Checking for AIX
     if [ "X${UN}" = "XAIX" ]; then
         if [ -f /etc/rc.d/init.d/${service} ]; then
-            OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -213,8 +231,8 @@ isUpdate()
         # Checking for the presence of wazuh-control on rc.local
         grep wazuh-control /etc/rc.local > /dev/null 2>&1
         if [ $? = 0 ]; then
-            OLDINSTALLDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.local`
-            if [ -d "$OLDINSTALLDIR" ]; then
+            PREINSTALLEDDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.local`
+            if [ -d "$PREINSTALLEDDIR" ]; then
                 echo "${TRUE}"
                 return 0;
             else
@@ -230,8 +248,8 @@ isUpdate()
         if [ -e "/etc/rc.d/rc.local" ]; then
             grep wazuh-control /etc/rc.d/rc.local > /dev/null 2>&1
             if [ $? = 0 ]; then
-                OLDINSTALLDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.d/rc.local`
-                if [ -d "$OLDINSTALLDIR" ]; then
+                PREINSTALLEDDIR=`sed -n 's/^\(.*\)\/bin\/wazuh-control start$/\1/p' /etc/rc.d/rc.local`
+                if [ -d "$PREINSTALLEDDIR" ]; then
                     echo "${TRUE}"
                     return 0;
                 else
@@ -245,8 +263,8 @@ isUpdate()
         # Checking for Linux (SysV)
         elif [ -d "/etc/rc.d/init.d" ]; then
             if [ -f /etc/rc.d/init.d/${service} ]; then
-                OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
-                if [ -d "$OLDINSTALLDIR" ]; then
+                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
+                if [ -d "$PREINSTALLEDDIR" ]; then
                     echo "${TRUE}"
                     return 0;
                 else
@@ -260,8 +278,8 @@ isUpdate()
         # Checking for Debian (Ubuntu or derivative)
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
             if [ -f /etc/init.d/${service} ]; then
-            OLDINSTALLDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
-                if [ -d "$OLDINSTALLDIR" ]; then
+                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
+                if [ -d "$PREINSTALLEDDIR" ]; then
                     echo "${TRUE}"
                     return 0;
                 else
@@ -279,119 +297,123 @@ isUpdate()
     return 1;
 }
 
-doUpdatecleanup()
+getPreinstalledType()
 {
-    if [ "X$INSTALLDIR" = "X" ]; then
-        echo "# ($FUNCNAME) ERROR: The variable INSTALLDIR wasn't set." 1>&2
-        echo "${FALSE}"
-        return 1;
+    # Checking ossec-init.conf for old wazuh versions
+    if [ -f "${OSSEC_INIT}" ]; then
+        . ${OSSEC_INIT}
+    else
+        if [ "X$PREINSTALLEDDIR" = "X" ]; then
+            getPreinstalledDir
+        fi
+
+        TYPE=`$PREINSTALLEDDIR/bin/wazuh-control -t`
     fi
 
-    # Checking if the directory is valid.
-    _dir_pattern_update="^/[-a-zA-Z0-9/\.-]{3,128}$"
-    echo $INSTALLDIR | grep -E "$_dir_pattern_update" > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        echo "# ($FUNCNAME) ERROR: directory name ($INSTALLDIR) doesn't match the pattern $_dir_pattern_update" 1>&2
-        echo "${FALSE}"
-        return 1;
-    fi
-}
-
-getPreinstalled()
-{
-    . ${OSSEC_INIT}
-
-	echo $TYPE
-    return 0;
-}
-
-getPreinstalledDir()
-{
-    . ${OSSEC_INIT}
-    echo "$DIRECTORY"
+    echo $TYPE
     return 0;
 }
 
 getPreinstalledVersion()
 {
-    . ${OSSEC_INIT}
+    # Checking ossec-init.conf for old wazuh versions
+    if [ -f "${OSSEC_INIT}" ]; then
+        . ${OSSEC_INIT}
+    else
+        if [ "X$PREINSTALLEDDIR" = "X" ]; then
+            getPreinstalledDir
+        fi
+
+        VERSION=`$PREINSTALLEDDIR/bin/wazuh-control -v`
+    fi
+
     echo $VERSION
 }
 
 getPreinstalledName()
 {
     NAME=""
-    . ${OSSEC_INIT}
+    # Checking ossec-init.conf for old wazuh versions. New versions
+    # do not provide this information at all.
+    if [ -f "${OSSEC_INIT}" ]; then
+        . ${OSSEC_INIT}
+    fi
     echo $NAME
 }
 
 UpdateStartOSSEC()
 {
-   . ${OSSEC_INIT}
+    if [ "X$TYPE" != "X" ]; then
+        getPreinstalledType
+    fi
 
-   if [ "X$TYPE" != "Xagent" ]; then
-       TYPE="manager"
-   fi
+    if [ "X$TYPE" != "Xagent" ]; then
+        TYPE="manager"
+    fi
 
-   if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
-       systemctl start wazuh-$TYPE
-   elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
-       service wazuh-$TYPE start
-   else
-       $DIRECTORY/bin/wazuh-control start
-   fi
+    if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
+        systemctl start wazuh-$TYPE
+    elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
+        service wazuh-$TYPE start
+    else
+        if [ "X$PREINSTALLEDDIR" != "X" ]; then
+            getPreinstalledDir
+        fi
+        $PREINSTALLEDDIR/bin/wazuh-control start
+    fi
 }
 
 UpdateStopOSSEC()
 {
-    if [ -f ${OSSEC_INIT} ]
-    then
-        . ${OSSEC_INIT}
+    MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
 
-        MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
+    if [ "X$TYPE" != "X" ]; then
+        getPreinstalledType
+    fi
 
-        if [ "X$TYPE" != "Xagent" ]; then
-            TYPE="manager"
-            if [ $MAJOR_VERSION -ge 4 ]; then
-              EMBEDDED_API_INSTALLED=1
-            fi
+    if [ "X$TYPE" != "Xagent" ]; then
+        TYPE="manager"
+        if [ $MAJOR_VERSION -ge 4 ]; then
+            EMBEDDED_API_INSTALLED=1
         fi
+    fi
 
-        if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
-            systemctl stop wazuh-$TYPE
-        elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
-            service wazuh-$TYPE stop
-        fi
-    else
-        echo "      WARN: No such file ${OSSEC_INIT}. Trying to stop Wazuh..."
-        DIRECTORY=${INSTALLDIR}
+    if [ `stat /proc/1/exe 2> /dev/null | grep "systemd" | wc -l` -ne 0 ]; then
+        systemctl stop wazuh-$TYPE
+    elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
+        service wazuh-$TYPE stop
     fi
 
     # Make sure Wazuh is stopped
-    if [ -f "$DIRECTORY/bin/ossec-control" ]; then
-        $DIRECTORY/bin/ossec-control stop > /dev/null 2>&1
-    else
-        $DIRECTORY/bin/wazuh-control stop > /dev/null 2>&1
+    if [ "X$PREINSTALLEDDIR" = "X" ]; then
+        getPreinstalledDir
     fi
+
+    if [ -f "$PREINSTALLEDDIR/bin/ossec-control" ]; then
+        $PREINSTALLEDDIR/bin/ossec-control stop > /dev/null 2>&1
+    else
+        $PREINSTALLEDDIR/bin/wazuh-control stop > /dev/null 2>&1
+    fi
+
     sleep 2
 
    # We also need to remove all syscheck queue file (format changed)
     if [ "X$VERSION" = "X0.9-3" ]; then
-        rm -f $DIRECTORY/queue/syscheck/* > /dev/null 2>&1
-        rm -f $DIRECTORY/queue/agent-info/* > /dev/null 2>&1
+        rm -f $PREINSTALLEDDIR/queue/syscheck/* > /dev/null 2>&1
+        rm -f $PREINSTALLEDDIR/queue/agent-info/* > /dev/null 2>&1
     fi
-    rm -rf $DIRECTORY/framework/* > /dev/null 2>&1
-    rm $DIRECTORY/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
-    rm $DIRECTORY/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
+    rm -rf $PREINSTALLEDDIR/framework/* > /dev/null 2>&1
+    rm $PREINSTALLEDDIR/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
+    rm $PREINSTALLEDDIR/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
 
     # Deleting plain-text agent information if exists (it was migrated to Wazuh DB in v4.1)
-    if [ -d "$DIRECTORY/queue/agent-info" ]; then
-        rm -rf $DIRECTORY/queue/agent-info > /dev/null 2>&1
+    if [ -d "$PREINSTALLEDDIR/queue/agent-info" ]; then
+        rm -rf $PREINSTALLEDDIR/queue/agent-info > /dev/null 2>&1
     fi
 
     # Deleting plain-text rootcheck information if exists (it was migrated to Wazuh DB in v4.1)
-    if [ -d "$DIRECTORY/queue/rootcheck" ]; then
-        rm -rf $DIRECTORY/queue/rootcheck > /dev/null 2>&1
+    if [ -d "$PREINSTALLEDDIR/queue/rootcheck" ]; then
+        rm -rf $PREINSTALLEDDIR/queue/rootcheck > /dev/null 2>&1
     fi
 }
 
@@ -415,8 +437,12 @@ UpdateOldVersions()
         return
     fi
 
-    OSSEC_CONF_FILE="$DIRECTORY/etc/ossec.conf"
-    OSSEC_CONF_FILE_ORIG="$DIRECTORY/etc/ossec.conf.orig"
+    if [ "X$PREINSTALLEDDIR" != "X" ]; then
+        getPreinstalledDir
+    fi
+
+    OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
+    OSSEC_CONF_FILE_ORIG="$PREINSTALLEDDIR/etc/ossec.conf.orig"
 
     # ossec.conf -> ossec.conf.orig
     cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_ORIG
@@ -429,30 +455,30 @@ UpdateOldVersions()
     if [ ! "$INSTYPE" = "agent" ]; then
 
         # Delete old update ruleset
-        if [ -d "$DIRECTORY/update" ]; then
-            rm -rf "$DIRECTORY/update"
+        if [ -d "$PREINSTALLEDDIR/update" ]; then
+            rm -rf "$PREINSTALLEDDIR/update"
         fi
 
-        ETC_DECODERS="$DIRECTORY/etc/decoders"
-        ETC_RULES="$DIRECTORY/etc/rules"
+        ETC_DECODERS="$PREINSTALLEDDIR/etc/decoders"
+        ETC_RULES="$PREINSTALLEDDIR/etc/rules"
 
         # Moving local_decoder
-        if [ -f "$DIRECTORY/etc/local_decoder.xml" ]; then
-            if [ -s "$DIRECTORY/etc/local_decoder.xml" ]; then
-                mv "$DIRECTORY/etc/local_decoder.xml" $ETC_DECODERS
+        if [ -f "$PREINSTALLEDDIR/etc/local_decoder.xml" ]; then
+            if [ -s "$PREINSTALLEDDIR/etc/local_decoder.xml" ]; then
+                mv "$PREINSTALLEDDIR/etc/local_decoder.xml" $ETC_DECODERS
             else
                 # it is empty
-                rm -f "$DIRECTORY/etc/local_decoder.xml"
+                rm -f "$PREINSTALLEDDIR/etc/local_decoder.xml"
             fi
         fi
 
         # Moving local_rules
-        if [ -f "$DIRECTORY/rules/local_rules.xml" ]; then
-            mv "$DIRECTORY/rules/local_rules.xml" $ETC_RULES
+        if [ -f "$PREINSTALLEDDIR/rules/local_rules.xml" ]; then
+            mv "$PREINSTALLEDDIR/rules/local_rules.xml" $ETC_RULES
         fi
 
         # Creating backup directory
-        BACKUP_RULESET="$DIRECTORY/etc/backup_ruleset"
+        BACKUP_RULESET="$PREINSTALLEDDIR/etc/backup_ruleset"
         mkdir $BACKUP_RULESET > /dev/null 2>&1
         chmod 750 $BACKUP_RULESET > /dev/null 2>&1
         chown root:ossec $BACKUP_RULESET > /dev/null 2>&1
@@ -461,27 +487,27 @@ UpdateOldVersions()
         old_decoders="ossec_decoders wazuh_decoders"
         for old_decoder in $old_decoders
         do
-            if [ -d "$DIRECTORY/etc/$old_decoder" ]; then
-                mv "$DIRECTORY/etc/$old_decoder" $BACKUP_RULESET
+            if [ -d "$PREINSTALLEDDIR/etc/$old_decoder" ]; then
+                mv "$PREINSTALLEDDIR/etc/$old_decoder" $BACKUP_RULESET
             fi
         done
 
         # Backup decoders: Wazuh v1.0 and OSSEC
-        if [ -f "$DIRECTORY/etc/decoder.xml" ]; then
-            mv "$DIRECTORY/etc/decoder.xml" $BACKUP_RULESET
+        if [ -f "$PREINSTALLEDDIR/etc/decoder.xml" ]; then
+            mv "$PREINSTALLEDDIR/etc/decoder.xml" $BACKUP_RULESET
         fi
 
         # Backup rules: All versions
-        mv "$DIRECTORY/rules" $BACKUP_RULESET
+        mv "$PREINSTALLEDDIR/rules" $BACKUP_RULESET
 
         # New ossec.conf by default
         ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
-        ./add_localfiles.sh $DIRECTORY >> $OSSEC_CONF_FILE
+        ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
     else
         # New ossec.conf by default
         ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
         # Replace IP
         ./src/init/replace_manager_ip.sh $OSSEC_CONF_FILE_ORIG $OSSEC_CONF_FILE
-        ./add_localfiles.sh $DIRECTORY >> $OSSEC_CONF_FILE
+        ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE
     fi
 }
