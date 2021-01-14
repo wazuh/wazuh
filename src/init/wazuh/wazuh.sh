@@ -160,4 +160,9 @@ WazuhUpgrade()
     # Remove existing ruleset version file
 
     rm -f $DIRECTORY/ruleset/VERSION
+
+    # Remove old Active Response scripts
+
+    rm -f $DIRECTORY/active-responses/bin/default-firewall-drop.sh
+    rm -f $DIRECTORY/active-responses/bin/disable-account.sh
 }
