@@ -905,9 +905,8 @@ const char *print_agent_status(agent_status_t status)
  */
 int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec)
 {
-    int rc;
-    char *agt_msg;
-    os_malloc(OS_MAXSTR * sizeof(char), agt_msg);
+    char agt_msg[OS_MAXSTR + 1];
+    char exec_msg[OS_SIZE_20480 + 1];
 
     if (!exec) {
         snprintf(agt_msg, OS_MAXSTR,
@@ -918,30 +917,130 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
                  (agt_id != NULL) ? SPECIFIC_AGENT_C : NONE_C,
                  agt_id != NULL ? agt_id : "(null)",
                  msg);
-    } else {
-        snprintf(agt_msg, OS_SIZE_20480,
-                 "%s %c%c%c %s %s - %s (from_the_server) (no_rule_id)",
-                 "(msg_to_agent) []",
-                 (agt_id == NULL) ? ALL_AGENTS_C : NONE_C,
-                 NONE_C,
-                 (agt_id != NULL) ? SPECIFIC_AGENT_C : NONE_C,
-                 agt_id != NULL ? agt_id : "(null)",
-                 msg, exec);
 
-    }
-
-    if ((rc = OS_SendUnix(msocket, agt_msg, 0)) < 0) {
-        if (rc == OS_SOCKBUSY) {
-            merror("Remoted socket busy.");
-        } else {
-            merror("Remoted socket error.");
+        if ((OS_SendUnix(msocket, agt_msg, 0)) < 0) {
+            merror("Error communicating with remoted queue.");
+            return (-1);
         }
-        merror("Error communicating with remoted queue (%d).", rc);
-        free(agt_msg);
-        return (-1);
+    } else {
+        int sock = -1;
+        int *id_array = NULL;
+
+        if (agt_id == NULL) {
+            id_array = wdb_get_all_agents(FALSE, &sock);
+            if(!id_array) {
+                merror("Unable to get agent's ID array.");
+                wdbc_close(&sock);
+                return (-1);
+            }
+        } else {
+            os_calloc(2, sizeof(int), id_array);
+            id_array[0] = atoi(agt_id);
+            id_array[1] = OS_INVALID;
+        }
+
+        for (size_t i = 0; id_array[i] != OS_INVALID; i++) {
+            cJSON *json_agt_info = NULL;
+            cJSON *json_agt_version = NULL;
+            char c_agent_id[OS_SIZE_16];
+            char *agt_version = NULL;
+
+            memset(agt_msg, 0, OS_MAXSTR + 1);
+            memset(exec_msg, 0, OS_SIZE_20480 + 1);
+
+            json_agt_info = wdb_get_agent_info(id_array[i], &sock);
+            if (!json_agt_info) {
+                merror("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
+                continue;
+            }
+
+            json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+
+            if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
+                agt_version = json_agt_version->valuestring;
+            } else {
+                merror("Failed to get agent '%d' version.", id_array[i]);
+                cJSON_Delete(json_agt_info);
+                continue;
+            }
+
+            // New AR mechanism is not supported in versions prior to 4.2.0
+            char *save_ptr = NULL;
+            strtok_r(agt_version, "v", &save_ptr);
+            char *major = strtok_r(NULL, ".", &save_ptr);
+            char *minor = strtok_r(NULL, ".", &save_ptr);
+            if (!major || !minor) {
+                merror("Unable to read agent version.");
+                cJSON_Delete(json_agt_info);
+                continue;
+            } else {
+                if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
+                    snprintf(exec_msg, OS_SIZE_20480,
+                             "%s - %s (from_the_server) (no_rule_id)",
+                             msg, exec);
+                } else {
+                    cJSON *json_message = cJSON_CreateObject();
+                    cJSON *json_alert = cJSON_CreateObject();
+                    cJSON *json_data = cJSON_CreateObject();
+                    cJSON *_object = NULL;
+                    cJSON *_array = NULL;
+                    char *tmp_msg = NULL;
+
+                    // Version
+                    cJSON_AddNumberToObject(json_message, "version", 1);
+
+                    // Origin
+                    _object = cJSON_CreateObject();
+                    cJSON_AddItemToObject(json_message, "origin", _object);
+
+                    cJSON_AddStringToObject(_object, "name", "");
+                    cJSON_AddStringToObject(_object, "module", "");
+
+                    // Command
+                    cJSON_AddStringToObject(json_message, "command", msg);
+
+                    // Parameters
+                    _object = cJSON_CreateObject();
+                    cJSON_AddItemToObject(json_message, "parameters", _object);
+
+                    _array = cJSON_CreateArray();
+                    cJSON_AddItemToObject(_object, "extra_args", _array);
+
+                    cJSON_AddItemToObject(json_alert, "data", json_data);
+                    cJSON_AddStringToObject(json_data, "srcip", exec);
+                    cJSON_AddItemToObject(_object, "alert", json_alert);
+
+                    // Message
+                    tmp_msg = cJSON_PrintUnformatted(json_message);
+                    strcpy(exec_msg, tmp_msg);
+
+                    os_free(tmp_msg);
+                    cJSON_Delete(json_message);
+                }
+            }
+
+            cJSON_Delete(json_agt_info);
+
+            snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
+
+            snprintf(agt_msg, OS_MAXSTR,
+                     "%s %c%c%c %s %s",
+                     "(msg_to_agent) []",
+                     NONE_C,
+                     NONE_C,
+                     SPECIFIC_AGENT_C,
+                     c_agent_id,
+                     exec_msg);
+
+            if ((OS_SendUnix(msocket, agt_msg, 0)) < 0) {
+                merror("Error communicating with remoted queue.");
+            }
+        }
+
+        os_free(id_array);
+        wdbc_close(&sock);
     }
 
-    free(agt_msg);
     return (0);
 }
 
