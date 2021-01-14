@@ -1,5 +1,5 @@
 /*
- * Wazuh SysInfo
+ * Wazuh SyscollectorNormalizer
  * Copyright (C) 2015-2021, Wazuh Inc.
  * January 12, 2021.
  *

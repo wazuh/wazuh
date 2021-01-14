@@ -17,42 +17,42 @@
 class SysNormalizer
 {
 public:
-	SysNormalizer(const std::string& configFile,
-				  const std::string& target);
-	~SysNormalizer() = default;
-	nlohmann::json normalize(const std::string& type,
-							 const nlohmann::json& data) const;
-	nlohmann::json removeExcluded(const std::string& type,
-				   				  const nlohmann::json& data) const;
+    SysNormalizer(const std::string& configFile,
+                  const std::string& target);
+    ~SysNormalizer() = default;
+    nlohmann::json normalize(const std::string& type,
+                             const nlohmann::json& data) const;
+    nlohmann::json removeExcluded(const std::string& type,
+                                  const nlohmann::json& data) const;
 private:
-	struct ExclusionItem
-	{
-		std::string fieldName;
-		std::string pattern;
-	};
-	enum DictionaryAction
-	{
-		ADD_VALUE,
-		REPLACE_VALUE,
-	};
-	struct DictionaryItem
-	{
-		std::string srcFieldName;
-		std::string destFieldName;
-		std::string pattern;
-		std::string value;
-		DictionaryAction action;
-	};
-	using DataType = std::string;
-	using Dictionary = std::vector<DictionaryItem>;
-	using Exclusions = std::vector<ExclusionItem>;
+    struct ExclusionItem
+    {
+        std::string fieldName;
+        std::string pattern;
+    };
+    enum DictionaryAction
+    {
+        ADD_VALUE,
+        REPLACE_VALUE,
+    };
+    struct DictionaryItem
+    {
+        std::string srcFieldName;
+        std::string destFieldName;
+        std::string pattern;
+        std::string value;
+        DictionaryAction action;
+    };
+    using DataType = std::string;
+    using Dictionary = std::vector<DictionaryItem>;
+    using Exclusions = std::vector<ExclusionItem>;
 
-	static std::map<DataType, Exclusions> getTypeExclusions(const std::string& configFile,
-														    const std::string& target);
-	static std::map<DataType, Dictionary> getTypeDictionary(const std::string& configFile,
-														    const std::string& target);
-	const std::map<DataType, Exclusions> m_typeExclusions;
-	const std::map<DataType, Dictionary> m_typeDictionary;
+    static std::map<DataType, Exclusions> getTypeExclusions(const std::string& configFile,
+                                                            const std::string& target);
+    static std::map<DataType, Dictionary> getTypeDictionary(const std::string& configFile,
+                                                            const std::string& target);
+    const std::map<DataType, Exclusions> m_typeExclusions;
+    const std::map<DataType, Dictionary> m_typeDictionary;
 };
 
 

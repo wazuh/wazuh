@@ -1,5 +1,5 @@
 /*
- * Wazuh SysInfo
+ * Wazuh SyscollectorImp
  * Copyright (C) 2015-2020, Wazuh Inc.
  * November 9, 2020.
  *
