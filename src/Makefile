@@ -1443,6 +1443,7 @@ $(active_response_programs): $(BUILD_LIBS)
 active-responses: ${active_response_programs}
 
 active_response_c := $(wildcard active-response/*.c)
+active_response_c += $(wildcard active-response/firewalls/*.c)
 active_response_o := $(active_response_c:.c=.o)
 
 active-response/%.o: active-response/%.c
