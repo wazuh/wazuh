@@ -633,9 +633,9 @@ void win_startel(char *evt_log)
         }
     }
 
-    w_logcollector_state_update_file(channel->evt_log, 0);
-    w_logcollector_state_update_target(channel->evt_log, "agent", false);
-    
+    w_logcollector_state_update_file(evt_log, 0);
+    w_logcollector_state_update_target(evt_log, "agent", false);
+
     /* Start event log -- going to last available record */
     if (entries_count = startEL(evt_log, &el[el_last]), entries_count < 0) {
         merror(INV_EVTLOG, evt_log);
