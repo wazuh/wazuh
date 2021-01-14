@@ -12,7 +12,8 @@ file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
 
 file(GLOB SYSCOLLECTOR_IMP_SRC
-    "${CMAKE_SOURCE_DIR}/src/syscollectorImp.cpp")
+    "${CMAKE_SOURCE_DIR}/src/syscollectorImp.cpp"
+    "${CMAKE_SOURCE_DIR}/src/syscollectorNormalizer.cpp")
 
 add_definitions(-DWAZUH_UNIT_TESTING)
 

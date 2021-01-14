@@ -38,6 +38,11 @@ TEST_F(SysNormalizerTest, ctor)
     EXPECT_NO_THROW((SysNormalizer{TEST_CONFIG_FILE_NAME, "macos"}));
 }
 
+TEST_F(SysNormalizerTest, ctorNonExistingFile)
+{
+    EXPECT_NO_THROW((SysNormalizer{"TEST_CONFIG_FILE_NAME", "macos"}));
+}
+
 TEST_F(SysNormalizerTest, ctorWrongFormatConfig)
 {
     constexpr auto WRONG_FORMAT_FILE{"wrong_format.json"};

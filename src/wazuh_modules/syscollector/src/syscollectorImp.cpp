@@ -767,6 +767,21 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
     txn.getDeletedRows(callback);
 }
 
+Syscollector::Syscollector()
+: m_intervalValue { 0 }
+, m_scanOnStart { false }
+, m_hardware { false }
+, m_os { false }
+, m_network { false }
+, m_packages { false }
+, m_ports { false }
+, m_portsAll { false }
+, m_processes { false }
+, m_hotfixes { false }
+, m_stopping { true }
+, m_normalizer{SYSCOLLECTOR_NORM_CONFIG_DISK_PATH, SYSCOLLECTOR_NORM_TYPE}
+{}
+
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
@@ -1015,7 +1030,11 @@ void Syscollector::scanPackages()
 
         if (!packagesData.is_null())
         {
-            for (auto item : packagesData)
+            const auto& normalizedPackagesData
+            {
+                m_normalizer.normalize("packages", m_normalizer.removeExcluded("packages", packagesData))
+            };
+            for (auto item : normalizedPackagesData)
             {
                 if(item.find("hotfix") != item.end())
                 {
