@@ -884,7 +884,7 @@ main()
                     break;
                     ;;
                 $no)
-                    echo "The installation can't proceed without removing already installed versions. Exiting."
+                    echo "${mustuninstall}"
                     exit 0;
                     ;;
                   *)

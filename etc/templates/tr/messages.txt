@@ -106,6 +106,7 @@ presskey="Devam etmek için ENTER tuşuna basınız"
 
 # Update
 wanttoupdate="Bir Wazuh kurulumu mevcut. Güncellemek ister misiniz?"
+mustuninstall="Eski sürümler kaldırılmadan kurulum devam edemez. Çıkılıyor."
 unabletoupdate="Güncelleme gerçekleştirilemedi. Yeni kurulum yapılması gerekiyor."
 updatecompleted="Güncelleme tamamlandı."
 updatefailed="Güncelleme başarısız oldu."
