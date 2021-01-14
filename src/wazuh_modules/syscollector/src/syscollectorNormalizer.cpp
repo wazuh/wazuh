@@ -136,9 +136,8 @@ std::map<SysNormalizer::DataType, SysNormalizer::Exclusions> SysNormalizer::getT
             }
         }
     }
-    catch(const std::exception& ex)
+    catch(...)
     {
-        //if there is some error the exclusions will not be filled.
     }
     return ret;
 }
@@ -179,9 +178,8 @@ std::map<SysNormalizer::DataType, SysNormalizer::Dictionary> SysNormalizer::getT
             }
         }
     }
-    catch(const std::exception& ex)
+    catch(...)
     {
-        //if there is some error the exclusions will not be filled.
     }
     return ret;
 }
