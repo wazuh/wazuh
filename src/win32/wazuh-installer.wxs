@@ -441,6 +441,9 @@
                             <Directory Id="FIM_DB" Name="db" />
                         </Directory>
                         <Directory Id="SYSCOLLECTOR" Name="syscollector">
+                            <Component Id="SYSCOLLECTOR_NORM_CONFIG" DiskId="1" Guid="40284747-C50C-4905-9A72-6236276E192E">
+                                <File Id="SYSCOLLECTOR_NORM_CONFIG" Name="norm_config.json" Source="..\wazuh_modules\syscollector\norm_config.json" />
+                            </Component>
                             <Directory Id="SYSCOLLECTOR_DB" Name="syscollector_db" />
                         </Directory>
                         <Directory Id="LOGCOLLECTOR" Name="logcollector" />
@@ -601,6 +604,7 @@
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="REGISTRY_INSTALL_DIR" />
             <ComponentRef Id="AGENT_AUTH.EXE" />
+            <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
             <ComponentRef Id="RSYNC_DLL" />
