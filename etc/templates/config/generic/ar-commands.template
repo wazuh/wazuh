@@ -5,8 +5,8 @@
   </command>
 
   <command>
-    <name>restart-ossec</name>
-    <executable>restart-ossec.sh</executable>
+    <name>restart-wazuh</name>
+    <executable>restart-wazuh</executable>
   </command>
 
   <command>

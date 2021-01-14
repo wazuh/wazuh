@@ -68,6 +68,7 @@ src/wazuh-integratord
 # Active responses
 src/default-firewall-drop
 src/disable-account
+src/restart-wazuh
 
 # Windows agent
 src/win32/*.exe
