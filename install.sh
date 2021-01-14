@@ -565,7 +565,7 @@ setInstallDir()
     echo ""
     if [ "X${USER_DIR}" = "X" ]; then
         while [ 1 ]; do
-            $ECHO "1- ${wheretoinstall} [$INSTALLDIR]: "
+            $ECHO "2- ${wheretoinstall} [$INSTALLDIR]: "
             read ANSWER
             if [ ! "X$ANSWER" = "X" ]; then
                 echo $ANSWER |grep -E "^/[a-zA-Z0-9./_-]{3,128}$">/dev/null 2>&1
@@ -589,6 +589,7 @@ setEnv()
 {
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
 
+    echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
 
     if [ "X$INSTYPE" = "Xagent" ]; then
@@ -940,7 +941,7 @@ main()
         while [ 1 ]
         do
             echo ""
-            $ECHO "2- ${whattoinstall} "
+            $ECHO "1- ${whattoinstall} "
 
             read ANSWER
             case $ANSWER in
