@@ -1,5 +1,6 @@
 #include "shared.h"
 #include "external/cJSON/cJSON.h"
+#include "../active_responses.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -12,21 +13,8 @@
 #include <netdb.h>
 
 
-
-
-#define LOG_FILE "/logs/active-responses.log"
-#define LOCK_PATH "/active-response/bin/fw-drop"
-#define LOCK_FILE "/active-response/bin/fw-drop/pid"
-#define IP4TABLES "/sbin/iptables"
-#define IP6TABLES "/sbin/ip6tables"
-#define ECHO "/bin/echo"
-#define BUFFERSIZE 4096
-#define LOGSIZE 2048
-#define COMMANDSIZE 2048
-
-static void lock (const char *filename);
+static void lock ();
 static void unlock (const char *lock_path);
-void write_debug_file (const char *msg);
 static int get_ip_version (char * ip);
 static void free_vars ();
 
@@ -35,7 +23,7 @@ static char lock_path[PATH_MAX];
 static char *srcip;
 static char *action;
 static char *iptables;
-static char **filename;
+static char *filename;
 static cJSON *input_json = NULL;
 
 int main (int argc, char **argv) {
@@ -45,95 +33,48 @@ int main (int argc, char **argv) {
     char arg2[COMMANDSIZE];
     char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
-    cJSON *origin_json = NULL;
-    cJSON *version_json = NULL;
-    cJSON *command_json = NULL;
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
-    cJSON *data_json = NULL;
-    cJSON *srcip_json = NULL;
-    const char *json_err;
     struct utsname uname_buffer;
     int res;
 
-    input[BUFFERSIZE -1] = '\0';
-    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file ("Cannot read input from stdin");
-        return OS_INVALID;
-    }
+    write_debug_file ("default-firewall-drop" , "Starting");
 
     // Reading filename
-    filename = OS_StrBreak('.', basename(argv[0]), sizeof(basename(argv[0])));
+    filename = basename(argv[0]);
     if (filename == NULL) {
         log_msg[LOGSIZE -1] = '\0';
         snprintf(log_msg, LOGSIZE -1 , "Cannot read filename: %s (%d)", strerror(errno), errno);
-        write_debug_file (log_msg);
+        write_debug_file("default-firewall-drop", log_msg);
         return OS_INVALID;
     }
 
-    // Parsing Input
-    if (input_json = cJSON_ParseWithOpts(input, &json_err, 0), !input_json) {
-        write_debug_file ("Cannot parse input to json");
+    input[BUFFERSIZE -1] = '\0';
+    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
+        write_debug_file(filename, "Cannot read input from stdin");
         return OS_INVALID;
     }
 
-    // Detect version
-    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_String)) {
-        write_debug_file ("Cannot get 'version' from json");
-        free_vars();
+    input_json = get_json_from_input(input);
+    if (!input_json) {
+        write_debug_file(filename, "Invalid input format");
         return OS_INVALID;
     }
 
-    // Detect origin
-    if (origin_json = cJSON_GetObjectItem(input_json, "origin"), !origin_json || (origin_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'origin' from json");
-        free_vars();
-        return OS_INVALID;
-    }
-
-    // Detect command
-    command_json = cJSON_GetObjectItem(input_json, "command");
-    if (command_json && (command_json->type == cJSON_String)) {
-        os_strdup(command_json->valuestring, action);
-    } else {
-        write_debug_file ("Invalid 'command' from json");
-        free_vars();
+    action = get_command(input_json);
+    if (!action) {
+        write_debug_file(filename, "Cannot read 'command' from json");
         return OS_INVALID;
     }
 
     if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file ("Invalid value of 'command'");
+        write_debug_file(filename, "Invalid value of 'command'");
         free_vars();
         return OS_INVALID;
     }
 
-    // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input_json, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'parameters' from json");
-        free_vars();
-        return OS_INVALID;
-    }
-
-    // Detect Alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'alert' from parameters");
-        free_vars();
-        return OS_INVALID;
-    }
-
-    // Detect data
-    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'data' from alert");
-        free_vars();
-        return OS_INVALID;
-    }
-
-    // Detect srcip
-    srcip_json = cJSON_GetObjectItem(data_json, "srcip");
-    if (srcip_json && (srcip_json->type == cJSON_String)) {
-        os_strdup(srcip_json->valuestring, srcip);
-    } else {
-        write_debug_file ("Invalid 'srcip' from data");
+    // Get srcip
+    srcip = get_srcip_from_json(input_json);
+    if (!srcip) {
+        write_debug_file(filename, "Cannot read 'srcip' from data");
         free_vars();
         return OS_INVALID;
     }
@@ -146,13 +87,13 @@ int main (int argc, char **argv) {
     } else {
         log_msg[LOGSIZE -1] = '\0';
         snprintf(log_msg, LOGSIZE -1 , "Unable to run active response (invalid IP: '%s').", srcip);
-        write_debug_file (log_msg);
+        write_debug_file(filename, log_msg);
         free_vars();
         return OS_INVALID;
     }
 
     if (uname(&uname_buffer) != 0){
-        write_debug_file ("Cannot get system name");
+        write_debug_file(filename, "Cannot get system name");
         free_vars();
         return OS_INVALID;
     }
@@ -175,7 +116,7 @@ int main (int argc, char **argv) {
             if (access(iptables_path, F_OK) < 0) {
                 log_msg[LOGSIZE -1] = '\0';
                 snprintf(log_msg, LOGSIZE -1 , "The iptables file '%s' is not accessible: %s (%d)", iptables_path, strerror(errno), errno);
-                write_debug_file (log_msg);
+                write_debug_file(filename, log_msg);
                 free_vars();
                 return OS_INVALID;
             }
@@ -184,11 +125,11 @@ int main (int argc, char **argv) {
 
         // Executing and exiting
         int count = 0;
-        lock(filename[0]);
+
+        lock();
         bool flag = true;
         while (flag) {
             snprintf(command, COMMANDSIZE - 1, "%s %s", iptables, arg1);
-
             res = system(command);
             if (res == 0) {
                 flag = false;
@@ -196,7 +137,7 @@ int main (int argc, char **argv) {
                 count++;
                 log_msg[LOGSIZE -1] = '\0';
                 snprintf(log_msg, LOGSIZE - 1, "Unable to run (iptables returning != %d)", res);
-                write_debug_file (log_msg);
+                write_debug_file(filename, log_msg);
                 sleep(count);
 
                 if (count > 4){
@@ -210,7 +151,6 @@ int main (int argc, char **argv) {
         while (flag) {
             int res;
             snprintf(command, COMMANDSIZE - 1, "%s %s", iptables, arg2);
-
             res = system(command);
 
             if (res == 0) {
@@ -219,7 +159,7 @@ int main (int argc, char **argv) {
                 count++;
                 log_msg[LOGSIZE -1] = '\0';
                 snprintf(log_msg, LOGSIZE - 1, "Unable to run (iptables returning != %d)", res);
-                write_debug_file (log_msg);
+                write_debug_file(filename, log_msg);
                 sleep(count);
 
                 if (count > 4){
@@ -243,7 +183,7 @@ int main (int argc, char **argv) {
         if (access(ipfilter_path, F_OK) < 0) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The ipfilter file '%s' is not accessible: %s (%d)", ipfilter_path, strerror(errno), errno);
-            write_debug_file (log_msg);
+            write_debug_file(filename, log_msg);
             free_vars();
             return OS_INVALID;
         }
@@ -252,7 +192,7 @@ int main (int argc, char **argv) {
         if (access(ECHO, F_OK) < 0) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The echo file '%s' is not accessible: %s (%d)", ECHO, strerror(errno), errno);
-            write_debug_file (log_msg);
+            write_debug_file(filename, log_msg);
             free_vars();
             return OS_INVALID;
         }
@@ -288,7 +228,7 @@ int main (int argc, char **argv) {
         if (access(genfilt_path, F_OK) < 0) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The genfilt file '%s' is not accessible: %s (%d)", genfilt_path, strerror(errno), errno);
-            write_debug_file (log_msg);
+            write_debug_file(filename, log_msg);
             free_vars();
             return OS_INVALID;
         }
@@ -297,7 +237,7 @@ int main (int argc, char **argv) {
         if (access(lsfilt_path, F_OK) < 0) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The lsfilt file '%s' is not accessible: %s (%d)", lsfilt_path, strerror(errno), errno);
-            write_debug_file (log_msg);
+            write_debug_file(filename, log_msg);
             free_vars();
             return OS_INVALID;
         }
@@ -306,7 +246,7 @@ int main (int argc, char **argv) {
         if (access(mkfilt_path, F_OK) < 0) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The mkfilt file '%s' is not accessible: %s (%d)", mkfilt_path, strerror(errno), errno);
-            write_debug_file (log_msg);
+            write_debug_file(filename, log_msg);
             free_vars();
             return OS_INVALID;
         }
@@ -315,7 +255,7 @@ int main (int argc, char **argv) {
         if (access(rmfilt_path, F_OK) < 0) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The rmfilt file '%s' is not accessible: %s (%d)", rmfilt_path, strerror(errno), errno);
-            write_debug_file (log_msg);
+            write_debug_file(filename, log_msg);
             free_vars();
             return OS_INVALID;
         }
@@ -353,7 +293,7 @@ int main (int argc, char **argv) {
                         snprintf(command, COMMANDSIZE - 1, "eval %s %s", rmfilt_path, arg1);
                         res = system(command);
                     } else {
-                        write_debug_file("Cannot remove rule");
+                        write_debug_file(filename, "Cannot remove rule");
                     }
 
                     pclose(fp2);
@@ -373,12 +313,12 @@ int main (int argc, char **argv) {
         }
 
     } else {
-        write_debug_file("Invalid system");
+        write_debug_file(filename, "Invalid system");
 
         free_vars();
         return OS_INVALID;
     }
-
+    write_debug_file(filename, "Ended");
     free_vars();
 
     return 0;
@@ -389,12 +329,9 @@ static void free_vars (){
     os_free(srcip);
     os_free(action);
     os_free(iptables);
-    os_free(filename[1]);
-    os_free(filename[0]);
-    os_free(filename);
 }
 
-static void lock (const char *filename) {
+static void lock () {
     int i=0;
     int max_iteration = 50;
     bool flag = true;
@@ -419,7 +356,7 @@ static void lock (const char *filename) {
 
         // Getting currently/saved PID locking the file
         if (pid_file = fopen(lock_pid_path, "r"), !pid_file) {
-            write_debug_file("Can not read pid file");
+            write_debug_file("default-firewall-drop", "Can not read pid file");
             continue;
         } else {
             read = fscanf(pid_file, "%u", &current_pid);
@@ -435,7 +372,7 @@ static void lock (const char *filename) {
                 }
 
             } else {
-                write_debug_file("Can not read pid file");
+                write_debug_file("default-firewall-drop", "Can not read pid file");
                 continue;
             }
         }
@@ -462,7 +399,7 @@ static void lock (const char *filename) {
                         if (system(command) == 0) {
                             char log_msg[LOGSIZE] = "";
                             snprintf(log_msg, LOGSIZE -1, "Killed process %u holding lock.", pid);
-                            write_debug_file(log_msg);
+                            write_debug_file("default-firewall-drop", log_msg);
                             kill = true;
                             unlock(lock_path);
                             i = 0;
@@ -478,7 +415,7 @@ static void lock (const char *filename) {
             if (!kill) {
                 char log_msg[LOGSIZE] = "";
                 snprintf(log_msg, LOGSIZE -1, "Unable kill process %u holding lock.", current_pid);
-                write_debug_file(log_msg);
+                write_debug_file("default-firewall-drop", log_msg);
 
                 // Unlocking and exiting
                 unlock(lock_path);
@@ -495,19 +432,8 @@ static void unlock (const char *lock_path) {
     if (system(command) != 0){
         char log_msg[LOGSIZE] = "";
         snprintf(log_msg, LOGSIZE -1, "Unable remove file: '%s' ", lock_path);
-        write_debug_file(log_msg);
+        write_debug_file(filename, log_msg);
     }
-}
-
-void write_debug_file (const char *msg) {
-    char path[PATH_MAX];
-    char *timestamp = w_get_timestamp(time(NULL));
-
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOG_FILE);
-    FILE *ar_log_file = fopen(path, "a");
-
-    fprintf(ar_log_file, "%s: %s\n", timestamp, msg);
-    fclose(ar_log_file);
 }
 
 static int get_ip_version (char * ip) {

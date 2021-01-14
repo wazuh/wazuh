@@ -11,13 +11,6 @@
 #include <sys/utsname.h>
 
 
-
-#define PASSWD "/usr/bin/passwd"
-#define CHUSER "/usr/bin/chuser"
-#define BUFFERSIZE 4096
-#define LOGSIZE 2048
-#define COMMANDSIZE 2048
-
 static char *action;
 static char *user;
 static char *command_ex;

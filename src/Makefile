@@ -1449,7 +1449,7 @@ active_response_o := $(active_response_c:.c=.o)
 active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
 
-default-firewall-drop: active-response/firewalls/default-firewall-drop.o
+default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 disable-account: active-response/disable-account.o active-response/active_responses.o

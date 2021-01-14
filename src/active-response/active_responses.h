@@ -2,6 +2,16 @@
 #include "external/cJSON/cJSON.h"
 
 #define LOG_FILE "/logs/active-responses.log"
+#define LOCK_PATH "/active-response/bin/fw-drop"
+#define LOCK_FILE "/active-response/bin/fw-drop/pid"
+#define IP4TABLES "/sbin/iptables"
+#define IP6TABLES "/sbin/ip6tables"
+#define ECHO "/bin/echo"
+#define PASSWD "/usr/bin/passwd"
+#define CHUSER "/usr/bin/chuser"
+#define BUFFERSIZE 4096
+#define LOGSIZE 2048
+#define COMMANDSIZE 2048
 
 /**
  * Write the incomming message in active-responses log file.
@@ -30,3 +40,10 @@ char* get_command (cJSON *input);
  * @return char * with the username or NULL o fail
  * */
 char* get_username_from_json (cJSON *input);
+
+/**
+ * Get srcip from input 
+ * @param input Input
+ * @return char * with the srcip or NULL o fail
+ * */
+char* get_srcip_from_json (cJSON *input);

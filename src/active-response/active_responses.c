@@ -110,3 +110,34 @@ char* get_username_from_json (cJSON *input) {
 
     return username;
 }
+
+char* get_srcip_from_json (cJSON *input) {
+    char *srcip = NULL;
+    cJSON *parameters_json = NULL;
+    cJSON *alert_json = NULL;
+    cJSON *data_json = NULL;
+    cJSON *srcip_json = NULL;
+
+    // Detect parameters
+    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect Alert
+    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect data
+    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect srcip
+    srcip_json = cJSON_GetObjectItem(data_json, "srcip");
+    if (srcip_json && (srcip_json->type == cJSON_String)) {
+        os_strdup(srcip_json->valuestring, srcip);
+    }
+
+    return srcip;
+}
