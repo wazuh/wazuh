@@ -182,9 +182,6 @@ This agent will use **any** as IP.
 * All cache endpoints have been removed.
 
 ## Cluster
-### DELETE  /cluster/api/config
-* New endpoint. Restore default API configuration.
-
 ### GET     /cluster/api/config
 * New endpoint. Returns the API configuration in JSON format.
 
@@ -244,9 +241,6 @@ or a list of them if parameter **nodes_list** is used.
 
 ### POST    /cluster/{node_id}/files
 * Endpoint removed. Use `PUT /cluster/{node_id}/files` instead.
-
-### PUT     /cluster/api/config
-* New endpoint. Updates API configuration with the data contained in the API request.
 
 ### PUT     /cluster/{node_id}/files
 * New endpoint. Replaces file contents with the data contained in the API request in a specified cluster node.
@@ -374,8 +368,6 @@ This API call expects a full valid XML file with the shared configuration tags/s
 * New endpoint. Delete the saved logtest session corresponding to {token}.
 
 ## Manager
-### DELETE ​/manager/api/config
-* New endpoint. Replaces API configuration with the original one.
 
 ### GET ​   /manager/api/config
 * New endpoint. Returns the API configuration in JSON format.
@@ -412,9 +404,6 @@ This API call expects a full valid XML file with the shared configuration tags/s
 
 ### POST    /manager/files
 * Endpoint removed. Use `PUT /manager/files` instead.
-
-### PUT ​   /manager/api/config
-* New endpoint. Updates API configuration with the data contained in the API request.
 
 ### PUT     /manager/files
 * New endpoint. Replaces file contents with the data contained in the API request.

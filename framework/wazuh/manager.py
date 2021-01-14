@@ -13,7 +13,8 @@ from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, validate_cdb_list, \
-    get_api_conf, update_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, prettify_xml
+    get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, prettify_xml
+
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
@@ -254,37 +255,6 @@ _update_config_default_result_kwargs = {
     'none_msg': f"API configuration could not be updated{' in any node' if node_id != 'manager' else ''}.",
     'sort_casting': ['str']
 }
-
-
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_api_config"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
-                  post_proc_kwargs={'default_result_kwargs': _update_config_default_result_kwargs})
-def update_api_config(updated_config=None):
-    """Update or restore current API configuration.
-
-    Update the shared configuration object "api_conf"  wih
-    "updated_config" and then overwrite the content of api.yaml.
-
-    Parameters
-    ----------
-    updated_config : dict
-        Dictionary with the new configuration.
-
-    Returns
-    -------
-    result : AffectedItemsWazuhResult
-        Confirmation/Error message.
-    """
-    result = AffectedItemsWazuhResult(**_update_config_default_result_kwargs)
-
-    try:
-        update_api_conf(updated_config)
-        result.affected_items.append(node_id)
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
 
 
 _restart_default_result_kwargs = {

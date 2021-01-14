@@ -20,7 +20,7 @@ from api.constants import SECURITY_CONFIG_PATH
 from wazuh.core import common
 
 default_security_configuration = {
-    "auth_token_exp_timeout": 3600,
+    "auth_token_exp_timeout": 900,
     "rbac_mode": "white"
 }
 
@@ -33,7 +33,8 @@ default_api_configuration = {
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
-        "ca": "api/configuration/ssl/ca.crt"
+        "ca": "api/configuration/ssl/ca.crt",
+        "ssl_cipher": "TLSv1.2"
     },
     "logs": {
         "level": "info",
