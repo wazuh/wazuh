@@ -5,6 +5,7 @@
 import sys
 from datetime import date
 from unittest.mock import patch, MagicMock
+from wazuh.tests.test_agent import send_msg_to_wdb
 
 import pytest
 
@@ -159,3 +160,30 @@ def test_get_daemons_stats_ko(mock_readfp):
 
             assert isinstance(response, WazuhException), f'The result is not WazuhResult type'
             assert response.code == 1104, f'Response code is not the same'
+
+
+@pytest.mark.parametrize('daemon', [
+    'logcollector', 'test'
+])
+@patch('wazuh.core.agent.Agent.getstats')
+@patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
+def test_get_daemon_stats_json(mock_agents_info, mock_getstats, daemon):
+    """Test `get_daemon_stats_json` function from agent module.
+
+    Parameters
+    ----------
+    daemon : string
+        Name of the daemon to get stats from.
+    """
+    response = get_daemon_stats_json(agent_list=['001'], daemon=daemon)
+    assert isinstance(response, AffectedItemsWazuhResult), f'The result is not AffectedItemsWazuhResult type'
+    mock_getstats.assert_called_once_with(daemon=daemon)
+
+
+@patch('wazuh.core.agent.Agent.getstats')
+@patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
+def test_get_daemon_stats_json_ko(mock_agents_info, mock_getstats):
+    """Test `get_daemon_stats_json` function from agent module."""
+    response = get_daemon_stats_json(agent_list=['003'], daemon='logcollector')
+    assert isinstance(response, AffectedItemsWazuhResult), f'The result is not AffectedItemsWazuhResult type'
+    assert response.render()['data']['failed_items'][0]['error']['code'] == 1701, 'Expected error code was not returned'

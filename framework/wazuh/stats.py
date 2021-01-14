@@ -5,11 +5,12 @@
 import os
 from io import StringIO
 
-from wazuh.core import common
+from wazuh.core import common, stats
+from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.rbac.decorators import expose_resources
 
 try:
@@ -22,7 +23,7 @@ except ImportError:
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 cluster_enabled = not read_cluster_config()['disabled']
-node_id = get_node().get('node') if cluster_enabled else None
+node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
@@ -191,4 +192,37 @@ def get_daemons_stats(filename):
         raise WazuhError(1308, extra_message=filename)
 
     result.total_affected_items = len(result.affected_items)
+    return result
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+def get_daemon_stats_json(agent_list=None, daemon=None):
+    """Get statistics of an agent's daemon.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agents ID's.
+    daemon : string
+        Name of the daemon to get stats from.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Stats of daemon.
+    """
+    result = AffectedItemsWazuhResult(all_msg=f'Obtained {daemon} stats from all selected agents',
+                                      some_msg=f'Some {daemon} stats were not obtained',
+                                      none_msg=f'No {daemon} stats were obtained')
+
+    system_agents = get_agents_info()
+    for agent_id in agent_list:
+        try:
+            if agent_id not in system_agents:
+                raise WazuhResourceNotFound(1701)
+            result.affected_items.append(Agent(agent_id).getstats(daemon=daemon))
+        except WazuhException as e:
+            result.add_failed_item(id_=agent_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
     return result

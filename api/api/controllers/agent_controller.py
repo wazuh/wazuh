@@ -7,7 +7,7 @@ import logging
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
-import wazuh.agent as agent
+from wazuh import agent, stats
 from api import configuration
 from api.encoder import dumps, prettify
 from api.models.agent_added_model import AgentAddedModel
@@ -465,6 +465,39 @@ async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wai
                 'installer': installer}
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_stats_logcollector(request, pretty=False, wait_for_complete=False, agent_id=None):
+    """Get a specified agent's logcollector stats.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : list
+        List of agent IDs. All possible values from 000 onwards.
+
+    Returns
+    -------
+    ApiResponse
+        Logcollector stats.
+    """
+    f_kwargs = {'agent_list': [agent_id],
+                'daemon': 'logcollector'}
+
+    dapi = DistributedAPI(f=stats.get_daemon_stats_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

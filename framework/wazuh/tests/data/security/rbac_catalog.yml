@@ -96,6 +96,7 @@ get_rbac_actions:
           - GET /agents/{agent_id}/config/{component}/{configuration}
           - GET /agents/{agent_id}/group/is_sync
           - GET /agents/{agent_id}/key
+          - GET /agents/{agent_id}/stats/logcollector
           - GET /groups/{group_id}/agents
           - GET /agents/no_group
           - GET /agents/outdated
