@@ -68,7 +68,7 @@ static void test_WinExecdRun_ok(void **state) {
                             "\"name\":\"node01\","
                             "\"module\":\"wazuh-analysisd\""
                         "},"
-                        "\"command\":\"restart-ossec0\","
+                        "\"command\":\"restart-wazuh0\","
                         "\"parameters\":{"
                             "\"extra_args\":[],"
                             "\"alert\":{"
@@ -91,11 +91,11 @@ static void test_WinExecdRun_ok(void **state) {
                     "}";
     int timeout = 0;
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-ossec0");
+    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
     will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-ossec");
+    will_return(__wrap_GetCommandbyName, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-ossec {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
@@ -142,7 +142,7 @@ static void test_WinExecdRun_timeout(void **state) {
                             "\"name\":\"node01\","
                             "\"module\":\"wazuh-analysisd\""
                         "},"
-                        "\"command\":\"restart-ossec0\","
+                        "\"command\":\"restart-wazuh0\","
                         "\"parameters\":{"
                             "\"extra_args\":[],"
                             "\"alert\":{"
@@ -165,11 +165,11 @@ static void test_WinExecdRun_timeout(void **state) {
                     "}";
     int timeout = 10;
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-ossec0");
+    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
     will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-ossec");
+    will_return(__wrap_GetCommandbyName, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-ossec {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
@@ -203,7 +203,7 @@ static void test_WinExecdRun_timeout(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Adding command 'restart-ossec {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Adding command 'restart-wazuh {"
                                                                                     "\"version\":\"1\","
                                                                                     "\"origin\":{"
                                                                                         "\"name\":\"node01\","
@@ -244,7 +244,7 @@ static void test_WinExecdRun_wpopenv_err(void **state) {
                             "\"name\":\"node01\","
                             "\"module\":\"wazuh-analysisd\""
                         "},"
-                        "\"command\":\"restart-ossec0\","
+                        "\"command\":\"restart-wazuh0\","
                         "\"parameters\":{"
                             "\"extra_args\":[],"
                             "\"alert\":{"
@@ -267,11 +267,11 @@ static void test_WinExecdRun_wpopenv_err(void **state) {
                     "}";
     int timeout = 0;
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-ossec0");
+    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
     will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-ossec");
+    will_return(__wrap_GetCommandbyName, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-ossec {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
@@ -316,7 +316,7 @@ static void test_WinExecdRun_get_command_err(void **state) {
                             "\"name\":\"node01\","
                             "\"module\":\"wazuh-analysisd\""
                         "},"
-                        "\"command\":\"restart-ossec0\","
+                        "\"command\":\"restart-wazuh0\","
                         "\"parameters\":{"
                             "\"extra_args\":[],"
                             "\"alert\":{"
@@ -339,17 +339,17 @@ static void test_WinExecdRun_get_command_err(void **state) {
                     "}";
     int timeout = 0;
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-ossec0");
+    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
     will_return(__wrap_GetCommandbyName, timeout);
     will_return(__wrap_GetCommandbyName, NULL);
 
     will_return(__wrap_ReadExecConfig, 0);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-ossec0");
+    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
     will_return(__wrap_GetCommandbyName, timeout);
     will_return(__wrap_GetCommandbyName, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'restart-ossec0' provided.");
+    expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'restart-wazuh0' provided.");
 
     WinExecdRun(message);
 }
