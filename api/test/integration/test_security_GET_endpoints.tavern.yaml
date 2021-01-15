@@ -825,7 +825,7 @@ stages:
               username: testing
               allow_run_as: false
               roles:
-                - 99
+                - 1
             - id: 100
               username: administrator
               allow_run_as: false
@@ -887,8 +887,8 @@ stages:
               username: testing
               allow_run_as: false
               roles:
-                - id: 99
-                  name: "testing"
+                - id: 1
+                  name: "administrator"
                   rules: !anything
                   policies: !anything
           total_affected_items: 1
@@ -1092,7 +1092,7 @@ stages:
               username: testing
               allow_run_as: false
               roles:
-                - 99
+                - 1
             - id: 100
               username: administrator
               allow_run_as: false
@@ -1160,7 +1160,7 @@ stages:
               username: testing
               allow_run_as: false
               roles:
-                - 99
+                - 1
             - id: 104
               username: rbac
               allow_run_as: false
@@ -1250,7 +1250,7 @@ stages:
               username: testing
               allow_run_as: false
               roles:
-                - 99
+                - 1
             - id: 1
               username: wazuh
               allow_run_as: true

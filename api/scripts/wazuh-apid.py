@@ -41,7 +41,8 @@ def start(foreground, root, config_file):
     from api import validator
     from api.api_exception import APIError
     from api.constants import CONFIG_FILE_PATH
-    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging
+    from api.middlewares import set_user_name, security_middleware, response_postprocessing, request_logging, \
+        set_secure_headers
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
@@ -74,7 +75,21 @@ def start(foreground, root, config_file):
                 logger.info(f"Generated certificate file in WAZUH_PATH/{to_relative_path(api_conf['https']['cert'])}")
 
             # Load SSL context
-            ssl_context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS)
+            allowed_ssl_ciphers = {
+                'tls': ssl.PROTOCOL_TLS,
+                'tlsv1': ssl.PROTOCOL_TLSv1,
+                'tlsv1.1': ssl.PROTOCOL_TLSv1_1,
+                'tlsv1.2': ssl.PROTOCOL_TLSv1_2
+            }
+            try:
+                ssl_cipher = allowed_ssl_ciphers[api_conf['https']['ssl_cipher'].lower()]
+            except (KeyError, AttributeError):
+                # KeyError: invalid string value
+                # AttributeError: invalid boolean value
+                logger.error(str(APIError(2003, details='SSL cipher is not valid. Allowed values: '
+                                                        'TLS, TLSv1, TLSv1.1, TLSv1.2')))
+                sys.exit(1)
+            ssl_context = ssl.SSLContext(protocol=ssl_cipher)
             if api_conf['https']['use_ca']:
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(api_conf['https']['ca'])
@@ -128,7 +143,8 @@ def start(foreground, root, config_file):
                 strict_validation=True,
                 validate_responses=False,
                 pass_context_arg_name='request',
-                options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging]})
+                options={"middlewares": [response_postprocessing, set_user_name, security_middleware, request_logging,
+                                         set_secure_headers]})
 
     # Enable CORS
     if api_conf['cors']['enabled']:

@@ -58,6 +58,11 @@ int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
                                  fim_tmp_file **file,
                                  int storage);
 
+int __wrap_fim_db_get_path_from_pattern(fdb_t *fim_sql,
+                                        const char *pattern,
+                                        fim_tmp_file **file,
+                                        int storage);
+
 char **__wrap_fim_db_get_paths_from_inode(fdb_t *fim_sql,
                                           const unsigned long int inode,
                                           const unsigned long int dev);
@@ -147,4 +152,9 @@ int __wrap_fim_db_process_read_file(fdb_t *fim_sql,
                                     void *alert,
                                     void *mode,
                                     void *w_evt);
+void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
+                                         const char *pattern,
+                                         fim_tmp_file *file,
+                                         int storage,
+                                         int ret);
 #endif

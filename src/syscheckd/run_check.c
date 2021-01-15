@@ -674,18 +674,16 @@ STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
 }
 
 STATIC void fim_link_delete_range(int pos) {
-    char first_entry[PATH_MAX] = {0};
-    char last_entry[PATH_MAX]  = {0};
     fim_tmp_file * file = NULL;
+    char pattern[PATH_MAX] = {0};
 
-    snprintf(first_entry, PATH_MAX, "%s/", syscheck.symbolic_links[pos]);
-    snprintf(last_entry, PATH_MAX, "%s0", syscheck.symbolic_links[pos]);
+    // Create the sqlite LIKE pattern.
+    snprintf(pattern, PATH_MAX, "%s%c%%", syscheck.dir[pos], PATH_SEP);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
-    if (fim_db_get_path_range(syscheck.database, FIM_TYPE_FILE, first_entry, last_entry, &file,
-                              syscheck.database_store) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
+    if (fim_db_get_path_from_pattern(syscheck.database, pattern, &file, syscheck.database_store) != FIMDB_OK) {
+        merror(FIM_DB_ERROR_RM_PATTERN, pattern);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -695,7 +693,7 @@ STATIC void fim_link_delete_range(int pos) {
 
         if (fim_db_delete_range(syscheck.database, file,
                                 &syscheck.fim_entry_mutex, syscheck.database_store, mode) != FIMDB_OK) {
-            merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
+            merror(FIM_DB_ERROR_RM_PATTERN, pattern);
         }
     }
 }

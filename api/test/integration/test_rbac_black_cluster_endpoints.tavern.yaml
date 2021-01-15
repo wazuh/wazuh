@@ -627,7 +627,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Delete rules file (Allow) (Allow)
+  - name: Delete ossec.conf file worker1 (Allow) (Denied regex)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
@@ -637,9 +637,9 @@ stages:
       params:
         path: etc/ossec.conf
     response:
-      status_code: 200
+      status_code: 400
 
-  - name: Delete ossec.conf file (Deny) (Deny)
+  - name: Delete ossec.conf file worker2 (Deny) (Denied regex)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/files"
@@ -649,7 +649,7 @@ stages:
       params:
         path: etc/ossec.conf
     response:
-      <<: *permission_denied
+      status_code: 400
 
 ---
 test_name: GET /cluster/api/config
@@ -679,50 +679,6 @@ stages:
                 - worker2
           total_affected_items: 1
           total_failed_items: 1
-
----
-test_name: PUT /cluster/api/config
-
-stages:
-
-  - name: Modify API configuration (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      json:
-        cache:
-          enabled: false
-          time: 1
-    response:
-      status_code: 200
-      json: &update_api_config_ok
-        error: !anyint
-        data:
-          affected_items:
-            - worker1
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
----
-test_name: DELETE /cluster/api/config
-
-stages:
-
-  - name: Restore API config (Denied)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        <<: *update_api_config_ok
 
 ---
 test_name: PUT /cluster/restart
