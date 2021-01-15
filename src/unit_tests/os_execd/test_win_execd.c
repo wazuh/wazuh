@@ -119,7 +119,8 @@ static void test_WinExecdRun_ok(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
@@ -193,7 +194,8 @@ static void test_WinExecdRun_timeout(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
@@ -227,7 +229,8 @@ static void test_WinExecdRun_timeout(void **state) {
                                                                                                 "\"event\":\"added\""
                                                                                             "},"
                                                                                             "\"location\":\"syscheck\""
-                                                                                        "}"
+                                                                                        "},"
+                                                                                        "\"program\":\"restart-wazuh\""
                                                                                     "}"
                                                                                 "}' to the timeout list, with a timeout of '10s'.");
 
@@ -295,7 +298,8 @@ static void test_WinExecdRun_wpopenv_err(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
