@@ -20,10 +20,10 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-# read ossec-init from file in test data path
-with open(os.path.join(test_data_path, 'ossec-init.conf')) as f:
-    ossec_init = f.read()
-
+wazuh_control_info = 'WAZUH_VERSION="TEST_VERSION"\n\
+                      WAZUH_REVISION="TEST_REVISION"\n\
+                      WAZUH_TYPE="TEST_TYPE"\n'
+wazuh_installation_path = '/var/ossec'
 
 def get_fake_s3_db(sql_file):
 
@@ -52,7 +52,8 @@ def test_metadata_version_buckets(mocked_db, class_):
     """
     with patch(f'aws_s3.{class_.__name__}.get_client'), \
         patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
-        patch('aws_s3.open', mock_open(read_data=ossec_init)):
+        patch(f'aws_s3.call_wazuh_control', return_value=wazuh_control_info), \
+        patch(f'aws_s3.get_wazuh_path', return_value=wazuh_installation_path):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test',
                         'only_logs_after': '19700101', 'skip_on_error': True,
@@ -76,7 +77,8 @@ def test_metadata_version_services(mocked_db, class_):
     """
     with patch(f'aws_s3.{class_.__name__}.get_client'), \
         patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
-        patch('aws_s3.open', mock_open(read_data=ossec_init)):
+        patch(f'aws_s3.call_wazuh_control', return_value=wazuh_control_info), \
+        patch(f'aws_s3.get_wazuh_path', return_value=wazuh_installation_path):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'aws_profile': None, 'iam_role_arn': None,
                         'only_logs_after': '19700101', 'region': None})
@@ -101,7 +103,8 @@ def test_db_maintenance(class_, sql_file, db_name):
     with patch(f'aws_s3.{class_.__name__}.get_client'), \
         patch(f'aws_s3.{class_.__name__}.get_sts_client'), \
         patch('sqlite3.connect', side_effect=get_fake_s3_db(sql_file)), \
-        patch('aws_s3.open', mock_open(read_data=ossec_init)):
+        patch(f'aws_s3.call_wazuh_control', return_value=wazuh_control_info), \
+        patch(f'aws_s3.get_wazuh_path', return_value=wazuh_installation_path):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test-bucket',
                         'only_logs_after': '19700101', 'skip_on_error': True,
