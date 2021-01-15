@@ -3,15 +3,22 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
+from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
 from wazuh.core.exception import WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array
+
+
+cluster_enabled = not read_cluster_config()['disabled']
+node_id = get_node().get('node') if cluster_enabled else 'manager'
 
 
 def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, gdpr=None, hipaa=None, nist_800_53=None,
@@ -203,12 +210,22 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     return result
 
 
-def get_file(filename=None):
-    """Reads content of specified file
+def get_file(filename=None, raw=False):
+    """Read content of specified file.
 
-    :param filename: File name to read content from
-    :return: File contents
+    Parameters
+    ----------
+    filename : str
+        Name of the rule file.
+    raw : bool, optional
+        Whether to return the content in raw format or JSON. Default `False` (JSON format)
+
+    Returns
+    -------
+    Content of the file.
     """
+    result = AffectedItemsWazuhResult(none_msg='No rule was returned',
+                                      all_msg='Selected rule was returned')
     files = get_rules_files(filename=filename).affected_items
 
     if len(files) > 0:
@@ -216,8 +233,18 @@ def get_file(filename=None):
         try:
             full_path = os.path.join(common.ossec_path, rules_path, filename)
             with open(full_path) as f:
-                return f.read()
+                content = f.read()
+            if raw:
+                result = content
+            else:
+                result.affected_items.append(xmltodict.parse(content))
+                result.total_affected_items = 1
         except OSError:
-            raise WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path, filename))
+            result.add_failed_item(id_=filename,
+                                   error=WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path,
+                                                                                     filename)))
+
     else:
-        raise WazuhError(1415)
+        result.add_failed_item(id_=filename, error=WazuhError(1415))
+
+    return result
