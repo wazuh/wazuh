@@ -119,7 +119,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Default directory - Checked at runtime */
 #ifndef WIN32
 #ifndef DEFAULTDIR
-#define DEFAULTDIR      ({ \
+#ifdef WAZUH_UNIT_TESTING
+#define DEFAULTDIR FALLBACKDIR
+#else
+#define DEFAULTDIR ({ \
     struct stat wazuh_homedir_test; \
     char *wazuh_homedir = (binary_path == NULL)? bin_path(NULL) : binary_path; \
     if (wazuh_homedir != NULL) { \
@@ -130,6 +133,7 @@ https://www.gnu.org/licenses/gpl.html\n"
     binary_path = wazuh_homedir; \
     wazuh_homedir; \
 })
+#endif
 #endif
 #endif
 
