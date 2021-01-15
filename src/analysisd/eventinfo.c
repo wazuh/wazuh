@@ -1029,11 +1029,13 @@ char* ParseRuleComment(Eventinfo *lf) {
 #ifdef LIBGEOIP_ENABLED
         } else if (strcmp(var, "srcgeoip") == 0) {
             field = lf->srcgeoip;
-        } else if (strcmp(var, "dstuser") == 0) {
+        } else if (strcmp(var, "dstgeoip") == 0) {
             field = lf->dstgeoip;
 #endif
         } else if (strcmp(var, "srcport") == 0) {
             field = lf->srcport;
+        } else if (strcmp(var, "dstport") == 0) {
+            field = lf->dstport;
         } else if (strcmp(var, "protocol") == 0) {
             field = lf->protocol;
         } else if (strcmp(var, "action") == 0) {
@@ -1050,6 +1052,13 @@ char* ParseRuleComment(Eventinfo *lf) {
             field = lf->extra_data;
         } else if (strcmp(var, "system_name") == 0) {
             field = lf->systemname;
+        }
+
+        // Find pre-decoding fields
+        else if (strcmp(var, "program_name") == 0) {
+            field = lf->program_name;
+        } else if (strcmp(var, "hostname") == 0) {
+            field = lf->hostname;
         }
 
         // Find dynamic fields
