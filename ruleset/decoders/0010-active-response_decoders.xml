@@ -16,6 +16,8 @@ Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/host-deny.sh delete 
 Wed Dec  7 18:11:34 UTC 2016 /var/ossec/active-response/bin/route-null.sh add - 192.168.2.4 1481134294.521764 100001
 Wed Dec  7 18:12:14 UTC 2016 /var/ossec/active-response/bin/route-null.sh delete - 192.168.2.4 1481134294.521764 100001
 Wed Dec  7 19:42:30 UTC 2016 /var/ossec/active-response/bin/restart-ossec.sh add - 10.99.99.12 (from_the_server) (no_rule_id)
+jue 14 ene 2021 17:48:25 -03 /var/ossec/active-response/bin/firewall-drop.sh add - 172.17.0.2 1610657305.45083275 120000
+jue 14 ene 2021 17:48:25 -03 /var/ossec/active-response/bin/firewall-drop.sh delete - 172.17.0.2 1610657305.45083275 120000
 
 Windows:
 Wed 12/07/2016 19:39:40.15 "active-response/bin/route-null.cmd" add "-" "10.99.99.12" "(from_the_server) (no_rule_id)"
@@ -28,7 +30,7 @@ Wed 12/07/2016 16:48:15.37 "active-response/bin/route-null.cmd" delete "-" "192.
 
 
 <decoder name="ar_log">
-  <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \p*\w+ \d+ /\S+/active-response/bin/|^\w\w\w \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/</prematch>
+  <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \p*\w+ \d+ /\S+/active-response/bin/|^\w\w\w \d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\d\d/\d\d/\d\d\d\d \.+"active-response/bin/|^\w\w\w \d\d \w\w\w \d\d\d\d \d\d:\d\d:\d\d \p*\w+ \.+active-response/bin/</prematch>
 </decoder>
 
 <decoder name="ar_log_fields">
