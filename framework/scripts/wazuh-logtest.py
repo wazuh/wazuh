@@ -406,7 +406,7 @@ class Wazuh:
         Returns:
             str: field value
         """
-        wazuh_control = os.path.join(Wazuh.get_install_path(), "bin/wazuh-control")
+        wazuh_control = os.path.join(Wazuh.get_install_path(), "bin", "wazuh-control")
         wazuh_env_vars = dict()
         try:
             proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
