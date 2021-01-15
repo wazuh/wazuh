@@ -28,7 +28,7 @@ class MultiOrderedDict(OrderedDict):
 
 
 def getWazuhInfo(wazuh_home):   
-    wazuh_control = os.path.join(wazuh_home, "bin/wazuh-control") 
+    wazuh_control = os.path.join(wazuh_home, "bin", "wazuh-control") 
     wazuh_env_vars = {}
     try:
         proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
