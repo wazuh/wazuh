@@ -13,8 +13,8 @@
 import os
 
 def get_health():
-    output_syscheck = os.system("grep -q 'wazuh-syscheckd: INFO: (6009): File integrity monitoring scan ended.' /var/ossec/logs/ossec.log")
-    output_syscollector = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
+    output_syscheck = os.system("grep -q 'syscheckd: INFO: (6009): File integrity monitoring scan ended.' /var/ossec/logs/ossec.log")
+    output_syscollector = os.system("grep -q 'modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
 
     if output_syscheck == 0 and output_syscollector == 0:
         return 0
