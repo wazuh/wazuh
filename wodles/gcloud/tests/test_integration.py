@@ -17,7 +17,6 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from integration import WazuhGCloudSubscriber
-from tests.common import mock_ossec_init
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                               'data')
@@ -28,9 +27,8 @@ subscription_id = 'testing'
 test_message = 'test-message'.encode()
 
 
-@patch('tools.open', side_effect=mock_ossec_init())
 @patch('integration.pubsub.subscriber.Client.from_service_account_file')
-def get_wazuhgcloud_subscriber(mock_client, mock_ossec_init):
+def get_wazuhgcloud_subscriber(mock_client):
     """Return a WazuhGCloudSubscriber client."""
     client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
     return client
