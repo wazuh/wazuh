@@ -126,9 +126,10 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
     allow_run_as : bool
         Enable authorization context login method for the new user
     resource_type : ResourceType
-        Determines the type of the resource:
+        Determines the type of the resource to be created:
             'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
     Returns
     -------
@@ -170,9 +171,16 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
     allow_run_as : bool
         Enable authorization context login method for the new user
     resource_type : ResourceType
-        Determines the type of the resource:
-            'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+        Type of the resource to be updated.
+
+        This function cannot update a resource with a different resource_type value than the specified except for
+        resources of 'user' type. If no value is provided, the requested resource will be updated regarding its 
+        resource_type, to be able to change the password of any default user provided by Wazuh.
+
+        The supported values are:
+            'default': A system resource that cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
@@ -225,9 +233,16 @@ def remove_users(user_ids, resource_type: ResourceType = ResourceType.USER) -> A
     user_ids : list
         List of IDs
     resource_type : ResourceType
-        Determines the type of the resource:
-            'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+        Type of the resource to be removed.
+
+        This function cannot removed a resource with a different resource_type value than the specified except for
+        resources of 'user' type. If no value is provided, the requested resource will be removed only if its
+        resource_type is 'user'.
+
+        The supported values are:
+            'default': A system resource that cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
@@ -316,16 +331,23 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008]})
 def remove_roles(role_ids, resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
-    """Removes a certain role from the system
+    """Remove a certain role from the system
 
     Parameters
     ----------
     role_ids : list of str
         List of roles ids (None for all roles)
     resource_type : ResourceType
-        Determines the type of the resource:
-            'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+        Type of the resource to be removed.
+
+        This function cannot removed a resource with a different resource_type value than the specified except for
+        resources of 'user' type. If no value is provided, the requested resource will be removed only if its
+        resource_type is 'user'.
+
+        The supported values are:
+            'default': A system resource that cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
@@ -369,7 +391,7 @@ def remove_roles(role_ids, resource_type: ResourceType = ResourceType.USER) -> A
 
 @expose_resources(actions=['security:create'], resources=['*:*:*'])
 def add_role(name: str = None, resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
-    """Creates a role in the system
+    """Create a role in the system
 
     Parameters
     ----------
@@ -403,18 +425,25 @@ def add_role(name: str = None, resource_type: ResourceType = ResourceType.USER) 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}'])
 def update_role(role_id=None, name=None, resource_type: ResourceType = None) -> AffectedItemsWazuhResult:
-    """Updates a role in the system
+    """Update a role in the system.
 
     Parameters
     ----------
     role_id : str
-        Role id to be update
+        Role id to be updated
     name : str
         The new role name
     resource_type : ResourceType
-        Determines the type of the resource:
-            'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+        Type of the resource to be updated.
+
+        This function cannot update a resource with a different resource_type value than the specified except for
+        resources of 'user' type. If no value is provided, the requested resource will be updated only if its
+        resource_type is 'user'.
+
+        The supported values are:
+            'default': A system resource that cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
@@ -497,16 +526,23 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007, 4008]})
 def remove_policies(policy_ids=None, resource_type: ResourceType = ResourceType.USER) -> AffectedItemsWazuhResult:
-    """Removes a certain policy from the system
+    """Remove a certain policy from the system
 
     Parameters
     ----------
     policy_ids : list of str
         ID of the policy to be removed (All for all policies)
     resource_type : ResourceType
-        Determines the type of the resource:
-            'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+        Type of the resource to be removed.
+
+        This function cannot removed a resource with a different resource_type value than the specified except for
+        resources of 'user' type. If no value is provided, the requested resource will be removed only if its
+        resource_type is 'user'.
+
+        The supported values are:
+            'default': A system resource that cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
@@ -551,7 +587,7 @@ def remove_policies(policy_ids=None, resource_type: ResourceType = ResourceType.
                   post_proc_kwargs={'exclude_codes': [4006, 4009]})
 def add_policy(name: str = None, policy: str = None, resource_type: ResourceType = ResourceType.USER) \
         -> AffectedItemsWazuhResult:
-    """Creates a policy in the system
+    """Create a policy in the system
 
     Parameters
     ----------
@@ -587,7 +623,7 @@ def add_policy(name: str = None, policy: str = None, resource_type: ResourceType
 
 @expose_resources(actions=['security:update'], resources=['policy:id:{policy_id}'])
 def update_policy(policy_id=None, name=None, policy=None, resource_type: ResourceType = None) -> AffectedItemsWazuhResult:
-    """Updates a policy in the system
+    """Update a policy in the system
 
     Parameters
     ----------
@@ -598,9 +634,16 @@ def update_policy(policy_id=None, name=None, policy=None, resource_type: Resourc
     policy : str
         The new policy
     resource_type : ResourceType
-        Determines the type of the resource:
-            'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+        Type of the resource to be updated.
+
+        This function cannot update a resource with a different resource_type value than the specified except for
+        resources of 'user' type. If no value is provided, the requested resource will be updated only if its
+        resource_type is 'user'.
+
+        The supported values are:
+            'default': A system resource that cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
@@ -731,9 +774,16 @@ def remove_rules(rule_ids=None, resource_type: ResourceType = ResourceType.USER)
     rule_ids : list of str
         List of rule ids (None for all rules)
     resource_type : ResourceType
-        Determines the type of the resource:
-            'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+        Type of the resource to be removed.
+
+        This function cannot removed a resource with a different resource_type value than the specified except for
+        resources of 'user' type. If no value is provided, the requested resource will be removed only if its
+        resource_type is 'user'.
+
+        The supported values are:
+            'default': A system resource that cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns
@@ -787,9 +837,16 @@ def update_rule(rule_id=None, name=None, rule=None, resource_type: ResourceType 
     rule : str
         The new rule
     resource_type : ResourceType
-        Determines the type of the resource:
-            'default': A system resource that cannot be modified or removed by a user
-            'protected': A user-created resource that is protected so it cannot be modified or removed by a user.
+        Type of the resource to be updated.
+
+        This function cannot update a resource with a different resource_type value than the specified except for
+        resources of 'user' type. If no value is provided, the requested resource will be updated only if its
+        resource_type is 'user'.
+
+        The supported values are:
+            'default': A system resource that cannot be modified or removed by a user.
+            'protected': A user-created resource that is protected so it cannot be modified or removed without using
+            the CLI.
             'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
     Returns

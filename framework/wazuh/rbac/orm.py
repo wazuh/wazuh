@@ -601,7 +601,7 @@ class TokenManager:
             return SecurityError.ALREADY_EXIST
 
     def delete_rule(self, user_id: int = None, role_id: int = None, run_as: bool = False):
-        """Remove the rule for the specified role
+        """Remove the rule for the specified role. This function can remove a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -728,9 +728,9 @@ class AuthenticationManager:
         allow_run_as : bool
             Flag that indicates if the user can log into the API throw an authorization context
         created_at : DateTime
-            Creation time for this resource. Specified during a migration.
+            Creation time for this resource. Specified during a database migration.
         resource_type : ResourceType
-            Determines the type of the resource:
+            Type of the resource:
                 'default': A system resource that cannot be modified or removed by a user.
                 'protected': A user-created resource that is protected so it cannot be modified or removed without using
                  the CLI.
@@ -763,7 +763,7 @@ class AuthenticationManager:
             return False
 
     def update_user(self, user_id: int, password: str, allow_run_as: bool, resource_type: ResourceType = None):
-        """Update the password of an existing user, regardless of its resource_type
+        """Update an existing user. This function can update a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -774,7 +774,7 @@ class AuthenticationManager:
         allow_run_as : bool
             Enable authorization context login method for the new user
         resource_type : ResourceType
-            Determines the type of the resource:
+            Type of the resource:
                 'default': A system resource that cannot be modified or removed by a user.
                 'protected': A user-created resource that is protected so it cannot be modified or removed without using
                  the CLI.
@@ -803,7 +803,7 @@ class AuthenticationManager:
             return False
 
     def delete_user(self, user_id: int):
-        """Remove the specified user
+        """Remove the specified user. This function can remove a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -981,13 +981,15 @@ class RolesManager:
         name : str
             Name of the new role
         role_id : int
-            ID of the role to add. If no ID is specified a new ID will be provided instead. Specified during a migration
+            ID of the role to add. If no ID is specified a new ID will be provided instead. Specified during a database 
+            migration
         created_at : DateTime
-            Creation time for this resource. Specified during a migration
+            Creation time for this resource. Specified during a database migration
         resource_type : ResourceType
-            Determines the type of the resource:
+            Type of the resource:
                 'default': A system resource that cannot be modified or removed by a user
-                'protected': A user-created resource that is protected so it cannot be modified or removed by a user
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
                 'user': A user-created resource that is NOT protected and can be modified or removed by a user
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
@@ -1012,7 +1014,7 @@ class RolesManager:
             return SecurityError.ALREADY_EXIST
 
     def delete_role(self, role_id: int):
-        """Delete an existent role in the system
+        """Delete an existent role in the system. This function can remove a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -1037,7 +1039,7 @@ class RolesManager:
             return False
 
     def delete_role_by_name(self, role_name: str):
-        """Delete an existent role in the system
+        """Delete an existent role in the system. This function can remove a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -1060,7 +1062,7 @@ class RolesManager:
             return False
 
     def delete_all_roles(self):
-        """Delete all existent roles in the system
+        """Delete all existent roles in the system. This function can remove a resource regardless of its resource_type.
 
         Returns
         -------
@@ -1080,7 +1082,7 @@ class RolesManager:
             return False
 
     def update_role(self, role_id: int, name: str, resource_type: ResourceType = ResourceType.USER):
-        """Update an existent role in the system
+        """Update an existent role in the system. This function can update a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -1089,7 +1091,7 @@ class RolesManager:
         name : str
             New name for the role
         resource_type : ResourceType
-            Determines the type of the resource:
+            Type of the resource:
                 'default': A system resource that cannot be modified or removed by a user.
                 'protected': A user-created resource that is protected so it cannot be modified or removed without using
                  the CLI.
@@ -1193,11 +1195,11 @@ class RulesManager:
         rule : dict
             Rule dictionary.
         rule_id : int
-            Id of the rule. Specified during a migration.
+            Id of the rule. Specified during a database migration.
         created_at : DateTime
-            Creation time for this resource. Specified during a migration.
+            Creation time for this resource. Specified during a database migration.
         resource_type : ResourceType
-            Determines the type of the resource:
+            Type of the resource:
                 'default': A system resource that cannot be modified or removed by a user.
                 'protected': A user-created resource that is protected so it cannot be modified or removed without using
                  the CLI.
@@ -1228,7 +1230,8 @@ class RulesManager:
             return SecurityError.ALREADY_EXIST
 
     def delete_rule(self, rule_id: int):
-        """Delete an existent rule from the system specified by its ID.
+        """Delete an existent rule from the system specified by its ID. This function can remove a resource regardless
+        of its resource_type.
 
         Parameters
         ----------
@@ -1253,7 +1256,8 @@ class RulesManager:
             return False
 
     def delete_rule_by_name(self, rule_name: str):
-        """Delete an existent rule from the system specified by its name.
+        """Delete an existent rule from the system specified by its name. This function can remove a resource regardless
+         of its resource_type.
 
         Parameters
         ----------
@@ -1276,7 +1280,8 @@ class RulesManager:
             return False
 
     def delete_all_rules(self):
-        """Delete all existent rules from the system.
+        """Delete all existent rules from the system. This function can remove a resource regardless of its
+        resource_type.
 
         Returns
         -------
@@ -1409,11 +1414,11 @@ class PoliciesManager:
         policy : dict
             Policy of the new policy
         policy_id : int
-            ID of the policy. Specified during a migration.
+            ID of the policy. Specified during a database migration.
         created_at : DateTime
-            Creation time for this resource. Specified during a migration.
+            Creation time for this resource. Specified during a database migration.
         resource_type : ResourceType
-            Determines the type of the resource:
+            Type of the resource:
                 'default': A system resource that cannot be modified or removed by a user.
                 'protected': A user-created resource that is protected so it cannot be modified or removed without using
                  the CLI.
@@ -1466,7 +1471,7 @@ class PoliciesManager:
             return SecurityError.ALREADY_EXIST
 
     def delete_policy(self, policy_id: int):
-        """Delete an existent policy in the system
+        """Delete an existent policy in the system. This function can remove a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -1491,7 +1496,7 @@ class PoliciesManager:
             return False
 
     def delete_policy_by_name(self, policy_name: str):
-        """Delete an existent role in the system
+        """Delete an existent role in the system. This function can remove a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -1515,7 +1520,8 @@ class PoliciesManager:
             return False
 
     def delete_all_policies(self):
-        """Delete all existent policies in the system
+        """Delete all existent policies in the system. This function can remove a resource regardless of its
+        resource_type.
 
         Returns
         -------
@@ -1535,7 +1541,7 @@ class PoliciesManager:
             return False
 
     def update_policy(self, policy_id: int, name: str, policy: dict, resource_type: ResourceType = ResourceType.USER):
-        """Update an existent policy in the system
+        """Update an existent policy in the system. This function can update a resource regardless of its resource_type.
 
         Parameters
         ----------
@@ -1546,7 +1552,7 @@ class PoliciesManager:
         policy : dict
             New policy for the Policy
         resource_type : ResourceType
-            Determines the type of the resource:
+            Type of the resource:
                 'default': A system resource that cannot be modified or removed by a user.
                 'protected': A user-created resource that is protected so it cannot be modified or removed without using
                  the CLI.
@@ -1613,7 +1619,7 @@ class UserRolesManager:
         position : int
             Order to be applied in case of multiples roles in the same user
         created_at : DateTime
-            Creation time for this resource. Specified during a migration.
+            Creation time for this resource. Specified during a database migration.
         force_admin : bool
             By default, changing an administrator user is not allowed. If True, it will be applied to admin users too
         atomic : bool
@@ -1946,7 +1952,7 @@ class RolesPoliciesManager:
         position : int
             Order to be applied in case of multiples roles in the same user
         created_at : DateTime
-            Creation time for this resource. Specified during a migration.
+            Creation time for this resource. Specified during a database migration.
         force_admin : bool
             By default, changing an administrator roles is not allowed. If True, it will be applied to admin roles too
         atomic : bool
@@ -2303,7 +2309,7 @@ class RolesRulesManager:
         position : int
             Order to be applied in case of multiples roles in the same user
         created_at : DateTime
-            Creation time for this resource. Specified during a migration.
+            Creation time for this resource. Specified during a database migration.
         atomic : bool
             This parameter indicates if the operation is atomic. If this function is called within
             a loop or a function composed of several operations, atomicity cannot be guaranteed.
