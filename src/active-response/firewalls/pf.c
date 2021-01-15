@@ -153,6 +153,13 @@ int main (int argc, char **argv) {
     return 0;
 }
 
+static void free_vars (){
+    cJSON_Delete(input_json);
+    os_free(srcip);
+    os_free(action);
+    os_free(iptables);
+}
+
 int checking_if_its_configured(const char *path, const char *table) {
     char command[1023];
     char output_buf[1023];
