@@ -639,7 +639,7 @@ $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 
 test_programs = tap_wazuhdb_op tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
 
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
+WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe win32/restart-wazuh.exe
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -657,7 +657,6 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../active-response/win/route-null-2012.cmd > route-null-2012.cmd
 	cd win32/ && ./unix2dos.pl ../active-response/win/netsh.cmd > netsh.cmd
 	cd win32/ && ./unix2dos.pl ../active-response/win/netsh-win-2016.cmd > netsh-win-2016.cmd
-	cd win32/ && ./unix2dos.pl ../active-response/win/restart-ossec.cmd > restart-ossec.cmd
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis wazuh-installer.nsi
@@ -1104,6 +1103,7 @@ wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
+	AR_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 
 	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
@@ -1435,7 +1435,7 @@ manage_agents: ${addagent_o}
 
 #### Active Response ####
 
-active_response_programs = pf### AR program list
+active_response_programs = default-firewall-drop disable-account restart-wazuh pf
 
 $(active_response_programs): $(BUILD_LIBS)
 
@@ -1449,7 +1449,16 @@ active_response_o := $(active_response_c:.c=.o)
 active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
 
-pf: active-response/firewalls/pf.o
+pf: active-response/firewalls/pf.o  active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+disable-account: active-response/disable-account.o active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+restart-wazuh: active-response/restart-wazuh.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Util ##########
@@ -1960,6 +1969,9 @@ win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
+win32/restart-wazuh.exe: win32/win_service_rk.o active-response/restart-wazuh.o
+	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
 ####################
 #### Clean #########
 ####################
@@ -2086,7 +2098,7 @@ clean-windows:
 	rm -f win32/default-local_internal_options.conf
 	rm -f win32/default-ossec.conf
 	rm -f win32/default-ossec-pre6.conf
-	rm -f win32/restart-ossec.cmd
+	rm -f win32/restart-wazuh.exe
 	rm -f win32/route-null.cmd
 	rm -f win32/route-null-2012.cmd
 	rm -f win32/netsh.cmd

@@ -65,6 +65,11 @@ src/wazuh-reportd
 src/wazuh-syscheckd
 src/wazuh-integratord
 
+# Active responses
+src/default-firewall-drop
+src/disable-account
+src/restart-wazuh
+
 # Windows agent
 src/win32/*.exe
 src/win32/LICENSE.txt
