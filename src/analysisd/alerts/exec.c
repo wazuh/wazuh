@@ -18,6 +18,7 @@
 #include "os_execd/execd.h"
 #include "eventinfo.h"
 #include "wazuh_db/wdb.h"
+#include "labels.h"
 
 static const char* get_ip(const Eventinfo *lf);
 
@@ -88,7 +89,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             int sock = -1;
             int *id_array = NULL;
 
-            id_array = wdb_get_all_agents(FALSE, &sock);
+            id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
             if(!id_array) {
                 merror("Unable to get agent's ID array.");
                 wdbc_close(&sock);
@@ -99,25 +100,35 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 cJSON *json_agt_info = NULL;
                 cJSON *json_agt_version = NULL;
                 char c_agent_id[OS_SIZE_16];
+                wlabel_t *agt_labels = NULL;
                 char *agt_version = NULL;
 
                 memset(exec_msg, 0, OS_SIZE_8192 + 1);
                 memset(msg, 0, OS_SIZE_8192 + 1);
 
-                json_agt_info = wdb_get_agent_info(id_array[i], &sock);
-                if (!json_agt_info) {
-                    merror("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
-                    continue;
-                }
+                snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
 
-                json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+                agt_labels = labels_find(c_agent_id, &sock);
+                agt_version = labels_get(agt_labels, "_wazuh_version");
 
-                if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
-                    agt_version = json_agt_version->valuestring;
-                } else {
-                    merror("Failed to get agent '%d' version.", id_array[i]);
-                    cJSON_Delete(json_agt_info);
-                    continue;
+                if (!agt_version) {
+                    json_agt_info = wdb_get_agent_info(id_array[i], &sock);
+                    if (!json_agt_info) {
+                        merror("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
+                        labels_free(agt_labels);
+                        continue;
+                    }
+
+                    json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+
+                    if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
+                        agt_version = json_agt_version->valuestring;
+                    } else {
+                        merror("Failed to get agent '%d' version.", id_array[i]);
+                        labels_free(agt_labels);
+                        cJSON_Delete(json_agt_info);
+                        continue;
+                    }
                 }
 
                 // New AR mechanism is not supported in versions prior to 4.2.0
@@ -127,6 +138,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 char *minor = strtok_r(NULL, ".", &save_ptr);
                 if (!major || !minor) {
                     merror("Unable to read agent version.");
+                    labels_free(agt_labels);
                     cJSON_Delete(json_agt_info);
                     continue;
                 } else {
@@ -134,15 +146,16 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                         getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                     } else {
                         if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                            labels_free(agt_labels);
                             cJSON_Delete(json_agt_info);
                             continue;
                         }
                     }
                 }
 
+                labels_free(agt_labels);
                 cJSON_Delete(json_agt_info);
 
-                snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
                 get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
 
                 if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
@@ -159,6 +172,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             cJSON *json_agt_info = NULL;
             cJSON *json_agt_version = NULL;
             char c_agent_id[OS_SIZE_16];
+            wlabel_t *agt_labels = NULL;
             char *agt_version = NULL;
             int agt_id = OS_INVALID;
 
@@ -174,21 +188,30 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 goto cleanup;
             }
 
-            json_agt_info = wdb_get_agent_info(agt_id, &sock);
-            wdbc_close(&sock);
-            if (!json_agt_info) {
-                merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
-                goto cleanup;
-            }
+            snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
 
-            json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+            agt_labels = labels_find(c_agent_id, &sock);
+            agt_version = labels_get(agt_labels, "_wazuh_version");
 
-            if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
-                agt_version = json_agt_version->valuestring;
-            } else {
-                merror("Failed to get agent '%d' version.", agt_id);
-                cJSON_Delete(json_agt_info);
-                goto cleanup;
+            if (!agt_version) {
+                json_agt_info = wdb_get_agent_info(agt_id, &sock);
+                wdbc_close(&sock);
+                if (!json_agt_info) {
+                    merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
+                    labels_free(agt_labels);
+                    goto cleanup;
+                }
+
+                json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+
+                if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
+                    agt_version = json_agt_version->valuestring;
+                } else {
+                    merror("Failed to get agent '%d' version.", agt_id);
+                    labels_free(agt_labels);
+                    cJSON_Delete(json_agt_info);
+                    goto cleanup;
+                }
             }
 
             // New AR mechanism is not supported in versions prior to 4.2.0
@@ -198,6 +221,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             char *minor = strtok_r(NULL, ".", &save_ptr);
             if (!major || !minor) {
                 merror("Unable to read agent version.");
+                labels_free(agt_labels);
                 cJSON_Delete(json_agt_info);
                 goto cleanup;
             } else {
@@ -205,15 +229,16 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                     getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                 } else {
                     if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                        labels_free(agt_labels);
                         cJSON_Delete(json_agt_info);
                         goto cleanup;
                     }
                 }
             }
 
+            labels_free(agt_labels);
             cJSON_Delete(json_agt_info);
 
-            snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
             get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
 
             if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {

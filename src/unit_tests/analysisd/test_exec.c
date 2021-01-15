@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "../wrappers/wazuh/shared/labels_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_agent_wrappers.h"
 #include "../../analysisd/eventinfo.h"
 #include "../../analysisd/config.h"
@@ -146,6 +147,84 @@ void test_all_agents_success_json_string(void **state)
     char *version_2 = "Wazuh v4.0.0";
     data->ar->location = ALL_AGENTS;
 
+    char *exec_msg_1 = "(ubuntu) any->syscheck NNS 003 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-wazuh0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    const char *alert_info_1 = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+    char *node_1 = NULL;
+
+    os_strdup("node01", node_1);
+
+    char *exec_msg = "(ubuntu) any->syscheck NNS 005 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
+
+    Config.ar = 1;
+    __crt_ftell = 80794;
+
+    int *array = NULL;
+    os_malloc(sizeof(int)*3, array);
+    array[0] = 3;
+    array[1] = 5;
+    array[2] = OS_INVALID;
+
+    expect_string(__wrap_wdb_get_agents_by_connection_status, status, AGENT_CS_ACTIVE);
+    will_return(__wrap_wdb_get_agents_by_connection_status, array);
+
+    // Alert 1
+
+    wlabel_t *labels_1 = NULL;
+    os_calloc(2, sizeof(wlabel_t), labels_1);
+
+    os_strdup("_wazuh_version", labels_1[0].key);
+    os_strdup(version_1, labels_1[0].value);
+
+    expect_string(__wrap_labels_find, agent_id, "003");
+    will_return(__wrap_labels_find, labels_1);
+
+    expect_string(__wrap_labels_get, key, labels_1->key);
+    will_return(__wrap_labels_get, labels_1->value);
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info_1));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node_1);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg_1);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    // Alert 2
+
+    wlabel_t *labels_2 = NULL;
+    os_calloc(2, sizeof(wlabel_t), labels_2);
+
+    os_strdup("_wazuh_version", labels_2[0].key);
+    os_strdup(version_2, labels_2[0].value);
+
+    expect_string(__wrap_labels_find, agent_id, "005");
+    will_return(__wrap_labels_find, labels_2);
+
+    expect_string(__wrap_labels_get, key, labels_2->key);
+    will_return(__wrap_labels_get, labels_2->value);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
+}
+
+void test_all_agents_success_json_string_wdb(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+
+    char *version_1 = "Wazuh v4.2.0";
+    char *version_2 = "Wazuh v4.0.0";
+    data->ar->location = ALL_AGENTS;
+
     cJSON *agent_info_array_1 = cJSON_CreateArray();
     cJSON *agent_info_1 = cJSON_CreateObject();
     cJSON_AddStringToObject(agent_info_1, "version", version_1);
@@ -173,10 +252,19 @@ void test_all_agents_success_json_string(void **state)
     array[1] = 5;
     array[2] = OS_INVALID;
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, 0);
-    will_return(__wrap_wdb_get_all_agents, array);
+    expect_string(__wrap_wdb_get_agents_by_connection_status, status, AGENT_CS_ACTIVE);
+    will_return(__wrap_wdb_get_agents_by_connection_status, array);
 
     // Alert 1
+
+    wlabel_t *labels_1 = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels_1);
+
+    expect_string(__wrap_labels_find, agent_id, "003");
+    will_return(__wrap_labels_find, labels_1);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, array[0]);
     will_return(__wrap_wdb_get_agent_info, agent_info_array_1);
@@ -193,6 +281,15 @@ void test_all_agents_success_json_string(void **state)
     will_return(__wrap_OS_SendUnix, 1);
 
     // Alert 2
+
+    wlabel_t *labels_2 = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels_2);
+
+    expect_string(__wrap_labels_find, agent_id, "005");
+    will_return(__wrap_labels_find, labels_2);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, array[1]);
     will_return(__wrap_wdb_get_agent_info, agent_info_array_2);
@@ -222,10 +319,19 @@ void test_all_agents_success_fail_agt_info1(void **state)
     array[1] = 5;
     array[2] = OS_INVALID;
 
-    expect_value(__wrap_wdb_get_all_agents, include_manager, 0);
-    will_return(__wrap_wdb_get_all_agents, array);
+    expect_string(__wrap_wdb_get_agents_by_connection_status, status, AGENT_CS_ACTIVE);
+    will_return(__wrap_wdb_get_agents_by_connection_status, array);
 
     // Alert 1
+
+    wlabel_t *labels_1 = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels_1);
+
+    expect_string(__wrap_labels_find, agent_id, "003");
+    will_return(__wrap_labels_find, labels_1);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, array[0]);
     will_return(__wrap_wdb_get_agent_info, NULL);
@@ -233,6 +339,15 @@ void test_all_agents_success_fail_agt_info1(void **state)
     expect_string(__wrap__merror, formatted_msg, "Failed to get agent '3' information from Wazuh DB.");
 
     // Alert 2
+
+    wlabel_t *labels_2 = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels_2);
+
+    expect_string(__wrap_labels_find, agent_id, "005");
+    will_return(__wrap_labels_find, labels_2);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, array[1]);
     will_return(__wrap_wdb_get_agent_info, NULL);
@@ -243,6 +358,50 @@ void test_all_agents_success_fail_agt_info1(void **state)
 }
 
 void test_specific_agent_success_json(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+
+    char *version = "Wazuh v4.2.0";
+    data->ar->location = SPECIFIC_AGENT;
+
+    char *exec_msg = "(ubuntu) any->syscheck NNS 002 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-wazuh0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+    char *node = NULL;
+
+    os_strdup("node01", node);
+
+    Config.ar = 1;
+
+    wlabel_t *labels = NULL;
+    os_calloc(2, sizeof(wlabel_t), labels);
+
+    os_strdup("_wazuh_version", labels[0].key);
+    os_strdup(version, labels[0].value);
+
+    expect_string(__wrap_labels_find, agent_id, "002");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, labels->key);
+    will_return(__wrap_labels_get, labels->value);
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
+}
+
+void test_specific_agent_success_json_wdb(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
@@ -264,6 +423,15 @@ void test_specific_agent_success_json(void **state)
     os_strdup("node01", node);
 
     Config.ar = 1;
+
+    wlabel_t *labels = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels);
+
+    expect_string(__wrap_labels_find, agent_id, "002");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, atoi(data->ar->agent_id));
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
@@ -292,6 +460,41 @@ void test_specific_agent_success_string(void **state)
     char *version = "Wazuh v4.0.0";
     data->ar->location = SPECIFIC_AGENT;
 
+    char *exec_msg = "(ubuntu) any->syscheck NNS 002 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
+
+    Config.ar = 1;
+    __crt_ftell = 80794;
+
+    wlabel_t *labels = NULL;
+    os_calloc(2, sizeof(wlabel_t), labels);
+
+    os_strdup("_wazuh_version", labels[0].key);
+    os_strdup(version, labels[0].value);
+
+    expect_string(__wrap_labels_find, agent_id, "002");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, labels->key);
+    will_return(__wrap_labels_get, labels->value);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
+}
+
+void test_specific_agent_success_string_wdb(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+
+    char *version = "Wazuh v4.0.0";
+    data->ar->location = SPECIFIC_AGENT;
+
     cJSON *agent_info_array = cJSON_CreateArray();
     cJSON *agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(agent_info, "version", version);
@@ -301,6 +504,15 @@ void test_specific_agent_success_string(void **state)
 
     Config.ar = 1;
     __crt_ftell = 80794;
+
+    wlabel_t *labels = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels);
+
+    expect_string(__wrap_labels_find, agent_id, "002");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, atoi(data->ar->agent_id));
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
@@ -324,6 +536,15 @@ void test_specific_agent_success_fail_agt_info1(void **state)
 
     Config.ar = 1;
 
+    wlabel_t *labels = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels);
+
+    expect_string(__wrap_labels_find, agent_id, "002");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
+
     expect_value(__wrap_wdb_get_agent_info, id, atoi(data->ar->agent_id));
     will_return(__wrap_wdb_get_agent_info, NULL);
 
@@ -333,6 +554,50 @@ void test_specific_agent_success_fail_agt_info1(void **state)
 }
 
 void test_remote_agent_success_json(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+
+    char *version = "Wazuh v4.2.0";
+    data->ar->location = REMOTE_AGENT;
+
+    char *exec_msg = "(ubuntu) any->syscheck NRN 001 {\"version\":1,\"origin\":{\"name\":\"node01\",\"module\":\"wazuh-analysisd\"},\"command\":\"restart-wazuh0\",\"parameters\":{\"extra_args\":[],\"alert\":[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]}}";
+    const char *alert_info = "[{\"timestamp\":\"2021-01-05T15:23:00.547+0000\",\"rule\":{\"level\":5,\"description\":\"File added to the system.\",\"id\":\"554\"}}]";
+    char *node = NULL;
+
+    os_strdup("node01", node);
+
+    Config.ar = 1;
+
+    wlabel_t *labels = NULL;
+    os_calloc(2, sizeof(wlabel_t), labels);
+
+    os_strdup("_wazuh_version", labels[0].key);
+    os_strdup(version, labels[0].value);
+
+    expect_string(__wrap_labels_find, agent_id, "001");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, labels->key);
+    will_return(__wrap_labels_get, labels->value);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
+
+    will_return(__wrap_OS_ReadXML, 1);
+
+    will_return(__wrap_OS_GetOneContentforElement, node);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
+}
+
+void test_remote_agent_success_json_wdb(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
@@ -354,6 +619,15 @@ void test_remote_agent_success_json(void **state)
     os_strdup("node01", node);
 
     Config.ar = 1;
+
+    wlabel_t *labels = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels);
+
+    expect_string(__wrap_labels_find, agent_id, "001");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, atoi(data->lf->agent_id));
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
@@ -382,6 +656,41 @@ void test_remote_agent_success_string(void **state)
     char *version = "Wazuh v4.0.0";
     data->ar->location = REMOTE_AGENT;
 
+    char *exec_msg = "(ubuntu) any->syscheck NRN 001 restart-wazuh0 - - 160987966.80794 554 (ubuntu) any->syscheck /home/vagrant/file/n44.txt -";
+
+    Config.ar = 1;
+    __crt_ftell = 80794;
+
+    wlabel_t *labels = NULL;
+    os_calloc(2, sizeof(wlabel_t), labels);
+
+    os_strdup("_wazuh_version", labels[0].key);
+    os_strdup(version, labels[0].value);
+
+    expect_string(__wrap_labels_find, agent_id, "001");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, labels->key);
+    will_return(__wrap_labels_get, labels->value);
+
+    expect_value(__wrap_OS_SendUnix, socket, arq);
+    expect_string(__wrap_OS_SendUnix, msg, exec_msg);
+    expect_value(__wrap_OS_SendUnix, size, 0);
+    will_return(__wrap_OS_SendUnix, 1);
+
+    OS_Exec(execq, &arq, data->lf, data->ar);
+}
+
+void test_remote_agent_success_string_wdb(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    int execq = 10;
+    int arq = 11;
+
+    char *version = "Wazuh v4.0.0";
+    data->ar->location = REMOTE_AGENT;
+
     cJSON *agent_info_array = cJSON_CreateArray();
     cJSON *agent_info = cJSON_CreateObject();
     cJSON_AddStringToObject(agent_info, "version", version);
@@ -391,6 +700,15 @@ void test_remote_agent_success_string(void **state)
 
     Config.ar = 1;
     __crt_ftell = 80794;
+
+    wlabel_t *labels = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels);
+
+    expect_string(__wrap_labels_find, agent_id, "001");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, atoi(data->lf->agent_id));
     will_return(__wrap_wdb_get_agent_info, agent_info_array);
@@ -413,6 +731,15 @@ void test_remote_agent_success_fail_agt_info1(void **state)
     data->ar->location = REMOTE_AGENT;
 
     Config.ar = 1;
+
+    wlabel_t *labels = NULL;
+    os_calloc(1, sizeof(wlabel_t), labels);
+
+    expect_string(__wrap_labels_find, agent_id, "001");
+    will_return(__wrap_labels_find, labels);
+
+    expect_string(__wrap_labels_get, key, "_wazuh_version");
+    will_return(__wrap_labels_get, NULL);
 
     expect_value(__wrap_wdb_get_agent_info, id, atoi(data->lf->agent_id));
     will_return(__wrap_wdb_get_agent_info, NULL);
@@ -466,16 +793,21 @@ int main(void)
 
         // ALL_AGENTS
         cmocka_unit_test_setup_teardown(test_all_agents_success_json_string, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_all_agents_success_json_string_wdb, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_all_agents_success_fail_agt_info1, test_setup, test_teardown),
 
         // SPECIFIC_AGENT
         cmocka_unit_test_setup_teardown(test_specific_agent_success_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_specific_agent_success_json_wdb, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_specific_agent_success_string, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_specific_agent_success_string_wdb, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_specific_agent_success_fail_agt_info1, test_setup, test_teardown),
 
         // REMOTE_AGENT
         cmocka_unit_test_setup_teardown(test_remote_agent_success_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_remote_agent_success_json_wdb, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_remote_agent_success_string, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_remote_agent_success_string_wdb, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_remote_agent_success_fail_agt_info1, test_setup, test_teardown),
 
         // getActiveResponseInJSON
