@@ -1789,7 +1789,9 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             } /* end of elements block */
 
             /* Assign an active response to the rule */
-            Rule_AddAR(config_ruleinfo);
+            if (os_analysisd_rulelist == *r_node) {
+                Rule_AddAR(config_ruleinfo);
+            }
 
             j++; /* next rule */
 
