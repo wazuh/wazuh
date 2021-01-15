@@ -388,6 +388,7 @@
 #endif /* WIN32 */
 
 const char *__local_name = "unset";
+char *binary_path = NULL;
 
 /* Set the name of the starting program */
 void OS_SetName(const char *name)
