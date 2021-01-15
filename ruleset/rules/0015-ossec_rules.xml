@@ -332,33 +332,33 @@
 
   <rule id="601" level="3">
     <if_sid>600</if_sid>
-    <field name="script">firewall-drop.sh</field>
+    <field name="script">firewall-drop</field>
     <field name="type">add</field>
-    <description>Host Blocked by firewall-drop.sh Active Response</description>
+    <description>Host Blocked by firewall-drop Active Response</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
   <rule id="602" level="3">
     <if_sid>600</if_sid>
-    <field name="script">firewall-drop.sh</field>
+    <field name="script">firewall-drop</field>
     <field name="type">delete</field>
-    <description>Host Unblocked by firewall-drop.sh Active Response</description>
+    <description>Host Unblocked by firewall-drop Active Response</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
   <rule id="603" level="3">
     <if_sid>600</if_sid>
-    <field name="script">host-deny.sh</field>
+    <field name="script">host-deny</field>
     <field name="type">add</field>
-    <description>Host Blocked by host-deny.sh Active Response</description>
+    <description>Host Blocked by host-deny Active Response</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
   <rule id="604" level="3">
     <if_sid>600</if_sid>
-    <field name="script">host-deny.sh</field>
+    <field name="script">host-deny</field>
     <field name="type">delete</field>
-    <description>Host Unblocked by host-deny.sh Active Response</description>
+    <description>Host Unblocked by host-deny Active Response</description>
     <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 
@@ -383,6 +383,68 @@
     <description>Active response: $(script) - $(type)</description>
     <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
+
+  <rule id="650" level="0">
+    <decoded_as>ar_log_json</decoded_as>
+    <description>Active Response JSON Messages Grouped</description>
+    <group>active_response,</group>
+  </rule>
+
+  <rule id="651" level="3">
+    <if_sid>650</if_sid>
+    <field name="parameters.program">firewall-drop</field>
+    <field name="command">add</field>
+    <description>Host Blocked by firewall-drop Active Response</description>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+  </rule>
+
+  <rule id="652" level="3">
+    <if_sid>650</if_sid>
+    <field name="parameters.program">firewall-drop</field>
+    <field name="command">delete</field>
+    <description>Host Unblocked by firewall-drop Active Response</description>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+  </rule>
+
+  <rule id="653" level="3">
+    <if_sid>650</if_sid>
+    <field name="parameters.program">host-deny</field>
+    <field name="command">add</field>
+    <description>Host Blocked by host-deny Active Response</description>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+  </rule>
+
+  <rule id="654" level="3">
+    <if_sid>650</if_sid>
+    <field name="parameters.program">host-deny</field>
+    <field name="command">delete</field>
+    <description>Host Unblocked by host-deny Active Response</description>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+  </rule>
+
+  <rule id="655" level="3">
+    <if_sid>650</if_sid>
+    <field name="parameters.program">route-null</field>
+    <field name="command">add</field>
+    <description>Host Blocked by $(parameters.program) Active Response</description>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+  </rule>
+
+  <rule id="656" level="3">
+    <if_sid>650</if_sid>
+    <field name="parameters.program">route-null</field>
+    <field name="command">delete</field>
+    <description>Host Unblocked by $(parameters.program) Active Response</description>
+    <group>active_response,pci_dss_11.4,gpg13_4.13,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+  </rule>
+
+  <rule id="657" level="3">
+    <if_sid>650</if_sid>
+    <description>Active response: $(parameters.program) - $(command)</description>
+    <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+  </rule>
+
+  <!-- logcollector rules -->
 
   <rule id="700" level="0">
     <category>ossec</category>

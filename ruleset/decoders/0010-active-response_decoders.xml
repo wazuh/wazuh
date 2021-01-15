@@ -42,3 +42,8 @@ Wed 12/07/2016 16:48:15.37 "active-response/bin/route-null.cmd" delete "-" "192.
     <regex offset="after_regex">^(\d+)|(\.+\))</regex>
     <order>extra_data</order>
 </decoder>
+
+<decoder name="ar_log_json">
+    <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d /\S+/active-response/bin/\S+: </prematch>
+    <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
+</decoder>
