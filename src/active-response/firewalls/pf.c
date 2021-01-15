@@ -27,7 +27,6 @@ static void free_vars();
 static char *srcip;
 static char *action;
 static char *iptables;
-static char *filename;
 static cJSON *input_json = NULL;
 
 int main (int argc, char **argv) {
@@ -37,47 +36,30 @@ int main (int argc, char **argv) {
     char arg2[COMMANDSIZE];
     char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
-    cJSON *origin_json = NULL;
-    cJSON *version_json = NULL;
-    cJSON *command_json = NULL;
-    cJSON *parameters_json = NULL;
-    cJSON *alert_json = NULL;
-    cJSON *data_json = NULL;
-    cJSON *srcip_json = NULL;
-    const char *json_err;
     struct utsname uname_buffer;
 
-    write_debug_file ("pf" , "Starting");
-
-    // Reading filename
-    filename = basename(argv[0]);
-    if (filename == NULL) {
-        log_msg[LOGSIZE -1] = '\0';
-        snprintf(log_msg, LOGSIZE -1 , "Cannot read filename: %s (%d)", strerror(errno), errno);
-        write_debug_file("default-firewall-drop", log_msg);
-        return OS_INVALID;
-    }
-
-    input[BUFFERSIZE -1] = '\0';
+    write_debug_file(argv[0], "Starting");
+    // Reading input
+    input[BUFFERSIZE-1] = '\0';
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file (filename, "Cannot read input from stdin");
+        write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
 
     input_json = get_json_from_input(input);
     if (!input_json) {
-        write_debug_file(filename, "Invalid input format");
+        write_debug_file(argv[0], "Invalid input format");
         return OS_INVALID;
     }
 
     action = get_command(input_json);
     if (!action) {
-        write_debug_file(filename, "Cannot read 'command' from json");
+        write_debug_file(argv[0], "Cannot read 'command' from json");
         return OS_INVALID;
     }
 
     if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file(filename, "Invalid value of 'command'");
+        write_debug_file(argv[0], "Invalid value of 'command'");
         free_vars();
         return OS_INVALID;
     }
@@ -85,13 +67,13 @@ int main (int argc, char **argv) {
     // Get srcip
     srcip = get_srcip_from_json(input_json);
     if (!srcip) {
-        write_debug_file(filename, "Cannot read 'srcip' from data");
+        write_debug_file(argv[0], "Cannot read 'srcip' from data");
         free_vars();
         return OS_INVALID;
     }
 
     if (uname(&uname_buffer) != 0){
-        write_debug_file(filename, "Cannot get system name");
+        write_debug_file(argv[0], "Cannot get system name");
         free_vars();
         return OS_INVALID;
     }
@@ -103,7 +85,7 @@ int main (int argc, char **argv) {
         if (access(PFCTL, F_OK) < 0) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The pfctl file '%s' is not accessible", PFCTL);
-            write_debug_file(filename, log_msg);
+            write_debug_file(argv[0], log_msg);
             return OS_SUCCESS;
         }
 
@@ -111,7 +93,7 @@ int main (int argc, char **argv) {
         arg2[COMMANDSIZE -1] = '\0';
 
         // Checking if we have pf config file
-        if(access(PFCTL_RULES, F_OK) < 0) {
+        if(access(PFCTL_RULES, F_OK) == 0) {
             // Checking if ossec table is configured in pf.conf
             if(checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE)) {
                 if (!strcmp("add", action)) {
@@ -123,7 +105,7 @@ int main (int argc, char **argv) {
             } else {
                 log_msg[LOGSIZE -1] = '\0';
                 snprintf(log_msg, LOGSIZE - 1, "Table %s does not exist", PFCTL_TABLE);
-                write_debug_file(filename, log_msg);
+                write_debug_file(argv[0], log_msg);
                 free_vars();
                 return OS_INVALID;
             }
@@ -131,7 +113,7 @@ int main (int argc, char **argv) {
         } else {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The pf rules file %s does not exist", PFCTL_RULES);
-            write_debug_file(filename, log_msg);
+            write_debug_file(argv[0], log_msg);
             free_vars();
             return OS_SUCCESS;
         }
@@ -139,15 +121,17 @@ int main (int argc, char **argv) {
         // Executing it
         command[COMMANDSIZE -1] = '\0';
         snprintf(command, COMMANDSIZE - 1, "%s %s > /dev/null 2>&1", PFCTL, arg1);
-        command[COMMANDSIZE -1] = '\0';
-        snprintf(command, COMMANDSIZE - 1, "%s %s > /dev/null 2>&1", PFCTL, arg2);
+        if(!strcmp(arg2, "")) {
+            command[COMMANDSIZE -1] = '\0';
+            snprintf(command, COMMANDSIZE - 1, "%s %s > /dev/null 2>&1", PFCTL, arg2);
+        }
 
     } else {
         free_vars();
         return OS_SUCCESS;
     }
 
-    write_debug_file(filename, "Ended");
+    write_debug_file(argv[0], "Ended");
     free_vars();
 
     return 0;
