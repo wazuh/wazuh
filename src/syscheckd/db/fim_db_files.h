@@ -112,7 +112,7 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_scanned(fdb_t *fim_sql, char *path);
+int fim_db_set_scanned(fdb_t *fim_sql, const char *path);
 
 /**
  * @brief Get all the unscanned files by saving them in a temporal storage.

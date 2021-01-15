@@ -592,7 +592,7 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql) {
     return retval;
 }
 
-int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
+int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_SCANNED);
     fim_db_bind_set_scanned(fim_sql, path);
