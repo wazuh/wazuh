@@ -14,7 +14,7 @@ cd `dirname $0`
 
 Use()
 {
-  echo " USE: ./gen_ossec.sh install_type distribution version [installation_path]"
+  echo " USE: ./gen_ossec.sh conf install_type distribution version [installation_path]"
   echo "   - install_type: manager, agent, local"
   echo "   - distribution: rhel, debian, ubuntu, ..."
   echo "   - version: 6, 7, 16.04, ..."
@@ -22,25 +22,25 @@ Use()
 }
 
 # Read script values
-if [ "$#" -ge "3" ]; then
+if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
 
   . ./src/init/shared.sh
   . ./src/init/inst-functions.sh
 
-  INSTYPE=$(echo $1 | tr '[:upper:]' '[:lower:]')
+  INSTYPE=$(echo $2 | tr '[:upper:]' '[:lower:]')
   if [ "$INSTYPE" = "manager" ]; then
       INSTYPE="server"
   fi
-  DIST_NAME=$(echo $2 | tr '[:upper:]' '[:lower:]')
-  if [ $(echo $3 | grep "\.") ]; then
-    DIST_VER=$(echo $3 | cut -d\. -f1)
-    DIST_SUBVER=$(echo $3 | cut -d\. -f2)
+  DIST_NAME=$(echo $3 | tr '[:upper:]' '[:lower:]')
+  if [ $(echo $4 | grep "\.") ]; then
+    DIST_VER=$(echo $4 | cut -d\. -f1)
+    DIST_SUBVER=$(echo $4 | cut -d\. -f2)
   else
-    DIST_VER="$3"
+    DIST_VER="$4"
     DIST_SUBVER="0"
   fi
-  if [ "$#" = "4" ]; then
-    INSTALLDIR="$4"
+  if [ "$#" = "5" ]; then
+    INSTALLDIR="$5"
   fi
 
   # Default values definition
