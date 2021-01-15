@@ -19,6 +19,7 @@ get_policies:
             - 101
             - 102
             - 105
+          resource_type: user
         - id: 103
           name: administratorPolicy
           policy:
@@ -31,13 +32,14 @@ get_policies:
           roles:
             - 103
             - 105
+          resource_type: user
       failed_items: {}
   - params:
       policy_ids:
         - 102
         - 104
         - 105
-        - 110
+        - 112
     result:
       affected_items:
         - id: 102
@@ -51,6 +53,7 @@ get_policies:
           roles:
             - 104
             - 105
+          resource_type: user
         - id: 104
           name: normalPolicy
           policy:
@@ -64,6 +67,7 @@ get_policies:
             - 102
             - 103
             - 105
+          resource_type: user
         - id: 105
           name: ossecPolicy
           policy:
@@ -74,9 +78,10 @@ get_policies:
               - role:id:*
           roles:
             - 105
+          resource_type: user
       failed_items:
         "4007":
-          - 110
+          - 112
   - params:
       policy_ids:
         - 999
@@ -102,7 +107,7 @@ add_policy:
           - agent:id:099
     result:
       affected_items:
-        - id: 110
+        - id: 112
           name: new_policy
           policy:
             actions:
@@ -111,6 +116,7 @@ add_policy:
             resources:
               - agent:id:099
           roles: []
+          resource_type: user
       failed_items: {}
   - params:
       name: ossecPolicy
@@ -169,6 +175,7 @@ update_policy:
               - agent:id:097
           roles:
             - 105
+          resource_type: user
       failed_items: {}
   - params:
       policy_id:
@@ -213,8 +220,166 @@ update_policy:
     result:
       affected_items: []
       failed_items:
-        "4008":
+        "4027":
           - 1
+  - params:
+      policy_id:
+        - 1
+      name: wazuhPolicy
+      resource_type: default
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+    result:
+      affected_items: []
+      failed_items:
+        "4027":
+          - 1
+  - params:
+      policy_id:
+        - 110
+      name: test
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+    result:
+      affected_items: []
+      failed_items:
+        "4027":
+          - 110
+  - params:
+      policy_id:
+        - 110
+      name: test
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+      resource_type: user
+    result:
+      affected_items: []
+      failed_items:
+        "4027":
+          - 110
+  - params:
+      policy_id:
+        - 110
+      name: test
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+      resource_type: protected
+    result:
+      affected_items: []
+      failed_items:
+        "4027":
+          - 110
+  - params:
+      policy_id:
+        - 110
+      name: test
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+      resource_type: default
+    result:
+      affected_items:
+        - id: 110
+          name: test
+          policy:
+            actions:
+              - agent:delete
+            effect: allow
+            resources:
+              - agent:id:099
+          roles: []
+          resource_type: default
+      failed_items: {}
+  - params:
+      policy_id:
+        - 111
+      name: test
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+    result:
+      affected_items: []
+      failed_items:
+        "4026":
+          - 111
+  - params:
+      policy_id:
+        - 111
+      name: test
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+      resource_type: user
+    result:
+      affected_items: []
+      failed_items:
+        "4026":
+          - 111
+  - params:
+      policy_id:
+        - 111
+      name: test
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 111
+          name: test
+          policy:
+            actions:
+              - agent:delete
+            effect: allow
+            resources:
+              - agent:id:099
+          roles: []
+          resource_type: protected
+      failed_items: {}
+  - params:
+      policy_id:
+        - 111
+      name: test
+      policy:
+        actions:
+          - agent:delete
+        effect: allow
+        resources:
+          - agent:id:099
+      resource_type: default
+    result:
+      affected_items: []
+      failed_items:
+        "4026":
+          - 111
 remove_policies:
   - params:
       policy_ids:
@@ -234,8 +399,9 @@ remove_policies:
           roles:
             - 103
             - 105
+          resource_type: user
       failed_items:
-        "4008":
+        "4027":
           - 1
   - params:
       policy_ids:
@@ -256,6 +422,7 @@ remove_policies:
           roles:
             - 104
             - 105
+          resource_type: user
         - id: 104
           name: normalPolicy
           policy:
@@ -269,6 +436,7 @@ remove_policies:
             - 102
             - 103
             - 105
+          resource_type: user
         - id: 105
           name: ossecPolicy
           policy:
@@ -279,6 +447,7 @@ remove_policies:
               - role:id:*
           roles:
             - 105
+          resource_type: user
       failed_items:
         "4007":
           - 200
@@ -301,8 +470,133 @@ remove_policies:
           roles:
             - 104
             - 105
+          resource_type: user
       failed_items:
         "4007":
           - 901
           - 902
           - 903
+  - params:
+      policy_ids:
+        - 001
+        - 109
+        - 110
+        - 111
+    result:
+      affected_items:
+        - id: 109
+          name: policy4
+          policy:
+            actions:
+              - policy:delete
+            effect: deny
+            resources:
+              - policy:id:*
+          roles:
+            - 104
+            - 105
+          resource_type: user
+      failed_items:
+        "4026":
+          - 111
+        "4027":
+          - 001
+          - 110
+  - params:
+      policy_ids:
+        - 001
+        - 109
+        - 110
+        - 111
+      resource_type: user
+    result:
+      affected_items:
+        - id: 109
+          name: policy4
+          policy:
+            actions:
+              - policy:delete
+            effect: deny
+            resources:
+              - policy:id:*
+          roles:
+            - 104
+            - 105
+          resource_type: user
+      failed_items:
+        "4026":
+          - 111
+        "4027":
+          - 001
+          - 110
+  - params:
+      policy_ids:
+        - 001
+        - 109
+        - 110
+        - 111
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 109
+          name: policy4
+          policy:
+            actions:
+              - policy:delete
+            effect: deny
+            resources:
+              - policy:id:*
+          roles:
+            - 104
+            - 105
+          resource_type: user
+        - id: 111
+          name: protected
+          policy:
+            actions:
+              - policy:read
+            effect: deny
+            resources:
+              - policy:id:*
+          roles: []
+          resource_type: protected
+      failed_items:
+        "4027":
+          - 001
+          - 110
+  - params:
+      policy_ids:
+        - 001
+        - 109
+        - 110
+        - 111
+      resource_type: default
+    result:
+      affected_items:
+        - id: 109
+          name: policy4
+          policy:
+            actions:
+              - policy:delete
+            effect: deny
+            resources:
+              - policy:id:*
+          roles:
+            - 104
+            - 105
+          resource_type: user
+        - id: 110
+          name: default
+          policy:
+            actions:
+              - policy:delete
+            effect: allow
+            resources:
+              - policy:id:*
+          roles: []
+          resource_type: default
+      failed_items:
+        "4026":
+          - 111
+        "4027":
+          - 001

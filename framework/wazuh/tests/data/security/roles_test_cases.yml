@@ -14,6 +14,7 @@ get_roles:
             - 100
           users:
             - 100
+          resource_type: user
         - id: 103
           name: administrator_test
           rules:
@@ -24,6 +25,7 @@ get_roles:
           users:
             - 101
             - 104
+          resource_type: user
       failed_items: {}
   - params:
       role_ids:
@@ -44,6 +46,7 @@ get_roles:
             - 104
           users:
             - 104
+          resource_type: user
         - id: 104
           name: normalUser
           rules:
@@ -56,6 +59,7 @@ get_roles:
             - 101
             - 102
             - 104
+          resource_type: user
         - id: 105
           name: ossec
           rules:
@@ -73,6 +77,7 @@ get_roles:
             - 103
           users:
             - 101
+          resource_type: user
       failed_items:
         "4002":
           - 200
@@ -93,11 +98,12 @@ add_role:
       name: new_role
     result:
       affected_items:
-        - id: 106
+        - id: 108
           name: new_role
           rules: []
           policies: []
           users: []
+          resource_type: user
       failed_items: {}
   - params:
       name: ossec
@@ -137,6 +143,7 @@ update_role:
             - 103
           users:
             - 101
+          resource_type: user
       failed_items: {}
   - params:
       role_id:
@@ -171,8 +178,115 @@ update_role:
     result:
       affected_items: []
       failed_items:
-        "4008":
+        "4027":
           - 1
+  - params:
+      role_id:
+        - 106
+      name: test
+    result:
+      affected_items: []
+      failed_items:
+        "4027":
+          - 106
+  - params:
+      role_id:
+        - 105
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 105
+          name: ossec
+          rules:
+            - 105
+          policies:
+            - 101
+            - 107
+            - 106
+            - 109
+            - 104
+            - 108
+            - 100
+            - 105
+            - 102
+            - 103
+          users:
+            - 101
+          resource_type: protected
+      failed_items: {}
+  - params:
+      role_id:
+        - 105
+      resource_type: default
+    result:
+      affected_items:
+        - id: 105
+          name: ossec
+          rules:
+            - 105
+          policies:
+            - 101
+            - 107
+            - 106
+            - 109
+            - 104
+            - 108
+            - 100
+            - 105
+            - 102
+            - 103
+          users:
+            - 101
+          resource_type: default
+      failed_items: {}
+  - params:
+      role_id:
+        - 106
+      name: test
+      resource_type: default
+    result:
+      affected_items:
+        - id: 106
+          name: test
+          rules: []
+          policies: []
+          users: []
+          resource_type: default
+      failed_items: {}
+  - params:
+      role_id:
+        - 106
+      name: test
+      resource_type: protected
+    result:
+      affected_items: []
+      failed_items:
+        "4027":
+          - 106
+  - params:
+      role_id:
+        - 107
+      name: test
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 107
+          name: test
+          rules: []
+          policies: []
+          users: []
+          resource_type: protected
+      failed_items: {}
+  - params:
+      role_id:
+        - 107
+      name: test
+      resource_type: default
+    result:
+      affected_items: []
+      failed_items:
+        "4026":
+          - 107
 remove_roles:
   - params:
       role_ids:
@@ -190,8 +304,9 @@ remove_roles:
           users:
             - 101
             - 104
+          resource_type: user
       failed_items:
-        "4008":
+        "4027":
           - 1
   - params:
       role_ids:
@@ -212,6 +327,7 @@ remove_roles:
             - 102
           users:
             - 104
+          resource_type: user
         - id: 104
           name: normalUser
           policies:
@@ -224,6 +340,7 @@ remove_roles:
             - 101
             - 102
             - 104
+          resource_type: user
         - id: 105
           name: ossec
           policies:
@@ -241,6 +358,7 @@ remove_roles:
             - 105
           users:
             - 101
+          resource_type: user
       failed_items:
         "4002":
           - 200
@@ -256,3 +374,143 @@ remove_roles:
           - 200
           - 201
           - 202
+  - params:
+      role_ids:
+        - 001
+        - 105
+        - 106
+        - 107
+    result:
+      affected_items:
+        - id: 105
+          name: ossec
+          policies:
+            - 101
+            - 107
+            - 106
+            - 109
+            - 104
+            - 108
+            - 100
+            - 105
+            - 102
+            - 103
+          rules:
+            - 105
+          users:
+            - 101
+          resource_type: user
+      failed_items:
+        "4026":
+          - 107
+        "4027":
+          - 001
+          - 107
+  - params:
+      role_ids:
+        - 001
+        - 105
+        - 106
+        - 107
+      resource_type: user
+    result:
+      affected_items:
+        - id: 105
+          name: ossec
+          policies:
+            - 101
+            - 107
+            - 106
+            - 109
+            - 104
+            - 108
+            - 100
+            - 105
+            - 102
+            - 103
+          rules:
+            - 105
+          users:
+            - 101
+          resource_type: user
+      failed_items:
+        "4026":
+          - 107
+        "4027":
+          - 001
+          - 106
+  - params:
+      role_ids:
+        - 001
+        - 105
+        - 106
+        - 107
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 105
+          name: ossec
+          policies:
+            - 101
+            - 107
+            - 106
+            - 109
+            - 104
+            - 108
+            - 100
+            - 105
+            - 102
+            - 103
+          rules:
+            - 105
+          users:
+            - 101
+          resource_type: user
+        - id: 107
+          name: protected
+          policies: []
+          rules: []
+          users: []
+          resource_type: protected
+      failed_items:
+        "4027":
+          - 001
+          - 106
+  - params:
+      role_ids:
+        - 001
+        - 105
+        - 106
+        - 107
+      resource_type: default
+    result:
+      affected_items:
+        - id: 105
+          name: ossec
+          policies:
+            - 101
+            - 107
+            - 106
+            - 109
+            - 104
+            - 108
+            - 100
+            - 105
+            - 102
+            - 103
+          rules:
+            - 105
+          users:
+            - 101
+          resource_type: user
+        - id: 106
+          name: default
+          policies: []
+          rules: []
+          users: []
+          resource_type: default
+      failed_items:
+        "4026":
+          - 107
+        "4027":
+          - 001

@@ -69,7 +69,7 @@ class SecurityError(IntEnum):
     ROLE_NOT_EXIST = -2
     # The policy does not exist in the database
     POLICY_NOT_EXIST = -3
-    # Admin or protected resources of the system
+    # Admin resources of the system
     ADMIN_RESOURCES = -4
     # The role does not exist in the database
     USER_NOT_EXIST = -5
@@ -79,6 +79,8 @@ class SecurityError(IntEnum):
     RULE_NOT_EXIST = -7
     # The relationships can not be removed
     RELATIONSHIP_ERROR = -8
+    # Protected resources of the system
+    PROTECTED_RESOURCES = -9
 
 
 class ResourceType(Enum):
@@ -281,7 +283,10 @@ class User(_Base):
         self.password = password
         self.allow_run_as = allow_run_as
         self.created_at = created_at if created_at else datetime.utcnow()
-        self.resource_type = resource_type.value if resource_type else ResourceType.USER.value
+        if resource_type:
+            self.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
+        else:
+            self.resource_type = ResourceType.USER.value
 
     def __repr__(self):
         return f"<User(user={self.username})"
@@ -350,7 +355,10 @@ class Roles(_Base):
         self.id = role_id
         self.name = name
         self.created_at = created_at if created_at else datetime.utcnow()
-        self.resource_type = resource_type.value if resource_type else ResourceType.USER.value
+        if resource_type:
+            self.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
+        else:
+            self.resource_type = ResourceType.USER.value
 
     def get_role(self):
         """Role's getter
@@ -375,7 +383,8 @@ class Roles(_Base):
             return {'id': self.id, 'name': self.name,
                     'policies': [policy.id for policy in rpm.get_all_policies_from_role(role_id=self.id)],
                     'users': [user.id for user in self.users],
-                    'rules': [rule.id for rule in self.rules]}
+                    'rules': [rule.id for rule in self.rules],
+                    'resource_type': self.resource_type}
 
 
 class Rules(_Base):
@@ -406,7 +415,10 @@ class Rules(_Base):
         self.name = name
         self.rule = rule
         self.created_at = created_at if created_at else datetime.utcnow()
-        self.resource_type = resource_type.value if resource_type else ResourceType.USER.value
+        if resource_type:
+            self.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
+        else:
+            self.resource_type = ResourceType.USER.value
 
     def get_rule(self):
         """Rule getter
@@ -425,7 +437,7 @@ class Rules(_Base):
         Dict with the information
         """
         return {'id': self.id, 'name': self.name, 'rule': json.loads(self.rule),
-                'roles': [role.id for role in self.roles]}
+                'roles': [role.id for role in self.roles], 'resource_type': self.resource_type}
 
 
 class Policies(_Base):
@@ -458,7 +470,10 @@ class Policies(_Base):
         self.name = name
         self.policy = policy
         self.created_at = created_at if created_at else datetime.utcnow()
-        self.resource_type = resource_type.value if resource_type else ResourceType.USER.value
+        if resource_type:
+            self.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
+        else:
+            self.resource_type = ResourceType.USER.value
 
     def get_policy(self):
         """Policy's getter
@@ -478,7 +493,8 @@ class Policies(_Base):
         """
         with RolesPoliciesManager(session=session) as rpm:
             return {'id': self.id, 'name': self.name, 'policy': json.loads(self.policy),
-                    'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)]}
+                    'roles': [role.id for role in rpm.get_all_roles_from_policy(policy_id=self.id)],
+                    'resource_type': self.resource_type}
 
 
 class TokenManager:
@@ -773,10 +789,7 @@ class AuthenticationManager:
             user = self.session.query(User).filter_by(id=user_id).first()
             if user is not None:
                 if resource_type is not None:
-                    if user.resource_type == ResourceType.USER.value or user.resource_type == resource_type.value:
-                        user.resource_type = resource_type.value
-                    else:
-                        return SecurityError.ADMIN_RESOURCES
+                    user.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
                 if password:
                     user.password = generate_password_hash(password)
                 if allow_run_as is not None:
@@ -789,19 +802,13 @@ class AuthenticationManager:
             self.session.rollback()
             return False
 
-    def delete_user(self, user_id: int, resource_type: ResourceType = ResourceType.USER):
+    def delete_user(self, user_id: int):
         """Remove the specified user
 
         Parameters
         ----------
         user_id : int
             Unique user id
-        resource_type : ResourceType
-            Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user.
-                'protected': A user-created resource that is protected so it cannot be modified or removed without using
-                 the CLI.
-                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
@@ -812,8 +819,6 @@ class AuthenticationManager:
                 user = self.session.query(User).filter_by(id=user_id).first()
                 if user is None:
                     return False
-                elif user.resource_type != ResourceType.USER.value and user.resource_type != resource_type.value:
-                    return SecurityError.ADMIN_RESOURCES
                 self.session.delete(user)
                 self.session.commit()
                 return True
@@ -1006,31 +1011,23 @@ class RolesManager:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_role(self, role_id: int, resource_type: ResourceType = ResourceType.USER):
+    def delete_role(self, role_id: int):
         """Delete an existent role in the system
 
         Parameters
         ----------
         role_id : int
             ID of the role to be deleted
-        resource_type : ResourceType
-            Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user.
-                'protected': A user-created resource that is protected so it cannot be modified or removed without using
-                 the CLI.
-                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
         True -> Success | False -> Failure
         """
         try:
-            if int(role_id) > max_id_reserved:
+            if role_id > max_id_reserved:
                 role = self.session.query(Roles).filter_by(id=role_id).first()
                 if role is None:
                     return False
-                elif role.resource_type != ResourceType.USER.value and role.resource_type != resource_type.value:
-                    return SecurityError.ADMIN_RESOURCES
                 self.session.delete(role)
                 self.session.commit()
                 return True
@@ -1102,19 +1099,17 @@ class RolesManager:
         True -> Success | Invalid rule | Name already in use | Role not exist
         """
         try:
-            role_to_update = self.session.query(Roles).filter_by(id=role_id).first()
-            if role_to_update and role_to_update is not None:
-                if role_to_update.id > max_id_reserved and (role_to_update.resource_type == ResourceType.USER.value or
-                                                            role_to_update.resource_type == resource_type.value):
-                    # Change the name of the role
+            if role_id > max_id_reserved:
+                role = self.session.query(Roles).filter_by(id=role_id).first()
+                if role is not None:
                     if name is not None:
-                        role_to_update.name = name
+                        role.name = name
                     if resource_type is not None:
-                        role_to_update.resource_type = resource_type.value
+                        role.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
                     self.session.commit()
                     return True
-                return SecurityError.ADMIN_RESOURCES
-            return SecurityError.ROLE_NOT_EXIST
+                return SecurityError.ROLE_NOT_EXIST
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
@@ -1232,19 +1227,14 @@ class RulesManager:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_rule(self, rule_id: int, resource_type: ResourceType = ResourceType.USER):
+    def delete_rule(self, rule_id: int):
         """Delete an existent rule from the system specified by its ID.
 
         Parameters
         ----------
         rule_id : int
             Id of the rule.
-        resource_type : ResourceType
-            Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user.
-                'protected': A user-created resource that is protected so it cannot be modified or removed without using
-                 the CLI.
-                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
+
         Returns
         -------
         True -> Success | False -> Failure
@@ -1254,8 +1244,6 @@ class RulesManager:
                 rule = self.session.query(Rules).filter_by(id=rule_id).first()
                 if rule is None:
                     return False
-                elif rule.resource_type != ResourceType.USER.value and rule.resource_type != resource_type.value:
-                    return SecurityError.ADMIN_RESOURCES
                 self.session.delete(rule)
                 self.session.commit()
                 return True
@@ -1307,7 +1295,7 @@ class RulesManager:
             self.session.rollback()
             return False
 
-    def update_rule(self, rule_id: int, name: str, rule: dict, resource_type: ResourceType = ResourceType.USER):
+    def update_rule(self, rule_id: int, name: str, rule: dict):
         """Update an existent rule in the system.
 
         Parameters
@@ -1318,34 +1306,25 @@ class RulesManager:
             Name of the rule.
         rule : dict
             Dictionary with the rule itself.
-        resource_type : ResourceType
-            Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user.
-                'protected': A user-created resource that is protected so it cannot be modified or removed without using
-                 the CLI.
-                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
         True -> Success | Invalid rule | Name already in use | Rule already in use | Rule not exists
         """
         try:
-            rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
-            if rule_to_update and rule_to_update is not None:
-                if rule_to_update.id > max_id_reserved and (rule_to_update.resource_type == ResourceType.USER.value or
-                                                            rule_to_update.resource_type == resource_type.value):
-                    # Rule is not a valid json
+            if rule_id > max_id_reserved:
+                rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
+                if rule_to_update:
                     if rule is not None and not json_validator(rule):
                         return SecurityError.INVALID
-                    # Change the rule
                     if name is not None:
                         rule_to_update.name = name
                     if rule is not None:
                         rule_to_update.rule = json.dumps(rule)
                     self.session.commit()
                     return True
-                return SecurityError.ADMIN_RESOURCES
-            return SecurityError.RULE_NOT_EXIST
+                return SecurityError.RULE_NOT_EXIST
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
@@ -1486,19 +1465,13 @@ class PoliciesManager:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
 
-    def delete_policy(self, policy_id: int, resource_type: ResourceType = ResourceType.USER):
+    def delete_policy(self, policy_id: int):
         """Delete an existent policy in the system
 
         Parameters
         ----------
         policy_id : int
             ID of the policy to be deleted
-        resource_type : ResourceType
-            Determines the type of the resource:
-                'default': A system resource that cannot be modified or removed by a user.
-                'protected': A user-created resource that is protected so it cannot be modified or removed without using
-                 the CLI.
-                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
 
         Returns
         -------
@@ -1509,8 +1482,6 @@ class PoliciesManager:
                 policy = self.session.query(Policies).filter_by(id=policy_id).first()
                 if policy is None:
                     return False
-                elif policy.resource_type != ResourceType.USER.value and policy.resource_type != resource_type.value:
-                    return SecurityError.ADMIN_RESOURCES
                 self.session.delete(policy)
                 self.session.commit()
                 return True
@@ -1586,17 +1557,14 @@ class PoliciesManager:
         True -> Success | False -> Failure | Invalid policy | Name already in use
         """
         try:
-            policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
-            if policy_to_update and policy_to_update is not None:
-                if policy_to_update.id > max_id_reserved and (policy_to_update.resource_type == ResourceType.USER.value
-                                                              or policy_to_update.resource_type == resource_type.value):
-                    # Policy is not a valid json
+            if policy_id > max_id_reserved:
+                policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
+                if policy_to_update:
                     if policy is not None and not json_validator(policy):
                         return SecurityError.INVALID
                     if name is not None:
                         policy_to_update.name = name
-                    if policy is not None and 'actions' in policy.keys() and \
-                            'resources' in policy.keys() and 'effect' in policy.keys():
+                    if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
                         # Regular expression that prevents the creation of invalid policies
                         regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
                         for action in policy['actions']:
@@ -1607,11 +1575,11 @@ class PoliciesManager:
                                 return SecurityError.INVALID
                         policy_to_update.policy = json.dumps(policy)
                     if resource_type is not None:
-                        policy_to_update.resource_type = resource_type.value
+                        policy_to_update.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
                     self.session.commit()
                     return True
-                return SecurityError.ADMIN_RESOURCES
-            return SecurityError.POLICY_NOT_EXIST
+                return SecurityError.POLICY_NOT_EXIST
+            return SecurityError.ADMIN_RESOURCES
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
@@ -1764,7 +1732,7 @@ class UserRolesManager:
         """
         try:
             role = self.session.query(Roles).filter_by(id=role_id).first()
-            return map(User.to_dict, role.users)
+            return [User.to_dict(user, self.session) for user in role.users]
         except (IntegrityError, AttributeError):
             self.session.rollback()
             return False

@@ -18,10 +18,11 @@ test_data_path = os.path.join(test_path, 'data')
 
 @pytest.fixture(scope='function')
 def orm_setup():
-    with patch('wazuh.rbac.orm._auth_db_file', new='test_database'):
-        orm = init_db('schema_security_test.sql', test_data_path)
-        yield orm
-        orm.db_manager.close_sessions()
+    with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
+        with patch('wazuh.rbac.orm._auth_db_file', new='test_database'):
+            orm = init_db('schema_security_test.sql', test_data_path)
+            yield orm
+            orm.db_manager.close_sessions()
 
 
 def test_database_init(orm_setup):
@@ -423,8 +424,6 @@ def test_add_policy_role(orm_setup):
 
 def test_add_user_roles(orm_setup):
     """Check user-roles relation is added to database"""
-    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
-        pass
     with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
         with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
             for user in am.get_users():
@@ -713,7 +712,6 @@ def test_get_all_users_from_role(orm_setup):
     """Check all roles in one user in the database"""
     with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
         user_id, roles_ids = test_add_user_roles(orm_setup)
-
         for role in roles_ids:
             users = urm.get_all_users_from_role(role_id=role)
             for user in users:

@@ -66,7 +66,7 @@ def db_setup():
                             orm.db_manager.create_database(orm._auth_db_file)
                             orm.db_manager.insert_data_from_yaml(orm._auth_db_file)
                             create_memory_db('schema_security_test.sql', orm.db_manager.sessions[orm._auth_db_file])
-                        except OperationalError as e:
+                        except OperationalError:
                             pass
 
                         yield security, WazuhResult, core_security

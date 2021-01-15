@@ -12,6 +12,7 @@ get_users:
           roles:
             - 100
             - 101
+          resource_type: user
         - id: 101
           username: normal
           allow_run_as: false
@@ -19,6 +20,7 @@ get_users:
             - 104
             - 105
             - 103
+          resource_type: user
       failed_items: {}
   - params:
       user_ids:
@@ -34,6 +36,7 @@ get_users:
           roles:
             - 100
             - 101
+          resource_type: user
         - id: 101
           username: normal
           allow_run_as: false
@@ -41,17 +44,20 @@ get_users:
             - 104
             - 105
             - 103
+          resource_type: user
         - id: 102
           username: ossec
           allow_run_as: false
           roles:
             - 101
             - 104
+          resource_type: user
         - id: 103
           username: python
           allow_run_as: false
           roles:
             - 101
+          resource_type: user
       failed_items: {}
   - params:
       user_ids:
@@ -65,6 +71,7 @@ get_users:
           allow_run_as: false
           roles:
             - 101
+          resource_type: user
         - id: 101
           username: normal
           allow_run_as: false
@@ -72,6 +79,7 @@ get_users:
             - 104
             - 105
             - 103
+          resource_type: user
       failed_items:
         "5001":
           - 999
@@ -93,10 +101,11 @@ create_user:
       password: wazuh1A!
     result:
       affected_items:
-        - id: 106
+        - id: 108
           username: new_user
           allow_run_as: false
           roles: []
+          resource_type: user
       failed_items: {}
   - params:
       username: ossec
@@ -135,25 +144,102 @@ update_user:
           roles:
             - 101
             - 104
+          resource_type: user
       failed_items: {}
   - params:
       user_id:
-        - 106
+        - 108
       password: wazuh3A!
     result:
       affected_items: []
       failed_items:
         "5001":
-          - 106
+          - 108
   - params:
       user_id:
-        - 106
+        - 108
       password: wazuh1
     result:
       affected_items: []
       failed_items:
         "5009":
-          - 106
+          - 108
+  - params:
+      user_id:
+        - 001
+      password: Wazuh1234A!
+    result:
+      affected_items:
+        - id: 1
+          username: wazuh
+          allow_run_as: true
+          roles:
+            - 1
+          resource_type: default
+      failed_items: {}
+  - params:
+      user_id:
+        - 105
+      password: Wazuh1234A!
+    result:
+      affected_items:
+        - id: 105
+          username: guest
+          allow_run_as: false
+          roles: []
+          resource_type: user
+      failed_items: {}
+  - params:
+      user_id:
+        - 106
+      password: Wazuh1234A!
+    result:
+      affected_items:
+        - id: 106
+          username: default
+          allow_run_as: false
+          roles: [ ]
+          resource_type: default
+      failed_items: {}
+  - params:
+      user_id:
+        - 107
+      password: Wazuh1234A!
+    result:
+      affected_items:
+        - id: 107
+          username: protected
+          allow_run_as: false
+          roles: [ ]
+          resource_type: protected
+      failed_items: {}
+  - params:
+      user_id:
+        - 001
+      resource_type: user
+    result:
+      affected_items: []
+      failed_items:
+        "5004":
+          - 001
+  - params:
+      user_id:
+        - 001
+      resource_type: protected
+    result:
+      affected_items: []
+      failed_items:
+        "5004":
+          - 001
+  - params:
+      user_id:
+        - 107
+      resource_type: user
+    result:
+      affected_items: []
+      failed_items:
+        "4026":
+          - 107
 remove_users:
   - params:
       user_ids:
@@ -167,16 +253,18 @@ remove_users:
           roles:
             - 101
             - 104
+          resource_type: user
         - id: 103
           username: python
           allow_run_as: false
           roles:
             - 101
+          resource_type: user
       failed_items: {}
   - params:
       user_ids:
         - 103
-        - 106
+        - 108
     result:
       affected_items:
         - id: 103
@@ -184,15 +272,16 @@ remove_users:
           allow_run_as: false
           roles:
             - 101
+          resource_type: user
       failed_items:
         "5001":
-          - 106
+          - 108
   - params:
       user_ids:
-        - 107
+        - 109
         - 101
         - 103
-        - 106
+        - 108
     result:
       affected_items:
         - id: 101
@@ -202,15 +291,17 @@ remove_users:
             - 104
             - 105
             - 103
+          resource_type: user
         - id: 103
           username: python
           allow_run_as: false
           roles:
             - 101
+          resource_type: user
       failed_items:
         "5001":
-          - 107
-          - 106
+          - 109
+          - 108
   - params:
       user_ids:
         - 1
@@ -224,6 +315,73 @@ remove_users:
             - 104
             - 105
             - 103
+          resource_type: user
       failed_items:
         "5004":
           - 1
+  - params:
+      user_ids:
+        - 001
+        - 105
+        - 106
+        - 107
+    result:
+      affected_items:
+        - id: 105
+          username: guest
+          allow_run_as: false
+          roles: []
+          resource_type: user
+      failed_items:
+        "5004":
+          - 001
+          - 106
+        "4026":
+          - 107
+  - params:
+      user_ids:
+        - 001
+        - 105
+        - 106
+        - 107
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 105
+          username: guest
+          allow_run_as: false
+          roles: []
+          resource_type: user
+        - id: 107
+          username: protected
+          allow_run_as: false
+          roles: [ ]
+          resource_type: protected
+      failed_items:
+        "5004":
+          - 001
+          - 106
+  - params:
+      user_ids:
+        - 001
+        - 105
+        - 106
+        - 107
+      resource_type: default
+    result:
+      affected_items:
+        - id: 105
+          username: guest
+          allow_run_as: false
+          roles: []
+          resource_type: user
+        - id: 106
+          username: default
+          allow_run_as: false
+          roles: [ ]
+          resource_type: default
+      failed_items:
+        "5004":
+          - 001
+        "4026":
+          - 107
