@@ -551,9 +551,11 @@ STATIC void ExecdStart(int q)
         /* If it wasn't added before, do it now */
         if (!added_before) {
             /* Command parameters */
+            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
             cJSON *json_origin = cJSON_GetObjectItem(json_root, "origin");
             cJSON_ReplaceItemInObject(json_origin, "module", cJSON_CreateString(ARGV0));
-            cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(ADD_ENTRY));
+            cJSON *json_parameters = cJSON_GetObjectItem(json_root, "parameters");
+            cJSON_AddItemToObject(json_parameters, "program", cJSON_CreateString(cmd[0]));
             cmd_parameters = cJSON_PrintUnformatted(json_root);
 
             /* Execute command */

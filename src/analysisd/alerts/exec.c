@@ -18,6 +18,9 @@
 #include "os_execd/execd.h"
 #include "eventinfo.h"
 #include "wazuh_db/wdb.h"
+#include "labels.h"
+
+static const char* get_ip(const Eventinfo *lf);
 
 void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar)
 {
@@ -58,10 +61,10 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
     /* Active Response on the server
      * The response must be here if the ar->location is set to AS
      * or the ar->location is set to local (REMOTE_AGENT) and the
-     * event location is from here.
+     * event is from here.
      */
     if ((ar->location & AS_ONLY) ||
-            ((ar->location & REMOTE_AGENT) && (lf->location[0] != '(')) ) {
+            ((ar->location & REMOTE_AGENT) && !strcmp(lf->agent_id, "000"))) {
         if (!(Config.ar & LOCAL_AR)) {
             goto cleanup;
         }
@@ -86,7 +89,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             int sock = -1;
             int *id_array = NULL;
 
-            id_array = wdb_get_all_agents(FALSE, &sock);
+            id_array = wdb_get_agents_by_connection_status(AGENT_CS_ACTIVE, &sock);
             if(!id_array) {
                 merror("Unable to get agent's ID array.");
                 wdbc_close(&sock);
@@ -97,25 +100,35 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 cJSON *json_agt_info = NULL;
                 cJSON *json_agt_version = NULL;
                 char c_agent_id[OS_SIZE_16];
+                wlabel_t *agt_labels = NULL;
                 char *agt_version = NULL;
 
                 memset(exec_msg, 0, OS_SIZE_8192 + 1);
                 memset(msg, 0, OS_SIZE_8192 + 1);
 
-                json_agt_info = wdb_get_agent_info(id_array[i], &sock);
-                if (!json_agt_info) {
-                    merror("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
-                    continue;
-                }
+                snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
 
-                json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+                agt_labels = labels_find(c_agent_id, &sock);
+                agt_version = labels_get(agt_labels, "_wazuh_version");
 
-                if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
-                    agt_version = json_agt_version->valuestring;
-                } else {
-                    merror("Failed to get agent '%d' version.", id_array[i]);
-                    cJSON_Delete(json_agt_info);
-                    continue;
+                if (!agt_version) {
+                    json_agt_info = wdb_get_agent_info(id_array[i], &sock);
+                    if (!json_agt_info) {
+                        merror("Failed to get agent '%d' information from Wazuh DB.", id_array[i]);
+                        labels_free(agt_labels);
+                        continue;
+                    }
+
+                    json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+
+                    if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
+                        agt_version = json_agt_version->valuestring;
+                    } else {
+                        merror("Failed to get agent '%d' version.", id_array[i]);
+                        labels_free(agt_labels);
+                        cJSON_Delete(json_agt_info);
+                        continue;
+                    }
                 }
 
                 // New AR mechanism is not supported in versions prior to 4.2.0
@@ -125,6 +138,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 char *minor = strtok_r(NULL, ".", &save_ptr);
                 if (!major || !minor) {
                     merror("Unable to read agent version.");
+                    labels_free(agt_labels);
                     cJSON_Delete(json_agt_info);
                     continue;
                 } else {
@@ -132,15 +146,16 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                         getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                     } else {
                         if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                            labels_free(agt_labels);
                             cJSON_Delete(json_agt_info);
                             continue;
                         }
                     }
                 }
 
+                labels_free(agt_labels);
                 cJSON_Delete(json_agt_info);
 
-                snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
                 get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
 
                 if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
@@ -157,6 +172,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             cJSON *json_agt_info = NULL;
             cJSON *json_agt_version = NULL;
             char c_agent_id[OS_SIZE_16];
+            wlabel_t *agt_labels = NULL;
             char *agt_version = NULL;
             int agt_id = OS_INVALID;
 
@@ -164,26 +180,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 agt_id = atoi(ar->agent_id);
 
             } else if (ar->location & REMOTE_AGENT) {
-                char *location = lf->location;
-
-                char *hostname = extract_word_between_two_words(location, "(", ")");
-                if(!hostname) {
-                    merror("Unable to extract hostname from the string between the two words");
-                    goto cleanup;
-                }
-
-                char *ip_remote_agent = extract_word_between_two_words(location, " ", "-");
-                if(!ip_remote_agent) {
-                    merror("Unable to extract ip from the string between the two words");
-                    os_free(hostname);
-                    goto cleanup;
-                }
-
-                agt_id = wdb_find_agent(hostname, ip_remote_agent, &sock);
-
-                os_free(hostname);
-                os_free(ip_remote_agent);
-                wdbc_close(&sock);
+                agt_id = atoi(lf->agent_id);
             }
 
             if(agt_id == OS_INVALID) {
@@ -191,21 +188,30 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 goto cleanup;
             }
 
-            json_agt_info = wdb_get_agent_info(agt_id, &sock);
-            wdbc_close(&sock);
-            if (!json_agt_info) {
-                merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
-                goto cleanup;
-            }
+            snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
 
-            json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+            agt_labels = labels_find(c_agent_id, &sock);
+            agt_version = labels_get(agt_labels, "_wazuh_version");
 
-            if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
-                agt_version = json_agt_version->valuestring;
-            } else {
-                merror("Failed to get agent '%d' version.", agt_id);
-                cJSON_Delete(json_agt_info);
-                goto cleanup;
+            if (!agt_version) {
+                json_agt_info = wdb_get_agent_info(agt_id, &sock);
+                wdbc_close(&sock);
+                if (!json_agt_info) {
+                    merror("Failed to get agent '%d' information from Wazuh DB.", agt_id);
+                    labels_free(agt_labels);
+                    goto cleanup;
+                }
+
+                json_agt_version = cJSON_GetObjectItem(json_agt_info->child, "version");
+
+                if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
+                    agt_version = json_agt_version->valuestring;
+                } else {
+                    merror("Failed to get agent '%d' version.", agt_id);
+                    labels_free(agt_labels);
+                    cJSON_Delete(json_agt_info);
+                    goto cleanup;
+                }
             }
 
             // New AR mechanism is not supported in versions prior to 4.2.0
@@ -215,6 +221,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             char *minor = strtok_r(NULL, ".", &save_ptr);
             if (!major || !minor) {
                 merror("Unable to read agent version.");
+                labels_free(agt_labels);
                 cJSON_Delete(json_agt_info);
                 goto cleanup;
             } else {
@@ -222,15 +229,16 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                     getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                 } else {
                     if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                        labels_free(agt_labels);
                         cJSON_Delete(json_agt_info);
                         goto cleanup;
                     }
                 }
             }
 
+            labels_free(agt_labels);
             cJSON_Delete(json_agt_info);
 
-            snprintf(c_agent_id, OS_SIZE_16, "%.3d", agt_id);
             get_exec_msg(lf, ar, c_agent_id, msg, exec_msg);
 
             if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
@@ -249,43 +257,12 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 }
 
 /**
- * @brief extract word from a string between two words
- *
- * @param[in] sentence The string where the words are found.
- * @param[in] word1 Word on the left side of the word to extract.
- * @param[in] word2 Word on the right side of the word to extract.
- * @return The word to extract or NULL on failure, remember to free memory after return
- */
-char *extract_word_between_two_words(const char* sentence, const char* word1, const char* word2)
-{
-    const char *p1 = strstr(sentence, word1);
-    if(!p1) {
-        return NULL;
-    }
-    p1 = p1 + strlen(word1);
-
-    const char *p2 = strstr(p1, word2);
-    if(!p2) {
-        return NULL;
-    }
-
-    size_t len = p2-p1;
-
-    char *word = NULL;
-    os_malloc(sizeof(char)*(len+1), word);
-    strncpy(word, p1, len);
-    word[len] = '\0';
-
-    return word;
-}
-
-/**
  * @brief get the IP.
  *
  * @param[in] lf Event information.
  * @return const char* on success or NULL on failure.
  */
-const char* get_ip(const Eventinfo *lf)
+static const char* get_ip(const Eventinfo *lf)
 {
     const char *ip;
     ip = "-";

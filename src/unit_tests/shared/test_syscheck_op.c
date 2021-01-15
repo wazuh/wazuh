@@ -3467,7 +3467,7 @@ void test_get_registry_group_ConvertSidToStringSid_fails(void **state) {
     group = get_registry_group(&group_id, hndl);
 
     assert_string_equal(group, "groupname");
-    assert_null(group_id);
+    assert_string_equal(group_id, "");
 }
 
 void test_get_registry_group_LookupAccountSid_fails(void **state) {

@@ -15,8 +15,6 @@
 #include "active-response.h"
 
 void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar);
-char *extract_word_between_two_words(const char* sentence, const char* word1, const char* word2);
-const char* get_ip(const Eventinfo *lf);
 void getActiveResponseInString(const Eventinfo *lf,
                                 const active_response *ar,
                                 const char *ip,

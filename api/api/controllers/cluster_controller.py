@@ -554,60 +554,6 @@ async def get_api_config(request, pretty=False, wait_for_complete=False, nodes_l
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def put_api_config(request, pretty=False, wait_for_complete=False, nodes_list='*'):
-    """Update current API configuration with the given one.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param nodes_list: List of node ids
-    """
-    Body.validate_content_type(request, expected_content_type='application/json')
-    updated_conf = await APIConfigurationModel.get_kwargs(request)
-    f_kwargs = {'node_list': nodes_list, 'updated_config': updated_conf}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.update_api_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=nodes_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def delete_api_config(request, pretty=False, wait_for_complete=False, nodes_list='*'):
-    """Restore default API configuration.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param nodes_list: List of node ids
-    """
-    default_config = {key: configuration.default_api_configuration[key] for key in manager.allowed_api_fields}
-
-    f_kwargs = {"updated_config": default_config, 'node_list': nodes_list}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.update_api_config,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=nodes_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
 async def put_restart(request, pretty=False, wait_for_complete=False, nodes_list='*'):
     """Restarts all nodes in the cluster or a list of them.
 

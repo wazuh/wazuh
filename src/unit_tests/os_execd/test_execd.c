@@ -167,7 +167,8 @@ static void test_ExecdStart_ok(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
@@ -280,7 +281,8 @@ static void test_ExecdStart_timeout(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
@@ -314,7 +316,8 @@ static void test_ExecdStart_timeout(void **state) {
                                                                                                 "\"event\":\"added\""
                                                                                             "},"
                                                                                             "\"location\":\"syscheck\""
-                                                                                        "}"
+                                                                                        "},"
+                                                                                        "\"program\":\"restart-wazuh\""
                                                                                     "}"
                                                                                 "}' to the timeout list, with a timeout of '10s'.");
 
@@ -421,7 +424,8 @@ static void test_ExecdStart_wpopenv_err(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
@@ -496,7 +500,8 @@ static void test_ExecdStart_wpopenv_err(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
@@ -660,7 +665,8 @@ static void test_ExecdStart_get_command_err(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
@@ -789,7 +795,8 @@ static void test_ExecdStart_get_name_err(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
@@ -918,7 +925,8 @@ static void test_ExecdStart_json_err(void **state) {
                                                                                                     "\"event\":\"added\""
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
-                                                                                            "}"
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
 
