@@ -6,7 +6,12 @@ void write_debug_file (const char *ar_name, const char *msg) {
     char path[PATH_MAX];
     char *timestamp = w_get_timestamp(time(NULL));
 
+#ifndef WIN32
     snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOG_FILE);
+#else
+    snprintf(path, PATH_MAX, "%s", LOG_FILE);
+#endif
+
     FILE *ar_log_file = fopen(path, "a");
 
     fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);
@@ -30,7 +35,7 @@ cJSON* get_json_from_input (const char *input) {
     }
 
     // Detect version
-    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_String)) {
+    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_Number)) {
         cJSON_Delete(input_json);
         return NULL;
     }
@@ -69,19 +74,16 @@ cJSON* get_json_from_input (const char *input) {
 }
 
 char* get_command (cJSON *input) {
-    char *command = NULL;
-
     // Detect command
     cJSON *command_json = cJSON_GetObjectItem(input, "command");
     if (command_json && (command_json->type == cJSON_String)) {
-        os_strdup(command_json->valuestring, command);
+        return command_json->valuestring;
     }
 
-    return command;
+    return NULL;
 }
 
 char* get_username_from_json (cJSON *input) {
-    char *username = NULL;
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
     cJSON *data_json = NULL;
@@ -105,14 +107,13 @@ char* get_username_from_json (cJSON *input) {
     // Detect username
     username_json = cJSON_GetObjectItem(data_json, "dstuser");
     if (username_json && (username_json->type == cJSON_String)) {
-        os_strdup(username_json->valuestring, username);
+        return username_json->valuestring;
     }
 
-    return username;
+    return NULL;
 }
 
 char* get_srcip_from_json (cJSON *input) {
-    char *srcip = NULL;
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
     cJSON *data_json = NULL;
@@ -136,8 +137,8 @@ char* get_srcip_from_json (cJSON *input) {
     // Detect srcip
     srcip_json = cJSON_GetObjectItem(data_json, "srcip");
     if (srcip_json && (srcip_json->type == cJSON_String)) {
-        os_strdup(srcip_json->valuestring, srcip);
+        return srcip_json->valuestring;
     }
 
-    return srcip;
+    return NULL;
 }
