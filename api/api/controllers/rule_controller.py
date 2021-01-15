@@ -13,6 +13,7 @@ from api.encoder import dumps, prettify
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
@@ -188,15 +189,22 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_download_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None):
-    """Download an specified decoder file.
+async def get_rule_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
+                        raw: bool = False):
+    """Get rule file content.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param filename: Filename to download.
-    :return: Raw XML file
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+    wait_for_complete : bool, optional
+        Disable response timeout or not. Default `False`
+    filename : str
+        Filename to download.
+    raw : bool, optional
+        Whether to return the file content in raw or JSON format. Default `True`
     """
-    f_kwargs = {'filename': filename}
+    f_kwargs = {'filename': filename, 'raw': raw}
 
     dapi = DistributedAPI(f=rule_framework.get_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -207,6 +215,9 @@ async def get_download_file(request, pretty: bool = False, wait_for_complete: bo
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
-    response = ConnexionResponse(body=data["message"], mimetype='application/xml')
+    if isinstance(data, AffectedItemsWazuhResult):
+        response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    else:
+        response = ConnexionResponse(body=data["message"], mimetype='application/xml')
 
     return response
