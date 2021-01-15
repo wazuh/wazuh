@@ -45,6 +45,7 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
+    write_debug_file(argv[0], input);
 
     input_json = get_json_from_input(input);
     if (!input_json) {
@@ -95,7 +96,7 @@ int main (int argc, char **argv) {
         // Checking if we have pf config file
         if(access(PFCTL_RULES, F_OK) == 0) {
             // Checking if ossec table is configured in pf.conf
-            if(checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE)) {
+            if(checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) == 0) {
                 if (!strcmp("add", action)) {
                     snprintf(arg1, COMMANDSIZE -1,"-t %s -T add %s", PFCTL_TABLE, srcip);
                     snprintf(arg2, COMMANDSIZE -1,"-k %s", srcip);
