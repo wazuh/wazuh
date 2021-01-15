@@ -252,9 +252,9 @@ stop()
 info()
 {
      if [ "X${1}" = "X" ]; then
-        echo "VERSION=\"${VERSION}\""
-        echo "REVISION=\"${REVISION}\""
-        echo "TYPE=\"${TYPE}\""
+        echo "WAZUH_VERSION=\"${VERSION}\""
+        echo "WAZUH_REVISION=\"${REVISION}\""
+        echo "WAZUH_TYPE=\"${TYPE}\""
     else
         case "${1}" in
             -v) echo "${VERSION}" ;;
