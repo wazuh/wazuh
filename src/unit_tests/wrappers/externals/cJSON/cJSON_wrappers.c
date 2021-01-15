@@ -35,10 +35,10 @@ cJSON* __wrap_cJSON_AddStringToObject(__attribute__ ((__unused__)) cJSON * const
     return mock_type(cJSON *);
 }
 
-cJSON* __wrap_cJSON_AddArrayToObject(__attribute__ ((__unused__)) cJSON * const object, 
+cJSON* __wrap_cJSON_AddArrayToObject(__attribute__ ((__unused__)) cJSON * const object,
                               const char * const name) {
     if (name) check_expected(name);
-    return mock_type(cJSON *);                            
+    return mock_type(cJSON *);
 }
 
 cJSON* __wrap_cJSON_AddNumberToObject(__attribute__ ((__unused__)) cJSON * const object,

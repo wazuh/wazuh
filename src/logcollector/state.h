@@ -9,6 +9,7 @@
 
 #ifndef LOGCOLLECTOR_STAT_H
 #define LOGCOLLECTOR_STAT_H
+
 #include "shared.h"
 
 #ifdef WIN32
@@ -80,7 +81,7 @@ void w_logcollector_state_update_target(char * fpath, char * target, bool droppe
  * @brief Update/register current event and byte count for a particular file/location
  *
  * @param fpath file path or locafile location value
- * @param bytes amount of bytes
+ * @param bytes amount of bytes. If bigger than zero, event counter will increment.
  */
 void w_logcollector_state_update_file(char * fpath, uint64_t bytes);
 

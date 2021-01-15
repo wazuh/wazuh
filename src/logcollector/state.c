@@ -69,7 +69,7 @@ DWORD WINAPI w_logcollector_state_main(__attribute__((unused)) void * args) {
 void * w_logcollector_state_main(__attribute__((unused)) void * args) {
 #endif
 
-    int interval = *(int *) args; 
+    int interval = *(int *) args;
 
     while (FOREVER()) {
         sleep(interval);
@@ -82,7 +82,7 @@ void * w_logcollector_state_main(__attribute__((unused)) void * args) {
 }
 
 STATIC void w_logcollector_state_dump() {
-    
+
     cJSON * lc_state_json = w_logcollector_state_get();
     char * lc_state_str = cJSON_Print(lc_state_json);
     cJSON_Delete(lc_state_json);
@@ -108,7 +108,7 @@ STATIC void w_logcollector_state_dump() {
 }
 
 void w_logcollector_state_init() {
-    
+
     os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
     os_calloc(1, sizeof(lc_states_t), g_lc_states_interval);
 
@@ -170,7 +170,7 @@ void _w_logcollector_state_update_file(lc_states_t * state, char * fpath, uint64
         os_calloc(1, sizeof(lc_state_target_t *), data->targets);
     }
 
-    if (bytes > 0){
+    if (bytes > 0) {
         data->events++;
         data->bytes += bytes;
     }
@@ -241,13 +241,13 @@ void w_logcollector_generate_state() {
     w_mutex_lock(&g_lc_raw_stats_mutex);
 
     cJSON_Delete(g_lc_json_stats);
- 
+
     g_lc_json_stats = cJSON_CreateObject();
     cJSON * lc_stats_json_global = _w_logcollector_generate_state(g_lc_states_global, false);
     cJSON_AddItemToObject(g_lc_json_stats, "global", lc_stats_json_global);
     cJSON * lc_stats_json_interval = _w_logcollector_generate_state(g_lc_states_interval, true);
     cJSON_AddItemToObject(g_lc_json_stats, "interval", lc_stats_json_interval);
-    
+
     w_mutex_unlock(&g_lc_raw_stats_mutex);
     w_mutex_unlock(&g_lc_json_stats_mutex);
 }

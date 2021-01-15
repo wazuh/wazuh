@@ -43,7 +43,6 @@ cJSON * __wrap_w_logcollector_state_get() {
     return mock_type(cJSON *);
 }
 
-
 /* tests */
 
 /* lccom_getstate */
@@ -58,7 +57,7 @@ void test_lccom_getstate_ok(void ** state) {
     expect_string(__wrap_cJSON_AddNumberToObject, name, "error");
     expect_value(__wrap_cJSON_AddNumberToObject, number, 0);
     will_return(__wrap_cJSON_AddNumberToObject, NULL);
-    
+
     expect_function_call(__wrap_cJSON_AddItemToObject);
     will_return(__wrap_cJSON_AddItemToObject, 0);
 
@@ -69,7 +68,6 @@ void test_lccom_getstate_ok(void ** state) {
 
     assert_int_equal(strlen(json), retval);
     assert_string_equal(json, output);
-
 }
 
 void test_lccom_getstate_null(void ** state) {
@@ -101,7 +99,6 @@ void test_lccom_getstate_null(void ** state) {
 
     assert_int_equal(strlen(json), retval);
     assert_string_equal(json, output);
-
 }
 
 int main(void) {
@@ -114,4 +111,3 @@ int main(void) {
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
-

@@ -638,7 +638,7 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
 
     w_logcollector_state_update_file(channel->evt_log, 0);
     w_logcollector_state_update_target(channel->evt_log, "agent", false);
-    
+
     /* Success */
     status = 1;
 

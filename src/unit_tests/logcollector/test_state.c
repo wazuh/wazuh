@@ -223,7 +223,6 @@ void test_w_logcollector_state_get_non_null(void ** state) {
 
     assert_ptr_not_equal(g_lc_json_stats, retval);
     assert_ptr_equal(expect_retval, retval);
-
 }
 
 /* Test _w_logcollector_generate_state */
@@ -805,7 +804,6 @@ void test_w_logcollector_generate_state_ok(void ** state) {
 /* w_logcollector_state_dump */
 void test_w_logcollector_state_dump_fail_open(void ** state) {
 
-
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_cJSON_Duplicate, (cJSON *) 3);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -821,7 +819,6 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
                   "'/var/ossec/var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
 
     w_logcollector_state_dump();
-
 }
 
 void test_w_logcollector_state_dump_fail_write(void ** state) {
@@ -845,8 +842,6 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
     will_return(__wrap_fclose, 0);
 
     w_logcollector_state_dump();
-
-    //os_free(g_lc_pritty_stats);
 }
 
 void test_w_logcollector_state_dump_ok(void ** state) {
@@ -866,7 +861,6 @@ void test_w_logcollector_state_dump_ok(void ** state) {
     will_return(__wrap_fclose, 0);
 
     w_logcollector_state_dump();
-
 }
 
 /* w_logcollector_state_main */
@@ -1009,7 +1003,6 @@ void test_w_logcollector_state_main(void ** state) {
 
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
-    //os_free(g_lc_pritty_stats);
 }
 
 int main(void) {

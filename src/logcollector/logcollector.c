@@ -157,7 +157,7 @@ void LogCollectorStart()
         merror(ATEXIT_ERROR);
     }
 
-        /* Initialize state component */
+    /* Initialize state component */
     w_logcollector_state_init();
 
     set_sockets();
@@ -1944,7 +1944,7 @@ void * w_output_thread(void * args){
             result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
                                   message->queue_mq, message->log_target);
             if (result != 0) {
-                if (result == 0) {
+                if (result != 1) {
 #ifdef CLIENT
                     merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
 #else
@@ -1959,7 +1959,7 @@ void * w_output_thread(void * args){
                 if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
                     result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
-                    if (result == 0) {
+                    if (result != 1) {
 #ifdef CLIENT
                         merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
 #else
@@ -1970,7 +1970,7 @@ void * w_output_thread(void * args){
                 }
             }
 
-            w_logcollector_state_update_target(message->file, 
+            w_logcollector_state_update_target(message->file,
                                                message->log_target->log_socket->name,
                                                result == 1);
 
