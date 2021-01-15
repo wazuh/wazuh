@@ -1,11 +1,23 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "external/cJSON/cJSON.h"
+#include "shared.h"
 
+#ifndef WIN32
 #define LOG_FILE "/logs/active-responses.log"
+#else
+#define LOG_FILE "active-response\\active-responses.log"
+#endif
 #define PASSWD "/usr/bin/passwd"
 #define CHUSER "/usr/bin/chuser"
 #define BUFFERSIZE 4096
-#define LOGSIZE 2048
+#define LOGSIZE 8192
 #define COMMANDSIZE 2048
 
 /**

@@ -286,7 +286,7 @@ int main (int argc, char **argv) {
 
                     // removing a specific rule
                     memset(command, '\0', COMMANDSIZE);
-                    snprintf(command, 1023, "%s %s | cut -f 1 -d \"|\"", ECHO, output_buf);
+                    snprintf(command, COMMANDSIZE - 1, "%s %s | cut -f 1 -d \"|\"", ECHO, output_buf);
                     FILE *fp2 = popen(command, "r");
                     if ((fgets(out_buf, BUFFERSIZE, fp2) != NULL)){
                         int rule_id = atoi(out_buf) + 1;

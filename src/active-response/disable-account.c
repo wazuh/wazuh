@@ -16,7 +16,7 @@ int main (int argc, char **argv) {
 
     write_debug_file (argv[0] , "Starting");
 
-    input[BUFFERSIZE -1] = '\0';
+    memset(input, '\0', BUFFERSIZE);
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
         write_debug_file (argv[0], "Cannot read input from stdin");
         return OS_INVALID;
@@ -74,7 +74,7 @@ int main (int argc, char **argv) {
         }
 
         os_strdup(PASSWD, command_ex);
-        args[COMMANDSIZE -1] = '\0';
+        memset(args, '\0', COMMANDSIZE);
         if (!strcmp("add", action)) {
             snprintf(args, COMMANDSIZE -1, "-l");
         } else {
