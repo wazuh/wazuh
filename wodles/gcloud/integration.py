@@ -35,6 +35,7 @@ class WazuhGCloudSubscriber:
         # get Wazuh paths
         self.wazuh_path = tools.get_wazuh_path()
         self.wazuh_queue = tools.get_wazuh_queue()
+        self.wazuh_version = tools.get_wazuh_version()
         # get subscriber
         self.subscriber = self.get_subscriber_client(credentials_file).api
         self.subscription_path = self.get_subscription_path(project,
