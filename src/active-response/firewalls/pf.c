@@ -1,5 +1,6 @@
 #include "shared.h"
 #include "external/cJSON/cJSON.h"
+#include "../active_responses.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -21,7 +22,13 @@
 #define COMMANDSIZE 2048
 
 int checking_if_its_configured(const char *path, const char *table);
-void write_debug_file (const char *msg);
+static void free_vars();
+
+static char *srcip;
+static char *action;
+static char *iptables;
+static char *filename;
+static cJSON *input_json = NULL;
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -30,9 +37,6 @@ int main (int argc, char **argv) {
     char arg2[COMMANDSIZE];
     char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
-    char *srcip;
-    char *action;
-    cJSON *input_json = NULL;
     cJSON *origin_json = NULL;
     cJSON *version_json = NULL;
     cJSON *command_json = NULL;
@@ -43,76 +47,52 @@ int main (int argc, char **argv) {
     const char *json_err;
     struct utsname uname_buffer;
 
+    write_debug_file ("pf" , "Starting");
+
+    // Reading filename
+    filename = basename(argv[0]);
+    if (filename == NULL) {
+        log_msg[LOGSIZE -1] = '\0';
+        snprintf(log_msg, LOGSIZE -1 , "Cannot read filename: %s (%d)", strerror(errno), errno);
+        write_debug_file("default-firewall-drop", log_msg);
+        return OS_INVALID;
+    }
+
     input[BUFFERSIZE -1] = '\0';
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file ("Cannot read input from stdin");
+        write_debug_file (filename, "Cannot read input from stdin");
         return OS_INVALID;
     }
 
-    // Parsing Input
-    if (input_json = cJSON_ParseWithOpts(input, &json_err, 0), !input_json) {
-        write_debug_file ("Cannot parse input to json");
+    input_json = get_json_from_input(input);
+    if (!input_json) {
+        write_debug_file(filename, "Invalid input format");
         return OS_INVALID;
     }
 
-    // Detect version
-    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'version' from json");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    // Detect origin
-    if (origin_json = cJSON_GetObjectItem(input_json, "origin"), !origin_json || (origin_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'origin' from json");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    // Detect command
-    command_json = cJSON_GetObjectItem(input_json, "command");
-    write_debug_file(cJSON_PrintUnformatted(command_json));
-    if (command_json && (command_json->type == cJSON_String)) {
-        os_strdup(command_json->valuestring, action);
-    } else {
-        write_debug_file ("Invalid 'command' from json");
-        cJSON_Delete(input_json);
+    action = get_command(input_json);
+    if (!action) {
+        write_debug_file(filename, "Cannot read 'command' from json");
         return OS_INVALID;
     }
 
     if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file ("Invalid value of 'command'");
+        write_debug_file(filename, "Invalid value of 'command'");
+        free_vars();
         return OS_INVALID;
     }
 
-    // Detect parameters
-    if (parameters_json = cJSON_GetObjectItem(input_json, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'parameters' from json");
-        cJSON_Delete(input_json);
+    // Get srcip
+    srcip = get_srcip_from_json(input_json);
+    if (!srcip) {
+        write_debug_file(filename, "Cannot read 'srcip' from data");
+        free_vars();
         return OS_INVALID;
     }
 
-    // Detect Alert
-    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'alert' from parameters");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    // Detect data
-    if (data_json = cJSON_GetObjectItem(alert_json, "data"), !data_json || (data_json->type != cJSON_Object)) {
-        write_debug_file ("Cannot get 'data' from alert");
-        cJSON_Delete(input_json);
-        return OS_INVALID;
-    }
-
-    // Detect srcip
-    srcip_json = cJSON_GetObjectItem(data_json, "srcip");
-    if (srcip_json && (srcip_json->type == cJSON_String)) {
-        os_strdup(srcip_json->valuestring, srcip);
-    } else {
-        write_debug_file ("Invalid 'srcip' from data");
-        cJSON_Delete(input_json);
+    if (uname(&uname_buffer) != 0){
+        write_debug_file(filename, "Cannot get system name");
+        free_vars();
         return OS_INVALID;
     }
 
@@ -123,7 +103,7 @@ int main (int argc, char **argv) {
         if (access(PFCTL, F_OK) < 0) {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The pfctl file '%s' is not accessible", PFCTL);
-            write_debug_file (log_msg);
+            write_debug_file(filename, log_msg);
             return OS_SUCCESS;
         }
 
@@ -143,14 +123,16 @@ int main (int argc, char **argv) {
             } else {
                 log_msg[LOGSIZE -1] = '\0';
                 snprintf(log_msg, LOGSIZE - 1, "Table %s does not exist", PFCTL_TABLE);
-                write_debug_file (log_msg);
+                write_debug_file(filename, log_msg);
+                free_vars();
                 return OS_INVALID;
             }
 
         } else {
             log_msg[LOGSIZE -1] = '\0';
             snprintf(log_msg, LOGSIZE - 1, "The pf rules file %s does not exist", PFCTL_RULES);
-            write_debug_file (log_msg);
+            write_debug_file(filename, log_msg);
+            free_vars();
             return OS_SUCCESS;
         }
 
@@ -161,19 +143,14 @@ int main (int argc, char **argv) {
         snprintf(command, COMMANDSIZE - 1, "%s %s > /dev/null 2>&1", PFCTL, arg2);
 
     } else {
+        free_vars();
         return OS_SUCCESS;
     }
-}
 
-void write_debug_file (const char *msg) {
-    char path[PATH_MAX];
-    char *timestamp = w_get_timestamp(time(NULL));
+    write_debug_file(filename, "Ended");
+    free_vars();
 
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOG_FILE);
-    FILE *ar_log_file = fopen(path, "a");
-
-    fprintf(ar_log_file, "%s: %s\n", timestamp, msg);
-    fclose(ar_log_file);
+    return 0;
 }
 
 int checking_if_its_configured(const char *path, const char *table) {
