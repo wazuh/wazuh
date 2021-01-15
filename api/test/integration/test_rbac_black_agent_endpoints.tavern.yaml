@@ -233,6 +233,46 @@ stages:
          total_failed_items: 0
 
 ---
+test_name: GET /agents/{agent_id}/stats/logcollector
+
+stages:
+
+ - name: Try get logcollector stats from agent 002 (Denied)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/agents/002/stats/logcollector"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+      <<: *permission_denied
+
+ - name: Try get logcollector stats from agent 003 (Allowed)
+   request:
+     verify: False
+     url: "{protocol:s}://{host:s}:{port:d}/agents/003/stats/logcollector"
+     method: GET
+     headers:
+       Authorization: "Bearer {test_login_token}"
+   response:
+     status_code: 200
+     json:
+       error: 0
+       data:
+         affected_items:
+           - global:
+               start: !anystr
+               end: !anystr
+               files: !anything
+             interval:
+               start: !anystr
+               end: !anystr
+               files: !anything
+         failed_items: []
+         total_affected_items: 1
+         total_failed_items: 0
+
+---
 test_name: GET /groups
 
 stages:

@@ -211,9 +211,9 @@ def get_daemon_stats_json(agent_list=None, daemon=None):
     result : AffectedItemsWazuhResult
         Stats of daemon.
     """
-    result = AffectedItemsWazuhResult(all_msg=f'Obtained {daemon} stats from all selected agents',
-                                      some_msg=f'Some {daemon} stats were not obtained',
-                                      none_msg=f'No {daemon} stats were obtained')
+    result = AffectedItemsWazuhResult(all_msg=f'Statistical information for each agent was successfully read',
+                                      some_msg=f'Could not read statistical information for some agents',
+                                      none_msg=f'Could not read statistical information for any agent')
 
     system_agents = get_agents_info()
     for agent_id in agent_list:
