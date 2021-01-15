@@ -110,7 +110,7 @@ def get_wazuh_queue() -> str:
     """Get Wazuh queue"""
     return os.path.join(get_wazuh_path(), 'queue', 'ossec', 'queue')
 
-def get_wazuh_info(field):    
+def get_wazuh_info(field) -> str:    
     wazuh_info = call_wazuh_control("info")     
     if not wazuh_info:
         return "ERROR"
@@ -124,5 +124,5 @@ def get_wazuh_info(field):
     
     return wazuh_env_vars[field]
 
-def get_wazuh_version():
+def get_wazuh_version() -> str:
     return get_wazuh_info("WAZUH_VERSION")

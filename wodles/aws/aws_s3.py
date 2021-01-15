@@ -2851,10 +2851,10 @@ def call_wazuh_control(option) -> str:
     except:            
         return None 
 
-def get_wazuh_path():
+def get_wazuh_path() -> str:
     return path.abspath(path.join(__file__, "../../.."))
 
-def get_wazuh_info(field):    
+def get_wazuh_info(field) -> str:    
     wazuh_info = call_wazuh_control("info")     
     if not wazuh_info:
         return "ERROR"
@@ -2868,7 +2868,7 @@ def get_wazuh_info(field):
     
     return wazuh_env_vars[field]
 
-def get_wazuh_version():
+def get_wazuh_version() -> str:
     return get_wazuh_info("WAZUH_VERSION")
 
 
