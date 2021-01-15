@@ -2842,20 +2842,26 @@ def get_script_arguments():
 
     return parser.parse_args()
 
-def get_wazuh_path():
-    return os.path.abspath(os.path.join(__file__, "../../.."))
-
-def get_wazuh_info(field):
-    wazuh_control = os.path.join(Wazuh.get_install_path(), "bin", "wazuh-control")
-    wazuh_env_vars = dict()
+def call_wazuh_control(option) -> str:
+    wazuh_control = path.join(get_wazuh_path(), "bin", "wazuh-control")    
     try:
-        proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
+        proc = subprocess.Popen([wazuh_control, option], stdout=subprocess.PIPE)
         (stdout, stderr) = proc.communicate() 
+        return stdout.decode()
     except:            
-        return "ERROR"
+        return None 
 
-    env_variables = stdout.decode().rsplit("\n")
+def get_wazuh_path():
+    return path.abspath(path.join(__file__, "../../.."))
+
+def get_wazuh_info(field):    
+    wazuh_info = call_wazuh_control("info")     
+    if not wazuh_info:
+        return "ERROR"
+    
+    env_variables = wazuh_info.rsplit("\n")
     env_variables.remove("")
+    wazuh_env_vars = dict()
     for env_variable in env_variables:
         key, value = env_variable.split("=")
         wazuh_env_vars[key] = value.replace("\"", "")
