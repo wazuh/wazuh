@@ -69,9 +69,9 @@ constexpr auto TEST_INPUT_DATA
             "name": "Image Capture",
             "version": "6.8"
         }, {
-            "description": "com.apple.iTunes",
-            "group": "public.app-category.music",
-            "name": "iTunes",
+            "description": "com.apple.iCloud",
+            "group": "public.app-category.social-networking",
+            "name": "iCloud",
             "version": "12.6.2"
         }, {
             "description": "com.apple.launchpad.launcher",

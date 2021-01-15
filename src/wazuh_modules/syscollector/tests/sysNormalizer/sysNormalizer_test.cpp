@@ -93,7 +93,125 @@ TEST_F(SysNormalizerTest, excludeSingleItemMatch)
     EXPECT_TRUE(result.empty());
 }
 
-TEST_F(SysNormalizerTest, normalizeSingleItemMatch)
+TEST_F(SysNormalizerTest, normalizeSingleMicosoft)
+{
+    const auto& inputJson{nlohmann::json::parse(R"(
+        {
+            "description": "com.microsoft.antivirus",
+            "group": "public.app-category.security",
+            "name": "Microsoft Defender",
+            "version": "1.0"
+        })")};
+    SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
+    const auto& result{normalizer.normalize("packages", inputJson)};
+    EXPECT_NE(inputJson, result);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result["vendor"], "Microsoft");
+}
+
+TEST_F(SysNormalizerTest, normalizeSingleMcAfee1)
+{
+    const auto& inputJson{nlohmann::json::parse(R"(
+        {
+            "description": "com.mcafee.antivirus",
+            "group": "public.app-category.security",
+            "name": "McAfee Antivirus For Mac",
+            "version": "1.0"
+        })")};
+    SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
+    const auto& result{normalizer.normalize("packages", inputJson)};
+    EXPECT_NE(inputJson, result);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result["vendor"], "McAfee");
+    EXPECT_EQ(result["name"], "Antivirus");
+}
+
+TEST_F(SysNormalizerTest, normalizeSingleMcAfee2)
+{
+    const auto& inputJson{nlohmann::json::parse(R"(
+        {
+            "description": "com.mcafee.antivirus",
+            "group": "public.app-category.security",
+            "name": "McAfee Endpoint Protection For Mac",
+            "version": "1.0"
+        })")};
+    SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
+    const auto& result{normalizer.normalize("packages", inputJson)};
+    EXPECT_NE(inputJson, result);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result["vendor"], "McAfee");
+    EXPECT_EQ(result["name"], "Endpoint Protection");
+}
+
+TEST_F(SysNormalizerTest, normalizeSingleTotalDefense1)
+{
+    const auto& inputJson{nlohmann::json::parse(R"(
+        {
+            "description": "com.totaldefense.antivirus",
+            "group": "public.app-category.security",
+            "name": "TotalDefenseAntivirusforMac",
+            "version": "1.0"
+        })")};
+    SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
+    const auto& result{normalizer.normalize("packages", inputJson)};
+    EXPECT_NE(inputJson, result);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result["vendor"], "TotalDefense");
+    EXPECT_EQ(result["name"], "Anti-Virus");
+}
+
+TEST_F(SysNormalizerTest, normalizeSingleTotalDefense2)
+{
+    const auto& inputJson{nlohmann::json::parse(R"(
+        {
+            "description": "com.totaldefense.antivirus",
+            "group": "public.app-category.security",
+            "name": "TotalDefenseOtherProductforMac",
+            "version": "1.0"
+        })")};
+    SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
+    const auto& result{normalizer.normalize("packages", inputJson)};
+    EXPECT_NE(inputJson, result);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result["vendor"], "TotalDefense");
+    EXPECT_EQ(result["name"], "OtherProduct");
+}
+
+TEST_F(SysNormalizerTest, normalizeSingleAVG1)
+{
+    const auto& inputJson{nlohmann::json::parse(R"(
+        {
+            "description": "com.avg.antivirus",
+            "group": "public.app-category.security",
+            "name": "AVGAntivirus",
+            "version": "1.0"
+        })")};
+    SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
+    const auto& result{normalizer.normalize("packages", inputJson)};
+    EXPECT_NE(inputJson, result);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result["vendor"], "AVG");
+    EXPECT_EQ(result["name"], "Anti-Virus");
+}
+
+TEST_F(SysNormalizerTest, normalizeSingleAVG2)
+{
+    const auto& inputJson{nlohmann::json::parse(R"(
+        {
+            "description": "com.avg.antivirus",
+            "group": "public.app-category.security",
+            "name": "AVGOtherProduct",
+            "version": "1.0"
+        })")};
+    SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
+    const auto& result{normalizer.normalize("packages", inputJson)};
+    EXPECT_NE(inputJson, result);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result["vendor"], "AVG");
+    EXPECT_EQ(result["name"], "OtherProduct");
+}
+
+TEST_F(SysNormalizerTest, normalizeSingleKaspersky1)
 {
     const auto& inputJson{nlohmann::json::parse(R"(
         {
@@ -106,24 +224,23 @@ TEST_F(SysNormalizerTest, normalizeSingleItemMatch)
     const auto& result{normalizer.normalize("packages", inputJson)};
     EXPECT_NE(inputJson, result);
     EXPECT_FALSE(result.empty());
-    EXPECT_EQ(result["name"], "Kaspersky Anti-Virus");
+    EXPECT_EQ(result["name"], "Kaspersky Antivirus");
 }
 
-TEST_F(SysNormalizerTest, normalizeSingleItemMatch1)
+TEST_F(SysNormalizerTest, normalizeSingleKaspersky2)
 {
     const auto& inputJson{nlohmann::json::parse(R"(
         {
-            "description": "com.kaspersky.antivirus",
+            "description": "com.kaspersky.internetsecurity",
             "group": "public.app-category.security",
-            "name": "Kaspersky AntivirusforMac",
+            "name": "Kaspersky Internet Security For Mac",
             "version": "1.0"
         })")};
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     const auto& result{normalizer.normalize("packages", inputJson)};
     EXPECT_NE(inputJson, result);
     EXPECT_FALSE(result.empty());
-    EXPECT_EQ(result["name"], "Kaspersky Anti-Virus");
-    EXPECT_TRUE(result["vendor"] == "Kaspersky");
+    EXPECT_EQ(result["name"], "Kaspersky Internet Security");
 }
 
 TEST_F(SysNormalizerTest, normalizeItemMatch)

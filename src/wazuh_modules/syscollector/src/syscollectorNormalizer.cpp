@@ -15,8 +15,8 @@
 
 SysNormalizer::SysNormalizer(const std::string& configFile,
                              const std::string& target)
-: m_typeExclusions{getTypeExclusions(configFile, target)}
-, m_typeDictionary{getTypeDictionary(configFile, target)}
+: m_typeExclusions{getTypeValues(configFile, target, "exclusions")}
+, m_typeDictionary{getTypeValues(configFile, target, "dictionary")}
 {
 }
 
@@ -29,29 +29,90 @@ nlohmann::json SysNormalizer::removeExcluded(const std::string& type,
     {
         for (const auto& exclusionItem : exclusionsIt->second)
         {
-            std::regex pattern{exclusionItem.pattern};
-            if (ret.is_array())
+            try
             {
-                for (auto item{ret.begin()}; item != ret.end(); ++item)
+                std::regex pattern{exclusionItem["pattern"].get_ref<const std::string&>()};
+                const auto& fieldName{exclusionItem["field_name"].get_ref<const std::string&>()};
+                if (ret.is_array())
                 {
-                    const auto fieldIt{item->find(exclusionItem.fieldName)};
-                    if (fieldIt != item->end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                    for (auto item{ret.begin()}; item != ret.end(); ++item)
                     {
-                        ret.erase(item);
+                        const auto fieldIt{item->find(fieldName)};
+                        if (fieldIt != item->end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                        {
+                            ret.erase(item);
+                        }
                     }
+                }
+                else
+                {
+                    const auto fieldIt{ret.find(fieldName)};
+                    if (fieldIt != ret.end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                    {
+                        ret.clear();
+                    }
+                }
+            }
+            // LCOV_EXCL_START
+            catch(...)
+            {}
+            // LCOV_EXCL_STOP
+        }
+    }
+    return ret;
+}
+
+
+static void normalizeItem(const nlohmann::json& dictionary,
+                          nlohmann::json& item)
+{
+    for (const auto& dictItem : dictionary)
+    {
+        const auto itFindPattern{dictItem.find("find_pattern")};
+        const auto itFindField{dictItem.find("find_field")};
+        if (itFindPattern != dictItem.end() && itFindField != dictItem.end())
+        {
+            const auto fieldIt{item.find(itFindField->get_ref<const std::string&>())};
+            if (fieldIt != item.end())
+            {
+                const auto& value{fieldIt->get_ref<const std::string&>()};
+                const auto& expression{itFindPattern->get_ref<const std::string&>()};
+                std::regex pattern{expression};
+                //no field in the item or no matching, we continue
+                if(!std::regex_match(value, pattern))
+                {
+                    continue;
                 }
             }
             else
             {
-                const auto fieldIt{ret.find(exclusionItem.fieldName)};
-                if (fieldIt != ret.end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
-                {
-                    ret.clear();
-                }
+                continue;
             }
         }
+        else if(itFindPattern != dictItem.end() || itFindField != dictItem.end())
+        {
+            //we won't evaluate an incomplete item.
+            continue;
+        }
+        const auto itReplacePattern{dictItem.find("replace_pattern")};
+        const auto itReplaceField{dictItem.find("replace_field")};
+        const auto itReplaceValue{dictItem.find("replace_value")};
+        if (itReplacePattern != dictItem.end() && itReplaceField != dictItem.end() && itReplaceValue != dictItem.end())
+        {
+            std::regex pattern{itReplacePattern->get_ref<const std::string&>()};
+            const auto fieldIt{item.find(itReplaceField->get_ref<const std::string&>())};
+            if (fieldIt != item.end())
+            {
+                *fieldIt = std::regex_replace(fieldIt->get_ref<const std::string&>(), pattern, itReplaceValue->get_ref<const std::string&>());
+            }
+        }
+        const auto itAddField{dictItem.find("add_field")};
+        const auto itAddValue{dictItem.find("add_value")};
+        if (itAddField != dictItem.end() && itAddValue != dictItem.end())
+        {
+            item[itAddField->get_ref<const std::string&>()] = itAddValue->get_ref<const std::string&>();
+        }
     }
-    return ret;
 }
 
 nlohmann::json SysNormalizer::normalize(const std::string& type,
@@ -61,118 +122,41 @@ nlohmann::json SysNormalizer::normalize(const std::string& type,
     const auto dictionaryIt{m_typeDictionary.find(type)};
     if (dictionaryIt != m_typeDictionary.cend())
     {
-        for (const auto& dictionaryItem : dictionaryIt->second)
+        if (ret.is_array())
         {
-            std::regex pattern{dictionaryItem.pattern};
-            if (ret.is_array())
+            for (auto& item : ret)
             {
-                for (auto& item : ret)
-                {
-                    const auto fieldIt{item.find(dictionaryItem.srcFieldName)};
-                    if (fieldIt != item.end())
-                    {
-                        switch(dictionaryItem.action)
-                        {
-                            case REPLACE_VALUE:
-                                *fieldIt = std::regex_replace(fieldIt->get_ref<const std::string&>(), pattern, dictionaryItem.value);
-                                break;
-                            case ADD_VALUE:
-                                if (std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
-                                {
-                                    item[dictionaryItem.destFieldName] = dictionaryItem.value;
-                                }
-                                break;
-                        }
-                    }
-                }
+                normalizeItem(dictionaryIt->second, item);
             }
-            else
-            {
-                const auto fieldIt{ret.find(dictionaryItem.srcFieldName)};
-                if (fieldIt != ret.end())
-                {
-                    switch(dictionaryItem.action)
-                    {
-                        case REPLACE_VALUE:
-                            *fieldIt = std::regex_replace(fieldIt->get_ref<const std::string&>(), pattern, dictionaryItem.value);
-                            break;
-                        case ADD_VALUE:
-                            if (std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
-                            {
-                                ret[dictionaryItem.destFieldName] = dictionaryItem.value;
-                            }
-                            break;
-                    }
-                }
-            }
+        }
+        else
+        {
+            normalizeItem(dictionaryIt->second, ret);
         }
     }
     return ret;
 }
 
-std::map<SysNormalizer::DataType, SysNormalizer::Exclusions> SysNormalizer::getTypeExclusions(const std::string& configFile,
-                                                                                              const std::string& target)
+std::map<std::string, nlohmann::json> SysNormalizer::getTypeValues(const std::string& configFile,
+                                                                   const std::string& target,
+                                                                   const std::string& type)
 {
-    std::map<DataType, Exclusions> ret;
+    std::map<std::string, nlohmann::json> ret;
     try
     {
         std::ifstream config{ configFile };
+        nlohmann::json data;
         if (config.is_open())
         {
             const nlohmann::json& jsonConfigFile { nlohmann::json::parse(config) };
-            const auto it{jsonConfigFile.find("exclusions")};
+            const auto it{jsonConfigFile.find(type)};
             if (it != jsonConfigFile.end())
             {
-                for (const auto& exclusion : *it)
+                for (const auto& item : *it)
                 {
-                    if (exclusion["target"] == target)
+                    if (item["target"] == target)
                     {
-                        const auto& type{exclusion["data_type"]};
-                        const auto& field{exclusion["field_name"]};
-                        const auto& pattern{exclusion["pattern"]};
-                        ret[type].push_back({field, pattern});
-                    }
-                }
-            }
-        }
-    }
-    catch(...)
-    {
-    }
-    return ret;
-}
-
-std::map<SysNormalizer::DataType, SysNormalizer::Dictionary> SysNormalizer::getTypeDictionary(const std::string& configFile,
-                                                                                              const std::string& target)
-{
-    std::map<DataType, Dictionary> ret;
-    // LCOV_EXCL_START
-    static const std::map<std::string, DictionaryAction> s_actionsMap
-    {
-        {"replace", REPLACE_VALUE},
-        {"add", ADD_VALUE},
-    };
-    // LCOV_EXCL_STOP
-    try
-    {
-        std::ifstream config{ configFile };
-        if (config.is_open())
-        {
-            const nlohmann::json& jsonConfigFile { nlohmann::json::parse(config) };
-            const auto it{jsonConfigFile.find("dictionary")};
-            if (it != jsonConfigFile.end())
-            {
-                for (const auto& dictionaryItem : *it)
-                {
-                    if (dictionaryItem["target"] == target)
-                    {
-                        const auto& type{dictionaryItem["data_type"]};
-                        const auto& srcField{dictionaryItem["src_field_name"]};
-                        const auto& destField{dictionaryItem["dest_field_name"]};
-                        const auto& pattern{dictionaryItem["pattern"]};
-                        const auto& value{dictionaryItem["value"]};
-                        const auto& action{s_actionsMap.at(dictionaryItem["action"])};
-                        ret[type].push_back({srcField, destField, pattern, value, action});
+                        ret[item["data_type"]].push_back(item);
                     }
                 }
             }
