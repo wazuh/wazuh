@@ -1,3 +1,12 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All right reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "shared.h"
 #include "external/cJSON/cJSON.h"
 #include "../active_responses.h"
@@ -21,11 +30,9 @@ int main (int argc, char **argv) {
     char input[BUFFERSIZE];
     char arg1[COMMANDSIZE];
     char arg2[COMMANDSIZE];
-    char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
-    int res;
 
     write_debug_file (argv[0] , "Starting");
 
@@ -88,16 +95,6 @@ int main (int argc, char **argv) {
         char lock_path[PATH_MAX];
         char lock_pid_path[PATH_MAX];
 
-        memset(arg1, '\0', COMMANDSIZE);
-        memset(arg2, '\0', COMMANDSIZE);
-        if (!strcmp("add", action)) {
-            snprintf(arg1, COMMANDSIZE -1, "-I INPUT -s %s -j DROP", srcip);
-            snprintf(arg2, COMMANDSIZE -1, "-I FORWARD -s %s -j DROP", srcip);
-        } else {
-            snprintf(arg1, COMMANDSIZE -1, "-D INPUT -s %s -j DROP", srcip);
-            snprintf(arg2, COMMANDSIZE -1, "-D FORWARD -s %s -j DROP", srcip);
-        }
-
         // Checking if iptables is present
         if (access(iptables, F_OK) < 0) {
             char iptables_path[PATH_MAX];
@@ -114,6 +111,17 @@ int main (int argc, char **argv) {
             strcpy(iptables, iptables_path);
         }
 
+        char arg[3];
+        memset(arg, '\0', 3);
+        if (!strcmp("add", action)) {
+            strcpy(arg, "-I");
+        } else {
+            strcpy(arg, "-D");
+        }
+
+        char *command_ex_1[8] = {iptables, arg, "INPUT", "-s", srcip, "-j", "DROP", NULL};
+        char *command_ex_2[8] = {iptables, arg, "FORWARD", "-s", srcip, "-j", "DROP", NULL};
+
         memset(lock_path, '\0', PATH_MAX);
         memset(lock_pid_path, '\0', PATH_MAX);
         snprintf(lock_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_PATH);
@@ -125,46 +133,39 @@ int main (int argc, char **argv) {
         lock(lock_path, lock_pid_path, argv[0]);
         bool flag = true;
         while (flag) {
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE - 1, "%s %s", iptables, arg1);
-            res = system(command);
-            if (res == 0) {
-                flag = false;
-            } else {
+            wfd_t * wfd;
+            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
                 count++;
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Unable to run (iptables returning != %d)", res);
-                write_debug_file(argv[0], log_msg);
+                write_debug_file(argv[0], "Unable to run iptables");
                 sleep(count);
 
                 if (count > 4){
                     flag = false;
                 }
+            } else {
+                flag = false;
             }
+            os_free(wfd);
         }
 
         count = 0;
         flag = true;
         while (flag) {
-            int res;
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE - 1, "%s %s", iptables, arg2);
-            res = system(command);
-
-            if (res == 0) {
-                flag = false;
-            } else {
+            wfd_t * wfd;
+            if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
                 count++;
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Unable to run (iptables returning != %d)", res);
-                write_debug_file(argv[0], log_msg);
+                write_debug_file(argv[0], "Unable to run iptables");
                 sleep(count);
 
                 if (count > 4){
                     flag = false;
                 }
+            } else {
+                flag = false;
             }
+            os_free(wfd);
         }
+
         unlock(lock_path, argv[0]);
 
     } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
@@ -203,18 +204,24 @@ int main (int argc, char **argv) {
         snprintf(arg1, COMMANDSIZE -1, "\"@1 block out quick from any to %s\"", srcip);
         snprintf(arg2, COMMANDSIZE -1, "\"@1 block in quick from %s to any\"", srcip);
         if (!strcmp("add", action)) {
-            snprintf(ipfarg, COMMANDSIZE -1,"%s -f -", ipfilter_path);
+            snprintf(ipfarg, COMMANDSIZE -1,"-f");
         } else {
-            snprintf(ipfarg, COMMANDSIZE -1,"%s -rf -", ipfilter_path);
+            snprintf(ipfarg, COMMANDSIZE -1,"-rf");
         }
 
-        // Executing it
-        memset(command, '\0', COMMANDSIZE);
-        snprintf(command, COMMANDSIZE - 1, "eval %s %s| %s", ECHO, arg1, ipfarg);
-        res = system(command);
-        memset(command, '\0', COMMANDSIZE);
-        snprintf(command, COMMANDSIZE - 1, "eval %s %s| %s", ECHO, arg2, ipfarg);
-        res = system(command);
+        char *command_ex_1[8] = {"eval", ECHO, arg1, "|", ipfilter_path, ipfarg, "-", NULL};
+        char *command_ex_2[8] = {"eval", ECHO, arg2, "|", ipfilter_path, ipfarg, "-", NULL};
+
+        wfd_t * wfd;
+        if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
+            write_debug_file(argv[0], "Unable to run ipf");
+        }
+        os_free(wfd);
+
+        if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
+            write_debug_file(argv[0], "Unable to run ipf");
+        }
+        os_free(wfd);
 
     } else if (!strcmp("AIX", uname_buffer.sysname)){
         char genfilt_path[20] = "/usr/sbin/genfilt";
@@ -260,59 +267,63 @@ int main (int argc, char **argv) {
         }
 
         if (!strcmp("add", action)) {
-            char genfilt_arg[COMMANDSIZE];
-            snprintf(genfilt_arg, COMMANDSIZE - 1, " -v 4 -a D -s %s -m 255.255.255.255 -d 0.0.0.0 -M 0.0.0.0 -w B -D \"Access Denied by WAZUH\"", srcip);
-            // Add filter to rule table
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE - 1, "eval %s %s", genfilt_path, genfilt_arg);
-            res = system(command);
+            wfd_t * wfd;
 
-            // Deactivate  and activate the filter rules.
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE - 1, "eval %s -v 4 -d", mkfilt_path);
-            res = system(command);
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE - 1, "eval %s -v 4 -u", mkfilt_path);
-            res = system(command);
-        } else {
-            char output_buf[BUFFERSIZE];
-            memset(output_buf, '\0', BUFFERSIZE);
-            snprintf(command, 1023, "eval %s -v 4 -O  | %s %s |", lsfilt_path, grep_path, srcip);
-            FILE *fp = popen(command, "r");
-            if (fp) {
-                while (fgets(output_buf, BUFFERSIZE, fp) != NULL) {
-                    char out_buf[BUFFERSIZE];
-                    memset(out_buf, '\0', BUFFERSIZE);
-
-                    // removing a specific rule
-                    memset(command, '\0', COMMANDSIZE);
-                    snprintf(command, COMMANDSIZE - 1, "%s %s | cut -f 1 -d \"|\"", ECHO, output_buf);
-                    FILE *fp2 = popen(command, "r");
-                    if ((fgets(out_buf, BUFFERSIZE, fp2) != NULL)){
-                        int rule_id = atoi(out_buf) + 1;
-                        memset(arg1, '\0', COMMANDSIZE);
-                        snprintf(arg1, COMMANDSIZE -1, " -v 4 -n %d", rule_id);
-                        memset(command, '\0', COMMANDSIZE);
-                        snprintf(command, COMMANDSIZE - 1, "eval %s %s", rmfilt_path, arg1);
-                        res = system(command);
-                    } else {
-                        write_debug_file(argv[0], "Cannot remove rule");
-                    }
-
-                    pclose(fp2);
-
-                }
-
-                pclose(fp);
+            char *command_ex_1[19] = {"eval", genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL};
+            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run genfilt");
             }
+            os_free(wfd);
 
             // Deactivate  and activate the filter rules.
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE - 1, "eval %s -v 4 -d", mkfilt_path);
-            res = system(command);
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE - 1, "eval %s -v 4 -u", mkfilt_path);
-            res = system(command);
+            char *command_ex_2[6] = {"eval", mkfilt_path, "-v", "4", "-d", NULL};
+            if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run mkfilt");
+            }
+            os_free(wfd);
+
+            char *command_ex_3[6] = {"eval", mkfilt_path, "-v", "4", "-u", NULL};
+            if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run mkfilt");
+            }
+            os_free(wfd);
+        } else {
+            char *command_ex_1[9] = {"eval", lsfilt_path, "-v", "4", "-O", "|", grep_path, srcip, NULL};
+            wfd_t * wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
+            if(wfd){
+                char output_buf[BUFFERSIZE];
+                while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
+                    // removing a specific rule
+                    char *command_ex_2[9] = {ECHO, output_buf, "|", "cut", "-f", "1", "-d", "\"|\"", NULL};
+                    wfd_t * wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
+                    if(wfd2){
+                        char output_buf2[BUFFERSIZE];
+                        if (fgets(output_buf2, BUFFERSIZE, wfd2->file) != NULL) {
+                            int rule_id = atoi(output_buf2) + 1;
+                            char int_str[12];
+                            memset(int_str, '\0', 12);
+                            snprintf(int_str, 11, "%d", rule_id);
+                            char *command_ex_3[7] = {"eval", rmfilt_path, "-v", "4", "-n", int_str, NULL};
+                            wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR);
+                        } else {
+                            write_debug_file(argv[0], "Cannot remove rule");
+                        }
+                    } else {
+                        write_debug_file(argv[0], "Cannot find the specific rule");
+                    }
+                    os_free(wfd2);
+                }
+            } else {
+                write_debug_file(argv[0], "Unable to run lsfilt");
+            }
+            os_free(wfd);
+
+            // Deactivate  and activate the filter rules.
+            char *command_ex_4[9] = {"eval", mkfilt_path, "-v", "4", "-d", NULL};
+            wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR);
+
+            char *command_ex_5[9] = {"eval", mkfilt_path, "-v", "4", "-u", NULL};
+            wpopenv(*command_ex_5, command_ex_5, W_BIND_STDERR);
         }
 
     } else {
@@ -381,33 +392,33 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
         // by one and fail after MAX_ITERACTION
         if (i >= max_iteration) {
             bool kill = false;
-            char output_buf[BUFFERSIZE];
-            char command[COMMANDSIZE];
-            memset(output_buf, '\0', BUFFERSIZE);
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE -1, "pgrep -f default-firewall-drop");
-            FILE *fp = popen(command, "r");
-            if (fp) {
-                while (fgets(output_buf, BUFFERSIZE, fp) != NULL) {
+            char *command_ex_1[4] = {"pgrep", "-f", "default-firewall-drop", NULL};
+            wfd_t * wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
+            if(wfd){
+                char output_buf[BUFFERSIZE];
+                while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
                     pid_t pid = (pid_t)strtol(output_buf, NULL, 10);
                     if (pid == current_pid) {
-                        memset(command, '\0', COMMANDSIZE);
-                        snprintf(command, COMMANDSIZE -1, "kill -9 %u", pid);
-                        if (system(command) == 0) {
-                            memset(log_msg, '\0', LOGSIZE);
-                            snprintf(log_msg, LOGSIZE -1, "Killed process %u holding lock.", pid);
-                            write_debug_file(log_path, log_msg);
-                            kill = true;
-                            unlock(lock_path, log_path);
-                            i = 0;
-                            saved_pid = -1;
-                            break;
-                        }
+                        char pid_str[10];
+                        memset(pid_str, '\0', 10);
+                        snprintf(pid_str, 9, "%u", pid);
+                        char *command_ex_2[4] = {"kill", "-9", pid_str, NULL};
+                        wfd_t * wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
+                        memset(log_msg, '\0', LOGSIZE);
+                        snprintf(log_msg, LOGSIZE -1, "Killed process %u holding lock.", pid);
+                        write_debug_file(log_path, log_msg);
+                        os_free(wfd2);
+                        kill = true;
+                        unlock(lock_path, log_path);
+                        i = 0;
+                        saved_pid = -1;
+                        break;
                     }
                 }
-
-                pclose(fp);
+            } else {
+                write_debug_file(log_path, "Unable to run pgrep");
             }
+            os_free(wfd);
 
             if (!kill) {
                 memset(log_msg, '\0', LOGSIZE);

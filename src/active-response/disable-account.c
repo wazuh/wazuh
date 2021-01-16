@@ -1,3 +1,12 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All right reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
 #include "shared.h"
 #include "external/cJSON/cJSON.h"
 #include "active_responses.h"
@@ -6,7 +15,6 @@ int main (int argc, char **argv) {
     (void)argc;
     char input[BUFFERSIZE];
     char args[COMMANDSIZE];
-    char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
     char *action;
     char *user;
@@ -107,19 +115,19 @@ int main (int argc, char **argv) {
     }
 
     // Execute the command
-    memset(command, '\0', COMMANDSIZE);
-    snprintf(command, COMMANDSIZE - 1, "%s %s %s", command_ex, args, user);
-    if (system(command) != 0) {
+    char *exec_cmd[4] = { command_ex, args, user, NULL};
+    wfd_t * wfd;
+    if (wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDERR), !wfd) {
         memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE -1, "Unable execute the command: '%s' ", command);
+        snprintf(log_msg, LOGSIZE -1, "Unable execute the command: '%s' ", command_ex);
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         os_free(command_ex);
         return OS_INVALID;
     }
-
     write_debug_file (argv[0] , "Ended");
     cJSON_Delete(input_json);
+    os_free(wfd);
     os_free(command_ex);
     return 0;
 }
