@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 
 WAZUH_HOME=${1}
 WAZUH_VERSION=${2} 
@@ -15,7 +15,9 @@ mkdir -p ${WAZUH_HOME}/tmp_bkp/etc
 
 cp -rp ${WAZUH_HOME}/bin ${WAZUH_HOME}/tmp_bkp/${WAZUH_HOME}
 cp -rp ${WAZUH_HOME}/etc ${WAZUH_HOME}/tmp_bkp/${WAZUH_HOME}
-cp -p /etc/ossec-init.conf ${WAZUH_HOME}/tmp_bkp/etc
+if [ -f /etc/ossec-init.conf ]; then
+    cp -p /etc/ossec-init.conf ${WAZUH_HOME}/tmp_bkp/etc
+fi
 
 tar czf ${WAZUH_HOME}/backup/backup_${WAZUH_VERSION}_[${BDATE}].tar.gz -C ${WAZUH_HOME}/tmp_bkp . >> ${WAZUH_HOME}/logs/upgrade.log 2>&1
 rm -rf ${WAZUH_HOME}/tmp_bkp
