@@ -15,6 +15,7 @@ mkdir -p ${WAZUH_HOME}/tmp_bkp/etc
 
 cp -rp ${WAZUH_HOME}/bin ${WAZUH_HOME}/tmp_bkp/${WAZUH_HOME}
 cp -rp ${WAZUH_HOME}/etc ${WAZUH_HOME}/tmp_bkp/${WAZUH_HOME}
+
 if [ -f /etc/ossec-init.conf ]; then
     cp -p /etc/ossec-init.conf ${WAZUH_HOME}/tmp_bkp/etc
 fi
