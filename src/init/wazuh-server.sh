@@ -255,7 +255,7 @@ testconfig()
 }
 
 # Start function
-start()
+start_service()
 {
 
     if [ $USE_JSON = false ]; then
@@ -454,7 +454,7 @@ wait_pid() {
     return 0
 }
 
-stop()
+stop_service()
 {
     checkpid;
     first=true
@@ -548,12 +548,12 @@ case "$action" in
 start)
     testconfig
     lock
-    start
+    start_service
     unlock
     ;;
 stop)
     lock
-    stop
+    stop_service
     unlock
     ;;
 restart)
@@ -561,19 +561,19 @@ restart)
     testconfig
     lock
     if [ $USE_JSON = true ]; then
-        stop > /dev/null 2>&1
+        stop_service > /dev/null 2>&1
     else
-        stop
+        stop_service
     fi
-    start
+    start_service
     rm -f ${DIR}/var/run/.restart
     unlock
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
-    stop
-    start
+    stop_service
+    start_service
     unlock
     ;;
 status)
