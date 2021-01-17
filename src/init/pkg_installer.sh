@@ -61,5 +61,6 @@ else
     if [ ! -f $CONTROL ]; then
         CONTROL="$WAZUH_HOME/bin/ossec-control"
     fi
+
     $CONTROL start >> ${WAZUH_HOME}/logs/upgrade.log 2>&1
 fi
