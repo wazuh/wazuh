@@ -215,7 +215,7 @@ testconfig()
     done
 }
 
-start()
+start_service()
 {
     echo "Starting $NAME $VERSION..."
     TEST=$(${DIR}/bin/wazuh-analysisd -t  2>&1)
@@ -318,7 +318,7 @@ wait_pid() {
     return 0
 }
 
-stop()
+stop_service()
 {
     checkpid;
     for i in ${DAEMONS}; do
@@ -373,26 +373,26 @@ case "$1" in
 start)
     testconfig
     lock
-    start
+    start_service
     unlock
     ;;
 stop)
     lock
-    stop
+    stop_service
     unlock
     ;;
 restart)
     testconfig
     lock
-    stop
-    start
+    stop_service
+    start_service
     unlock
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
-    stop
-    start
+    stop_service
+    start_service
     unlock
     ;;
 status)
