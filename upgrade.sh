@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 
 # Get Wazuh installation path
 SCRIPT=$(readlink -f "$0")
