@@ -79,7 +79,7 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (uname(&uname_buffer) != 0) {
+    if (uname(&uname_buffer) < 0) {
         write_debug_file(argv[0], "Cannot get system name");
         cJSON_Delete(input_json);
         return OS_INVALID;
@@ -352,7 +352,7 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
             // Lock acquired (setting the pid)
             pid_t pid = getpid();
             pid_file = fopen(lock_pid_path, "w");
-            fprintf(pid_file, "%u", pid);
+            fprintf(pid_file, "%d", pid);
             fclose(pid_file);
             return;
         }
@@ -362,7 +362,7 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
             write_debug_file(log_path, "Can not read pid file");
             continue;
         } else {
-            read = fscanf(pid_file, "%u", &current_pid);
+            read = fscanf(pid_file, "%d", &current_pid);
             fclose(pid_file);
 
             if (read == 1) {
@@ -398,11 +398,11 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
                     if (pid == current_pid) {
                         char pid_str[10];
                         memset(pid_str, '\0', 10);
-                        snprintf(pid_str, 9, "%u", pid);
+                        snprintf(pid_str, 9, "%d", pid);
                         char *command_ex_2[4] = {"kill", "-9", pid_str, NULL};
                         wfd_t * wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
                         memset(log_msg, '\0', LOGSIZE);
-                        snprintf(log_msg, LOGSIZE -1, "Killed process %u holding lock.", pid);
+                        snprintf(log_msg, LOGSIZE -1, "Killed process %d holding lock.", pid);
                         write_debug_file(log_path, log_msg);
                         wpclose(wfd2);
                         kill = true;
@@ -419,7 +419,7 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
 
             if (!kill) {
                 memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1, "Unable kill process %u holding lock.", current_pid);
+                snprintf(log_msg, LOGSIZE -1, "Unable kill process %d holding lock.", current_pid);
                 write_debug_file(log_path, log_msg);
 
                 // Unlocking and exiting

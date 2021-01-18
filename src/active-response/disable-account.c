@@ -63,7 +63,7 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (uname(&uname_buffer) != 0) {
+    if (uname(&uname_buffer) < 0) {
         write_debug_file(argv[0], "Cannot get system name");
         cJSON_Delete(input_json);
         return OS_INVALID;
