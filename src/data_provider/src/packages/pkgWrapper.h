@@ -13,11 +13,12 @@
 #define _PKG_WRAPPER_H
 
 #include <fstream>
+#include <istream>
 #include "stringHelper.h"
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "timeHelper.h"
-#include "plist/plist.h"
+#include "plist/plist++.h"
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
@@ -76,7 +77,18 @@ public:
 private:
     void getPkgData(const std::string& filePath)
     {
-        std::fstream file {filePath, std::ios_base::in};
+        const auto isBinaryFnc
+        {
+            [&filePath]()
+            {
+                // If first line is "bplist00" it's a binary plist file
+                std::fstream file {filePath, std::ios_base::in};
+                std::string line;
+                return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
+            }
+        };
+        const auto isBinary { isBinaryFnc() };
+
         static const auto getValueFnc
         {
             [](const std::string& val)
@@ -86,50 +98,62 @@ private:
                 return val.substr(start+1, end - start -1);
             }
         };
-        if (file.is_open())
+
+        static const auto getDataFnc
         {
-            std::string line;
-            if (std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START))
+            [this](std::istream& data)
             {
-                // Apple binary plist - let's convert it to XML format
-                binaryToXML();
+                std::string line;
+                while(!line.empty() && std::getline(data, line))
+                {
+                    line = Utils::trim(line," \t");
+
+                    if (line == "<key>CFBundleName</key>" &&
+                        std::getline(data, line))
+                    {
+                        m_name = getValueFnc(line);
+                    }
+                    else if (line == "<key>CFBundleShortVersionString</key>" &&
+                            std::getline(data, line))
+                    {
+                        m_version = getValueFnc(line);
+                    }
+                    else if (line == "<key>LSApplicationCategoryType</key>" &&
+                            std::getline(data, line))
+                    {
+                        m_groups = getValueFnc(line);
+                    }
+                    else if (line == "<key>CFBundleIdentifier</key>" &&
+                            std::getline(data, line))
+                    {
+                        m_description = getValueFnc(line);
+                    }
+                }
             }
+        };
 
-            while(!line.empty() && std::getline(file, line))
+        if (isBinary)
+        {
+            auto xmlContent { binaryToXML(filePath) };
+            getDataFnc(xmlContent);
+        }
+        else
+        {
+            std::fstream file {filePath, std::ios_base::in};
+            if (file.is_open())
             {
-                line = Utils::trim(line," \t");
-
-                if (line == "<key>CFBundleName</key>" &&
-                    std::getline(file, line))
-                {
-                    m_name = getValueFnc(line);
-                }
-                else if (line == "<key>CFBundleShortVersionString</key>" &&
-                         std::getline(file, line))
-                {
-                    m_version = getValueFnc(line);
-                }
-                else if (line == "<key>LSApplicationCategoryType</key>" &&
-                         std::getline(file, line))
-                {
-                    m_groups = getValueFnc(line);
-                }
-                else if (line == "<key>CFBundleIdentifier</key>" &&
-                         std::getline(file, line))
-                {
-                    m_description = getValueFnc(line);
-                }
+                getDataFnc(file);
             }
         }
     }
 
-    void binaryToXML()
+    std::stringstream binaryToXML(const std::string& filePath)
     {
-
         plist_t rootNode { nullptr };
-
-        // plist_from_bin
-        // plist_to_xml
+        const auto binaryContent { Utils::getBinaryContent(filePath) };
+        const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
+        const auto xmlContent { dataFromBin->ToXml() };
+        return std::stringstream{xmlContent};
     }
 
     std::string m_name;
