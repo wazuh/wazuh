@@ -73,19 +73,11 @@ static void normalizeItem(const nlohmann::json& dictionary,
         if (itFindPattern != dictItem.end() && itFindField != dictItem.end())
         {
             const auto fieldIt{item.find(itFindField->get_ref<const std::string&>())};
-            if (fieldIt != item.end())
+            std::regex pattern{itFindPattern->get_ref<const std::string&>()};
+            if (fieldIt == item.end() ||
+                !std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
             {
-                const auto& value{fieldIt->get_ref<const std::string&>()};
-                const auto& expression{itFindPattern->get_ref<const std::string&>()};
-                std::regex pattern{expression};
                 //no field in the item or no matching, we continue
-                if(!std::regex_match(value, pattern))
-                {
-                    continue;
-                }
-            }
-            else
-            {
                 continue;
             }
         }
