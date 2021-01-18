@@ -824,7 +824,7 @@ void test_add_audit_rules_syscheck_not_added(void **state) {
     // Rule already not added
     will_return(__wrap_search_audit_rule, 0);
 
-    will_return(__wrap_audit_add_rule, -17);
+    will_return(__wrap_audit_add_rule, -EEXIST);
     snprintf(buffer, OS_SIZE_128, FIM_AUDIT_ALREADY_ADDED, syscheck.dir[0]);
     expect_string(__wrap__mdebug1, formatted_msg, buffer);
 
@@ -2142,7 +2142,7 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
 
     hc_thread_active = 0;
 
-    will_return(__wrap_audit_add_rule, EEXIST);
+    will_return(__wrap_audit_add_rule, -EEXIST);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_START);
 
@@ -2179,7 +2179,7 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
 
     hc_thread_active = 0;
 
-    will_return(__wrap_audit_add_rule, EEXIST);
+    will_return(__wrap_audit_add_rule, -EEXIST);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_START);
 

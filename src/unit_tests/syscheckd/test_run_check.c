@@ -593,7 +593,6 @@ void test_fim_link_update(void **state) {
     char *new_path = "/new_path";
 
     expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
-
     expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
 
     expect_realtime_adddir_call(new_path, 0, 0);
@@ -613,7 +612,6 @@ void test_fim_link_update_already_added(void **state) {
     char error_msg[OS_SIZE_128];
 
     expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
-
     snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
 
     expect_string(__wrap__mdebug1, formatted_msg, error_msg);

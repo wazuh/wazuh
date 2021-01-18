@@ -24,7 +24,7 @@ static OSList *audit_rules_list;
 /**
  * @brief Function that frees the data memory of a node in the list.
  *
- * @param node_data: Data of a node in a list (OSListNode.data)
+ * @param node_data Data of a node in a list (OSListNode.data)
  */
 static void clear_audit_rule(void *node_data) {
     w_audit_rule *pointer = (w_audit_rule *) node_data;
@@ -58,6 +58,7 @@ int search_audit_rule(const char *path, const char *perms, const char *key) {
     if (path == NULL || perms == NULL || key == NULL || audit_rules_list == NULL) {
         return -1;
     }
+    audit_rules_list->cur_node = audit_rules_list->first_node;
 
     while (node = OSList_GetNextNode(audit_rules_list), node != NULL) {
         rule = (w_audit_rule *) node->data;
@@ -333,7 +334,7 @@ int audit_manage_rules(int action, const char *path, const char *key) {
         goto end;
     }
 
-    if (retval <= 0 && retval != -17) {
+    if (retval <= 0 && retval != -EEXIST) {
         mdebug2("Can't add or delete a rule (%d) = %s", retval, audit_errno_to_name(abs(retval)));
     }
 
