@@ -3360,10 +3360,12 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 #ifndef WIN32
 char *bin_path(char *arg) {
     char *buff = NULL;
+    os_malloc(PATH_MAX, buff);
 
     if (arg != NULL) {
-        if (buff = realpath(arg, NULL), buff == NULL) {
+        if (realpath(arg, buff) == NULL) {
             mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
+            os_free(buff);
             return NULL;
         }
 
