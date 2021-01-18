@@ -273,7 +273,7 @@ getPreinstalledType()
             getPreinstalledDir
         fi
 
-        TYPE=`$PREINSTALLEDDIR/bin/wazuh-control -t`
+        TYPE=`$PREINSTALLEDDIR/bin/wazuh-control info -t`
     fi
 
     echo $TYPE
@@ -290,7 +290,7 @@ getPreinstalledVersion()
             getPreinstalledDir
         fi
 
-        VERSION=`$PREINSTALLEDDIR/bin/wazuh-control -v`
+        VERSION=`$PREINSTALLEDDIR/bin/wazuh-control info -v`
     fi
 
     echo $VERSION
