@@ -3,19 +3,19 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+
 import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
+from wazuh.core.exception import WazuhError
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
-from wazuh.core.exception import WazuhError
-from wazuh.rbac.decorators import expose_resources
-from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array
-
+from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
@@ -237,7 +237,8 @@ def get_file(filename=None, raw=False):
             if raw:
                 result = content
             else:
-                result.affected_items.append(xmltodict.parse(content))
+                # Missing root tag in rule file
+                result.affected_items.append(xmltodict.parse(f'<root>{content}</root>')['root'])
                 result.total_affected_items = 1
         except OSError:
             result.add_failed_item(id_=filename,
