@@ -336,7 +336,7 @@ UpdateStopOSSEC()
 {
     MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
 
-    if [ "X$TYPE" != "X" ]; then
+    if [ "X$TYPE" = "X" ]; then
         getPreinstalledType
     fi
 
