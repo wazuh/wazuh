@@ -8,9 +8,6 @@
  */
 
 #include "active_responses.h"
-#include "shared.h"
-
-#include "active_responses.h"
 
 void write_debug_file (const char *ar_name, const char *msg) {
     char path[PATH_MAX];

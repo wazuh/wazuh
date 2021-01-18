@@ -4,11 +4,9 @@
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
 
-#include "shared.h"
-#include "external/cJSON/cJSON.h"
 #include "active_responses.h"
 
 int main (int argc, char **argv) {
@@ -22,31 +20,31 @@ int main (int argc, char **argv) {
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
 
-    write_debug_file (argv[0] , "Starting");
+    write_debug_file(argv[0] , "Starting");
 
     memset(input, '\0', BUFFERSIZE);
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file (argv[0], "Cannot read input from stdin");
+        write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
 
-    write_debug_file (argv[0] , input);
+    write_debug_file(argv[0], input);
 
     input_json = get_json_from_input(input);
     if (!input_json) {
-        write_debug_file (argv[0], "Invalid input format");
+        write_debug_file(argv[0], "Invalid input format");
         return OS_INVALID;
     }
 
     action = get_command(input_json);
     if (!action) {
-        write_debug_file (argv[0], "Cannot read 'command' from json");
+        write_debug_file(argv[0], "Cannot read 'command' from json");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file (argv[0], "Invalid value of 'command'");
+        write_debug_file(argv[0], "Invalid value of 'command'");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
@@ -54,19 +52,19 @@ int main (int argc, char **argv) {
     // Detect username
     user = get_username_from_json(input_json);
     if (!user) {
-        write_debug_file (argv[0], "Cannot read 'dstuser' from data");
+        write_debug_file(argv[0], "Cannot read 'dstuser' from data");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     if (!strcmp("root", user)) {
-        write_debug_file (argv[0], "Invalid username");
+        write_debug_file(argv[0], "Invalid username");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
-    if (uname(&uname_buffer) != 0){
-        write_debug_file (argv[0], "Cannot get system name");
+    if (uname(&uname_buffer) != 0) {
+        write_debug_file(argv[0], "Cannot get system name");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
@@ -76,9 +74,9 @@ int main (int argc, char **argv) {
         if (access(PASSWD, F_OK) < 0) {
             memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE - 1, "The passwd file '%s' is not accessible: %s (%d)", PASSWD, strerror(errno), errno);
-            write_debug_file (argv[0], log_msg);
+            write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            return 0;
+            return OS_SUCCESS;
         }
 
         os_strdup(PASSWD, command_ex);
@@ -89,14 +87,14 @@ int main (int argc, char **argv) {
             snprintf(args, COMMANDSIZE -1, "-u");
         }
 
-    } else if (!strcmp("AIX", uname_buffer.sysname)){
+    } else if (!strcmp("AIX", uname_buffer.sysname)) {
         // Checking if chuser is present
         if (access(CHUSER, F_OK) < 0) {
             memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE - 1, "The chuser file '%s' is not accessible: %s (%d)", CHUSER, strerror(errno), errno);
-            write_debug_file (argv[0], log_msg);
+            write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            return 0;
+            return OS_SUCCESS;
         }
 
         os_strdup(CHUSER, command_ex);
@@ -111,23 +109,26 @@ int main (int argc, char **argv) {
     } else {
         write_debug_file(argv[0], "Invalid system");
         cJSON_Delete(input_json);
-        return 0;
+        return OS_SUCCESS;
     }
 
     // Execute the command
-    char *exec_cmd[4] = { command_ex, args, user, NULL};
-    wfd_t * wfd;
+    char *exec_cmd[4] = { command_ex, args, user, NULL };
+    wfd_t *wfd = NULL;
     if (wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDERR), !wfd) {
         memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE -1, "Unable execute the command: '%s' ", command_ex);
+        snprintf(log_msg, LOGSIZE -1 , "Error executing '%s': %s", command_ex, strerror(errno));
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         os_free(command_ex);
         return OS_INVALID;
     }
-    write_debug_file (argv[0] , "Ended");
+
+    write_debug_file(argv[0], "Ended");
+
     cJSON_Delete(input_json);
-    os_free(wfd);
+    wpclose(wfd);
     os_free(command_ex);
-    return 0;
+
+    return OS_SUCCESS;
 }

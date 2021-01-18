@@ -7,20 +7,16 @@
  * Foundation.
  */
 
-#include "shared.h"
-#include "external/cJSON/cJSON.h"
 #include "../active_responses.h"
 
 #define LOCK_PATH "/active-response/bin/fw-drop"
 #define LOCK_FILE "/active-response/bin/fw-drop/pid"
 #define IP4TABLES "/sbin/iptables"
 #define IP6TABLES "/sbin/ip6tables"
-#define ECHO "/bin/echo"
-
 
 static void lock (const char *lock_path, const char *lock_pid_path, const char *log_path);
 static void unlock (const char *lock_path, const char *log_path);
-static int get_ip_version (char * ip);
+static int get_ip_version (char *ip);
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -28,13 +24,11 @@ int main (int argc, char **argv) {
     char *action;
     char iptables[COMMANDSIZE];
     char input[BUFFERSIZE];
-    char arg1[COMMANDSIZE];
-    char arg2[COMMANDSIZE];
     char log_msg[LOGSIZE];
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
 
-    write_debug_file (argv[0] , "Starting");
+    write_debug_file(argv[0], "Starting");
 
     memset(input, '\0', BUFFERSIZE);
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
@@ -85,7 +79,7 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (uname(&uname_buffer) != 0){
+    if (uname(&uname_buffer) != 0) {
         write_debug_file(argv[0], "Cannot get system name");
         cJSON_Delete(input_json);
         return OS_INVALID;
@@ -105,7 +99,7 @@ int main (int argc, char **argv) {
                 snprintf(log_msg, LOGSIZE -1 , "The iptables file '%s' is not accessible: %s (%d)", iptables_path, strerror(errno), errno);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
-                return 0;
+                return OS_SUCCESS;
             }
             memset(iptables, '\0', COMMANDSIZE);
             strcpy(iptables, iptables_path);
@@ -128,53 +122,55 @@ int main (int argc, char **argv) {
         snprintf(lock_pid_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_FILE);
 
         // Executing and exiting
-        int count = 0;
-
         lock(lock_path, lock_pid_path, argv[0]);
+
+        int count = 0;
         bool flag = true;
         while (flag) {
-            wfd_t * wfd;
+            wfd_t *wfd = NULL;
             if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
                 count++;
                 write_debug_file(argv[0], "Unable to run iptables");
                 sleep(count);
 
-                if (count > 4){
+                if (count > 4) {
                     flag = false;
                 }
             } else {
                 flag = false;
             }
-            os_free(wfd);
+            wpclose(wfd);
         }
 
         count = 0;
         flag = true;
         while (flag) {
-            wfd_t * wfd;
+            wfd_t *wfd = NULL;
             if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
                 count++;
                 write_debug_file(argv[0], "Unable to run iptables");
                 sleep(count);
 
-                if (count > 4){
+                if (count > 4) {
                     flag = false;
                 }
             } else {
                 flag = false;
             }
-            os_free(wfd);
+            wpclose(wfd);
         }
 
         unlock(lock_path, argv[0]);
 
     } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
+        char arg1[COMMANDSIZE];
+        char arg2[COMMANDSIZE];
         char ipfarg[COMMANDSIZE];
 
         // Checking if ipfilter is present
         char ipfilter_path[PATH_MAX];
         memset(ipfilter_path, '\0', PATH_MAX);
-        if (!strcmp("SunOS", uname_buffer.sysname)){
+        if (!strcmp("SunOS", uname_buffer.sysname)) {
             strcpy(ipfilter_path, "/usr/sbin/ipf");
         } else {
             strcpy(ipfilter_path, "/sbin/ipf");
@@ -185,7 +181,7 @@ int main (int argc, char **argv) {
             snprintf(log_msg, LOGSIZE - 1, "The ipfilter file '%s' is not accessible: %s (%d)", ipfilter_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            return 0;
+            return OS_SUCCESS;
         }
 
         // Checking if echo is present
@@ -194,7 +190,7 @@ int main (int argc, char **argv) {
             snprintf(log_msg, LOGSIZE - 1, "The echo file '%s' is not accessible: %s (%d)", ECHO, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            return 0;
+            return OS_SUCCESS;
         }
 
         memset(arg1, '\0', COMMANDSIZE);
@@ -212,18 +208,18 @@ int main (int argc, char **argv) {
         char *command_ex_1[8] = {"eval", ECHO, arg1, "|", ipfilter_path, ipfarg, "-", NULL};
         char *command_ex_2[8] = {"eval", ECHO, arg2, "|", ipfilter_path, ipfarg, "-", NULL};
 
-        wfd_t * wfd;
+        wfd_t *wfd = NULL;
         if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         }
-        os_free(wfd);
+        wpclose(wfd);
 
         if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         }
-        os_free(wfd);
+        wpclose(wfd);
 
-    } else if (!strcmp("AIX", uname_buffer.sysname)){
+    } else if (!strcmp("AIX", uname_buffer.sysname)) {
         char genfilt_path[20] = "/usr/sbin/genfilt";
         char lsfilt_path[20] = "/usr/sbin/lsfilt";
         char mkfilt_path[20] = "/usr/sbin/mkfilt";
@@ -236,7 +232,7 @@ int main (int argc, char **argv) {
             snprintf(log_msg, LOGSIZE - 1, "The genfilt file '%s' is not accessible: %s (%d)", genfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            return 0;
+            return OS_SUCCESS;
         }
 
         // Checking if lsfilt is present
@@ -245,7 +241,7 @@ int main (int argc, char **argv) {
             snprintf(log_msg, LOGSIZE - 1, "The lsfilt file '%s' is not accessible: %s (%d)", lsfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            return 0;
+            return OS_SUCCESS;
         }
 
         // Checking if mkfilt is present
@@ -254,7 +250,7 @@ int main (int argc, char **argv) {
             snprintf(log_msg, LOGSIZE - 1, "The mkfilt file '%s' is not accessible: %s (%d)", mkfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            return 0;
+            return OS_SUCCESS;
         }
 
         // Checking if rmfilt is present
@@ -263,40 +259,40 @@ int main (int argc, char **argv) {
             snprintf(log_msg, LOGSIZE - 1, "The rmfilt file '%s' is not accessible: %s (%d)", rmfilt_path, strerror(errno), errno);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            return 0;
+            return OS_SUCCESS;
         }
 
         if (!strcmp("add", action)) {
-            wfd_t * wfd;
+            wfd_t *wfd = NULL;
 
             char *command_ex_1[19] = {"eval", genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL};
             if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run genfilt");
             }
-            os_free(wfd);
+            wpclose(wfd);
 
-            // Deactivate  and activate the filter rules.
+            // Deactivate and activate the filter rules.
             char *command_ex_2[6] = {"eval", mkfilt_path, "-v", "4", "-d", NULL};
             if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run mkfilt");
             }
-            os_free(wfd);
+            wpclose(wfd);
 
             char *command_ex_3[6] = {"eval", mkfilt_path, "-v", "4", "-u", NULL};
             if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run mkfilt");
             }
-            os_free(wfd);
+            wpclose(wfd);
         } else {
             char *command_ex_1[9] = {"eval", lsfilt_path, "-v", "4", "-O", "|", grep_path, srcip, NULL};
-            wfd_t * wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
-            if(wfd){
+            wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
+            if (wfd) {
                 char output_buf[BUFFERSIZE];
                 while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
                     // removing a specific rule
                     char *command_ex_2[9] = {ECHO, output_buf, "|", "cut", "-f", "1", "-d", "\"|\"", NULL};
-                    wfd_t * wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
-                    if(wfd2){
+                    wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
+                    if (wfd2) {
                         char output_buf2[BUFFERSIZE];
                         if (fgets(output_buf2, BUFFERSIZE, wfd2->file) != NULL) {
                             int rule_id = atoi(output_buf2) + 1;
@@ -311,12 +307,12 @@ int main (int argc, char **argv) {
                     } else {
                         write_debug_file(argv[0], "Cannot find the specific rule");
                     }
-                    os_free(wfd2);
+                    wpclose(wfd2);
                 }
             } else {
                 write_debug_file(argv[0], "Unable to run lsfilt");
             }
-            os_free(wfd);
+            wpclose(wfd);
 
             // Deactivate  and activate the filter rules.
             char *command_ex_4[9] = {"eval", mkfilt_path, "-v", "4", "-d", NULL};
@@ -329,13 +325,14 @@ int main (int argc, char **argv) {
     } else {
         write_debug_file(argv[0], "Invalid system");
         cJSON_Delete(input_json);
-
-        return 0;
+        return OS_SUCCESS;
     }
+
     write_debug_file(argv[0], "Ended");
+
     cJSON_Delete(input_json);
 
-    return 0;
+    return OS_SUCCESS;
 }
 
 static void lock (const char *lock_path, const char *lock_pid_path, const char *log_path) {
@@ -347,7 +344,7 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
     int read;
 
     // Providing a lock.
-    while (flag){
+    while (flag) {
         FILE *pid_file;
         pid_t current_pid;
 
@@ -393,8 +390,8 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
         if (i >= max_iteration) {
             bool kill = false;
             char *command_ex_1[4] = {"pgrep", "-f", "default-firewall-drop", NULL};
-            wfd_t * wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
-            if(wfd){
+            wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
+            if (wfd) {
                 char output_buf[BUFFERSIZE];
                 while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
                     pid_t pid = (pid_t)strtol(output_buf, NULL, 10);
@@ -407,7 +404,7 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
                         memset(log_msg, '\0', LOGSIZE);
                         snprintf(log_msg, LOGSIZE -1, "Killed process %u holding lock.", pid);
                         write_debug_file(log_path, log_msg);
-                        os_free(wfd2);
+                        wpclose(wfd2);
                         kill = true;
                         unlock(lock_path, log_path);
                         i = 0;
@@ -418,7 +415,7 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
             } else {
                 write_debug_file(log_path, "Unable to run pgrep");
             }
-            os_free(wfd);
+            wpclose(wfd);
 
             if (!kill) {
                 memset(log_msg, '\0', LOGSIZE);
@@ -444,7 +441,7 @@ static int get_ip_version (char * ip) {
     struct addrinfo hint, *res = NULL;
     int ret;
 
-    memset (&hint, '\0', sizeof hint);
+    memset(&hint, '\0', sizeof hint);
 
     hint.ai_family = PF_UNSPEC;
     hint.ai_flags = AI_NUMERICHOST;

@@ -4,7 +4,7 @@
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
 
 #include "shared.h"
@@ -14,6 +14,7 @@
 #else
 #define LOG_FILE "active-response\\active-responses.log"
 #endif
+#define ECHO "/bin/echo"
 #define PASSWD "/usr/bin/passwd"
 #define CHUSER "/usr/bin/chuser"
 #define BUFFERSIZE 4096
