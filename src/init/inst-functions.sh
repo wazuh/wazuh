@@ -826,6 +826,7 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fim/db
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscollector
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscollector/db
+
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/logcollector
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
@@ -856,6 +857,7 @@ InstallCommon()
     fi
 
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} wazuh_modules/syscollector/norm_config.json ${PREFIX}/queue/syscollector
 
     if [ ! -f ${PREFIX}/etc/local_internal_options.conf ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/local_internal_options.conf ${PREFIX}/etc/local_internal_options.conf

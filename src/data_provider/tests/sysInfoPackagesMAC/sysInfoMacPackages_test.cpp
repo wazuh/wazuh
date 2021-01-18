@@ -31,6 +31,7 @@ public:
     MOCK_METHOD(std::string, architecture, (), (const override));
     MOCK_METHOD(std::string, format, (), (const override));
     MOCK_METHOD(std::string, osPatch, (), (const override));
+    MOCK_METHOD(std::string, scanTime, (), (const override));
 };
 
 TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
