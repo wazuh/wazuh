@@ -859,7 +859,7 @@ def update_rule(rule_id=None, name=None, rule=None, resource_type: ResourceType 
     result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
                                       all_msg='Security rule was successfully updated')
     with RulesManager() as rum:
-        rule = rum.get_rule(int(r_id))
+        rule = rum.get_rule(int(rule_id))
         status = False
 
         if rule and rule != SecurityError.RULE_NOT_EXIST:
@@ -871,7 +871,7 @@ def update_rule(rule_id=None, name=None, rule=None, resource_type: ResourceType 
                     else SecurityError.PROTECTED_RESOURCES
 
         if not status or status == SecurityError.RULE_NOT_EXIST:
-            result.add_failed_item(id_=int(r_id), error=WazuhError(4022))
+            result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4022))
         elif status == SecurityError.INVALID:
             result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4003))
         elif status == SecurityError.ALREADY_EXIST:
