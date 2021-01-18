@@ -365,6 +365,22 @@ x-rbac-catalog:
         actions: ['rules:read']
         resources: ['rule:file:0610-win-ms_logs_rules.xml']
         effect: "allow"
+    'rules:update':
+      description: "Update or upload rule files to Wazuh manager"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/rule:file'
+      example:
+        actions: ['rules:update']
+        resources: ['rule:file:0610-win-ms_logs_rules.xml']
+        effect: "deny"
+    'rules:delete':
+      description: "Delete Wazuh manager rules"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/file:path'
+      example:
+        actions: ['rules:delete_file']
+        resources: ['rule:file:new-rules.xml']
+        effect: "allow"
     'sca:read':
       description: "Access agents security configuration assessment"
       resources:
@@ -3762,12 +3778,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    contentFormat:
-      in: query
-      name: raw
-      description: "Return the file content in raw format or not"
-      schema:
-        type: boolean
     error:
       in: query
       name: error
@@ -5188,6 +5198,22 @@ components:
       schema:
         type: string
         format: alphanumeric
+    xml_filename:
+      in: query
+      name: filename
+      description: "Filename (rule or decoder) to download/upload/edit file."
+      schema:
+        type: string
+        pattern: '^[\w\-]+\.xml$'
+    xml_filename_path:
+      in: path
+      name: filename
+      description: "Filename (rule or decoder) to download/upload/edit file."
+      required: true
+      schema:
+        type: string
+        pattern: '^[\w\-]+\.xml$'
+
 
 tags:
   - name: API Info
@@ -10874,7 +10900,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
@@ -10924,15 +10950,15 @@ paths:
       tags:
         - Rules
       summary: "Get the content of a rule"
-      description: "Get the content of a specified rule file"
+      description: "Get the content of a specified rule in the ruleset"
       operationId: api.controllers.rule_controller.get_rule_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/downloadFile'
-        - $ref: '#/components/parameters/contentFormat'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/raw'
       responses:
         '200':
           description: "Rule contents"
@@ -11012,6 +11038,53 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - Rules
+      summary: "Update file to the ruleset"
+      description: "Upload or replace ruleset file contents with the data contained in the API request"
+      operationId: api.controllers.rule_controller.put_rule_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:update'
+        - $ref: '#/x-rbac-catalog/actions/rules:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: "Content of the rule to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                message: "File was uploaded successfully"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

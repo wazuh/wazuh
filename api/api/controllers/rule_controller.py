@@ -10,6 +10,7 @@ from connexion.lifecycle import ConnexionResponse
 
 from api.configuration import api_conf
 from api.encoder import dumps, prettify
+from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import rule as rule_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -221,3 +222,34 @@ async def get_rule_file(request, pretty: bool = False, wait_for_complete: bool =
         response = ConnexionResponse(body=data["message"], mimetype='application/xml')
 
     return response
+
+
+async def put_rule_file(request, body, overwrite=False, pretty=False, wait_for_complete=False, filename=None):
+    """Upload file in manager or local_node.
+
+    :param body: Body request with the content of the file to be uploaded
+    :param overwrite: If set to false, an exception will be raised when updating contents of an already existing
+    filename.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param path: Filepath to return.
+    """
+    # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
+
+    f_kwargs = {'filename': filename,
+                'overwrite': overwrite,
+                'content': parsed_body}
+
+    dapi = DistributedAPI(f=rule_framework.upload_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

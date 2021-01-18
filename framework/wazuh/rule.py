@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+from os.path import exists, join
 
 import xmltodict
 
@@ -11,10 +12,12 @@ from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
+from wazuh.core.manager import upload_xml, prettify_xml
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
 from wazuh.core.utils import process_array
+from wazuh.manager import delete_file
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config()['disabled']
@@ -247,5 +250,32 @@ def get_file(filename=None, raw=False):
 
     else:
         result.add_failed_item(id_=filename, error=WazuhError(1415))
+
+    return result
+
+
+@expose_resources(actions=['rules:update'], resources=['rule:file:{filename}'])
+def upload_file(filename=None, content=None, overwrite=False):
+    result = AffectedItemsWazuhResult(all_msg='File was successfully uploaded',
+                                      none_msg='Could not upload file'
+                                      )
+    path = join(common.ossec_path, 'etc', 'rules', filename[0])
+    try:
+        if len(content) == 0:
+            raise WazuhError(1112)
+
+        # If file already exists and overwrite is False, raise exception
+        if not overwrite and exists(join(common.ossec_path, path)):
+            raise WazuhError(1905)
+        elif overwrite and exists(join(common.ossec_path, path)):
+            # Check if the content is valid
+            prettify_xml(content)
+            delete_file(path=path)
+
+        upload_xml(content, path)
+        result.affected_items.append(path)
+    except WazuhError as e:
+        result.add_failed_item(id_=path, error=e)
+    result.total_affected_items = len(result.affected_items)
 
     return result
