@@ -197,26 +197,28 @@ int main (int argc, char **argv) {
         memset(arg2, '\0', COMMANDSIZE);
         memset(ipfarg, '\0', COMMANDSIZE);
 
-        snprintf(arg1, COMMANDSIZE -1, "\"@1 block out quick from any to %s\"", srcip);
-        snprintf(arg2, COMMANDSIZE -1, "\"@1 block in quick from %s to any\"", srcip);
+        snprintf(arg1, COMMANDSIZE -1, "block out quick from any to %s", srcip);
+        snprintf(arg2, COMMANDSIZE -1, "block in quick from %s to any", srcip);
         if (!strcmp("add", action)) {
             snprintf(ipfarg, COMMANDSIZE -1,"-f");
         } else {
             snprintf(ipfarg, COMMANDSIZE -1,"-rf");
         }
 
-        char *command_ex_1[8] = {"eval", ECHO, arg1, "|", ipfilter_path, ipfarg, "-", NULL};
-        char *command_ex_2[8] = {"eval", ECHO, arg2, "|", ipfilter_path, ipfarg, "-", NULL};
+        char *command_ex_1[4] = {ipfilter_path, ipfarg, "-", NULL};
+        char *command_ex_2[4] = {ipfilter_path, ipfarg, "-", NULL};
 
         wfd_t *wfd = NULL;
-        if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
+        if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDIN), !wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         }
+        fprintf(wfd->file, "%s\n", arg1);
         wpclose(wfd);
 
-        if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
+        if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDIN), !wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
         }
+        fprintf(wfd->file, "%s\n", arg2);
         wpclose(wfd);
 
     } else if (!strcmp("AIX", uname_buffer.sysname)) {
@@ -340,19 +342,19 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
     int i=0;
     int max_iteration = 50;
     bool flag = true;
-    pid_t saved_pid = -1;
+    int saved_pid = -1;
     int read;
 
     // Providing a lock.
     while (flag) {
         FILE *pid_file;
-        pid_t current_pid;
+        int current_pid;
 
         if (mkdir(lock_path, S_IRWXG) == 0) {
             // Lock acquired (setting the pid)
             pid_t pid = getpid();
             pid_file = fopen(lock_pid_path, "w");
-            fprintf(pid_file, "%d", pid);
+            fprintf(pid_file, "%d", (int)pid);
             fclose(pid_file);
             return;
         }
@@ -394,7 +396,7 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
             if (wfd) {
                 char output_buf[BUFFERSIZE];
                 while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
-                    pid_t pid = (pid_t)strtol(output_buf, NULL, 10);
+                    int pid = atoi(output_buf);
                     if (pid == current_pid) {
                         char pid_str[10];
                         memset(pid_str, '\0', 10);
