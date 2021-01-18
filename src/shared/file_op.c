@@ -3361,8 +3361,28 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 char *bin_path(char *arg) {
     char *buff = NULL;
     os_malloc(PATH_MAX, buff);
+    #ifdef __MACH__
+    pid_t pid = getpid();
+    #endif
 
-    if (arg != NULL) {
+    if (realpath("/proc/self/exe", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim("bin", &buff);
+    }
+    else if (realpath("/proc/curproc/file", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim("bin", &buff);
+    }
+    else if (realpath("/proc/self/path/a.out", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim("bin", &buff);
+    }
+    #ifdef __MACH__
+    else if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
+        buff = w_strtok_r_str_delim("bin", &buff);
+    }
+    #endif
+    else if (arg != NULL) {
         if (realpath(arg, buff) == NULL) {
             mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
             os_free(buff);
