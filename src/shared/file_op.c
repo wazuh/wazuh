@@ -3367,15 +3367,15 @@ char *bin_path(char *arg) {
 
     if (realpath("/proc/self/exe", buff) != NULL) {
         dirname(buff);
-        buff = w_strtok_r_str_delim("bin", &buff);
+        buff = w_strtok_r_str_delim(basename(buff), &buff);
     }
     else if (realpath("/proc/curproc/file", buff) != NULL) {
         dirname(buff);
-        buff = w_strtok_r_str_delim("bin", &buff);
+        buff = w_strtok_r_str_delim(basename(buff), &buff);
     }
     else if (realpath("/proc/self/path/a.out", buff) != NULL) {
         dirname(buff);
-        buff = w_strtok_r_str_delim("bin", &buff);
+        buff = w_strtok_r_str_delim(basename(buff), &buff);
     }
     #ifdef __MACH__
     else if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
