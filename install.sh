@@ -589,6 +589,7 @@ setEnv()
 {
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
 
+    echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
 
     if [ "X$INSTYPE" = "Xagent" ]; then
@@ -621,31 +622,6 @@ askForDelete()
                     echo "Error deleting ${INSTALLDIR}"
                     exit 2;
                 fi
-                ;;
-            $nomatch)
-                if [ "X$PREINSTALLEDDIR" != "X" ]; then
-                    echo "WARNING! The installation can't proceed without removing already installed versions. Exiting."
-                    exit 2;
-                fi
-                ;;
-        esac
-    elif [ -d "$PREINSTALLEDDIR" ]; then
-        $ECHO "    - WARNING! The installation can't proceed without removing already installed versions. Should I delete it? ($yes/$no) [$no]: "
-        read ANSWER
-
-        case $ANSWER in
-            $yesmatch)
-                echo "      Stopping Wazuh..."
-                UpdateStopOSSEC
-                rm -rf $PREINSTALLEDDIR
-                if [ ! $? = 0 ]; then
-                    echo "Error deleting ${PREINSTALLEDDIR}"
-                    exit 2;
-                fi
-                ;;
-            $nomatch)
-                echo "Exiting."
-                exit 2;
                 ;;
         esac
     fi
