@@ -44,7 +44,7 @@ rc_reset
 # with force-reload (in case signalling is not supported) are
 # considered a success.
 
-# Just to make sure ossec is installed ...
+# Just to make sure wazuh is installed ...
 WAZUH_HOME=WAZUH_HOME_TMP
 WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
 

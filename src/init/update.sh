@@ -303,7 +303,10 @@ getPreinstalledName()
     # do not provide this information at all.
     if [ -f "${OSSEC_INIT}" ]; then
         . ${OSSEC_INIT}
+    else
+        NAME="wazuh"
     fi
+
     echo $NAME
 }
 
