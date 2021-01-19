@@ -100,9 +100,12 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
     """
     time.sleep(interval)
     if node_type == 'manager':
-        health = subprocess.check_output(
-            "docker inspect env_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
-        return False if not health.startswith(b'"healthy"') else True
+        for node in ['master', 'worker1', 'worker2']:
+            health = subprocess.check_output(
+                f"docker inspect env_wazuh-{node}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+            if not health.startswith(b'"healthy"'):
+                return False
+        return True
     elif node_type == 'agent':
         for agent in agents:
             health = subprocess.check_output(
@@ -159,7 +162,7 @@ def healthcheck_procedure(module: str):
         os.popen(f'cp -rf {agent_folder} {os.path.join(tmp_content, "agent")}')
 
 
-def change_rbac_mode(rbac_mode: str):
+def change_rbac_mode(rbac_mode: str = 'white'):
     """Modify security.yaml in base folder to change RBAC mode for the current test.
 
     Parameters
@@ -167,8 +170,8 @@ def change_rbac_mode(rbac_mode: str):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'security.yaml'),
-              'r+') as rbac_conf:
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'config', 'api', 'configuration',
+                           'security', 'security.yaml'), 'r+') as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
         rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: {rbac_mode}', content))
@@ -177,8 +180,8 @@ def change_rbac_mode(rbac_mode: str):
 def enable_white_mode():
     """Set white mode for non-rbac integration tests
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'security.yaml'),
-              'r+') as rbac_conf:
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'config', 'api', 'configuration',
+                           'security', 'security.yaml'), '+r') as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
         rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: white', content))

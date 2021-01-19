@@ -50,7 +50,6 @@ typedef struct _Eventinfo {
     char *dstuser;
     char *id;
     char *status;
-    char *command;
     char *url;
     char *data;
     char *extra_data;
@@ -154,11 +153,6 @@ struct EventList {
     int _max_freq;
     pthread_mutex_t event_mutex;
 };
-
-#ifdef TESTRULE
-extern int full_output;
-extern int alert_only;
-#endif
 
 /* Types of events (from decoders) */
 #define UNKNOWN         0   /* Unknown */

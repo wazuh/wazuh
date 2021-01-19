@@ -5,6 +5,7 @@
 # Add a new remote host to be monitored (DNS)
 # Add a new command to be monitored
 # by Daniel B. Cid - dcid ( at ) ossec.net
+# Copyright (C) 2015-2020, Wazuh Inc.
 
 ACTION=$1
 FILE=$2

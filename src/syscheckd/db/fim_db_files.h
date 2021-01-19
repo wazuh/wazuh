@@ -196,4 +196,14 @@ int fim_db_get_count_file_data(fdb_t * fim_sql);
  */
 int fim_db_get_count_file_entry(fdb_t * fim_sql);
 
+/**
+ * @brief Get path list using the sqlite LIKE operator using @pattern. (stored in @file).
+ * @param fim_sql FIM database struct.
+ * @param pattern Pattern that will be used for the LIKE operation.
+ * @param file Structure of the storage which contains all the paths.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_file **file, int storage);
+
 #endif /* FIM_DB_FILES_H */

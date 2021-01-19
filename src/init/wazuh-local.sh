@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Copyright (C) 2015-2020, Wazuh Inc.
-# ossec-control        This shell script takes care of starting
+# wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -216,8 +216,9 @@ testconfig()
 start()
 {
     echo "Starting $NAME $VERSION..."
-    TEST=$(${DIR}/bin/ossec-logtest -t  2>&1)
+    TEST=$(${DIR}/bin/wazuh-analysisd -t  2>&1)
     echo $TEST
+
     if [ ! -z "$TEST" ]; then
         echo "wazuh-analysisd: Configuration error. Exiting."
         touch ${DIR}/var/run/wazuh-analysisd.failed
@@ -261,7 +262,7 @@ start()
     if [ $? = 0 ]; then
         echo ""
         echo "Starting sub agent directory (for hybrid mode)"
-        ${DIR}/ossec-agent/bin/ossec-control start
+        ${DIR}/ossec-agent/bin/wazuh-control start
     fi
 
     echo "Completed."
@@ -341,7 +342,7 @@ stopa()
     if [ $? = 0 ]; then
         echo ""
         echo "Stopping sub agent directory (for hybrid mode)"
-        ${DIR}/ossec-agent/bin/ossec-control stop
+        ${DIR}/ossec-agent/bin/wazuh-control stop
     fi
     echo "$NAME $VERSION Stopped"
 }
