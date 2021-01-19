@@ -231,7 +231,7 @@ x-rbac-catalog:
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
-        actions: ['cluster:upload_file']
+        actions: ['cluster:upload_rule_file']
         resources: ['node:id:worker1']
         effect: "allow"
     'cluster:restart':
@@ -287,7 +287,7 @@ x-rbac-catalog:
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['manager:upload_file']
+        actions: ['manager:upload_rule_file']
         resources: ['*:*:*']
         effect: "deny"
     'manager:restart':
@@ -10947,7 +10947,7 @@ paths:
         - Rules
       summary: "Get the content of a rule"
       description: "Get the content of a specified rule in the ruleset"
-      operationId: api.controllers.rule_controller.get_rule_file
+      operationId: api.controllers.rule_controller.get_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
@@ -11042,7 +11042,7 @@ paths:
         - Rules
       summary: "Update file to the ruleset"
       description: "Upload or replace ruleset file contents with the data contained in the API request"
-      operationId: api.controllers.rule_controller.put_rule_file
+      operationId: api.controllers.rule_controller.put_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:update'
         - $ref: '#/x-rbac-catalog/actions/rules:delete'
@@ -11081,6 +11081,47 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '406':
           $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+      - Rules
+      summary: "Delete rule"
+      description: "Delete a specified rule file"
+      operationId: api.controllers.rule_controller.delete_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                # TODO
+                data:
+                  affected_items:
+                    - "etc/rules/custom_rule.xml"
+                  total_affected_items: 1
+                  failed_items: []
+                  total_failed_items: 0
+                message: File was deleted successfully
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
