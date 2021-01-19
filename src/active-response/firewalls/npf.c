@@ -20,8 +20,6 @@ int main (int argc, char **argv) {
     char input[BUFFERSIZE];
     char npf_active[COMMANDSIZE];
     char npf_wazuh_ready[COMMANDSIZE];
-    char arg1[COMMANDSIZE];
-    char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
     static char *srcip;
     static char *action;
@@ -89,19 +87,19 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    memset(arg1, '\0', COMMANDSIZE);
+    char *exec_cmd[6];
     if (!strcmp("add", action)) {
-        snprintf(arg1, COMMANDSIZE -1,"table wazuh_blacklist add %s", srcip);
+        char *arg[6] = {NPFCTL, "table", "wazuh_blacklist", "add", srcip, NULL};
+        memcpy(exec_cmd, arg, sizeof(exec_cmd));
+
     } else {
-        snprintf(arg1, COMMANDSIZE -1,"table wazuh_blacklist del %s", srcip);
+        char *arg[6] = {NPFCTL, "table", "wazuh_blacklist", "del", srcip, NULL};
+        memcpy(exec_cmd, arg, sizeof(exec_cmd));
+
     }
 
     // Executing it
-    command[COMMANDSIZE -1] = '\0';
-    snprintf(command, COMMANDSIZE - 1, "%s > /dev/null 2>&1", arg1);
-
-    char *exec_cmd[3] = {NPFCTL, command, NULL};
-    wfd_t *wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDOUT);
+    wfd_t *wfd = wpopenv(NPFCTL, exec_cmd, W_BIND_STDOUT);
     if(!wfd) {
         memset(log_msg, '\0', LOGSIZE);
         snprintf(log_msg, LOGSIZE - 1, "Error executing %s : %s", NPFCTL, strerror(errno));

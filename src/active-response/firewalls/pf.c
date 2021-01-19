@@ -22,9 +22,6 @@ int checking_if_its_configured(const char *path, const char *table);
 int main (int argc, char **argv) {
     (void)argc;
     char input[BUFFERSIZE];
-    char arg1[COMMANDSIZE];
-    char arg2[COMMANDSIZE];
-    char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
     char *action;
     char *srcip;
@@ -79,24 +76,28 @@ int main (int argc, char **argv) {
 
         // Checking if pfctl is present
         if (access(PFCTL, F_OK) < 0) {
-            log_msg[LOGSIZE -1] = '\0';
+            memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE - 1, "The pfctl file '%s' is not accessible", PFCTL);
             write_debug_file(argv[0], log_msg);
             return OS_SUCCESS;
         }
 
-        memset(arg1, '\0', COMMANDSIZE);
-        memset(arg2, '\0', COMMANDSIZE);
+        char *exec_cmd1[7];
+        char *exec_cmd2[4];
 
         // Checking if we have pf config file
         if(access(PFCTL_RULES, F_OK) == 0) {
             // Checking if ossec table is configured in pf.conf
             if(checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) == 0) {
                 if (!strcmp("add", action)) {
-                    snprintf(arg1, COMMANDSIZE -1,"-t %s -T add %s", PFCTL_TABLE, srcip);
-                    snprintf(arg2, COMMANDSIZE -1,"-k %s", srcip);
+                    char *arg1[7] = {PFCTL, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL};
+                    memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
+
+                    char *arg2[4] = {PFCTL, "-k", srcip, NULL};
+                    memcpy(exec_cmd2, arg2, sizeof(exec_cmd2));
                 } else {
-                    snprintf(arg1, COMMANDSIZE -1,"-t %s -T delete %s", PFCTL_TABLE, srcip);
+                    char *arg1[7] = {PFCTL, "-t", PFCTL_TABLE, "-T", "delete", srcip, NULL};
+                    memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
                 }
             } else {
                 memset(log_msg, '\0', LOGSIZE);
@@ -113,32 +114,26 @@ int main (int argc, char **argv) {
         }
 
         // Executing it
-        memset(command, '\0', COMMANDSIZE);
-        snprintf(command, COMMANDSIZE - 1, "%s > /dev/null 2>&1", arg1);
-
-        char *exec_cmd[3] = {PFCTL, command, NULL};
-        wfd_t *wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDOUT);
-        if(!wfd) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error executing %s : %s", PFCTL, strerror(errno));
-            write_debug_file(argv[0], log_msg);
-            return OS_INVALID;
-        }
-        wpclose(wfd);
-
-        if(!strcmp(arg2, "")) {
-            memset(command, '\0', COMMANDSIZE);
-            snprintf(command, COMMANDSIZE - 1, "%s %s > /dev/null 2>&1", PFCTL, arg2);
-
-            char *exec_cmd_1[4] = {PFCTL, command, NULL};
-            wfd_t *wfd_1 = wpopenv(*exec_cmd_1, exec_cmd_1, W_BIND_STDOUT);
-            if(!wfd_1) {
+        if(strcmp(exec_cmd1[0], PFCTL) == 0) {
+            wfd_t *wfd = wpopenv(PFCTL, exec_cmd1, W_BIND_STDOUT);
+            if(!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
                 snprintf(log_msg, LOGSIZE - 1, "Error executing %s : %s", PFCTL, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 return OS_INVALID;
             }
-            wpclose(wfd_1);
+            wpclose(wfd);
+        }
+
+        if(strcmp(exec_cmd2[0], PFCTL) == 0) {
+            wfd_t *wfd = wpopenv(PFCTL, exec_cmd2, W_BIND_STDOUT);
+            if(!wfd) {
+                memset(log_msg, '\0', LOGSIZE);
+                snprintf(log_msg, LOGSIZE - 1, "Error executing %s : %s", PFCTL, strerror(errno));
+                write_debug_file(argv[0], log_msg);
+                return OS_INVALID;
+            }
+            wpclose(wfd);
         }
 
     } else {
