@@ -149,6 +149,7 @@ private:
 
     std::stringstream binaryToXML(const std::string& filePath)
     {
+        std::string xmlContent;
         plist_t rootNode { nullptr };
         const auto binaryContent { Utils::getBinaryContent(filePath) };
 
@@ -157,13 +158,19 @@ private:
         // const auto xmlContent { dataFromBin->ToXml() };
 
         // Content binary file to plist representation
-        plist_from_bin(&binaryContent[0], binaryContent.size(), &rootNode);
-        char* xml { nullptr };
-        uint32_t length { 0 };
-        // plist binary representation to XML
-        plist_to_xml(rootNode, &xml, &length);
-        std::string xmlContent{xml, xml+length};
-        free(xml);
+        plist_from_bin(binaryContent.data(), binaryContent.size(), &rootNode);
+        if (nullptr != rootNode)
+        {
+            char* xml { nullptr };
+            uint32_t length { 0 };
+            // plist binary representation to XML
+            plist_to_xml(rootNode, &xml, &length);
+            if (nullptr != xml)
+            {
+                xmlContent.assign(xml, xml+length);
+                free(xml);
+            }
+        }
         return std::stringstream{xmlContent};
     }
 

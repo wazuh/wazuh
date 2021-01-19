@@ -76,13 +76,18 @@ namespace Utils
 
         if (file.is_open())
         {
+            // Get pointer to associated buffer object
             auto buffer { file.rdbuf() };
-            // get file size using buffer's members
-            size = buffer->pubseekoff(0, file.end, file.in);
-            buffer->pubseekpos(0, file.in);
-            // allocate memory to contain file data
-            spBuffer = std::make_unique<char[]>(size);
-            buffer->sgetn(spBuffer.get(), size);
+            if (nullptr != buffer)
+            {
+                // Get file size using buffer's members
+                size = buffer->pubseekoff(0, file.end, file.in);
+                buffer->pubseekpos(0, file.in);
+                // Allocate memory to contain file data
+                spBuffer = std::make_unique<char[]>(size);
+                // Get file data
+                buffer->sgetn(spBuffer.get(), size);
+            }
         }
 
         return std::vector<char>{spBuffer.get(), spBuffer.get() + size};
