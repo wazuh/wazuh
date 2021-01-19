@@ -53,7 +53,7 @@ static void help_dbd()
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", binary_path);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out(" ");
     print_out("  Database Support:");
     print_db_info();
@@ -69,8 +69,8 @@ int main(int argc, char **argv)
     unsigned int d;
 
     /* Use MAILUSER (read only) */
-    binary_path = bin_path(argv[0]);
-    const char *dir = binary_path;
+    home_path = w_homedir(argv[0]);
+    const char *dir = DEFAULTDIR;
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
@@ -131,6 +131,7 @@ int main(int argc, char **argv)
 
     /* Start daemon */
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Setup random */
     srandom_init();

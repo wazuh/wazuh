@@ -388,6 +388,7 @@
 #endif /* WIN32 */
 
 const char *__local_name = "unset";
+char *home_path = NULL;
 
 /* Set the name of the starting program */
 void OS_SetName(const char *name)
@@ -3357,42 +3358,40 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 #endif
 
 #ifndef WIN32
-char *bin_path(char *arg) {
-    char buf[2048] = {0};
-    char *buff = buf;
-    ssize_t len = 0;
+char *w_homedir(char *arg) {
+    char *buff = NULL;
+    os_malloc(PATH_MAX, buff);
     #ifdef __MACH__
     pid_t pid = getpid();
     #endif
 
-    if ((len = readlink("/proc/self/exe", buf, sizeof(buf))) > 0) {
-        dirname(buf);
-        buff = w_strtok_r_str_delim("bin", &buff);
+    if (realpath("/proc/self/exe", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(basename(buff), &buff);
     }
-    else if ((len = readlink("/proc/curproc/file", buf, sizeof(buf))) > 0) {
-        dirname(buf);
-        buff = w_strtok_r_str_delim("bin", &buff);
+    else if (realpath("/proc/curproc/file", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(basename(buff), &buff);
     }
-    else if ((len = readlink("/proc/self/path/a.out", buf, sizeof(buf))) > 0) {
-        dirname(buf);
-        buff = w_strtok_r_str_delim("bin", &buff);
+    else if (realpath("/proc/self/path/a.out", buff) != NULL) {
+        dirname(buff);
+        buff = w_strtok_r_str_delim(basename(buff), &buff);
     }
     #ifdef __MACH__
-    else if (proc_pidpath(pid, buf, sizeof(buf)) > 0) {
+    else if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
         buff = w_strtok_r_str_delim("bin", &buff);
     }
     #endif
     else if (arg != NULL) {
-        buff = NULL;
-        if (buff = realpath(arg, NULL), buff == NULL) {
+        if (realpath(arg, buff) == NULL) {
             mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
+            os_free(buff);
             return NULL;
         }
 
         dirname(buff);
         buff = w_strtok_r_str_delim("bin", &buff);
     }
-    w_strdup(buff, buff);
 
     return buff;
 }

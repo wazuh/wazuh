@@ -45,8 +45,8 @@ int main(int argc, char **argv)
 
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
-    binary_path = bin_path(argv[0]);
-    char *dir = binary_path;
+    home_path = w_homedir(argv[0]);
+    char *dir = DEFAULTDIR;
     char *user = MAILUSER;
     char *group = GROUPGLOBAL;
     char *cfg = DEFAULTCPATH;
@@ -101,6 +101,7 @@ int main(int argc, char **argv)
 
     /* Starting daemon */
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);

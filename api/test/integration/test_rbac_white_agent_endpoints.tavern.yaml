@@ -1250,8 +1250,8 @@ stages:
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        group_id: 'group4'
+      json:
+        group_id: "group4"
     response:
       <<: *permission_denied
 

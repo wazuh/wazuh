@@ -121,7 +121,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef DEFAULTDIR
 #define DEFAULTDIR      ({ \
     struct stat wazuh_homedir_test; \
-    char *wazuh_homedir = (binary_path == NULL)? bin_path(NULL) : binary_path; \
+    char *wazuh_homedir = (home_path == NULL)? w_homedir(NULL) : binary_path; \
     if (wazuh_homedir != NULL) { \
         if (stat(wazuh_homedir, &wazuh_homedir_test) < 0 || !S_ISDIR(wazuh_homedir_test.st_mode)) wazuh_homedir = FALLBACKDIR; \
     } else { \

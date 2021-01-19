@@ -129,6 +129,19 @@ int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
     return mock();
 }
 
+int __wrap_fim_db_get_path_from_pattern(fdb_t *fim_sql,
+                                        const char *pattern,
+                                        fim_tmp_file **file,
+                                        int storage) {
+    check_expected_ptr(fim_sql);
+    check_expected(pattern);
+    check_expected(storage);
+
+    *file = mock_type(fim_tmp_file *);
+
+    return mock();
+}
+
 char **__wrap_fim_db_get_paths_from_inode(fdb_t *fim_sql,
                                           const unsigned long int inode,
                                           const unsigned long int dev) {
@@ -298,4 +311,18 @@ int __wrap_fim_db_process_read_file(__attribute__((unused)) fdb_t *fim_sql,
                                     __attribute__((unused)) void *mode,
                                     __attribute__((unused)) void *w_evt) {
     return mock();
+}
+
+void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
+                                         const char *pattern,
+                                         fim_tmp_file *file,
+                                         int storage,
+                                         int ret) {
+
+    expect_value(__wrap_fim_db_get_path_from_pattern, fim_sql, fim_sql);
+    expect_string(__wrap_fim_db_get_path_from_pattern, pattern, pattern);
+    expect_value(__wrap_fim_db_get_path_from_pattern, storage, storage);
+
+    will_return(__wrap_fim_db_get_path_from_pattern, file);
+    will_return(__wrap_fim_db_get_path_from_pattern, ret);
 }
