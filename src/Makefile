@@ -1435,7 +1435,7 @@ manage_agents: ${addagent_o}
 
 #### Active Response ####
 
-active_response_programs = default-firewall-drop disable-account restart-wazuh pf
+active_response_programs = default-firewall-drop disable-account restart-wazuh pf npf
 
 $(active_response_programs): $(BUILD_LIBS)
 
