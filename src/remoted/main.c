@@ -120,6 +120,7 @@ int main(int argc, char **argv)
     }
 
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Return 0 if not configured */
     if (RemotedConfig(cfg, &logr) < 0) {

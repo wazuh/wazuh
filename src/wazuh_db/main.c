@@ -102,6 +102,7 @@ int main(int argc, char ** argv) {
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     if (!run_foreground) {
         goDaemon();

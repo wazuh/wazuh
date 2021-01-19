@@ -101,6 +101,7 @@ int main(int argc, char **argv)
 
     /* Starting daemon */
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);

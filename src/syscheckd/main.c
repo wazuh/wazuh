@@ -99,6 +99,7 @@ int main(int argc, char **argv)
     read_internal(debug_level);
 
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {

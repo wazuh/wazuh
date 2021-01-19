@@ -609,6 +609,7 @@
                         " access list (allowed-ips). Syslog server disabled."
 #define CONN_TO     "Connected to '%s' (%s queue)"
 #define MAIL_DIS    "E-Mail notification disabled. Clean Exit."
+#define WAZUH_HOMEDIR "Wazuh home directory: %s"
 
 /* Debug Messages */
 #define STARTED_MSG "Starting ..."

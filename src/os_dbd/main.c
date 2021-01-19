@@ -131,6 +131,7 @@ int main(int argc, char **argv)
 
     /* Start daemon */
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Setup random */
     srandom_init();
