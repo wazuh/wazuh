@@ -1,1 +1,2 @@
 *:*src/sysInfoLinux.cpp:463
+*:*src/packages/pkgWrapper.h:107

@@ -5,4 +5,5 @@ project(unit_tests)
 include_directories(${CMAKE_SOURCE_DIR})
 
 add_subdirectory(sysCollectorImp)
+add_subdirectory(sysNormalizer)
 

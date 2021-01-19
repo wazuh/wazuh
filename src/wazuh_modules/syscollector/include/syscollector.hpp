@@ -19,6 +19,7 @@
 #include "commonDefs.h"
 #include "dbsync.hpp"
 #include "rsync.hpp"
+#include "syscollectorNormalizer.h"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -46,6 +47,9 @@ public:
               const std::function<void(const std::string&)> reportDiffFunction,
               const std::function<void(const std::string&)> reportSyncFunction,
               const std::function<void(const std::string&)> logErrorFunction,
+              const std::string& dbPath,
+              const std::string& normalizerConfigPath,
+              const std::string& normalizerType,
               const unsigned int inverval = 3600ul,
               const bool scanOnStart = true,
               const bool hardware = true,
@@ -60,19 +64,7 @@ public:
     void destroy();
     void push(const std::string& data);
 private:
-    Syscollector()
-    : m_intervalValue { 0 }
-    , m_scanOnStart { false }
-    , m_hardware { false }
-    , m_os { false }
-    , m_network { false }
-    , m_packages { false }
-    , m_ports { false }
-    , m_portsAll { false }
-    , m_processes { false }
-    , m_hotfixes { false }
-    , m_stopping { true }
-    {}
+    Syscollector();
     ~Syscollector() = default;
     Syscollector(const Syscollector&) = delete;
     Syscollector& operator=(const Syscollector&) = delete;
@@ -112,6 +104,7 @@ private:
     std::unique_ptr<RemoteSync>                    m_spRsync;
     std::condition_variable                        m_cv;
     std::mutex                                     m_mutex;
+    std::unique_ptr<SysNormalizer>                 m_spNormalizer;
 };
 
 

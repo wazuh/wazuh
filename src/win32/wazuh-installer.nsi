@@ -220,6 +220,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=rsync.dll ..\shared_modules\rsync\build\bin\rsync.dll
     File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
     File /oname=syscollector.dll ..\wazuh_modules\syscollector\build\bin\syscollector.dll
+    File /oname=queue\syscollector\norm_config.json ..\wazuh_modules\syscollector\norm_config.json
     File /oname=ruleset\sca\sca_win_audit.yml ..\..\ruleset\sca\windows\sca_win_audit.yml
     File VERSION
     File REVISION
@@ -504,6 +505,7 @@ Section "Uninstall"
     Delete "$INSTDIR\sysinfo.dll"
     Delete "$INSTDIR\syscollector.dll"
     Delete "$INSTDIR\queue\syscollector\db\local.db"
+    Delete "$INSTDIR\queue\syscollector\norm_config.json"
     Delete "$INSTDIR\ruleset\sca\*"
     Delete "$INSTDIR\ruleset\*"
 

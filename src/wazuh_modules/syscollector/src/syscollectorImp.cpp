@@ -8,7 +8,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#include "defs.h"
 #include "syscollector.hpp"
 #include "json.hpp"
 #include <iostream>
@@ -767,6 +766,20 @@ static void updateAndNotifyChanges(const DBSYNC_HANDLE handle,
     txn.getDeletedRows(callback);
 }
 
+Syscollector::Syscollector()
+: m_intervalValue { 0 }
+, m_scanOnStart { false }
+, m_hardware { false }
+, m_os { false }
+, m_network { false }
+, m_packages { false }
+, m_ports { false }
+, m_portsAll { false }
+, m_processes { false }
+, m_hotfixes { false }
+, m_stopping { true }
+{}
+
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
@@ -847,6 +860,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
                         const std::function<void(const std::string&)> reportSyncFunction,
                         const std::function<void(const std::string&)> logErrorFunction,
+                        const std::string& dbPath,
+                        const std::string& normalizerConfigPath,
+                        const std::string& normalizerType,
                         const unsigned int interval,
                         const bool scanOnStart,
                         const bool hardware,
@@ -875,8 +891,9 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
-    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, SYSCOLLECTOR_DB_DISK_PATH, getCreateStatement());
+    m_spDBSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
     m_spRsync = std::make_unique<RemoteSync>();
+    m_spNormalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
     registerWithRsync();
     syncLoop(lock);
 }
@@ -1016,7 +1033,11 @@ void Syscollector::scanPackages()
 
         if (!packagesData.is_null())
         {
-            for (auto item : packagesData)
+            const auto& normalizedPackagesData
+            {
+                m_spNormalizer->normalize("packages", m_spNormalizer->removeExcluded("packages", packagesData))
+            };
+            for (auto item : normalizedPackagesData)
             {
                 if(item.find("hotfix") != item.end())
                 {

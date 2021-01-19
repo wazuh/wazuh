@@ -1,27 +1,27 @@
 /*
- * Wazuh SyscollectorImp
- * Copyright (C) 2015-2020, Wazuh Inc.
- * November 9, 2020.
+ * Wazuh SyscollectorNormalizer
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * January 12, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */ 
-#ifndef _SYSCOLLECTOR_IMP_TEST_H
-#define _SYSCOLLECTOR_IMP_TEST_H
+#ifndef _SYS_NORMALIZER_TEST_H
+#define _SYS_NORMALIZER_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SyscollectorImpTest : public ::testing::Test
+class SysNormalizerTest : public ::testing::Test
 {
 protected:
 
-    SyscollectorImpTest() = default;
-    virtual ~SyscollectorImpTest() = default;
+    SysNormalizerTest() = default;
+    virtual ~SysNormalizerTest() = default;
 
     void SetUp() override;
     void TearDown() override;
 };
 
-#endif //_SYSCOLLECTOR_IMP_TEST_H
+#endif //_SYS_NORMALIZER_TEST_H
