@@ -62,6 +62,8 @@ int main (int argc, char **argv) {
             return OS_INVALID;
         }
 
+        while (waitpid(-1, NULL, 0) > 0);
+
         wpclose(wfd);
 #else
         char cmd[OS_MAXSTR + 1];

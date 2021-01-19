@@ -123,11 +123,11 @@ int main (int argc, char **argv) {
         os_free(command_ex);
         return OS_INVALID;
     }
+    wpclose(wfd);
 
     write_debug_file(argv[0], "Ended");
 
     cJSON_Delete(input_json);
-    wpclose(wfd);
     os_free(command_ex);
 
     return OS_SUCCESS;

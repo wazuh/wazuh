@@ -264,7 +264,6 @@ int main (int argc, char **argv) {
 
         if (!strcmp("add", action)) {
             wfd_t *wfd = NULL;
-
             char *command_ex_1[18] = {genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL};
             if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run genfilt");
@@ -284,9 +283,9 @@ int main (int argc, char **argv) {
             }
             wpclose(wfd);
         } else {
+            wfd_t *wfd = NULL;
             char *command_ex_1[5] = {lsfilt_path, "-v", "4", "-O", NULL};
-            wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
-            if (wfd) {
+            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
                 char output_buf[BUFFERSIZE];
                 while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
                     if (strstr(output_buf, srcip) != NULL) {
@@ -302,12 +301,18 @@ int main (int argc, char **argv) {
             }
             wpclose(wfd);
 
-            // Deactivate  and activate the filter rules.
+            // Deactivate and activate the filter rules.
             char *command_ex_4[5] = {mkfilt_path, "-v", "4", "-d", NULL};
-            wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR);
+            if (wfd = wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run mkfilt");
+            }
+            wpclose(wfd);
 
             char *command_ex_5[5] = {mkfilt_path, "-v", "4", "-u", NULL};
-            wpopenv(*command_ex_5, command_ex_5, W_BIND_STDERR);
+            if (wfd = wpopenv(*command_ex_5, command_ex_5, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run mkfilt");
+            }
+            wpclose(wfd);
         }
 
     } else {
@@ -377,9 +382,9 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
         // by one and fail after MAX_ITERACTION
         if (i >= max_iteration) {
             bool kill = false;
+            wfd_t *wfd = NULL;
             char *command_ex_1[4] = {"pgrep", "-f", "default-firewall-drop", NULL};
-            wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
-            if (wfd) {
+            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
                 char output_buf[BUFFERSIZE];
                 while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
                     int pid = atoi(output_buf);
@@ -388,7 +393,7 @@ static void lock (const char *lock_path, const char *lock_pid_path, const char *
                         memset(pid_str, '\0', 10);
                         snprintf(pid_str, 9, "%d", pid);
                         char *command_ex_2[4] = {"kill", "-9", pid_str, NULL};
-                        wfd_t * wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
+                        wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
                         memset(log_msg, '\0', LOGSIZE);
                         snprintf(log_msg, LOGSIZE -1, "Killed process %d holding lock.", pid);
                         write_debug_file(log_path, log_msg);
