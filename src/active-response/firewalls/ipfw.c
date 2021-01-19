@@ -11,6 +11,7 @@
 
 #define IPFW "/sbin/ipfw"
 #define TABLE_ID "00001"
+#define SET_ID "2"
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -132,7 +133,57 @@ int main (int argc, char **argv) {
             return OS_SUCCESS;
         }
 
+        if (!strcmp("add", action)) {
+            char *command_ex_1[6] = { IPFW, "-q", "set", "disable", SET_ID, NULL };
+            char *command_ex_2[13] = { IPFW, "-q", "add", "set", SET_ID, "deny", "ip", "from", srcip, "to", "any", NULL };
+            char *command_ex_3[13] = { IPFW, "-q", "add", "set", SET_ID, "deny", "ip", "from", "any", "to", srcip, NULL };
+            char *command_ex_4[6] = { IPFW, "-q", "set", "enable", SET_ID, NULL };
 
+            wfd_t *wfd = NULL;
+            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run ipfw");
+            }
+            wpclose(wfd);
+
+            if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run ipfw");
+            }
+            wpclose(wfd);
+
+            if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run ipfw");
+            }
+            wpclose(wfd);
+
+            if (wfd = wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run ipfw");
+            }
+            wpclose(wfd);
+
+        } else {
+            char set_name[COMMANDSIZE];
+            memset(set_name, '\0', COMMANDSIZE);
+            snprintf(set_name, COMMANDSIZE - 1, "set %s", SET_ID);
+
+            char *command_ex_1[4] = { IPFW, "-S", "show", NULL };
+
+            wfd_t *wfd = NULL;
+            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
+                char output_buf[BUFFERSIZE];
+                while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
+                    if ((strstr(output_buf, set_name) != NULL) && (strstr(output_buf, srcip) != NULL)) {
+                        // removing a specific rule
+                        char *rule_str = strtok(output_buf, " ");
+                        char *command_ex_2[5] = { IPFW, "-q", "delete", rule_str, NULL };
+                        wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR);
+                        wpclose(wfd2);
+                    }
+                }
+            } else {
+                write_debug_file(argv[0], "Unable to run lsfilt");
+            }
+            wpclose(wfd);
+        }
 
     } else {
         write_debug_file(argv[0], "Invalid system");
