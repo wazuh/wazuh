@@ -1435,7 +1435,7 @@ manage_agents: ${addagent_o}
 
 #### Active Response ####
 
-active_response_programs = restart-wazuh
+active_response_programs = default-firewall-drop disable-account restart-wazuh
 
 $(active_response_programs): $(BUILD_LIBS)
 
@@ -1443,12 +1443,19 @@ $(active_response_programs): $(BUILD_LIBS)
 active-responses: ${active_response_programs}
 
 active_response_c := $(wildcard active-response/*.c)
+active_response_c += $(wildcard active-response/firewalls/*.c)
 active_response_o := $(active_response_c:.c=.o)
 
 active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
 
-restart-wazuh: active-response/restart-wazuh.o
+default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+disable-account: active-response/disable-account.o active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Util ##########
@@ -1959,7 +1966,7 @@ win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o}
 win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
-win32/restart-wazuh.exe: win32/win_service_rk.o active-response/restart-wazuh.o
+win32/restart-wazuh.exe: win32/win_service_rk.o active-response/restart-wazuh.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ####################

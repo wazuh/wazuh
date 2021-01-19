@@ -66,6 +66,8 @@ src/wazuh-syscheckd
 src/wazuh-integratord
 
 # Active responses
+src/default-firewall-drop
+src/disable-account
 src/restart-wazuh
 
 # Windows agent
