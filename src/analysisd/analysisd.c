@@ -251,6 +251,9 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* CPU Info*/
 static int cpu_cores;
 
+/* Last crt_ftell */
+static long int last_crt_ftell = 0;
+
 /* Print help statement */
 __attribute__((noreturn))
 static void help_analysisd(void)
@@ -1932,14 +1935,23 @@ void * w_writer_log_thread(__attribute__((unused)) void * args ){
                 if (Config.custom_alert_output) {
                     __crt_ftell = ftell(_aflog);
                     lf->crt_ftell = __crt_ftell;
+                    if (lf->crt_ftell <= last_crt_ftell)
+                      lf->crt_ftell = last_crt_ftell + 1;
+                    last_crt_ftell = lf->crt_ftell;
                     OS_CustomLog(lf, Config.custom_alert_output_format);
                 } else if (Config.alerts_log) {
                     __crt_ftell = ftell(_aflog);
                     lf->crt_ftell = __crt_ftell;
+                    if (lf->crt_ftell <= last_crt_ftell)
+                      lf->crt_ftell = last_crt_ftell + 1;
+                    last_crt_ftell = lf->crt_ftell;
                     OS_Log(lf);
                 } else if(Config.jsonout_output){
                     __crt_ftell = ftell(_jflog);
                     lf->crt_ftell = __crt_ftell;
+                    if (lf->crt_ftell <= last_crt_ftell)
+                      lf->crt_ftell = last_crt_ftell + 1;
+                    last_crt_ftell = lf->crt_ftell;
                 }
                 /* Log to json file */
                 if (Config.jsonout_output) {
@@ -2673,12 +2685,24 @@ void * w_writer_log_statistical_thread(__attribute__((unused)) void * args ){
 
             if (Config.custom_alert_output) {
                 __crt_ftell = ftell(_aflog);
+                lf->crt_ftell = __crt_ftell;
+                if (lf->crt_ftell <= last_crt_ftell)
+                  lf->crt_ftell = last_crt_ftell + 1;
+                last_crt_ftell = lf->crt_ftell;
                 OS_CustomLog(lf, Config.custom_alert_output_format);
             } else if (Config.alerts_log) {
                 __crt_ftell = ftell(_aflog);
+                lf->crt_ftell = __crt_ftell;
+                if (lf->crt_ftell <= last_crt_ftell)
+                  lf->crt_ftell = last_crt_ftell + 1;
+                last_crt_ftell = lf->crt_ftell;
                 OS_Log(lf);
             } else if (Config.jsonout_output) {
                 __crt_ftell = ftell(_jflog);
+                lf->crt_ftell = __crt_ftell;
+                if (lf->crt_ftell <= last_crt_ftell)
+                  lf->crt_ftell = last_crt_ftell + 1;
+                last_crt_ftell = lf->crt_ftell;
             }
 
             /* Log to json file */
