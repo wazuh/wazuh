@@ -99,12 +99,12 @@ private:
             }
         };
 
-        static const auto getDataFnc
+        const auto getDataFnc
         {
             [this](std::istream& data)
             {
                 std::string line;
-                while(!line.empty() && std::getline(data, line))
+                while(std::getline(data, line))
                 {
                     line = Utils::trim(line," \t");
 
@@ -162,7 +162,7 @@ private:
         uint32_t length { 0 };
         // plist binary representation to XML
         plist_to_xml(rootNode, &xml, &length);
-        std::string xmlContent(xml, xml+length);
+        std::string xmlContent{xml, xml+length};
         free(xml);
         return std::stringstream{xmlContent};
     }
