@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     gid_t gid;
     const char *group = GROUPGLOBAL;
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
-    binary_path = bin_path(argv[0]);
+    home_path = w_homedir(argv[0]);
 
     /* Set the name */
     OS_SetName(ARGV0);

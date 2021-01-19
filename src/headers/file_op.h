@@ -637,5 +637,5 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest);
  * @retval NULL Can't get the path
  * @retval Pointer to the installation path 
  */
-char *bin_path(char *arg);
+char *w_homedir(char *arg);
 #endif /* FILE_OP_H */

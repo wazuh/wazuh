@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     int nocmerged = 0;
 
     const char *cfg = DEFAULTCPATH;
-    binary_path = bin_path(argv[0]);
+    home_path = w_homedir(argv[0]);
     const char *dir = DEFAULTDIR;
     const char *user = REMUSER;
     const char *group = GROUPGLOBAL;

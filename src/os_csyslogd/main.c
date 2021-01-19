@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     gid_t gid;
 
     /* Use MAILUSER (read only) */
-    binary_path = bin_path(argv[0]);
+    home_path = w_homedir(argv[0]);
     const char *dir = DEFAULTDIR;
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;

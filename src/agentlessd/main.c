@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
-    binary_path = bin_path(argv[0]);
+    home_path = w_homedir(argv[0]);
     const char *dir = DEFAULTDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;

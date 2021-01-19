@@ -33,7 +33,7 @@ int main(int argc, char ** argv) {
     int run_foreground = 0;
     int i;
     int status;
-    binary_path = bin_path(argv[0]);
+    home_path = w_homedir(argv[0]);
 
     pthread_t thread_dealer;
     pthread_t * worker_pool = NULL;

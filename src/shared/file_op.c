@@ -388,7 +388,7 @@
 #endif /* WIN32 */
 
 const char *__local_name = "unset";
-char *binary_path = NULL;
+char *home_path = NULL;
 
 /* Set the name of the starting program */
 void OS_SetName(const char *name)
@@ -3358,7 +3358,7 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 #endif
 
 #ifndef WIN32
-char *bin_path(char *arg) {
+char *w_homedir(char *arg) {
     char *buff = NULL;
     os_malloc(PATH_MAX, buff);
     #ifdef __MACH__
