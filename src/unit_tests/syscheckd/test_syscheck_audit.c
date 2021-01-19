@@ -819,6 +819,10 @@ void test_add_audit_rules_syscheck_not_added(void **state) {
     // Audit close
     will_return(__wrap_audit_close, 1);
 
+    // Mutex inside get_real_path
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
     // Rule already not added
@@ -860,6 +864,10 @@ void test_add_audit_rules_syscheck_not_added_new(void **state) {
 
     // Audit close
     will_return(__wrap_audit_close, 1);
+
+    // Mutex inside get_real_path
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -903,6 +911,9 @@ void test_add_audit_rules_syscheck_not_added_error(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
+    // Mutex inside get_real_path
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     // Rule already not added
     will_return(__wrap_search_audit_rule, 0);
 
@@ -941,6 +952,10 @@ void test_add_audit_rules_syscheck_not_added_first_error(void **state) {
 
     // Audit close
     will_return(__wrap_audit_close, 1);
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
@@ -985,6 +1000,10 @@ void test_add_audit_rules_syscheck_duplicate_entry(void **state) {
     // Audit close
     will_return(__wrap_audit_close, 1);
 
+    // Mutex inside get_real_path
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     // Rule already added
     will_return(__wrap_search_audit_rule, 1);
     snprintf(buffer, OS_SIZE_128, FIM_AUDIT_RULEDUP, entry);
@@ -1027,6 +1046,10 @@ void test_add_audit_rules_syscheck_max(void **state) {
 
     // Audit close
     will_return(__wrap_audit_close, 1);
+
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Audit search_audit_rule will be called 2 times.
     will_return_always(__wrap_search_audit_rule, 0);
@@ -1536,6 +1559,10 @@ void test_audit_parse_delete(void **state) {
     // Read loaded rules in Audit
     will_return(__wrap_audit_get_rule_list, 5);
 
+    // Mutex inside get_real_path
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
     // Audit close
     will_return(__wrap_audit_close, 1);
 
@@ -1586,6 +1613,9 @@ void test_audit_parse_delete_recursive(void **state) {
     // Audit close
     will_return_always(__wrap_audit_close, 5);
 
+    // Mutex inside get_real_path
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
 
     // Rule already not added
     will_return_always(__wrap_search_audit_rule, 5);
@@ -2581,12 +2611,16 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
 
 void test_audit_no_rules_to_realtime(void **state) {
     char error_msg[OS_SIZE_128];
-
+    // Mutex inside get_real_path
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     will_return(__wrap_search_audit_rule, 0);
 
     snprintf(error_msg, OS_SIZE_128, FIM_ERROR_WHODATA_ADD_DIRECTORY, "/test0");
     expect_string(__wrap__mwarn, formatted_msg, error_msg);
-
+    // Mutex inside get_real_path
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
     will_return(__wrap_search_audit_rule, 1);
 
     audit_no_rules_to_realtime();

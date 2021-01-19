@@ -928,9 +928,9 @@ void fim_diff_folder_size();
  * physical object in the filesystem
  *
  * @param position Position of the directory in the structure
- * @return A string holding the element being monitored.
+ * @return A string holding the element being monitored. It must be freed after it's usage.
  */
-const char *fim_get_real_path(int position);
+char *fim_get_real_path(int position);
 
 /**
  * @brief Create a delete event and removes the entry from the database.

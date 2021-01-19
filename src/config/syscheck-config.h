@@ -410,6 +410,7 @@ typedef struct _config {
     pthread_mutex_t fim_entry_mutex;
     pthread_mutex_t fim_scan_mutex;
     pthread_mutex_t fim_realtime_mutex;
+    pthread_mutex_t fim_symlink_mutex;
 
     rtfim *realtime;
     fdb_t *database;

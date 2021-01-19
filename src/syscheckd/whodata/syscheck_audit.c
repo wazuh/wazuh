@@ -215,7 +215,10 @@ int add_audit_rules_syscheck(bool first_time) {
     int retval;
     const char *directory = NULL;
     int rules_added = 0;
+    static bool reported = 0;
+    int auditd_fd = audit_open();
     int res = audit_get_rule_list(auditd_fd);
+
     audit_close(auditd_fd);
 
     if (!res) {
@@ -224,39 +227,51 @@ int add_audit_rules_syscheck(bool first_time) {
 
     for(i = 0; syscheck.dir[i]; i++) {
         // Check if dir[i] is set in whodata mode
-        if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            directory = fim_get_real_path(i);
-            // Add whodata directories until max_audit_entries is reached.
-            if (rules_added < syscheck.max_audit_entries) {
-                if (found = search_audit_rule(directory, "wa", AUDIT_KEY), found == 0) {
-                    if (retval = audit_add_rule(directory, AUDIT_KEY), retval > 0) {
-                        mdebug1(FIM_AUDIT_NEWRULE, directory);
-                        rules_added++;
-                    } else if (retval != -EEXIST) {
-                        if (first_time) {
-                            mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
-                        } else {
-                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, directory);
-                        }
-                    } else {
-                        mdebug1(FIM_AUDIT_ALREADY_ADDED, real_path);
-                    }
-                } else if (found == 1) {
-                    mdebug1(FIM_AUDIT_RULEDUP, directory);
+        if (!(syscheck.opts[i] & WHODATA_ACTIVE)) {
+            continue;
+        }
+        directory = fim_get_real_path(i);
+
+        // Add whodata directories until max_audit_entries is reached.
+        if (rules_added >= syscheck.max_audit_entries) {
+            if (first_time || !reported) {
+                merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
+            } else {
+                mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
+            }
+            reported = 1;
+            break;
+        }
+
+        found = search_audit_rule(directory, "wa", AUDIT_KEY);
+
+        switch (found) {
+        // The rule is not in audit_rule_list
+        case 0:
+            if (retval = audit_add_rule(directory, AUDIT_KEY), retval > 0) {
+                mdebug1(FIM_AUDIT_NEWRULE, directory);
+                rules_added++;
+            } else if (retval != -EEXIST) {
+                if (first_time) {
+                    mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
                 } else {
-                    merror(FIM_ERROR_WHODATA_CHECK_RULE);
+                    mdebug1(FIM_WARN_WHODATA_ADD_RULE, directory);
                 }
             } else {
-                static bool reported = false;
-                if (first_time || !reported) {
-                    merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
-                } else {
-                    mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
-                }
-
-                reported = true;
+                mdebug1(FIM_AUDIT_ALREADY_ADDED, directory);
             }
+        break;
+
+        case 1:
+            mdebug1(FIM_AUDIT_RULEDUP, directory);
+            break;
+
+        default:
+            merror(FIM_ERROR_WHODATA_CHECK_RULE);
+            break;
         }
+        // real_path can't be NULL
+        free(directory);
     }
 
     return rules_added;
@@ -265,20 +280,22 @@ int add_audit_rules_syscheck(bool first_time) {
 
 void audit_no_rules_to_realtime() {
     int found;
+    char *real_path = NULL;
     int i;
 
     for (i = 0; syscheck.dir[i] != NULL; i++) {
         if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
             continue;
         }
-
-        found = search_audit_rule(fim_get_real_path(i), "wa", AUDIT_KEY);
+        real_path = fim_get_real_path(i);
+        found = search_audit_rule(real_path, "wa", AUDIT_KEY);
 
         if (found == 0) {   // No rule found
-            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, fim_get_real_path(i));
+            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
             syscheck.opts[i] &= ~WHODATA_ACTIVE;
             syscheck.opts[i] |= REALTIME_ACTIVE;
         }
+        free(real_path);
     }
 }
 
@@ -1428,6 +1445,7 @@ void audit_read_events(int *audit_sock, int mode) {
 
 
 void clean_rules(void) {
+    char *real_path = NULL;
     int i;
 
     audit_thread_active = 0;
@@ -1437,7 +1455,9 @@ void clean_rules(void) {
 
     for (i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            audit_delete_rule(fim_get_real_path(i), AUDIT_KEY);
+            real_path = fim_get_real_path(i);
+            audit_delete_rule(real_path, AUDIT_KEY);
+            free(real_path);
         }
     }
     audit_rules_list_free();
