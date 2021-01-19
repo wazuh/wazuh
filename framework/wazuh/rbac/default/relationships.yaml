@@ -21,7 +21,7 @@ relationships:
         - decoders_read
         - lists_read
         - rootcheck_all
-        - rules_read
+        - rules_all
         - mitre_read
         - sca_read
         - syscheck_all
