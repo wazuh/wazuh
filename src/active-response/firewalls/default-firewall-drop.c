@@ -159,7 +159,6 @@ int main (int argc, char **argv) {
             }
             wpclose(wfd);
         }
-
         unlock(lock_path, argv[0]);
 
     } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
@@ -226,7 +225,6 @@ int main (int argc, char **argv) {
         char lsfilt_path[20] = "/usr/sbin/lsfilt";
         char mkfilt_path[20] = "/usr/sbin/mkfilt";
         char rmfilt_path[20] = "/usr/sbin/rmfilt";
-        char grep_path[20] = "/bin/grep";
 
         // Checking if genfilt is present
         if (access(genfilt_path, F_OK) < 0) {
@@ -267,49 +265,37 @@ int main (int argc, char **argv) {
         if (!strcmp("add", action)) {
             wfd_t *wfd = NULL;
 
-            char *command_ex_1[19] = {"eval", genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL};
+            char *command_ex_1[18] = {genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL};
             if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run genfilt");
             }
             wpclose(wfd);
 
             // Deactivate and activate the filter rules.
-            char *command_ex_2[6] = {"eval", mkfilt_path, "-v", "4", "-d", NULL};
+            char *command_ex_2[5] = {mkfilt_path, "-v", "4", "-d", NULL};
             if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run mkfilt");
             }
             wpclose(wfd);
 
-            char *command_ex_3[6] = {"eval", mkfilt_path, "-v", "4", "-u", NULL};
+            char *command_ex_3[5] = {mkfilt_path, "-v", "4", "-u", NULL};
             if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run mkfilt");
             }
             wpclose(wfd);
         } else {
-            char *command_ex_1[9] = {"eval", lsfilt_path, "-v", "4", "-O", "|", grep_path, srcip, NULL};
+            char *command_ex_1[5] = {lsfilt_path, "-v", "4", "-O", NULL};
             wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
             if (wfd) {
                 char output_buf[BUFFERSIZE];
                 while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
-                    // removing a specific rule
-                    char *command_ex_2[9] = {ECHO, output_buf, "|", "cut", "-f", "1", "-d", "\"|\"", NULL};
-                    wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
-                    if (wfd2) {
-                        char output_buf2[BUFFERSIZE];
-                        if (fgets(output_buf2, BUFFERSIZE, wfd2->file) != NULL) {
-                            int rule_id = atoi(output_buf2) + 1;
-                            char int_str[12];
-                            memset(int_str, '\0', 12);
-                            snprintf(int_str, 11, "%d", rule_id);
-                            char *command_ex_3[7] = {"eval", rmfilt_path, "-v", "4", "-n", int_str, NULL};
-                            wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR);
-                        } else {
-                            write_debug_file(argv[0], "Cannot remove rule");
-                        }
-                    } else {
-                        write_debug_file(argv[0], "Cannot find the specific rule");
+                    if (strstr(output_buf, srcip) != NULL) {
+                        // removing a specific rule
+                        char *rule_str = strtok(output_buf, "|");
+                        char *command_ex_3[6] = {rmfilt_path, "-v", "4", "-n", rule_str, NULL};
+                        wfd_t *wfd3 = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR);
+                        wpclose(wfd3);
                     }
-                    wpclose(wfd2);
                 }
             } else {
                 write_debug_file(argv[0], "Unable to run lsfilt");
@@ -317,10 +303,10 @@ int main (int argc, char **argv) {
             wpclose(wfd);
 
             // Deactivate  and activate the filter rules.
-            char *command_ex_4[9] = {"eval", mkfilt_path, "-v", "4", "-d", NULL};
+            char *command_ex_4[5] = {mkfilt_path, "-v", "4", "-d", NULL};
             wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR);
 
-            char *command_ex_5[9] = {"eval", mkfilt_path, "-v", "4", "-u", NULL};
+            char *command_ex_5[5] = {mkfilt_path, "-v", "4", "-u", NULL};
             wpopenv(*command_ex_5, command_ex_5, W_BIND_STDERR);
         }
 
