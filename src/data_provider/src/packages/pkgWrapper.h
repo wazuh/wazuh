@@ -18,7 +18,7 @@
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "timeHelper.h"
-#include "plist/plist++.h"
+#include "plist/plist.h"
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
@@ -139,7 +139,7 @@ private:
         }
         else
         {
-            std::fstream file {filePath, std::ios_base::in};
+            std::fstream file { filePath, std::ios_base::in };
             if (file.is_open())
             {
                 getDataFnc(file);
@@ -151,8 +151,19 @@ private:
     {
         plist_t rootNode { nullptr };
         const auto binaryContent { Utils::getBinaryContent(filePath) };
-        const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
-        const auto xmlContent { dataFromBin->ToXml() };
+
+        // plist C++ APIs calls - to be used when Makefile and external are updated.
+        // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
+        // const auto xmlContent { dataFromBin->ToXml() };
+
+        // Content binary file to plist representation
+        plist_from_bin(&binaryContent[0], binaryContent.size(), &rootNode);
+        char* xml { nullptr };
+        uint32_t length { 0 };
+        // plist binary representation to XML
+        plist_to_xml(rootNode, &xml, &length);
+        std::string xmlContent(xml, xml+length);
+        free(xml);
         return std::stringstream{xmlContent};
     }
 
