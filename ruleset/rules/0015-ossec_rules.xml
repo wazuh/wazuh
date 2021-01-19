@@ -328,10 +328,7 @@
     <description>Registry Key Entry Added to the System</description>
   </rule>
 
-  <!-- active response rules
-  Example:
-  Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
-  -->
+  <!-- active response rules -->
 
   <rule id="600" level="0">
     <decoded_as>ar_log</decoded_as>

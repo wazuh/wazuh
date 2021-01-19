@@ -66,6 +66,7 @@ src/wazuh-syscheckd
 src/wazuh-integratord
 
 # Active responses
+src/firewall-drop
 src/default-firewall-drop
 src/disable-account
 src/restart-wazuh

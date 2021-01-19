@@ -163,6 +163,7 @@ WazuhUpgrade()
 
     # Remove old Active Response scripts
 
+    rm -f $DIRECTORY/active-response/bin/firewall-drop.sh
     rm -f $DIRECTORY/active-response/bin/default-firewall-drop.sh
     rm -f $DIRECTORY/active-response/bin/disable-account.sh
     rm -f $DIRECTORY/active-response/bin/restart-ossec.sh
