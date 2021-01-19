@@ -19,37 +19,44 @@ void StringUtilsTest::TearDown() {};
 TEST_F(StringUtilsTest, CheckReplacement) 
 {
     std::string string_base { "hello_world" };
-    const auto ret_val { Utils::replaceAll(string_base, "hello_", "bye_") };
+    const auto retVal { Utils::replaceAll(string_base, "hello_", "bye_") };
     EXPECT_EQ(string_base, "bye_world");
-    EXPECT_TRUE(ret_val);
+    EXPECT_TRUE(retVal);
 }
 
 TEST_F(StringUtilsTest, CheckNotReplacement) 
 {
     std::string string_base {"hello_world" };
-    const auto ret_val { Utils::replaceAll(string_base, "nothing_", "bye_") };
+    const auto retVal { Utils::replaceAll(string_base, "nothing_", "bye_") };
     EXPECT_EQ(string_base, "hello_world");
-    EXPECT_FALSE(ret_val);
+    EXPECT_FALSE(retVal);
 }
 
 TEST_F(StringUtilsTest, SplitEmptyString) 
 {
-    auto split_text_vector { Utils::split("", '.') };
-    EXPECT_EQ(0ull, split_text_vector.size());
+    auto splitTextVector { Utils::split("", '.') };
+    EXPECT_EQ(0ull, splitTextVector.size());
 }
 
 TEST_F(StringUtilsTest, SplitDelimiterNoCoincidence) 
 {
-    const auto split_text_vector { Utils::split("hello_world", '.') };
-    EXPECT_EQ(1ull, split_text_vector.size());
+    const auto splitTextVector { Utils::split("hello_world", '.') };
+    EXPECT_EQ(1ull, splitTextVector.size());
 }
 
 TEST_F(StringUtilsTest, SplitDelimiterCoincidence) 
 {
-    const auto split_text_vector { Utils::split("hello.world", '.') };
-    EXPECT_EQ(2ull, split_text_vector.size());
-    EXPECT_EQ(split_text_vector[0], "hello");
-    EXPECT_EQ(split_text_vector[1], "world");
+    const auto splitTextVector { Utils::split("hello.world", '.') };
+    EXPECT_EQ(2ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector[0], "hello");
+    EXPECT_EQ(splitTextVector[1], "world");
+}
+
+TEST_F(StringUtilsTest, SplitIndex)
+{
+    const auto splitTextVector { Utils::splitIndex("hello.world", '.', 0) };
+    EXPECT_EQ(5ull, splitTextVector.size());
+    EXPECT_EQ(splitTextVector, "hello");
 }
 
 TEST_F(StringUtilsTest, AsciiToHexString)
@@ -63,17 +70,17 @@ TEST_F(StringUtilsTest, AsciiToHexString)
 TEST_F(StringUtilsTest, CheckFirstReplacement) 
 {
     std::string string_base { "bye_bye" };
-    const auto ret_val { Utils::replaceFirst(string_base, "bye", "hello") };
+    const auto retVal { Utils::replaceFirst(string_base, "bye", "hello") };
     EXPECT_EQ(string_base, "hello_bye");
-    EXPECT_TRUE(ret_val);
+    EXPECT_TRUE(retVal);
 }
 
 TEST_F(StringUtilsTest, CheckNotFirstReplacement) 
 {
     std::string string_base {"hello_world" };
-    const auto ret_val { Utils::replaceFirst(string_base, "nothing_", "bye_") };
+    const auto retVal { Utils::replaceFirst(string_base, "nothing_", "bye_") };
     EXPECT_EQ(string_base, "hello_world");
-    EXPECT_FALSE(ret_val);
+    EXPECT_FALSE(retVal);
 }
 
 TEST_F(StringUtilsTest, RightTrim)
@@ -85,6 +92,8 @@ TEST_F(StringUtilsTest, RightTrim)
     EXPECT_EQ(" Hello", Utils::rightTrim(" Hello"));
     EXPECT_EQ("\tHello", Utils::rightTrim("\tHello\t", "\t"));
     EXPECT_EQ(" \t\nHello", Utils::rightTrim(" \t\nHello \t\n ", "\t\n "));
+    EXPECT_EQ(" \t\nHello \t\n", Utils::rightTrim(" \t\nHello \t\n "));
+    EXPECT_EQ("", Utils::rightTrim(""));
 }
 
 TEST_F(StringUtilsTest, LeftTrim)
@@ -95,6 +104,8 @@ TEST_F(StringUtilsTest, LeftTrim)
     EXPECT_EQ("Hello", Utils::leftTrim("          Hello"));
     EXPECT_EQ("Hello\t ", Utils::leftTrim(" \tHello\t ", " \t"));
     EXPECT_EQ("Hello\t\n ", Utils::leftTrim(" \t\nHello\t\n ", " \t\n"));
+    EXPECT_EQ("\t\nHello\t\n ", Utils::leftTrim(" \t\nHello\t\n "));
+    EXPECT_EQ("", Utils::leftTrim(""));
 }
 
 TEST_F(StringUtilsTest, Trim)
@@ -124,8 +135,24 @@ TEST_F(StringUtilsTest, StartsWith)
     EXPECT_TRUE(Utils::startsWith(start, start));
     EXPECT_TRUE(Utils::startsWith(item1, start));
     EXPECT_TRUE(Utils::startsWith(item2, start));
+    EXPECT_FALSE(Utils::startsWith("", start));
     EXPECT_FALSE(Utils::startsWith(item3, start));
     EXPECT_FALSE(Utils::startsWith(item4, start));
+}
+
+TEST_F(StringUtilsTest, EndsWith)
+{
+    const std::string end{"_package"};
+    const std::string item1{"KB4565554~31bf3856ad364e35~amd64~~18362.957.1.3_package"};
+    const std::string item2{"KB4569073~31bf3856ad364e35~amd64~~18362.1012.1.1_package"};
+    const std::string item3{"Microsoft-Windows-IIS-WebServer-AddOn-Package~31bf3856ad364e35~amd64~~10.0.18362.815"};
+    const std::string item4{"Microsoft-Windows-HyperV-OptionalFeature-VirtualMachinePlatform-Package_31bf3856ad364e35~amd64~~10.0.18362.1139.mum"};
+    EXPECT_TRUE(Utils::endsWith(end, end));
+    EXPECT_TRUE(Utils::endsWith(item1, end));
+    EXPECT_TRUE(Utils::endsWith(item2, end));
+    EXPECT_FALSE(Utils::endsWith("", end));
+    EXPECT_FALSE(Utils::endsWith(item3, end));
+    EXPECT_FALSE(Utils::endsWith(item4, end));
 }
 
 TEST_F(StringUtilsTest, SplitDelimiterNullTerminated)
@@ -140,7 +167,7 @@ TEST_F(StringUtilsTest, SplitDelimiterNullTerminated)
 TEST_F(StringUtilsTest, CheckMultiReplacement)
 {
     std::string string_base { "hello         world" };
-    const auto ret_val { Utils::replaceAll(string_base, "  ", " ") };
+    const auto retVal { Utils::replaceAll(string_base, "  ", " ") };
     EXPECT_EQ(string_base, "hello world");
-    EXPECT_TRUE(ret_val);
+    EXPECT_TRUE(retVal);
 }
