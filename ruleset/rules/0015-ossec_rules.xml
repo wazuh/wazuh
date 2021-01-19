@@ -446,6 +446,7 @@
 
   <rule id="657" level="3">
     <if_sid>650</if_sid>
+    <field name="command">add|delete</field>
     <description>Active response: $(parameters.program) - $(command)</description>
     <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>

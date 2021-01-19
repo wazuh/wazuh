@@ -10,15 +10,15 @@ UNAME=$(uname);
 FILE="default-firewall-drop";
 
 if [ "X${UNAME}" = "XFreeBSD" ]; then
-    if grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
+    if grep -i 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         FILE="pf";
         echo "PF";
-    elif grep 'firewall_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
+    elif grep -i 'firewall_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         FILE="ipfw";
         echo "IPFW";
     fi
 elif [ "X${UNAME}" = "XOpenBSD" ]; then
-    if grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
+    if grep -i 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         FILE="pf";
         echo "PF";
     fi
