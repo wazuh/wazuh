@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
+from os import remove
 from os.path import exists, join
 
 import xmltodict
@@ -17,7 +17,6 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
 from wazuh.core.utils import process_array
-from wazuh.manager import delete_file
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config()['disabled']
@@ -213,7 +212,7 @@ def get_requirement(requirement=None, offset=0, limit=common.database_limit, sor
     return result
 
 
-def get_file(filename=None, raw=False):
+def get_rule_file(filename=None, raw=False):
     """Read content of specified file.
 
     Parameters
@@ -234,7 +233,7 @@ def get_file(filename=None, raw=False):
     if len(files) > 0:
         rules_path = files[0]['relative_dirname']
         try:
-            full_path = os.path.join(common.ossec_path, rules_path, filename)
+            full_path = join(common.ossec_path, rules_path, filename)
             with open(full_path) as f:
                 content = f.read()
             if raw:
@@ -245,8 +244,7 @@ def get_file(filename=None, raw=False):
                 result.total_affected_items = 1
         except OSError:
             result.add_failed_item(id_=filename,
-                                   error=WazuhError(1414, extra_message=os.path.join('WAZUH_HOME', rules_path,
-                                                                                     filename)))
+                                   error=WazuhError(1414, extra_message=join('WAZUH_HOME', rules_path, filename)))
 
     else:
         result.add_failed_item(id_=filename, error=WazuhError(1415))
@@ -255,11 +253,11 @@ def get_file(filename=None, raw=False):
 
 
 @expose_resources(actions=['rules:update'], resources=['rule:file:{filename}'])
-def upload_file(filename=None, content=None, overwrite=False):
-    result = AffectedItemsWazuhResult(all_msg='File was successfully uploaded',
-                                      none_msg='Could not upload file'
+def upload_rule_file(filename=None, content=None, overwrite=False):
+    result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
+                                      none_msg='Could not upload rule'
                                       )
-    path = join(common.ossec_path, 'etc', 'rules', filename[0])
+    path = join('etc', 'rules', filename[0])
     try:
         if len(content) == 0:
             raise WazuhError(1112)
@@ -270,10 +268,34 @@ def upload_file(filename=None, content=None, overwrite=False):
         elif overwrite and exists(join(common.ossec_path, path)):
             # Check if the content is valid
             prettify_xml(content)
-            delete_file(path=path)
+            delete_rule_file(filename=filename[0])
 
         upload_xml(content, path)
         result.affected_items.append(path)
+    except WazuhError as e:
+        result.add_failed_item(id_=path, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=['rules:delete'], resources=['rule:file:{filename}'])
+def delete_rule_file(filename=None):
+    result = AffectedItemsWazuhResult(all_msg='Rule was successfully deleted',
+                                      none_msg='Could not delete rule'
+                                      )
+
+    path = join('etc', 'rules', filename[0])
+
+    try:
+        if exists(join(common.ossec_path, path)):
+            try:
+                remove(join(common.ossec_path, path))
+                result.affected_items.append(path)
+            except IOError:
+                raise WazuhError(1907)
+        else:
+            raise WazuhError(1906)
     except WazuhError as e:
         result.add_failed_item(id_=path, error=e)
     result.total_affected_items = len(result.affected_items)

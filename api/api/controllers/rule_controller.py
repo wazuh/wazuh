@@ -190,7 +190,7 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
 
 
 @cache(expires=api_conf['cache']['time'])
-async def get_rule_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
+async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
                         raw: bool = False):
     """Get rule file content.
 
@@ -207,9 +207,9 @@ async def get_rule_file(request, pretty: bool = False, wait_for_complete: bool =
     """
     f_kwargs = {'filename': filename, 'raw': raw}
 
-    dapi = DistributedAPI(f=rule_framework.get_file,
+    dapi = DistributedAPI(f=rule_framework.get_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
+                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
@@ -224,7 +224,7 @@ async def get_rule_file(request, pretty: bool = False, wait_for_complete: bool =
     return response
 
 
-async def put_rule_file(request, body, overwrite=False, pretty=False, wait_for_complete=False, filename=None):
+async def put_file(request, body, overwrite=False, pretty=False, wait_for_complete=False, filename=None):
     """Upload file in manager or local_node.
 
     :param body: Body request with the content of the file to be uploaded
@@ -242,7 +242,23 @@ async def put_rule_file(request, body, overwrite=False, pretty=False, wait_for_c
                 'overwrite': overwrite,
                 'content': parsed_body}
 
-    dapi = DistributedAPI(f=rule_framework.upload_file,
+    dapi = DistributedAPI(f=rule_framework.upload_rule_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def delete_file(request, pretty=False, wait_for_complete=False, filename=None):
+    f_kwargs = {'filename': filename}
+
+    dapi = DistributedAPI(f=rule_framework.delete_rule_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,
