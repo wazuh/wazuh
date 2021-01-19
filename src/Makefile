@@ -1452,6 +1452,9 @@ active-response/%.o: active-response/%.c
 pf: active-response/firewalls/pf.o  active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
+npf: active-response/firewalls/npf.o  active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
 default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 

@@ -11,35 +11,35 @@ FILE="default-firewall-drop.sh";
 
 if [ "X${UNAME}" = "XFreeBSD" ]; then
     # Is ipfw enabled?
-    if grep 'firewall_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
+    if grep -i 'firewall_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is IPFW
         FILE="ipfw.sh";
-        echo "Firewall detected: IPFW";
+        echo "IPFW";
     fi
 
     # if pf enabled?
-    if grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
+    if grep -i 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is PF
         FILE="pf";
-        echo "Firewall detected: PF";
+        echo "PF";
     fi
 
 # Darwin
 elif [ "X${UNAME}" = "XDarwin" ]; then
     # Is pfctl present?
     if which pfctl > /dev/null; then
-        echo "Firewall detected: PF";
+        echo "PF";
         FILE="pf";
     else
-        echo "Firewall detected: IPFW";
+        echo "IPFW";
         FILE="ipfw_mac.sh";
     fi
 
 elif [ "X${UNAME}" = "XOpenBSD" ]; then
-    if grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
+    if grep -i 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is PF
         FILE="pf";
-        echo "Firewall detected: PF";
+        echo "PF";
     fi
 fi
 
