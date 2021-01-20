@@ -71,6 +71,7 @@ src/default-firewall-drop
 src/disable-account
 src/restart-wazuh
 src/ipfw
+src/route-null
 
 # Windows agent
 src/win32/*.exe
