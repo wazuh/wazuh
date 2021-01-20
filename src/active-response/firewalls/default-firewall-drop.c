@@ -16,7 +16,6 @@
 
 static void lock (const char *lock_path, const char *lock_pid_path, const char *log_path);
 static void unlock (const char *lock_path, const char *log_path);
-static int get_ip_version (char *ip);
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -428,30 +427,4 @@ static void unlock (const char *lock_path, const char *log_path) {
     if (rmdir_ex(lock_path) < 0) {
         write_debug_file(log_path, "Unable to remove lock folder");
     }
-}
-
-static int get_ip_version (char * ip) {
-    struct addrinfo hint, *res = NULL;
-    int ret;
-
-    memset(&hint, '\0', sizeof hint);
-
-    hint.ai_family = PF_UNSPEC;
-    hint.ai_flags = AI_NUMERICHOST;
-
-    ret = getaddrinfo(ip, NULL, &hint, &res);
-    if (ret) {
-        freeaddrinfo(res);
-        return OS_INVALID;
-    }
-    if (res->ai_family == AF_INET) {
-        freeaddrinfo(res);
-        return 4;
-    } else if (res->ai_family == AF_INET6) {
-        freeaddrinfo(res);
-        return 6;
-    }
-
-    freeaddrinfo(res);
-    return OS_INVALID;
 }

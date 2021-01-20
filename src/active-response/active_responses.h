@@ -38,20 +38,27 @@ cJSON* get_json_from_input (const char *input);
 /**
  * Get command from input
  * @param input Input
- * @return char * with the command or NULL o fail
+ * @return char * with the command or NULL on fail
  * */
 char* get_command (cJSON *input);
 
 /**
  * Get username from input
  * @param input Input
- * @return char * with the username or NULL o fail
+ * @return char * with the username or NULL on fail
  * */
 char* get_username_from_json (cJSON *input);
 
 /**
  * Get srcip from input
  * @param input Input
- * @return char * with the srcip or NULL o fail
+ * @return char * with the srcip or NULL on fail
  * */
 char* get_srcip_from_json (cJSON *input);
+
+/**
+ * Check for valid IP and version
+ * @param ip IP
+ * @return IP version or -1 on fail
+ * */
+int get_ip_version (char *ip);

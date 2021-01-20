@@ -97,8 +97,15 @@ int main (int argc, char **argv) {
         return OS_SUCCESS;
     }
 #else
-
-
+    if (!strcmp("add", action)) {
+        char cmd[OS_MAXSTR + 1];
+        snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe -p ADD %s MASK 255.255.255.255 127.0.0.1", srcip);
+        system(cmd);
+    } else {
+        char cmd[OS_MAXSTR + 1];
+		snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe DELETE %s", srcip);
+        system(cmd);
+    }
 #endif
 
     write_debug_file(argv[0], "Ended");
