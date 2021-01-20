@@ -40,15 +40,21 @@ void * state_main(__attribute__((unused)) void * args) {
 }
 
 void update_status(agent_status_t status) {
+    w_mutex_lock(&state_mutex);
     agent_state.status = status;
+    w_mutex_unlock(&state_mutex);
 }
 
 void update_keepalive(time_t curr_time) {
+    w_mutex_lock(&state_mutex);
     agent_state.last_keepalive = curr_time;
+    w_mutex_unlock(&state_mutex);
 }
 
 void update_ack(time_t curr_time) {
+    w_mutex_lock(&state_mutex);
     agent_state.last_ack = curr_time;
+    w_mutex_unlock(&state_mutex);
 }
 
 int write_state() {
