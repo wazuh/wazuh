@@ -67,6 +67,31 @@ namespace Utils
         }
         return content.str();
     }
+
+    static std::vector<char> getBinaryContent(const std::string& filePath)
+    {
+        auto size { 0 };
+        std::unique_ptr<char[]> spBuffer;
+        std::ifstream file { filePath, std::ios_base::binary };
+
+        if (file.is_open())
+        {
+            // Get pointer to associated buffer object
+            auto buffer { file.rdbuf() };
+            if (nullptr != buffer)
+            {
+                // Get file size using buffer's members
+                size = buffer->pubseekoff(0, file.end, file.in);
+                buffer->pubseekpos(0, file.in);
+                // Allocate memory to contain file data
+                spBuffer = std::make_unique<char[]>(size);
+                // Get file data
+                buffer->sgetn(spBuffer.get(), size);
+            }
+        }
+
+        return std::vector<char>{spBuffer.get(), spBuffer.get() + size};
+    }
 }
 
 #pragma GCC diagnostic pop

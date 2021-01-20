@@ -45,7 +45,7 @@ TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
     EXPECT_CALL(*mock, architecture()).Times(1).WillOnce(Return("5"));
     EXPECT_CALL(*mock, format()).Times(1).WillOnce(Return("6"));
     EXPECT_CALL(*mock, osPatch()).Times(1).WillOnce(Return("7"));
-
+    EXPECT_CALL(*mock, scanTime()).Times(1).WillOnce(Return("8"));
    
     EXPECT_NO_THROW(std::make_unique<BSDPackageImpl>(mock)->buildPackageData(packages));
     EXPECT_EQ("1",packages.at("name").get_ref<const std::string&>());
@@ -55,5 +55,5 @@ TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
     EXPECT_EQ("5",packages.at("architecture").get_ref<const std::string&>());
     EXPECT_EQ("6",packages.at("format").get_ref<const std::string&>());
     EXPECT_EQ("7",packages.at("os_patch").get_ref<const std::string&>());
-
+    EXPECT_EQ("8",packages.at("scan_time").get_ref<const std::string&>());
 }
