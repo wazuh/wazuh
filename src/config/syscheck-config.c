@@ -728,26 +728,6 @@ clean_reg:
 }
 #endif /* WIN32 */
 
-char *trim_path(char *dir) {
-    /* Remove spaces at the beginning and the end */
-    while (*dir == ' ') {
-        dir++;
-    }
-
-    char *tail = dir + strlen(dir) - 1;
-    while(*tail == ' ') {
-        *tail = '\0';
-        tail--;
-    }
-
-    if (*dir == '\0') {
-        mdebug2(FIM_EMPTY_DIRECTORIES_CONFIG);
-        return NULL;
-    }
-
-    return dir;
-}
-
 char *format_path(char *dir) {
     char *clean_path;
     char *tmp_str;
@@ -1193,7 +1173,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             continue;
         }
 
-        tmp_dir = trim_path(*dir);
+        tmp_dir = w_strtrim(*dir);
         if (!tmp_dir) {
             dir++;
             continue;
@@ -2520,7 +2500,7 @@ static void process_option(char ***syscheck_option, xml_node *node) {
     char *tmp_dir;
     char **new_opt = NULL;
 
-    tmp_dir = trim_path(dir);
+    tmp_dir = w_strtrim(dir);
     if (tmp_dir == NULL) {
         os_free(dir);
         return;
