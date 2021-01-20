@@ -127,7 +127,7 @@ testconfig()
 }
 
 # Start function
-start()
+start_service()
 {
     echo "Starting $NAME $VERSION..."
     checkpid;
@@ -223,7 +223,7 @@ wait_pid() {
     return 0
 }
 
-stop()
+stop_service()
 {
     checkpid;
     for i in ${DAEMONS}; do
@@ -252,9 +252,9 @@ stop()
 info()
 {
      if [ "X${1}" = "X" ]; then
-        echo "VERSION=\"${VERSION}\""
-        echo "REVISION=\"${REVISION}\""
-        echo "TYPE=\"${TYPE}\""
+        echo "WAZUH_VERSION=\"${VERSION}\""
+        echo "WAZUH_REVISION=\"${REVISION}\""
+        echo "WAZUH_TYPE=\"${TYPE}\""
     else
         case "${1}" in
             -v) echo "${VERSION}" ;;
@@ -273,28 +273,28 @@ case "$1" in
 start)
     testconfig
     lock
-    start
+    start_service
     unlock
     ;;
 stop)
     lock
-    stop
+    stop_service
     unlock
     ;;
 restart)
     testconfig
     lock
-    stop
+    stop_service
     sleep 1
-    start
+    start_service
     unlock
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
-    stop
+    stop_service
     sleep 1
-    start
+    start_service
     unlock
     ;;
 status)

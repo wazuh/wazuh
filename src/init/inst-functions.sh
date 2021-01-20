@@ -308,28 +308,12 @@ SetHeaders()
 }
 
 ##########
-# Generate the ossec-init.conf
-##########
-GenerateInitConf()
-{
-    NEWINIT="./ossec-init.conf.temp"
-    echo "DIRECTORY=\"${INSTALLDIR}\"" > ${NEWINIT}
-    echo "NAME=\"${NAME}\"" >> ${NEWINIT}
-    echo "VERSION=\"${VERSION}\"" >> ${NEWINIT}
-    echo "REVISION=\"${REVISION}\"" >> ${NEWINIT}
-    echo "DATE=\"`date`\"" >> ${NEWINIT}
-    echo "TYPE=\"${INSTYPE}\"" >> ${NEWINIT}
-    cat "$NEWINIT"
-    rm "$NEWINIT"
-}
-
-##########
 # GenerateService() $1=template
 ##########
 GenerateService()
-{    
+{
     SERVICE_TEMPLATE=./src/init/templates/${1}
-    sed "s|WAZUH_HOME|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
+    sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
 }
 
 ##########

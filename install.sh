@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -137,15 +137,6 @@ Install()
     InstallWazuh
 
     cd ../
-
-    # Generate the /etc/ossec-init.conf
-    VERSION=`cat ${VERSION_FILE}`
-    REVISION=`cat ${REVISION_FILE}`
-    chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
-    GenerateInitConf > ${OSSEC_INIT}
-    chmod 640 ${OSSEC_INIT}
-    chown root:ossec ${OSSEC_INIT}
-    ln -sf ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
 
     # Install Wazuh ruleset updater
     if [ "X$INSTYPE" = "Xserver" ]; then
@@ -567,17 +558,14 @@ ConfigureServer()
 }
 
 ##########
-# setEnv()
+# setInstallDir()
 ##########
-setEnv()
+setInstallDir()
 {
-    echo ""
-    echo "2- ${settingupenv}."
-
     echo ""
     if [ "X${USER_DIR}" = "X" ]; then
         while [ 1 ]; do
-            $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
+            $ECHO "2- ${wheretoinstall} [$INSTALLDIR]: "
             read ANSWER
             if [ ! "X$ANSWER" = "X" ]; then
                 echo $ANSWER |grep -E "^/[a-zA-Z0-9./_-]{3,128}$">/dev/null 2>&1
@@ -592,20 +580,29 @@ setEnv()
     else
         INSTALLDIR=${USER_DIR}
     fi
+}
 
-
+##########
+# setEnv()
+##########
+setEnv()
+{
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
 
-    echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
-
 
     if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         CEXTRA="$CEXTRA -DLOCAL"
     fi
+}
 
+##########
+# askForDelete()
+##########
+askForDelete()
+{
     if [ -d "$INSTALLDIR" ]; then
         if [ "X${USER_DELETE_DIR}" = "X" ]; then
             echo ""
@@ -624,6 +621,31 @@ setEnv()
                     echo "Error deleting ${INSTALLDIR}"
                     exit 2;
                 fi
+                ;;
+            $nomatch)
+                if [ "X$PREINSTALLEDDIR" != "X" ]; then
+                    echo "WARNING! The installation can't proceed without removing already installed versions. Exiting."
+                    exit 2;
+                fi
+                ;;
+        esac
+    elif [ -d "$PREINSTALLEDDIR" ]; then
+        $ECHO "    - WARNING! The installation can't proceed without removing already installed versions. Should I delete it? ($yes/$no) [$no]: "
+        read ANSWER
+
+        case $ANSWER in
+            $yesmatch)
+                echo "      Stopping Wazuh..."
+                UpdateStopOSSEC
+                rm -rf $PREINSTALLEDDIR
+                if [ ! $? = 0 ]; then
+                    echo "Error deleting ${PREINSTALLEDDIR}"
+                    exit 2;
+                fi
+                ;;
+            $nomatch)
+                echo "Exiting."
+                exit 2;
                 ;;
         esac
     fi
@@ -869,7 +891,7 @@ main()
 
     . ./src/init/update.sh
     # Is this an update?
-    if [ "`isUpdate`" = "${TRUE}" -a "x${USER_CLEANINSTALL}" = "x" ]; then
+    if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
         echo ""
         ct="1"
         while [ $ct = "1" ]; do
@@ -887,7 +909,8 @@ main()
                     break;
                     ;;
                 $no)
-                    break;
+                    echo "${mustuninstall}"
+                    exit 0;
                     ;;
                   *)
                     ct="1"
@@ -908,11 +931,11 @@ main()
                 update_only=""
             else
                 # Get update
-                USER_INSTALL_TYPE=`getPreinstalled`
-                USER_DIR=`getPreinstalledDir`
-                USER_DELETE_DIR="$nomatch"
+                USER_DIR="$PREINSTALLEDDIR"
+                USER_INSTALL_TYPE=`getPreinstalledType`
                 USER_OLD_VERSION=`getPreinstalledVersion`
                 USER_OLD_NAME=`getPreinstalledName`
+                USER_DELETE_DIR="$nomatch"
             fi
 
             ct="1"
@@ -926,6 +949,7 @@ main()
         echo ""
     fi
 
+    # Setting up the installation type
     hybrid="hybrid"
     HYBID=""
     hybridm=`echo ${hybrid} | cut -b 1`
@@ -984,10 +1008,14 @@ main()
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
+    # Setting up the installation directory
+    setInstallDir
 
     # Setting up the environment
     setEnv
 
+    # Ask to remove the current installation if exists
+    askForDelete
 
     # Configuring the system (based on the installation type)
     if [ "X${update_only}" = "X" ]; then
@@ -1066,8 +1094,8 @@ main()
         echo "   https://documentation.wazuh.com/"
         echo ""
 
-    elif [ "X$INSTYPE" = "Xagent" ]; then  
-        echo ""      
+    elif [ "X$INSTYPE" = "Xagent" ]; then
+        echo ""
         echo " - ${moreinfo}"
         echo "   https://documentation.wazuh.com/"
         echo ""

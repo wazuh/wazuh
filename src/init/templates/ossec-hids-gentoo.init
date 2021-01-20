@@ -5,7 +5,8 @@
 
 opts="${opts} status configtest"
 
-OSSEC_CONTROL="WAZUH_HOME/bin/wazuh-control"
+WAZUH_HOME=WAZUH_HOME_TMP
+WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
 
 depend() {
     need net
@@ -33,14 +34,14 @@ checkconfig() {
 start() {
     checkconfig || return 1
     ebegin "Starting Wazuh"
-    ${OSSEC_CONTROL} start > /dev/null 2>&1
+    ${WAZUH_CONTROL} start > /dev/null 2>&1
     eend $?
 }
 
 stop() {
     checkconfig || return 1
     ebegin "Stopping Wazuh"
-    ${OSSEC_CONTROL} stop > /dev/null 2>&1
+    ${WAZUH_CONTROL} stop > /dev/null 2>&1
     eend $?
 }
 
@@ -50,13 +51,13 @@ restart() {
     else
         checkconfig || return 1
         ebegin "Reloading Wazuh"
-        svc_stop ${OSSEC_CONTROL}
-        svc_start ${OSSEC_CONTROL}
+        svc_stop ${WAZUH_CONTROL}
+        svc_start ${WAZUH_CONTROL}
         eend $?
     fi
 }
 
 status() {
     checkconfig || return 1
-    ${OSSEC_CONTROL} status
+    ${WAZUH_CONTROL} status
 }

@@ -44,23 +44,24 @@ rc_reset
 # with force-reload (in case signalling is not supported) are
 # considered a success.
 
-# Just to make sure ossec is installed ...
-CONTROL="$DIRECTORY/bin/wazuh-control"
+# Just to make sure wazuh is installed ...
+WAZUH_HOME=WAZUH_HOME_TMP
+WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
 
-test -x $CONTROL || { echo "$CONTROL not installed";
+test -x $WAZUH_CONTROL || { echo "$WAZUH_CONTROL not installed";
     if [ "$1" = "stop" ]; then exit 0;
     else exit 5; fi; }
 
 start() {
-    WAZUH_HOME/bin/wazuh-control start
+    ${WAZUH_CONTROL} start
 }
 
 stop() {
-    WAZUH_HOME/bin/wazuh-control stop
+    ${WAZUH_CONTROL} stop
 }
 
 status() {
-    WAZUH_HOME/bin/wazuh-control status
+    ${WAZUH_CONTROL} status
 }
 
 case "$1" in
