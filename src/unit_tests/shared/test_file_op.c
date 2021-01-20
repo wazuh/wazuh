@@ -599,6 +599,7 @@ void test_w_homedir_unix2(void **state)
     val = w_homedir(path0);
     assert_string_equal(val, "/var/ossec/bin/");
 }
+
 void test_w_homedir_macOS(void **state)
 {
     char *path0 = "/var/ossec/bin/test";
@@ -621,6 +622,31 @@ void test_w_homedir_macOS(void **state)
     val = w_homedir(path0);
     assert_string_equal(val, "/private/var/ossec/");
 }
+
+#ifdef __MACH__
+void test_w_homedir_macOS2(void **state)
+{
+    char *path0 = "/var/ossec/bin/test";
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+
+    expect_string(__wrap_proc_pidpath, pid, getpid());
+    will_return(__wrap_proc_pidpath, "/private/var/ossec/bin/test");
+    will_return(__wrap_proc_pidpath, 1);
+
+    val = w_homedir(path0);
+    assert_string_equal(val, "/private/var/ossec/");
+}
+#endif
 
 void test_w_homedir_argv_full_path_success(void **state)
 {
@@ -805,9 +831,13 @@ int main(void) {
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_fail),
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_success),
         cmocka_unit_test(test_w_uncompress_gzfile_success),
+        // w_homedir
         cmocka_unit_test(test_w_homedir_unix1),
         cmocka_unit_test(test_w_homedir_unix2),
         cmocka_unit_test(test_w_homedir_macOS),
+#ifdef __MACH__
+        cmocka_unit_test(test_w_homedir_macOS2),
+#endif
         cmocka_unit_test(test_w_homedir_argv_full_path_success),
         cmocka_unit_test(test_w_homedir_argv_symlink_success),
         cmocka_unit_test(test_w_homedir_arg_fail),
