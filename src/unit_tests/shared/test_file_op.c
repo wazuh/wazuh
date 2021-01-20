@@ -36,6 +36,16 @@ static int teardown_group(void **state) {
     return 0;
 }
 
+static int setup_errno(void ** state) {
+    errno = 2;
+    return 0;
+}
+
+static int teardown_errno(void ** state) {
+    errno = 0;
+    return 0;
+}
+
 void test_CreatePID_success(void **state)
 {
     (void) state;
@@ -227,6 +237,9 @@ void test_w_uncompress_bz2_gz_file_bz2(void **state) {
     expect_string(__wrap_fopen, path, "/test/file.bz2");
     expect_string(__wrap_fopen, mode, "rb");
     will_return(__wrap_fopen, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The file '/test/file.bz2' was successfully uncompressed into '/test/file'");
+
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
@@ -547,6 +560,159 @@ void test_w_uncompress_gzfile_success(void **state) {
 
 }
 
+void test_w_homedir_unix1(void **state)
+{
+    char *path0 = "/var/ossec/bin/test";
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, path0);
+    will_return(__wrap_realpath, (char *) 1);
+
+    val = w_homedir(path0);
+    assert_string_equal(val, "/var/ossec/");
+}
+
+void test_w_homedir_unix2(void **state)
+{
+    char *path0 = "/var/ossec/bin/testing/test";
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, path0);
+    will_return(__wrap_realpath, (char *) 1);
+
+    val = w_homedir(path0);
+    assert_string_equal(val, "/var/ossec/bin/");
+}
+void test_w_homedir_macOS(void **state)
+{
+    char *path0 = "/var/ossec/bin/test";
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+
+    expect_string(__wrap_realpath, path, path0);
+    will_return(__wrap_realpath, "/private/var/ossec/bin/test");
+    will_return(__wrap_realpath, (char *) 1);
+
+    val = w_homedir(path0);
+    assert_string_equal(val, "/private/var/ossec/");
+}
+
+void test_w_homedir_argv_full_path_success(void **state)
+{
+    char *path0 = "/var/ossec/bin/test";
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+
+    expect_string(__wrap_realpath, path, path0);
+    will_return(__wrap_realpath, path0);
+    will_return(__wrap_realpath, (char *) 1);
+
+    val = w_homedir(path0);
+    assert_string_equal(val, "/var/ossec/");
+}
+
+void test_w_homedir_argv_symlink_success(void **state)
+{
+    char *path0 = "/var/ossec/bin/test";
+    char *symlink = "/home/symlink/bin/test";
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+
+    expect_string(__wrap_realpath, path, symlink);
+    will_return(__wrap_realpath, path0);
+    will_return(__wrap_realpath, (char *) 1);
+
+    val = w_homedir(symlink);
+    assert_string_equal(val, "/var/ossec/");
+}
+
+void test_w_homedir_arg_fail(void **state)
+{
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+
+    val = w_homedir(NULL);
+    assert_string_equal(val, "(null)");
+}
+
+void test_w_homedir_argv_realpath_fail(void **state)
+{
+    char *path0 = "a\\b";
+    char *val = NULL;
+    char debug_message[OS_SIZE_512];
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+    expect_string(__wrap_realpath, path, path0);
+    will_return(__wrap_realpath, NULL);
+    will_return(__wrap_realpath, (char *) 0);
+
+    snprintf(debug_message, OS_SIZE_512, "Failed to get '%s' realpath: %s", path0, strerror(errno));
+    expect_string(__wrap__mdebug1, formatted_msg, debug_message);
+
+    val = w_homedir("a\\b");
+    assert_ptr_equal(val, NULL);
+}
+
 #ifdef TEST_WINAGENT
 void test_get_UTC_modification_time_success(void **state) {
     HANDLE hdle = (HANDLE)1234;
@@ -638,7 +804,14 @@ int main(void) {
         cmocka_unit_test(test_w_uncompress_gzfile_gzopen_fail),
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_fail),
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_success),
-        cmocka_unit_test(test_w_uncompress_gzfile_success)
+        cmocka_unit_test(test_w_uncompress_gzfile_success),
+        cmocka_unit_test(test_w_homedir_unix1),
+        cmocka_unit_test(test_w_homedir_unix2),
+        cmocka_unit_test(test_w_homedir_macOS),
+        cmocka_unit_test(test_w_homedir_argv_full_path_success),
+        cmocka_unit_test(test_w_homedir_argv_symlink_success),
+        cmocka_unit_test(test_w_homedir_arg_fail),
+        cmocka_unit_test_setup_teardown(test_w_homedir_argv_realpath_fail, setup_errno, teardown_errno)
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
