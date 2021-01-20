@@ -9,6 +9,7 @@ import random
 import re
 import socket
 import time
+import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from datetime import datetime
 from datetime import timezone
@@ -18,8 +19,6 @@ from pyexpat import ExpatError
 from shutil import Error
 from typing import Dict
 from xml.dom.minidom import parseString
-
-import yaml
 
 from api import configuration
 from wazuh import WazuhInternalError, WazuhError
@@ -120,13 +119,26 @@ def prettify_xml(xml_file):
     -------
     Checked XML content
     """
+
+    def escape_formula_values(xml_string):
+        injection_regex = re.compile(r'^[=+-@]+.+$')
+        et = ET.ElementTree(ET.fromstring(f'<root>{xml_string}</root>'))
+        to_replace_list = list()
+        for node in et.iter():
+            if node.text and re.match(injection_regex, node.text) and ("'" in node.text or '"' in node.text):
+                to_replace_list.append(node.text)
+        for invalid_value in to_replace_list:
+            xml_string = xml_string.replace(invalid_value, f"'{invalid_value}'")
+
+        return xml_string
+
     # -- characters are not allowed in XML comments
     xml_file = replace_in_comments(xml_file, '--', '%wildcard%')
 
     # create temporary file for parsing xml input
     try:
-        # beauty xml file
-        xml = parseString('<root>' + xml_file + '</root>')
+        # beauty xml file and escape & character
+        xml = parseString(f'<root>{xml_file}</root>'.replace('&', '&amp;'))
         # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
         indent = '  '  # indent parameter for toprettyxml function
         pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
@@ -142,6 +154,8 @@ def prettify_xml(xml_file):
         check_remote_commands(final_xml)
         # Check xml format
         load_wazuh_xml(xml_path='', data=final_xml)
+
+        final_xml = escape_formula_values(final_xml)
 
         return final_xml
     except ExpatError:
