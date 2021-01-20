@@ -1,16 +1,13 @@
-#include "shared.h"
-#include "external/cJSON/cJSON.h"
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All right reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "../active_responses.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/utsname.h>
 
 #define GREP        "/usr/bin/grep"
 #define PFCTL       "/sbin/pfctl"
@@ -64,10 +61,9 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    cJSON_Delete(input_json);
-
     if (uname(&uname_buffer) != 0){
         write_debug_file(argv[0], "Cannot get system name");
+        cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
@@ -79,6 +75,7 @@ int main (int argc, char **argv) {
             memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE - 1, "The pfctl file '%s' is not accessible", PFCTL);
             write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
             return OS_SUCCESS;
         }
 
@@ -87,7 +84,7 @@ int main (int argc, char **argv) {
 
         // Checking if we have pf config file
         if(access(PFCTL_RULES, F_OK) == 0) {
-            // Checking if ossec table is configured in pf.conf
+            // Checking if wazuh table is configured in pf.conf
             if(checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) == 0) {
                 if (!strcmp("add", action)) {
                     char *arg1[7] = {PFCTL, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL};
@@ -103,13 +100,15 @@ int main (int argc, char **argv) {
                 memset(log_msg, '\0', LOGSIZE);
                 snprintf(log_msg, LOGSIZE - 1, "Table %s does not exist", PFCTL_TABLE);
                 write_debug_file(argv[0], log_msg);
-                return OS_INVALID;
+                cJSON_Delete(input_json);
+                return OS_SUCCESS;
             }
 
         } else {
             memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE - 1, "The pf rules file %s does not exist", PFCTL_RULES);
             write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
             return OS_SUCCESS;
         }
 
@@ -118,8 +117,9 @@ int main (int argc, char **argv) {
             wfd_t *wfd = wpopenv(PFCTL, exec_cmd1, W_BIND_STDOUT);
             if(!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Error executing %s : %s", PFCTL, strerror(errno));
+                snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
                 write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
                 return OS_INVALID;
             }
             wpclose(wfd);
@@ -129,30 +129,32 @@ int main (int argc, char **argv) {
             wfd_t *wfd = wpopenv(PFCTL, exec_cmd2, W_BIND_STDOUT);
             if(!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Error executing %s : %s", PFCTL, strerror(errno));
+                snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
                 write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
                 return OS_INVALID;
             }
             wpclose(wfd);
         }
 
     } else {
+        cJSON_Delete(input_json);
         return OS_SUCCESS;
     }
 
     write_debug_file(argv[0], "Ended");
-
-    return 0;
+    cJSON_Delete(input_json);
+    return OS_SUCCESS;
 }
 
 int checking_if_its_configured(const char *path, const char *table) {
-    char command[1023];
-    char output_buf[1023];
+    char command[COMMANDSIZE];
+    char output_buf[COMMANDSIZE];
 
-    snprintf(command, 1023, "cat %s | %s %s", path, GREP, table);
+    snprintf(command, COMMANDSIZE - 1, "cat %s | %s %s", path, GREP, table);
     FILE *fp = popen(command, "r");
     if (fp) {
-        while (fgets(output_buf, 1023, fp) != NULL) {
+        while (fgets(output_buf, COMMANDSIZE, fp) != NULL) {
             pclose(fp);
             return OS_SUCCESS;
         }
