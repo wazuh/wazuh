@@ -50,7 +50,7 @@ int LogCollectorConfig(const char *cfgfile)
     reload_interval = getDefine_Int("logcollector", "reload_interval", 1, 86400);
     reload_delay = getDefine_Int("logcollector", "reload_delay", 0, 30000);
     free_excluded_files_interval = getDefine_Int("logcollector", "exclude_files_interval", 1, 172800);
-    state_interval = getDefine_Int("logcollector", "state_interval", 1, 3600);
+    state_interval = getDefine_Int("logcollector", "state_interval", 0, 3600);
 
     /* Current and total files counter */
     total_files = 0;

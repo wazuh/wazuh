@@ -158,7 +158,20 @@ void LogCollectorStart()
     }
 
     /* Initialize state component */
-    w_logcollector_state_init();
+    if (state_interval > 0) {
+        w_logcollector_state_init();
+        /* Create the state thread */
+#ifndef WIN32
+        w_create_thread(w_logcollector_state_main, (void *) &state_interval);
+#else
+        w_create_thread(NULL,
+                        0,
+                        w_logcollector_state_main,
+                        (void *) &state_interval,
+                        0,
+                        NULL);
+#endif
+    }
 
     set_sockets();
     files_lock_init();
@@ -368,18 +381,6 @@ void LogCollectorStart()
 
     //Save status localfiles to disk
     w_save_file_status();
-
-    /* Create the state thread */
-#ifndef WIN32
-    w_create_thread(w_logcollector_state_main, (void *) &state_interval);
-#else
-    w_create_thread(NULL,
-                     0,
-                     w_logcollector_state_main,
-                     (void *) &state_interval,
-                     0,
-                     NULL);
-#endif
 
     // Initialize message queue's log builder
     mq_log_builder_init();

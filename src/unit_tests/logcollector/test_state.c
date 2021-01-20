@@ -38,6 +38,7 @@ void * w_logcollector_state_main(__attribute__((unused)) void * args);
 extern cJSON * g_lc_json_stats;
 extern lc_states_t * g_lc_states_global;
 extern lc_states_t * g_lc_states_interval;
+extern bool g_lc_state_enabled;
 
 /* setup/teardown */
 
@@ -175,6 +176,7 @@ void test_w_logcollector_state_init_ok(void ** state) {
 
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
+    g_lc_state_enabled = 0;
 
     will_return(__wrap_time, (time_t) 50);
     will_return(__wrap_time, (time_t) 51);
@@ -196,14 +198,21 @@ void test_w_logcollector_state_init_ok(void ** state) {
     assert_int_equal(g_lc_states_global->start, 50);
     assert_ptr_equal(g_lc_states_interval->states, 3);
     assert_int_equal(g_lc_states_interval->start, 51);
+    assert_int_equal(g_lc_state_enabled, 1);
 
     os_free(g_lc_states_global);
     os_free(g_lc_states_interval);
 }
 
 /* w_logcollector_state_get */
+void test_w_logcollector_state_get_disabled(void ** state) {
+    g_lc_state_enabled = 0;
+    assert_null(w_logcollector_state_get());
+}
+
 void test_w_logcollector_state_get_null(void ** state) {
 
+    g_lc_state_enabled = 1;
     g_lc_json_stats = NULL;
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -213,6 +222,7 @@ void test_w_logcollector_state_get_null(void ** state) {
 void test_w_logcollector_state_get_non_null(void ** state) {
 
     cJSON * expect_retval = (cJSON *) 3;
+    g_lc_state_enabled = 1;
     g_lc_json_stats = (cJSON *) 5;
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -427,6 +437,11 @@ void test_w_logcollector_state_update_file_null(void ** state) {
     w_logcollector_state_update_file(NULL, 500);
 }
 
+void test_w_logcollector_state_update_file_disabled(void ** state) {
+    g_lc_state_enabled = 0;
+    w_logcollector_state_update_file("filename", 500);
+}
+
 /* _w_logcollector_state_update_target */
 void test__w_logcollector_state_update_target_get_file_stats_fail(void ** state) {
 
@@ -596,6 +611,7 @@ void test__w_logcollector_state_update_target_OSHash_Add_fail(void ** state) {
 
 void test_w_logcollector_state_update_file_ok(void ** state) {
 
+    g_lc_state_enabled = 1;
     os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
     g_lc_states_global->states = (OSHash *) 2;
     os_calloc(1, sizeof(lc_states_t), g_lc_states_interval);
@@ -638,8 +654,15 @@ void test_w_logcollector_state_update_target_null_path(void ** state) {
     w_logcollector_state_update_target(NULL, "test_target", false);
 }
 
+void test_w_logcollector_state_update_target_disabled(void ** state) {
+
+    g_lc_state_enabled = 0;
+    w_logcollector_state_update_target("test path", "test_target", false);
+}
+
 void test_w_logcollector_state_update_target_ok(void ** state) {
 
+    g_lc_state_enabled = 1;
     os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
     g_lc_states_global->states = (OSHash *) 2;
     os_calloc(1, sizeof(lc_states_t), g_lc_states_interval);
@@ -678,6 +701,7 @@ void test_w_logcollector_state_update_target_ok(void ** state) {
 /* w_logcollector_generate_state */
 void test_w_logcollector_generate_state_ok(void ** state) {
 
+    g_lc_state_enabled = 1;
     os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
     g_lc_states_global->states = (OSHash *) 2;
 
@@ -864,7 +888,21 @@ void test_w_logcollector_state_dump_ok(void ** state) {
 }
 
 /* w_logcollector_state_main */
-void test_w_logcollector_state_main(void ** state) {
+void test_w_logcollector_state_main_disabled(void ** state) {
+
+    g_lc_state_enabled = 0;
+    int interval = 105;
+    w_logcollector_state_main((void *) &interval);
+}
+
+void test_w_logcollector_state_main_bad_interval(void ** state) {
+
+    g_lc_state_enabled = 1;
+    int interval = -1;
+    w_logcollector_state_main((void *) &interval);
+}
+
+void test_w_logcollector_state_main_ok(void ** state) {
 
     int interval = 105;
     will_return(__wrap_FOREVER, 1);
@@ -1015,6 +1053,7 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_state_init_ok),
 
         // Tests w_logcollector_state_get
+        cmocka_unit_test(test_w_logcollector_state_get_disabled),
         cmocka_unit_test(test_w_logcollector_state_get_null),
         cmocka_unit_test(test_w_logcollector_state_get_non_null),
 
@@ -1029,6 +1068,7 @@ int main(void) {
         cmocka_unit_test(test__w_logcollector_state_update_file_fail_update),
 
         // Tests w_logcollector_state_update_file
+        cmocka_unit_test(test_w_logcollector_state_update_file_disabled),
         cmocka_unit_test(test_w_logcollector_state_update_file_null),
         cmocka_unit_test(test_w_logcollector_state_update_file_ok),
 
@@ -1041,6 +1081,7 @@ int main(void) {
         cmocka_unit_test(test__w_logcollector_state_update_target_OSHash_Add_fail),
 
         // Tests w_logcollector_state_update_target
+        cmocka_unit_test(test_w_logcollector_state_update_target_disabled),
         cmocka_unit_test(test_w_logcollector_state_update_target_null_path),
         cmocka_unit_test(test_w_logcollector_state_update_target_null_target),
         cmocka_unit_test(test_w_logcollector_state_update_target_ok),
@@ -1054,7 +1095,9 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_state_dump_ok),
 
         // Tests w_logcollector_state_main
-        cmocka_unit_test(test_w_logcollector_state_main),
+        cmocka_unit_test(test_w_logcollector_state_main_disabled),
+        cmocka_unit_test(test_w_logcollector_state_main_bad_interval),
+        cmocka_unit_test(test_w_logcollector_state_main_ok)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

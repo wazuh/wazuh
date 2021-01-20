@@ -17,11 +17,12 @@
 #endif
 
 /* Global variables */
-cJSON * g_lc_json_stats;           ///< JSON representation of states
-lc_states_t * g_lc_states_global;   ///< global state struct storage
-lc_states_t * g_lc_states_interval; ///< interval state struct storage
-pthread_mutex_t g_lc_raw_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_states_* structs mutual exclusion mechanism
-pthread_mutex_t g_lc_json_stats_mutex = PTHREAD_MUTEX_INITIALIZER; ///< g_lc_json_stats mutual exclusion mechanism
+bool g_lc_state_enabled;               ///< state enabled flag
+cJSON *g_lc_json_stats;                ///< JSON representation of states
+lc_states_t *g_lc_states_global;       ///< global state struct storage
+lc_states_t *g_lc_states_interval;     ///< interval state struct storage
+pthread_mutex_t g_lc_raw_stats_mutex;  ///< g_lc_states_* structs mutual exclusion mechanism
+pthread_mutex_t g_lc_json_stats_mutex; ///< g_lc_json_stats mutual exclusion mechanism
 
 /**
  * @brief Trigger the generation of states
@@ -71,11 +72,14 @@ void * w_logcollector_state_main(__attribute__((unused)) void * args) {
 
     int interval = *(int *) args;
 
-    while (FOREVER()) {
-        sleep(interval);
-        w_logcollector_generate_state();
-        w_logcollector_state_dump();
+    if (interval >= 0 && g_lc_state_enabled) {
+        while (FOREVER()) {
+            sleep(interval);
+            w_logcollector_generate_state();
+            w_logcollector_state_dump();
+        }
     }
+
 #ifndef WIN32
     return NULL;
 #endif
@@ -109,6 +113,9 @@ STATIC void w_logcollector_state_dump() {
 
 void w_logcollector_state_init() {
 
+    pthread_mutex_init(&g_lc_raw_stats_mutex, NULL);
+    pthread_mutex_init(&g_lc_json_stats_mutex, NULL);
+
     os_calloc(1, sizeof(lc_states_t), g_lc_states_global);
     os_calloc(1, sizeof(lc_states_t), g_lc_states_interval);
 
@@ -130,11 +137,13 @@ void w_logcollector_state_init() {
     if (OSHash_setSize(g_lc_states_interval->states, LOGCOLLECTOR_STATE_FILES_MAX) == 0) {
         merror_exit(HSETSIZE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
     }
+
+    g_lc_state_enabled = true;
 }
 
 void w_logcollector_state_update_target(char * fpath, char * target, bool dropped) {
 
-    if (fpath == NULL || target == NULL) {
+    if (fpath == NULL || target == NULL || !g_lc_state_enabled) {
         return;
     }
 
@@ -148,7 +157,7 @@ void w_logcollector_state_update_target(char * fpath, char * target, bool droppe
 
 void w_logcollector_state_update_file(char * fpath, uint64_t bytes) {
 
-    if (fpath == NULL) {
+    if (fpath == NULL || !g_lc_state_enabled) {
         return;
     }
 
@@ -256,13 +265,15 @@ cJSON * w_logcollector_state_get() {
 
     cJSON * json_state = NULL;
 
-    w_mutex_lock(&g_lc_json_stats_mutex);
+    if (g_lc_state_enabled) {
+        w_mutex_lock(&g_lc_json_stats_mutex);
 
-    if (g_lc_json_stats != NULL) {
-        json_state = cJSON_Duplicate(g_lc_json_stats, true);
+        if (g_lc_json_stats != NULL) {
+            json_state = cJSON_Duplicate(g_lc_json_stats, true);
+        }
+
+        w_mutex_unlock(&g_lc_json_stats_mutex);
     }
-
-    w_mutex_unlock(&g_lc_json_stats_mutex);
 
     return json_state;
 }
