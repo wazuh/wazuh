@@ -35,7 +35,7 @@ getPreinstalledDirByType()
 {
     # Checking for Systemd
     if hash ps 2>&1 > /dev/null && hash grep 2>&1 > /dev/null && [ -n "$(ps -e | egrep ^\ *1\ .*systemd$)" ]; then
-        if [ "X$service" = "Xwazuh-manager" ] || [ "X$service" = "Xwazuh-local" ]; then #manager, hibrid or local
+        if [ "X$pidir_service_name" = "Xwazuh-manager" ] || [ "X$pidir_service_name" = "Xwazuh-local" ]; then #manager, hibrid or local
             type="manager"
         else
             type="agent"
@@ -61,8 +61,8 @@ getPreinstalledDirByType()
     # Checking for Redhat system.
     if [ -r "/etc/redhat-release" ]; then
         if [ -d /etc/rc.d/init.d ]; then
-            if [ -f /etc/rc.d/init.d/${service} ]; then
-                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
+            if [ -f /etc/rc.d/init.d/${pidir_service_name} ]; then
+                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${pidir_service_name}`
                 if [ -d "$PREINSTALLEDDIR" ]; then
                     return 0;
                 else
@@ -75,8 +75,8 @@ getPreinstalledDirByType()
     fi
     # Checking for Gentoo
     if [ -r "/etc/gentoo-release" ]; then
-        if [ -f /etc/init.d/${service} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
+        if [ -f /etc/init.d/${pidir_service_name} ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${pidir_service_name}`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -88,8 +88,8 @@ getPreinstalledDirByType()
     fi
     # Checking for Suse
     if [ -r "/etc/SuSE-release" ]; then
-        if [ -f /etc/init.d/${service} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
+        if [ -f /etc/init.d/${pidir_service_name} ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${pidir_service_name}`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -101,8 +101,8 @@ getPreinstalledDirByType()
     fi
     # Checking for Slackware
     if [ -r "/etc/slackware-version" ]; then
-        if [ -f /etc/rc.d/rc.${service} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/rc.${service}`
+        if [ -f /etc/rc.d/rc.${pidir_service_name} ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/rc.${pidir_service_name}`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -127,8 +127,8 @@ getPreinstalledDirByType()
     fi
     # Checking for SunOS
     if [ "X${UN}" = "XSunOS" ]; then
-        if [ -f /etc/init.d/${service} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
+        if [ -f /etc/init.d/${pidir_service_name} ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${pidir_service_name}`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -140,8 +140,8 @@ getPreinstalledDirByType()
     fi
     # Checking for HP-UX
     if [ "X${UN}" = "XHP-UX" ]; then
-        if [ -f /sbin/init.d/${service} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /sbin/init.d/${service}`
+        if [ -f /sbin/init.d/${pidir_service_name} ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /sbin/init.d/${pidir_service_name}`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -153,8 +153,8 @@ getPreinstalledDirByType()
     fi
     # Checking for AIX
     if [ "X${UN}" = "XAIX" ]; then
-        if [ -f /etc/rc.d/init.d/${service} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
+        if [ -f /etc/rc.d/init.d/${pidir_service_name} ]; then
+            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${pidir_service_name}`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -194,8 +194,8 @@ getPreinstalledDirByType()
             fi
         # Checking for Linux (SysV)
         elif [ -d "/etc/rc.d/init.d" ]; then
-            if [ -f /etc/rc.d/init.d/${service} ]; then
-                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${service}`
+            if [ -f /etc/rc.d/init.d/${pidir_service_name} ]; then
+                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${pidir_service_name}`
                 if [ -d "$PREINSTALLEDDIR" ]; then
                     return 0;
                 else
@@ -206,8 +206,8 @@ getPreinstalledDirByType()
             fi
         # Checking for Debian (Ubuntu or derivative)
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
-            if [ -f /etc/init.d/${service} ]; then
-                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${service}`
+            if [ -f /etc/init.d/${pidir_service_name} ]; then
+                PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/init.d/${pidir_service_name}`
                 if [ -d "$PREINSTALLEDDIR" ]; then
                     return 0;
                 else
@@ -241,20 +241,20 @@ getPreinstalledDir()
             return 0;
         fi
     else
-        # Getting preinstalled dir for Wazuh manager and Hibrid installations
-        service="wazuh-manager"
+        # Getting preinstalled dir for Wazuh manager and hibrid installations
+        pidir_service_name="wazuh-manager"
         if getPreinstalledDirByType; then
             return 0;
         fi
 
         # Getting preinstalled dir for Wazuh agent installations
-        service="wazuh-agent"
+        pidir_service_name="wazuh-agent"
         if getPreinstalledDirByType; then
             return 0;
         fi
 
-        # Getting preinstalled dir for Wazuh agent installations
-        service="wazuh-local"
+        # Getting preinstalled dir for Wazuh local installations
+        pidir_service_name="wazuh-local"
         if getPreinstalledDirByType; then
             return 0;
         fi
