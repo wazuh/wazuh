@@ -1,12 +1,24 @@
-#include "active_responses.h"
-#include "shared.h"
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
+#include "active_responses.h"
 
 void write_debug_file (const char *ar_name, const char *msg) {
     char path[PATH_MAX];
     char *timestamp = w_get_timestamp(time(NULL));
 
+#ifndef WIN32
     snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOG_FILE);
+#else
+    snprintf(path, PATH_MAX, "%s", LOG_FILE);
+#endif
+
     FILE *ar_log_file = fopen(path, "a");
 
     fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);
@@ -24,13 +36,13 @@ cJSON* get_json_from_input (const char *input) {
     cJSON *alert_json = NULL;
     const char *json_err;
 
-    // Parsing Input
+    // Parsing input
     if (input_json = cJSON_ParseWithOpts(input, &json_err, 0), !input_json) {
         return NULL;
     }
 
     // Detect version
-    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_String)) {
+    if (version_json = cJSON_GetObjectItem(input_json, "version"), !version_json || (version_json->type != cJSON_Number)) {
         cJSON_Delete(input_json);
         return NULL;
     }
@@ -53,14 +65,20 @@ cJSON* get_json_from_input (const char *input) {
         return NULL;
     }
 
-    // Detect Extra_args
+    // Detect extra_args
     if (extra_args = cJSON_GetObjectItem(parameters_json, "extra_args"), !extra_args || (extra_args->type != cJSON_Array)) {
         cJSON_Delete(input_json);
         return NULL;
     }
 
-    // Detect Alert
+    // Detect alert
     if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+        cJSON_Delete(input_json);
+        return NULL;
+    }
+
+    // Detect program
+    if (alert_json = cJSON_GetObjectItem(parameters_json, "program"), !alert_json || (alert_json->type != cJSON_String)) {
         cJSON_Delete(input_json);
         return NULL;
     }
@@ -69,19 +87,16 @@ cJSON* get_json_from_input (const char *input) {
 }
 
 char* get_command (cJSON *input) {
-    char *command = NULL;
-
     // Detect command
     cJSON *command_json = cJSON_GetObjectItem(input, "command");
     if (command_json && (command_json->type == cJSON_String)) {
-        os_strdup(command_json->valuestring, command);
+        return command_json->valuestring;
     }
 
-    return command;
+    return NULL;
 }
 
 char* get_username_from_json (cJSON *input) {
-    char *username = NULL;
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
     cJSON *data_json = NULL;
@@ -92,7 +107,7 @@ char* get_username_from_json (cJSON *input) {
         return NULL;
     }
 
-    // Detect Alert
+    // Detect alert
     if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
         return NULL;
     }
@@ -105,14 +120,13 @@ char* get_username_from_json (cJSON *input) {
     // Detect username
     username_json = cJSON_GetObjectItem(data_json, "dstuser");
     if (username_json && (username_json->type == cJSON_String)) {
-        os_strdup(username_json->valuestring, username);
+        return username_json->valuestring;
     }
 
-    return username;
+    return NULL;
 }
 
 char* get_srcip_from_json (cJSON *input) {
-    char *srcip = NULL;
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;
     cJSON *data_json = NULL;
@@ -123,7 +137,7 @@ char* get_srcip_from_json (cJSON *input) {
         return NULL;
     }
 
-    // Detect Alert
+    // Detect alert
     if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
         return NULL;
     }
@@ -136,8 +150,8 @@ char* get_srcip_from_json (cJSON *input) {
     // Detect srcip
     srcip_json = cJSON_GetObjectItem(data_json, "srcip");
     if (srcip_json && (srcip_json->type == cJSON_String)) {
-        os_strdup(srcip_json->valuestring, srcip);
+        return srcip_json->valuestring;
     }
 
-    return srcip;
+    return NULL;
 }

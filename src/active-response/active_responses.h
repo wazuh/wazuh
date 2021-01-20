@@ -1,16 +1,24 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
-#include "external/cJSON/cJSON.h"
+#include "shared.h"
 
+#ifndef WIN32
 #define LOG_FILE "/logs/active-responses.log"
-#define LOCK_PATH "/active-response/bin/fw-drop"
-#define LOCK_FILE "/active-response/bin/fw-drop/pid"
-#define IP4TABLES "/sbin/iptables"
-#define IP6TABLES "/sbin/ip6tables"
+#else
+#define LOG_FILE "active-response\\active-responses.log"
+#endif
 #define ECHO "/bin/echo"
 #define PASSWD "/usr/bin/passwd"
 #define CHUSER "/usr/bin/chuser"
 #define BUFFERSIZE 4096
-#define LOGSIZE 2048
+#define LOGSIZE 8192
 #define COMMANDSIZE 2048
 
 /**
@@ -28,21 +36,21 @@ void write_debug_file (const char *ar_name, const char *msg);
 cJSON* get_json_from_input (const char *input);
 
 /**
- * Get command from input 
+ * Get command from input
  * @param input Input
  * @return char * with the command or NULL o fail
  * */
 char* get_command (cJSON *input);
 
 /**
- * Get username from input 
+ * Get username from input
  * @param input Input
  * @return char * with the username or NULL o fail
  * */
 char* get_username_from_json (cJSON *input);
 
 /**
- * Get srcip from input 
+ * Get srcip from input
  * @param input Input
  * @return char * with the srcip or NULL o fail
  * */

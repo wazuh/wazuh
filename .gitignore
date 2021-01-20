@@ -66,11 +66,13 @@ src/wazuh-syscheckd
 src/wazuh-integratord
 
 # Active responses
+src/firewall-drop
 src/default-firewall-drop
 src/disable-account
 src/restart-wazuh
 src/pf
 src/npf
+src/ipfw
 
 # Windows agent
 src/win32/*.exe

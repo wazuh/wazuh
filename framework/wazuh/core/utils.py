@@ -18,6 +18,7 @@ from itertools import groupby, chain
 from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import fromstring
+from api import configuration
 
 from wazuh.core import common
 from wazuh.core.database import Connection
@@ -628,9 +629,43 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def load_wazuh_xml(xml_path):
-    with open(xml_path) as f:
-        data = f.read()
+def check_remote_commands(data):
+    """Check if remote commands are allowed.
+    If not, it will check if the found command is in the list of exceptions.
+
+    Parameters
+    ----------
+    data : str
+        Configuration file
+    """
+    def check_section(command_regex, section, split_section):
+        try:
+            for line in command_regex.findall(data)[0].split(split_section):
+                command_matches = re.match(r".*<(command|full_command)>(.*)</(command|full_command)>.*",
+                                           line, flags=re.MULTILINE | re.DOTALL)
+                if command_matches and \
+                        (line.count('<command>') > 1 or
+                         command_matches.group(2) not in
+                         configuration.api_conf['remote_commands'][section]['exceptions']):
+                    raise WazuhError(1124)
+        except IndexError:
+            pass
+
+    if configuration.api_conf['remote_commands']['localfile']['enabled'] is not None and \
+            not configuration.api_conf['remote_commands']['localfile']['enabled']:
+        command_section = re.compile(r"<localfile>(.*)</localfile>", flags=re.MULTILINE | re.DOTALL)
+        check_section(command_section, section='localfile', split_section='</localfile>')
+
+    if configuration.api_conf['remote_commands']['wodle_command']['enabled'] is not None and not \
+            configuration.api_conf['remote_commands']['wodle_command']['enabled']:
+        command_section = re.compile(r"<wodle name=\"command\">(.*)</wodle>", flags=re.MULTILINE | re.DOTALL)
+        check_section(command_section, section='wodle_command', split_section='<wodle name=\"command\">')
+
+
+def load_wazuh_xml(xml_path, data=None):
+    if not data:
+        with open(xml_path) as f:
+            data = f.read()
 
     # -- characters are not allowed in XML comments
     xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)

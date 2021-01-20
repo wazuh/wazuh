@@ -511,7 +511,7 @@
 #define FIM_DB_ERROR_SYNC_DB                        "(6705): Failed to synchronize database."
 #define FIM_DB_ERROR_GET_ROW_PATH                   "(6706): Couldn't get %s %s row's path."
 #define FIM_DB_ERROR_CALC_CHECKSUM                  "(6707): Failed to calculate database checksum."
-#define FIM_DB_ERROR_RM_RANGE                       "(6708): Failed to delete a range of paths between '%s' and '%s'"
+#define FIM_DB_ERROR_RM_PATTERN                     "(6708): Failed to delete a range of paths using pattern '%s'."
 #define FIM_DB_ERROR_RM_NOT_SCANNED                 "(6709): Failed to delete from db all unscanned files."
 #define FIM_ERROR_WHODATA_INIT                      "(6710): Failed to start the Whodata engine. Directories/files will be monitored in Realtime mode"
 #define FIM_ERROR_GET_ABSOLUTE_PATH                 "(6711): Cannot get absolute path of '%s': %s (%d)"

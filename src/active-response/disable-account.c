@@ -1,122 +1,105 @@
-#include "shared.h"
-#include "external/cJSON/cJSON.h"
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All right reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "active_responses.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/utsname.h>
-
-
-static char *action;
-static char *user;
-static char *command_ex;
-static cJSON *input_json = NULL;
-static char *filename;
-static void free_vars ();
-
 
 int main (int argc, char **argv) {
     (void)argc;
     char input[BUFFERSIZE];
     char args[COMMANDSIZE];
-    char command[COMMANDSIZE];
     char log_msg[LOGSIZE];
+    char *action;
+    char *user;
+    char *command_ex;
+    cJSON *input_json = NULL;
     struct utsname uname_buffer;
 
-    write_debug_file ("disable-account" , "Starting");
+    write_debug_file(argv[0] , "Starting");
 
-    // Reading filename
-    filename = basename(argv[0]);
-    if (filename == NULL) {
-        log_msg[LOGSIZE -1] = '\0';
-        snprintf(log_msg, LOGSIZE -1 , "Cannot read filename: %s (%d)", strerror(errno), errno);
-        write_debug_file ("disable-account" ,log_msg);
-        return OS_INVALID;
-    }
-
-    input[BUFFERSIZE -1] = '\0';
+    memset(input, '\0', BUFFERSIZE);
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
-        write_debug_file (filename, "Cannot read input from stdin");
+        write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
+
+    write_debug_file(argv[0], input);
 
     input_json = get_json_from_input(input);
     if (!input_json) {
-        write_debug_file (filename, "Invalid input format");
+        write_debug_file(argv[0], "Invalid input format");
         return OS_INVALID;
     }
 
     action = get_command(input_json);
     if (!action) {
-        write_debug_file (filename, "Cannot read 'command' from json");
+        write_debug_file(argv[0], "Cannot read 'command' from json");
+        cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     if (strcmp("add", action) && strcmp("delete", action)) {
-        write_debug_file (filename, "Invalid value of 'command'");
-        free_vars();
+        write_debug_file(argv[0], "Invalid value of 'command'");
+        cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     // Detect username
     user = get_username_from_json(input_json);
     if (!user) {
-        write_debug_file (filename, "Cannot read 'dstuser' from data");
-        free_vars();
+        write_debug_file(argv[0], "Cannot read 'dstuser' from data");
+        cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     if (!strcmp("root", user)) {
-        write_debug_file (filename, "Invalid username");
-        free_vars();
+        write_debug_file(argv[0], "Invalid username");
+        cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
-    log_msg[LOGSIZE -1] = '\0';
-    snprintf(log_msg, LOGSIZE -1 , "Username: %s  Action: %s", user, action);
-    write_debug_file ("disable-account" ,log_msg);
-
-    if (uname(&uname_buffer) != 0){
-        write_debug_file (filename, "Cannot get system name");
-        free_vars();
+    if (uname(&uname_buffer) < 0) {
+        write_debug_file(argv[0], "Cannot get system name");
+        cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
     if (!strcmp("Linux", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname)) {
         // Checking if passwd is present
         if (access(PASSWD, F_OK) < 0) {
-            log_msg[LOGSIZE -1] = '\0';
+            memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE - 1, "The passwd file '%s' is not accessible: %s (%d)", PASSWD, strerror(errno), errno);
-            write_debug_file (filename, log_msg);
-            free_vars();
-            return OS_INVALID;
+            write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
+            return OS_SUCCESS;
         }
 
         os_strdup(PASSWD, command_ex);
-        args[COMMANDSIZE -1] = '\0';
+        memset(args, '\0', COMMANDSIZE);
         if (!strcmp("add", action)) {
             snprintf(args, COMMANDSIZE -1, "-l");
         } else {
             snprintf(args, COMMANDSIZE -1, "-u");
         }
 
-    } else if (!strcmp("AIX", uname_buffer.sysname)){
+    } else if (!strcmp("AIX", uname_buffer.sysname)) {
         // Checking if chuser is present
         if (access(CHUSER, F_OK) < 0) {
-            log_msg[LOGSIZE -1] = '\0';
+            memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE - 1, "The chuser file '%s' is not accessible: %s (%d)", CHUSER, strerror(errno), errno);
-            write_debug_file (filename, log_msg);
-            free_vars();
-            return OS_INVALID;
+            write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
+            return OS_SUCCESS;
         }
 
         os_strdup(CHUSER, command_ex);
         // Disabling an account
-        args[COMMANDSIZE -1] = '\0';
+        memset(args, '\0', COMMANDSIZE);
         if (!strcmp("add", action)) {
             snprintf(args, COMMANDSIZE -1, "account_locked=true");
         } else {
@@ -124,29 +107,28 @@ int main (int argc, char **argv) {
         }
 
     } else {
-        write_debug_file(filename, "Invalid system");
-        free_vars();
-        return OS_INVALID;
+        write_debug_file(argv[0], "Invalid system");
+        cJSON_Delete(input_json);
+        return OS_SUCCESS;
     }
 
     // Execute the command
-    snprintf(command, COMMANDSIZE - 1, "%s %s %s", command_ex, args, user);
-    if (system(command) != 0) {
-        char log_msg[LOGSIZE] = "";
-        snprintf(log_msg, LOGSIZE -1, "Unable execute the command: '%s' ", command);
-        write_debug_file(filename, log_msg);
+    char *exec_cmd[4] = { command_ex, args, user, NULL };
+    wfd_t *wfd = NULL;
+    if (wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDERR), !wfd) {
+        memset(log_msg, '\0', LOGSIZE);
+        snprintf(log_msg, LOGSIZE -1 , "Error executing '%s': %s", command_ex, strerror(errno));
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        os_free(command_ex);
         return OS_INVALID;
     }
+    wpclose(wfd);
 
-    write_debug_file ("disable-account" , "Ended");
-    return 0;
-}
+    write_debug_file(argv[0], "Ended");
 
-static void free_vars (){
     cJSON_Delete(input_json);
-    os_free(action);
-    os_free(user);
     os_free(command_ex);
-    os_free(filename);
-    os_free(filename);
+
+    return OS_SUCCESS;
 }
