@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -990,7 +990,7 @@ main()
     # Setting up the environment
     setEnv
 
-    # Ask to remove the current installations if exist
+    # Ask to remove the current installation if exists
     askForDelete
 
     # Configuring the system (based on the installation type)
