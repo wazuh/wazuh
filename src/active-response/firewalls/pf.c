@@ -125,7 +125,7 @@ int main (int argc, char **argv) {
             wpclose(wfd);
         }
 
-        if (strcmp(exec_cmd2[0], PFCTL) == 0) {
+        if (exec_cmd2[0] && strcmp(exec_cmd2[0], PFCTL) == 0) {
             wfd_t *wfd = wpopenv(PFCTL, exec_cmd2, W_BIND_STDOUT);
             if (!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
