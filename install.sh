@@ -393,6 +393,7 @@ ConfigureClient()
             echo "   - ${noactive}."
             ;;
         *)
+            ACTIVERESPONSE="yes"
             echo ""
             echo "   - ${yesactive}."
             ;;
