@@ -273,7 +273,7 @@ getPreinstalledType()
             getPreinstalledDir
         fi
 
-        TYPE=`$PREINSTALLEDDIR/bin/wazuh-control -t`
+        TYPE=`$PREINSTALLEDDIR/bin/wazuh-control info -t`
     fi
 
     echo $TYPE
@@ -290,7 +290,7 @@ getPreinstalledVersion()
             getPreinstalledDir
         fi
 
-        VERSION=`$PREINSTALLEDDIR/bin/wazuh-control -v`
+        VERSION=`$PREINSTALLEDDIR/bin/wazuh-control info -v`
     fi
 
     echo $VERSION
@@ -336,7 +336,7 @@ UpdateStopOSSEC()
 {
     MAJOR_VERSION=`echo ${VERSION} | cut -f1 -d'.' | cut -f2 -d'v'`
 
-    if [ "X$TYPE" != "X" ]; then
+    if [ "X$TYPE" = "X" ]; then
         getPreinstalledType
     fi
 
