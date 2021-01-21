@@ -27,7 +27,7 @@ int main (int argc, char **argv) {
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
 
-    write_debug_file (argv[0] , "Starting");
+    write_debug_file(argv[0], "Starting");
 
     memset(input, '\0', BUFFERSIZE);
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
@@ -87,7 +87,6 @@ int main (int argc, char **argv) {
     if (!strcmp("Linux", uname_buffer.sysname)) {
         char arg1[COMMANDSIZE];
         char fw_cmd[COMMANDSIZE];
-        char log_msg[LOGSIZE];
 
         memset(arg1, '\0', COMMANDSIZE);
         if (!strcmp("add", action)) {
@@ -120,13 +119,14 @@ int main (int argc, char **argv) {
         snprintf(lock_pid_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_FILE);
 
         // Executing and exiting
-        int count = 0;
         lock(lock_path, lock_pid_path, argv[0], basename(argv[0]));
+
+        int count = 0;
         bool flag = true;
         while (flag) {
-            char system_command[COMMANDSIZE];
-            memset(system_command, '\0', COMMANDSIZE);
-            snprintf(system_command, COMMANDSIZE -1 , "%s %s\"%s\"", fw_cmd, arg1, rule);
+            char system_command[LOGSIZE];
+            memset(system_command, '\0', LOGSIZE);
+            snprintf(system_command, LOGSIZE -1 , "%s %s\"%s\"", fw_cmd, arg1, rule);
             if (system(system_command) != 0) {
                 count++;
                 write_debug_file(argv[0], "Unable to run firewall-cmd");
@@ -140,10 +140,14 @@ int main (int argc, char **argv) {
             }
         }
         unlock(lock_path, argv[0]);
+
     } else {
         write_debug_file(argv[0], "Invalid system");
     }
+
     write_debug_file(argv[0], "Ended");
+
     cJSON_Delete(input_json);
+
     return OS_SUCCESS;
 }
