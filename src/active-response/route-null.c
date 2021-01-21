@@ -98,9 +98,37 @@ int main (int argc, char **argv) {
     }
 #else
     if (!strcmp("add", action)) {
+        const char *regex = ".*Default Gateway.*[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*";
+        const char *tmp_file = "default-gateway.txt";
+        char *gateway = NULL;
+
         char cmd[OS_MAXSTR + 1];
-        snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe -p ADD %s MASK 255.255.255.255 127.0.0.1", srcip);
+        snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\ipconfig.exe | %%WINDIR%%\\system32\\findstr.exe /R /C:\"%s\" > %s", regex, tmp_file);
         system(cmd);
+
+        FILE *fp = fopen(tmp_file, "r");
+        if(fp != NULL) {
+            char output_buf[BUFFERSIZE];
+            while (fgets(output_buf, BUFFERSIZE, fp)) {
+                char *ptr = strchr(output_buf, ':');
+                if (ptr != NULL) {
+                    os_free(gateway);
+                    os_strdup(ptr+1, gateway);
+                }
+            }
+            fclose(fp);
+        }
+        remove(tmp_file);
+
+        if (gateway) {
+            snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe -p ADD %s MASK 255.255.255.255 %s", srcip, gateway);
+            system(cmd);
+            os_free(gateway);
+        } else {
+            write_debug_file(argv[0], "Couldn't get default gateway");
+            cJSON_Delete(input_json);
+            return OS_INVALID;
+        }
     } else {
         char cmd[OS_MAXSTR + 1];
 		snprintf(cmd, OS_MAXSTR, "%%WINDIR%%\\system32\\route.exe DELETE %s", srcip);
