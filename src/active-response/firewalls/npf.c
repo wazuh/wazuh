@@ -139,11 +139,10 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    char *exec_cmd[6];
+    char *exec_cmd[6] = {NULL, NULL, NULL, NULL, NULL, NULL};
     if (!strcmp("add", action)) {
         char *arg[6] = {NPFCTL, "table", "wazuh_blacklist", "add", srcip, NULL};
         memcpy(exec_cmd, arg, sizeof(exec_cmd));
-
     } else {
         char *arg[6] = {NPFCTL, "table", "wazuh_blacklist", "del", srcip, NULL};
         memcpy(exec_cmd, arg, sizeof(exec_cmd));

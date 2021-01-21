@@ -79,8 +79,8 @@ int main (int argc, char **argv) {
             return OS_SUCCESS;
         }
 
-        char *exec_cmd1[7];
-        char *exec_cmd2[4];
+        char *exec_cmd1[7] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+        char *exec_cmd2[4] = {NULL, NULL, NULL, NULL};
 
         // Checking if we have pf config file
         if (access(PFCTL_RULES, F_OK) == 0) {
@@ -113,7 +113,7 @@ int main (int argc, char **argv) {
         }
 
         // Executing it
-        if (strcmp(exec_cmd1[0], PFCTL) == 0) {
+        if (exec_cmd1[0] && strcmp(exec_cmd1[0], PFCTL) == 0) {
             wfd_t *wfd = wpopenv(PFCTL, exec_cmd1, W_BIND_STDOUT);
             if (!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
