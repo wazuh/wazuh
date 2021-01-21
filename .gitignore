@@ -72,6 +72,7 @@ src/disable-account
 src/restart-wazuh
 src/firewalld-drop
 src/ipfw
+src/host-deny
 
 # Windows agent
 src/win32/*.exe

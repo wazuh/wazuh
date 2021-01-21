@@ -170,4 +170,5 @@ WazuhUpgrade()
     rm -f $DIRECTORY/active-response/bin/firewalld-drop.sh
     rm -f $DIRECTORY/active-response/bin/ipfw.sh
     rm -f $DIRECTORY/active-response/bin/ipfw_mac.sh
+    rm -f $DIRECTORY/active-response/bin/host-deny.sh
 }

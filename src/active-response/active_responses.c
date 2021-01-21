@@ -182,7 +182,6 @@ void lock (const char *lock_path, const char *lock_pid_path, const char *log_pat
         // Getting currently/saved PID locking the file
         if (pid_file = fopen(lock_pid_path, "r"), !pid_file) {
             write_debug_file(log_path, "Can not read pid file");
-            continue;
         } else {
             read = fscanf(pid_file, "%d", &current_pid);
             fclose(pid_file);
@@ -198,7 +197,6 @@ void lock (const char *lock_path, const char *lock_pid_path, const char *log_pat
 
             } else {
                 write_debug_file(log_path, "Can not read pid file");
-                continue;
             }
         }
 
