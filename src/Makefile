@@ -1647,6 +1647,7 @@ endif
 
 WPYTHON_DIR := ${PREFIX}/framework/python
 OPTIMIZE_CPYTHON?=no
+WPYTHON_TAR=cpython.tar.gz
 WLIBPYTHON=libpython3.8.so.1.0
 
 ifneq (,$(filter ${OPTIMIZE_CPYTHON},YES yes y Y 1))
@@ -1935,10 +1936,12 @@ endif
 clean-wpython:
 ifneq ($(wildcard external/cpython/*),)
 	-cd ${EXTERNAL_CPYTHON} && ${MAKE} clean && ${MAKE} distclean
+else
+	rm -rf external/$(WPYTHON_TAR)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) external/$(WPYTHON_TAR)
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
