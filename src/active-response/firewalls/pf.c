@@ -148,19 +148,24 @@ int main (int argc, char **argv) {
 }
 
 int checking_if_its_configured(const char *path, const char *table) {
-    char command[COMMANDSIZE];
     char output_buf[COMMANDSIZE];
 
-    snprintf(command, COMMANDSIZE - 1, "cat %s | %s %s", path, GREP, table);
-    FILE *fp = popen(command, "r");
-    if (fp) {
-        while (fgets(output_buf, COMMANDSIZE, fp) != NULL) {
-            pclose(fp);
-            return OS_SUCCESS;
+    char *cmd[3] = {"cat", path, NULL};
+    wfd_t *wfd;
+    if(wfd = wpopenv(path, cmd, W_BIND_STDOUT), wfd) {
+        char output_buf[BUFFERSIZE];
+        while(fgets(output_buf, BUFFERSIZE, wfd->file)) {
+            const char *p1 = strstr(output_buf, table);
+            if(!p1) {
+                wpclose(wfd);
+                return OS_INVALID;
+            }
         }
-        pclose(fp);
+    } else {
         return OS_INVALID;
-    }
-    return OS_INVALID;
+    };
+
+    wpclose(wfd);
+    return OS_SUCCESS;
 }
 
