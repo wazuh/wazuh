@@ -124,6 +124,9 @@ fdb_t *fim_db_init(int storage) {
         goto free_fim;
     }
 
+    // Close the DB when ending execution.
+    atexit(fim_db_close);
+
     return fim;
 
 free_fim:
@@ -134,11 +137,19 @@ free_fim:
     return NULL;
 }
 
-void fim_db_close(fdb_t *fim_sql) {
-    fim_db_force_commit(fim_sql);
-    fim_db_finalize_stmt(fim_sql);
-    sqlite3_close_v2(fim_sql->db);
+// LCOV_EXCL_START
+void fim_db_close() {
+    if (syscheck.database == NULL) {
+        return;
+    }
+
+    fim_db_force_commit(syscheck.database);
+    fim_db_finalize_stmt(syscheck.database);
+    sqlite3_close_v2(syscheck.database->db);
+
+    os_free(syscheck.database);
 }
+// LCOV_EXCL_STOP
 
 
 void fim_db_clean(void) {

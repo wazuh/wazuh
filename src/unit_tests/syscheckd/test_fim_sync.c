@@ -129,7 +129,8 @@ static int setup_group(void **state) {
 }
 
 static int teardown_group(void **state) {
-    fim_db_close(syscheck.database);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    fim_db_close();
     return 0;
 }
 
@@ -864,5 +865,5 @@ int main(void) {
         cmocka_unit_test(test_fim_entry_json_null_data),
     };
 
-    return cmocka_run_group_tests(tests, setup_group, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

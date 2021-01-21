@@ -231,13 +231,9 @@ int fim_db_get_path_range(fdb_t *fim_sql, fim_type type, const char *start, cons
 fdb_t *fim_db_init(int storage);
 
 /**
- * @brief Finalize stmt and close DB.
- *
- * @param fim_sql FIM database struct.
- *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ * @brief Finalize stmt and close the global FIM DB.
  */
-void fim_db_close(fdb_t *fim_sql);
+void fim_db_close();
 
 /**
  * @brief Clean the FIM databases.

@@ -810,41 +810,6 @@ void test_fim_db_cache_success(void **state) {
 }
 
 /**********************************************************************************************************************\
- * fim_db_close() tests
-\**********************************************************************************************************************/
-void test_fim_db_close_failed(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    expect_fim_db_check_transaction();
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return(__wrap_sqlite3_finalize, SQLITE_ERROR);
-    will_return(__wrap_sqlite3_errmsg, "REASON GOES HERE");
-#ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg,
-                  "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?);': REASON GOES HERE");
-#else
-    expect_string(__wrap__merror, formatted_msg,
-                  "Error finalizing statement 'INSERT INTO file_data (dev, inode, size, perm, attributes, uid, gid, "
-                  "user_name, group_name, hash_md5, hash_sha1, hash_sha256, mtime) VALUES (NULL, NULL, ?, ?, ?, ?, ?, "
-                  "?, ?, ?, ?, ?, ?);': REASON GOES HERE");
-#endif
-    will_return(__wrap_sqlite3_close_v2, SQLITE_BUSY);
-    fim_db_close(test_data->fim_sql);
-}
-
-void test_fim_db_close_success(void **state) {
-    test_fim_db_insert_data *test_data = *state;
-    expect_fim_db_check_transaction();
-    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
-    will_return_always(__wrap_sqlite3_finalize, SQLITE_OK);
-    will_return(__wrap_sqlite3_close_v2, SQLITE_OK);
-    fim_db_close(test_data->fim_sql);
-}
-
-/**********************************************************************************************************************\
  * fim_db_finalize_stmt() tests
 \**********************************************************************************************************************/
 void test_fim_db_finalize_stmt_failed(void **state) {
@@ -2265,9 +2230,6 @@ int main(void) {
         // fim_db_cache
         cmocka_unit_test_setup_teardown(test_fim_db_cache_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_cache_success, test_fim_db_setup, test_fim_db_teardown),
-        // fim_db_close
-        cmocka_unit_test_setup_teardown(test_fim_db_close_failed, test_fim_db_setup, test_fim_db_teardown),
-        cmocka_unit_test_setup_teardown(test_fim_db_close_success, test_fim_db_setup, test_fim_db_teardown),
         // fim_db_finalize_stmt
         cmocka_unit_test_setup_teardown(test_fim_db_finalize_stmt_failed, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_finalize_stmt_success, test_fim_db_setup, test_fim_db_teardown),
