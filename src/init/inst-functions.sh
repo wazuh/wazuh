@@ -827,6 +827,7 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} firewalld-drop ${PREFIX}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} disable-account ${PREFIX}/active-response/bin/
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} restart-wazuh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} route-null ${PREFIX}/active-response/bin/
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
