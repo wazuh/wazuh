@@ -397,7 +397,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhResourceNotFound(1701, extra_message=self.id)
+            raise WazuhResourceNotFound(1701)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
