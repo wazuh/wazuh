@@ -120,18 +120,23 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #ifndef DEFAULTDIR
 #ifdef WAZUH_UNIT_TESTING
-#define DEFAULTDIR FALLBACKDIR
+#define DEFAULTDIR(x) FALLBACKDIR x
 #else
-#define DEFAULTDIR ({ \
+#define DEFAULTDIR(x) ({ \
     struct stat wazuh_homedir_test; \
-    char *wazuh_homedir = (home_path == NULL)? w_homedir(NULL) : binary_path; \
+    char *wazuh_homedir = (home_path == NULL)? w_homedir(NULL) : home_path; \
     if (wazuh_homedir != NULL) { \
         if (stat(wazuh_homedir, &wazuh_homedir_test) < 0 || !S_ISDIR(wazuh_homedir_test.st_mode)) wazuh_homedir = FALLBACKDIR; \
     } else { \
         wazuh_homedir = FALLBACKDIR; \
     } \
-    binary_path = wazuh_homedir; \
-    wazuh_homedir; \
+    home_path = wazuh_homedir; \
+    if (!(x)) { \
+        home_path; \
+    } \
+    char full_path[MAXPATHLEN+1] = {'\0'}; \
+    snprintf(full_path, MAXPATHLEN, "%s%s", wazuh_homedir, (x)); \
+    full_path; \
 })
 #endif
 #endif
@@ -142,7 +147,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 // Authd local socket
 #define AUTH_LOCAL_SOCK "/queue/ossec/auth"
-#define AUTH_LOCAL_SOCK_PATH DEFAULTDIR AUTH_LOCAL_SOCK
+#define AUTH_LOCAL_SOCK_PATH DEFAULTDIR(AUTH_LOCAL_SOCK)
 
 // Remote requests socket
 #define REMOTE_REQ_SOCK "/queue/ossec/request"

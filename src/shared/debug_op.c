@@ -67,7 +67,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
     if (!flags.initialized) {
         w_logging_init();
-        mdebug1("Logging module auto-initialized");  
+        mdebug1("Logging module auto-initialized");
     }
 
     if (filename = strrchr(file, '/'), filename) {
@@ -126,7 +126,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             cJSON_AddStringToObject(json_log, "description", jsonstr);
 
             output = cJSON_PrintUnformatted(json_log);
-            
+
             w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s", output);
             (void)fprintf(fp, "\n");
@@ -223,7 +223,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 void w_logging_init(){
     flags.initialized = 1;
     w_mutex_init(&logging_mutex, NULL);
-    os_logging_config();    
+    os_logging_config();
 }
 
 void os_logging_config(){
@@ -234,7 +234,7 @@ void os_logging_config(){
   int i;
 
   pid = (int)getpid();
-
+  mdebug1("%s %s %s", DEFAULTDIR, home_path, "hello");
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
     flags.log_plain = 1;
     flags.log_json = 0;
