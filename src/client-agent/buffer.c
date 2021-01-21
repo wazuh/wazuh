@@ -107,7 +107,7 @@ int buffer_append(const char *msg){
             break;
     }
 
-    agent_state.msg_count++;
+    w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
 
     /* When buffer is full, event is dropped */
 

@@ -32,7 +32,7 @@ void *EventForward()
                 break;
             }
         }else{
-            agent_state.msg_count++;
+            w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
 
             if (send_msg(msg, -1) < 0) {
                 break;

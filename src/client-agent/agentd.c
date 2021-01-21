@@ -132,6 +132,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         rc++;
     }
 
+    /* Configure and start statistics */
+    state_init();
     w_create_thread(state_main, NULL);
 
     /* Set max fd for select */
@@ -151,7 +153,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     start_agent(1);
 
     os_delwait();
-    update_status(GA_STATUS_ACTIVE);
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 
     // Ignore SIGPIPE signal to prevent the process from crashing
     struct sigaction act;
@@ -198,13 +200,13 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         /* For the receiver */
         if (FD_ISSET(agt->sock, &fdset)) {
             if (receive_msg() < 0) {
-                update_status(GA_STATUS_NACTIVE);
+                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
                 merror(LOST_ERROR);
                 os_setwait();
                 start_agent(0);
                 minfo(SERVER_UP);
                 os_delwait();
-                update_status(GA_STATUS_ACTIVE);
+                w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
             }
         }
 

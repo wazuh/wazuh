@@ -15,6 +15,7 @@
 #include "sec.h"
 #include "config/config.h"
 #include "config/client-config.h"
+#include "state.h"
 
 /* Buffer functions */
 #define full(i, j, n) ((i + 1) % (n) == j)
@@ -31,15 +32,6 @@
 #define FULL 2
 #define FLOOD 3
 
-/* Agent status structure */
-
-typedef struct agent_state_t {
-    agent_status_t status;
-    time_t last_keepalive;
-    time_t last_ack;
-    unsigned int msg_count;
-    unsigned int msg_sent;
-} agent_state_t;
 
 /* Resolve hostname */
 void resolveHostname(char **hostname, int attempts);
@@ -123,11 +115,6 @@ void * restartAgent();
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
 
-// Agent status functions
-void * state_main(void * args);
-void update_status(agent_status_t status);
-void update_keepalive(time_t curr_time);
-void update_ack(time_t curr_time);
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
@@ -160,7 +147,7 @@ extern time_t available_server;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
-extern agent_state_t agent_state;
+//extern agent_state_t agent_state;
 
 static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
 

@@ -235,7 +235,7 @@ int local_start()
     os_setwait();
     start_agent(1);
     os_delwait();
-    update_status(GA_STATUS_ACTIVE);
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE); // Check for RC
 
     req_init();
 
@@ -330,7 +330,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
-        agent_state.msg_count++;
+        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
         if (send_msg(tmpstr, -1) >= 0) {
             retval = 0;
         }
