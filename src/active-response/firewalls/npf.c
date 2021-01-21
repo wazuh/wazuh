@@ -62,12 +62,12 @@ int main (int argc, char **argv) {
     }
 
     wfd_t *wfd1;
-    char *exec_cmd[3] = {NPFCTL, "show", NULL};
-    if(wfd1 = wpopenv(NPFCTL, exec_cmd, W_BIND_STDOUT), wfd1) {
+    char *cmd[3] = {NPFCTL, "show", NULL};
+    if(wfd1 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd1) {
         char output_buf[BUFFERSIZE];
         while(fgets(output_buf, BUFFERSIZE, wfd1->file)) {
-            const char *p1 = strstr(output_buf, "filtering:");
-            if(!p1) {
+            const char *pos = strstr(output_buf, "filtering:");
+            if(!pos) {
                 memset(log_msg, '\0', LOGSIZE);
                 snprintf(log_msg, LOGSIZE -1, "Unable to find 'filtering'");
                 write_debug_file(argv[0], log_msg);
@@ -75,10 +75,19 @@ int main (int argc, char **argv) {
                 wpclose(wfd1);
                 return OS_INVALID;
             }
-            p1 = p1 + strlen("filtering:    ");
-            if(strncmp(p1, "active" , strlen("active")) != 0) {
+            char state[15];
+            if (pos && sscanf(pos, "%*s %9s", state) == 1) {
+                if(strcmp(state, "active") != 0) {
+                    memset(log_msg, '\0', LOGSIZE);
+                    snprintf(log_msg, LOGSIZE -1, "The filter property is inactive");
+                    write_debug_file(argv[0], log_msg);
+                    cJSON_Delete(input_json);
+                    wpclose(wfd1);
+                    return OS_INVALID;
+                }
+            } else {
                 memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1, "The filter property is inactive");
+                snprintf(log_msg, LOGSIZE -1, "Key word not found");
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 wpclose(wfd1);
@@ -95,7 +104,7 @@ int main (int argc, char **argv) {
     wpclose(wfd1);
 
     wfd_t *wfd2;
-    if(wfd2 = wpopenv(NPFCTL, exec_cmd, W_BIND_STDOUT), wfd2) {
+    if(wfd2 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd2) {
         char output_buf[BUFFERSIZE];
         while(fgets(output_buf, BUFFERSIZE, wfd2->file)) {
             const char *p1 = strstr(output_buf, "table <wazuh_blacklist>");
