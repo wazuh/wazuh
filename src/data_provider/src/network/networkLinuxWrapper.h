@@ -20,7 +20,6 @@
 #include "filesystemHelper.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
-#include "timeHelper.h"
 
 #ifndef ARPHRD_TUNNEL
 #define ARPHRD_TUNNEL	768		/* IPIP tunnel.  */
@@ -170,7 +169,6 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
     ifaddrs* m_interfaceAddress;
     std::string m_gateway;
     std::string m_metrics;
-    const std::string m_scanTime;
 
     static std::string getNameInfo(const sockaddr* inputData, const socklen_t socketLen)
     {
@@ -230,7 +228,6 @@ public:
     : m_interfaceAddress{ addrs }
     , m_gateway{UNKNOWN_VALUE}
     , m_metrics{UNKNOWN_VALUE}
-    , m_scanTime{Utils::getCurrentTimestamp()}
     { 
         if (!addrs)
         {
@@ -270,11 +267,6 @@ public:
     std::string name() const override
     {
         return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "";
-    }
-
-    std::string scanTime() const override
-    {
-        return m_scanTime;
     }
 
     std::string adapter() const override

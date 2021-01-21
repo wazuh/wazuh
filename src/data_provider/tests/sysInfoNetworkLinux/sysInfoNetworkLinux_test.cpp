@@ -29,7 +29,6 @@ public:
     virtual ~SysInfoNetworkLinuxWrapperMock() = default;
     MOCK_METHOD(int, family, (), (const override));
     MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, scanTime, (), (const override));
     MOCK_METHOD(std::string, address, (), (const override));
     MOCK_METHOD(std::string, netmask, (), (const override));
     MOCK_METHOD(std::string, broadcast, (), (const override));
@@ -110,7 +109,6 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_PACKET));
     EXPECT_CALL(*mock, name()).Times(1).WillOnce(Return("eth01"));
-    EXPECT_CALL(*mock, scanTime()).Times(1).WillOnce(Return("2020/12/2020 19:05:05"));
     EXPECT_CALL(*mock, adapter()).Times(1).WillOnce(Return("adapter"));
     EXPECT_CALL(*mock, type()).Times(1).WillOnce(Return("ethernet"));
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("up"));
@@ -122,7 +120,6 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 
     EXPECT_EQ("eth01",ifaddr.at("name").get_ref<const std::string&>());
-    EXPECT_EQ("2020/12/2020 19:05:05",ifaddr.at("scan_time").get_ref<const std::string&>());
     EXPECT_EQ("adapter",ifaddr.at("adapter").get_ref<const std::string&>());
     EXPECT_EQ("ethernet",ifaddr.at("type").get_ref<const std::string&>());
     EXPECT_EQ("up",ifaddr.at("state").get_ref<const std::string&>());

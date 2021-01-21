@@ -159,10 +159,6 @@ class BSDPortWrapper final : public IPortWrapper
         return m_processInformation.processName;
     }
 
-    std::string scanTime() const override
-    {
-        return Utils::getCurrentTimestamp();
-    }
 };
 
 

@@ -95,7 +95,6 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>::buildNetworkD
 {
     // Extraction of common adapter data
     networkCommon["name"]       = m_interfaceAddress->name();
-    networkCommon["scan_time"]  = m_interfaceAddress->scanTime();
     networkCommon["adapter"]    = m_interfaceAddress->adapter();
     networkCommon["state"]      = m_interfaceAddress->state();
     networkCommon["type"]       = m_interfaceAddress->type();

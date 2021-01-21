@@ -27,7 +27,6 @@
 #include "networkHelper.h"
 #include "makeUnique.h"
 #include "sharedDefs.h"
-#include "timeHelper.h"
 
 static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 {
@@ -47,7 +46,6 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     public:
     explicit NetworkBSDInterface(ifaddrs* addrs)
     : m_interfaceAddress{addrs}
-    , m_scanTime{Utils::getCurrentTimestamp()}
     { 
         if (!addrs)
         {
@@ -58,11 +56,6 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     std::string name() const override
     {
         return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : UNKNOWN_VALUE;
-    }
-
-    std::string scanTime() const override
-    {
-        return m_scanTime;
     }
 
     std::string adapter() const override
