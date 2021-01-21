@@ -160,6 +160,7 @@ int main (int argc, char **argv) {
     }
     wpclose(wfd3);
 
+    write_debug_file(argv[0], "Ended");
     cJSON_Delete(input_json);
     return OS_SUCCESS;
 }
