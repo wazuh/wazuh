@@ -9,12 +9,11 @@
 
 #include "../active_responses.h"
 
-#define GREP        "/usr/bin/grep"
 #define PFCTL       "/sbin/pfctl"
 #define PFCTL_RULES "/etc/pf.conf"
 #define PFCTL_TABLE "wazuh_fwtable"
 
-int checking_if_its_configured(const char *path, const char *table);
+int checking_if_its_configured(char *path, const char *table);
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -147,8 +146,7 @@ int main (int argc, char **argv) {
     return OS_SUCCESS;
 }
 
-int checking_if_its_configured(const char *path, const char *table) {
-    char output_buf[COMMANDSIZE];
+int checking_if_its_configured(char *path, const char *table) {
 
     char *cmd[3] = {"cat", path, NULL};
     wfd_t *wfd;
@@ -156,9 +154,9 @@ int checking_if_its_configured(const char *path, const char *table) {
         char output_buf[BUFFERSIZE];
         while(fgets(output_buf, BUFFERSIZE, wfd->file)) {
             const char *p1 = strstr(output_buf, table);
-            if(!p1) {
+            if(p1) {
                 wpclose(wfd);
-                return OS_INVALID;
+                return OS_SUCCESS;
             }
         }
     } else {
@@ -166,6 +164,6 @@ int checking_if_its_configured(const char *path, const char *table) {
     };
 
     wpclose(wfd);
-    return OS_SUCCESS;
+    return OS_INVALID;
 }
 
