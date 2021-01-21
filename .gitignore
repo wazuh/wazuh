@@ -68,9 +68,12 @@ src/wazuh-integratord
 # Active responses
 src/firewall-drop
 src/default-firewall-drop
+src/pf
+src/npf
+src/ipfw
+src/firewalld-drop
 src/disable-account
 src/restart-wazuh
-src/ipfw
 src/route-null
 
 # Windows agent

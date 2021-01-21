@@ -156,7 +156,111 @@ char* get_srcip_from_json (cJSON *input) {
     return NULL;
 }
 
-int get_ip_version (char * ip) {
+#ifndef WIN32
+
+void lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
+    char log_msg[LOGSIZE];
+    int i=0;
+    int max_iteration = 50;
+    bool flag = true;
+    int saved_pid = -1;
+    int read;
+
+    // Providing a lock.
+    while (flag) {
+        FILE *pid_file;
+        int current_pid;
+
+        if (mkdir(lock_path, S_IRWXG) == 0) {
+            // Lock acquired (setting the pid)
+            pid_t pid = getpid();
+            pid_file = fopen(lock_pid_path, "w");
+            fprintf(pid_file, "%d", (int)pid);
+            fclose(pid_file);
+            return;
+        }
+
+        // Getting currently/saved PID locking the file
+        if (pid_file = fopen(lock_pid_path, "r"), !pid_file) {
+            write_debug_file(log_path, "Can not read pid file");
+            continue;
+        } else {
+            read = fscanf(pid_file, "%d", &current_pid);
+            fclose(pid_file);
+
+            if (read == 1) {
+                if (saved_pid == -1) {
+                    saved_pid = current_pid;
+                }
+
+                if (current_pid == saved_pid) {
+                    i++;
+                }
+
+            } else {
+                write_debug_file(log_path, "Can not read pid file");
+                continue;
+            }
+        }
+
+        sleep(i);
+
+        i++;
+
+        // So i increments 2 by 2 if the pid does not change.
+        // If the pid keeps changing, we will increments one
+        // by one and fail after MAX_ITERACTION
+        if (i >= max_iteration) {
+            bool kill = false;
+            wfd_t *wfd = NULL;
+            char *command_ex_1[4] = {"pgrep", "-f", (char *)proc_name, NULL};
+            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
+                char output_buf[BUFFERSIZE];
+                while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
+                    int pid = atoi(output_buf);
+                    if (pid == current_pid) {
+                        char pid_str[10];
+                        memset(pid_str, '\0', 10);
+                        snprintf(pid_str, 9, "%d", pid);
+                        char *command_ex_2[4] = {"kill", "-9", pid_str, NULL};
+                        wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
+                        memset(log_msg, '\0', LOGSIZE);
+                        snprintf(log_msg, LOGSIZE -1, "Killed process %d holding lock.", pid);
+                        write_debug_file(log_path, log_msg);
+                        wpclose(wfd2);
+                        kill = true;
+                        unlock(lock_path, log_path);
+                        i = 0;
+                        saved_pid = -1;
+                        break;
+                    }
+                }
+            } else {
+                write_debug_file(log_path, "Unable to run pgrep");
+            }
+            wpclose(wfd);
+
+            if (!kill) {
+                memset(log_msg, '\0', LOGSIZE);
+                snprintf(log_msg, LOGSIZE -1, "Unable kill process %d holding lock.", current_pid);
+                write_debug_file(log_path, log_msg);
+
+                // Unlocking and exiting
+                unlock(lock_path, log_path);
+                return;
+            }
+        }
+    }
+
+}
+
+void unlock (const char *lock_path, const char *log_path) {
+    if (rmdir_ex(lock_path) < 0) {
+        write_debug_file(log_path, "Unable to remove lock folder");
+    }
+}
+
+int get_ip_version (char *ip) {
     struct addrinfo hint, *res = NULL;
     int ret;
 
@@ -181,3 +285,5 @@ int get_ip_version (char * ip) {
     freeaddrinfo(res);
     return OS_INVALID;
 }
+
+#endif

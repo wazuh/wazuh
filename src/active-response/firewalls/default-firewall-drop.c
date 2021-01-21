@@ -14,9 +14,6 @@
 #define IP4TABLES "/sbin/iptables"
 #define IP6TABLES "/sbin/ip6tables"
 
-static void lock (const char *lock_path, const char *lock_pid_path, const char *log_path);
-static void unlock (const char *lock_path, const char *log_path);
-
 int main (int argc, char **argv) {
     (void)argc;
     char *srcip;
@@ -121,7 +118,7 @@ int main (int argc, char **argv) {
         snprintf(lock_pid_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_FILE);
 
         // Executing and exiting
-        lock(lock_path, lock_pid_path, argv[0]);
+        lock(lock_path, lock_pid_path, argv[0], basename(argv[0]));
 
         int count = 0;
         bool flag = true;
@@ -316,8 +313,6 @@ int main (int argc, char **argv) {
 
     } else {
         write_debug_file(argv[0], "Invalid system");
-        cJSON_Delete(input_json);
-        return OS_SUCCESS;
     }
 
     write_debug_file(argv[0], "Ended");
@@ -325,106 +320,4 @@ int main (int argc, char **argv) {
     cJSON_Delete(input_json);
 
     return OS_SUCCESS;
-}
-
-static void lock (const char *lock_path, const char *lock_pid_path, const char *log_path) {
-    char log_msg[LOGSIZE];
-    int i=0;
-    int max_iteration = 50;
-    bool flag = true;
-    int saved_pid = -1;
-    int read;
-
-    // Providing a lock.
-    while (flag) {
-        FILE *pid_file;
-        int current_pid;
-
-        if (mkdir(lock_path, S_IRWXG) == 0) {
-            // Lock acquired (setting the pid)
-            pid_t pid = getpid();
-            pid_file = fopen(lock_pid_path, "w");
-            fprintf(pid_file, "%d", (int)pid);
-            fclose(pid_file);
-            return;
-        }
-
-        // Getting currently/saved PID locking the file
-        if (pid_file = fopen(lock_pid_path, "r"), !pid_file) {
-            write_debug_file(log_path, "Can not read pid file");
-            continue;
-        } else {
-            read = fscanf(pid_file, "%d", &current_pid);
-            fclose(pid_file);
-
-            if (read == 1) {
-                if (saved_pid == -1) {
-                    saved_pid = current_pid;
-                }
-
-                if (current_pid == saved_pid) {
-                    i++;
-                }
-
-            } else {
-                write_debug_file(log_path, "Can not read pid file");
-                continue;
-            }
-        }
-
-        sleep(i);
-
-        i++;
-
-        // So i increments 2 by 2 if the pid does not change.
-        // If the pid keeps changing, we will increments one
-        // by one and fail after MAX_ITERACTION
-        if (i >= max_iteration) {
-            bool kill = false;
-            wfd_t *wfd = NULL;
-            char *command_ex_1[4] = {"pgrep", "-f", "default-firewall-drop", NULL};
-            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
-                char output_buf[BUFFERSIZE];
-                while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
-                    int pid = atoi(output_buf);
-                    if (pid == current_pid) {
-                        char pid_str[10];
-                        memset(pid_str, '\0', 10);
-                        snprintf(pid_str, 9, "%d", pid);
-                        char *command_ex_2[4] = {"kill", "-9", pid_str, NULL};
-                        wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
-                        memset(log_msg, '\0', LOGSIZE);
-                        snprintf(log_msg, LOGSIZE -1, "Killed process %d holding lock.", pid);
-                        write_debug_file(log_path, log_msg);
-                        wpclose(wfd2);
-                        kill = true;
-                        unlock(lock_path, log_path);
-                        i = 0;
-                        saved_pid = -1;
-                        break;
-                    }
-                }
-            } else {
-                write_debug_file(log_path, "Unable to run pgrep");
-            }
-            wpclose(wfd);
-
-            if (!kill) {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1, "Unable kill process %d holding lock.", current_pid);
-                write_debug_file(log_path, log_msg);
-
-                // Unlocking and exiting
-                unlock(lock_path, log_path);
-                return;
-            }
-        }
-    }
-
-}
-
-static void unlock (const char *lock_path, const char *log_path) {
-    if (rmdir_ex(lock_path) < 0) {
-        write_debug_file(log_path, "Unable to remove lock folder");
-    }
 }
