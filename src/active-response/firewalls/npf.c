@@ -68,7 +68,7 @@ int main (int argc, char **argv) {
         int flag = false;
         while(fgets(output_buf, BUFFERSIZE, wfd1->file)) {
             const char *pos = strstr(output_buf, "filtering:");
-            if(pos) {
+            if(pos != NULL) {
                 char state[15];
                 if (pos && sscanf(pos, "%*s %9s", state) == 1) {
                     if(strcmp(state, "active") != 0) {
@@ -115,7 +115,7 @@ int main (int argc, char **argv) {
         int flag = false;
         while(fgets(output_buf, BUFFERSIZE, wfd2->file)) {
             const char *p1 = strstr(output_buf, "table <wazuh_blacklist>");
-            if(p1) {
+            if(p1 != NULL) {
                 flag = true;
                 break;
             }

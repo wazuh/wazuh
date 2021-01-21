@@ -9,11 +9,12 @@
 
 #include "../active_responses.h"
 
+#define GREP        "/usr/bin/grep"
 #define PFCTL       "/sbin/pfctl"
 #define PFCTL_RULES "/etc/pf.conf"
 #define PFCTL_TABLE "wazuh_fwtable"
 
-int checking_if_its_configured(char *path, const char *table);
+int checking_if_its_configured(const char *path, const char *table);
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -146,24 +147,20 @@ int main (int argc, char **argv) {
     return OS_SUCCESS;
 }
 
-int checking_if_its_configured(char *path, const char *table) {
+int checking_if_its_configured(const char *path, const char *table) {
 
-    char *cmd[3] = {"cat", path, NULL};
-    wfd_t *wfd;
-    if(wfd = wpopenv(path, cmd, W_BIND_STDOUT), wfd) {
-        char output_buf[BUFFERSIZE];
-        while(fgets(output_buf, BUFFERSIZE, wfd->file)) {
-            const char *p1 = strstr(output_buf, table);
-            if(p1) {
-                wpclose(wfd);
-                return OS_SUCCESS;
-            }
+    char command[1023];
+    char output_buf[1023];
+    snprintf(command, 1023, "cat %s | %s %s", path, GREP, table);
+    FILE *fp = popen(command, "r");
+    if (fp) {
+        while (fgets(output_buf, 1023, fp) != NULL) {
+            pclose(fp);
+            return OS_SUCCESS;
         }
-    } else {
+        pclose(fp);
         return OS_INVALID;
-    };
-
-    wpclose(wfd);
+    }
     return OS_INVALID;
 }
 
