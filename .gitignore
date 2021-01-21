@@ -70,6 +70,7 @@ src/firewall-drop
 src/default-firewall-drop
 src/disable-account
 src/restart-wazuh
+src/firewalld-drop
 src/ipfw
 
 # Windows agent

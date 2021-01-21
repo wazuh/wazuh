@@ -1435,7 +1435,7 @@ manage_agents: ${addagent_o}
 
 #### Active Response ####
 
-active_response_programs = default-firewall-drop disable-account restart-wazuh ipfw
+active_response_programs = default-firewall-drop disable-account restart-wazuh ipfw firewalld-drop
 
 $(active_response_programs): $(BUILD_LIBS)
 
@@ -1456,6 +1456,9 @@ disable-account: active-response/disable-account.o active-response/active_respon
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+firewalld-drop: active-response/firewalld-drop.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o
