@@ -74,6 +74,7 @@ src/ipfw
 src/firewalld-drop
 src/disable-account
 src/restart-wazuh
+src/ip-customblock
 src/route-null
 
 # Windows agent
