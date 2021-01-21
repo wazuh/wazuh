@@ -1179,6 +1179,13 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             continue;
         }
 
+        // Skip if the content is empty.
+        if (*tmp_dir == '\0') {
+            mdebug2(FIM_EMPTY_DIRECTORIES_CONFIG);
+            dir++;
+            continue;
+        }
+
         /* If it's an environment variable, expand it */
         env_variable = get_paths_from_env_variable(tmp_dir);
 
