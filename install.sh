@@ -562,9 +562,9 @@ ConfigureServer()
 ##########
 setInstallDir()
 {
-    echo ""
     if [ "X${USER_DIR}" = "X" ]; then
         while [ 1 ]; do
+            echo ""
             $ECHO "2- ${wheretoinstall} [$INSTALLDIR]: "
             read ANSWER
             if [ ! "X$ANSWER" = "X" ]; then
@@ -885,6 +885,7 @@ main()
                     break;
                     ;;
                 $no)
+                    echo ""
                     echo "${mustuninstall}"
                     exit 0;
                     ;;
@@ -922,7 +923,6 @@ main()
             fi
 
         fi
-        echo ""
     fi
 
     # Setting up the installation type
