@@ -9,7 +9,7 @@
 
 #include "active_responses.h"
 
-#define IPBLOCK "/ipblock"
+#define IPBLOCK "/ipblock/"
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -55,34 +55,37 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
+    char srcip_path[BUFFERSIZE];
+    strcpy(srcip_path, IPBLOCK);
+    strcat(srcip_path, srcip);
+
     if (!strcmp("add", action)) {
         // Checking if we have /ipblock
-        if(access(IPBLOCK, F_OK) == 0) {
-            char *cmd[3] = {"mkdir", IPBLOCK, NULL};
-            execvp(cmd[0],cmd);
-            wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDERR);
-            if(!wfd) {
+        if(access(IPBLOCK, F_OK) != 0) {
+            // If not we create the folder
+            if(mkdir(IPBLOCK, 0770) == -1) {
                 memset(log_msg, '\0', LOGSIZE);
                 snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", IPBLOCK, strerror(errno));
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_INVALID;
             }
-            wpclose(wfd);
-
-            FILE *fp = fopen(srcip, "a");
-            if(fp == NULL) {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Error creating %s file", srcip);
-                write_debug_file(argv[0], log_msg);
-                cJSON_Delete(input_json);
-                return OS_INVALID;
-            }
         }
-    } else {
-        if(remove(srcip) != 0) {
+
+        FILE *fp = fopen(srcip_path, "a");
+        if(fp == NULL) {
             memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "Error deleting %s file", srcip);
+            snprintf(log_msg, LOGSIZE - 1, "Error creating %s file", srcip_path);
+            write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
+            return OS_INVALID;
+        }
+        fclose(fp);
+
+    } else {
+        if(remove(srcip_path) != 0) {
+            memset(log_msg, '\0', LOGSIZE);
+            snprintf(log_msg, LOGSIZE - 1, "Error deleting %s file", srcip_path);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
