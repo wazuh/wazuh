@@ -20,12 +20,13 @@ int main (int argc, char **argv) {
     static cJSON *input_json = NULL;
 
     write_debug_file(argv[0], "Starting");
-    // Reading input
+
     memset(input, '\0', BUFFERSIZE);
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
         write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
+
     write_debug_file(argv[0], input);
 
     input_json = get_json_from_input(input);
@@ -63,15 +64,15 @@ int main (int argc, char **argv) {
 
     wfd_t *wfd1;
     char *cmd[3] = {NPFCTL, "show", NULL};
-    if(wfd1 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd1) {
+    if (wfd1 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd1) {
         char output_buf[BUFFERSIZE];
         int flag = false;
-        while(fgets(output_buf, BUFFERSIZE, wfd1->file)) {
+        while (fgets(output_buf, BUFFERSIZE, wfd1->file)) {
             const char *pos = strstr(output_buf, "filtering:");
-            if(pos != NULL) {
+            if (pos != NULL) {
                 char state[15];
                 if (pos && sscanf(pos, "%*s %9s", state) == 1) {
-                    if(strcmp(state, "active") != 0) {
+                    if (strcmp(state, "active") != 0) {
                         memset(log_msg, '\0', LOGSIZE);
                         snprintf(log_msg, LOGSIZE -1, "The filter property is inactive");
                         write_debug_file(argv[0], log_msg);
@@ -80,6 +81,7 @@ int main (int argc, char **argv) {
                         return OS_INVALID;
                     }
                     flag = true;
+                    break;
                 } else {
                     memset(log_msg, '\0', LOGSIZE);
                     snprintf(log_msg, LOGSIZE -1, "Key word not found");
@@ -90,13 +92,13 @@ int main (int argc, char **argv) {
                 }
             }
         }
+        wpclose(wfd1);
 
-        if(flag == false) {
+        if (flag == false) {
             memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE -1, "Unable to find 'filtering'");
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            wpclose(wfd1);
             return OS_INVALID;
         }
 
@@ -106,27 +108,26 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
-    };
-    wpclose(wfd1);
+    }
 
     wfd_t *wfd2;
-    if(wfd2 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd2) {
+    if (wfd2 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd2) {
         char output_buf[BUFFERSIZE];
         int flag = false;
-        while(fgets(output_buf, BUFFERSIZE, wfd2->file)) {
-            const char *p1 = strstr(output_buf, "table <wazuh_blacklist>");
-            if(p1 != NULL) {
+        while (fgets(output_buf, BUFFERSIZE, wfd2->file)) {
+            const char *pos = strstr(output_buf, "table <wazuh_blacklist>");
+            if (pos != NULL) {
                 flag = true;
                 break;
             }
         }
+        wpclose(wfd2);
 
-        if(flag == false) {
+        if (flag == false) {
             memset(log_msg, '\0', LOGSIZE);
             snprintf(log_msg, LOGSIZE -1, "Unable to find 'table <wazuh_blacklist>'");
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
-            wpclose(wfd2);
             return OS_INVALID;
         }
 
@@ -136,8 +137,7 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
-    };
-    wpclose(wfd2);
+    }
 
     char *exec_cmd[6];
     if (!strcmp("add", action)) {
@@ -151,7 +151,7 @@ int main (int argc, char **argv) {
 
     // Executing it
     wfd_t *wfd3 = wpopenv(NPFCTL, exec_cmd, W_BIND_STDOUT);
-    if(!wfd3) {
+    if (!wfd3) {
         memset(log_msg, '\0', LOGSIZE);
         snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", NPFCTL, strerror(errno));
         write_debug_file(argv[0], log_msg);
@@ -160,7 +160,9 @@ int main (int argc, char **argv) {
     }
     wpclose(wfd3);
 
+    write_debug_file(argv[0], "Ended");
+
     cJSON_Delete(input_json);
+
     return OS_SUCCESS;
 }
-

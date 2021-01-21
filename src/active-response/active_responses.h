@@ -55,3 +55,30 @@ char* get_username_from_json (cJSON *input);
  * @return char * with the srcip or NULL o fail
  * */
 char* get_srcip_from_json (cJSON *input);
+
+#ifndef WIN32
+/**
+ * Write process pid to lock simultaneous executions of the script
+ * @param lock_path Path of the folder to lock
+ * @param lock_pid_path Path of the file to lock
+ * @param log_path Messages log file
+ * @param proc_name Name of the proces to lock/unlock
+ * */
+void lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name);
+
+/**
+ * Remove lock
+ * @param lock_path Path of the folder to lock
+ * @param log_path Messages log file
+ * */
+void unlock (const char *lock_path, const char *log_path);
+
+/**
+ * Check ip version from a string
+ * @param ip Ip to check version
+ * @retval 4 If ip is ipv4
+ * @retval 6 If ip is ipv6
+ * @retval OS_INVALID on Invalid IP or error
+ * */
+int get_ip_version (char * ip);
+#endif

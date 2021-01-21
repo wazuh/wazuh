@@ -1435,7 +1435,7 @@ manage_agents: ${addagent_o}
 
 #### Active Response ####
 
-active_response_programs = default-firewall-drop disable-account restart-wazuh pf npf ipfw
+active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disable-account restart-wazuh
 
 $(active_response_programs): $(BUILD_LIBS)
 
@@ -1449,22 +1449,25 @@ active_response_o := $(active_response_c:.c=.o)
 active-response/%.o: active-response/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./active-response -DARGV0=\"active-responses\" -c $^ -o $@
 
+default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
 pf: active-response/firewalls/pf.o  active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 npf: active-response/firewalls/npf.o  active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-default-firewall-drop: active-response/firewalls/default-firewall-drop.o active-response/active_responses.o
+ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+firewalld-drop: active-response/firewalld-drop.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 disable-account: active-response/disable-account.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 restart-wazuh: active-response/restart-wazuh.o active-response/active_responses.o
-	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-ipfw: active-response/firewalls/ipfw.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Util ##########

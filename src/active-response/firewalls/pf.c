@@ -14,7 +14,7 @@
 #define PFCTL_RULES "/etc/pf.conf"
 #define PFCTL_TABLE "wazuh_fwtable"
 
-int checking_if_its_configured(const char *path, const char *table);
+static int checking_if_its_configured(const char *path, const char *table);
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -26,12 +26,13 @@ int main (int argc, char **argv) {
     struct utsname uname_buffer;
 
     write_debug_file(argv[0], "Starting");
-    // Reading input
+
     memset(input, '\0', BUFFERSIZE);
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
         write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
+
     write_debug_file(argv[0], input);
 
     input_json = get_json_from_input(input);
@@ -61,13 +62,12 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (uname(&uname_buffer) != 0){
+    if (uname(&uname_buffer) < 0) {
         write_debug_file(argv[0], "Cannot get system name");
         cJSON_Delete(input_json);
         return OS_INVALID;
     }
 
-    // OpenBSD and FreeBSD pf
     if (!strcmp("OpenBSD", uname_buffer.sysname) || !strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("Darwin", uname_buffer.sysname)) {
 
         // Checking if pfctl is present
@@ -83,9 +83,9 @@ int main (int argc, char **argv) {
         char *exec_cmd2[4];
 
         // Checking if we have pf config file
-        if(access(PFCTL_RULES, F_OK) == 0) {
+        if (access(PFCTL_RULES, F_OK) == 0) {
             // Checking if wazuh table is configured in pf.conf
-            if(checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) == 0) {
+            if (checking_if_its_configured(PFCTL_RULES, PFCTL_TABLE) == 0) {
                 if (!strcmp("add", action)) {
                     char *arg1[7] = {PFCTL, "-t", PFCTL_TABLE, "-T", "add", srcip, NULL};
                     memcpy(exec_cmd1, arg1, sizeof(exec_cmd1));
@@ -98,7 +98,7 @@ int main (int argc, char **argv) {
                 }
             } else {
                 memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Table %s does not exist", PFCTL_TABLE);
+                snprintf(log_msg, LOGSIZE - 1, "Table '%s' does not exist", PFCTL_TABLE);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_SUCCESS;
@@ -106,16 +106,16 @@ int main (int argc, char **argv) {
 
         } else {
             memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The pf rules file %s does not exist", PFCTL_RULES);
+            snprintf(log_msg, LOGSIZE - 1, "The pf rules file '%s' does not exist", PFCTL_RULES);
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_SUCCESS;
         }
 
         // Executing it
-        if(strcmp(exec_cmd1[0], PFCTL) == 0) {
+        if (strcmp(exec_cmd1[0], PFCTL) == 0) {
             wfd_t *wfd = wpopenv(PFCTL, exec_cmd1, W_BIND_STDOUT);
-            if(!wfd) {
+            if (!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
                 snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
                 write_debug_file(argv[0], log_msg);
@@ -125,9 +125,9 @@ int main (int argc, char **argv) {
             wpclose(wfd);
         }
 
-        if(strcmp(exec_cmd2[0], PFCTL) == 0) {
+        if (strcmp(exec_cmd2[0], PFCTL) == 0) {
             wfd_t *wfd = wpopenv(PFCTL, exec_cmd2, W_BIND_STDOUT);
-            if(!wfd) {
+            if (!wfd) {
                 memset(log_msg, '\0', LOGSIZE);
                 snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", PFCTL, strerror(errno));
                 write_debug_file(argv[0], log_msg);
@@ -138,23 +138,23 @@ int main (int argc, char **argv) {
         }
 
     } else {
-        cJSON_Delete(input_json);
-        return OS_SUCCESS;
+        write_debug_file(argv[0], "Invalid system");
     }
 
     write_debug_file(argv[0], "Ended");
+
     cJSON_Delete(input_json);
+
     return OS_SUCCESS;
 }
 
-int checking_if_its_configured(const char *path, const char *table) {
-
-    char command[1023];
-    char output_buf[1023];
-    snprintf(command, 1023, "cat %s | %s %s", path, GREP, table);
+static int checking_if_its_configured(const char *path, const char *table) {
+    char command[COMMANDSIZE];
+    char output_buf[BUFFERSIZE];
+    snprintf(command, COMMANDSIZE -1, "cat %s | %s %s", path, GREP, table);
     FILE *fp = popen(command, "r");
     if (fp) {
-        while (fgets(output_buf, 1023, fp) != NULL) {
+        while (fgets(output_buf, BUFFERSIZE, fp) != NULL) {
             pclose(fp);
             return OS_SUCCESS;
         }
@@ -163,4 +163,3 @@ int checking_if_its_configured(const char *path, const char *table) {
     }
     return OS_INVALID;
 }
-
