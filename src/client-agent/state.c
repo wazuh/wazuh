@@ -10,19 +10,23 @@
  * Foundation
  */
 
-#include "agentd.h"
 #include <pthread.h>
+#include "state.h"
 
 agent_state_t agent_state = { .status = GA_STATUS_PENDING };
 static pthread_mutex_t state_mutex;
 
 static int write_state();
+static const char * get_str_status(agent_status_t status);
 
 int interval;
 
-void * state_main(__attribute__((unused)) void * args) {
+void state_init() {
     w_mutex_init(&state_mutex, NULL);
     interval = getDefine_Int("agent", "state_interval", 0, 86400);
+}
+
+void * state_main(__attribute__((unused)) void * args) {
 
     if (!interval) {
         minfo("State file is disabled.");
@@ -37,24 +41,6 @@ void * state_main(__attribute__((unused)) void * args) {
     }
 
     return NULL;
-}
-
-void update_status(agent_status_t status) {
-    w_mutex_lock(&state_mutex);
-    agent_state.status = status;
-    w_mutex_unlock(&state_mutex);
-}
-
-void update_keepalive(time_t curr_time) {
-    w_mutex_lock(&state_mutex);
-    agent_state.last_keepalive = curr_time;
-    w_mutex_unlock(&state_mutex);
-}
-
-void update_ack(time_t curr_time) {
-    w_mutex_lock(&state_mutex);
-    agent_state.last_ack = curr_time;
-    w_mutex_unlock(&state_mutex);
 }
 
 int write_state() {
@@ -93,29 +79,16 @@ int write_state() {
     }
 #endif
 
-    switch (agent_state.status) {
-    case GA_STATUS_PENDING:
-        status = "pending";
-        break;
-    case GA_STATUS_ACTIVE:
-        status = "connected";
-        break;
-    case GA_STATUS_NACTIVE:
-        status = "disconnected";
-        break;
-    default:
-        merror("At write_state(): Unknown status (%d)", agent_state.status);
-        status = "unknown";
-    }
+    status = get_str_status(agent_state.status);
 
     if (agent_state.last_keepalive) {
         localtime_r(&agent_state.last_keepalive, &tm);
-        strftime(last_keepalive, sizeof(last_keepalive), "%Y-%m-%d %H:%M:%S", &tm);
+        strftime(last_keepalive, sizeof(last_keepalive), W_AGENTD_STATE_TIME_FORMAT, &tm);
     }
 
     if (agent_state.last_ack) {
         localtime_r(&agent_state.last_ack, &tm);
-        strftime(last_ack, sizeof(last_ack), "%Y-%m-%d %H:%M:%S", &tm);
+        strftime(last_ack, sizeof(last_ack), W_AGENTD_STATE_TIME_FORMAT, &tm);
     }
 
     fprintf(fp,
@@ -125,19 +98,19 @@ int write_state() {
         "# - pending:      waiting to get connected.\n"
         "# - connected:    connection established with manager in the last %d seconds.\n"
         "# - disconnected: connection lost or no ACK received in the last %d seconds.\n"
-        "status='%s'\n"
+        W_AGENTD_FIELD_STATUS "='%s'\n"
         "\n"
         "# Last time a keepalive was sent\n"
-        "last_keepalive='%s'\n"
+        W_AGENTD_FIELD_KEEP_ALIVE "='%s'\n"
         "\n"
         "# Last time a control message was received\n"
-        "last_ack='%s'\n"
+        W_AGENTD_FIELD_LAST_ACK "='%s'\n"
         "\n"
         "# Number of generated events\n"
-        "msg_count='%u'\n"
+        W_AGENTD_FIELD_MSG_COUNT "='%u'\n"
         "\n"
         "# Number of messages (events + control messages) sent to the manager\n"
-        "msg_sent='%u'\n"
+        W_AGENTD_FIELD_MSG_SENT "='%u'\n"
         , __local_name, agt->notify_time, agt->max_time_reconnect_try, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
 
     fclose(fp);
@@ -157,4 +130,106 @@ int write_state() {
 
     w_mutex_unlock(&state_mutex);
     return 0;
+}
+
+static const char * get_str_status(agent_status_t status) {
+
+    const char * retval = NULL;
+
+    switch (status) {
+    case GA_STATUS_PENDING:
+        retval = "pending";
+        break;
+    case GA_STATUS_ACTIVE:
+        retval = "connected";
+        break;
+    case GA_STATUS_NACTIVE:
+        retval = "disconnected";
+        break;
+    default:
+        merror("At get_str_status(): Unknown status (%d)", status);
+        retval = "unknown";
+    }
+
+    return retval;
+}
+
+void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
+
+    w_mutex_lock(&state_mutex);
+
+    switch (type) {
+    case UPDATE_STATUS:
+        agent_state.status = (agent_status_t) data;
+        break;
+    case UPDATE_KEEPALIVE:
+        if (data != NULL) {
+            agent_state.last_keepalive = *((time_t *) data);
+        }
+        break;
+    case UPDATE_ACK:
+        if (data != NULL) {
+            agent_state.last_ack = *((time_t *) data);
+        }
+        break;
+    case INCREMENT_MSG_COUNT:
+        agent_state.msg_count++;
+        break;
+    case INCREMENT_MSG_SEND:
+        agent_state.msg_sent++;
+        break;
+    default:
+        break;
+    }
+
+    w_mutex_unlock(&state_mutex);
+    return;
+}
+
+char * w_agentd_get_state() {
+
+    const char * status = NULL;
+    char last_keepalive[W_AGENTD_STATE_TIME_LENGHT] = {0};
+    char last_ack[W_AGENTD_STATE_TIME_LENGHT] = {0};
+    unsigned int count;
+    unsigned int sent;
+
+    struct tm tm = {.tm_sec = 0};
+    char * retval = NULL;
+    cJSON * json_retval = cJSON_CreateObject();
+    cJSON * data = cJSON_CreateObject();
+
+    /* Get status info */
+    w_mutex_lock(&state_mutex);
+    status = get_str_status(agent_state.status);
+
+    if (agent_state.last_keepalive) {
+        localtime_r(&agent_state.last_keepalive, &tm);
+        strftime(last_keepalive, sizeof(last_keepalive), W_AGENTD_STATE_TIME_FORMAT, &tm);
+    }
+
+    if (agent_state.last_ack) {
+        localtime_r(&agent_state.last_ack, &tm);
+        strftime(last_ack, sizeof(last_ack), W_AGENTD_STATE_TIME_FORMAT, &tm);
+    }
+
+    count = agent_state.msg_count;
+    sent = agent_state.msg_sent;
+    w_mutex_unlock(&state_mutex);
+
+    /* json response */
+
+    cJSON_AddNumberToObject(json_retval, W_AGENTD_JSON_ERROR, 0);
+    cJSON_AddItemToObject(json_retval, W_AGENTD_JSON_DATA, data);
+
+    cJSON_AddStringToObject(data, W_AGENTD_FIELD_STATUS, status);
+    cJSON_AddStringToObject(data, W_AGENTD_FIELD_KEEP_ALIVE, last_keepalive);
+    cJSON_AddStringToObject(data, W_AGENTD_FIELD_LAST_ACK, last_ack);
+    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_COUNT, count);
+    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_SENT, sent);
+
+    retval = cJSON_PrintUnformatted(json_retval);
+    cJSON_Delete(json_retval);
+
+    return retval;
 }
