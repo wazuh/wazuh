@@ -813,18 +813,23 @@ void Syscollector::registerWithRsync()
 {
     const auto reportSyncWrapper
     {
-        [this](const std::string& data)
+        [this](const std::string& dataString)
         {
-            auto jsonData{nlohmann::json::parse(data)};
-            const auto it{jsonData.find("data")};
+            auto jsonData(nlohmann::json::parse(dataString));
+            auto it{jsonData.find("data")};
             if(it != jsonData.end())
             {
-                (*it)["scan_time"] = Utils::getCurrentTimestamp();
-                m_reportSyncFunction(jsonData.dump());
+                auto& data{*it};
+                it = data.find("attributes");
+                if(it != data.end())
+                {
+                    (*it)["scan_time"] = Utils::getCurrentTimestamp();
+                    m_reportSyncFunction(jsonData.dump());
+                }
             }
             else
             {
-                m_reportSyncFunction(data);
+                m_reportSyncFunction(dataString);
             }
         }
     };
@@ -943,6 +948,7 @@ void Syscollector::scanOs()
         msg["type"] = "dbsync_os";
         msg["operation"] = "MODIFIED";
         msg["data"] = m_spInfo->os();
+        msg["data"]["scan_time"] = m_scanTime;
         m_reportDiffFunction(msg.dump());
     }
 }
