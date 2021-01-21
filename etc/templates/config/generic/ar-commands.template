@@ -23,19 +23,13 @@
 
   <command>
     <name>route-null</name>
-    <executable>route-null.sh</executable>
+    <executable>route-null</executable>
     <timeout_allowed>yes</timeout_allowed>
   </command>
 
   <command>
     <name>win_route-null</name>
-    <executable>route-null.cmd</executable>
-    <timeout_allowed>yes</timeout_allowed>
-  </command>
-
-  <command>
-    <name>win_route-null-2012</name>
-    <executable>route-null-2012.cmd</executable>
+    <executable>route-null.exe</executable>
     <timeout_allowed>yes</timeout_allowed>
   </command>
 

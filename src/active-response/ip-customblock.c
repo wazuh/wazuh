@@ -20,12 +20,13 @@ int main (int argc, char **argv) {
     cJSON *input_json = NULL;
 
     write_debug_file(argv[0], "Starting");
-    // Reading input
+
     memset(input, '\0', BUFFERSIZE);
     if (fgets(input, BUFFERSIZE, stdin) == NULL) {
         write_debug_file(argv[0], "Cannot read input from stdin");
         return OS_INVALID;
     }
+
     write_debug_file(argv[0], input);
 
     input_json = get_json_from_input(input);
@@ -93,7 +94,8 @@ int main (int argc, char **argv) {
     }
 
     write_debug_file(argv[0], "Ended");
+
     cJSON_Delete(input_json);
+
     return OS_SUCCESS;
 }
-

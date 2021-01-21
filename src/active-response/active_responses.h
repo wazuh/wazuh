@@ -38,25 +38,26 @@ cJSON* get_json_from_input (const char *input);
 /**
  * Get command from input
  * @param input Input
- * @return char * with the command or NULL o fail
+ * @return char * with the command or NULL on fail
  * */
 char* get_command (cJSON *input);
 
 /**
  * Get username from input
  * @param input Input
- * @return char * with the username or NULL o fail
+ * @return char * with the username or NULL on fail
  * */
 char* get_username_from_json (cJSON *input);
 
 /**
  * Get srcip from input
  * @param input Input
- * @return char * with the srcip or NULL o fail
+ * @return char * with the srcip or NULL on fail
  * */
 char* get_srcip_from_json (cJSON *input);
 
 #ifndef WIN32
+
 /**
  * Write process pid to lock simultaneous executions of the script
  * @param lock_path Path of the folder to lock
@@ -80,5 +81,6 @@ void unlock (const char *lock_path, const char *log_path);
  * @retval 6 If ip is ipv6
  * @retval OS_INVALID on Invalid IP or error
  * */
-int get_ip_version (char * ip);
+int get_ip_version (char *ip);
+
 #endif
