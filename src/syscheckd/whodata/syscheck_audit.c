@@ -449,6 +449,43 @@ int init_regex(void) {
     return 0;
 }
 
+void clean_regex() {
+    static int freed = 0;
+
+    if (freed) { // Prevent double free
+        return;
+    }
+
+    regfree(&regexCompiled_uid);
+    regfree(&regexCompiled_gid);
+    regfree(&regexCompiled_auid);
+    regfree(&regexCompiled_euid);
+    regfree(&regexCompiled_pid);
+    regfree(&regexCompiled_ppid);
+    regfree(&regexCompiled_inode);
+    regfree(&regexCompiled_items);
+    regfree(&regexCompiled_syscall);
+    regfree(&regexCompiled_pname);
+    regfree(&regexCompiled_cwd);
+    regfree(&regexCompiled_dir);
+    regfree(&regexCompiled_path0);
+    regfree(&regexCompiled_path1);
+    regfree(&regexCompiled_path2);
+    regfree(&regexCompiled_path3);
+    regfree(&regexCompiled_path4);
+
+    regfree(&regexCompiled_pname_hex);
+    regfree(&regexCompiled_cwd_hex);
+    regfree(&regexCompiled_dir_hex);
+    regfree(&regexCompiled_path0_hex);
+    regfree(&regexCompiled_path1_hex);
+    regfree(&regexCompiled_path2_hex);
+    regfree(&regexCompiled_path3_hex);
+    regfree(&regexCompiled_path4_hex);
+    regfree(&regexCompiled_dev);
+
+    freed = 1;
+}
 
 // LCOV_EXCL_START
 int audit_init(void) {
@@ -526,6 +563,7 @@ int audit_init(void) {
     }
 
     atexit(clean_rules);
+    atexit(clean_regex);
     auid_err_reported = 0;
 
     // Start audit thread
@@ -1244,30 +1282,8 @@ void * audit_main(int *audit_sock) {
     mdebug1(FIM_AUDIT_THREAD_STOPED);
     close(*audit_sock);
 
-    regfree(&regexCompiled_uid);
-    regfree(&regexCompiled_auid);
-    regfree(&regexCompiled_euid);
-    regfree(&regexCompiled_gid);
-    regfree(&regexCompiled_pid);
-    regfree(&regexCompiled_ppid);
-    regfree(&regexCompiled_cwd);
-    regfree(&regexCompiled_path0);
-    regfree(&regexCompiled_path1);
-    regfree(&regexCompiled_path2);
-    regfree(&regexCompiled_path3);
-    regfree(&regexCompiled_path4);
-    regfree(&regexCompiled_pname);
-    regfree(&regexCompiled_items);
-    regfree(&regexCompiled_inode);
-
-    regfree(&regexCompiled_cwd_hex);
-    regfree(&regexCompiled_pname_hex);
-    regfree(&regexCompiled_path0_hex);
-    regfree(&regexCompiled_path1_hex);
-    regfree(&regexCompiled_path2_hex);
-    regfree(&regexCompiled_path3_hex);
-    regfree(&regexCompiled_path4_hex);
-
+    // Clean regexes used for parsing events
+    clean_regex();
     // Change Audit monitored folders to Inotify.
     int i;
     w_mutex_lock(&audit_rules_mutex);
