@@ -227,7 +227,7 @@ int add_audit_rules_syscheck(bool first_time) {
 
     for(i = 0; syscheck.dir[i]; i++) {
         // Check if dir[i] is set in whodata mode
-        if (!(syscheck.opts[i] & WHODATA_ACTIVE)) {
+        if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
             continue;
         }
         directory = fim_get_real_path(i);
@@ -954,8 +954,8 @@ void audit_parse(char *buffer) {
                                 (w_evt->process_name)?w_evt->process_name:"");
 
                             char *real_path = NULL;
-                            os_calloc(PATH_MAX + 2, sizeof(char), real_path);
-                            if (realpath(w_evt->path, real_path), !real_path) {
+                            real_path = realpath(w_evt->path, NULL);
+                            if (real_path == NULL) {
                                 mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path); // LCOV_EXCL_LINE
                                 break; // LCOV_EXCL_LINE
                             }

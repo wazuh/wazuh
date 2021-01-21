@@ -1921,9 +1921,10 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     char * path = "/test.file";
     struct stat buf;
     buf.st_mode = S_IFREG;
+    buf.st_gid = 0;
+
     fim_data->item->index = 0;
     fim_data->item->statbuf = buf;
-    fim_data->item->statbuf.st_gid = 0;
     fim_data->item->mode = FIM_REALTIME;
 
     expect_string(__wrap_lstat, filename, "/test.file");

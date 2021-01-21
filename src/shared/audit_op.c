@@ -58,7 +58,10 @@ int search_audit_rule(const char *path, const char *perms, const char *key) {
     if (path == NULL || perms == NULL || key == NULL || audit_rules_list == NULL) {
         return -1;
     }
-    audit_rules_list->cur_node = audit_rules_list->first_node;
+    // Check if audit_rules_list is empty.
+    if (OSList_GetFirstNode(audit_rules_list) == NULL) {
+        return 0;
+    }
 
     while (node = OSList_GetNextNode(audit_rules_list), node != NULL) {
         rule = (w_audit_rule *) node->data;
@@ -76,8 +79,7 @@ void audit_rules_list_free() {
     }
 
     OSList_CleanNodes(audit_rules_list);
-    free(audit_rules_list);
-    audit_rules_list = NULL;
+    os_free(audit_rules_list);
 }
 
 int audit_get_rule_list(int fd) {

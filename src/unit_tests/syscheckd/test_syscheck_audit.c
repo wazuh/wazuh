@@ -1346,8 +1346,7 @@ void test_audit_parse(void **state) {
         "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
     expect_string(__wrap_realpath, path, "/root/test/test");
-    will_return(__wrap_realpath, "/root/test/test");
-    will_return(__wrap_realpath, (char *) 1);
+    will_return(__wrap_realpath, strdup("/root/test/test"));
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -1921,8 +1920,7 @@ void test_audit_parse_delete_folder(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
     expect_string(__wrap_realpath, path, "/root/test");
-    will_return(__wrap_realpath, "/root/test");
-    will_return(__wrap_realpath, (char *) 1);
+    will_return(__wrap_realpath, strdup("/root/test"));
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -1974,8 +1972,7 @@ void test_audit_parse_delete_folder_hex(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6247): audit_event: uid=root, auid=root, euid=root, gid=root, pid=62845, ppid=4340, inode=110, path=/root/test, pname=/usr/bin/rm");
 
     expect_string(__wrap_realpath, path, "/root/test");
-    will_return(__wrap_realpath, "/root/test");
-    will_return(__wrap_realpath, (char *) 1);
+    will_return(__wrap_realpath, strdup("/root/test"));
 
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 62845);
@@ -2340,8 +2337,7 @@ void test_audit_read_events_select_case_0(void **state) {
         "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
     expect_string(__wrap_realpath, path, "/root/test/test");
-    will_return(__wrap_realpath, "/root/test/test");
-    will_return(__wrap_realpath, (char *) 1);
+    will_return(__wrap_realpath, strdup("/root/test/test"));
 
     expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
     expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
@@ -2501,8 +2497,7 @@ void test_audit_read_events_select_success_recv_success(void **state) {
             "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
 
         expect_string(__wrap_realpath, path, "/root/test/test");
-        will_return(__wrap_realpath, "/root/test/test");
-        will_return(__wrap_realpath, (char *) 1);
+        will_return(__wrap_realpath, strdup("/root/test/test"));
 
         expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
         expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");

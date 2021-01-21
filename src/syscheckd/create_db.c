@@ -1292,6 +1292,7 @@ char *fim_get_real_path(int position) {
 #ifndef WIN32
     w_mutex_lock(&syscheck.fim_symlink_mutex);
 
+    //Create a safe copy of the path to be used by other threads.
     if ((syscheck.opts[position] & CHECK_FOLLOW) == 0) {
         os_strdup(syscheck.dir[position], real_path);
     } else if (syscheck.symbolic_links[position]) {
