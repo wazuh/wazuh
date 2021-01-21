@@ -1,0 +1,96 @@
+/* Copyright (C) 2015-2021, Wazuh Inc.
+ * All right reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "active_responses.h"
+
+#define IPBLOCK "/ipblock"
+
+int main (int argc, char **argv) {
+    (void)argc;
+    char input[BUFFERSIZE];
+    char log_msg[LOGSIZE];
+    char *action;
+    char *srcip;
+    cJSON *input_json = NULL;
+
+    write_debug_file(argv[0], "Starting");
+    // Reading input
+    memset(input, '\0', BUFFERSIZE);
+    if (fgets(input, BUFFERSIZE, stdin) == NULL) {
+        write_debug_file(argv[0], "Cannot read input from stdin");
+        return OS_INVALID;
+    }
+    write_debug_file(argv[0], input);
+
+    input_json = get_json_from_input(input);
+    if (!input_json) {
+        write_debug_file(argv[0], "Invalid input format");
+        return OS_INVALID;
+    }
+
+    action = get_command(input_json);
+    if (!action) {
+        write_debug_file(argv[0], "Cannot read 'command' from json");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    if (strcmp("add", action) && strcmp("delete", action)) {
+        write_debug_file(argv[0], "Invalid value of 'command'");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    // Get srcip
+    srcip = get_srcip_from_json(input_json);
+    if (!srcip) {
+        write_debug_file(argv[0], "Cannot read 'srcip' from data");
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
+
+    if (!strcmp("add", action)) {
+        // Checking if we have /ipblock
+        if(access(IPBLOCK, F_OK) == 0) {
+            char *cmd[3] = {"mkdir", IPBLOCK, NULL};
+            execvp(cmd[0],cmd);
+            wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDERR);
+            if(!wfd) {
+                memset(log_msg, '\0', LOGSIZE);
+                snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", IPBLOCK, strerror(errno));
+                write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
+                return OS_INVALID;
+            }
+            wpclose(wfd);
+
+            FILE *fp = fopen(srcip, "a");
+            if(fp == NULL) {
+                memset(log_msg, '\0', LOGSIZE);
+                snprintf(log_msg, LOGSIZE - 1, "Error creating %s file", srcip);
+                write_debug_file(argv[0], log_msg);
+                cJSON_Delete(input_json);
+                return OS_INVALID;
+            }
+        }
+    } else {
+        if(remove(srcip) != 0) {
+            memset(log_msg, '\0', LOGSIZE);
+            snprintf(log_msg, LOGSIZE - 1, "Error deleting %s file", srcip);
+            write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
+            return OS_INVALID;
+        }
+    }
+
+    write_debug_file(argv[0], "Ended");
+    cJSON_Delete(input_json);
+    return OS_SUCCESS;
+}
+

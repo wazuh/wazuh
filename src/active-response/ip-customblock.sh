@@ -32,12 +32,12 @@ if [ "x${ACTION}" = "xadd" ]; then
        mkdir /ipblock
     fi
     touch "/ipblock/${IP}"
-elif [ "x${ACTION}" = "xdelete" ]; then   
+elif [ "x${ACTION}" = "xdelete" ]; then
     rm -f "/ipblock/${IP}"
 
-# Invalid action   
+# Invalid action
 else
    echo "$0: invalid action: ${ACTION}"
-fi       
+fi
 
 exit 1;
