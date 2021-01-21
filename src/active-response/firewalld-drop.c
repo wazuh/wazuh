@@ -7,8 +7,6 @@
  * Foundation
  */
 
-#include "shared.h"
-#include "external/cJSON/cJSON.h"
 #include "active_responses.h"
 
 #define LOCK_PATH "/active-response/bin/fw-drop"
