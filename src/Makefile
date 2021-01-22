@@ -55,7 +55,6 @@ USE_GEOIP?=no
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
-USE_FRAMEWORK_LIB=no
 MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
 
@@ -477,7 +476,6 @@ help: failtarget
 	@echo "   make USE_BIG_ENDIAN=yes      Build with big endian support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_SELINUX=yes         Build with SELinux policies. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_AUDIT=yes           Build with audit service support. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make USE_FRAMEWORK_LIB=yes   Use external SQLite library for the framework. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make USE_MSGPACK_OPT=yes     Use default architecture for building msgpack library. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
 	@echo "   make DISABLE_SHARED=yes      Not to build the Wazuh shared library (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
@@ -530,7 +528,6 @@ settings:
 	@echo "    USE_BIG_ENDIAN:     ${USE_BIG_ENDIAN}"
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
-	@echo "    USE_FRAMEWORK_LIB:  ${USE_FRAMEWORK_LIB}"
 	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
 	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
@@ -567,9 +564,6 @@ BUILD_SERVER+=wazuh-dbd -
 BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
 BUILD_SERVER+=wazuh-db
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
-BUILD_SERVER+=wazuh-framework
-endif
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
@@ -1629,12 +1623,6 @@ wmodulesd_o := $(wmodulesd_c:.c=.o)
 
 wazuh-modulesd: ${wmodulesd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-### wazuh-framework ##
-ifneq (,$(filter ${USE_FRAMEWORK_LIB},YES yes y Y 1))
-wazuh-framework: ${shared_o} ${wdblib_o}
-	${MAKE} -C ../framework build PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${USE_FRAMEWORK_LIB}
-endif
 
 ### wazuh-python ###
 
