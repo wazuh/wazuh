@@ -64,8 +64,9 @@ char* get_srcip_from_json (cJSON *input);
  * @param lock_pid_path Path of the file to lock
  * @param log_path Messages log file
  * @param proc_name Name of the proces to lock/unlock
+ * @return OS_SUCCESS or OS_INVALID
  * */
-void lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name);
+int lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name);
 
 /**
  * Remove lock
