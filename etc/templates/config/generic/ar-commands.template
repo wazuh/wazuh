@@ -35,12 +35,6 @@
 
   <command>
     <name>netsh</name>
-    <executable>netsh.cmd</executable>
-    <timeout_allowed>yes</timeout_allowed>
-  </command>
-
-  <command>
-    <name>netsh-win-2016</name>
-    <executable>netsh-win-2016.cmd</executable>
+    <executable>netsh.exe</executable>
     <timeout_allowed>yes</timeout_allowed>
   </command>

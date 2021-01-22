@@ -384,16 +384,15 @@
                             <Component Id="ROUTE_NULL.EXE" DiskId="1" Guid="249F3287-B69D-46F0-9EB8-3FED24998E07">
                                 <File Id="ROUTE_NULL.EXE" Name="route-null.exe" Source="route-null.exe" />
                             </Component>
-                            <Component Id="NETSH.CMD" DiskId="1" Guid="292E9082-56BE-4258-9224-7F36A59CA433">
-                                <File Id="NETSH.CMD" Name="netsh.cmd" Source="netsh.cmd" />
-                            </Component>
-                            <Component Id="NETSH_WIN_2016.CMD" DiskId="1" Guid="B2011FD2-3F82-4FFD-B6C3-32665037C4EA">
-                                <File Id="NETSH_WIN_2016.CMD" Name="netsh-win-2016.cmd" Source="netsh-win-2016.cmd" />
+                            <Component Id="NETSH.EXE" DiskId="1" Guid="292E9082-56BE-4258-9224-7F36A59CA433">
+                                <File Id="NETSH.EXE" Name="netsh.exe" Source="netsh.exe" />
                             </Component>
                             <Component Id="REMOVE_OLD_AR" Guid="E1915364-2E49-4B74-8DF9-5D6CC3B27DF0">
                                 <RemoveFile Id="AR_RESTART_OSSEC_CMD" Name="restart-ossec.cmd" On="install" />
                                 <RemoveFile Id="AR_ROUTE_NULL_CMD" Name="route-null.cmd" On="install" />
                                 <RemoveFile Id="AR_ROUTE_NULL_2012_CMD" Name="route-null-2012.cmd" On="install" />
+                                <RemoveFile Id="AR_NETSH_CMD" Name="netsh.cmd" On="install" />
+                                <RemoveFile Id="AR_NETSH_WIN_2016_CMD" Name="netsh-win-2016.cmd" On="install" />
                             </Component>
                         </Directory>
                         <Component Id="ACTIVE_RESPONSES.LOG" DiskId="1" Guid="249F3287-B69D-46F0-8888-3FED24998E07">
@@ -591,8 +590,7 @@
             <ComponentRef Id="VISTA_SEC.TXT" />
             <ComponentRef Id="RESTART_WAZUH.EXE" />
             <ComponentRef Id="ROUTE_NULL.EXE" />
-            <ComponentRef Id="NETSH.CMD" />
-            <ComponentRef Id="NETSH_WIN_2016.CMD" />
+            <ComponentRef Id="NETSH.EXE" />
             <ComponentRef Id="ACTIVE_RESPONSES.LOG" />
             <ComponentRef Id="ROOTKIT_FILES.TXT" />
             <ComponentRef Id="ROOTKIT_TROJANS.TXT" />

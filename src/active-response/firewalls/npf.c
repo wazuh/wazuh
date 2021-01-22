@@ -9,7 +9,7 @@
 
 #include "../active_responses.h"
 
-#define NPFCTL      "/sbin/npfctl"
+#define NPFCTL "/sbin/npfctl"
 
 int main (int argc, char **argv) {
     (void)argc;

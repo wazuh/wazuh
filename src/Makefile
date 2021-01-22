@@ -639,7 +639,7 @@ $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 
 test_programs = tap_wazuhdb_op tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
 
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe win32/restart-wazuh.exe win32/route-null.exe
+WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -653,8 +653,6 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
-	cd win32/ && ./unix2dos.pl ../active-response/win/netsh.cmd > netsh.cmd
-	cd win32/ && ./unix2dos.pl ../active-response/win/netsh-win-2016.cmd > netsh-win-2016.cmd
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis wazuh-installer.nsi
@@ -1988,6 +1986,9 @@ win32/restart-wazuh.exe: win32/win_service_rk.o active-response/restart-wazuh.o 
 win32/route-null.exe: win32/win_service_rk.o active-response/route-null.o active-response/active_responses.o
 	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
+win32/netsh.exe: win32/win_service_rk.o active-response/netsh.o active-response/active_responses.o
+	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
 ####################
 #### Clean #########
 ####################
@@ -2116,8 +2117,7 @@ clean-windows:
 	rm -f win32/default-ossec-pre6.conf
 	rm -f win32/restart-wazuh.exe
 	rm -f win32/route-null.exe
-	rm -f win32/netsh.cmd
-	rm -f win32/netsh-win-2016.cmd
+	rm -f win32/netsh.exe
 	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
 	rm -f win32/icon.o win32/resource.o
 	rm -f ${WINDOWS_BINS}

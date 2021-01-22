@@ -123,72 +123,8 @@ int main (int argc, char **argv) {
         }
         wpclose(wfd);
 
-    } else if (!strcmp("Darwin", uname_buffer.sysname)) {
-        // Checking if ipfw is present
-        if (access(IPFW, F_OK) < 0) {
-            memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE - 1, "The ipfw file '%s' is not accessible: %s (%d)", IPFW, strerror(errno), errno);
-            write_debug_file(argv[0], log_msg);
-            cJSON_Delete(input_json);
-            return OS_SUCCESS;
-        }
-
-        if (!strcmp("add", action)) {
-            char *command_ex_1[6] = { IPFW, "-q", "set", "disable", SET_ID, NULL };
-            char *command_ex_2[13] = { IPFW, "-q", "add", "set", SET_ID, "deny", "ip", "from", srcip, "to", "any", NULL };
-            char *command_ex_3[13] = { IPFW, "-q", "add", "set", SET_ID, "deny", "ip", "from", "any", "to", srcip, NULL };
-            char *command_ex_4[6] = { IPFW, "-q", "set", "enable", SET_ID, NULL };
-
-            wfd_t *wfd = NULL;
-            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run ipfw");
-            }
-            wpclose(wfd);
-
-            if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run ipfw");
-            }
-            wpclose(wfd);
-
-            if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run ipfw");
-            }
-            wpclose(wfd);
-
-            if (wfd = wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run ipfw");
-            }
-            wpclose(wfd);
-
-        } else {
-            char set_name[COMMANDSIZE];
-            memset(set_name, '\0', COMMANDSIZE);
-            snprintf(set_name, COMMANDSIZE - 1, "set %s", SET_ID);
-
-            char *command_ex_1[4] = { IPFW, "-S", "show", NULL };
-
-            wfd_t *wfd = NULL;
-            if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT), wfd) {
-                char output_buf[BUFFERSIZE];
-                while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
-                    if ((strstr(output_buf, set_name) != NULL) && (strstr(output_buf, srcip) != NULL)) {
-                        // removing a specific rule
-                        char *rule_str = strtok(output_buf, " ");
-                        char *command_ex_2[5] = { IPFW, "-q", "delete", rule_str, NULL };
-                        wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR);
-                        wpclose(wfd2);
-                    }
-                }
-            } else {
-                write_debug_file(argv[0], "Unable to run lsfilt");
-            }
-            wpclose(wfd);
-        }
-
     } else {
         write_debug_file(argv[0], "Invalid system");
-        cJSON_Delete(input_json);
-        return OS_SUCCESS;
     }
 
     write_debug_file(argv[0], "Ended");
