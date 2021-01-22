@@ -189,7 +189,7 @@ int main (int argc, char **argv) {
         memset(output_buf, '\0', BUFFERSIZE);
         while (fgets(output_buf, BUFFERSIZE, host_deny_fp)) {
             if (!strstr(output_buf, srcip)) {
-                if (fwrite(output_buf, 1, sizeof(output_buf), temp_host_deny_fp) != sizeof(output_buf)) {
+                if (fwrite(output_buf, 1, strlen(output_buf), temp_host_deny_fp) != strlen(output_buf)) {
                     memset(log_msg, '\0', LOGSIZE);
                     snprintf(log_msg, LOGSIZE -1 , "Unable to write line '%s' on '%s'.", output_buf, temp_hosts_deny_path);
                     write_debug_file(argv[0], log_msg);
