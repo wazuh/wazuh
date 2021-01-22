@@ -21,7 +21,7 @@ static const char * get_str_status(agent_status_t status);
 
 int interval;
 
-void state_init() {
+void w_agentd_state_init() {
     w_mutex_init(&state_mutex, NULL);
     interval = getDefine_Int("agent", "state_interval", 0, 86400);
 }
@@ -186,7 +186,7 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data) {
     return;
 }
 
-char * w_agentd_get_state() {
+char * w_agentd_state_get() {
 
     const char * status = NULL;
     char last_keepalive[W_AGENTD_STATE_TIME_LENGHT] = {0};

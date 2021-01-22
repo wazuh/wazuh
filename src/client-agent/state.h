@@ -21,7 +21,7 @@
 #define W_AGENTD_FIELD_KEEP_ALIVE "last_keepalive" ///< Last time a keepalive was sent
 #define W_AGENTD_FIELD_LAST_ACK   "last_ack"       ///< Last time a control message was received
 #define W_AGENTD_FIELD_MSG_COUNT  "msg_count"      ///< Number of generated events
-#define W_AGENTD_FIELD_MSG_SENT   "msg_sent" ///< Number of messages (events + control messages) sent to the manager
+#define W_AGENTD_FIELD_MSG_SENT   "msg_sent"       ///< Number of messages sent to the manager
 
 #include "shared.h"
 #include "read-agents.h"
@@ -43,8 +43,8 @@ typedef enum {
  */
 typedef struct agent_state_t {
     agent_status_t status;  ///< Agent status
-    time_t last_keepalive;  ///< Last time a keepalive was
-    time_t last_ack;        ///< Last time a control messag
+    time_t last_keepalive;  ///< Last time a keepalive was sent
+    time_t last_ack;        ///< Last time a control message was received
     unsigned int msg_count; ///< Number of generated events
     unsigned int msg_sent;  ///< Number of messages (events + control messages) sent to the manager
 } agent_state_t;
@@ -52,7 +52,7 @@ typedef struct agent_state_t {
 /**
  * @brief Configure and initialize statistics
  */
-void state_init();
+void w_agentd_state_init();
 
 /**
  * @brief Main thread, write the statistics in the file
@@ -61,8 +61,8 @@ void * state_main(__attribute__((unused)) void * args);
 
 /**
  * @brief Update agent statistics
- * @param type data to update
- * @param data new data value (if required)
+ * @param type Action
+ * @param data New data value (if required)
  */
 void w_agentd_state_update(w_agentd_state_update_t type, void * data);
 
@@ -70,6 +70,6 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data);
  * @brief Returns statistics in real time
  * @return Statistics in raw json format 
  */
-char * w_agentd_get_state();
+char * w_agentd_state_get();
 
 #endif /* AGENTD_STATE_H */
