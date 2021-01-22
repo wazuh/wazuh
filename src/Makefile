@@ -890,8 +890,10 @@ CURL := curl -so
 VERSION = $(subst $() $(),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
-ifeq (${PREFIX},/var/ossec)
-	# Download the Python sources if we are building for any other OS.
+PYTHON_SOURCE := no
+
+# Download the Python sources if we are building for any other OS.
+ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifeq (${uname_S},Linux)
 cpu_arch := ${uname_P}
 ifneq (,$(filter ${cpu_arch},unknown Unknown))
@@ -900,16 +902,8 @@ endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 PRECOMPILED_RES := linux/amd64
 else
-ifneq (,$(filter ${cpu_arch},i386 i686))
-PRECOMPILED_RES := linux/i386
-else
 ifneq (,$(filter ${cpu_arch},aarch64 arm64))
 PRECOMPILED_RES := linux/aarch64
-else
-ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
-PRECOMPILED_RES := linux/arm32
-endif
-endif
 endif
 endif
 endif
@@ -917,10 +911,8 @@ endif
 
 
 EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 libpcre2 libplist
-EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
+EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
-
-VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
 
 .PHONY: deps
 deps: $(EXTERNAL_TAR)
@@ -930,17 +922,16 @@ ifneq (,$(PRECOMPILED_RES))
 	$(CURL) $@ $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external/%,%,$@)
 else
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
-endif
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
+endif
 
 external/%.tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
-
 
 
 ####################
