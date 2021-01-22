@@ -1855,7 +1855,7 @@ stages:
               id:
                 - "etc/rules/new_rule.xml"
           total_failed_items: 1
-        error: 0
+        error: 1
 
   - name: Delete ruleset rule
     request:
@@ -1865,7 +1865,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *delete_no_exists
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1906
+              id:
+                - "etc/rules/0010-rules_config.xml"
+          total_failed_items: 1
+        error: 1
 
   - name: Delete invalid rule
     request:
