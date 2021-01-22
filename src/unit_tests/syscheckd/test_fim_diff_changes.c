@@ -103,6 +103,17 @@ static int diff_size_limit_config[] = {
     1024,
 };
 
+#define DEFAULT_OPTIONS                                                                                    \
+    CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
+    CHECK_MTIME | CHECK_INODE
+static int opts_config[] = {
+    DEFAULT_OPTIONS,
+    DEFAULT_OPTIONS,
+    DEFAULT_OPTIONS,
+    DEFAULT_OPTIONS,
+    DEFAULT_OPTIONS
+};
+
 typedef struct gen_diff_struct {
     diff_data *diff;
     char **strarray;
@@ -270,6 +281,7 @@ static int setup_group(void **state) {
     syscheck.dir = dir_config;
     syscheck.symbolic_links = symbolic_links_config;
     syscheck.diff_size_limit = diff_size_limit_config;
+    syscheck.opts = opts_config;
 
 #ifdef TEST_WINAGENT
     syscheck.registry = default_reg_config;
