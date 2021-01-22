@@ -231,7 +231,7 @@ x-rbac-catalog:
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
-        actions: ['cluster:upload_rule_file']
+        actions: ['cluster:upload_file']
         resources: ['node:id:worker1']
         effect: "allow"
     'cluster:restart':
@@ -287,7 +287,7 @@ x-rbac-catalog:
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['manager:upload_rule_file']
+        actions: ['manager:upload_file']
         resources: ['*:*:*']
         effect: "deny"
     'manager:restart':
@@ -372,14 +372,14 @@ x-rbac-catalog:
       example:
         actions: ['rules:update']
         resources: ['rule:file:0610-win-ms_logs_rules.xml']
-        effect: "deny"
+        effect: "allow"
     'rules:delete':
       description: "Delete Wazuh manager rules"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/file:path'
+        - $ref: '#/x-rbac-catalog/resources/rule:file'
       example:
-        actions: ['rules:delete_file']
-        resources: ['rule:file:new-rules.xml']
+        actions: ['rules:delete']
+        resources: ['rule:file:0610-win-ms_logs_rules.xml']
         effect: "allow"
     'sca:read':
       description: "Access agents security configuration assessment"
