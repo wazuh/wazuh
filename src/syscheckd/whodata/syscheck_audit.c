@@ -213,7 +213,7 @@ int add_audit_rules_syscheck(bool first_time) {
     unsigned int i = 0;
     int found;
     int retval;
-    const char *directory = NULL;
+    char *directory = NULL;
     int rules_added = 0;
     static bool reported = 0;
     int auditd_fd = audit_open();
@@ -960,15 +960,15 @@ void audit_parse(char *buffer) {
                         if (file_path = gen_audit_path(w_evt->cwd, path0, NULL), file_path) {
                             w_evt->path = file_path;
                             mdebug2(FIM_AUDIT_EVENT
-                                (w_evt->user_name)?w_evt->user_name:"",
-                                (w_evt->audit_name)?w_evt->audit_name:"",
-                                (w_evt->effective_name)?w_evt->effective_name:"",
-                                (w_evt->group_name)?w_evt->group_name:"",
+                                (w_evt->user_name) ? w_evt->user_name : "",
+                                (w_evt->audit_name) ? w_evt->audit_name : "",
+                                (w_evt->effective_name) ? w_evt->effective_name : "",
+                                (w_evt->group_name) ? w_evt->group_name : "",
                                 w_evt->process_id,
                                 w_evt->ppid,
-                                (w_evt->inode)?w_evt->inode:"",
-                                (w_evt->path)?w_evt->path:"",
-                                (w_evt->process_name)?w_evt->process_name:"");
+                                (w_evt->inode) ? w_evt->inode : "",
+                                (w_evt->path) ? w_evt->path : "",
+                                (w_evt->process_name) ? w_evt->process_name : "");
 
                             if (w_evt->inode) {
                                 fim_whodata_event(w_evt);
@@ -979,27 +979,24 @@ void audit_parse(char *buffer) {
                 case 2:
                     if (w_evt->cwd && path0 && path1) {
                         if (file_path = gen_audit_path(w_evt->cwd, path0, path1), file_path) {
-                            w_evt->path = file_path;
                             mdebug2(FIM_AUDIT_EVENT
-                                (w_evt->user_name)?w_evt->user_name:"",
-                                (w_evt->audit_name)?w_evt->audit_name:"",
-                                (w_evt->effective_name)?w_evt->effective_name:"",
-                                (w_evt->group_name)?w_evt->group_name:"",
+                                (w_evt->user_name) ? w_evt->user_name : "",
+                                (w_evt->audit_name) ? w_evt->audit_name : "",
+                                (w_evt->effective_name) ? w_evt->effective_name : "",
+                                (w_evt->group_name) ? w_evt->group_name : "",
                                 w_evt->process_id,
                                 w_evt->ppid,
-                                (w_evt->inode)?w_evt->inode:"",
-                                (w_evt->path)?w_evt->path:"",
-                                (w_evt->process_name)?w_evt->process_name:"");
+                                (w_evt->inode) ? w_evt->inode : "",
+                                (file_path) ? file_path : "",
+                                (w_evt->process_name) ? w_evt->process_name : "");
 
-                            char *real_path = NULL;
-                            real_path = realpath(w_evt->path, NULL);
-                            if (real_path == NULL) {
+                            w_evt->path = realpath(file_path, NULL);
+                            if (w_evt->path == NULL) {
+                                os_strdup(file_path, w_evt->path);
                                 mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path); // LCOV_EXCL_LINE
-                                break; // LCOV_EXCL_LINE
                             }
 
                             free(file_path);
-                            w_evt->path = real_path;
 
                             if (w_evt->inode) {
                                 fim_whodata_event(w_evt);
@@ -1030,15 +1027,15 @@ void audit_parse(char *buffer) {
                         if (file_path = gen_audit_path(w_evt->cwd, path1, path2), file_path) {
                             w_evt->path = file_path;
                             mdebug2(FIM_AUDIT_EVENT
-                                (w_evt->user_name)?w_evt->user_name:"",
-                                (w_evt->audit_name)?w_evt->audit_name:"",
-                                (w_evt->effective_name)?w_evt->effective_name:"",
-                                (w_evt->group_name)?w_evt->group_name:"",
+                                (w_evt->user_name) ? w_evt->user_name : "",
+                                (w_evt->audit_name) ? w_evt->audit_name : "",
+                                (w_evt->effective_name) ? w_evt->effective_name : "",
+                                (w_evt->group_name) ? w_evt->group_name : "",
                                 w_evt->process_id,
                                 w_evt->ppid,
-                                (w_evt->inode)?w_evt->inode:"",
-                                (w_evt->path)?w_evt->path:"",
-                                (w_evt->process_name)?w_evt->process_name:"");
+                                (w_evt->inode) ? w_evt->inode : "",
+                                (w_evt->path) ? w_evt->path : "",
+                                (w_evt->process_name) ? w_evt->process_name : "");
 
                             if (w_evt->inode) {
                                 fim_whodata_event(w_evt);
@@ -1090,15 +1087,15 @@ void audit_parse(char *buffer) {
                         if (file_path1 = gen_audit_path(w_evt->cwd, path0, path2), file_path1) {
                             w_evt->path = file_path1;
                             mdebug2(FIM_AUDIT_EVENT1
-                                (w_evt->user_name)?w_evt->user_name:"",
-                                (w_evt->audit_name)?w_evt->audit_name:"",
-                                (w_evt->effective_name)?w_evt->effective_name:"",
-                                (w_evt->group_name)?w_evt->group_name:"",
+                                (w_evt->user_name) ? w_evt->user_name : "",
+                                (w_evt->audit_name) ? w_evt->audit_name : "",
+                                (w_evt->effective_name) ? w_evt->effective_name : "",
+                                (w_evt->group_name) ? w_evt->group_name : "",
                                 w_evt->process_id,
                                 w_evt->ppid,
-                                (w_evt->inode)?w_evt->inode:"",
-                                (w_evt->path)?w_evt->path:"",
-                                (w_evt->process_name)?w_evt->process_name:"");
+                                (w_evt->inode) ? w_evt->inode : "",
+                                (w_evt->path) ? w_evt->path : "",
+                                (w_evt->process_name) ? w_evt->process_name : "");
 
                             if (w_evt->inode) {
                                 fim_whodata_event(w_evt);
@@ -1112,15 +1109,15 @@ void audit_parse(char *buffer) {
                         if (file_path2 = gen_audit_path(w_evt->cwd, path1, path3), file_path2) {
                             w_evt->path = file_path2;
                             mdebug2(FIM_AUDIT_EVENT2
-                                (w_evt->user_name)?w_evt->user_name:"",
-                                (w_evt->audit_name)?w_evt->audit_name:"",
-                                (w_evt->effective_name)?w_evt->effective_name:"",
-                                (w_evt->group_name)?w_evt->group_name:"",
+                                (w_evt->user_name) ? w_evt->user_name : "",
+                                (w_evt->audit_name) ? w_evt->audit_name : "",
+                                (w_evt->effective_name) ? w_evt->effective_name : "",
+                                (w_evt->group_name) ? w_evt->group_name : "",
                                 w_evt->process_id,
                                 w_evt->ppid,
-                                (w_evt->inode)?w_evt->inode:"",
-                                (w_evt->path)?w_evt->path:"",
-                                (w_evt->process_name)?w_evt->process_name:"");
+                                (w_evt->inode) ? w_evt->inode : "",
+                                (w_evt->path) ? w_evt->path : "",
+                                (w_evt->process_name) ? w_evt->process_name : "");
 
                             if (w_evt->inode) {
                                 fim_whodata_event(w_evt);
@@ -1154,15 +1151,15 @@ void audit_parse(char *buffer) {
                         if (file_path = gen_audit_path(w_evt->cwd, path1, path4), file_path) {
                             w_evt->path = file_path;
                             mdebug2(FIM_AUDIT_EVENT
-                                (w_evt->user_name)?w_evt->user_name:"",
-                                (w_evt->audit_name)?w_evt->audit_name:"",
-                                (w_evt->effective_name)?w_evt->effective_name:"",
-                                (w_evt->group_name)?w_evt->group_name:"",
+                                (w_evt->user_name) ? w_evt->user_name : "",
+                                (w_evt->audit_name) ? w_evt->audit_name : "",
+                                (w_evt->effective_name) ? w_evt->effective_name : "",
+                                (w_evt->group_name) ? w_evt->group_name : "",
                                 w_evt->process_id,
                                 w_evt->ppid,
-                                (w_evt->inode)?w_evt->inode:"",
-                                (w_evt->path)?w_evt->path:"",
-                                (w_evt->process_name)?w_evt->process_name:"");
+                                (w_evt->inode) ? w_evt->inode : "",
+                                (w_evt->path) ? w_evt->path : "",
+                                (w_evt->process_name) ? w_evt->process_name : "");
 
                             if (w_evt->inode) {
                                 fim_whodata_event(w_evt);
