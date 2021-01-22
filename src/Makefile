@@ -1433,7 +1433,7 @@ manage_agents: ${addagent_o}
 
 #### Active Response ####
 
-active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disable-account restart-wazuh ip-customblock route-null
+active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disable-account restart-wazuh ip-customblock route-null kaspersky
 
 $(active_response_programs): $(BUILD_LIBS)
 
@@ -1472,6 +1472,9 @@ ip-customblock: active-response/ip-customblock.o active-response/active_response
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 route-null: active-response/route-null.o active-response/active_responses.o
+	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+kaspersky: active-response/kaspersky.o active-response/active_responses.o
 	${OSSEC_CCBIN} ${AR_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Util ##########

@@ -76,6 +76,7 @@ src/disable-account
 src/restart-wazuh
 src/ip-customblock
 src/route-null
+src/kaspersky
 
 # Windows agent
 src/win32/*.exe
