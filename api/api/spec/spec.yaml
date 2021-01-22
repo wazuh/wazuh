@@ -5207,10 +5207,12 @@ components:
     xml_filename:
       in: query
       name: filename
-      description: "Filename (rule or decoder) to download/upload/edit file."
+      description: "Filename of one or more rule or decoder."
       schema:
-        type: string
-        pattern: '^[\w\-]+\.xml$'
+        type: array
+        items:
+          type: string
+          pattern: '^[\w\-]+\.xml(,[\w\-]+\.xml)*$'
     xml_filename_path:
       in: path
       name: filename
