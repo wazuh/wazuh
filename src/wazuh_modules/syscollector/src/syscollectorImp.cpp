@@ -826,10 +826,16 @@ void Syscollector::registerWithRsync()
                     (*it)["scan_time"] = Utils::getCurrentTimestamp();
                     m_reportSyncFunction(jsonData.dump());
                 }
+                else
+                {
+                    m_reportSyncFunction(dataString);
+                }
             }
             else
             {
+                //LCOV_EXCL_START
                 m_reportSyncFunction(dataString);
+                //LCOV_EXCL_STOP
             }
         }
     };
