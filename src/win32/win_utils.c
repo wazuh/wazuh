@@ -184,6 +184,8 @@ int local_start()
     wm_children_pool_init();
 
     /* state_main thread */
+    state_init();
+    mdebug1("ASD: Init sem");
     w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)state_main,
@@ -235,7 +237,7 @@ int local_start()
     os_setwait();
     start_agent(1);
     os_delwait();
-    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE); // Check for RC
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 
     req_init();
 

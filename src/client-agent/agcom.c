@@ -33,11 +33,10 @@ size_t agcom_dispatch(char * command, char ** output){
         }
         return agcom_getconfig(rcv_args, output);
 
-    } else if (strcmp(rcv_comm, "getstate") == 0){
+    } else if (strcmp(rcv_comm, "getstate") == 0) {
         *output = w_agentd_get_state();
         return strlen(*output);
-    }
-    else {
+    } else {
         mdebug1("AGCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);

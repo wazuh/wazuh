@@ -66,7 +66,10 @@ void * state_main(__attribute__((unused)) void * args);
  */
 void w_agentd_state_update(w_agentd_state_update_t type, void * data);
 
-
+/**
+ * @brief Returns statistics in real time
+ * @return Statistics in raw json format 
+ */
 char * w_agentd_get_state();
 
 #endif /* AGENTD_STATE_H */
