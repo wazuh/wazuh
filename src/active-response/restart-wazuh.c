@@ -56,7 +56,7 @@ int main (int argc, char **argv) {
 
         if (wfd = wpopenv(*exec_cmd, exec_cmd, W_BIND_STDERR), !wfd) {
             memset(log_msg, '\0', LOGSIZE);
-			snprintf(log_msg, LOGSIZE -1 , "Error executing '%s': %s", *exec_cmd, strerror(errno));
+			snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", *exec_cmd, strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;

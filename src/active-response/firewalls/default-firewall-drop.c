@@ -69,7 +69,7 @@ int main (int argc, char **argv) {
         strcpy(iptables, IP6TABLES);
     } else {
         memset(log_msg, '\0', LOGSIZE);
-        snprintf(log_msg, LOGSIZE -1 , "Unable to run active response (invalid IP: '%s').", srcip);
+        snprintf(log_msg, LOGSIZE -1, "Unable to run active response (invalid IP: '%s').", srcip);
         write_debug_file(argv[0], log_msg);
         cJSON_Delete(input_json);
         return OS_INVALID;
@@ -92,7 +92,7 @@ int main (int argc, char **argv) {
             snprintf(iptables_path, PATH_MAX - 1, "/usr%s", iptables);
             if (access(iptables_path, F_OK) < 0) {
                 memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1 , "The iptables file '%s' is not accessible: %s (%d)", iptables_path, strerror(errno), errno);
+                snprintf(log_msg, LOGSIZE -1, "The iptables file '%s' is not accessible: %s (%d)", iptables_path, strerror(errno), errno);
                 write_debug_file(argv[0], log_msg);
                 cJSON_Delete(input_json);
                 return OS_SUCCESS;

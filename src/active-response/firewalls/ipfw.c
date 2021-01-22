@@ -116,7 +116,7 @@ int main (int argc, char **argv) {
         char *command_ex_4[7] = { IPFW, "-q", "table", TABLE_ID, action, srcip, NULL };
         if (wfd = wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR), !wfd) {
             memset(log_msg, '\0', LOGSIZE);
-            snprintf(log_msg, LOGSIZE -1 , "Error executing '%s': %s", IPFW, strerror(errno));
+            snprintf(log_msg, LOGSIZE -1, "Error executing '%s': %s", IPFW, strerror(errno));
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
             return OS_INVALID;
