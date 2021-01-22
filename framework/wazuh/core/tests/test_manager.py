@@ -154,8 +154,7 @@ def test_prettify_xml_formula_injection(mock_remote_commands):
     assert isinstance(result, str)
     description = re.search(r'<description>(.+)</description>', result)
     assert description, 'Could not find description tag in XML file'
-    assert description.group(1).startswith("'") and description.group(1).endswith("'"),\
-        f'Did not prepend formulas: {description}'
+    assert description.group(1).startswith("'"), f'Did not prepend formulas: {description}'
 
 
 @patch('time.time', return_value=0)
