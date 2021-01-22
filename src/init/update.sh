@@ -222,6 +222,11 @@ getPreinstalledDirByType()
     return 1;
 }
 
+##########
+# Checks if Wazuh is installed in the specified path by searching for the control binary.
+#
+# isWazuhInstalled()
+##########
 isWazuhInstalled()
 {
     if [ -f "${1}/bin/wazuh-control" ]; then
@@ -234,8 +239,11 @@ isWazuhInstalled()
 }
 
 ##########
-# Checks if Wazuh is installed by trying with each installation type. If it finds
-# an installation, it sets the PREINSTALLEDDIR variable.
+# Checks if Wazuh is installed by trying with each installation type. 
+# If it finds an installation, it sets the PREINSTALLEDDIR variable.
+# After that it checks if Wazuh is truly installed there, if it is installed it returns TRUE.
+# If it isn't installed continue searching in other installation types and replacing PREINSTALLEDDIR variable. 
+# It returns FALSE if Wazuh isn't installed in any of this.
 #
 # getPreinstalledDir()
 ##########
