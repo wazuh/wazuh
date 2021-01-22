@@ -184,8 +184,7 @@ int local_start()
     wm_children_pool_init();
 
     /* state_main thread */
-    state_init();
-    mdebug1("ASD: Init sem");
+    w_agentd_state_init();
     w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)state_main,

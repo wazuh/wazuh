@@ -133,7 +133,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
 
     /* Configure and start statistics */
-    state_init();
+    w_agentd_state_init();
     w_create_thread(state_main, NULL);
 
     /* Set max fd for select */

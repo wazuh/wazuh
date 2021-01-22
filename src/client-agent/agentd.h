@@ -147,7 +147,6 @@ extern time_t available_server;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
-//extern agent_state_t agent_state;
 
 static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
 
