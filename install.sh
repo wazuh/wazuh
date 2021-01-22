@@ -97,11 +97,6 @@ Install()
         SYSC_FLAG="DISABLE_SYSC=yes"
     fi
 
-    # Build SQLite library for CentOS 6
-    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
-        LIB_FLAG="USE_FRAMEWORK_LIB=yes"
-    fi
-
     # Makefile
     echo " - ${runningmake}"
     echo ""
@@ -119,7 +114,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+        ${MAKEBIN} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../

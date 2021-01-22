@@ -876,13 +876,6 @@ InstallLocal()
 
     InstallSecurityConfigurationAssessmentFiles "manager"
 
-    # Build SQLite library for CentOS 6
-    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
-        LIB_FLAG="yes"
-    else
-        LIB_FLAG="no"
-    fi
-
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
@@ -930,7 +923,7 @@ InstallLocal()
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} TARGET=${INSTYPE}
 
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX}
 
     ### Backup old API
     if [ "X${update_only}" = "Xyes" ]; then
