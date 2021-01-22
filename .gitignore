@@ -68,11 +68,15 @@ src/wazuh-integratord
 # Active responses
 src/firewall-drop
 src/default-firewall-drop
-src/disable-account
-src/restart-wazuh
-src/firewalld-drop
+src/pf
+src/npf
 src/ipfw
+src/firewalld-drop
+src/disable-account
 src/host-deny
+src/ip-customblock
+src/restart-wazuh
+src/route-null
 
 # Windows agent
 src/win32/*.exe

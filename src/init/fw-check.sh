@@ -26,9 +26,6 @@ elif [ "X${UNAME}" = "XDarwin" ]; then
     if which pfctl > /dev/null; then
         FILE="pf";
         echo "PF";
-    else
-        FILE="ipfw";
-        echo "IPFW";
     fi
 fi
 

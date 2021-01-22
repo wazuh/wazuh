@@ -165,10 +165,14 @@ WazuhUpgrade()
 
     rm -f $DIRECTORY/active-response/bin/firewall-drop.sh
     rm -f $DIRECTORY/active-response/bin/default-firewall-drop.sh
-    rm -f $DIRECTORY/active-response/bin/disable-account.sh
-    rm -f $DIRECTORY/active-response/bin/restart-ossec.sh
-    rm -f $DIRECTORY/active-response/bin/firewalld-drop.sh
+    rm -f $DIRECTORY/active-response/bin/pf.sh
+    rm -f $DIRECTORY/active-response/bin/npf.sh
     rm -f $DIRECTORY/active-response/bin/ipfw.sh
     rm -f $DIRECTORY/active-response/bin/ipfw_mac.sh
+    rm -f $DIRECTORY/active-response/bin/firewalld-drop.sh
+    rm -f $DIRECTORY/active-response/bin/disable-account.sh
     rm -f $DIRECTORY/active-response/bin/host-deny.sh
+    rm -f $DIRECTORY/active-response/bin/ip-customblock.sh
+    rm -f $DIRECTORY/active-response/bin/restart-ossec.sh
+    rm -f $DIRECTORY/active-response/bin/route-null.sh
 }

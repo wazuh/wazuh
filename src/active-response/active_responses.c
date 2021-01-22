@@ -157,6 +157,7 @@ char* get_srcip_from_json (cJSON *input) {
 }
 
 #ifndef WIN32
+
 int lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
     char log_msg[LOGSIZE];
     int i=0;
@@ -268,7 +269,7 @@ void unlock (const char *lock_path, const char *log_path) {
     }
 }
 
-int get_ip_version (char * ip) {
+int get_ip_version (char *ip) {
     struct addrinfo hint, *res = NULL;
     int ret;
 
@@ -293,4 +294,5 @@ int get_ip_version (char * ip) {
     freeaddrinfo(res);
     return OS_INVALID;
 }
+
 #endif

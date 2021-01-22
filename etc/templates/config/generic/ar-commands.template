@@ -17,36 +17,24 @@
 
   <command>
     <name>host-deny</name>
-    <executable>host-deny.sh</executable>
+    <executable>host-deny</executable>
     <timeout_allowed>yes</timeout_allowed>
   </command>
 
   <command>
     <name>route-null</name>
-    <executable>route-null.sh</executable>
+    <executable>route-null</executable>
     <timeout_allowed>yes</timeout_allowed>
   </command>
 
   <command>
     <name>win_route-null</name>
-    <executable>route-null.cmd</executable>
-    <timeout_allowed>yes</timeout_allowed>
-  </command>
-
-  <command>
-    <name>win_route-null-2012</name>
-    <executable>route-null-2012.cmd</executable>
+    <executable>route-null.exe</executable>
     <timeout_allowed>yes</timeout_allowed>
   </command>
 
   <command>
     <name>netsh</name>
-    <executable>netsh.cmd</executable>
-    <timeout_allowed>yes</timeout_allowed>
-  </command>
-
-  <command>
-    <name>netsh-win-2016</name>
-    <executable>netsh-win-2016.cmd</executable>
+    <executable>netsh.exe</executable>
     <timeout_allowed>yes</timeout_allowed>
   </command>
