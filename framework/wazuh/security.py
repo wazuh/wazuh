@@ -268,7 +268,7 @@ def remove_users(user_ids):
                   post_proc_kwargs={'exclude_codes': [4002]})
 def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None, select=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
-    """Return information from all the security roles.
+    """Return information from all system roles, does not return information from its associated policies.
 
     Parameters
     ----------
