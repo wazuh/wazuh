@@ -222,6 +222,17 @@ getPreinstalledDirByType()
     return 1;
 }
 
+isWazuhInstalled()
+{
+    if [ -f "${1}/bin/wazuh-control" ]; then
+        return 0;
+    elif [ -f "${1}/bin/ossec-control" ]; then
+        return 0;
+    else
+        return 1;
+    fi
+}
+
 ##########
 # Checks if Wazuh is installed by trying with each installation type. If it finds
 # an installation, it sets the PREINSTALLEDDIR variable.
@@ -233,31 +244,30 @@ getPreinstalledDir()
     # Checking ossec-init.conf for old wazuh versions
     if [ -f "${OSSEC_INIT}" ]; then
         . ${OSSEC_INIT}
-        if [ "X$DIRECTORY" = "X" ]; then
-            return 1;
-        fi
         if [ -d "$DIRECTORY" ]; then
             PREINSTALLEDDIR="$DIRECTORY"
-            return 0;
+            if isWazuhInstalled $PREINSTALLEDDIR; then
+                return 0;
+            fi
         fi
-    else
-        # Getting preinstalled dir for Wazuh manager and hibrid installations
-        pidir_service_name="wazuh-manager"
-        if getPreinstalledDirByType; then
-            return 0;
-        fi
+    fi
+    
+    # Getting preinstalled dir for Wazuh manager and hibrid installations
+    pidir_service_name="wazuh-manager"
+    if getPreinstalledDirByType && isWazuhInstalled $PREINSTALLEDDIR; then
+        return 0;
+    fi
 
-        # Getting preinstalled dir for Wazuh agent installations
-        pidir_service_name="wazuh-agent"
-        if getPreinstalledDirByType; then
-            return 0;
-        fi
+    # Getting preinstalled dir for Wazuh agent installations
+    pidir_service_name="wazuh-agent"
+    if getPreinstalledDirByType && isWazuhInstalled $PREINSTALLEDDIR; then
+        return 0;
+    fi
 
-        # Getting preinstalled dir for Wazuh local installations
-        pidir_service_name="wazuh-local"
-        if getPreinstalledDirByType; then
-            return 0;
-        fi
+    # Getting preinstalled dir for Wazuh local installations
+    pidir_service_name="wazuh-local"
+    if getPreinstalledDirByType && isWazuhInstalled $PREINSTALLEDDIR; then
+        return 0;
     fi
 
     return 1;
