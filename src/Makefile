@@ -894,7 +894,7 @@ RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
-# Download the Python sources if we are building for any other OS.
+# Get system information to download the right Python interpreter
 ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
 ifeq (${uname_S},Linux)
 cpu_arch := ${uname_P}
