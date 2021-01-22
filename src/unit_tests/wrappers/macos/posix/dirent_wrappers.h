@@ -12,6 +12,7 @@
 #define DIRENT_WRAPPERS_MACOS_H
 
 #include <dirent.h>
+#include <libproc.h>
 
 #undef closedir
 #define closedir wrap_closedir
@@ -19,11 +20,15 @@
 #define opendir wrap_opendir
 #undef readdir
 #define readdir wrap_readdir
+#undef proc_pidpath
+#define proc_pidpath wrap_proc_pidpath
 
 int wrap_closedir(__attribute__((unused)) DIR *dirp);
 
 DIR * wrap_opendir(const char *filename);
 
 struct dirent * wrap_readdir(DIR *dirp);
+
+int wrap_proc_pidpath(pid_t pid, char *buf);
 
 #endif
