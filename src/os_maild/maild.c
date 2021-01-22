@@ -44,7 +44,7 @@ static void help_maild()
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR(NULL));
     print_out(" ");
     exit(1);
 }
@@ -54,7 +54,8 @@ int main(int argc, char **argv)
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
-    const char *dir  = DEFAULTDIR;
+    home_path = w_homedir(argv[0]);
+    const char *dir  = DEFAULTDIR(NULL);
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
@@ -111,6 +112,7 @@ int main(int argc, char **argv)
 
     /* Start daemon */
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);

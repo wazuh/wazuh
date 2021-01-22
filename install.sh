@@ -593,9 +593,6 @@ setEnv()
         INSTALLDIR=${USER_DIR}
     fi
 
-
-    CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
-
     echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
 

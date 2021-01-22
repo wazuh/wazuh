@@ -114,7 +114,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-g needs an argument");
                 }
-                mwarn(DEPRECATED_OPTION_WARN,"-D");
+                mwarn(DEPRECATED_OPTION_WARN, "-D", DEFAULTCPATH);
                 break;
 #endif
             case 't':

@@ -129,7 +129,11 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     // Create arguments
 
-    wm_strcat(&command, WM_OSCAP_SCRIPT_PATH, '\0');
+    char * script = NULL;
+    os_calloc(PATH_MAX, sizeof(char), script);
+    snprintf(script, PATH_MAX, "%s", DEFAULTDIR(WM_OSCAP_SCRIPT_PATH));
+    wm_strcat(&command, script, '\0');
+    os_free(script);
 
     switch (eval->type) {
     case WM_OSCAP_XCCDF:

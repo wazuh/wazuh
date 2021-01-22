@@ -113,7 +113,7 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg)
     if (isChroot()) {
 		strcpy(sockname, AGENT_UPGRADE_SOCK);
 	} else {
-		strcpy(sockname, DEFAULTDIR AGENT_UPGRADE_SOCK);
+		strcpy(sockname, DEFAULTDIR(AGENT_UPGRADE_SOCK));
 	}
 
     int sock = OS_BindUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR);

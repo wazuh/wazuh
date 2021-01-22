@@ -540,7 +540,7 @@ int CreatePID(const char *name, int pid)
     if (isChroot()) {
         snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
     } else {
-        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR,
+        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR(NULL),
                  OS_PIDFILE, name, pid);
     }
 
@@ -597,7 +597,7 @@ int DeletePID(const char *name)
     if (isChroot()) {
         snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, (int)getpid());
     } else {
-        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR,
+        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR(NULL),
                  OS_PIDFILE, name, (int)getpid());
     }
 
@@ -621,7 +621,7 @@ void DeleteState() {
 #ifdef WIN32
         snprintf(path, sizeof(path), "%s.state", __local_name);
 #else
-        snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+        snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR(NULL), __local_name);
 #endif
         unlink(path);
     } else {

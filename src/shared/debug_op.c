@@ -79,7 +79,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR LOGJSONFILE, sizeof(logfile) - 1);
+        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR(LOGJSONFILE), sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -145,7 +145,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR LOGFILE, sizeof(logfile) - 1);
+        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR(LOGFILE), sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -234,7 +234,7 @@ void os_logging_config(){
   int i;
 
   pid = (int)getpid();
-  mdebug1("%s %s %s", DEFAULTDIR, home_path, "hello");
+
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
     flags.log_plain = 1;
     flags.log_json = 0;

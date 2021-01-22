@@ -36,7 +36,7 @@ void * restartAgent() {
 	if (isChroot()) {
 		strcpy(sockname, COM_LOCAL_SOCK);
 	} else {
-		strcpy(sockname, DEFAULTDIR COM_LOCAL_SOCK);
+		strcpy(sockname, DEFAULTDIR(COM_LOCAL_SOCK));
 	}
 
 	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {

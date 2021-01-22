@@ -275,7 +275,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         if(isChroot()) {
             snprintf(path, PATH_MAX + 1, "%s", decoder_dirs[i]);
         } else {
-            snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, decoder_dirs[i]);
+            snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR(NULL), decoder_dirs[i]);
         }
 
         OSRegex_FreePattern(&regex);
@@ -332,7 +332,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         if(isChroot()) {
             snprintf(path, PATH_MAX + 1, "%s", rules_dirs[i]);
         } else {
-            snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR, rules_dirs[i]);
+            snprintf(path, PATH_MAX + 1, "%s/%s", DEFAULTDIR(NULL), rules_dirs[i]);
         }
 
         OSRegex_FreePattern(&regex);

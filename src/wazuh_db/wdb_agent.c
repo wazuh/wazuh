@@ -1374,7 +1374,7 @@ time_t get_agent_date_added(int agent_id) {
     struct tm t;
     time_t t_of_sec;
 
-    snprintf(path, PATH_MAX, "%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
+    snprintf(path, PATH_MAX, "%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR(TIMESTAMP_FILE));
 
     fp = fopen(path, "r");
 

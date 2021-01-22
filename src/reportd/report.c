@@ -30,7 +30,7 @@ static void help_reportd()
     print_out("    -s          Show the alert dump");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR(NULL));
     print_out("    -f <filter> <value> Filter the results");
     print_out("    -r <filter> <value> Show related entries");
     print_out("    Filters allowed: group, rule, level, location,");
@@ -48,7 +48,8 @@ int main(int argc, char **argv)
     int c, test_config = 0;
     uid_t uid;
     gid_t gid;
-    const char *dir  = DEFAULTDIR;
+    home_path = w_homedir(argv[0]);
+    const char *dir  = DEFAULTDIR(NULL);
     const char *user = USER;
     const char *group = GROUPGLOBAL;
 
@@ -158,6 +159,7 @@ int main(int argc, char **argv)
 
     /* Start daemon */
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);

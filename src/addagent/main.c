@@ -88,7 +88,7 @@ int main(int argc, char **argv)
     const char *cmdbulk = NULL;
 #ifndef WIN32
     home_path = w_homedir(argv[0]);
-    const char *dir = DEFAULTDIR;
+    const char *dir = DEFAULTDIR(NULL);
     const char *group = GROUPGLOBAL;
     gid_t gid;
 #else
