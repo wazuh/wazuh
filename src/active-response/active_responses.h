@@ -50,6 +50,13 @@ char* get_command (cJSON *input);
 char* get_username_from_json (cJSON *input);
 
 /**
+ * Get username from input
+ * @param input Input
+ * @return char * with the extra_args or NULL on fail
+ * */
+char* get_extra_args_from_json (cJSON *input);
+
+/**
  * Get srcip from input
  * @param input Input
  * @return char * with the srcip or NULL on fail
