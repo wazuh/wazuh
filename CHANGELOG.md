@@ -20,7 +20,7 @@ All notable changes to this project will be documented in this file.
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
 
 - **Framework:**
-  - Added a new database upgrade function for rbac.db. ([#6963](https://github.com/wazuh/wazuh/pull/6963))
+  - Added RBAC database upgrade and integrity checks. ([#6963](https://github.com/wazuh/wazuh/pull/6963))
 
 ### Changed
 
