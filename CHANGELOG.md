@@ -55,6 +55,7 @@ All notable changes to this project will be documented in this file.
   - Added debug2 mode for API log and improved debug mode. ([#6822](https://github.com/wazuh/wazuh/pull/6822))
   - Added missing secure headers for API responses. ([#7024](https://github.com/wazuh/wazuh/issues/7024))
   - Added new config option to disable uploading configurations containing remote commands. ([#7016](https://github.com/wazuh/wazuh/issues/7016))
+  - Added new endpoints to manage user rules. ([#7178](https://github.com/wazuh/wazuh/issues/7178))
 - **AWS Module:**
   - Added support for AWS load balancers (Application Load Balancer, Classic Load Balancer and Network Load Balancer). ([#6034](https://github.com/wazuh/wazuh/issues/6034))
 - **Framework:**
