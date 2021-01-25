@@ -13,11 +13,18 @@
 #include <pthread.h>
 #include "state.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 agent_state_t agent_state = { .status = GA_STATUS_PENDING };
 static pthread_mutex_t state_mutex;
 
 static int write_state();
-static const char * get_str_status(agent_status_t status);
+STATIC const char * get_str_status(agent_status_t status);
 
 int interval;
 
@@ -132,7 +139,7 @@ int write_state() {
     return 0;
 }
 
-static const char * get_str_status(agent_status_t status) {
+STATIC const char * get_str_status(agent_status_t status) {
 
     const char * retval = NULL;
 

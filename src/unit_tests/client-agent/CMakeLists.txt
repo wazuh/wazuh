@@ -1,6 +1,7 @@
 # Generate client-agent library
 file(GLOB client-agent_files
-    ${SRC_FOLDER}/client-agent/*.o)
+    ${SRC_FOLDER}/client-agent/*.o
+    ${SRC_FOLDER}/monitord/*.o)
 
 list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/client-agent/main.o)
 
@@ -34,6 +35,9 @@ if(${TARGET} STREQUAL "winagent")
 else()
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap=close")
 endif()
+
+list(APPEND client-agent_names "test_state")
+list(APPEND client-agent_flags "-Wl,--wrap,_merror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 list(LENGTH client-agent_names count)
 math(EXPR count "${count} - 1")
