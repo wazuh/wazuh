@@ -162,7 +162,7 @@ def prettify_xml(xml_file):
         check_remote_commands(final_xml)
         # Check xml format
         load_wazuh_xml(xml_path='', data=final_xml)
-
+        # Check and escape formula injections
         final_xml = escape_formula_values(final_xml)
 
         return final_xml
