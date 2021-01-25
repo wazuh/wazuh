@@ -78,33 +78,29 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
-# Review after https://github.com/wazuh/wazuh/issues/7215 is closed
-#
-#  - name: Request a list of agents (Partially allowed, user aware)
-#    request:
-#      verify: False
-#      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
-#      method: GET
-#      headers:
-#        Authorization: "Bearer {test_login_token}"
-#      params:
-#        agents_list: '002,003,007,008'
-#    response:
-#      status_code: 200
-#      json:
-#        error: !anyint
-#        data:
-#          affected_items:
-#            - agent_id: '002'
-#            - agent_id: '008'
-#          failed_items:
-#            - error:
-#                code: 4000
-#              id:
-#                - '003'
-#                - '007'
-#          total_affected_items: 2
-#          total_failed_items: 2
+  - name: Request a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: '002,003,007,008'
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4000
+              id:
+                - '003'
+                - '007'
+          total_affected_items: 0
+          total_failed_items: 2
 
 ---
 test_name: GET /experimental/syscollector/hardware
