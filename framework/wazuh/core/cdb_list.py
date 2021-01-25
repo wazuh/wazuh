@@ -3,12 +3,14 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
-from os import listdir
-from os.path import isfile, isdir, join
+import uuid
+from os import listdir, chmod
+from os.path import isfile, isdir, join, exists
+from shutil import Error
 
 from wazuh.core import common
-from wazuh.core.exception import WazuhError
-from wazuh.core.utils import find_nth
+from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.utils import find_nth, safe_move, delete_file
 
 REQUIRED_FIELDS = ['relative_dirname', 'filename']
 SORT_FIELDS = ['relative_dirname', 'filename']
@@ -60,7 +62,7 @@ def iterate_lists(absolute_path=common.lists_path, only_names=False):
                 relative_path = get_relative_path(absolute_path)
                 output.append({'relative_dirname': relative_path, 'filename': name})
             else:
-                items = get_list_from_file(new_relative_path)
+                items = get_list_from_file(join(common.ossec_path, new_relative_path))
                 output.append({'relative_dirname': new_relative_path, 'filename': name, 'items': items})
         elif isdir(new_absolute_path):
             output += iterate_lists(new_absolute_path, only_names=only_names)
@@ -137,28 +139,39 @@ def split_key_value_with_quotes(line, file_path='/CDB_LISTS_PATH'):
     return key, value
 
 
-def get_list_from_file(path):
-    """Get CDB list from file
+def get_list_from_file(path, raw=False):
+    """Get CDB list from a file.
 
-    :param path: Relative path of list file to get
-    :return: CDB list
+    Parameters
+    ----------
+    path : string
+        Full path of list file to get.
+    raw : bool, optional
+        Respond in raw format.
+
+    Returns
+    -------
+    result : dict, str
+        CDB list.
     """
-    file_path = join(common.ossec_path, path)
-    output = list()
+    result = dict()
 
     try:
-        with open(file_path) as f:
-            for line in f.read().splitlines():
+        with open(path) as f:
+            output = f.read()
+
+        if raw:
+            result = output
+        else:
+            for line in output.splitlines():
                 if 'TEMPLATE' not in line:
-                    # Check if key and value are not  surrounded by double quotes
                     if '"' not in line:
+                        # Check if key and value are not surrounded by double quotes
                         key, value = line.split(':')
-
-                    # Check if key and/or value are surrounded by double quotes
                     else:
-                        key, value = split_key_value_with_quotes(line, file_path)
-
-                    output.append({'key': key, 'value': value})
+                        # Check if key and/or value are surrounded by double quotes
+                        key, value = split_key_value_with_quotes(line, path)
+                    result.update({key: value})
 
     except OSError as e:
         if e.errno == 2:
@@ -166,10 +179,83 @@ def get_list_from_file(path):
         elif e.errno == 13:
             raise WazuhError(1803)
         elif e.errno == 21:
-            raise WazuhError(1804, extra_message="{0} {1}".format(join('WAZUH_HOME', file_path), "is a directory"))
+            raise WazuhError(1804, extra_message="{0} {1}".format(path, "is a directory"))
         else:
             raise e
     except ValueError:
-        raise WazuhError(1800, extra_message={'path': join('WAZUH_HOME', file_path)})
+        raise WazuhError(1800, extra_message={'path': path})
 
-    return output
+    return result
+
+
+def validate_cdb_list(path):
+    """Validate a CDB list.
+
+    Parameters
+    ----------
+    path : str
+        Full path of the file to validate.
+
+    Returns
+    -------
+    bool
+        True if CDB list is OK, False otherwise
+    """
+    # This regex allow any line like key:value.
+    # If key or value contains ":", the whole key or value must be within quotes:
+    # - test_key:test_value     VALID
+    # - "test:key":test_value   VALID
+    # - "test:key":"test:value" VALID
+    # - "test:key":test:value   INVALID
+    # - test:key:test_value     INVALID
+    regex_cdb = re.compile(r'(?:^"([\w\-:]*?)"|^[^:"\'\s]+):(?:"([\w\-:]*?)"$|[^:]*$)')
+
+    try:
+        with open(path) as f:
+            for line in f:
+                # Skip empty lines
+                if not line.strip():
+                    continue
+                if not re.match(regex_cdb, line):
+                    return False
+    except IOError:
+        raise WazuhInternalError(1005)
+
+    return True
+
+
+def create_tmp_list(content):
+    """Create temporal CDB list file and validate its content.
+
+    Parameters
+    ----------
+    content : str
+        Content of file to be created.
+
+    Returns
+    -------
+    tmp_file_path : str
+        Path to tmp file.
+    """
+    if len(content) == 0:
+        raise WazuhError(1112)
+
+    # Temporal file that will be moved to the final destination.
+    tmp_file_path = f'{common.ossec_path}/tmp/api_tmp_file_{uuid.uuid4()}.txt'
+    try:
+        with open(tmp_file_path, 'w') as tmp_file:
+            for element in content.splitlines():
+                # Skip empty lines
+                if not element:
+                    continue
+                tmp_file.write(element.strip() + '\n')
+        chmod(tmp_file_path, 0o640)
+    except IOError:
+        raise WazuhInternalError(1005)
+
+    # Validate CDB list
+    if not validate_cdb_list(tmp_file_path):
+        delete_file(tmp_file_path)
+        raise WazuhError(1800)
+
+    return tmp_file_path

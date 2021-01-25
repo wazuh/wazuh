@@ -134,11 +134,23 @@ default_policies:
         effect: allow
 
   lists_read:
-    description: Allow read all lists paths in the system.
+    description: Allow reading all lists paths in the system.
     policies:
       rules:
         actions:
           - lists:read
+        resources:
+          - list:path:*
+        effect: allow
+
+  lists_all:
+    description: Allow managing all CDB lists files in the system.
+    policies:
+      rules:
+        actions:
+          - lists:read
+          - lists:update
+          - lists:delete
         resources:
           - list:path:*
         effect: allow

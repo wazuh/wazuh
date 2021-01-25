@@ -12,8 +12,8 @@ with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core import common
         from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists, \
-            split_key_value_with_quotes
-        from wazuh.core.exception import WazuhError
+            split_key_value_with_quotes, validate_cdb_list, create_tmp_list
+        from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 
 
 # Variables
@@ -27,17 +27,26 @@ ABSOLUTE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data"
 RELATIVE_PATH = os.path.join("framework", "wazuh", "core", "tests", "data", "test_cdb_list")
 PATH_FILE = os.path.join(RELATIVE_PATH, "test_lists")
 
-CONTENT_FILE = [{'key': 'test-wazuh-w', 'value': 'write'},
-                {'key': 'test-wazuh-r', 'value': 'read'},
-                {'key': 'test-wazuh-a', 'value': 'attribute'},
-                {'key': 'test-wazuh-x', 'value': 'execute'},
-                {'key': 'test-wazuh-c', 'value': 'command'},
-                {'key': 'test-key', 'value': 'value:1'},
-                {'key': 'test-key:1', 'value': 'value'},
-                {'key': 'test-key:2', 'value': 'value:2'},
-                {'key': 'test-key::::::3', 'value': 'value3'},
-                {'key': 'test-key4', 'value': 'value:::4'}]
-
+# CONTENT_FILE = [{'key': 'test-wazuh-w', 'value': 'write'},
+#                 {'key': 'test-wazuh-r', 'value': 'read'},
+#                 {'key': 'test-wazuh-a', 'value': 'attribute'},
+#                 {'key': 'test-wazuh-x', 'value': 'execute'},
+#                 {'key': 'test-wazuh-c', 'value': 'command'},
+#                 {'key': 'test-key', 'value': 'value:1'},
+#                 {'key': 'test-key:1', 'value': 'value'},
+#                 {'key': 'test-key:2', 'value': 'value:2'},
+#                 {'key': 'test-key::::::3', 'value': 'value3'},
+#                 {'key': 'test-key4', 'value': 'value:::4'}]
+CONTENT_FILE = {'test-wazuh-w': 'write',
+                'test-wazuh-r': 'read',
+                'test-wazuh-a': 'attribute',
+                'test-wazuh-x': 'execute',
+                'test-wazuh-c': 'command',
+                'test-key': 'value:1',
+                'test-key:1': 'value',
+                'test-key:2': 'value:2',
+                'test-key::::::3': 'value3',
+                'test-key4': 'value:::4'}
 
 # Tests
 
@@ -149,12 +158,20 @@ def test_split_key_value_with_quotes(line, expected_key, expected_value):
         assert e.value.code == 1800
 
 
-def test_get_list_from_file():
+@pytest.mark.parametrize('raw', [
+    False, True
+])
+def test_get_list_from_file(raw):
     """Test basic `get_list_from_file` core functionality.
 
     `get_list_from_file` must retrieve the content of a CDB file.
     """
-    assert get_list_from_file(PATH_FILE) == CONTENT_FILE
+    full_path = os.path.join(common.ossec_path, PATH_FILE)
+    if raw:
+        with open(full_path) as f:
+            assert get_list_from_file(full_path, raw) == f.read()
+    else:
+        assert get_list_from_file(full_path, raw) == CONTENT_FILE
 
 
 @pytest.mark.parametrize("error_to_raise, wazuh_error_code", [
@@ -186,3 +203,65 @@ def test_get_list_from_file_with_errors(error_to_raise, wazuh_error_code):
             assert e.code == wazuh_error_code
         except Exception as e:
             assert e.args == (1, "Random")
+
+
+def test_validate_cdb_list():
+    """Test validate_cdb function"""
+    with open(os.path.join(common.ossec_path, PATH_FILE)) as f:
+        ossec_cdb_list = f.read()
+
+    m = mock_open(read_data=ossec_cdb_list)
+    with patch('builtins.open', m):
+        assert validate_cdb_list('path')
+
+
+def test_validate_cdb_list_ko():
+    """Test that validate_cdb_list raises expected exceptions."""
+    # Match error
+    invalid_list = "test:key:testvalue\n"
+
+    m = mock_open(read_data=invalid_list)
+    with patch('wazuh.core.cdb_list.open', m):
+        result = validate_cdb_list('path')
+
+    assert result is False
+
+    # Open function raise IOError
+    with pytest.raises(WazuhException, match=f'.* 1005 .*'):
+        validate_cdb_list('path')
+
+
+@patch('wazuh.core.cdb_list.chmod')
+@patch('wazuh.core.cdb_list.uuid.uuid4', return_value='0')
+@patch('wazuh.core.cdb_list.delete_file')
+def test_create_tmp_list(mock_delete, mock_uuid, mock_chmod):
+    """Test that create_tmp_list function"""
+
+    with open(os.path.join(common.ossec_path, PATH_FILE)) as f:
+        with patch('wazuh.core.cdb_list.common.ossec_path', new='/var/ossec'):
+            with patch('builtins.open') as mock_open:
+                ossec_cdb_list = f.read()
+                result = create_tmp_list(ossec_cdb_list)
+                assert mock_open.return_value.__enter__().write.call_count == len(ossec_cdb_list.split('\n'))-1
+
+    assert result == '/var/ossec/tmp/api_tmp_file_0.txt'
+
+
+def test_create_tmp_list_ko():
+    """Test that create_tmp_list function works and methods inside are called with expected parameters"""
+    with pytest.raises(WazuhError, match=r'\b1112\b'):
+        create_tmp_list('')
+
+    with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
+        create_tmp_list(' ')
+
+    with patch('builtins.open'):
+        with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
+            create_tmp_list(' ')
+
+        with patch('wazuh.core.cdb_list.chmod'):
+            with patch('wazuh.core.cdb_list.validate_cdb_list', return_value=False):
+                with patch('wazuh.core.cdb_list.delete_file') as mock_delete:
+                    with pytest.raises(WazuhError, match=r'\b1800\b'):
+                        create_tmp_list(' ')
+                    mock_delete.assert_called_once()

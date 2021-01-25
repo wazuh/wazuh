@@ -5,7 +5,8 @@
 
 import os
 import sys
-from unittest.mock import patch, MagicMock
+import shutil
+from unittest.mock import patch, MagicMock, ANY
 
 import pytest
 
@@ -20,9 +21,11 @@ with patch('wazuh.core.common.getgrnam'):
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.cdb_list import get_lists, get_path_lists, iterate_lists
+        from wazuh.cdb_list import get_lists, get_path_lists, iterate_lists, get_list_file, upload_list_file,\
+            delete_list_file
         from wazuh.core import common
         from wazuh.core.results import AffectedItemsWazuhResult
+        from wazuh.core.exception import *
 
 RELATIVE_PATH = os.path.join("framework", "wazuh", "tests", "data", "test_cdb_list")
 NAME_FILE_1 = "test_lists_1"
@@ -279,3 +282,111 @@ def test_get_path_lists_sort(iterate_mock):
     assert result_a.affected_items != result_b.affected_items
     assert result_a.affected_items == RESULT_GET_PATH_LIST_FILE_1 + RESULT_GET_PATH_LIST_FILE_2
     assert result_b.affected_items == RESULT_GET_PATH_LIST_FILE_2 + RESULT_GET_PATH_LIST_FILE_1
+
+
+@pytest.mark.parametrize("filename, raw, expected_result, total_failed_items", [
+    ('test_file', True, 'key:value\n"ke:y2":value2\n', 0),
+    ('test_file', False, {'key': 'value', 'ke:y2': 'value2'}, 0),
+    ('unknown', False, [], 1),
+])
+def test_get_list_file(filename, raw, expected_result, total_failed_items):
+    """Test that get_list_file calls functions with expected params and it searches filename recursively.
+
+    Parameters
+    ----------
+    filename : str
+        Name of the file to be searched
+    raw : bool
+        Whether to return content in raw format.
+    expected_result : str, dict
+        Result that should be returned.
+    total_failed_items : int
+        Expected number of failed items.
+    """
+    try:
+        # Create directory for the test
+        test_dir = os.path.join(DATA_PATH, 'test_dir')
+        test_file = os.path.join(test_dir, 'test_file')
+        shutil.rmtree(test_dir, ignore_errors=True)
+        os.makedirs(test_dir)
+        with open(test_file, 'a') as f:
+            f.write('key:value\n"ke:y2":value2\n')
+
+        with patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH):
+            result = get_list_file([filename], raw)
+            if raw:
+                assert result == 'key:value\n"ke:y2":value2\n'
+            else:
+                isinstance(result, AffectedItemsWazuhResult)
+                assert result.render()['data']['total_failed_items'] == total_failed_items
+                if total_failed_items == 0:
+                    assert result.render()['data']['affected_items'][0] == expected_result
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+@patch('wazuh.cdb_list.create_tmp_list', return_value='/path/to/tmp')
+@patch('wazuh.cdb_list.delete_list_file')
+@patch('wazuh.cdb_list.delete_file')
+@patch('wazuh.cdb_list.safe_move')
+@patch('wazuh.cdb_list.os.path.exists', return_value=True)
+def test_upload_list_file(mock_exists, mock_safe_move, mock_delete_file, mock_delete_list_file, mock_create_tmp_list):
+    """Cehck that functions inside upload_list_file are called with expected params"""
+    filename = ['test_file']
+    content = 'test_key:test_value\n'
+    result = upload_list_file(filename, content, overwrite=True)
+
+    mock_create_tmp_list.assert_called_once_with(content)
+    mock_delete_list_file.assert_called_once_with(filename=filename[0])
+    mock_safe_move.assert_called_once_with('/path/to/tmp', ANY, permissions=0o660)
+    mock_delete_file.assert_called_once_with('/path/to/tmp')
+    print(result)
+
+
+@patch('wazuh.cdb_list.delete_file')
+def test_upload_list_file_ko(mock_delete_file):
+    """Check whether expected exceptions are raised."""
+    result = upload_list_file(filename=['test'], content='')
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1112
+
+    with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
+        upload_list_file(filename=['test'], content='test:content')
+
+    with patch('wazuh.cdb_list.create_tmp_list', return_value='/path/to/tmp'):
+        with patch('wazuh.cdb_list.os.path.exists', return_value=True):
+            result = upload_list_file(filename=['test'], content='test:content')
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1905
+
+            with patch('wazuh.cdb_list.os.path.exists', return_value=False):
+                with patch('wazuh.cdb_list.safe_move', side_effect=shutil.Error):
+                    with pytest.raises(WazuhInternalError, match=r'\b1016\b'):
+                        upload_list_file(filename=['test'], content='test:content', overwrite=True)
+
+
+@patch('wazuh.cdb_list.delete_file')
+def test_delete_list_file(mock_delete_file):
+    """Check that expected result is returned when the file is deleted."""
+    try:
+        # Create directory for the test
+        test_dir = os.path.join(DATA_PATH, 'test_dir')
+        test_file = os.path.join(test_dir, 'test_file')
+        shutil.rmtree(test_dir, ignore_errors=True)
+        os.makedirs(test_dir)
+        with open(test_file, 'a') as f:
+            f.write('key:value\n"ke:y2":value2\n')
+
+        with patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH):
+            result = delete_list_file(['test_file'])
+            assert result.render()['data']['affected_items'][0] ==\
+                   'framework/wazuh/tests/data/test_cdb_list/test_dir/test_file'
+        mock_delete_file.assert_called_once_with(test_file)
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
+
+
+def test_delete_list_file_ko():
+    """Check that expected error code is returned when the file can't be deleted."""
+    with patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH):
+        result = delete_list_file(['test_file'])
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1907

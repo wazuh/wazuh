@@ -15,7 +15,7 @@ import typing
 from copy import deepcopy
 from datetime import datetime, timedelta
 from itertools import groupby, chain
-from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime
+from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove
 from subprocess import CalledProcessError, check_output
 from xml.etree.ElementTree import fromstring
 from api import configuration
@@ -452,6 +452,33 @@ def chown_r(filepath, uid, gid):
                 chown(itempath, uid, gid)
             elif path.isdir(itempath):
                 chown_r(itempath, uid, gid)
+
+
+def delete_file(full_path):
+    """Delete a Wazuh file.
+
+    Parameters
+    ----------
+    full_path : str
+        Full path of the file to delete.
+
+    Returns
+    -------
+    bool
+        True if success.
+    """
+    if not full_path.startswith(common.ossec_path):
+        raise WazuhError(1907)
+
+    if path.exists(full_path):
+        try:
+            remove(full_path)
+        except IOError:
+            raise WazuhError(1907)
+    else:
+        raise WazuhError(1906)
+
+    return True
 
 
 def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid()), time=None, permissions=None):
