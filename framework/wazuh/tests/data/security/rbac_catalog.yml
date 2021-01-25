@@ -379,7 +379,33 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - GET /lists
+          - GET /lists/files/{filename}
           - GET /lists/files
+      lists:update:
+        description: Update cdb lists files
+        resources:
+          - list:path
+        example:
+          actions:
+            - lists:update
+          resources:
+            - list:path:etc/lists/audit-keys
+          effect: allow
+        related_endpoints:
+          - PUT /lists/files/{filename}
+      lists:delete:
+        description: Delete cdb lists files
+        resources:
+          - list:path
+        example:
+          actions:
+            - lists:delete
+          resources:
+            - list:path:etc/lists/audit-keys
+          effect: deny
+        related_endpoints:
+          - PUT /lists/files/{filename}
+          - DELETE /lists/files/{filename}
       logtest:run:
         description: Run logtest tool or end a logtest session
         resources:
