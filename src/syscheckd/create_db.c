@@ -489,6 +489,11 @@ void fim_check_db_state() {
     nodes_count = fim_db_get_count_entries(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
+    if (nodes_count < 0) {
+        mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+        return;
+    }
+
     switch (_db_state) {
     case FIM_STATE_DB_FULL:
         if (nodes_count >= syscheck.file_limit) {
