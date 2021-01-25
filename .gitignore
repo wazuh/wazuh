@@ -77,6 +77,7 @@ src/host-deny
 src/ip-customblock
 src/restart-wazuh
 src/route-null
+src/kaspersky
 
 # Windows agent
 src/win32/*.exe

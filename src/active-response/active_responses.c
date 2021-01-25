@@ -126,6 +126,34 @@ char* get_username_from_json (cJSON *input) {
     return NULL;
 }
 
+char* get_extra_args_from_json (cJSON *input) {
+    cJSON *parameters_json = NULL;
+    cJSON *extra_args_json = NULL;
+    char args[COMMANDSIZE];
+    char *extra_args = NULL;
+
+    // Detect parameters
+    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect extra_args
+    if (extra_args_json = cJSON_GetObjectItem(parameters_json, "extra_args"), !extra_args_json || (extra_args_json->type != cJSON_Array)) {
+        return NULL;
+    }
+
+    for (int i = 0; i < cJSON_GetArraySize(extra_args_json); i++) {
+        cJSON *subitem = cJSON_GetArrayItem(extra_args_json, i);
+        if (subitem && (subitem->type == cJSON_String)) {
+            strcat(args, subitem->valuestring);
+            strcat(args, " ");
+        }
+    }
+
+    os_strdup(args, extra_args);
+    return extra_args;
+}
+
 char* get_srcip_from_json (cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;

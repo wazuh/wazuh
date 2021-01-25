@@ -175,4 +175,5 @@ WazuhUpgrade()
     rm -f $DIRECTORY/active-response/bin/ip-customblock.sh
     rm -f $DIRECTORY/active-response/bin/restart-ossec.sh
     rm -f $DIRECTORY/active-response/bin/route-null.sh
+    rm -f $DIRECTORY/active-response/bin/kaspersky.sh
 }
