@@ -1,6 +1,7 @@
 # Generate client-agent library
 file(GLOB client-agent_files
-    ${SRC_FOLDER}/client-agent/*.o)
+    ${SRC_FOLDER}/client-agent/*.o
+    ${SRC_FOLDER}/monitord/*.o)
 
 list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/client-agent/main.o)
 
@@ -39,6 +40,9 @@ list(APPEND client-agent_names "test_notify")
 list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_SendUnix,--wrap,OS_RecvUnix,--wrap,close \
                                 -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time,--wrap,_mdebug1 \
                                 -Wl,--wrap,_mdebug2")
+
+list(APPEND client-agent_names "test_state")
+list(APPEND client-agent_flags "-Wl,--wrap,_merror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 list(LENGTH client-agent_names count)
 math(EXPR count "${count} - 1")
