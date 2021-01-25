@@ -10963,8 +10963,74 @@ paths:
         - $ref: '#/components/parameters/raw'
       responses:
         '200':
-          description: "Rule contents"
+          description: "Rule content"
           content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - group:
+                      - "@name": syslog
+                        rule:
+                          "@id": '1'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: syslog
+                          description: "Generic template for all syslog rules."
+                      - "@name": firewall,
+                        rule:
+                          "@id": '2'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: firewall
+                          description: "Generic template for all firewall rules."
+                      - "@name": ids
+                        rule:
+                          "@id": '3'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: ids
+                          description: "Generic template for all ids rules."
+                      - "@name": web-log
+                        rule:
+                          "@id": '4'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: web-log
+                          description: "Generic template for all web rules."
+                      - "@name": squid
+                        rule:
+                          "@id": '5'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: squid
+                          description: "Generic template for all web proxy rules."
+                      - "@name": windows
+                        rule:
+                          "@id": '6'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: windows
+                          description: "Generic template for all windows rules."
+                      - "@name": ossec
+                        rule:
+                          "@id": '7'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: ossec
+                          description: "Generic template for all ossec rules."
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Selected rule was returned
+                error: 0
             application/xml:
               schema:
                 type: string
@@ -11034,7 +11100,7 @@ paths:
       tags:
         - Rules
       summary: "Update file to the ruleset"
-      description: "Upload or replace ruleset file contents with the data contained in the API request"
+      description: "Upload or replace a user ruleset file content"
       operationId: api.controllers.rule_controller.put_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:update'
@@ -11060,9 +11126,18 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
-                message: "File was uploaded successfully"
+                data:
+                  affected_items:
+                    - "etc/rules/new_rule.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Rule was successfully uploaded"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -11096,16 +11171,18 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
               example:
-                # TODO
                 data:
                   affected_items:
-                    - "etc/rules/custom_rule.xml"
-                  total_affected_items: 1
+                    - "etc/rules/new_rule.xml"
                   failed_items: []
+                  total_affected_items: 1
                   total_failed_items: 0
-                message: File was deleted successfully
+                message: "Rule was successfully deleted"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
