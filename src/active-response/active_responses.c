@@ -142,15 +142,21 @@ char* get_extra_args_from_json (cJSON *input) {
         return NULL;
     }
 
+    memset(args, '\0', COMMANDSIZE);
     for (int i = 0; i < cJSON_GetArraySize(extra_args_json); i++) {
         cJSON *subitem = cJSON_GetArrayItem(extra_args_json, i);
         if (subitem && (subitem->type == cJSON_String)) {
+            if (args[0] != '\0') {
+                strcat(args, " ");
+            }
             strcat(args, subitem->valuestring);
-            strcat(args, " ");
         }
     }
 
-    os_strdup(args, extra_args);
+    if (args[0] != '\0') {
+        os_strdup(args, extra_args);
+    }
+
     return extra_args;
 }
 
