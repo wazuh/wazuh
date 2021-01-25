@@ -156,8 +156,8 @@ int main(int argc, char **argv)
         nowDaemon();
         goDaemon();
     } else {
-        if (chdir(DEFAULTDIR) == -1) {
-            merror_exit(CHDIR_ERROR, DEFAULTDIR, errno, strerror(errno));
+        if (chdir(HOMEDIR) == -1) {
+            merror_exit(CHDIR_ERROR, HOMEDIR, errno, strerror(errno));
         }
     }
 

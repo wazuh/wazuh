@@ -74,7 +74,7 @@ int setup_jailfile_long_name2(void **state) {
     #ifdef TEST_WINAGENT
     const unsigned int length = PATH_MAX - strlen(TMP_DIR) - 2;
     #else
-    const unsigned int length = PATH_MAX - strlen(DEFAULTDIR) - strlen(TMP_DIR) - 2;
+    const unsigned int length = PATH_MAX - strlen(HOMEDIR) - strlen(TMP_DIR) - 2;
     #endif
     for(int i=0; i < length; i++) {
         sprintf(&filename[i], "a");

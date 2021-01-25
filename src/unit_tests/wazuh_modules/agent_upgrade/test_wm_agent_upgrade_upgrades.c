@@ -193,7 +193,7 @@ void test_wm_agent_upgrade_send_command_to_agent_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -327,7 +327,7 @@ void test_wm_agent_upgrade_send_lock_restart_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -367,7 +367,7 @@ void test_wm_agent_upgrade_send_lock_restart_err(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -409,7 +409,7 @@ void test_wm_agent_upgrade_send_open_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -451,7 +451,7 @@ void test_wm_agent_upgrade_send_open_ok_new(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -494,7 +494,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -520,7 +520,7 @@ void test_wm_agent_upgrade_send_open_retry_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -562,7 +562,7 @@ void test_wm_agent_upgrade_send_open_retry_err(void **state)
 
     will_return_count(__wrap_isChroot, 0, 10);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 10);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 10);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 10);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 10);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 10);
@@ -648,7 +648,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -677,7 +677,7 @@ void test_wm_agent_upgrade_send_write_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -735,7 +735,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -764,7 +764,7 @@ void test_wm_agent_upgrade_send_write_ok_new(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -823,7 +823,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -852,7 +852,7 @@ void test_wm_agent_upgrade_send_write_err(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -916,7 +916,7 @@ void test_wm_agent_upgrade_send_close_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -958,7 +958,7 @@ void test_wm_agent_upgrade_send_close_ok_new(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1000,7 +1000,7 @@ void test_wm_agent_upgrade_send_close_err(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1043,7 +1043,7 @@ void test_wm_agent_upgrade_send_sha1_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1086,7 +1086,7 @@ void test_wm_agent_upgrade_send_sha1_ok_new(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1130,7 +1130,7 @@ void test_wm_agent_upgrade_send_sha1_err(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1173,7 +1173,7 @@ void test_wm_agent_upgrade_send_sha1_invalid_sha1(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1219,7 +1219,7 @@ void test_wm_agent_upgrade_send_upgrade_ok(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1262,7 +1262,7 @@ void test_wm_agent_upgrade_send_upgrade_ok_new(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1306,7 +1306,7 @@ void test_wm_agent_upgrade_send_upgrade_err(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1349,7 +1349,7 @@ void test_wm_agent_upgrade_send_upgrade_script_err(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -1424,7 +1424,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_linux_ok(void **state)
 
     will_return_count(__wrap_isChroot, 0, 6);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -1590,7 +1590,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_windows_ok(void **state)
 
     will_return_count(__wrap_isChroot, 0, 6);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -1756,7 +1756,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_custom_installer_ok(
 
     will_return_count(__wrap_isChroot, 0, 6);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -1921,7 +1921,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_custom_default_installer_ok
 
     will_return_count(__wrap_isChroot, 0, 6);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -2087,7 +2087,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_run_upgrade_err(void **stat
 
     will_return_count(__wrap_isChroot, 0, 6);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -2252,7 +2252,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_send_sha1_err(void **state)
 
     will_return_count(__wrap_isChroot, 0, 5);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 5);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 5);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 5);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 5);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 5);
@@ -2403,7 +2403,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_close_file_err(void **state
 
     will_return_count(__wrap_isChroot, 0, 4);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 4);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 4);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 4);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 4);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 4);
@@ -2536,7 +2536,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_write_file_err(void **state
 
     will_return_count(__wrap_isChroot, 0, 3);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 3);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 3);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 3);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 3);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 3);
@@ -2650,7 +2650,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_open_file_err(void **state)
 
     will_return_count(__wrap_isChroot, 0, 11);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 11);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 11);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 11);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 11);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 11);
@@ -2800,7 +2800,7 @@ void test_wm_agent_upgrade_send_wpk_to_agent_upgrade_lock_restart_err(void **sta
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -3007,7 +3007,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_ok(void **state)
 
     will_return_count(__wrap_isChroot, 0, 6);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -3239,7 +3239,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_legacy_ok(void **state)
 
     will_return_count(__wrap_isChroot, 0, 6);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -3472,7 +3472,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_custom_ok(void **state)
 
     will_return_count(__wrap_isChroot, 0, 6);
 
-    expect_string_count(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK, 6);
+    expect_string_count(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM, 6);
     expect_value_count(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR, 6);
     will_return_count(__wrap_OS_ConnectUnixDomain, socket, 6);
@@ -3703,7 +3703,7 @@ void test_wm_agent_upgrade_start_upgrade_upgrade_err(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR REMOTE_REQ_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR REMOTE_REQ_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);

@@ -20,7 +20,7 @@
 #define OSSEC_LDEFINES   "./local_internal_options.conf"
 #endif
 
-static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
+static char *_read_file(const char *high_name, const char *low_name, char *defines_file);
 static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
 
@@ -39,7 +39,7 @@ static unsigned int _netmasks[33];
  * format: high_name.low_name.
  * If return is not null, value must be freed
  */
-static char *_read_file(const char *high_name, const char *low_name, const char *defines_file)
+static char *_read_file(const char *high_name, const char *low_name, char *defines_file)
 {
     FILE *fp;
     char def_file[OS_FLSIZE + 1];
@@ -53,7 +53,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     if (isChroot()) {
         snprintf(def_file, OS_FLSIZE, "%s", defines_file);
     } else {
-        snprintf(def_file, OS_FLSIZE, "%s%s", DEFAULTDIR, defines_file);
+        snprintf(def_file, OS_FLSIZE, "%s", BUILDDIR(HOMEDIR,defines_file));
     }
 #else
     snprintf(def_file, OS_FLSIZE, "%s", defines_file);

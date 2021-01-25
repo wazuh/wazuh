@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
     home_path = w_homedir(argv[0]);
-    char *dir = DEFAULTDIR;
+    char *dir = HOMEDIR;
     char *user = MAILUSER;
     char *group = GROUPGLOBAL;
     char *cfg = DEFAULTCPATH;

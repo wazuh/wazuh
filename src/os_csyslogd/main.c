@@ -29,7 +29,7 @@ static void help_csyslogd()
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
     print_out(" ");
     exit(1);
 }
@@ -42,7 +42,8 @@ int main(int argc, char **argv)
 
     /* Use MAILUSER (read only) */
     home_path = w_homedir(argv[0]);
-    const char *dir = DEFAULTDIR;
+    const char *dir = HOMEDIR;
+
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;

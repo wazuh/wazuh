@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     int clear_daily = 0;
     int clear_weekly = 0;
 
-    const char *dir = DEFAULTDIR;
+    const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
     gid_t gid;
