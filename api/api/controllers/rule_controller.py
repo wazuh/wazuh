@@ -191,7 +191,7 @@ async def get_rules_files(request, pretty=False, wait_for_complete=False, offset
 
 @cache(expires=api_conf['cache']['time'])
 async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
-                        raw: bool = False):
+                   raw: bool = False):
     """Get rule file content.
 
     Parameters
@@ -204,6 +204,14 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
         Filename to download.
     raw : bool, optional
         Whether to return the file content in raw or JSON format. Default `True`
+
+    Returns
+    -------
+    web.json_response or ConnexionResponse
+        Depending on the `raw` parameter, it will return an object or other:
+            raw=True            -> ConnexionResponse (application/xml)
+            raw=False (default) -> web.json_response (application/json)
+        If any exception was raised, it will return a web.json_response with details.
     """
     f_kwargs = {'filename': filename, 'raw': raw}
 
@@ -224,15 +232,25 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     return response
 
 
-async def put_file(request, body, overwrite=False, pretty=False, wait_for_complete=False, filename=None):
-    """Upload file in manager or local_node.
+async def put_file(request, body, filename=None, overwrite=False, pretty=False, wait_for_complete=False):
+    """Upload a rule file.
+    
+    Parameters
+    ----------
+    body : dict
+        Body request with the file content to be uploaded.
+    filename : str, optional
+        Name of the file. Default `None`
+    overwrite : bool, optional
+        If set to false, an exception will be raised when updating contents of an already existing file. Default `False`
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
 
-    :param body: Body request with the content of the file to be uploaded
-    :param overwrite: If set to false, an exception will be raised when updating contents of an already existing
-    filename.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param path: Filepath to return.
+    Returns
+    -------
+    web.json_response
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
@@ -255,7 +273,22 @@ async def put_file(request, body, overwrite=False, pretty=False, wait_for_comple
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_file(request, pretty=False, wait_for_complete=False, filename=None):
+async def delete_file(request, filename=None, pretty=False, wait_for_complete=False):
+    """Delete a rule file.
+
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the file. Default `None`
+    pretty : bool, optional
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool, optional
+        Disable timeout response. Default `False`
+
+    Returns
+    -------
+    web.json_response
+    """
     f_kwargs = {'filename': filename}
 
     dapi = DistributedAPI(f=rule_framework.delete_rule_file,

@@ -217,14 +217,15 @@ def get_rule_file(filename=None, raw=False):
 
     Parameters
     ----------
-    filename : str
-        Name of the rule file.
+    filename : str, optional
+        Name of the rule file. Default `None`
     raw : bool, optional
-        Whether to return the content in raw format or JSON. Default `False` (JSON format)
+        Whether to return the content in raw format (str->XML) or JSON. Default `False` (JSON format)
 
     Returns
     -------
-    Content of the file.
+    str or dict
+        Content of the file. AffectedItemsWazuhResult format if `raw=False`.
     """
     result = AffectedItemsWazuhResult(none_msg='No rule was returned',
                                       all_msg='Selected rule was returned')
@@ -254,6 +255,22 @@ def get_rule_file(filename=None, raw=False):
 
 @expose_resources(actions=['rules:update'], resources=['rule:file:{filename}'])
 def upload_rule_file(filename=None, content=None, overwrite=False):
+    """Upload a new rule file or update an existing one.
+
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the rule file. Default `None`
+    content : str, optional
+        Content of the file. It must be a valid XML file. Default `None`
+    overwrite : bool, optional
+        True for updating existing files. False otherwise. Default `False`
+
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
                                       none_msg='Could not upload rule'
                                       )
@@ -281,6 +298,17 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
 
 @expose_resources(actions=['rules:delete'], resources=['rule:file:{filename}'])
 def delete_rule_file(filename=None):
+    """Delete a rule file.
+
+    Parameters
+    ----------
+    filename : str, optional
+        Name of the rule file. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully deleted',
                                       none_msg='Could not delete rule'
                                       )
