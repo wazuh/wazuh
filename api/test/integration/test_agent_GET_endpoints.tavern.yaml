@@ -1263,8 +1263,6 @@ stages:
         error: !anyint
         data:
           active-response:
-            ca_store: !anything
-            ca_verification: !anystr
             disabled: !anystr
 
   - name: Request-Com-Internal (Manager)

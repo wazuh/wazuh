@@ -603,7 +603,7 @@ void test_fim_link_update_already_added(void **state) {
     fim_link_update(pos, link_path);
 
     assert_string_equal(syscheck.dir[pos], link_path);
-    assert_string_equal(syscheck.symbolic_links[pos], "");
+    assert_null(syscheck.symbolic_links[pos]);
 }
 
 void test_fim_link_check_delete(void **state) {
@@ -622,7 +622,7 @@ void test_fim_link_check_delete(void **state) {
     fim_link_check_delete(pos);
 
     assert_string_equal(syscheck.dir[pos], link_path);
-    assert_string_equal(syscheck.symbolic_links[pos], "");
+    assert_null(syscheck.symbolic_links[pos]);
 }
 
 void test_fim_link_check_delete_lstat_error(void **state) {
@@ -666,7 +666,7 @@ void test_fim_link_check_delete_noentry_error(void **state) {
     errno = 0;
 
     assert_string_equal(syscheck.dir[pos], link_path);
-    assert_string_equal(syscheck.symbolic_links[pos], "");
+    assert_null(syscheck.symbolic_links[pos]);
 }
 
 void test_fim_delete_realtime_watches(void **state) {
