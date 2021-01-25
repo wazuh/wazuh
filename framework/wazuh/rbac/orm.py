@@ -30,12 +30,12 @@ import wazuh.core.common as common
 import logging
 # Max reserved ID value
 max_id_reserved = 99
-cloud_reserved_range = 39
+cloud_reserved_range = 89
 
 # Database variables
 DATABASE_FILENAME = 'rbac.db'
 _auth_db_file = os.path.join(SECURITY_PATH, DATABASE_FILENAME)
-_tmp_db_file = f'{_auth_db_file}_tmp'
+_tmp_db_file = f'{_auth_db_file}.tmp'
 _Base = declarative_base()
 
 # Required rules for role
@@ -2671,99 +2671,85 @@ class DatabaseManager:
     def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None,
                      check_default: bool = True):
         """Get the resources from the "source" database filtering by IDs and insert them into the "target" database."""
-        def format_datetime(created_at):
-            return datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S.%f')
+        def get_data(table, *args):
+            if not from_id and not to_id:
+                return self.sessions[source].query(table).all()
+            result = set()
+            for column in args:
+                if from_id and to_id:
+                    partial_result = set(self.sessions[source].query(table).filter(column.between(from_id, to_id)).all())
+                elif from_id:
+                    partial_result = set(self.sessions[source].query(table).filter(column >= from_id).all())
+                elif to_id:
+                    partial_result = set(self.sessions[source].query(table).filter(column <= to_id).all())
+                result = partial_result if result == set() else result.intersection(partial_result)
+            return result
 
-        if from_id and to_id:
-            id_range = f"WHERE id BETWEEN {from_id} and {to_id}"
-            role_policy_range = f"WHERE role_id BETWEEN {from_id} and {to_id} and policy_id BETWEEN {from_id} and {to_id}"
-            role_rule_range = f"WHERE role_id BETWEEN {from_id} and {to_id} and rule_id BETWEEN {from_id} and {to_id}"
-            user_role_range = f"WHERE user_id BETWEEN {from_id} and {to_id} and role_id BETWEEN {from_id} and {to_id}"
-        elif from_id:
-            id_range = f'WHERE id >= {from_id}'
-            role_policy_range = f"WHERE role_id >= {from_id} and policy_id >= {from_id}"
-            role_rule_range = f"WHERE role_id >= {from_id} and rule_id >= {from_id}"
-            user_role_range = f"WHERE user_id >= {from_id} and role_id >= {from_id}"
-        elif to_id:
-            id_range = f'WHERE id <= {to_id}'
-            role_policy_range = f"WHERE role_id <= {to_id} and policy_id <= {to_id}"
-            role_rule_range = f"WHERE role_id <= {to_id} and rule_id <= {to_id}"
-            user_role_range = f"WHERE user_id <= {from_id} and role_id <= {from_id}"
-        else:
-            id_range = ''
-            role_policy_range = ''
-            role_rule_range = ''
-            user_role_range = ''
-
-        old_users = self.sessions[source].execute(
-            f'SELECT username, password, allow_run_as, created_at, id FROM users {id_range};').fetchall()
+        old_users = get_data(User, User.id)
         with AuthenticationManager(self.sessions[target]) as auth_manager:
             for user in old_users:
-                auth_manager.add_user(username=user[0],
-                                      password=user[1],
-                                      allow_run_as=user[2],
-                                      created_at=format_datetime(user[3]),
-                                      user_id=user[4],
+                auth_manager.add_user(username=user.username,
+                                      password=user.password,
+                                      allow_run_as=user.allow_run_as,
+                                      created_at=user.created_at,
+                                      user_id=user.id,
                                       hash_password=True,
                                       resource_type=resource_type,
                                       check_default=check_default)
-        old_roles = self.sessions[source].execute(f'SELECT name, created_at, id FROM roles {id_range};').fetchall()
+
+        old_roles = get_data(Roles, Roles.id)
         with RolesManager(self.sessions[target]) as role_manager:
             for role in old_roles:
-                role_manager.add_role(name=role[0],
-                                      created_at=format_datetime(role[1]),
-                                      role_id=role[2],
+                role_manager.add_role(name=role.name,
+                                      created_at=role.created_at,
+                                      role_id=role.id,
                                       resource_type=resource_type,
                                       check_default=check_default)
 
-        old_rules = self.sessions[source].execute(
-            f'SELECT name, rule, created_at, id FROM rules {id_range};').fetchall()
+        old_rules = get_data(Rules, Rules.id)
         with RulesManager(self.sessions[target]) as rule_manager:
             for rule in old_rules:
-                rule_manager.add_rule(name=rule[0],
-                                      rule=json.loads(rule[1]),
-                                      created_at=format_datetime(rule[2]),
-                                      rule_id=rule[3],
+                rule_manager.add_rule(name=rule.name,
+                                      rule=json.loads(rule.rule),
+                                      created_at=rule.created_at,
+                                      rule_id=rule.id,
                                       check_default=check_default)
-        old_policies = self.sessions[source].execute(
-            f'SELECT name, policy, created_at, id FROM policies {id_range};').fetchall()
+
+        old_policies = get_data(Policies, Policies.id)
         with PoliciesManager(self.sessions[target]) as policy_manager:
             for policy in old_policies:
-                policy_manager.add_policy(name=policy[0],
-                                          policy=json.loads(policy[1]),
-                                          created_at=format_datetime(policy[2]),
-                                          policy_id=policy[3],
+                policy_manager.add_policy(name=policy.name,
+                                          policy=json.loads(policy.policy),
+                                          created_at=policy.created_at,
+                                          policy_id=policy.id,
                                           check_default=check_default)
 
-        old_user_roles = self.sessions[source].execute(
-            f'SELECT user_id, role_id, level, created_at, id FROM user_roles {user_role_range};').fetchall()
+        old_user_roles = get_data(UserRoles, UserRoles.user_id, UserRoles.role_id)
         with UserRolesManager(self.sessions[target]) as user_role_manager:
             for user_role in old_user_roles:
-                user_role_manager.add_role_to_user(user_id=user_role[0],
-                                                   role_id=user_role[1],
-                                                   position=user_role[2],
-                                                   created_at=format_datetime(user_role[3]),
+                user_role_manager.add_role_to_user(user_id=user_role.user_id,
+                                                   role_id=user_role.role_id,
+                                                   position=user_role.level,
+                                                   created_at=user_role.created_at,
                                                    force_admin=True)
 
         # Role-Policies relationships
-        old_roles_policies = self.sessions[source].execute(
-            f'SELECT role_id, policy_id, level, created_at, id FROM roles_policies {role_policy_range};').fetchall()
+        old_roles_policies = get_data(RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id)
         with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
             for role_policy in old_roles_policies:
-                role_policy_manager.add_policy_to_role(role_id=role_policy[0],
-                                                       policy_id=role_policy[1],
-                                                       position=role_policy[2],
-                                                       created_at=format_datetime(role_policy[3]),
+                role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
+                                                       policy_id=role_policy.policy_id,
+                                                       position=role_policy.level,
+                                                       created_at=role_policy.created_at,
                                                        force_admin=True)
 
         # Role-Rules relationships
-        old_roles_rules = self.sessions[source].execute(
-            f'SELECT role_id, rule_id, created_at, id FROM roles_rules {role_rule_range};').fetchall()
+        old_roles_rules = get_data(RolesRules, RolesRules.role_id, RolesRules.rule_id)
         with RolesRulesManager(self.sessions[target]) as role_rule_manager:
             for role_rule in old_roles_rules:
-                role_rule_manager.add_rule_to_role(role_id=role_rule[0],
-                                                   rule_id=role_rule[1],
-                                                   created_at=format_datetime(role_rule[2]),
+                role_rule_manager.add_rule_to_role(role_id=role_rule.role_id,
+                                                   rule_id=role_rule.rule_id,
+                                                   created_at=role_rule.created_at,
                                                    force_admin=True)
 
     def rollback(self, database):
@@ -2841,11 +2827,13 @@ def check_database_integrity():
         logger.error(f'Error details: {str(e)}')
         db_manager.delete_orphans(_tmp_db_file)
         db_manager.close_sessions()
+
     else:
         logger.info('RBAC database integrity check finished successfully.')
 
-    # Remove tmp database if present
-    os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
+    finally:
+        # Remove tmp database if present
+        os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
 
 
 db_manager = DatabaseManager()

@@ -46,7 +46,8 @@ def start(foreground, root, config_file):
     from api.uri_parser import APIUriParser
     from api.util import to_relative_path
     from wazuh.core import pyDaemonModule
-    from wazuh.core.cluster.utils import read_config
+    from wazuh.core.cluster.cluster import get_node
+    from wazuh.core.cluster.utils import read_cluster_config
     from wazuh.rbac.orm import check_database_integrity
 
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
@@ -128,8 +129,8 @@ def start(foreground, root, config_file):
     # Load the SPEC file into memory to use as a reference for future calls
     common.load_spec()
 
-    # Check RBAC database integrity in Master node only
-    if read_config()['node_type'] == 'master':
+    # Check RBAC database integrity in Master node only if cluster is enabled
+    if get_node().get('type') == 'master' if not read_cluster_config()['disabled'] else True:
         check_database_integrity()
 
     # Set up API
