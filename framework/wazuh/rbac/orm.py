@@ -2562,7 +2562,7 @@ class DatabaseManager:
         self.sessions = dict()
 
     def delete_orphans(self, session):
-        """Purge unwanted relationships after a resource is removed"""
+        """Purge unwanted relationships after a resource is removed."""
         query = self.sessions[session].query(UserRoles).filter(or_(UserRoles.user_id.is_(None),
                                                                    UserRoles.role_id.is_(None))).all()
         query.extend(self.sessions[session].query(RolesRules).filter(or_(RolesRules.role_id.is_(None),
