@@ -2573,7 +2573,7 @@ class DatabaseManager:
             self.sessions[session].delete(orphan)
 
     def close_sessions(self):
-        """Close every session and dispose every engine"""
+        """Close every session and dispose every engine."""
         for session in self.sessions:
             self.sessions[session].close()
         for engine in self.engines:
