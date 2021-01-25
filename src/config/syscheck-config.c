@@ -748,7 +748,7 @@ char *format_path(char *dir) {
     }
 
     if (strlen(dir) == 2) {
-        strcat(dir, "\\");
+        wm_strcat(&dir, "\\", '\0');
     }
 
     if (!GetFullPathName(dir, PATH_MAX, buffer, NULL)) {
