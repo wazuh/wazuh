@@ -384,7 +384,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved) {
     int inode_id;
     int res, res_data, res_path;
-    unsigned int nodes_count;
+    int nodes_count;
 
     // Add event
     if (!saved) {
