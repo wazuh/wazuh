@@ -439,7 +439,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 
-#define TMP_DIR "/tmp"
+#define TMP_DIR "tmp"
 #define TMP_PATH BUILDDIR(HOMEDIR,TMP_DIR)
 
 /* Windows COMSPEC */
