@@ -577,7 +577,7 @@ void test_w_homedir_unix1(void **state)
     will_return(__wrap_realpath, (char *) 1);
 
     val = w_homedir(path0);
-    assert_string_equal(val, "/var/ossec/");
+    assert_string_equal(val, "/var/ossec");
 }
 
 void test_w_homedir_unix2(void **state)
@@ -597,7 +597,7 @@ void test_w_homedir_unix2(void **state)
     will_return(__wrap_realpath, (char *) 1);
 
     val = w_homedir(path0);
-    assert_string_equal(val, "/var/ossec/bin/");
+    assert_string_equal(val, "/var/ossec");
 }
 
 void test_w_homedir_macOS(void **state)
@@ -620,7 +620,7 @@ void test_w_homedir_macOS(void **state)
     will_return(__wrap_realpath, (char *) 1);
 
     val = w_homedir(path0);
-    assert_string_equal(val, "/private/var/ossec/");
+    assert_string_equal(val, "/private/var/ossec");
 }
 
 #ifdef __MACH__
@@ -644,7 +644,7 @@ void test_w_homedir_macOS2(void **state)
     will_return(__wrap_proc_pidpath, 1);
 
     val = w_homedir(path0);
-    assert_string_equal(val, "/private/var/ossec/");
+    assert_string_equal(val, "/private/var/ossec");
 }
 #endif
 
@@ -668,7 +668,7 @@ void test_w_homedir_argv_full_path_success(void **state)
     will_return(__wrap_realpath, (char *) 1);
 
     val = w_homedir(path0);
-    assert_string_equal(val, "/var/ossec/");
+    assert_string_equal(val, "/var/ossec");
 }
 
 void test_w_homedir_argv_symlink_success(void **state)
@@ -692,7 +692,7 @@ void test_w_homedir_argv_symlink_success(void **state)
     will_return(__wrap_realpath, (char *) 1);
 
     val = w_homedir(symlink);
-    assert_string_equal(val, "/var/ossec/");
+    assert_string_equal(val, "/var/ossec");
 }
 
 void test_w_homedir_arg_fail(void **state)

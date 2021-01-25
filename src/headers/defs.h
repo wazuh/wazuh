@@ -136,7 +136,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 #ifndef BUILDDIR
-#ifdef HOMEDIR
+#ifndef WAZUH_UNIT_TESTING
 #define BUILDDIR(x,y) ({ \
     char wazuh_fulldir[MAXPATHLEN + 1] = {'\0'}; \
     char *wazuh_str1 = (x); \

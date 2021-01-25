@@ -53,7 +53,7 @@ static char *_read_file(const char *high_name, const char *low_name, char *defin
     if (isChroot()) {
         snprintf(def_file, OS_FLSIZE, "%s", defines_file);
     } else {
-        snprintf(def_file, OS_FLSIZE, "%s", BUILDDIR(HOMEDIR,defines_file));
+        snprintf(def_file, OS_FLSIZE, "%s%s", HOMEDIR, defines_file);
     }
 #else
     snprintf(def_file, OS_FLSIZE, "%s", defines_file);
