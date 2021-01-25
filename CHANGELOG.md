@@ -43,6 +43,7 @@ All notable changes to this project will be documented in this file.
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
 
+
 ### Fixed
 
 - **Cluster:**
