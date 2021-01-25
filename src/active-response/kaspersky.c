@@ -17,7 +17,6 @@ int main (int argc, char **argv) {
     (void)argc;
     char input[BUFFERSIZE];
     char log_msg[LOGSIZE];
-    char *action;
     char *extra_args;
     cJSON *input_json = NULL;
     struct stat file_status;
