@@ -158,20 +158,24 @@ void LogCollectorStart()
     }
 
     /* Initialize state component */
-    if (state_interval > 0) {
-        w_logcollector_state_init();
-        /* Create the state thread */
-#ifndef WIN32
-        w_create_thread(w_logcollector_state_main, (void *) &state_interval);
-#else
-        w_create_thread(NULL,
-                        0,
-                        w_logcollector_state_main,
-                        (void *) &state_interval,
-                        0,
-                        NULL);
-#endif
+    if (state_interval == 0) {
+        w_logcollector_state_init(LC_STATE_GLOBAL, false);
+    } else if (state_interval > 0) {
+        w_logcollector_state_init(LC_STATE_GLOBAL | LC_STATE_INTERVAL, true);
     }
+
+
+    /* Create the state thread */
+#ifndef WIN32
+    w_create_thread(w_logcollector_state_main, (void *) &state_interval);
+#else
+    w_create_thread(NULL,
+                    0,
+                    w_logcollector_state_main,
+                    (void *) &state_interval,
+                    0,
+                    NULL);
+#endif
 
     set_sockets();
     files_lock_init();
@@ -1148,7 +1152,7 @@ void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
     current->ign = 0;
-    w_logcollector_state_update_file(current->file, 0);
+    w_logcollector_state_add_file(current->file);
     /* Initialize the files */
     if (current->ffile) {
 
@@ -1168,7 +1172,7 @@ void set_read(logreader *current, int i, int j) {
     if (current->target) {
         while (current->target[tg]) {
             mdebug1("Socket target for '%s' -> %s", current->file, current->target[tg]);
-            w_logcollector_state_update_target(current->file, current->target[tg], false);
+            w_logcollector_state_add_target(current->file, current->target[tg]);
             tg++;
         }
     }

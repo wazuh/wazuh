@@ -23,14 +23,18 @@
 #define LOGCOLLECTOR_STATE_FILES_MAX   200200               ///< max amount of localfiles location for states
 #define LOGCOLLECTOR_STATE_DESCRIPTION "logcollector_state" ///< String identifier for errors
 
+// Macros to add files/targets node to states
+#define w_logcollector_state_add_file(x)      w_logcollector_state_update_file(x, 0)
+#define w_logcollector_state_add_target(x, y) w_logcollector_state_update_target(x, y, false)
+
 /**
  * @brief state storage structure
- * key: location option value. value: lc_state_file_t
+ * key: location option value. value: w_lc_state_file_t
  */
 typedef struct {
     time_t start;    ///< initial state timestamp
     OSHash * states; ///< state storage
-} lc_states_t;
+} w_lc_state_storage_t;
 
 /**
  * @brief target state storage
@@ -39,7 +43,7 @@ typedef struct {
 typedef struct {
     char * name;    ///< target name
     uint64_t drops; ///< drop count
-} lc_state_target_t;
+} w_lc_state_target_t;
 
 /**
  * @brief file state storage
@@ -48,14 +52,25 @@ typedef struct {
 typedef struct {
     uint64_t bytes;               ///< bytes count
     uint64_t events;              ///< events count
-    lc_state_target_t ** targets; ///< array of poiters to file's different targets
-} lc_state_file_t;
+    w_lc_state_target_t ** targets; ///< array of poiters to file's different targets
+} w_lc_state_file_t;
+
+/**
+ * @brief statistics types
+ *
+ */
+typedef enum {
+    LC_STATE_GLOBAL = 0x1 << 0,  ///< statistics since the begining of program execution
+    LC_STATE_INTERVAL = 0x1 << 1 ///< periodically calculated statistic
+} w_lc_state_type_t;
 
 /**
  * @brief Initialize storing structures
  *
+ * @param state_type statistics to calculate
+ * @param state_file_enabled enable saving state to file
  */
-void w_logcollector_state_init();
+void w_logcollector_state_init(w_lc_state_type_t state_type, bool state_file_enabled);
 
 /**
  * @brief Logcollector state main thread function
@@ -63,9 +78,9 @@ void w_logcollector_state_init();
  * @return void* default return value for thread function prototype (unused)
  */
 #ifdef WIN32
-DWORD WINAPI w_logcollector_state_main(__attribute__((unused)) void * args);
+DWORD WINAPI w_logcollector_state_main(void * args);
 #else
-void * w_logcollector_state_main(__attribute__((unused)) void * args);
+void * w_logcollector_state_main(void * args);
 #endif
 
 /**

@@ -636,8 +636,8 @@ int win_start_event_channel(char *evt_log, char future, char *query, int reconne
         goto cleanup;
     }
 
-    w_logcollector_state_update_file(channel->evt_log, 0);
-    w_logcollector_state_update_target(channel->evt_log, "agent", false);
+    w_logcollector_state_add_file(channel->evt_log);
+    w_logcollector_state_add_target(channel->evt_log, "agent");
 
     /* Success */
     status = 1;
