@@ -131,7 +131,7 @@ void wm_oscap_run(wm_oscap_eval *eval) {
 
     char * script = NULL;
     os_calloc(PATH_MAX, sizeof(char), script);
-    snprintf(script, PATH_MAX, "%s", DEFAULTDIR(WM_OSCAP_SCRIPT_PATH));
+    snprintf(script, PATH_MAX, "%s", BUILDDIR(HOMEDIR,WM_OSCAP_SCRIPT_PATH));
     wm_strcat(&command, script, '\0');
     os_free(script);
 

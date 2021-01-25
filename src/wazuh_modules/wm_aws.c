@@ -302,7 +302,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     // script path
     char * script = NULL;
     os_calloc(PATH_MAX, sizeof(char), script);
-    snprintf(script, PATH_MAX, "%s", DEFAULTDIR(WM_AWS_SCRIPT_PATH));
+    snprintf(script, PATH_MAX, "%s", BUILDDIR(HOMEDIR,WM_AWS_SCRIPT_PATH));
     wm_strcat(&command, script, '\0');
     os_free(script);
 
@@ -455,7 +455,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     // script path
     char * script = NULL;
     os_calloc(PATH_MAX, sizeof(char), script);
-    snprintf(script, PATH_MAX, "%s", DEFAULTDIR(WM_AWS_SCRIPT_PATH));
+    snprintf(script, PATH_MAX, "%s", BUILDDIR(HOMEDIR,WM_AWS_SCRIPT_PATH));
     wm_strcat(&command, script, '\0');
     os_free(script);
 

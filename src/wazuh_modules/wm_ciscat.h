@@ -18,7 +18,7 @@
 #define WM_CISCAT_LOGTAG ARGV0 ":ciscat"
 #define WM_CISCAT_DEFAULT_DIR     "/wodles/ciscat"
 #define WM_CISCAT_DEFAULT_DIR_WIN "wodles\\ciscat"
-#define WM_CISCAT_REPORTS DEFAULTDIR("/tmp")
+#define WM_CISCAT_REPORTS BUILDDIR(HOMEDIR,"/tmp")
 
 #define WM_CISCAT_PROFILE       "<Profile id="
 #define WM_CISCAT_PROFILE2      "<xccdf:Profile id="

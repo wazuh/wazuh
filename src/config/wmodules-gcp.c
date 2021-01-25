@@ -98,7 +98,7 @@ int wm_gcp_read(xml_node **nodes, wmodule *module) {
             } else {
                 char relative_path[PATH_MAX] = {0};
 
-                sprintf(relative_path, "%s/", DEFAULTDIR(NULL));
+                sprintf(relative_path, "%s/", HOMEDIR);
                 strcat(relative_path, nodes[i]->content);
                 const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
                 if (!realpath_buffer_ref) {

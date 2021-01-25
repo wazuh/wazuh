@@ -92,7 +92,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     skip_java = 1;
                 }
             #else
-                snprintf(java_fullpath, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR(NULL), ciscat->java_path);
+                snprintf(java_fullpath, OS_MAXSTR - 1, "%s/%s", HOMEDIR, ciscat->java_path);
             #endif
                 break;
             default:
@@ -126,7 +126,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
                     snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, ciscat->ciscat_path);
                 }
             #else
-                snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", DEFAULTDIR(NULL), ciscat->ciscat_path);
+                snprintf(cis_path, OS_MAXSTR - 1, "%s/%s", HOMEDIR, ciscat->ciscat_path);
             #endif
                 break;
             default:
@@ -138,7 +138,7 @@ void* wm_ciscat_main(wm_ciscat *ciscat) {
         if (*current)
             snprintf(cis_path, OS_MAXSTR - 1, "%s\\%s", current, WM_CISCAT_DEFAULT_DIR_WIN);
     #else
-        snprintf(cis_path, OS_MAXSTR - 1, "%s", DEFAULTDIR(WM_CISCAT_DEFAULT_DIR));
+        snprintf(cis_path, OS_MAXSTR - 1, "%s", BUILDDIR(HOMEDIR,WM_CISCAT_DEFAULT_DIR));
     #endif
     }
 

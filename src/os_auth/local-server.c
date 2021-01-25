@@ -371,7 +371,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
 
     if(groups) {
         char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR(GROUPS_DIR "/%s"), keys.keyentries[index]->id) >= PATH_MAX) {
+        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : BUILDDIR(HOMEDIR,GROUPS_DIR "/%s"), keys.keyentries[index]->id) >= PATH_MAX) {
             ierror = EINVGROUP;
             goto fail;
         }

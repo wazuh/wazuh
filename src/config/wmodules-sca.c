@@ -107,7 +107,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     #ifdef WIN32
     sprintf(ruleset_path, "%s\\", SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN);
     #else
-    sprintf(ruleset_path, "%s/", DEFAULTDIR(SECURITY_CONFIGURATION_ASSESSMENT_DIR));
+    sprintf(ruleset_path, "%s/", BUILDDIR(HOMEDIR,SECURITY_CONFIGURATION_ASSESSMENT_DIR));
     #endif
 
     DIR *ruleset_dir = opendir(ruleset_path);

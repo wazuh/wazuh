@@ -433,7 +433,7 @@ static void ExecdStart(int q)
 
             if(cmd_api[0] == NULL) {
                 char script_path[PATH_MAX] = {0};
-                snprintf(script_path, PATH_MAX, "%s", DEFAULTDIR("/active-response/bin/restart.sh"));
+                snprintf(script_path, PATH_MAX, "%s", BUILDDIR(HOMEDIR,"/active-response/bin/restart.sh"));
                 os_strdup(script_path, cmd_api[0]);
             }
 
@@ -689,7 +689,7 @@ static int CheckManagerConfiguration(char ** output) {
 
     for (i = 0; daemons[i]; i++) {
         output_msg = NULL;
-        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR(NULL), daemons[i], "-t");
+        snprintf(command_in, PATH_MAX, "%s/%s %s", HOMEDIR, daemons[i], "-t");
 
         if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
             if (result_code == EXECVE_ERROR) {

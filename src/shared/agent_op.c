@@ -266,7 +266,7 @@ int get_agent_group(const char *id, char *group, size_t size) {
     int result = 0;
     FILE *fp;
 
-    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR(GROUPS_DIR "/%s"), id) >= PATH_MAX) {
+    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : BUILDDIR(HOMEDIR,GROUPS_DIR "/%s"), id) >= PATH_MAX) {
         merror("At get_agent_group(): file path too large for agent '%s'.", id);
         return -1;
     }
@@ -299,7 +299,7 @@ int set_agent_group(const char * id, const char * group) {
     FILE *fp;
     mode_t oldmask;
 
-    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR(GROUPS_DIR "/%s"), id) >= PATH_MAX) {
+    if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : BUILDDIR(HOMEDIR,GROUPS_DIR "/%s"), id) >= PATH_MAX) {
         merror("At set_agent_group(): file path too large for agent '%s'.", id);
         return -1;
     }
@@ -351,7 +351,7 @@ int set_agent_multigroup(char * group){
     char _hash[9] = {0};
 
     strncpy(_hash,multi_group_hash,8);
-    snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR(MULTIGROUPS_DIR),_hash);
+    snprintf(multigroup_path,PATH_MAX,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  BUILDDIR(HOMEDIR,MULTIGROUPS_DIR),_hash);
     DIR *dp;
     dp = opendir(multigroup_path);
 
@@ -391,7 +391,7 @@ int create_multigroup_dir(const char * multigroup) {
     }
     mdebug1("Attempting to create multigroup dir: '%s'",multigroup);
 
-    if (snprintf(path, PATH_MAX, isChroot() ? MULTIGROUPS_DIR "/%s" : DEFAULTDIR(MULTIGROUPS_DIR "/%s"), multigroup) >= PATH_MAX) {
+    if (snprintf(path, PATH_MAX, isChroot() ? MULTIGROUPS_DIR "/%s" : BUILDDIR(HOMEDIR,MULTIGROUPS_DIR "/%s"), multigroup) >= PATH_MAX) {
         merror("At create_multigroup_dir(): path too large for multigroup '%s'.", multigroup);
         return -1;
     }
@@ -611,7 +611,7 @@ void w_remove_multigroup(const char *group){
     char path[PATH_MAX + 1] = {0};
 
     if(multigroup){
-        sprintf(path,"%s",isChroot() ? GROUPS_DIR : DEFAULTDIR(GROUPS_DIR));
+        sprintf(path,"%s",isChroot() ? GROUPS_DIR : BUILDDIR(HOMEDIR,GROUPS_DIR));
 
         if(wstr_find_in_folder(path,group,1) < 0){
             /* Remove the DIR */
@@ -624,7 +624,7 @@ void w_remove_multigroup(const char *group){
 
             strncpy(_hash,multi_group_hash,8);
 
-            sprintf(path,"%s/%s",isChroot() ? MULTIGROUPS_DIR : DEFAULTDIR(MULTIGROUPS_DIR), _hash);
+            sprintf(path,"%s/%s",isChroot() ? MULTIGROUPS_DIR : BUILDDIR(HOMEDIR,MULTIGROUPS_DIR), _hash);
 
             if (rmdir_ex(path) != 0) {
                 mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
@@ -849,7 +849,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
     if (isChroot()) {
         strcpy(sockname, CLUSTER_SOCK);
     } else {
-        strcpy(sockname, DEFAULTDIR(CLUSTER_SOCK));
+        strcpy(sockname, BUILDDIR(HOMEDIR,CLUSTER_SOCK));
     }
 
     if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {

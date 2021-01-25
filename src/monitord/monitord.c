@@ -41,9 +41,9 @@ void Monitord()
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
     /* /var/ossec/logs/ossec.log */
-    snprintf(path, PATH_MAX, "%s", isChroot() ? LOGFILE : DEFAULTDIR(LOGFILE));
+    snprintf(path, PATH_MAX, "%s", isChroot() ? LOGFILE : BUILDDIR(HOMEDIR,LOGFILE));
     /* /var/ossec/logs/ossec.json */
-    snprintf(path_json, PATH_MAX, "%s", isChroot() ? LOGJSONFILE : DEFAULTDIR(LOGJSONFILE));
+    snprintf(path_json, PATH_MAX, "%s", isChroot() ? LOGJSONFILE : BUILDDIR(HOMEDIR,LOGJSONFILE));
 #endif
 
     /* Connect to the message queue or exit */

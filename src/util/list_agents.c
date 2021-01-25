@@ -31,7 +31,7 @@ static void helpmsg()
 
 int main(int argc, char **argv)
 {
-    const char *dir = DEFAULTDIR;
+    const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
 

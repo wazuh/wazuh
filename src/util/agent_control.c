@@ -44,7 +44,7 @@ static void helpmsg()
 int main(int argc, char **argv)
 {
     home_path = w_homedir(argv[0]);
-    const char *dir = DEFAULTDIR(NULL);
+    const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
     const char *agent_id = NULL;

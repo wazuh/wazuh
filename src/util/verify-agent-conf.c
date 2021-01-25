@@ -38,7 +38,7 @@ static void helpmsg()
 int main(int argc, char **argv)
 {
     home_path = w_homedir(argv[0]);
-    const char *ar = DEFAULTDIR(SHAREDCFG_DIR);
+    const char *ar = BUILDDIR(HOMEDIR,SHAREDCFG_DIR);
     char path[PATH_MAX + 1];
     char path_f[PATH_MAX + 1];
     DIR *gdir, *subdir;

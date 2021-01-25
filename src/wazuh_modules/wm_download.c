@@ -210,7 +210,7 @@ unsc:
 
     // Jail path
 
-    if (snprintf(jpath, sizeof(jpath), "%s/%s", DEFAULTDIR(NULL), unsc_fpath) >= (int)sizeof(jpath)) {
+    if (snprintf(jpath, sizeof(jpath), "%s/%s", HOMEDIR, unsc_fpath) >= (int)sizeof(jpath)) {
         mdebug1("Path too long: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err path too long");
         goto end;

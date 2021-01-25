@@ -45,7 +45,7 @@ static void help_agent_auth()
     print_out("    -t          Test configuration.");
 #ifndef WIN32
     print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s).", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s).", HOMEDIR);
 #endif
     print_out("    -m <addr>   Manager IP address.");
     print_out("    -p <port>   Manager port (default: %d).", DEFAULT_PORT);

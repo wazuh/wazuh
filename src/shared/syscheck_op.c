@@ -600,7 +600,7 @@ const char *get_group(int gid) {
 
 /* Send a one-way message to Syscheck */
 void ag_send_syscheck(char * message) {
-    int sock = OS_ConnectUnixDomain(DEFAULTDIR(SYS_LOCAL_SOCK), SOCK_STREAM, OS_MAXSTR);
+    int sock = OS_ConnectUnixDomain(BUILDDIR(HOMEDIR,SYS_LOCAL_SOCK), SOCK_STREAM, OS_MAXSTR);
 
     if (sock < 0) {
         mwarn("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);

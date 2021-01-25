@@ -19,7 +19,7 @@ void jqueue_init(file_queue * queue) {
  * Returns 0 on success or -1 on error.
  */
 int jqueue_open(file_queue * queue, int tail) {
-    strncpy(queue->file_name, isChroot() ? ALERTSJSON_DAILY : DEFAULTDIR(ALERTSJSON_DAILY), MAX_FQUEUE);
+    strncpy(queue->file_name, isChroot() ? ALERTSJSON_DAILY : BUILDDIR(HOMEDIR,ALERTSJSON_DAILY), MAX_FQUEUE);
 
     if (queue->fp) {
         fclose(queue->fp);

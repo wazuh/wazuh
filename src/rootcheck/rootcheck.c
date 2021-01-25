@@ -45,7 +45,7 @@ void help_rootcheck()
     print_out("    -s          Scan the whole system");
     print_out("    -r          Read all the files for kernel-based detection");
     print_out("    -c <config> Configuration file to use");
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR(NULL));
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
     print_out(" ");
     exit(1);
 }
@@ -206,7 +206,7 @@ int rootcheck_init(int test_config)
 
     /* Set default values */
     if (rootcheck.workdir == NULL) {
-        rootcheck.workdir = DEFAULTDIR(NULL);
+        rootcheck.workdir = HOMEDIR;
     }
 
 #ifdef OSSECHIDS

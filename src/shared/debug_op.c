@@ -79,7 +79,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR(LOGJSONFILE), sizeof(logfile) - 1);
+        strncpy(logfile, isChroot() ? LOGJSONFILE : BUILDDIR(HOMEDIR,LOGJSONFILE), sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -145,7 +145,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR(LOGFILE), sizeof(logfile) - 1);
+        strncpy(logfile, isChroot() ? LOGFILE : BUILDDIR(HOMEDIR,LOGFILE), sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {

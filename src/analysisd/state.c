@@ -105,7 +105,7 @@ int w_analysisd_write_state(){
 
     mdebug2("Updating state file.");
 
-    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR(NULL), __local_name);
+    snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : HOMEDIR, __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
     if (fp = fopen(path_temp, "w"), !fp) {
