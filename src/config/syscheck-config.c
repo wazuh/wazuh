@@ -1742,7 +1742,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_nodiff = "nodiff";
     const char *xml_restart_audit = "restart_audit";
     const char *xml_windows_audit_interval = "windows_audit_interval";
-    const char *xml_max_fps = "max_fps";
+    const char *xml_max_files_per_second = "max_files_per_second";
 #ifdef WIN32
     const char *xml_arch = "arch";
     const char *xml_32bit = "32bit";
@@ -2233,12 +2233,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 return(OS_INVALID);
             }
         }
-        else if (strcmp(node[i]->element, xml_max_fps) == 0) {
+        else if (strcmp(node[i]->element, xml_max_files_per_second) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-            syscheck->max_fps = atoi(node[i]->content);
+            syscheck->max_files_per_second = atoi(node[i]->content);
 
         } else {
             mwarn(XML_INVELEM, node[i]->element);

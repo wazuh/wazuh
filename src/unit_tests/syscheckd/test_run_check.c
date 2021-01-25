@@ -210,12 +210,12 @@ static void expect_w_send_sync_msg(const char *msg, const char *locmsg, char loc
 }
 
 static int setup_max_fps(void **state) {
-    syscheck.max_fps = 1;
+    syscheck.max_files_per_second = 1;
     return 0;
 }
 
 static int teardown_max_fps(void **state) {
-    syscheck.max_fps = 0;
+    syscheck.max_files_per_second = 0;
     return 0;
 }
 

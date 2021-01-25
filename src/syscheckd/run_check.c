@@ -131,7 +131,7 @@ void check_max_fps(int mode, int baseline) {
 #endif
     time_t now;
     // Check only if scheduled, if it's enabled or if it's not the first scan.
-    if (mode != FIM_SCHEDULED || syscheck.max_fps == 0 || baseline == 0) {
+    if (mode != FIM_SCHEDULED || syscheck.max_files_per_second == 0 || baseline == 0) {
         return;
     }
 
@@ -141,7 +141,7 @@ void check_max_fps(int mode, int baseline) {
         last_time = now;
     }
 
-    if (files_read < syscheck.max_fps) {
+    if (files_read < syscheck.max_files_per_second) {
         files_read++;
         return;
     }
