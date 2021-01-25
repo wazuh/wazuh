@@ -2670,7 +2670,7 @@ class DatabaseManager:
 
     def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None,
                      check_default: bool = True):
-        """Get the resources from the "source" database filtering by IDs and inserts them into the "target" database."""
+        """Get the resources from the "source" database filtering by IDs and insert them into the "target" database."""
         def format_datetime(created_at):
             return datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S.%f')
 
