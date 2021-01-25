@@ -93,8 +93,6 @@ int main (int argc, char **argv) {
         }
     } else {
         write_debug_file(argv[0], "Invalid system");
-        cJSON_Delete(input_json);
-        return OS_SUCCESS;
     }
 #else
     if (!strcmp("add", action)) {

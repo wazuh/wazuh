@@ -73,8 +73,9 @@ src/npf
 src/ipfw
 src/firewalld-drop
 src/disable-account
-src/restart-wazuh
+src/host-deny
 src/ip-customblock
+src/restart-wazuh
 src/route-null
 src/kaspersky
 

@@ -37,7 +37,7 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    // Get extraargs
+    // Get extra_args
     extra_args = get_extra_args_from_json(input_json);
     if (!extra_args) {
         write_debug_file(argv[0], "Cannot read 'extra_args' from data");
@@ -79,6 +79,7 @@ int main (int argc, char **argv) {
 
     cJSON_Delete(input_json);
     os_free(extra_args);
+
     write_debug_file(argv[0], "Ended");
 
     return OS_SUCCESS;

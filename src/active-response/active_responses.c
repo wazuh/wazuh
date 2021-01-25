@@ -130,7 +130,8 @@ char* get_extra_args_from_json (cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *extra_args_json = NULL;
     char args[COMMANDSIZE];
-    char *extra_args;
+    char *extra_args = NULL;
+
     // Detect parameters
     if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
         return NULL;
@@ -141,9 +142,8 @@ char* get_extra_args_from_json (cJSON *input) {
         return NULL;
     }
 
-    for (size_t i = 0 ; i < cJSON_GetArraySize(extra_args_json) ; i++)
-    {
-        cJSON * subitem = cJSON_GetArrayItem(extra_args_json, i);
+    for (int i = 0; i < cJSON_GetArraySize(extra_args_json); i++) {
+        cJSON *subitem = cJSON_GetArrayItem(extra_args_json, i);
         if (subitem && (subitem->type == cJSON_String)) {
             strcat(args, subitem->valuestring);
             strcat(args, " ");
@@ -186,16 +186,15 @@ char* get_srcip_from_json (cJSON *input) {
 
 #ifndef WIN32
 
-void lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
+int lock (const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {
     char log_msg[LOGSIZE];
     int i=0;
     int max_iteration = 50;
-    bool flag = true;
     int saved_pid = -1;
     int read;
 
     // Providing a lock.
-    while (flag) {
+    while (true) {
         FILE *pid_file;
         int current_pid;
 
@@ -205,13 +204,12 @@ void lock (const char *lock_path, const char *lock_pid_path, const char *log_pat
             pid_file = fopen(lock_pid_path, "w");
             fprintf(pid_file, "%d", (int)pid);
             fclose(pid_file);
-            return;
+            return OS_SUCCESS;
         }
 
         // Getting currently/saved PID locking the file
         if (pid_file = fopen(lock_pid_path, "r"), !pid_file) {
             write_debug_file(log_path, "Can not read pid file");
-            continue;
         } else {
             read = fscanf(pid_file, "%d", &current_pid);
             fclose(pid_file);
@@ -227,7 +225,6 @@ void lock (const char *lock_path, const char *lock_pid_path, const char *log_pat
 
             } else {
                 write_debug_file(log_path, "Can not read pid file");
-                continue;
             }
         }
 
@@ -273,9 +270,21 @@ void lock (const char *lock_path, const char *lock_pid_path, const char *log_pat
                 snprintf(log_msg, LOGSIZE -1, "Unable kill process %d holding lock.", current_pid);
                 write_debug_file(log_path, log_msg);
 
-                // Unlocking and exiting
+                // Unlocking
                 unlock(lock_path, log_path);
-                return;
+
+                // Try take lock again
+                if (mkdir(lock_path, S_IRWXG) == 0) {
+                    // Lock acquired (setting the pid)
+                    pid_t pid = getpid();
+                    pid_file = fopen(lock_pid_path, "w");
+                    fprintf(pid_file, "%d", (int)pid);
+                    fclose(pid_file);
+
+                    return OS_SUCCESS;
+                }
+
+                return OS_INVALID;
             }
         }
     }
