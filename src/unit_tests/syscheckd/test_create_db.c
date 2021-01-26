@@ -1387,13 +1387,13 @@ static void test_fim_file_modify(void **state) {
 static void test_fim_file_no_attributes(void **state) {
     fim_data_t *fim_data = *state;
     int ret;
-    char buffer1[OS_SIZE_512];
-    char buffer2[OS_SIZE_512];
+    char buffer1[OS_SIZE_256];
+    char buffer2[OS_SIZE_256];
 
 #ifdef TEST_WINAGENT
-    char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
+    char file_path[] = "c:\\windows\\system32\\cmd.exe";
 #else
-    char file_path[OS_SIZE_256] = "/bin/ls";
+    char file_path[] = "/bin/ls";
 #endif
     fim_data->item->index = 1;
 
@@ -3814,39 +3814,41 @@ static void test_fim_realtime_event_file_exists(void **state) {
 
 static void test_fim_realtime_event_file_missing(void **state) {
 #ifdef TEST_WINAGENT
-    char start[OS_SIZE_32] = "/test\\";
-    char top[OS_SIZE_32] = "/test]";
+    char *path = "C:\\a\\random\\path";
 #else
-    char start[OS_SIZE_32] = "/test/";
-    char top[OS_SIZE_32] = "/test0";
+    char *path = "/a/random/path";
 #endif
+    char buff[OS_SIZE_128] = {0};
+    snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap_lstat, filename, "/test");
+    expect_string(__wrap_lstat, filename, path);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
 #else
-    expect_string(__wrap_stat, __file, "/test");
+    expect_string(__wrap_stat, __file, path);
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, -1);
 #endif
     errno = ENOENT;
+
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_lock);
 #endif
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test");
+    expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, NULL);
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap_pthread_mutex_lock);
 #endif
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, start, top, FIM_DB_DISK, NULL, FIMDB_ERR);
 
 #ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
-    fim_realtime_event("/test");
+    expect_fim_db_get_path_from_pattern(syscheck.database, buff, NULL, FIM_DB_DISK, FIMDB_ERR);
+
+    fim_realtime_event(path);
     errno = 0;
 }
 
@@ -3907,7 +3909,8 @@ static void test_fim_whodata_event_file_missing(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_lock);
 
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, start, top, FIM_DB_DISK, NULL, FIMDB_ERR);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "./test/test.file\\%", NULL, FIM_DB_DISK, FIMDB_ERR);
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 #else
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606060, 12345678, paths);
@@ -3917,7 +3920,7 @@ static void test_fim_whodata_event_file_missing(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "./test/test.file");
     will_return(__wrap_fim_db_get_path, NULL);
 
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, start, top, FIM_DB_DISK, NULL, FIMDB_ERR);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "./test/test.file/%", NULL, FIM_DB_DISK, FIMDB_ERR);
 
     for(int i = 0; paths[i]; i++) {
         // Inside fim_process_missing_entry
@@ -3926,8 +3929,7 @@ static void test_fim_whodata_event_file_missing(void **state) {
         expect_string(__wrap_fim_db_get_path, file_path, paths[i]);
         will_return(__wrap_fim_db_get_path, NULL);
 
-        expect_wrapper_fim_db_get_path_range_call(syscheck.database, start, top, FIM_DB_DISK, NULL, FIMDB_ERR);
-
+        expect_fim_db_get_path_from_pattern(syscheck.database, "./test/test.file/%", NULL, FIM_DB_DISK, FIMDB_ERR);
     }
 #endif
 
@@ -3937,54 +3939,61 @@ static void test_fim_whodata_event_file_missing(void **state) {
 
 static void test_fim_process_missing_entry_no_data(void **state) {
 #ifdef TEST_WINAGENT
-    char start[OS_SIZE_32] = "/test\\";
-    char top[OS_SIZE_32] = "/test]";
+    char *path = "C:\\a\\random\\path";
 #else
-    char start[OS_SIZE_32] = "/test/";
-    char top[OS_SIZE_32] = "/test0";
+    char *path = "/a/random/path";
 #endif
+
+    char buff[OS_SIZE_128] = {0};
+    snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
 
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_lock);
 #endif
+
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test");
+    expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, NULL);
+
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_lock);
 #endif
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, start, top, FIM_DB_DISK, NULL, FIMDB_ERR);
+    expect_fim_db_get_path_from_pattern(syscheck.database, buff, NULL, FIM_DB_DISK, FIMDB_ERR);
 
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
-    fim_process_missing_entry("/test", FIM_REALTIME, NULL);
+
+    fim_process_missing_entry(path, FIM_REALTIME, NULL);
 }
 
 static void test_fim_process_missing_entry_failure(void **state) {
-#ifdef TEST_WINAGENT
-    char start[OS_SIZE_32] = "/test\\";
-    char top[OS_SIZE_32] = "/test]";
-#else
-    char start[OS_SIZE_32] = "/test/";
-    char top[OS_SIZE_32] = "/test0";
-#endif
-
     fim_tmp_file *file = calloc(1, sizeof(fim_tmp_file));
     file->elements = 1;
+#ifdef TEST_WINAGENT
+    char *path = "C:\\a\\random\\path";
+#else
+    char *path = "/a/random/path";
+#endif
+    char buff[OS_SIZE_128] = {0};
+    char error_msg[OS_SIZE_256] = {0};
+
+    snprintf(buff, OS_SIZE_128, "%s%c%%", path, PATH_SEP);
+    snprintf(error_msg, OS_SIZE_256, FIM_DB_ERROR_RM_PATTERN, buff);
+
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_lock);
 #endif
     expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
-    expect_string(__wrap_fim_db_get_path, file_path, "/test");
+    expect_string(__wrap_fim_db_get_path, file_path, path);
     will_return(__wrap_fim_db_get_path, NULL);
 
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_lock);
 #endif
-    expect_wrapper_fim_db_get_path_range_call(syscheck.database, start, top, FIM_DB_DISK, file, FIMDB_OK);
+    expect_fim_db_get_path_from_pattern(syscheck.database, buff, file, FIM_DB_DISK, FIMDB_OK);
 
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -3995,13 +4004,9 @@ static void test_fim_process_missing_entry_failure(void **state) {
     expect_value(__wrap_fim_db_process_missing_entry, mode, FIM_REALTIME);
     will_return(__wrap_fim_db_process_missing_entry, FIMDB_ERR);
 
-#ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/test/' and '/test0'");
-#else
-    expect_string(__wrap__merror, formatted_msg, "(6708): Failed to delete a range of paths between '/test\\' and '/test]'");
-#endif
+    expect_string(__wrap__merror, formatted_msg, error_msg);
 
-    fim_process_missing_entry("/test", FIM_REALTIME, NULL);
+    fim_process_missing_entry(path, FIM_REALTIME, NULL);
 
     free(file);
 }

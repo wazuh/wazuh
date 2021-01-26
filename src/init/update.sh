@@ -118,7 +118,11 @@ UpdateStopOSSEC()
     fi
 
     # Make sure Wazuh is stopped
-    $DIRECTORY/bin/wazuh-control stop > /dev/null 2>&1
+    if [ -f "$DIRECTORY/bin/ossec-control" ]; then
+        $DIRECTORY/bin/ossec-control stop > /dev/null 2>&1
+    else
+        $DIRECTORY/bin/wazuh-control stop > /dev/null 2>&1
+    fi
     sleep 2
 
    # We also need to remove all syscheck queue file (format changed)

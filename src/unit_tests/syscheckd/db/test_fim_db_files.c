@@ -35,6 +35,13 @@
 
 #include "test_fim_db.h"
 
+void fim_db_remove_validated_path(fdb_t *fim_sql,
+                                  fim_entry *entry,
+                                  pthread_mutex_t *mutex,
+                                  void *alert,
+                                  void *fim_ev_mode,
+                                  void *configuration);
+
 #ifndef TEST_WINAGENT
 extern unsigned long __real_time();
 unsigned long __wrap_time() {
@@ -1233,6 +1240,137 @@ void test_fim_db_set_scanned_success(void **state) {
     assert_int_equal(ret, FIMDB_OK);
 }
 
+
+/**********************************************************************************************************************\
+ * fim_db_get_path_from_pattern() tests
+\**********************************************************************************************************************/
+void test_fim_db_get_path_from_pattern_success(void **state) {
+    test_fim_db_insert_data *test_data = *state;
+    fim_tmp_file *file = NULL;
+
+
+#ifdef TEST_WINAGENT
+    char *path =  ".\\tmp_19283746523452345";
+#else
+    char *path =  "./tmp_19283746523452345";
+#endif
+
+    will_return(__wrap_os_random, 2345);
+    expect_string(__wrap_wfopen, __filename, path);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 1);
+
+    will_return_always(__wrap_sqlite3_reset, SQLITE_OK);
+    will_return_always(__wrap_sqlite3_clear_bindings, SQLITE_OK);
+    expect_any_always(__wrap_sqlite3_bind_text, pos);
+    expect_any_always(__wrap_sqlite3_bind_text, buffer);
+    will_return_always(__wrap_sqlite3_bind_text, 0);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    expect_fim_db_check_transaction();
+
+    expect_string(__wrap_remove, filename, path);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+    will_return(__wrap_remove, 0);
+
+    int ret = fim_db_get_path_from_pattern(test_data->fim_sql, "a/random/file/%", &file, syscheck.database_store);
+    assert_int_equal(ret, FIMDB_OK);
+}
+
+
+void test_fim_db_get_path_from_pattern_failed(void **state) {
+
+    test_fim_db_insert_data *test_data = *state;
+    fim_tmp_file *file = NULL;
+    char error_msg[OS_SIZE_128] = {0};
+#ifdef TEST_WINAGENT
+    char *tmp_file_path = ".\\tmp_19283746523452345";
+#else
+    char *tmp_file_path = "./tmp_19283746523452345";
+#endif
+
+    snprintf(error_msg, OS_SIZE_128, "Failed to create temporal storage '%s': Success (0)", tmp_file_path);
+
+    expect_string(__wrap_wfopen, __filename, tmp_file_path);
+    expect_string(__wrap_wfopen, __modes, "w+");
+    will_return(__wrap_wfopen, 0);
+
+    will_return(__wrap_os_random, 2345);
+    expect_string(__wrap__merror, formatted_msg, error_msg);
+
+    int ret = fim_db_get_path_from_pattern(test_data->fim_sql, "a/random/file/%", &file, syscheck.database_store);
+    assert_int_equal(ret, FIMDB_ERR);
+}
+
+
+/*----------fim_db_remove_validated_path()------------*/
+static void test_fim_db_remove_validated_path_invalid_path(void **state) {
+    fim_file_data data = DEFAULT_FILE_DATA;
+#ifndef TEST_WINAGENT
+    char *entry_path = "/media/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+    int configuration = fim_configuration_directory(entry_path, "file") + 1;
+
+    fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, (void *)false, (void *)FIM_REALTIME,
+                                 &configuration);
+
+    // Last commit time should change
+    assert_int_equal(fim_sql.transaction.last_commit, 1);
+}
+
+static void test_fim_db_remove_validated_path_valid_path(void **state) {
+    fim_file_data data = DEFAULT_FILE_DATA;
+#ifndef TEST_WINAGENT
+    char *entry_path = "/media/some/path";
+#else
+    char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
+#endif
+    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
+    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
+    int configuration = fim_configuration_directory(entry_path, "file");
+
+    syscheck.database = &fim_sql;
+
+    for (int i = 0; i < 3; i++) {
+        expect_fim_db_clean_stmt();
+    }
+
+    expect_fim_db_bind_path(entry_path);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    expect_value(__wrap_sqlite3_column_int, iCol, 0);
+    will_return(__wrap_sqlite3_column_int, 1);
+    expect_value(__wrap_sqlite3_column_int, iCol, 1);
+    will_return(__wrap_sqlite3_column_int, 1);
+
+    expect_fim_db_bind_delete_data_id(1);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_fim_db_bind_path(entry_path);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    expect_fim_db_check_transaction();
+
+    fim_db_remove_validated_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, (void *)false, (void *)FIM_REALTIME,
+                                 &configuration);
+
+    // Last commit time should change
+    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
+}
+
 /*-----------------------------------------*/
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1302,6 +1440,13 @@ int main(void) {
         // fim_db_set_scanned
         cmocka_unit_test_setup_teardown(test_fim_db_set_scanned_error, test_fim_db_setup, test_fim_db_teardown),
         cmocka_unit_test_setup_teardown(test_fim_db_set_scanned_success, test_fim_db_setup, test_fim_db_teardown),
+       // fim_db_get_path_from_pattern
+        cmocka_unit_test_setup_teardown(test_fim_db_get_path_from_pattern_failed, test_fim_db_setup, test_fim_db_teardown),
+        cmocka_unit_test_setup_teardown(test_fim_db_get_path_from_pattern_success, test_fim_db_setup, test_fim_db_teardown),
+
+        // fim_db_remove_validated_path
+        cmocka_unit_test(test_fim_db_remove_validated_path_invalid_path),
+        cmocka_unit_test(test_fim_db_remove_validated_path_valid_path),
     };
     return cmocka_run_group_tests(tests, setup_fim_db_group, teardown_fim_db_group);
 }

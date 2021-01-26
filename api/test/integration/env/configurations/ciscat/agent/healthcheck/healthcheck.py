@@ -1,6 +1,6 @@
 import os
 
-output = os.system("grep -q 'wazuh-modulesd:ciscat: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
+output = os.system("grep -q 'wazuh-modulesd:ciscat: INFO: Scan finished successfully.' /var/ossec/logs/ossec.log")
 
 if output == 0:
     exit(0)

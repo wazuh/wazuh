@@ -418,9 +418,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
     if(lf->status)
         cJSON_AddStringToObject(data, "status", lf->status);
 
-    if(lf->command)
-        cJSON_AddStringToObject(root, "command", lf->command);
-
     if(lf->url)
         cJSON_AddStringToObject(data, "url", lf->url);
 
