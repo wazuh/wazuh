@@ -110,12 +110,12 @@ int config_file(char *name, char *file, int quiet)
     fprintf(fp, "\r\n"
             "\r\n"
             "<!-- Extra log file -->\r\n"
-            "<ossec_config>\r\n"
+            "<wazuh_config>\r\n"
             "  <localfile>\r\n"
             "    <location>%s</location>\r\n"
             "    <log_format>syslog</log_format>\r\n"
             "  </localfile>\r\n"
-            "</ossec_config>\r\n\r\n", file);
+            "</wazuh_config>\r\n\r\n", file);
 
     printf("%s: Action completed.\n", name);
     fclose(fp);

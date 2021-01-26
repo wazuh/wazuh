@@ -67,7 +67,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
     if (!flags.initialized) {
         w_logging_init();
-        mdebug1("Logging module auto-initialized");  
+        mdebug1("Logging module auto-initialized");
     }
 
     if (filename = strrchr(file, '/'), filename) {
@@ -126,7 +126,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             cJSON_AddStringToObject(json_log, "description", jsonstr);
 
             output = cJSON_PrintUnformatted(json_log);
-            
+
             w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s", output);
             (void)fprintf(fp, "\n");
@@ -223,12 +223,12 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 void w_logging_init(){
     flags.initialized = 1;
     w_mutex_init(&logging_mutex, NULL);
-    os_logging_config();    
+    os_logging_config();
 }
 
 void os_logging_config(){
   OS_XML xml;
-  const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
+  const char * xmlf[] = {"wazuh_config", "logging", "log_format", NULL};
   char * logformat;
   char ** parts = NULL;
   int i;

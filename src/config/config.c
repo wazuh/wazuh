@@ -198,7 +198,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
-            #if !defined(WIN32) && !defined(CLIENT)  
+            #if !defined(WIN32) && !defined(CLIENT)
                 if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
                     goto fail;
                 }
@@ -232,7 +232,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
     /** XML definitions **/
     /* Global */
-    const char *xml_start_ossec = "ossec_config";
+    const char *xml_start_ossec = "wazuh_config";
     const char *xml_start_agent = "agent_config";
 
     /* Attributes of the <agent_config> tag */
