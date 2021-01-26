@@ -7,7 +7,7 @@
 
     header-comments.template
 
-    <ossec_config>
+    <wazuh_config>
         global.template
 
         logging.template
@@ -37,13 +37,13 @@
         localfile-commands.template
 
         rules.template
-    </ossec_config>
+    </wazuh_config>
 
 ## Agent 'ossec.conf' file
 
     header-comments.template
 
-    <ossec_config>
+    <wazuh_config>
         <client>
           <server>
             <address>192.168.10.100</address>
@@ -74,7 +74,7 @@
         <active-response>
           <disabled>no</disabled>
         </active-response>
-    </ossec_config>
+    </wazuh_config>
 
 ## Search template
 The script looks for the appropriate template depending on the version indicated or detected. If you specify a distribution and its version, the script will initially look for the template of that version, and in case of not finding it, it will go through the folder tree until it reaches the generic version.
