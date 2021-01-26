@@ -86,7 +86,11 @@ void wm_gcp_run(const wm_gcp *data) {
 
     char * script = NULL;
     os_calloc(PATH_MAX, sizeof(char), script);
+#ifndef WIN32
     snprintf(script, PATH_MAX, "%s", BUILDDIR(HOMEDIR,WM_GCP_SCRIPT_PATH));
+#else
+    snprintf(script, PATH_MAX, "%s", WM_GCP_SCRIPT_PATH);
+#endif
     wm_strcat(&command, script, '\0');
     os_free(script);
 

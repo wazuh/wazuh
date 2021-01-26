@@ -134,6 +134,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 })
 #endif
 #endif
+#endif
 
 #ifndef BUILDDIR
 #ifndef WAZUH_UNIT_TESTING
@@ -146,7 +147,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 })
 #else
 #define BUILDDIR(x,y)   x y
-#endif
 #endif
 #endif
 
@@ -393,7 +393,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DOWNLOAD_DIR  "/var/download"
 
 /* Built-in defines */
+#ifdef WIN32
+#define DEFAULTQPATH    DEFAULTQUEUE
+#else
 #define DEFAULTQPATH    BUILDDIR(HOMEDIR,DEFAULTQUEUE)
+#endif
 
 #ifndef WIN32
 #define OSSECCONF       "/etc/ossec.conf"

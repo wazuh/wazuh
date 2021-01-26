@@ -10,6 +10,8 @@
 
 #include "wazuhdb_op.h"
 
+#ifndef WIN32
+
 /**
  * @brief Connects to Wazuh-DB socket
  *
@@ -274,3 +276,4 @@ int wdbc_close(int* sock) {
     }
     return ret;
 }
+#endif

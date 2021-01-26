@@ -12,6 +12,8 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 
+#ifndef WIN32
+
 #undef minfo
 #undef mwarn
 #undef merror
@@ -287,3 +289,4 @@ cJSON *wm_download_dump() {
     cJSON_AddItemToObject(root,"wazuh_download",wm_wd);
     return root;
 }
+#endif

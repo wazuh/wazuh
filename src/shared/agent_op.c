@@ -260,6 +260,7 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
     return (1);
 }
 
+#ifndef CLIENT
 /* Read group. Returns 0 on success or -1 on failure. */
 int get_agent_group(const char *id, char *group, size_t size) {
     char path[PATH_MAX];
@@ -290,8 +291,6 @@ int get_agent_group(const char *id, char *group, size_t size) {
     fclose(fp);
     return result;
 }
-
-#ifndef CLIENT
 
 /* Set agent group. Returns 0 on success or -1 on failure. */
 int set_agent_group(const char * id, const char * group) {
@@ -325,8 +324,6 @@ int set_agent_group(const char * id, const char * group) {
     return 0;
 }
 
-#endif
-
 int set_agent_multigroup(char * group){
     int oldmask;
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
@@ -358,11 +355,7 @@ int set_agent_multigroup(char * group){
     if(!dp){
         if (errno == ENOENT) {
             oldmask = umask(0002);
-#ifndef WIN32
             int retval = mkdir(multigroup_path, 0770);
-#else
-            int retval = mkdir(multigroup_path);
-#endif
             umask(oldmask);
 
             if (retval == -1) {
@@ -379,7 +372,6 @@ int set_agent_multigroup(char * group){
     return 0;
 }
 
-#ifndef WIN32
 /* Create multigroup dir. Returns 0 on success or -1 on failure. */
 int create_multigroup_dir(const char * multigroup) {
     char path[PATH_MAX];
@@ -606,6 +598,7 @@ int w_validate_group_name(const char *group, char *response){
     return 0;
 }
 
+#ifndef CLIENT
 void w_remove_multigroup(const char *group){
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char path[PATH_MAX + 1] = {0};
@@ -632,6 +625,7 @@ void w_remove_multigroup(const char *group){
         }
     }
 }
+#endif
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect() {

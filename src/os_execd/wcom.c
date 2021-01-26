@@ -117,7 +117,11 @@ size_t wcom_unmerge(const char *file_path, char ** output){
         return strlen(*output);
     }
 
-    if (UnmergeFiles(final_path, isChroot() ? INCOMING_DIR : BUILDDIR(HOMEDIR,INCOMING_DIR), OS_BINARY) == 0){
+#ifndef WIN32
+    if (UnmergeFiles(final_path, isChroot() ? INCOMING_DIR : BUILDDIR(HOMEDIR,INCOMING_DIR), OS_BINARY) == 0) {
+#else
+    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY) == 0) {
+#endif
         merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
         os_strdup("err Cannot unmerge file", *output);
         return strlen(*output);

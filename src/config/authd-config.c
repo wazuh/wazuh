@@ -13,6 +13,8 @@
 #include "authd-config.h"
 #include "config.h"
 
+#ifndef WIN32
+
 static short eval_bool(const char *str);
 
 int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
@@ -179,3 +181,4 @@ short eval_bool(const char *str) {
         return OS_INVALID;
     }
 }
+#endif

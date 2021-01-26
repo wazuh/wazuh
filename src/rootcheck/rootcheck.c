@@ -205,9 +205,11 @@ int rootcheck_init(int test_config)
 #endif
 
     /* Set default values */
+#ifndef WIN32
     if (rootcheck.workdir == NULL) {
         rootcheck.workdir = HOMEDIR;
     }
+#endif
 
 #ifdef OSSECHIDS
     /* Start up message */

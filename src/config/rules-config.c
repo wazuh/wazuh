@@ -12,6 +12,8 @@
 #include "shared.h"
 #include "global-config.h"
 
+#ifndef WIN32
+
 #define DEFAULT_RULE_DIR "ruleset/rules"
 #define DEFAULT_DECODER_DIR "ruleset/decoders"
 
@@ -401,3 +403,4 @@ cleanup:
 
     return retval;
 }
+#endif

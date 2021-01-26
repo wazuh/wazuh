@@ -23,11 +23,11 @@ void os_setwait()
     /* For same threads */
     __wait_lock = 1;
 
-    if (isChroot()) {
-        fp = fopen(WAIT_FILE, "w");
-    } else {
-        fp = fopen(WAIT_FILE_PATH, "w");
-    }
+#ifndef WIN32
+    fp = fopen(isChroot() ? WAIT_FILE : WAIT_FILE_PATH, "w");
+#else
+    fp = fopen(WAIT_FILE, "w");
+#endif
 
     if (fp) {
         fprintf(fp, "l");
@@ -42,11 +42,12 @@ void os_delwait()
 {
     __wait_lock = 0;
 
-    if (isChroot()) {
-        unlink(WAIT_FILE);
-    } else {
-        unlink(WAIT_FILE_PATH);
-    }
+#ifndef WIN32
+    unlink(isChroot() ? WAIT_FILE : WAIT_FILE_PATH);
+#else
+    unlink(WAIT_FILE);
+#endif
+
     return;
 }
 

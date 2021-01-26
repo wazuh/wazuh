@@ -530,8 +530,6 @@ float DirSize(const char *path) {
     return folder_size;
 }
 
-#endif
-
 int CreatePID(const char *name, int pid)
 {
     char file[256];
@@ -589,7 +587,6 @@ char *GetRandomNoise()
     }
 }
 
-
 int DeletePID(const char *name)
 {
     char file[256];
@@ -612,7 +609,7 @@ int DeletePID(const char *name)
 
     return (0);
 }
-
+#endif
 
 void DeleteState() {
     char path[PATH_MAX + 1];
@@ -3362,9 +3359,9 @@ char *w_homedir(char *arg) {
     char *buff = NULL;
     char * delim = "/bin";
     os_malloc(PATH_MAX, buff);
-    #ifdef __MACH__
+#ifdef __MACH__
     pid_t pid = getpid();
-    #endif
+#endif
 
     if (realpath("/proc/self/exe", buff) != NULL) {
         dirname(buff);
@@ -3378,11 +3375,11 @@ char *w_homedir(char *arg) {
         dirname(buff);
         buff = w_strtok_r_str_delim(delim, &buff);
     }
-    #ifdef __MACH__
+#ifdef __MACH__
     else if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
         buff = w_strtok_r_str_delim(delim, &buff);
     }
-    #endif
+#endif
     else if (arg != NULL) {
         if (realpath(arg, buff) == NULL) {
             mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
