@@ -36,7 +36,7 @@ info:
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.1/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/4.2/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -208,14 +208,6 @@ x-rbac-catalog:
         actions: ['cluster:read_api_config']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "allow"
-    'cluster:update_api_config':
-      description: "Modify Wazuh's cluster nodes API configuration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['cluster:update_api_config']
-        resources: ['node:id:worker1', 'node:id:worker3']
-        effect: "allow"
     'cluster:read_file':
       description: "Read Wazuh's cluster nodes files"
       resources:
@@ -272,14 +264,6 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['manager:read_api_config']
-        resources: ['*:*:*']
-        effect: "allow"
-    'manager:update_api_config':
-      description: "Modify Wazuh manager API configuration"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['manager:update_api_config']
         resources: ['*:*:*']
         effect: "allow"
     'manager:read_file':
@@ -525,7 +509,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.1/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -592,7 +576,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of request per minute reached"
             remediation: "This limit can be changed in security.yaml file. More information here:
-            https://documentation.wazuh.com/4.1/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.2/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -605,7 +589,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.1/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -1257,7 +1241,7 @@ components:
           description: "Name of the file"
         relative_dirname:
           type: string
-          format: etc_path
+          format: paths
           description: "Folder path where the file is located. This path is relative to the Wazuh installation path"
 
     RulesetStatus:
@@ -2175,7 +2159,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.1/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.2/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_edps:
           type: number
@@ -2518,6 +2502,7 @@ components:
     APIconfiguration:
       type: object
       minProperties: 1
+      additionalProperties: false
       properties:
         access:
           description: API Security Options
@@ -2690,7 +2675,7 @@ components:
           type: integer
           format: int32
           minimum: 30
-          example: 3600
+          example: 900
         rbac_mode:
           description: "RBAC mode (white/black)"
           type: string
@@ -4557,11 +4542,19 @@ components:
     edit_files_path:
       in: query
       name: path
-      description: "Filepath to upload/delete file. (Relative to wazuh installation folder)"
+      description: "Filepath to upload/edit file. (Relative to wazuh installation folder)"
       required: true
       schema:
         type: string
-        format: etc_file_path
+        format: edit_files_path
+    delete_files_path:
+      in: query
+      name: path
+      description: "Filepath to delete file. (Relative to wazuh installation folder)"
+      required: true
+      schema:
+        type: string
+        format: delete_files_path
     get_files_path:
       in: query
       name: path
@@ -4569,14 +4562,14 @@ components:
       required: true
       schema:
         type: string
-        format: etc_and_ruleset_file_path
-    etc_and_ruleset_path:
+        format: get_files_path
+    get_dirnames_path:
       in: query
       name: relative_dirname
       description: "Filter by relative directory name"
       schema:
         type: string
-        format: etc_and_ruleset_path
+        format: get_dirnames_path
     overwrite:
       in: query
       name: overwrite
@@ -5147,7 +5140,7 @@ components:
       required: True
       schema:
         type: string
-        format: path
+        format: wazuh_path
     installer:
       in: query
       name: installer
@@ -5255,10 +5248,10 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.1.0"
+                api_version: "v4.2.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.1/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/4.2/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
 
@@ -6316,7 +6309,19 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_id_query'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                group_id:
+                  description: "Group name"
+                  type: string
+                  format: group_names
+              required:
+                - group_id
+            example:
+              name: NewGroup_1
       responses:
         '200':
           description: "Add new agent"
@@ -7823,99 +7828,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-    put:
-      tags:
-        - Cluster
-      summary: "Update nodes API config"
-      description: "Update the API configuration of all nodes (or a list of them) with the data contained in the API
-      request"
-      operationId: api.controllers.cluster_controller.put_api_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/nodes_list'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/APIconfiguration'
-      responses:
-        '200':
-          description: 'Confirmation message'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - master-node
-                    - worker1
-                  total_affected_items: 2
-                  failed_items: []
-                  total_failed_items: 0
-                message: "API configuration was successfully updated in all specified nodes. Some settings may require
-                restarting the API to be applied"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    delete:
-      tags:
-        - Cluster
-      summary: "Restore nodes default API config"
-      description: "Restore the default API configuration of all nodes (or a list of them)"
-      operationId: api.controllers.cluster_controller.delete_api_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/cluster:update_api_config'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/nodes_list'
-      responses:
-        '200':
-          description: 'Confirmation message'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - master-node
-                    - worker1
-                  total_affected_items: 2
-                  failed_items: []
-                  total_failed_items: 0
-                message: "API configuration was successfully updated in all specified nodes. Some settings may require
-                restarting the API to be applied"
-                error: 0
-
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /cluster/{node_id}/status:
     get:
       tags:
@@ -8859,7 +8771,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/edit_files_path'
+        - $ref: '#/components/parameters/delete_files_path'
       responses:
         '200':
           description: "Confirmation message"
@@ -8870,7 +8782,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "etc/ossec.conf"
+                    - "etc/rules/custom_rules.xml"
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -9055,7 +8967,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/filename'
       responses:
         '200':
@@ -9143,7 +9055,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/filename'
       responses:
         '200':
@@ -10223,7 +10135,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/edit_files_path'
+        - $ref: '#/components/parameters/delete_files_path'
       responses:
         '200':
           description: "Confirmation message"
@@ -10236,7 +10148,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "etc/ossec.conf"
+                    - "etc/rules/custom_rule.xml"
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -10286,6 +10198,7 @@ paths:
                           cert: "/var/ossec/api/configuration/ssl/server.crt"
                           use_ca: false
                           ca: "/var/ossec/api/configuration/ssl/ca.crt"
+                          ssl_cipher: "TLSv1.2"
                         access:
                           max_login_attempts: 50
                           block_time: 300
@@ -10308,94 +10221,6 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "API configuration was successfully read"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    put:
-      tags:
-        - Manager
-      summary: "Update API config"
-      description: "Update local API configuration with the data contained in the API request"
-      operationId: api.controllers.manager_controller.put_api_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/APIconfiguration'
-      responses:
-        '200':
-          description: 'Confirmation message'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - Manager
-                  total_affected_items: 1
-                  failed_items: []
-                  total_failed_items: 0
-                message: "API configuration was successfully updated. Some settings may require restarting the API to
-                be applied"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    delete:
-      tags:
-        - Manager
-      summary: "Restore default API config"
-      description: "Restore default local API configuration"
-      operationId: api.controllers.manager_controller.delete_api_config
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/manager:update_api_config'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Confirmation message'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - Manager
-                  total_affected_items: 1
-                  failed_items: []
-                  total_failed_items: 0
-                message: "API configuration was successfully updated. Some settings may require restarting the API to
-                be applied"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10845,7 +10670,7 @@ paths:
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
         - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/pci_dss'
         - $ref: '#/components/parameters/gdpr'
         - $ref: '#/components/parameters/gpg13'
@@ -11042,7 +10867,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
@@ -11600,7 +11425,7 @@ paths:
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
@@ -11671,7 +11496,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/etc_and_ruleset_path'
+        - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
@@ -13554,7 +13379,7 @@ paths:
         - Security
       summary: "Login"
       description: "This method should be called to get an API token. This token will expire after
-      auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT /security/config"
+      auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
         - $ref: '#/components/parameters/raw'
@@ -13620,7 +13445,7 @@ paths:
       - Security
       summary: "Login auth_context"
       description: "This method should be called to get an API token using an authorization context body. This token
-      will expire after auth_token_exp_timeout seconds (default: 3600). This value can be changed using PUT
+      will expire after auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT
       /security/config"
       operationId: api.controllers.security_controller.login_user
       parameters:
@@ -15301,7 +15126,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiResponse"
               example:
-                auth_token_exp_timeout: 3600
+                auth_token_exp_timeout: 900
                 rbac_mode: white
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -15431,4 +15256,4 @@ paths:
 
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.1/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.2/user-manual/api/index.html'

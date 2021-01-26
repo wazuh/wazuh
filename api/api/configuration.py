@@ -20,7 +20,7 @@ from api.constants import SECURITY_CONFIG_PATH
 from wazuh.core import common
 
 default_security_configuration = {
-    "auth_token_exp_timeout": 3600,
+    "auth_token_exp_timeout": 900,
     "rbac_mode": "white"
 }
 
@@ -33,7 +33,8 @@ default_api_configuration = {
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
-        "ca": "api/configuration/ssl/ca.crt"
+        "ca": "api/configuration/ssl/ca.crt",
+        "ssl_cipher": "TLSv1.2"
     },
     "logs": {
         "level": "info",
@@ -57,7 +58,17 @@ default_api_configuration = {
     },
     "use_only_authd": False,
     "drop_privileges": True,
-    "experimental_features": False
+    "experimental_features": False,
+    "remote_commands": {
+        "localfile": {
+            "enabled": True,
+            "exceptions": []
+        },
+        "wodle_command": {
+            "enabled": True,
+            "exceptions": []
+        }
+    }
 }
 
 
@@ -191,6 +202,24 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
 
     :return: API configuration
     """
+    def replace_bools(conf):
+        """Replace 'yes' and 'no' strings in configuration for actual booleans.
+
+        Parameters
+        ----------
+        conf : dict
+            Current API configuration.
+        """
+        for k in conf.keys():
+            if isinstance(conf[k], dict):
+                replace_bools(conf[k])
+            else:
+                if isinstance(conf[k], str):
+                    if conf[k].lower() == 'yes':
+                        conf[k] = True
+                    elif conf[k].lower() == 'no':
+                        conf[k] = False
+
     if default_conf is None:
         default_conf = default_api_configuration
 
@@ -198,6 +227,8 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
         try:
             with open(config_file) as f:
                 configuration = yaml.safe_load(f)
+            # Replace strings for booleans
+            configuration and replace_bools(configuration)
         except IOError as e:
             raise APIError(2004, details=e.strerror)
     else:

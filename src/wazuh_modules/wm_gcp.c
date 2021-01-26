@@ -160,7 +160,7 @@ void wm_gcp_run(const wm_gcp *data) {
     }
 
     char *line;
-    char *save_ptr;
+    char *save_ptr = NULL;
 
     for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)) {
         switch (data->logging) {
