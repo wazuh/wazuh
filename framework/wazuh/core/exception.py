@@ -48,7 +48,7 @@ class WazuhException(Exception):
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
-               'remediation': 'Run `WAZUH_PATH/bin/ossec-logtest -t` to check your configuration'},
+               'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
         1102: {'message': 'Invalid section',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html) '
                               'to get more information about configuration sections'},
@@ -93,6 +93,8 @@ class WazuhException(Exception):
                               'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
                               'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
         1123: {'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
+        1124: {'message': 'Remote command detected',
+               'remediation': f'To solve this issue please enable the remote commands in the API settings or add an exception: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#remote-commands-configuration'},
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',

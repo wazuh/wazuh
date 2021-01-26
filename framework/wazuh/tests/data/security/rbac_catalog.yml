@@ -314,20 +314,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/api/config
-      cluster:update_api_config:
-        description: Modify Wazuh's cluster nodes API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - cluster:update_api_config
-          resources:
-            - node:id:worker1
-            - node:id:worker3
-          effect: allow
-        related_endpoints:
-          - PUT /cluster/api/config
-          - DELETE /cluster/api/config
       cluster:read_file:
         description: Read Wazuh's cluster nodes files
         resources:
@@ -483,19 +469,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /manager/api/config
-      manager:update_api_config:
-        description: Modify Wazuh manager API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:update_api_config
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /manager/api/config
-          - DELETE /manager/api/config
       manager:restart:
         description: Restart Wazuh managers
         resources:

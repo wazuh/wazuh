@@ -97,11 +97,6 @@ Install()
         SYSC_FLAG="DISABLE_SYSC=yes"
     fi
 
-    # Build SQLite library for CentOS 6
-    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
-        LIB_FLAG="USE_FRAMEWORK_LIB=yes"
-    fi
-
     # Makefile
     echo " - ${runningmake}"
     echo ""
@@ -111,7 +106,11 @@ Install()
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries if missing
+<<<<<<< HEAD
         find external/* > /dev/null 2>&1 || ${MAKEBIN} deps INSTALLDIR=${INSTALLDIR}
+=======
+        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps
+>>>>>>> 7177-make-python-portable
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
@@ -119,7 +118,11 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
+<<<<<<< HEAD
         ${MAKEBIN} INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+=======
+        ${MAKEBIN} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+>>>>>>> 7177-make-python-portable
 
         if [ $? != 0 ]; then
             cd ../
@@ -127,7 +130,7 @@ Install()
         fi
     fi
 
-    # If update, stop ossec
+    # If update, stop Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         echo "Stopping Wazuh..."
         UpdateStopOSSEC
@@ -152,7 +155,11 @@ Install()
         WazuhSetup
     fi
 
-    # If update, start OSSEC
+    # Calling the init script to start Wazuh during boot
+    runInit $INSTYPE ${update_only}
+    runinit_value=$?
+
+    # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
         # Update versions previous to Wazuh 1.2
@@ -161,9 +168,7 @@ Install()
         UpdateStartOSSEC
     fi
 
-    # Calling the init script  to start ossec hids during boot
-    runInit $INSTYPE ${update_only}
-    if [ $? = 1 ]; then
+    if [ $runinit_value = 1 ]; then
         notmodified="yes"
     elif [ "X$START_WAZUH" = "Xyes" ]; then
         echo "Starting Wazuh..."
@@ -1009,10 +1014,10 @@ main()
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "      $INSTALLDIR/bin/ossec-control start"
+    echo "      $INSTALLDIR/bin/wazuh-control start"
     echo ""
     echo " - ${tostop}:"
-    echo "      $INSTALLDIR/bin/ossec-control stop"
+    echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
     echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
     echo ""
@@ -1073,7 +1078,7 @@ main()
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "      $INSTALLDIR/bin/ossec-control start"
+        echo "      $INSTALLDIR/bin/wazuh-control start"
         echo ""
     fi
 }

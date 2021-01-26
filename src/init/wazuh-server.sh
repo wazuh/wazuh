@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Copyright (C) 2015-2020, Wazuh Inc.
-# ossec-control        This shell script takes care of starting
+# wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
@@ -260,7 +260,7 @@ start()
         echo "Starting $NAME $VERSION..."
     fi
 
-    TEST=$(${DIR}/bin/ossec-logtest -t  2>&1 | grep "ERROR")
+    TEST=$(${DIR}/bin/wazuh-analysisd -t  2>&1 | grep "ERROR")
     if [ ! -z "$TEST" ]; then
         if [ $USE_JSON = true ]; then
             echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'

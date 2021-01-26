@@ -153,7 +153,7 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
             char* message = NULL;
             int parsing_retval;
 
-            // Parse incomming message
+            // Parse incoming message
             parsing_retval = wm_agent_upgrade_parse_message(&buffer[0], &task, &agent_ids, &message);
 
             switch (parsing_retval) {

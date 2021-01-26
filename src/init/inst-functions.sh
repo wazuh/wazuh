@@ -689,13 +689,13 @@ InstallCommon()
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
-        OSSEC_CONTROL_SRC='./init/ossec-server.sh'
+        OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
         OSSEC_CONF_SRC='../etc/ossec-server.conf'
     elif [ ${INSTYPE} = 'agent' ]; then
-        OSSEC_CONTROL_SRC='./init/ossec-client.sh'
+        OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
         OSSEC_CONF_SRC='../etc/ossec-agent.conf'
     elif [ ${INSTYPE} = 'local' ]; then
-        OSSEC_CONTROL_SRC='./init/ossec-local.sh'
+        OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
         OSSEC_CONF_SRC='../etc/ossec-local.conf'
     fi
 
@@ -747,8 +747,7 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
-  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
@@ -858,17 +857,12 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-reportd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-maild ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-logtest ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-csyslogd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-dbd ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} verify-agent-conf ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 ossec-regex ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 syscheck_update ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-regex ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 syscheck_control ${PREFIX}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 rootcheck_control ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-integratord ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
 
@@ -881,13 +875,6 @@ InstallLocal()
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../ruleset/rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
 
     InstallSecurityConfigurationAssessmentFiles "manager"
-
-    # Build SQLite library for CentOS 6
-    if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
-        LIB_FLAG="yes"
-    else
-        LIB_FLAG="no"
-    fi
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
@@ -936,7 +923,7 @@ InstallLocal()
     ### Install Python
     ${MAKEBIN} wpython INSTALLDIR=${PREFIX} TARGET=${INSTYPE}
 
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX}
 
     ### Backup old API
     if [ "X${update_only}" = "Xyes" ]; then
@@ -1067,17 +1054,8 @@ InstallWazuh()
         InstallAgent
     elif [ "X$INSTYPE" = "Xserver" ]; then
         InstallServer
-        InstallCDB
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         InstallLocal
-        InstallCDB
     fi
 
-}
-
-
-InstallCDB()
-{
-    echo "Building CDB lists..."
-    ${PREFIX}/bin/ossec-makelists > /dev/null 2>&1
 }

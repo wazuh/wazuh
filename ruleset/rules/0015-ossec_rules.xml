@@ -150,6 +150,15 @@
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
+  <rule id="521" level="11">
+    <if_sid>510</if_sid>
+    <match>Possible kernel level rootkit</match>
+    <description>Possible kernel level rootkit</description>
+    <mitre>
+      <id>T1014</id>
+    </mitre>
+    <group>rootcheck,</group>
+  </rule>
 
   <!-- Process monitoring rules -->
   <rule id="530" level="0">
