@@ -263,7 +263,7 @@ def _ossecconf2json(xml_conf):
     final_json = {}
 
     for root in list(xml_conf):
-        if root.tag.lower() == "ossec_config":
+        if root.tag.lower() == "wazuh_config":
             _conf2json(root, final_json)
 
     return final_json
