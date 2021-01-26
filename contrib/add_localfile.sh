@@ -27,16 +27,16 @@ ls -la $FILE > /dev/null 2>&1
 if [ ! $? = 0 ]; then
     echo "$0: File $FILE does not exist."
     exit 1;
-fi     
-    
+fi
+
 echo "
-<ossec_config>
+<wazuh_config>
   <localfile>
     <log_format>$FORMAT</log_format>
     <location>$FILE</location>
   </localfile>
-</ossec_config>  
+</wazuh_config>
 " >> /var/ossec/etc/ossec.conf
 
 echo "$0: File $FILE added.";
-exit 0;            
+exit 0;

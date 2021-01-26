@@ -48,19 +48,19 @@ if [ $ACTION = "addfile" ]; then
     if [ ! $? = 0 ]; then
         echo "$0: File $FILE does not exist."
         exit 1;
-    fi     
-    
+    fi
+
     echo "
-    <ossec_config>
+    <wazuh_config>
       <localfile>
       <log_format>$FORMAT</log_format>
       <location>$FILE</location>
      </localfile>
-   </ossec_config>  
+   </wazuh_config>
    " >> ${DIRECTORY}/etc/ossec.conf
 
    echo "$0: File $FILE added.";
-   exit 0;            
+   exit 0;
 fi
 
 
@@ -81,16 +81,16 @@ if [ $ACTION = "adddns" ]; then
 
    MYERR=0
    echo "
-   <ossec_config>
+   <wazuh_config>
    <localfile>
      <log_format>full_command</log_format>
      <command>$COMMAND</command>
    </localfile>
-   </ossec_config>
+   </wazuh_config>
    " >> ${DIRECTORY}/etc/ossec.conf || MYERR=1;
 
    if [ $MYERR = 1 ]; then
-       echo "$0: Unable to modify the configuration file."; 
+       echo "$0: Unable to modify the configuration file.";
        exit 1;
    fi
 
@@ -143,16 +143,16 @@ if [ $ACTION = "addsite" ]; then
 
    MYERR=0
    echo "
-   <ossec_config>
+   <wazuh_config>
    <localfile>
      <log_format>full_command</log_format>
      <command>$COMMAND</command>
    </localfile>
-   </ossec_config>
+   </wazuh_config>
    " >> ${DIRECTORY}/etc/ossec.conf || MYERR=1;
 
    if [ $MYERR = 1 ]; then
-       echo "$0: Unable to modify the configuration file."; 
+       echo "$0: Unable to modify the configuration file.";
        exit 1;
    fi
 
@@ -186,5 +186,3 @@ if [ $ACTION = "addsite" ]; then
    echo "Domain $FILE added to be monitored."
    exit 0;
 fi
-
-

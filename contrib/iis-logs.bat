@@ -15,36 +15,36 @@ echo.
 IF EXIST %WinDir%\System32\LogFiles\W3SVC1\nc??????.log (
     echo    * IIS NCSA log found. Changing config to read it.
     echo.  >> ossec.conf
-    echo ^<ossec_config^> >> ossec.conf
+    echo ^<wazuh_config^> >> ossec.conf
     echo   ^<localfile^> >> ossec.conf
     echo     ^<location^>%WinDir%\System32\LogFiles\W3SVC1\nc%%y%%m%%d.log^</location^> >> ossec.conf
     echo     ^<log_format^>iis^</log_format^> >> ossec.conf
     echo   ^</localfile^> >> ossec.conf
-    echo ^</ossec_config^> >> ossec.conf
+    echo ^</wazuh_config^> >> ossec.conf
     pause
     )
 
 IF EXIST %WinDir%\System32\LogFiles\W3SVC1\ex??????.log (
     echo    * IIS W3C extended log found. Changing config to read it.
     echo.  >> ossec.conf
-    echo ^<ossec_config^> >> ossec.conf
+    echo ^<wazuh_config^> >> ossec.conf
     echo   ^<localfile^> >> ossec.conf
     echo     ^<location^>%WinDir%\System32\LogFiles\W3SVC1\ex%%y%%m%%d.log^</location^> >> ossec.conf
     echo     ^<log_format^>iis^</log_format^> >> ossec.conf
     echo   ^</localfile^> >> ossec.conf
-    echo ^</ossec_config^> >> ossec.conf
+    echo ^</wazuh_config^> >> ossec.conf
     pause
     )
 
 IF EXIST %WinDir%\System32\LogFiles\W3SVC3\ex??????.log (
     echo    * IIS W3C extended log found. Changing config to read it.
     echo.  >> ossec.conf
-    echo ^<ossec_config^> >> ossec.conf
+    echo ^<wazuh_config^> >> ossec.conf
     echo   ^<localfile^> >> ossec.conf
     echo     ^<location^>%WinDir%\System32\LogFiles\W3SVC3\nc%%y%%m%%d.log^</location^> >> ossec.conf
     echo     ^<log_format^>iis^</log_format^> >> ossec.conf
     echo   ^</localfile^> >> ossec.conf
-    echo ^</ossec_config^> >> ossec.conf
+    echo ^</wazuh_config^> >> ossec.conf
     pause
     )
 
@@ -54,4 +54,3 @@ IF EXIST %WinDir%\System32\LogFiles\W3SVC1 (
     exit )
 
 rem EOF
-

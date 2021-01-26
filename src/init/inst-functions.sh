@@ -334,7 +334,7 @@ WriteAgent()
     echo "$HEADERS" > $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "<ossec_config>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
     echo "    <server>" >> $NEWCONFIG
     if [ "X${HNAME}" = "X" ]; then
@@ -433,7 +433,7 @@ WriteAgent()
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "</ossec_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG
 }
 
 
@@ -448,7 +448,7 @@ WriteManager()
     echo "$HEADERS" > $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "<ossec_config>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG
 
     if [ "$EMAILNOTIFY" = "yes"   ]; then
         sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
@@ -566,7 +566,7 @@ WriteManager()
     cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "</ossec_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG
 
 }
 
@@ -581,7 +581,7 @@ WriteLocal()
     echo "$HEADERS" > $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "<ossec_config>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG
 
     if [ "$EMAILNOTIFY" = "yes"   ]; then
         sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
@@ -675,7 +675,7 @@ WriteLocal()
     cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "</ossec_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG
 }
 
 InstallCommon()

@@ -9,7 +9,7 @@
 #	Version: 0.1
 #
 #	Description:  OSSEC-HIDS uses XML for it's configuration
-#	and rules files.  This script allows a user to use a 
+#	and rules files.  This script allows a user to use a
 #	more traditional "key = value" format and convert it
 #	to the XML required by OSSEC.
 #
@@ -42,7 +42,7 @@ if ($opts{'f'}) {
 		} else {
 			die "Config error!  Found an extra equals sign (=) in line $current_line\.  Input file not converted!\n";
 		}
-		# the keys below will be repeated, but if the value is assigned initially, 
+		# the keys below will be repeated, but if the value is assigned initially,
 		# then the script fails when unwrapping the hash.
 		# key/value pairs that shouldn't be repeated throw a config error if they are repeated.
 		if ($key =~ /monitor_file|rules_include|active_response_command/) {
@@ -70,7 +70,7 @@ print <<END;
 
 <!-- OSSEC example config -->
 
-<ossec_config>
+<wazuh_config>
   <global>
     <email_notification>$config{'email_notify'}</email_notification>
     <email_to>$config{'email_addr'}</email_to>
@@ -90,12 +90,12 @@ foreach my $rulesfile ( sort( @{$config{'rules_include'}} ) ) {
 }
 
 print <<END;
-  </rules>  
+  </rules>
 
   <syscheck>
     <!-- Frequency that syscheck is executed -- default every 2 hours -->
     <frequency>$config{'frequency'}</frequency>
-    
+
     <!-- Directories to check  (perform all possible verifications) -->
     <directories check_all="yes">$config{'directories_check_all'}</directories>
 
@@ -174,8 +174,8 @@ END
     <command>firewall-drop</command>
     <location>local</location>
     <level>6</level>
-    <timeout>600</timeout>    
-  </active-response>  
+    <timeout>600</timeout>
+  </active-response>
 
   <!-- Files to monitor (localfiles) -->
 
@@ -191,4 +191,4 @@ foreach my $file ( sort( @{$config{'monitor_file'}} ) ) {
 	print "  </localfile>\n";
 }
 
-print "</ossec_config>\n";
+print "</wazuh_config>\n";
