@@ -3931,7 +3931,7 @@ void test_wdb_update_groups_error_json(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to update groups.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(HOMEDIR SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -3992,7 +3992,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
     // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(HOMEDIR SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4042,7 +4042,7 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(HOMEDIR SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4078,7 +4078,7 @@ void test_wdb_update_groups_error_adding_new_groups(void **state) {
     will_return(__wrap_strerror, "error");
     expect_string(__wrap__merror, formatted_msg, "Couldn't open directory '/var/ossec/etc/shared': error.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(HOMEDIR SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4143,7 +4143,7 @@ void test_wdb_update_groups_success(void **state) {
 
     will_return(__wrap_readdir, NULL);
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(HOMEDIR SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 

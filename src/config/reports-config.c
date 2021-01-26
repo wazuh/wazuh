@@ -12,6 +12,7 @@
 #include "reports-config.h"
 #include "config.h"
 
+#ifndef WIN32
 
 /* Filter argument */
 static int _filter_arg(char *mystr)
@@ -180,3 +181,4 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 
     return (0);
 }
+#endif

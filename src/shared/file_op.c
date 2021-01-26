@@ -530,8 +530,6 @@ float DirSize(const char *path) {
     return folder_size;
 }
 
-#endif
-
 int CreatePID(const char *name, int pid)
 {
     char file[256];
@@ -540,7 +538,7 @@ int CreatePID(const char *name, int pid)
     if (isChroot()) {
         snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
     } else {
-        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR,
+        snprintf(file, 255, "%s%s/%s-%d.pid", HOMEDIR,
                  OS_PIDFILE, name, pid);
     }
 
@@ -589,7 +587,6 @@ char *GetRandomNoise()
     }
 }
 
-
 int DeletePID(const char *name)
 {
     char file[256];
@@ -597,7 +594,7 @@ int DeletePID(const char *name)
     if (isChroot()) {
         snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, (int)getpid());
     } else {
-        snprintf(file, 255, "%s%s/%s-%d.pid", DEFAULTDIR,
+        snprintf(file, 255, "%s%s/%s-%d.pid", HOMEDIR,
                  OS_PIDFILE, name, (int)getpid());
     }
 
@@ -612,7 +609,7 @@ int DeletePID(const char *name)
 
     return (0);
 }
-
+#endif
 
 void DeleteState() {
     char path[PATH_MAX + 1];
@@ -621,7 +618,7 @@ void DeleteState() {
 #ifdef WIN32
         snprintf(path, sizeof(path), "%s.state", __local_name);
 #else
-        snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
+        snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : HOMEDIR, __local_name);
 #endif
         unlink(path);
     } else {
@@ -3360,28 +3357,29 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 #ifndef WIN32
 char *w_homedir(char *arg) {
     char *buff = NULL;
+    char * delim = "/bin";
     os_malloc(PATH_MAX, buff);
-    #ifdef __MACH__
+#ifdef __MACH__
     pid_t pid = getpid();
-    #endif
+#endif
 
     if (realpath("/proc/self/exe", buff) != NULL) {
         dirname(buff);
-        buff = w_strtok_r_str_delim(basename(buff), &buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
     }
     else if (realpath("/proc/curproc/file", buff) != NULL) {
         dirname(buff);
-        buff = w_strtok_r_str_delim(basename(buff), &buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
     }
     else if (realpath("/proc/self/path/a.out", buff) != NULL) {
         dirname(buff);
-        buff = w_strtok_r_str_delim(basename(buff), &buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
     }
-    #ifdef __MACH__
+#ifdef __MACH__
     else if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
-        buff = w_strtok_r_str_delim("bin", &buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
     }
-    #endif
+#endif
     else if (arg != NULL) {
         if (realpath(arg, buff) == NULL) {
             mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
@@ -3390,7 +3388,7 @@ char *w_homedir(char *arg) {
         }
 
         dirname(buff);
-        buff = w_strtok_r_str_delim("bin", &buff);
+        buff = w_strtok_r_str_delim(delim, &buff);
     }
 
     return buff;

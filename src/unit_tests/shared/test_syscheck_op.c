@@ -2077,7 +2077,7 @@ static void test_get_group(void **state) {
 static void test_ag_send_syscheck_success(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
@@ -2095,7 +2095,7 @@ static void test_ag_send_syscheck_success(void **state) {
 static void test_ag_send_syscheck_unable_to_connect(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
@@ -2112,7 +2112,7 @@ static void test_ag_send_syscheck_unable_to_connect(void **state) {
 static void test_ag_send_syscheck_error_sending_message(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, HOMEDIR SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
