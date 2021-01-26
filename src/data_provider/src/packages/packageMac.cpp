@@ -46,5 +46,4 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["architecture"] = m_packageWrapper->architecture();
     package["format"] = m_packageWrapper->format();
     package["os_patch"] = m_packageWrapper->osPatch();
-    package["scan_time"] = m_packageWrapper->scanTime();
 }

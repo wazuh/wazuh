@@ -32,7 +32,6 @@ public:
     MOCK_METHOD(std::string, release, (), (const override));
     MOCK_METHOD(std::string, machine, (), (const override));
     MOCK_METHOD(std::string, nodeName, (), (const override));
-    MOCK_METHOD(std::string, scanTime, (), (const override));
     MOCK_METHOD(std::string, getSerialNumber, (), (const override));
 };
 
@@ -53,7 +52,6 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_CALL(*pOsInfoProvider, release()).WillOnce(Return("1903"));
     EXPECT_CALL(*pOsInfoProvider, machine()).WillOnce(Return("x86_64"));
     EXPECT_CALL(*pOsInfoProvider, nodeName()).WillOnce(Return("DESKTOP-U7Q6UQV"));
-    EXPECT_CALL(*pOsInfoProvider, scanTime()).WillOnce(Return("2020/12/28 19:05:01"));
     SysOsInfo::setOsInfo(spOsInfoProvider, output);
     EXPECT_EQ("x86_64", output.at("architecture"));
     EXPECT_EQ("DESKTOP-U7Q6UQV", output.at("hostname"));
@@ -63,5 +61,4 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_EQ("Microsoft Windows 10 Home", output.at("os_name"));
     EXPECT_EQ("1903", output.at("os_release"));
     EXPECT_EQ("10.0.18362", output.at("os_version"));
-    EXPECT_EQ("2020/12/28 19:05:01", output.at("scan_time"));
 }

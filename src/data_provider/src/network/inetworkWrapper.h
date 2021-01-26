@@ -21,7 +21,6 @@ public:
     // LCOV_EXCL_STOP
     virtual int family() const = 0;
     virtual std::string name() const = 0;
-    virtual std::string scanTime() const = 0;
     virtual std::string adapter() const = 0;
     virtual std::string address() const = 0;
     virtual std::string netmask() const = 0;

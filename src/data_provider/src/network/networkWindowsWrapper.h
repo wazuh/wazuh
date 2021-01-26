@@ -21,7 +21,6 @@
 #include "inetworkWrapper.h"
 #include "makeUnique.h"
 #include "sharedDefs.h"
-#include "timeHelper.h"
 
 static const std::map<int, std::string> NETWORK_INTERFACE_TYPES =
 {
@@ -56,7 +55,6 @@ public:
         , m_interfaceAddress(addrs)
         , m_currentUnicastAddress(unicastAddress)
         , m_adapterInfo(adapterInfo)
-        , m_scanTime(Utils::getCurrentTimestamp())
     {
         if (!addrs)
         {
@@ -71,11 +69,6 @@ public:
     std::string name() const override
     {
         return Utils::NetworkWindowsHelper::getAdapterNameStr(m_interfaceAddress->FriendlyName);
-    }
-
-    std::string scanTime() const override
-    {
-        return m_scanTime;
     }
 
     std::string adapter() const override
@@ -461,7 +454,6 @@ private:
     PIP_ADAPTER_ADDRESSES                           m_interfaceAddress;
     PIP_ADAPTER_UNICAST_ADDRESS                     m_currentUnicastAddress;
     PIP_ADAPTER_INFO                                m_adapterInfo;  // XP needed structure
-    const std::string                               m_scanTime;
 };
 
 #endif //_NETWORK_WINDOWS_WRAPPER_H

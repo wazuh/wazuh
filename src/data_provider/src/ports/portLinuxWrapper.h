@@ -244,11 +244,6 @@ class LinuxPortWrapper final : public IPortWrapper
     {
         return {};
     }
-
-    std::string scanTime() const override
-    {
-        return Utils::getCurrentTimestamp();
-    }
 };
 
 

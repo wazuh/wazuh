@@ -26,6 +26,5 @@ public:
     virtual std::string architecture() const = 0;
     virtual std::string format() const = 0;
     virtual std::string osPatch() const = 0;
-    virtual std::string scanTime() const = 0;
 };
 #endif // _PACKAGE_INTERFACE_WRAPPER_H

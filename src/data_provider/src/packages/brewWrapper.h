@@ -16,7 +16,6 @@
 #include "sharedDefs.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
-#include "timeHelper.h"
 
 class BrewWrapper final : public IPackageWrapper
 {
@@ -29,7 +28,6 @@ public:
       , m_architecture{UNKNOWN_VALUE}
       , m_format{"pkg"}
       , m_osPatch{UNKNOWN_VALUE}
-      , m_scanTime{Utils::getCurrentTimestamp()}
     {
         const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
         for (const auto& row : rows)
@@ -76,10 +74,6 @@ public:
     {
         return m_osPatch;
     }
-    std::string scanTime() const override
-    {
-        return m_scanTime;
-    }
 private:
     std::string m_name;
     std::string m_version;
@@ -88,7 +82,6 @@ private:
     std::string m_architecture;
     const std::string m_format;
     std::string m_osPatch;
-    const std::string m_scanTime;
 };
 
 

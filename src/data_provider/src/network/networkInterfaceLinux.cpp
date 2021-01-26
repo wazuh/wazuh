@@ -86,7 +86,6 @@ void LinuxNetworkImpl<AF_PACKET>::buildNetworkData(nlohmann::json& network)
 {
     /* Get stats of interface */
     network["name"]    = m_interfaceAddress->name();
-    network["scan_time"] = m_interfaceAddress->scanTime();
     network["adapter"] = m_interfaceAddress->adapter();
     network["type"]    = m_interfaceAddress->type();
     network["state"]   = m_interfaceAddress->state();

@@ -28,7 +28,6 @@ public:
     virtual ~SysInfoNetworkWindowsWrapperMock() = default;
     MOCK_METHOD(int, family, (), (const override));
     MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, scanTime, (), (const override));
     MOCK_METHOD(std::string, adapter, (), (const override)); 
     MOCK_METHOD(std::string, address, (), (const override));
     MOCK_METHOD(std::string, netmask, (), (const override));
@@ -130,7 +129,6 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     auto mock { std::make_shared<SysInfoNetworkWindowsWrapperMock>() };
     nlohmann::json networkInfo {};
     const std::string name      { "eth01" };
-    const std::string timestamp { "2020/12/2020 19:05:05" };
     const std::string type      { "2001:db8:abcd:0012:ffff:ffff:ffff:ffff" };
     const std::string state     { "up" };
     const std::string MAC       { "00:A0:C9:14:C8:29" };
@@ -138,7 +136,6 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     const std::string gateway   { "10.2.2.50" };
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(Utils::NetworkWindowsHelper::COMMON_DATA));
     EXPECT_CALL(*mock, name()).Times(1).WillOnce(Return(name));
-    EXPECT_CALL(*mock, scanTime()).Times(1).WillOnce(Return(timestamp));
     EXPECT_CALL(*mock, type()).Times(1).WillOnce(Return(type));
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return(state));
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return(MAC));
@@ -149,7 +146,6 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
 
     EXPECT_EQ(name, networkInfo.at("name").get_ref<const std::string&>());
-    EXPECT_EQ(name, networkInfo.at("scan_time").get_ref<const std::string&>());
     EXPECT_EQ(type, networkInfo.at("type").get_ref<const std::string&>());
     EXPECT_EQ(state, networkInfo.at("state").get_ref<const std::string&>());
     EXPECT_EQ(MAC, networkInfo.at("mac").get_ref<const std::string&>());

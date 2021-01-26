@@ -71,7 +71,7 @@ private:
     
     std::string getCreateStatement() const;
     void registerWithRsync();
-
+    void updateAndNotifyChanges(const std::string& table, const nlohmann::json& values);
     void scanHardware();
     void scanOs();
     void scanNetwork();
@@ -105,6 +105,7 @@ private:
     std::condition_variable                        m_cv;
     std::mutex                                     m_mutex;
     std::unique_ptr<SysNormalizer>                 m_spNormalizer;
+    std::string                                    m_scanTime;
 };
 
 

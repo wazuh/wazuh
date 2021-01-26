@@ -26,7 +26,6 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
-#include "timeHelper.h"
 #include "registryHelper.h"
 #include "defs.h"
 #include "debug_op.h"
@@ -320,7 +319,6 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 
     // Current process information
     jsProcessInfo["name"]       = processName(processEntry);
-    jsProcessInfo["scan_time"]  = Utils::getCurrentTimestamp();
     jsProcessInfo["cmd"]        = (isSystemProcess(pId)) ? "none" : process.cmd();
     jsProcessInfo["stime"]      = process.kernelModeTime();
     jsProcessInfo["size"]       = process.pageFileUsage();
@@ -392,7 +390,6 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                 packageJson["architecture"] = architecture;
                 packageJson["format"]       = "win";
                 packageJson["os_patch"]     = UNKNOWN_VALUE;
-                packageJson["scan_time"]    = Utils::getCurrentTimestamp();
 
                 data.push_back(packageJson);
             }
@@ -434,7 +431,6 @@ static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann
         {
             nlohmann::json hotfixValue;
             hotfixValue["hotfix"] = hotfix;
-            hotfixValue["scan_time"] = Utils::getCurrentTimestamp();
             data.push_back(hotfixValue);
         }
     }
