@@ -1104,7 +1104,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     cJSON_AddItemToObject(response, "agents", json_agents = cJSON_CreateObject());
 
     // Get agents id separated by whitespace
-    agents = wm_strtok(agent_list);
+    agents = w_strtok(agent_list);
 
     for (n = 0; agents && agents[n]; n++) {
         if (strcmp(agents[n], "") != 0) {
@@ -1144,7 +1144,7 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
         }
     }
 
-    free(agents);
+    free_strarray(agents);
     json_formated = cJSON_PrintUnformatted(response);
     mdebug1("Deleting databases. JSON output: %s", json_formated);
     os_free(json_formated);

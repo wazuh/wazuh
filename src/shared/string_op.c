@@ -988,3 +988,92 @@ char * w_strndup(const char * str, size_t n) {
 
     return str_cpy;
 }
+
+// Append two strings
+
+char* w_strcat(char *a, const char *b, size_t n) {
+    if (a == NULL) {
+        return w_strndup(b, n);
+    }
+
+    size_t a_len = strlen(a);
+    size_t output_len = a_len + n;
+
+    os_realloc(a, output_len + 1, a);
+
+    memcpy(a + a_len, b, n);
+    a[output_len] = '\0';
+
+    return a;
+}
+
+// Append a string into the n-th position of a string array
+
+char** w_strarray_append(char **array, char *string, int n) {
+    os_realloc(array, sizeof(char *) * (n + 2), array);
+    array[n] = string;
+    array[n + 1] = NULL;
+
+    return array;
+}
+
+// Tokenize string separated by spaces, respecting double-quotes
+
+char** w_strtok(const char *string) {
+    bool quoting = false;
+    int output_n = 0;
+    char *accum = NULL;
+    char **output;
+
+    os_calloc(1, sizeof(char*), output);
+
+    const char *i;
+    const char *j;
+
+    for (i = string; (j = strpbrk(i, " \"\\")) != NULL; i = j + 1) {
+        switch (*j) {
+        case ' ':
+            if (quoting) {
+                accum = w_strcat(accum, i, j - i + 1);
+            } else {
+                if (j > i) {
+                    accum = w_strcat(accum, i, j - i);
+                }
+
+                if (accum != NULL) {
+                    output = w_strarray_append(output, accum, output_n++);
+                    accum = NULL;
+                }
+            }
+
+            break;
+
+        case '\"':
+            if (j > i || quoting) {
+                accum = w_strcat(accum, i, j - i);
+            }
+
+            quoting = !quoting;
+            break;
+
+        case '\\':
+            if (j > i) {
+                accum = w_strcat(accum, i, j - i);
+            }
+
+            if (j[1] != '\0') {
+                accum = w_strcat(accum, ++j, 1);
+            }
+        }
+    }
+
+    if (*i != '\0') {
+        accum = w_strcat(accum, i, strlen(i));
+    }
+
+    if (accum != NULL) {
+        output = w_strarray_append(output, accum, output_n);
+    }
+
+    return output;
+}
