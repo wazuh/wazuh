@@ -332,7 +332,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                // dir = optarg;
+                dir = optarg;
                 break;
             case 'c':
                 if (!optarg) {
