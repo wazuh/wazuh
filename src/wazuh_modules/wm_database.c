@@ -200,7 +200,7 @@ void wm_sync_manager() {
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
     /* Get node name of the manager in cluster */
-    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+    const char *(xml_node[]) = {"wazuh_config", "cluster", "node_name", NULL};
 
     OS_XML xml;
 

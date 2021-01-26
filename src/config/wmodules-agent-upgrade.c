@@ -238,8 +238,8 @@ static int wm_agent_upgrade_read_ca_verification(xml_node **nodes, unsigned int 
 
 static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_flag) {
     // Read CA deprecated configuration
-    const char *(caverify[]) = {"ossec_config", "active-response", "ca_verification", NULL};
-    const char *(castore[]) = {"ossec_config", "active-response", "ca_store", NULL};
+    const char *(caverify[]) = {"wazuh_config", "active-response", "ca_verification", NULL};
+    const char *(castore[]) = {"wazuh_config", "active-response", "ca_store", NULL};
 
     char **ca_verification = NULL;
 

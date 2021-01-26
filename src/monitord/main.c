@@ -150,9 +150,9 @@ int main(int argc, char **argv)
         OS_XML xml;
         char *tmpsmtp;
 
-        const char *(xml_smtp[]) = {"ossec_config", "global", "smtp_server", NULL};
-        const char *(xml_from[]) = {"ossec_config", "global", "email_from", NULL};
-        const char *(xml_idsname[]) = {"ossec_config", "global", "email_idsname", NULL};
+        const char *(xml_smtp[]) = {"wazuh_config", "global", "smtp_server", NULL};
+        const char *(xml_from[]) = {"wazuh_config", "global", "email_from", NULL};
+        const char *(xml_idsname[]) = {"wazuh_config", "global", "email_idsname", NULL};
 
         if (OS_ReadXML(cfg, &xml) < 0) {
             merror_exit(CONFIG_ERROR, cfg);
