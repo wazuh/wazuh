@@ -183,6 +183,19 @@ int local_start()
     // Initialize children pool
     wm_children_pool_init();
 
+    /* Start buffer thread */
+    if (agt->buffer){
+        buffer_init();
+        w_create_thread(NULL,
+                         0,
+                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
+                         NULL,
+                         0,
+                         (LPDWORD)&threadID);
+    }else{
+        minfo(DISABLED_BUFFER);
+    }
+
     /* state_main thread */
     w_agentd_state_init();
     w_create_thread(NULL,
@@ -200,18 +213,6 @@ int local_start()
     hMutex = CreateMutex(NULL, FALSE, NULL);
     if (hMutex == NULL) {
         merror_exit("Error creating mutex.");
-    }
-    /* Start buffer thread */
-    if (agt->buffer){
-        buffer_init();
-        w_create_thread(NULL,
-                         0,
-                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
-    }else{
-        minfo(DISABLED_BUFFER);
     }
     /* Start syscheck thread */
     w_create_thread(NULL,

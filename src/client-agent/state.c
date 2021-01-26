@@ -57,6 +57,7 @@ int write_state() {
     char path[PATH_MAX - 8];
     char last_keepalive[1024] = "";
     char last_ack[1024] = "";
+    int buffered_event;
 
     if (!strcmp(__local_name, "unset")) {
         merror("At write_state(): __local_name is unset.");
@@ -64,6 +65,11 @@ int write_state() {
     }
 
     mdebug2("Updating state file.");
+
+    if (buffered_event = w_agentd_buffer_lenght(), buffered_event == -1) {
+        // Anti-flooding mechanism is disabled
+        buffered_event = 0;
+    }
     w_mutex_lock(&state_mutex);
 
 #ifdef WIN32
@@ -118,7 +124,11 @@ int write_state() {
         "\n"
         "# Number of messages (events + control messages) sent to the manager\n"
         W_AGENTD_FIELD_MSG_SENT "='%u'\n"
-        , __local_name, agt->notify_time, agt->max_time_reconnect_try, status, last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
+        "\n"
+        "# Number of events currently buffered\n"
+        W_AGENTD_FIELD_MSG_BUFF "='%i'\n"
+        , __local_name, agt->notify_time, agt->max_time_reconnect_try, status,
+        last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent, buffered_event);
 
     fclose(fp);
 
@@ -200,6 +210,7 @@ char * w_agentd_state_get() {
     char last_ack[W_AGENTD_STATE_TIME_LENGHT] = {0};
     unsigned int count;
     unsigned int sent;
+    int buffered_event;
 
     struct tm tm = {.tm_sec = 0};
     char * retval = NULL;
@@ -224,6 +235,11 @@ char * w_agentd_state_get() {
     sent = agent_state.msg_sent;
     w_mutex_unlock(&state_mutex);
 
+    if (buffered_event = w_agentd_buffer_lenght(), buffered_event == -1) {
+        // Anti-flooding mechanism is disabled
+        buffered_event = 0;
+    }
+
     /* json response */
 
     cJSON_AddNumberToObject(json_retval, W_AGENTD_JSON_ERROR, 0);
@@ -234,6 +250,7 @@ char * w_agentd_state_get() {
     cJSON_AddStringToObject(data, W_AGENTD_FIELD_LAST_ACK, last_ack);
     cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_COUNT, count);
     cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_SENT, sent);
+    cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_BUFF, buffered_event);
 
     retval = cJSON_PrintUnformatted(json_retval);
     cJSON_Delete(json_retval);

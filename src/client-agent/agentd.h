@@ -66,6 +66,14 @@ int buffer_append(const char *msg);
 /* Thread to dispatch messages from the buffer */
 void *dispatch_buffer(void * arg);
 
+/**
+ * @brief get the number of events in buffer
+ * 
+ * @retval number of events in the buffer
+ * @retval -1 if the buffer is disabled
+ */
+int w_agentd_buffer_lenght();
+
 /* Initialize sender structure */
 void sender_init();
 

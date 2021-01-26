@@ -235,3 +235,18 @@ void delay(struct timespec * ts_loop) {
     time_sub(&ts_timeout, ts_loop);
     nanosleep(&ts_timeout, NULL);
 }
+
+int w_agentd_buffer_lenght() {
+
+    int retval = -1;
+
+    if (agt->buffer == 0) {
+        return retval;
+    }
+
+    w_mutex_lock(&mutex_lock);
+    retval = (i - j) % (agt->buflength + 1);
+    w_mutex_unlock(&mutex_lock);
+
+    return retval;
+}
