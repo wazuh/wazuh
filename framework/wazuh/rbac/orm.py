@@ -2580,7 +2580,7 @@ class DatabaseManager:
             self.engines[engine].dispose()
 
     def connect(self, database):
-        """Establish a connection with a given database and store it session in the sessions dict."""
+        """Establish a connection with a given database and store its session in the sessions dict."""
         self.engines[database] = create_engine('sqlite:///' + database, echo=False)
         self.sessions[database] = sessionmaker(bind=self.engines[database])()
 
