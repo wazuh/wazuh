@@ -22,6 +22,7 @@
 #define W_AGENTD_FIELD_LAST_ACK   "last_ack"       ///< Last time a control message was received
 #define W_AGENTD_FIELD_MSG_COUNT  "msg_count"      ///< Number of generated events
 #define W_AGENTD_FIELD_MSG_SENT   "msg_sent"       ///< Number of messages sent to the manager
+#define W_AGENTD_FIELD_MSG_BUFF   "msg_buffer"     ///< Current buffered events count
 
 #include "shared.h"
 #include "read-agents.h"
