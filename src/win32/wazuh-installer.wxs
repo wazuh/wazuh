@@ -444,7 +444,7 @@
                             <Component Id="SYSCOLLECTOR_NORM_CONFIG" DiskId="1" Guid="40284747-C50C-4905-9A72-6236276E192E">
                                 <File Id="SYSCOLLECTOR_NORM_CONFIG" Name="norm_config.json" Source="..\wazuh_modules\syscollector\norm_config.json" />
                             </Component>
-                            <Directory Id="SYSCOLLECTOR_DB" Name="syscollector_db" />
+                            <Directory Id="SYSCOLLECTOR_DB" Name="db" />
                         </Directory>
                         <Directory Id="LOGCOLLECTOR" Name="logcollector" />
                     </Directory>
