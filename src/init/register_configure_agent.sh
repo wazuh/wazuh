@@ -62,7 +62,7 @@ add_adress_block() {
     fi
 
     # Write the client configuration block
-    echo "<ossec_config>" >> ${INSTALLDIR}/etc/ossec.conf
+    echo "<wazuh_config>" >> ${INSTALLDIR}/etc/ossec.conf
     echo "  <client>" >> ${INSTALLDIR}/etc/ossec.conf
     for i in "${SET_ADDRESSES[@]}";
     do
@@ -75,7 +75,7 @@ add_adress_block() {
 
     echo "${client_config}" >> ${INSTALLDIR}/etc/ossec.conf
     echo "  </client>" >> ${INSTALLDIR}/etc/ossec.conf
-    echo "</ossec_config>" >> ${INSTALLDIR}/etc/ossec.conf
+    echo "</wazuh_config>" >> ${INSTALLDIR}/etc/ossec.conf
 }
 
 add_parameter () {
