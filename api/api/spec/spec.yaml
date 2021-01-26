@@ -4277,6 +4277,15 @@ components:
       schema:
         type: string
         format: sort
+    stats_component:
+      in: path
+      name: component
+      description: "Selected stats component"
+      required: true
+      schema:
+        type: string
+        enum:
+          - logcollector
     status:
       in: query
       name: status
@@ -5886,22 +5895,23 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_id}/stats/logcollector:
+  /agents/{agent_id}/stats/{component}:
     get:
       tags:
         - Agents
-      summary: "Get stats logcollector"
-      description: "Return Wazuh logcollector statistical information in agent {agent_id}"
-      operationId: api.controllers.agent_controller.get_stats_logcollector
+      summary: "Get agent's component stats"
+      description: "Return Wazuh's {component} statistical information in agent {agent_id}"
+      operationId: api.controllers.agent_controller.get_component_stats
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/stats_component'
       responses:
         '200':
-          description: "Get agent logcollector stats"
+          description: "Component stats"
           content:
             application/json:
               schema:

@@ -1896,11 +1896,11 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /agents/{agent_id}/stats/logcollector
+test_name: GET /agents/{agent_id}/stats/{component}
 
 stages:
 
-  - name: Try get logcollector stats from agent 000 (manager)
+  - name: Try to get logcollector stats from agent 000 (manager)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/000/stats/logcollector"
@@ -1925,7 +1925,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try get logcollector stats from agent 002
+  - name: Try to get logcollector stats from agent 002
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/002/stats/logcollector"
@@ -1943,7 +1943,7 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Try get logcollector stats from agent 007 (incompatible version)
+  - name: Try to get logcollector stats from agent 007 (incompatible version)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/007/stats/logcollector"
@@ -1964,7 +1964,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
-  - name: Try get logcollector stats from agent 017 (non-existent)
+  - name: Try to get logcollector stats from agent 017 (non-existent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/017/stats/logcollector"
@@ -1984,6 +1984,19 @@ stages:
                 - "017"
           total_affected_items: 0
           total_failed_items: 1
+
+  - name: Try to get invalid component stats from agent 000
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/017/stats/invalid_component"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: !anystr
+        detail: !anystr
 
 ---
 test_name: GET /groups

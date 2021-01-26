@@ -477,7 +477,7 @@ async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wai
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_stats_logcollector(request, pretty=False, wait_for_complete=False, agent_id=None):
+async def get_component_stats(request, pretty=False, wait_for_complete=False, agent_id=None, component=None):
     """Get a specified agent's logcollector stats.
 
     Parameters
@@ -495,7 +495,7 @@ async def get_stats_logcollector(request, pretty=False, wait_for_complete=False,
         Logcollector stats.
     """
     f_kwargs = {'agent_list': [agent_id],
-                'daemon': 'logcollector'}
+                'daemon': component}
 
     dapi = DistributedAPI(f=stats.get_daemon_stats_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
