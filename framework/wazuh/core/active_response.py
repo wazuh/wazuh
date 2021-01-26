@@ -3,14 +3,16 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.core import common
-from wazuh.core.ossec_queue import OssecQueue
-from wazuh.core.exception import WazuhError
 from wazuh.core.agent import Agent
+from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.utils import read_cluster_config
+from wazuh.core.exception import WazuhError
+from wazuh.core.ossec_queue import OssecQueue
 
 
 def create_message(command, custom, arguments):
     """Create the message that will be sent
-
+    TODO: change docstrings to numpydoc
     :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
     a command name
     :param custom: Whether the specified command is a custom command or not
@@ -30,6 +32,22 @@ def create_message(command, custom, arguments):
     return msg_queue
 
 
+def create_json_message(command, arguments):
+    """
+    TODO: change docstrings to numpydoc
+    """
+    if not command:
+        raise WazuhError(1650)
+
+    cluster_enabled = not read_cluster_config()['disabled']
+    node_name = get_node().get('node') if cluster_enabled else None
+
+    msg_queue = {'version': 1, 'origin': {'name': node_name, 'module': 'api/framework'}, 'command': command,
+                 'parameters': {'extra_args': arguments if arguments else [], 'alert': {}}}
+
+    return msg_queue
+
+
 def get_commands():
     """Gets the available commands"""
     ar_conf_path = '{0}/etc/shared/ar.conf'.format(common.ossec_path)
@@ -45,7 +63,7 @@ def get_commands():
 
 def shell_escape(command):
     """Escapes some characters in the command before sending it
-
+    TODO: change docstrings to numpydoc
     :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
     a command name
     :return: Command with escapes characters
@@ -60,7 +78,7 @@ def shell_escape(command):
 
 def send_command(msg_queue, oq, agent_id):
     """Send the message to the agent
-
+    TODO: change docstrings to numpydoc
     :param msg_queue: Message previously created, contains what is necessary to launch the active response command
     in the agent.
     :param agent_id: Run AR command in the agent.
