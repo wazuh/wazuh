@@ -63,6 +63,13 @@ char* get_extra_args_from_json (cJSON *input);
  * */
 char* get_srcip_from_json (cJSON *input);
 
+/**
+ * Get alert from input
+ * @param input Input
+ * @return JSON alert or NULL on Invalid.
+ * */
+cJSON* get_alert_from_json (cJSON *input);
+
 #ifndef WIN32
 
 /**
