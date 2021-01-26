@@ -23,11 +23,11 @@
   <aatr4>lala-abc</aatr4>
 </test2>
 
-<ossec_config>
+<wazuh_config>
   <active_response>
     <disabled>yes please \< lala</disabled>
   </active_response>
-</ossec_config>
+</wazuh_config>
 
 <myxml1 name="name1" value="abc">
   <element1 name="mytestname" value='element1value'>content1</element1>
@@ -43,4 +43,3 @@
   </element5>
   <element6>content6</element6>
 </myxml2>
-

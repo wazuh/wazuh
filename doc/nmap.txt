@@ -10,15 +10,15 @@ changes. Follow the step by step below on how to configure
 ossec:
 
 
-1- Add the nmap output file on ossec.conf (generally 
+1- Add the nmap output file on ossec.conf (generally
    at /var/ossec/etc/ossec.conf):
 
-<ossec_config>
+<wazuh_config>
   <localfile>
     <log_format>nmapg</log_format>
     <location>/var/log/nmap-out.log</location>
   </localfile>
-</ossec_config>
+</wazuh_config>
 
 
 2- If the file does not exist, touch it:
@@ -56,4 +56,3 @@ Src IP: (none)
 User: (none)
 Host: 192.168.2.1, open ports: 54(udp) 8080(tcp) 161(udp) 520(udp) 1025(udp) 1900(udp)
 Previously open ports: 53(udp) 80(tcp) 161(udp) 520(udp) 1025(udp) 1900(udp)
-
