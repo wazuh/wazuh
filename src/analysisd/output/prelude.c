@@ -9,7 +9,7 @@
  */
 
 /*
- * OSSEC to Prelude
+ * Wazuh to Prelude
  */
 
 #ifdef PRELUDE_OUTPUT_ENABLED
@@ -30,8 +30,8 @@
 #define ANALYZER_MANUFACTURER __site
 #define ANALYZER_VERSION __ossec_version
 
-/** OSSEC to prelude severity mapping. **/
-static const char *(ossec2prelude_sev[]) = {"info", "info", "info", "info",
+/** Wazuh to prelude severity mapping. **/
+static const char *(wazuh2prelude_sev[]) = {"info", "info", "info", "info",
                                "low", "low", "low", "low",
                                "medium", "medium", "medium", "medium",
                                "high", "high", "high", "high", "high"
@@ -312,7 +312,7 @@ void OS_PreludeLog(const Eventinfo *lf)
 
     add_idmef_object(idmef, "alert.assessment.impact.severity",
                      (lf->generated_rule->level > 15) ? "high" :
-                     ossec2prelude_sev[lf->generated_rule->level]);
+                     wazuh2prelude_sev[lf->generated_rule->level]);
 
     add_idmef_object(idmef, "alert.assessment.impact.completion", "succeeded");
 
