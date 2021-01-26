@@ -8,31 +8,31 @@ Index: ossec-hids-2.8.2/etc/ossec-agent.conf
      <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
 +    <system_audit>/var/ossec/etc/shared/system_audit_rcl.txt</system_audit>
    </rootcheck>
- 
+
    <localfile>
      <log_format>syslog</log_format>
 -    <location>/var/log/messages</location>
 +    <location>/var/log/syslog</location>
    </localfile>
- 
+
    <localfile>
      <log_format>syslog</log_format>
 -    <location>/var/log/authlog</location>
 +    <location>/var/log/auth.log</location>
    </localfile>
- 
+
    <localfile>
      <log_format>syslog</log_format>
 -    <location>/var/log/secure</location>
 +    <location>/var/log/dpkg.log</location>
    </localfile>
- 
+
    <localfile>
      <log_format>syslog</log_format>
 -    <location>/var/log/xferlog</location>
 +    <location>/var/log/kern.log</location>
    </localfile>
- 
+
 +<!--
 +
    <localfile>
@@ -40,13 +40,13 @@ Index: ossec-hids-2.8.2/etc/ossec-agent.conf
 -    <location>/var/log/maillog</location>
 +    <location>/var/log/mail.log</location>
    </localfile>
- 
+
    <localfile>
      <log_format>apache</log_format>
 -    <location>/var/www/logs/access_log</location>
 +    <location>/var/log/apache2/access.log</location>
    </localfile>
- 
+
    <localfile>
      <log_format>apache</log_format>
 -    <location>/var/www/logs/error_log</location>
@@ -55,4 +55,4 @@ Index: ossec-hids-2.8.2/etc/ossec-agent.conf
 +
 +-->
 +
- </ossec_config>
+ </wazuh_config>
