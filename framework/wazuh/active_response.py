@@ -11,7 +11,7 @@ from wazuh.rbac.decorators import expose_resources
 
 
 @expose_resources(actions=['active-response:command'], resources=['agent:id:{agent_list}'])
-def run_command(agent_list=None, command=None, arguments=None, custom=False):
+def run_command(agent_list=None, command=None, arguments=None, custom=False, alert=None):
     """Run AR command in a specific agent
     TODO: change docstrings to numpydoc
     :param agent_list: Run AR command in the agent.
@@ -31,7 +31,7 @@ def run_command(agent_list=None, command=None, arguments=None, custom=False):
             # Create classic msg or JSON msg depending on the agent version
             agent_version = agent_id.get_basic_information(select=['version'])['version']
             if WazuhVersion(agent_version) >= WazuhVersion('Wazuh v4.2.0'):
-                msg_queue = active_response.create_json_message(command=command, arguments=arguments)
+                msg_queue = active_response.create_json_message(command=command, arguments=arguments, alert=alert)
             else:
                 msg_queue = active_response.create_message(command=command, arguments=arguments, custom=custom)
             active_response.send_command(msg_queue, oq, agent_id)

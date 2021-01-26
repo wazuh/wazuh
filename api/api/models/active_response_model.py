@@ -10,7 +10,7 @@ from api.models.base_model_ import Body
 
 class ActiveResponseModel(Body):
 
-    def __init__(self, command: str = None, custom: bool = None, arguments: List[str] = None):
+    def __init__(self, command: str = None, custom: bool = None, arguments: List[str] = None, alert: dict = None):
         """ActiveResponseModel body model
 
         :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
@@ -23,18 +23,21 @@ class ActiveResponseModel(Body):
         self.swagger_types = {
             'command': str,
             'custom': bool,
-            'arguments': List[str]
+            'arguments': List[str],
+            'alert': dict
         }
 
         self.attribute_map = {
             'command': 'command',
             'custom': 'custom',
-            'arguments': 'arguments'
+            'arguments': 'arguments',
+            'alert': 'alert'
         }
 
         self._command = command
         self._custom = custom
         self._arguments = arguments
+        self._alert = alert
 
     @property
     def command(self) -> str:
@@ -82,3 +85,19 @@ class ActiveResponseModel(Body):
         :param arguments: Command arguments
         """
         self._arguments = arguments
+
+    @property
+    def alert(self) -> dict:
+        """
+        :return: alert
+        :rtype: dict
+        """
+        return self._alert
+
+    @alert.setter
+    def alert(self, alert: List[str]):
+        """Command running in the agent.
+
+        :param alert: Command arguments
+        """
+        self._alert = alert

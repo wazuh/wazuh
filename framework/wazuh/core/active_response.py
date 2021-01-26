@@ -32,7 +32,7 @@ def create_message(command, custom, arguments):
     return msg_queue
 
 
-def create_json_message(command, arguments):
+def create_json_message(command, arguments, alert):
     """
     TODO: change docstrings to numpydoc
     """
@@ -43,7 +43,7 @@ def create_json_message(command, arguments):
     node_name = get_node().get('node') if cluster_enabled else None
 
     msg_queue = {'version': 1, 'origin': {'name': node_name, 'module': 'api/framework'}, 'command': command,
-                 'parameters': {'extra_args': arguments if arguments else [], 'alert': {}}}
+                 'parameters': {'extra_args': arguments if arguments else [], 'alert': alert if alert else {}}}
 
     return msg_queue
 
