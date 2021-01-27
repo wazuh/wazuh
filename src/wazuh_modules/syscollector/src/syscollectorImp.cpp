@@ -998,9 +998,9 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["rx_errors"]  = item.at("rx_errors");
                 ifaceTableData["tx_dropped"] = item.at("tx_dropped");
                 ifaceTableData["rx_dropped"] = item.at("rx_dropped");
-                ifaceTableData["checksum"] = getItemChecksum(ifaceTableData);
+                ifaceTableData["checksum"]   = getItemChecksum(ifaceTableData);
                 ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
-                ifaceTableData["scan_time"]    = m_scanTime;
+                ifaceTableData["scan_time"]  = m_scanTime;
                 ifaceTableDataList.push_back(ifaceTableData);
 
                 // "dbsync_network_protocol" table data to update and notify
@@ -1016,11 +1016,11 @@ nlohmann::json Syscollector::getNetworkData()
                     protoTableData["metric"]  = addressTableData.at("metric");
 
                     // "dbsync_network_address" table data to update and notify
-                    addressTableData["iface"]   = item.at("name");
-                    addressTableData["proto"]   = "IPv4";
-                    addressTableData["checksum"] = getItemChecksum(addressTableData);
-                    addressTableData["item_id"] = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                    addressTableData["scan_time"]    = m_scanTime;
+                    addressTableData["iface"]     = item.at("name");
+                    addressTableData["proto"]     = "IPv4";
+                    addressTableData["checksum"]  = getItemChecksum(addressTableData);
+                    addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                    addressTableData["scan_time"] = m_scanTime;
                     addressTableDataList.push_back(addressTableData);
                 }
 
@@ -1031,16 +1031,16 @@ nlohmann::json Syscollector::getNetworkData()
                     protoTableData["metric"]  = addressTableData.at("metric");
 
                     // "dbsync_network_address" table data to update and notify
-                    addressTableData["iface"] = item.at("name");
-                    addressTableData["proto"] = "IPv6";
-                    addressTableData["checksum"] = getItemChecksum(addressTableData);
-                    addressTableData["item_id"] = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                    addressTableData["scan_time"]    = m_scanTime;
+                    addressTableData["iface"]     = item.at("name");
+                    addressTableData["proto"]     = "IPv6";
+                    addressTableData["checksum"]  = getItemChecksum(addressTableData);
+                    addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                    addressTableData["scan_time"] = m_scanTime;
                     addressTableDataList.push_back(addressTableData);
                 }
-                protoTableData["checksum"] = getItemChecksum(protoTableData);
-                protoTableData["item_id"] = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
-                protoTableData["scan_time"]    = m_scanTime;
+                protoTableData["checksum"]  = getItemChecksum(protoTableData);
+                protoTableData["item_id"]   = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
+                protoTableData["scan_time"] = m_scanTime;
                 protoTableDataList.push_back(protoTableData);
             }
             ret[netIfaceTable] = ifaceTableDataList;
