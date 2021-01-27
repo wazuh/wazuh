@@ -7,14 +7,14 @@
  * Foundation
  */
 
-#ifndef AGENTD_STATE_H 
+#ifndef AGENTD_STATE_H
 #define AGENTD_STATE_H
 
 /* Time output */
 #define W_AGENTD_STATE_TIME_FORMAT "%Y-%m-%d %H:%M:%S" ///< Time format for the JSON and the file output
 #define W_AGENTD_STATE_TIME_LENGHT (19 + 1)            ///< Maximum time size
 
-/* The fields of the responses and store */
+/* State file and JSON responses field's names */
 #define W_AGENTD_JSON_ERROR       "error"          ///< An error code
 #define W_AGENTD_JSON_DATA        "data"           ///< The information of the response
 #define W_AGENTD_FIELD_STATUS     "status"         ///< Agent status
@@ -22,7 +22,7 @@
 #define W_AGENTD_FIELD_LAST_ACK   "last_ack"       ///< Last time a control message was received
 #define W_AGENTD_FIELD_MSG_COUNT  "msg_count"      ///< Number of generated events
 #define W_AGENTD_FIELD_MSG_SENT   "msg_sent"       ///< Number of messages sent to the manager
-#define W_AGENTD_FIELD_MSG_BUFF   "msg_buffer"     ///< Current buffered events count
+#define W_AGENTD_FIELD_MSG_BUFF   "msg_buffer"     ///< Number of current buffered events
 
 #include "shared.h"
 #include "read-agents.h"
@@ -32,11 +32,11 @@
  * @brief Represent the update field of the statistics
  */
 typedef enum {
-    UPDATE_STATUS = 0,
-    UPDATE_KEEPALIVE,
-    UPDATE_ACK,
-    INCREMENT_MSG_COUNT,
-    INCREMENT_MSG_SEND
+    UPDATE_STATUS = 0,   ///< Update status represented by agent_state_t
+    UPDATE_KEEPALIVE,    ///< Update keepalive represented by time_t
+    UPDATE_ACK,          ///< Update last ack represented by time_t
+    INCREMENT_MSG_COUNT, ///< Increment number of messages sent to the buffer
+    INCREMENT_MSG_SEND   ///< Increment number of messages sent to the manager
 } w_agentd_state_update_t;
 
 /**
@@ -69,7 +69,7 @@ void w_agentd_state_update(w_agentd_state_update_t type, void * data);
 
 /**
  * @brief Returns statistics in real time
- * @return Statistics in raw json format 
+ * @return Statistics in raw json format
  */
 char * w_agentd_state_get();
 

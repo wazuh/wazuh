@@ -66,10 +66,7 @@ int write_state() {
 
     mdebug2("Updating state file.");
 
-    if (buffered_event = w_agentd_buffer_lenght(), buffered_event == -1) {
-        // Anti-flooding mechanism is disabled
-        buffered_event = 0;
-    }
+    buffered_event = w_agentd_get_buffer_lenght();
     w_mutex_lock(&state_mutex);
 
 #ifdef WIN32
@@ -235,13 +232,9 @@ char * w_agentd_state_get() {
     sent = agent_state.msg_sent;
     w_mutex_unlock(&state_mutex);
 
-    if (buffered_event = w_agentd_buffer_lenght(), buffered_event == -1) {
-        // Anti-flooding mechanism is disabled
-        buffered_event = 0;
-    }
+    buffered_event = w_agentd_get_buffer_lenght();
 
     /* json response */
-
     cJSON_AddNumberToObject(json_retval, W_AGENTD_JSON_ERROR, 0);
     cJSON_AddItemToObject(json_retval, W_AGENTD_JSON_DATA, data);
 
