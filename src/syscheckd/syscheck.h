@@ -156,7 +156,7 @@ void fim_scan();
  * @param [in] w_evt Whodata event
  * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
  */
-void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report);
+void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int report);
 
 /**
  * @brief Check file integrity monitoring on a specific folder
@@ -167,7 +167,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report);
  * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
  * @return 0 on success, -1 on failure
  */
-int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report);
+int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int report);
 
 /**
  * @brief Check file integrity monitoring on a specific file
@@ -178,7 +178,7 @@ int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report)
  * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
  * @return 0 on success, -1 on failure
  */
-int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report);
+int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report);
 
 /**
  * @brief Process FIM realtime event
@@ -220,7 +220,7 @@ int fim_configuration_directory(const char *path, const char *entry);
  * @param dir_position Position of the file to check in the directories array
  * @return Depth of the directory/file, -1 on error
  */
-int fim_check_depth(char *path, int dir_position);
+int fim_check_depth(const char *path, int dir_position);
 
 /**
  * @brief Get data from file
@@ -294,7 +294,14 @@ void check_deleted_files();
  * @return File event JSON object.
  * @retval NULL No changes detected. Do not send an event.
  */
-cJSON *fim_json_event(char *file_name, fim_file_data *old_data, fim_file_data *new_data, int pos, unsigned int type, fim_event_mode mode, whodata_evt *w_evt, const char *diff);
+cJSON *fim_json_event(const char *file_name,
+                      fim_file_data *old_data,
+                      fim_file_data *new_data,
+                      int pos,
+                      unsigned int type,
+                      fim_event_mode mode,
+                      whodata_evt *w_evt,
+                      const char *diff);
 
 /**
  * @brief Frees the memory of a FIM entry data structure
@@ -904,12 +911,12 @@ void fim_check_db_state();
 void fim_diff_folder_size();
 
 /**
- * @brief Get path from syscheck.dir or syscheck.symbolic_links, depending on whether there is a resolved path
- * configured in syscheck.symbolic_links or not.
+ * @brief Get the directory that will be effectively monitored depending on configuration the entry configuration and
+ * physical object in the filesystem
  *
  * @param position Position of the directory in the structure
- * @return syscheck.symbolic_links[position] if not NULL, syscheck.dir[position] otherwise
+ * @return A string holding the element being monitored.
  */
-char *fim_get_real_path(int position);
+const char *fim_get_real_path(int position);
 
 #endif /* SYSCHECK_H */

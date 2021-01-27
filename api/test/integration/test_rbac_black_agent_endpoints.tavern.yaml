@@ -1168,7 +1168,7 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: POST /groups?group_id={group_id}
+test_name: POST /groups
 
 stages:
 
@@ -1179,8 +1179,8 @@ stages:
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        group_id: group4
+      json:
+        group_id: "group4"
     response:
       <<: *permission_denied
 

@@ -123,7 +123,7 @@
 
   <rule id="31335" level="7">
     <if_sid>31334</if_sid>
-    <match>&block=1&</match>
+    <match>block=1</match>
     <description>NAXSI rejected a query</description>
     <mitre>
       <id>T1083</id>

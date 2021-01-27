@@ -39,7 +39,7 @@ void * wm_command_main(wm_command_t * command) {
     char * timestamp = NULL;
 
     if (!command->enabled) {
-        mtwarn(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
+        mtinfo(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
         pthread_exit(0);
     }
 

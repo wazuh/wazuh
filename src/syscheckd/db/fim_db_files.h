@@ -112,7 +112,7 @@ int fim_db_set_all_unscanned(fdb_t *fim_sql);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_set_scanned(fdb_t *fim_sql, char *path);
+int fim_db_set_scanned(fdb_t *fim_sql, const char *path);
 
 /**
  * @brief Get all the unscanned files by saving them in a temporal storage.
@@ -148,11 +148,12 @@ int fim_db_delete_not_scanned(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_
  * @param mutex FIM database's mutex for thread synchronization.
  * @param storage 1 Store database in memory, disk otherwise.
  * @param mode FIM mode (scheduled, realtime or whodata)
+ * @param configuration An integer holding the position of the configuration that corresponds to the entries to be deleted.
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file,
-                        pthread_mutex_t *mutex, int storage, fim_event_mode mode);
+                        pthread_mutex_t *mutex, int storage, fim_event_mode mode, int *configuration);
 
 /**
  * @brief Remove a range of paths from database if they have a specific monitoring mode.
@@ -195,5 +196,15 @@ int fim_db_get_count_file_data(fdb_t * fim_sql);
  * @return Number of entries in file_entry table.
  */
 int fim_db_get_count_file_entry(fdb_t * fim_sql);
+
+/**
+ * @brief Get path list using the sqlite LIKE operator using @pattern. (stored in @file).
+ * @param fim_sql FIM database struct.
+ * @param pattern Pattern that will be used for the LIKE operation.
+ * @param file Structure of the storage which contains all the paths.
+ * @param storage 1 Store database in memory, disk otherwise.
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ */
+int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_file **file, int storage);
 
 #endif /* FIM_DB_FILES_H */

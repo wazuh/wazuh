@@ -83,11 +83,6 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
         return;
     }
 
-    if (strcmp(key, "command") == 0){
-        os_strdup(value, lf->command);
-        return;
-    }
-
     if (strcmp(key, "url") == 0){
         os_strdup(value, lf->url);
         return;

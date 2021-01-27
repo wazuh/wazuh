@@ -225,7 +225,6 @@ default_policies:
           - cluster:status
           - manager:read
           - manager:read_api_config
-          - manager:update_api_config
           - manager:upload_file
           - manager:restart
           - manager:delete_file
@@ -244,7 +243,6 @@ default_policies:
           - cluster:delete_file
           - cluster:read_api_config
           - cluster:read
-          - cluster:update_api_config
           - cluster:restart
           - cluster:upload_file
         resources:
