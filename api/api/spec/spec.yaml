@@ -5900,7 +5900,7 @@ paths:
       tags:
         - Agents
       summary: "Get agent's component stats"
-      description: "Return Wazuh's {component} statistical information in agent {agent_id}"
+      description: "Return Wazuh's {component} statistical information from agent {agent_id}"
       operationId: api.controllers.agent_controller.get_component_stats
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:read'

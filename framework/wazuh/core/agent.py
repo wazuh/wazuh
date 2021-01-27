@@ -1074,18 +1074,18 @@ class Agent:
 
         return configuration.get_active_configuration(self.id, component, config)
 
-    def getstats(self, daemon):
-        """Read the agent's daemon stats.
+    def get_stats(self, component):
+        """Read the agent's component stats.
 
         Parameters
         ----------
-        daemon : string
-            Name of the service to get stats from.
+        component : string
+            Name of the component to get stats from.
 
         Returns
         -------
         Dict
-            Object with daemon's stats.
+            Object with component's stats.
         """
         # Available daemons and the minimum required agent's version.
         stats_min_ver = {'logcollector': 'v4.2.0'}
@@ -1095,11 +1095,11 @@ class Agent:
         if self.version is None:
             raise WazuhInternalError(1015)
         agent_version = WazuhVersion(self.version.split(" ")[1])
-        required_version = WazuhVersion(stats_min_ver.get(daemon))
+        required_version = WazuhVersion(stats_min_ver.get(component))
         if agent_version < required_version:
             raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
 
-        return stats.get_daemons_stats_from_socket(self.id, daemon)
+        return stats.get_daemons_stats_from_socket(self.id, component)
 
 
 def format_fields(field_name, value):

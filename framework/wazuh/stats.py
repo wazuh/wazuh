@@ -23,7 +23,7 @@ except ImportError:
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 cluster_enabled = not read_cluster_config()['disabled']
-node_id = get_node().get('node') if cluster_enabled else 'manager'
+node_id = get_node().get('node') if cluster_enabled else None
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
@@ -67,7 +67,8 @@ def totals(date):
                 if len(data) in (0, 1):
                     continue
                 else:
-                    result.add_failed_item(id_=node_id, error=WazuhInternalError(1309))
+                    result.add_failed_item(id_=node_id if cluster_enabled else 'manager',
+                                           error=WazuhInternalError(1309))
                     return result
 
             hour = int(data[0])
@@ -196,20 +197,20 @@ def get_daemons_stats(filename):
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
-def get_daemon_stats_json(agent_list=None, daemon=None):
-    """Get statistics of an agent's daemon.
+def get_agents_component_stats_json(agent_list=None, component=None):
+    """Get statistics of an agent's component.
 
     Parameters
     ----------
     agent_list : list
         List of agents ID's.
-    daemon : string
-        Name of the daemon to get stats from.
+    component : string
+        Name of the component to get stats from.
 
     Returns
     -------
     result : AffectedItemsWazuhResult
-        Stats of daemon.
+        Component stats.
     """
     result = AffectedItemsWazuhResult(all_msg=f'Statistical information for each agent was successfully read',
                                       some_msg=f'Could not read statistical information for some agents',
@@ -220,7 +221,7 @@ def get_daemon_stats_json(agent_list=None, daemon=None):
         try:
             if agent_id not in system_agents:
                 raise WazuhResourceNotFound(1701)
-            result.affected_items.append(Agent(agent_id).getstats(daemon=daemon))
+            result.affected_items.append(Agent(agent_id).get_stats(component=component))
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
     result.total_affected_items = len(result.affected_items)

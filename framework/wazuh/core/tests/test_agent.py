@@ -1422,22 +1422,22 @@ def test_agent_getconfig_ko(socket_mock, send_mock, mock_ossec_socket):
 @patch('wazuh.core.stats.OssecSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_getstats(socket_mock, send_mock, mock_ossec_socket):
-    """Test getstats method returns expected message."""
+def test_agent_get_stats(socket_mock, send_mock, mock_ossec_socket):
+    """Test get_stats method returns expected message."""
     agent = Agent('001')
     mock_ossec_socket.return_value.receive.return_value = b'{"error":0, "data":{"test":0}}'
-    result = agent.getstats('logcollector')
+    result = agent.get_stats('logcollector')
     assert result == {"test": 0}, 'Result message is not as expected.'
 
 
 @patch('wazuh.core.stats.OssecSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_getstats_ko(socket_mock, send_mock, mock_ossec_socket):
-    """Test getstats method raises expected exception when the agent's version is lower than required."""
+def test_agent_get_stats_ko(socket_mock, send_mock, mock_ossec_socket):
+    """Test get_stats method raises expected exception when the agent's version is lower than required."""
     agent = Agent('002')
     with pytest.raises(WazuhInternalError, match=r'\b1735\b'):
-        agent.getstats('logcollector')
+        agent.get_stats('logcollector')
 
 
 @pytest.mark.parametrize('last_keep_alive, pending, expected_status', [

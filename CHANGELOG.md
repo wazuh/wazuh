@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
   - Improved support for multi-line logs with a variable number of lines. ([#5652](https://github.com/wazuh/wazuh/issues/5652))
 
 - **API:**
-  - Added new endpoint to get logcollector stats from an agent. ([#7128](https://github.com/wazuh/wazuh/issues/7128))
+  - Added new endpoint to get agent stats from different components. ([#7128](https://github.com/wazuh/wazuh/issues/7128))
   
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
