@@ -11,7 +11,7 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens
-from wazuh.core.security import load_spec, update_security_conf
+from wazuh.core.security import load_spec, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
@@ -107,7 +107,7 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -310,7 +310,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -447,7 +447,7 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -588,7 +588,7 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

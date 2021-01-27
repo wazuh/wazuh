@@ -15,6 +15,9 @@ from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.rbac.orm import RolesManager, TokenManager
 
+REQUIRED_FIELDS = ['id']
+SORT_FIELDS = ['id', 'name']
+
 
 @lru_cache(maxsize=None)
 def load_spec():
