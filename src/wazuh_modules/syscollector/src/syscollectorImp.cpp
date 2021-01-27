@@ -673,13 +673,13 @@ constexpr auto NETADDR_SQL_STATEMENT
 };
 static const std::vector<std::string> NETADDRESS_ITEM_ID_FIELDS{"iface", "proto", "address"};
 
-constexpr auto netIfaceTable    { "dbsync_network_iface"    };
-constexpr auto netProtocolTable { "dbsync_network_protocol" };
-constexpr auto netAddressTable  { "dbsync_network_address"  };
-constexpr auto packagesTable    { "dbsync_packages"         };
-constexpr auto hotfixesTable    { "dbsync_hotfixes"         };
-constexpr auto portsTable       { "dbsync_ports"            };
-constexpr auto processesTable   { "dbsync_processes"        };
+constexpr auto NET_IFACE_TABLE    { "dbsync_network_iface"    };
+constexpr auto NET_PROTOCOL_TABLE { "dbsync_network_protocol" };
+constexpr auto NET_ADDRESS_TABLE  { "dbsync_network_address"  };
+constexpr auto PACKAGES_TABLE     { "dbsync_packages"         };
+constexpr auto HOTFIXES_TABLE     { "dbsync_hotfixes"         };
+constexpr auto PORTS_TABLE        { "dbsync_ports"            };
+constexpr auto PROCESSES_TABLE    { "dbsync_processes"        };
 
 
 static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
@@ -1043,9 +1043,9 @@ nlohmann::json Syscollector::getNetworkData()
                 protoTableData["scan_time"] = m_scanTime;
                 protoTableDataList.push_back(protoTableData);
             }
-            ret[netIfaceTable] = ifaceTableDataList;
-            ret[netProtocolTable] = protoTableDataList;
-            ret[netAddressTable] = addressTableDataList;
+            ret[NET_IFACE_TABLE] = ifaceTableDataList;
+            ret[NET_PROTOCOL_TABLE] = protoTableDataList;
+            ret[NET_ADDRESS_TABLE] = addressTableDataList;
         }
     }
     return ret;
@@ -1057,14 +1057,14 @@ void Syscollector::insertNetwork()
     {
         const auto& networkData{getNetworkData()};
         nlohmann::json toInsert;
-        toInsert["table"] = netIfaceTable;
-        toInsert["data"] = networkData[netIfaceTable];
+        toInsert["table"] = NET_IFACE_TABLE;
+        toInsert["data"] = networkData[NET_IFACE_TABLE];
         m_spDBSync->insertData(toInsert);
-        toInsert["table"] = netProtocolTable;
-        toInsert["data"] = networkData[netProtocolTable];
+        toInsert["table"] = NET_PROTOCOL_TABLE;
+        toInsert["data"] = networkData[NET_PROTOCOL_TABLE];
         m_spDBSync->insertData(toInsert);
-        toInsert["table"] = netAddressTable;
-        toInsert["data"] = networkData[netAddressTable];
+        toInsert["table"] = NET_ADDRESS_TABLE;
+        toInsert["data"] = networkData[NET_ADDRESS_TABLE];
         m_spDBSync->insertData(toInsert);
     }
 }
@@ -1074,9 +1074,9 @@ void Syscollector::scanNetwork()
     if (m_network)
     {
         const auto& networkData{getNetworkData()};
-        updateAndNotifyChanges(netIfaceTable, networkData[netIfaceTable]);
-        updateAndNotifyChanges(netProtocolTable, networkData[netProtocolTable]);
-        updateAndNotifyChanges(netAddressTable, networkData[netAddressTable]);
+        updateAndNotifyChanges(NET_IFACE_TABLE, networkData[NET_IFACE_TABLE]);
+        updateAndNotifyChanges(NET_PROTOCOL_TABLE, networkData[NET_PROTOCOL_TABLE]);
+        updateAndNotifyChanges(NET_ADDRESS_TABLE, networkData[NET_ADDRESS_TABLE]);
     }
 }
 
@@ -1117,8 +1117,8 @@ nlohmann::json Syscollector::getPackagesData()
                 packagesList.push_back(item);
             }
         }
-        ret[hotfixesTable] = hotfixesList;
-        ret[packagesTable] = packagesList;
+        ret[HOTFIXES_TABLE] = hotfixesList;
+        ret[PACKAGES_TABLE] = packagesList;
     }
     return ret;
 }
@@ -1129,13 +1129,13 @@ void Syscollector::insertPackages()
     {
         const auto& packagesData { getPackagesData() };
         nlohmann::json toInsert;
-        toInsert["table"] = packagesTable;
-        toInsert["data"] = packagesData[packagesTable];
+        toInsert["table"] = PACKAGES_TABLE;
+        toInsert["data"] = packagesData[PACKAGES_TABLE];
         m_spDBSync->insertData(toInsert);
         if (m_hotfixes)
         {
-            toInsert["table"] = hotfixesTable;
-            toInsert["data"] = packagesData[hotfixesTable];
+            toInsert["table"] = HOTFIXES_TABLE;
+            toInsert["data"] = packagesData[HOTFIXES_TABLE];
             m_spDBSync->insertData(toInsert);
         }
     }
@@ -1146,10 +1146,10 @@ void Syscollector::scanPackages()
     if (m_packages)
     {
         const auto& packagesData { getPackagesData() };
-        updateAndNotifyChanges(packagesTable, packagesData[packagesTable]);
+        updateAndNotifyChanges(PACKAGES_TABLE, packagesData[PACKAGES_TABLE]);
         if (m_hotfixes)
         {
-            updateAndNotifyChanges(hotfixesTable, packagesData[hotfixesTable]);
+            updateAndNotifyChanges(HOTFIXES_TABLE, packagesData[HOTFIXES_TABLE]);
         }
     }
 }
@@ -1215,7 +1215,7 @@ void Syscollector::insertPorts()
     {
         const auto& portsData { getPortsData() };
         nlohmann::json toInsert;
-        toInsert["table"] = portsTable;
+        toInsert["table"] = PORTS_TABLE;
         toInsert["data"] = portsData;
         m_spDBSync->insertData(toInsert);
     }
@@ -1226,7 +1226,7 @@ void Syscollector::scanPorts()
     if (m_ports)
     {
         const auto& portsData { getPortsData() };
-        updateAndNotifyChanges(portsTable, portsData);
+        updateAndNotifyChanges(PORTS_TABLE, portsData);
     }
 }
 
@@ -1260,7 +1260,7 @@ void Syscollector::insertProcesses()
     {
         const auto& processesData { getProcessesData() };
         nlohmann::json toInsert;
-        toInsert["table"] = processesTable;
+        toInsert["table"] = PROCESSES_TABLE;
         toInsert["data"] = processesData;
         m_spDBSync->insertData(toInsert);
     }
@@ -1271,7 +1271,7 @@ void Syscollector::scanProcesses()
     if (m_processes)
     {
         const auto& processesData{getProcessesData()};
-        updateAndNotifyChanges(processesTable, processesData);
+        updateAndNotifyChanges(PROCESSES_TABLE, processesData);
     }
 }
 
