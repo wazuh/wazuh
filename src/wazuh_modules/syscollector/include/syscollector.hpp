@@ -70,8 +70,17 @@ private:
     Syscollector& operator=(const Syscollector&) = delete;
     
     std::string getCreateStatement() const;
+    nlohmann::json getNetworkData();
+    nlohmann::json getPackagesData();
+    nlohmann::json getPortsData();
+    nlohmann::json getProcessesData();
+
     void registerWithRsync();
     void updateAndNotifyChanges(const std::string& table, const nlohmann::json& values);
+    void insertNetwork();
+    void insertPackages();
+    void insertPorts();
+    void insertProcesses();
     void scanHardware();
     void scanOs();
     void scanNetwork();
@@ -82,6 +91,7 @@ private:
     void syncPackages();
     void syncPorts();
     void syncProcesses();
+    void insert();
     void scan();
     void sync();
     void syncLoop(std::unique_lock<std::mutex>& lock);
