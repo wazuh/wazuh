@@ -39,7 +39,7 @@ public:
 
 void reportFunction(const std::string& payload)
 {
-    std::cout << payload << std::endl;
+    // std::cout << payload << std::endl;
 }
 
 TEST_F(SyscollectorImpTest, defaultCtor)
@@ -111,11 +111,11 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, packages()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, processes()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages()).Times(1);
+    EXPECT_CALL(*spInfoWrapper, networks()).Times(1);
+    EXPECT_CALL(*spInfoWrapper, processes()).Times(1);
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(1);
     std::thread t
     {
         [&spInfoWrapper]()
