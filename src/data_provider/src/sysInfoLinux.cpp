@@ -267,6 +267,8 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         std::string groups       { UNKNOWN_VALUE };
         std::string version;
         std::string architecture { UNKNOWN_VALUE };
+        std::string vendor       { UNKNOWN_VALUE };
+        std::string description  { UNKNOWN_VALUE };
 
         it = info.find("Size");
         if (it != info.end())
@@ -303,6 +305,16 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         {
             architecture = it->second;
         }
+        it = info.find("Vendor");
+        if (it != info.end())
+        {
+            vendor = it->second;
+        }
+        it = info.find("Description");
+        if (it != info.end())
+        {
+            description = it->second;
+        }
 
         ret["size"]         = size;
         ret["install_time"] = install_time;
@@ -311,6 +323,8 @@ static nlohmann::json parseRpm(const std::string& packageInfo)
         ret["architecture"] = architecture;
         ret["format"]       = "rpm";
         ret["os_patch"]     = UNKNOWN_VALUE;
+        ret["vendor"]       = vendor;
+        ret["description"]  = description;
     }
     return ret;
 }
