@@ -68,11 +68,11 @@ void *dispatch_buffer(void * arg);
 
 /**
  * @brief get the number of events in buffer
- * 
+ *
  * @retval number of events in the buffer
- * @retval -1 if the buffer is disabled
+ * @retval 0 if the anti-flooding mechanism is disabled
  */
-int w_agentd_buffer_lenght();
+int w_agentd_get_buffer_lenght();
 
 /* Initialize sender structure */
 void sender_init();
