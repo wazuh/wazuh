@@ -23,6 +23,7 @@
 #define W_AGENTD_FIELD_MSG_COUNT  "msg_count"      ///< Number of generated events
 #define W_AGENTD_FIELD_MSG_SENT   "msg_sent"       ///< Number of messages sent to the manager
 #define W_AGENTD_FIELD_MSG_BUFF   "msg_buffer"     ///< Number of current buffered events
+#define W_AGENTD_FIELD_EN_BUFF    "buffer_enabled" ///< Anti-flooding mechanism (buffer) is enable
 
 #include "shared.h"
 #include "read-agents.h"
