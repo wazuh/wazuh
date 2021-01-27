@@ -4277,6 +4277,15 @@ components:
       schema:
         type: string
         format: sort
+    stats_component:
+      in: path
+      name: component
+      description: "Selected stats component"
+      required: true
+      schema:
+        type: string
+        enum:
+          - logcollector
     status:
       in: query
       name: status
@@ -5875,6 +5884,100 @@ paths:
                     total_failed_items: 0
                   message: "Restart command sent to all agents"
                   error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/{agent_id}/stats/{component}:
+    get:
+      tags:
+        - Agents
+      summary: "Get agent's component stats"
+      description: "Return Wazuh's {component} statistical information from agent {agent_id}"
+      operationId: api.controllers.agent_controller.get_component_stats
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/stats_component'
+      responses:
+        '200':
+          description: "Component stats"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - global:
+                        start: 'Wed Jan 13 16:08:57 2021'
+                        end: 'Thu Jan 14 12:28:11 2021'
+                        files:
+                          - targets:
+                              - name: agent
+                                drops: 0
+                            location: df -P
+                            bytes: 51414
+                            events: 570
+                          - targets:
+                              - name: agent
+                                drops: 0
+                            location: last -n 20
+                            bytes: 3762
+                            events: 57
+                          - targets:
+                              - name: agent
+                                drops: 0
+                            location: /var/ossec/logs/active-responses.log
+                            bytes: 0
+                            events: 0
+                          - targets:
+                              - name: agent
+                                drops: 0
+                            location: /var/log/dpkg.log
+                            bytes: 0
+                            events: 0
+                      interval:
+                        start: 'Thu Jan 14 12:28:06 2021'
+                        end: 'Thu Jan 14 12:28:11 2021'
+                        files:
+                          - targets:
+                              - name: agent
+                                drops: 0
+                            location: df -P
+                            bytes: 0
+                            events: 0
+                          - targets:
+                              - name: agent
+                                drops: 0
+                            location: last -n 20
+                            bytes: 0
+                            events: 0
+                          - targets:
+                              - name: agent
+                                drops: 0
+                            location: /var/ossec/logs/active-responses.log
+                            bytes: 0
+                            events: 0
+                          - targets:
+                              - name: agent
+                                drops: 0
+                            location: /var/log/dpkg.log
+                            bytes: 0
+                            events: 0
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: [ ]
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
