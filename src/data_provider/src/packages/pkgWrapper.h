@@ -162,7 +162,8 @@ private:
             if (nullptr != xml)
             {
                 xmlContent.assign(xml, xml+length);
-                free(xml);
+                plist_to_xml_free(xml);
+                plist_free(rootNode);
             }
         }
         return std::stringstream{xmlContent};
