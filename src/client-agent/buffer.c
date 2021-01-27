@@ -238,7 +238,7 @@ void delay(struct timespec * ts_loop) {
 
 int w_agentd_get_buffer_lenght() {
 
-    int retval = 0;
+    int retval = -1;
 
     if (agt->buffer > 0) {
         w_mutex_lock(&mutex_lock);

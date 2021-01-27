@@ -123,9 +123,17 @@ int write_state() {
         W_AGENTD_FIELD_MSG_SENT "='%u'\n"
         "\n"
         "# Number of events currently buffered\n"
-        W_AGENTD_FIELD_MSG_BUFF "='%i'\n"
+        "# Empty if anti-flooding mechanism is disabled\n"
         , __local_name, agt->notify_time, agt->max_time_reconnect_try, status,
-        last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent, buffered_event);
+        last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
+
+        if (buffered_event >= 0){
+            fprintf(fp,W_AGENTD_FIELD_MSG_BUFF "='%i'\n",buffered_event);
+        } else {
+            fprintf(fp,W_AGENTD_FIELD_MSG_BUFF "=''\n",buffered_event);
+        }
+        
+        
 
     fclose(fp);
 
@@ -208,6 +216,7 @@ char * w_agentd_state_get() {
     unsigned int count;
     unsigned int sent;
     int buffered_event;
+    bool buffer_enable = true;
 
     struct tm tm = {.tm_sec = 0};
     char * retval = NULL;
@@ -232,7 +241,10 @@ char * w_agentd_state_get() {
     sent = agent_state.msg_sent;
     w_mutex_unlock(&state_mutex);
 
-    buffered_event = w_agentd_get_buffer_lenght();
+    if (buffered_event = w_agentd_get_buffer_lenght(), buffered_event < 0) {
+        buffer_enable = false;
+        buffered_event = 0;
+    }
 
     /* json response */
     cJSON_AddNumberToObject(json_retval, W_AGENTD_JSON_ERROR, 0);
@@ -244,6 +256,7 @@ char * w_agentd_state_get() {
     cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_COUNT, count);
     cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_SENT, sent);
     cJSON_AddNumberToObject(data, W_AGENTD_FIELD_MSG_BUFF, buffered_event);
+    cJSON_AddBoolToObject(data, W_AGENTD_FIELD_EN_BUFF, buffer_enable);
 
     retval = cJSON_PrintUnformatted(json_retval);
     cJSON_Delete(json_retval);
