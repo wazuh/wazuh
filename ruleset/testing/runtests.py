@@ -43,8 +43,8 @@ def getOssecConfig(initconf, path):
 
 def provisionDR():
     base_dir = os.path.dirname(os.path.realpath(__file__))
-    rules_dir = os.path.join(base_dir, "rules")
-    decoders_dir = os.path.join(base_dir, "decoders") 
+    rules_dir = os.path.join(base_dir, "ruleset")
+    decoders_dir = os.path.join(base_dir, "ruleset") 
 
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)

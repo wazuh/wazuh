@@ -4,7 +4,6 @@
 
 import concurrent.futures
 from json import JSONDecodeError
-
 from logging import getLogger
 from time import time
 
@@ -12,10 +11,14 @@ from aiohttp import web
 from aiohttp.web_exceptions import HTTPException
 from connexion.exceptions import ProblemException, OAuthProblem, Unauthorized
 from connexion.problem import problem as connexion_problem
+from secure import SecureHeaders
 
 from api.configuration import api_conf
 from api.util import raise_if_exc
 from wazuh.core.exception import WazuhTooManyRequests, WazuhPermissionError
+
+# API secure headers
+secure_headers = SecureHeaders(server="Wazuh", csp="none", xfo="DENY")
 
 logger = getLogger('wazuh-api')
 pool = concurrent.futures.ThreadPoolExecutor()
@@ -26,6 +29,13 @@ async def set_user_name(request, handler):
     if 'token_info' in request:
         request['user'] = request['token_info']['sub']
     return await handler(request)
+
+
+@web.middleware
+async def set_secure_headers(request, handler):
+    resp = await handler(request)
+    secure_headers.aiohttp(resp)
+    return resp
 
 
 ip_stats = dict()
