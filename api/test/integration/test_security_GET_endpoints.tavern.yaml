@@ -152,13 +152,18 @@ stages:
       params:
         select: name
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - name: !anystr
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/roles
   - name: Select role id
@@ -167,13 +172,18 @@ stages:
       params:
         select: id
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - id: !anyint
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/roles
   - name: Select role rules
@@ -182,13 +192,18 @@ stages:
       params:
         select: rules
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'rules' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - rules: !anything
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/roles
   - name: Select role policies
@@ -197,13 +212,18 @@ stages:
       params:
         select: policies
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'policies' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - policies: !anything
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/roles
   - name: Select role users
@@ -212,13 +232,18 @@ stages:
       params:
         select: users
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'users' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - users: !anything
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/roles
   - name: Search in roles with select
@@ -228,15 +253,23 @@ stages:
         select: name
         search: readonly
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
           affected_items:
-            - name: agents_readonly
-            - name: cluster_readonly
-            - name: readonly
-          total_affected_items: !anyint
+            - id: 2
+              name: readonly
+            - id: 4
+              name: agents_readonly
+            - id: 6
+              name: cluster_readonly
+          total_affected_items: 3
 
   # GET /security/roles
   - name: Search without limit
@@ -471,13 +504,18 @@ stages:
         select: id
         limit: 1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - id: !anyint
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/policies
   - name: Select policy name
@@ -487,13 +525,18 @@ stages:
         select: name
         limit: 1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - name: !anystr
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/policies
   - name: Select policy info
@@ -503,13 +546,18 @@ stages:
         select: policy
         limit: 1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'policy' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - policy: !anything
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/policies
   - name: Search in policies with select
@@ -520,14 +568,21 @@ stages:
         search: wazuh
         limit: 2
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
           affected_items:
-            - name: !anystr
-            - name: !anystr
-          total_affected_items: !anyint
+            - name: wazuhPolicy
+              id: 100
+            - name: wazuh-wuiPolicy
+              id: 101
+          total_affected_items: 2
       save:
         json:
           policy_id: data.affected_items[0].id
@@ -790,13 +845,18 @@ stages:
       params:
         select: id
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - id: !anyint
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/rules
   - name: Select rule name
@@ -806,13 +866,18 @@ stages:
         select: name
         limit: 1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - name: !anystr
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/rules
   - name: Select rule info
@@ -822,13 +887,18 @@ stages:
         select: rule
         limit: 1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'rule' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - rule: !anything
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/rules
   - name: Select rule roles
@@ -838,13 +908,18 @@ stages:
         select: roles
         limit: 1
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'roles' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - roles: !anything
           total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/rules
   - name: Search without limit
@@ -1052,7 +1127,7 @@ stages:
           total_failed_items: 0
           failed_items: []
 
-  - name: Get all users in the system using filters
+  - name: Get users in the system using filters
     request:
       <<: *all_users_request
       params:
@@ -1061,6 +1136,11 @@ stages:
         offset: 0
         sort: -id
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
@@ -1072,14 +1152,19 @@ stages:
           total_failed_items: 0
           failed_items: [ ]
 
-  - name: Get all users in the system using search and select filters
+  - name: Get users in the system using search and select filters
     request:
       <<: *all_users_request
       params:
         limit: 1
-        select: username,id
+        select: username
         search: wazuh-wui
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'username' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
@@ -1087,6 +1172,29 @@ stages:
           affected_items:
             - id: 2
               username: wazuh-wui
+          total_affected_items: !anyint
+          total_failed_items: 0
+          failed_items: [ ]
+
+  - name: Get all users in the system using select filter
+    request:
+      <<: *all_users_request
+      params:
+        select: allow_run_as,roles
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'allow_run_as,roles' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: !anyint
+              allow_run_as: !anybool
+              roles: !anylist
           total_affected_items: !anyint
           total_failed_items: 0
           failed_items: [ ]
