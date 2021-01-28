@@ -42,11 +42,22 @@ list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_Se
                                 -Wl,--wrap,_mdebug2")
 
 list(APPEND client-agent_names "test_state")
-list(APPEND client-agent_flags "-Wl,--wrap,_merror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-                                -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject \
+if(${TARGET} STREQUAL "winagent")
+    # cJSON_func@x instead of cJSON_func since linker will be looking for cdecl forma
+    # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
+    list(APPEND client-agent_flags "-Wl,--wrap,_merror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                                -Wl,--wrap,cJSON_CreateObject@0 -Wl,--wrap,cJSON_AddNumberToObject@16 \
+                                -Wl,--wrap,cJSON_AddItemToObject@12 -Wl,--wrap,cJSON_AddStringToObject@12 \
+                                -Wl,--wrap,cJSON_Delete@4 -Wl,--wrap,strftime \
+                                -Wl,--wrap,cJSON_PrintUnformatted@4 -Wl,--wrap,w_agentd_get_buffer_lenght \
+                                -Wl,--wrap,cJSON_AddBoolToObject@12")
+else()
+    list(APPEND client-agent_flags "-Wl,--wrap,_merror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                                -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject -Wl,--wrap,strftime \
                                 -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_Delete \
                                 -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,w_agentd_get_buffer_lenght \
                                 -Wl,--wrap,cJSON_AddBoolToObject")
+endif()
 
 list(APPEND client-agent_names "test_buffer")
 list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
