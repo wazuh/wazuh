@@ -15,7 +15,7 @@ from platform import platform
 from shutil import copyfile, rmtree
 from time import time
 
-from wazuh.core import common, configuration
+from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
@@ -397,7 +397,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhResourceNotFound(1701, extra_message=self.id)
+            raise WazuhResourceNotFound(1701)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -1073,6 +1073,33 @@ class Agent:
             raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
 
         return configuration.get_active_configuration(self.id, component, config)
+
+    def get_stats(self, component):
+        """Read the agent's component stats.
+
+        Parameters
+        ----------
+        component : string
+            Name of the component to get stats from.
+
+        Returns
+        -------
+        Dict
+            Object with component's stats.
+        """
+        # Available daemons and the minimum required agent's version.
+        stats_min_ver = {'logcollector': 'v4.2.0'}
+
+        # Check if agent version is compatible with this feature
+        self.load_info_from_db()
+        if self.version is None:
+            raise WazuhInternalError(1015)
+        agent_version = WazuhVersion(self.version.split(" ")[1])
+        required_version = WazuhVersion(stats_min_ver.get(component))
+        if agent_version < required_version:
+            raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
+
+        return stats.get_daemons_stats_from_socket(self.id, component)
 
 
 def format_fields(field_name, value):

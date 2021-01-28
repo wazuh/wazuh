@@ -8,7 +8,7 @@ services:
       args:
         manager_branch: ${MANAGER_BRANCH}
         manager_type: master
-    image: wazuh-master
+    image: integration_test_wazuh-master
     hostname: wazuh-master
     ports:
       - "55000:55000"
@@ -25,7 +25,7 @@ services:
       args:
         manager_branch: ${MANAGER_BRANCH}
         manager_type: worker
-    image: wazuh-worker
+    image: integration_test_wazuh-worker
     hostname: wazuh-worker1
     ports:
       - "55001:55000"
@@ -42,7 +42,7 @@ services:
       args:
         manager_branch: ${MANAGER_BRANCH}
         manager_type: worker
-    image: wazuh-worker
+    image: integration_test_wazuh-worker
     hostname: wazuh-worker2
     ports:
       - "55002:55000"
@@ -57,8 +57,8 @@ services:
       context: .
       dockerfile: base/agent/Dockerfile
       args:
-        agent_branch: ${AGENT_BRANCH}
-    image: wazuh-agent
+        agent_branch: ${MANAGER_BRANCH}
+    image: integration_test_wazuh-agent
     hostname: wazuh-agent1
     entrypoint:
       - /scripts/entrypoint.sh
@@ -75,8 +75,8 @@ services:
       context: .
       dockerfile: base/agent/Dockerfile
       args:
-        agent_branch: ${AGENT_BRANCH}
-    image: wazuh-agent
+        agent_branch: ${MANAGER_BRANCH}
+    image: integration_test_wazuh-agent
     hostname: wazuh-agent2
     entrypoint:
       - /scripts/entrypoint.sh
@@ -94,8 +94,8 @@ services:
       context: .
       dockerfile: base/agent/Dockerfile
       args:
-        agent_branch: ${AGENT_BRANCH}
-    image: wazuh-agent
+        agent_branch: ${MANAGER_BRANCH}
+    image: integration_test_wazuh-agent
     hostname: wazuh-agent3
     entrypoint:
       - /scripts/entrypoint.sh
@@ -113,8 +113,8 @@ services:
       context: .
       dockerfile: base/agent/Dockerfile
       args:
-        agent_branch: ${AGENT_BRANCH}
-    image: wazuh-agent
+        agent_branch: ${MANAGER_BRANCH}
+    image: integration_test_wazuh-agent
     hostname: wazuh-agent4
     entrypoint:
       - /scripts/entrypoint.sh
@@ -133,7 +133,7 @@ services:
       dockerfile: base/agent/Dockerfile
       args:
         agent_branch: ${AGENT_BRANCH_OLD}
-    image: wazuh-agent_old
+    image: integration_test_wazuh-agent_old
     hostname: wazuh-agent5
     entrypoint:
       - /scripts/entrypoint.sh
@@ -151,7 +151,7 @@ services:
       dockerfile: base/agent/Dockerfile
       args:
         agent_branch: ${AGENT_BRANCH_OLD}
-    image: wazuh-agent_old
+    image: integration_test_wazuh-agent_old
     hostname: wazuh-agent6
     entrypoint:
       - /scripts/entrypoint.sh
@@ -169,7 +169,7 @@ services:
       dockerfile: base/agent/Dockerfile
       args:
         agent_branch: ${AGENT_BRANCH_OLD}
-    image: wazuh-agent_old
+    image: integration_test_wazuh-agent_old
     hostname: wazuh-agent7
     entrypoint:
       - /scripts/entrypoint.sh
@@ -187,7 +187,7 @@ services:
       dockerfile: base/agent/Dockerfile
       args:
         agent_branch: ${AGENT_BRANCH_OLD}
-    image: wazuh-agent_old
+    image: integration_test_wazuh-agent_old
     hostname: wazuh-agent8
     entrypoint:
       - /scripts/entrypoint.sh
@@ -202,6 +202,6 @@ services:
   nginx-lb:
     build:
       context: ./base/nginx-lb
-    image: nginx-lb
+    image: integration_test_nginx-lb
     entrypoint:
       - /scripts/entrypoint.sh

@@ -225,28 +225,30 @@ int add_audit_rules_syscheck(bool first_time) {
         if (syscheck.opts[i] & WHODATA_ACTIVE) {
             int retval;
             if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
-                int found = search_audit_rule(fim_get_real_path(i), "wa", AUDIT_KEY);
+                const char *directory = fim_get_real_path(i);
+                int found = search_audit_rule(directory, "wa", AUDIT_KEY);
+
                 if (found == 0) {
-                    if (retval = audit_add_rule(fim_get_real_path(i), AUDIT_KEY), retval > 0) {
+                    if (retval = audit_add_rule(directory, AUDIT_KEY), retval > 0) {
                         w_mutex_lock(&audit_rules_mutex);
-                        if(!W_Vector_insert_unique(audit_added_rules, fim_get_real_path(i))) {
-                            mdebug1(FIM_AUDIT_NEWRULE, fim_get_real_path(i));
+                        if(!W_Vector_insert_unique(audit_added_rules, directory)) {
+                            mdebug1(FIM_AUDIT_NEWRULE, directory);
                         } else {
-                            mdebug1(FIM_AUDIT_RELOADED, fim_get_real_path(i));
+                            mdebug1(FIM_AUDIT_RELOADED, directory);
                         }
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
                         if (first_time) {
-                            mwarn(FIM_WARN_WHODATA_ADD_RULE, fim_get_real_path(i));
+                            mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
                         } else {
-                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, fim_get_real_path(i));
+                            mdebug1(FIM_WARN_WHODATA_ADD_RULE, directory);
                         }
                     }
                 } else if (found == 1) {
                     w_mutex_lock(&audit_rules_mutex);
-                    if(!W_Vector_insert_unique(audit_added_rules, fim_get_real_path(i))) {
-                        mdebug1(FIM_AUDIT_RULEDUP, fim_get_real_path(i));
+                    if(!W_Vector_insert_unique(audit_added_rules, directory)) {
+                        mdebug1(FIM_AUDIT_RULEDUP, directory);
                     }
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;

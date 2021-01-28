@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "state.h"
 #include <math.h>
 #include <pthread.h>
 
@@ -95,6 +96,7 @@ int force_reload;
 int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
+int state_interval;
 OSHash * msg_queues_table;
 
 ///< To asociate the path, the position to read, and the hash key of lines read.
@@ -154,6 +156,26 @@ void LogCollectorStart()
     if (atexit(w_save_file_status)) {
         merror(ATEXIT_ERROR);
     }
+
+    /* Initialize state component */
+    if (state_interval == 0) {
+        w_logcollector_state_init(LC_STATE_GLOBAL, false);
+    } else if (state_interval > 0) {
+        w_logcollector_state_init(LC_STATE_GLOBAL | LC_STATE_INTERVAL, true);
+    }
+
+
+    /* Create the state thread */
+#ifndef WIN32
+    w_create_thread(w_logcollector_state_main, (void *) &state_interval);
+#else
+    w_create_thread(NULL,
+                    0,
+                    w_logcollector_state_main,
+                    (void *) &state_interval,
+                    0,
+                    NULL);
+#endif
 
     set_sockets();
     files_lock_init();
@@ -1130,7 +1152,7 @@ void set_read(logreader *current, int i, int j) {
     int tg;
     current->command = NULL;
     current->ign = 0;
-
+    w_logcollector_state_add_file(current->file);
     /* Initialize the files */
     if (current->ffile) {
 
@@ -1150,6 +1172,7 @@ void set_read(logreader *current, int i, int j) {
     if (current->target) {
         while (current->target[tg]) {
             mdebug1("Socket target for '%s' -> %s", current->file, current->target[tg]);
+            w_logcollector_state_add_target(current->file, current->target[tg]);
             tg++;
         }
     }
@@ -1800,6 +1823,9 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     w_msg_queue_t *msg;
     int i;
     char *file_cpy;
+    int result;
+
+    w_logcollector_state_update_file(file, size);
 
     for (i = 0; targets[i].log_socket; i++)
     {
@@ -1811,7 +1837,11 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
 
         if (msg) {
             os_strdup(file, file_cpy);
-            w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
+            result = w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
+
+            if (result < 0) {
+                w_logcollector_state_update_target(file,targets[i].log_socket->name, true);
+            }
         }
     }
 
@@ -1896,6 +1926,7 @@ void * w_output_thread(void * args){
     char *queue_name = args;
     w_message_t *message;
     w_msg_queue_t *msg_queue;
+    int result;
 
     if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
         mwarn("Could not found the '%s'.", queue_name);
@@ -1915,34 +1946,47 @@ void * w_output_thread(void * args){
         if (strcmp(message->log_target->log_socket->name, "agent") == 0) {
             // When dealing with this type of messages we don't want any of them to be lost
             // Continuously attempt to reconnect to the queue and send the message.
-
-            if(SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
-                #ifdef CLIENT
-                merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
-                #else
-                merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
-                #endif
-
+            result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
+                                  message->queue_mq, message->log_target);
+            if (result != 0) {
+                if (result != 1) {
+#ifdef CLIENT
+                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
+#else
+                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
+#endif
+                }
                 // Retry to connect infinitely.
                 logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
                 minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
 
-                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) != 0) {
+                if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
+                    result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
-                    #ifdef CLIENT
-                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
-                    #else
-                    merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
-                    #endif
+                    if (result != 1) {
+#ifdef CLIENT
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+#else
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+#endif
+                    }
+                    result = 1;
                 }
             }
+
+            w_logcollector_state_update_target(message->file,
+                                               message->log_target->log_socket->name,
+                                               result == 1);
 
         } else {
             const int MAX_RETRIES = 3;
             int retries = 0;
+            result = 1;
             while (retries < MAX_RETRIES) {
-                if (SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target) < 0) {
+                result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
+                                      message->queue_mq, message->log_target);
+                if (result < 0) {
                     merror(QUEUE_SEND);
 
                     sleep(sleep_time);
@@ -1954,6 +1998,11 @@ void * w_output_thread(void * args){
                     break;
                 }
             }
+
+            w_logcollector_state_update_target(message->file,
+                                               message->log_target->log_socket->name,
+                                               result == 1);
+
             if (retries == MAX_RETRIES) {
                 merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
             }
@@ -2562,9 +2611,9 @@ STATIC void w_initialize_file_status() {
     FILE * fd = NULL;
 
     if (fd = fopen(LOCALFILE_STATUS_PATH, "r"), fd != NULL) {
-        char str[OS_MAXSTR];
+        char str[OS_MAXSTR] = {0};
 
-        if (fread(str, 1, OS_MAXSTR, fd) < 1) {
+        if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
             merror(FREAD_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
             clearerr(fd);
         } else {

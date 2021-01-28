@@ -1263,8 +1263,6 @@ stages:
         error: !anyint
         data:
           active-response:
-            ca_store: !anything
-            ca_verification: !anystr
             disabled: !anystr
 
   - name: Request-Com-Internal (Manager)
@@ -1896,6 +1894,109 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: GET /agents/{agent_id}/stats/{component}
+
+stages:
+
+  - name: Get logcollector stats from agent 000 (manager)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/stats/logcollector"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: &stats_response
+            - global:
+                start: !anystr
+                end: !anystr
+                files: !anything
+              interval:
+                start: !anystr
+                end: !anystr
+                files: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Get logcollector stats from agent 002
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/stats/logcollector"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - <<: *stats_response
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Try to get logcollector stats from agent 007 (incompatible version)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/007/stats/logcollector"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1735
+              id:
+                - "007"
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to get logcollector stats from agent 017 (non-existent)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/017/stats/logcollector"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - "017"
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to get invalid component stats from agent 000
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/017/stats/invalid_component"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: !anystr
+        detail: !anystr
 
 ---
 test_name: GET /groups

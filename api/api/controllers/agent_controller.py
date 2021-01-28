@@ -7,7 +7,6 @@ import logging
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
-import wazuh.agent as agent
 from api import configuration
 from api.encoder import dumps, prettify
 from api.models.agent_added_model import AgentAddedModel
@@ -15,10 +14,10 @@ from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.models.group_added_model import GroupAddedModel
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
+from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
-from wazuh.core.exception import WazuhError
 
 logger = logging.getLogger('wazuh-api')
 
@@ -465,6 +464,39 @@ async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wai
                 'installer': installer}
 
     dapi = DistributedAPI(f=agent.upgrade_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def get_component_stats(request, pretty=False, wait_for_complete=False, agent_id=None, component=None):
+    """Get a specified agent's component stats.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : list
+        List of agent IDs. All possible values from 000 onwards.
+
+    Returns
+    -------
+    ApiResponse
+        Module stats.
+    """
+    f_kwargs = {'agent_list': [agent_id],
+                'component': component}
+
+    dapi = DistributedAPI(f=stats.get_agents_component_stats_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

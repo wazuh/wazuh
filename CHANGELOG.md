@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
   - Added support for bookmarks in Logcollector, allowing to follow the log file at the point where the agent stopped. ([#3368](https://github.com/wazuh/wazuh/issues/3368))
   - Improved support for multi-line logs with a variable number of lines. ([#5652](https://github.com/wazuh/wazuh/issues/5652))
 
+- **API:**
+  - Added new endpoint to get agent stats from different components. ([#7128](https://github.com/wazuh/wazuh/issues/7128))
+  
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
 
@@ -25,6 +28,11 @@ All notable changes to this project will be documented in this file.
 
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
+  
+### Fixed
+
+- Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
+
 
 ### Fixed
 

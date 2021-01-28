@@ -107,6 +107,24 @@ void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
  */
 void fim_db_bind_get_path_from_pattern(fdb_t *fim_sql, const char *pattern);
 
+/**
+ * @brief Removes paths from the FIM DB if its configuration matches with the one provided
+ *
+ * @param fim_sql FIM database structure.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param alert False don't send alert, True send delete alert.
+ * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
+ * @param configuration Position of the configuration that triggered the deletion of entries.
+ */
+void fim_db_remove_validated_path(fdb_t *fim_sql,
+                                  fim_entry *entry,
+                                  pthread_mutex_t *mutex,
+                                  void *alert,
+                                  void *fim_ev_mode,
+                                  void *configuration);
+
+
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
@@ -129,9 +147,9 @@ int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
-                                    (void *) false, (void *) mode, NULL);
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode, int *configuration) {
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_validated_path, storage,
+                                    (void *) false, (void *) mode, (void *) configuration);
 }
 
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
@@ -554,13 +572,27 @@ end:
     w_mutex_unlock(mutex);
 }
 
+void fim_db_remove_validated_path(fdb_t *fim_sql,
+                                  fim_entry *entry,
+                                  pthread_mutex_t *mutex,
+                                  void *alert,
+                                  void *fim_ev_mode,
+                                  void *configuration) {
+    int *original_configuration = (int *)configuration;
+    int validated_configuration = fim_configuration_directory(entry->file_entry.path, "file");
+
+    if (validated_configuration == *original_configuration) {
+        fim_db_remove_path(fim_sql, entry, mutex, alert, fim_ev_mode, NULL);
+    }
+}
+
 int fim_db_set_all_unscanned(fdb_t *fim_sql) {
     int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_UNSCANNED]);
     fim_db_check_transaction(fim_sql);
     return retval;
 }
 
-int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
+int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_SCANNED);
     fim_db_bind_set_scanned(fim_sql, path);

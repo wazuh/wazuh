@@ -46,8 +46,19 @@ if [ "$status" = "connected" -a $RESULT -eq 0  ]; then
 else
     # Restoring backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Restoring..." >> ${DIRECTORY}/logs/upgrade.log
-    ${DIRECTORY}/bin/wazuh-control stop >> ${DIRECTORY}/logs/upgrade.log 2>&1
+
+    CONTROL="$DIRECTORY/bin/wazuh-control"
+    if [ ! -f $CONTROL ]; then
+        CONTROL="$DIRECTORY/bin/ossec-control"
+    fi
+
+    $CONTROL stop >> ${DIRECTORY}/logs/upgrade.log 2>&1
     tar xzf ${DIRECTORY}/backup/backup_${VERSION}_[${BDATE}].tar.gz -C / >> ${DIRECTORY}/logs/upgrade.log 2>&1
     echo -ne "2" > ${DIRECTORY}/var/upgrade/upgrade_result
-    ${DIRECTORY}/bin/wazuh-control start >> ${DIRECTORY}/logs/upgrade.log 2>&1
+
+    CONTROL="$DIRECTORY/bin/wazuh-control"
+    if [ ! -f $CONTROL ]; then
+        CONTROL="$DIRECTORY/bin/ossec-control"
+    fi
+    $CONTROL start >> ${DIRECTORY}/logs/upgrade.log 2>&1
 fi
