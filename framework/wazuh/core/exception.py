@@ -211,6 +211,8 @@ class WazuhException(Exception):
                'remediation': 'Please, visit the official documentation '
                               f'(https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#tag/active-response) '
                               'to get more information about `active-response` API call'},
+        1657: {'message': 'Active response - Cannot send AR command, agent version is null',
+               'remediation': 'Please activate the agent to synchronize it'},
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
