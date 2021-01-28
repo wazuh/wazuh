@@ -17,6 +17,7 @@ from wazuh.rbac.orm import RolesManager, TokenManager
 
 REQUIRED_FIELDS = ['id']
 SORT_FIELDS = ['id', 'name']
+SORT_FIELDS_GET_USERS = ['id', 'username']
 
 
 @lru_cache(maxsize=None)
