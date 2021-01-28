@@ -50,7 +50,6 @@ All notable changes to this project will be documented in this file.
 
 
 - **API:**
-  - Added the `select` parameter to the `GET /security/users`, `GET /security/roles`, `GET /security/rules` and `GET /security/policies` endpoints. ([#6761](https://github.com/wazuh/wazuh/pull/6761))
   - Removed ruleset version from `GET /cluster/{node_id}/info` and `GET /manager/info` as it was deprecated. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
   - Changed the `POST /groups` endpoint to specify the group name in a JSON body instead of in a query parameter. ([#6909](https://github.com/wazuh/wazuh/pull/6909))
   - Changed the `PUT /active-response` endpoint function to create messages with the new JSON format. ([#7312](https://github.com/wazuh/wazuh/pull/7312))
@@ -214,6 +213,9 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Deprecated /manager/files and /cluster/{node_id}/files endpoints. ([#7209](https://github.com/wazuh/wazuh/issues/7209))
+
+- **API:**
+  - Fixed a bug when using `sort` parameter with dictionaries type fields. ([#6761](https://github.com/wazuh/wazuh/pull/6761))
 
 
 ## [v4.1.0] - 2021-02-15
