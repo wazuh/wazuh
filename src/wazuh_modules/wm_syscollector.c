@@ -56,6 +56,11 @@ static void wm_sys_log_error(const char* log) {
 
 void* wm_sys_main(wm_sys_t *sys) 
 {
+    if (!sys->flags.enabled) {
+        mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
+        pthread_exit(NULL);
+    }
+
     #ifndef WIN32
     // Connect to socket
     queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
