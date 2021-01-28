@@ -239,10 +239,10 @@ isWazuhInstalled()
 }
 
 ##########
-# Checks if Wazuh is installed by trying with each installation type. 
+# Checks if Wazuh is installed by trying with each installation type.
 # If it finds an installation, it sets the PREINSTALLEDDIR variable.
 # After that it checks if Wazuh is truly installed there, if it is installed it returns TRUE.
-# If it isn't installed continue searching in other installation types and replacing PREINSTALLEDDIR variable. 
+# If it isn't installed continue searching in other installation types and replacing PREINSTALLEDDIR variable.
 # It returns FALSE if Wazuh isn't installed in any of this.
 #
 # getPreinstalledDir()
@@ -259,7 +259,7 @@ getPreinstalledDir()
             fi
         fi
     fi
-    
+
     # Getting preinstalled dir for Wazuh manager and hibrid installations
     pidir_service_name="wazuh-manager"
     if getPreinstalledDirByType && isWazuhInstalled $PREINSTALLEDDIR; then
@@ -330,7 +330,7 @@ getPreinstalledName()
 
 UpdateStartOSSEC()
 {
-    if [ "X$TYPE" != "X" ]; then
+    if [ "X$TYPE" = "X" ]; then
         getPreinstalledType
     fi
 
@@ -343,7 +343,7 @@ UpdateStartOSSEC()
     elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
         service wazuh-$TYPE start
     else
-        if [ "X$PREINSTALLEDDIR" != "X" ]; then
+        if [ "X$PREINSTALLEDDIR" = "X" ]; then
             getPreinstalledDir
         fi
         $PREINSTALLEDDIR/bin/wazuh-control start
