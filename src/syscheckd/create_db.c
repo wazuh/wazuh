@@ -162,7 +162,7 @@ void fim_scan() {
     }
 }
 
-void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
+void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int report) {
     int node;
     int depth;
 
@@ -273,7 +273,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
 }
 
 
-int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report) {
+int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int report) {
     DIR *dp;
     struct dirent *entry;
     char *f_name;
@@ -325,7 +325,7 @@ int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report)
 }
 
 
-int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
+int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report) {
     fim_entry *saved = NULL;
     fim_file_data *new = NULL;
     cJSON *json_event = NULL;
@@ -602,8 +602,8 @@ int fim_configuration_directory(const char *path, const char *entry) {
     return position;
 }
 
-int fim_check_depth(char * path, int dir_position) {
-    char * pos;
+int fim_check_depth(const char * path, int dir_position) {
+    const char * pos;
     int depth = -1;
     unsigned int parent_path_size;
 
@@ -829,8 +829,14 @@ void check_deleted_files() {
     }
 }
 
-cJSON * fim_json_event(char * file_name, fim_file_data * old_data, fim_file_data * new_data, int pos, unsigned int type,
-                       fim_event_mode mode, whodata_evt * w_evt, const char *diff) {
+cJSON *fim_json_event(const char *file_name,
+                      fim_file_data *old_data,
+                      fim_file_data *new_data,
+                      int pos,
+                      unsigned int type,
+                      fim_event_mode mode,
+                      whodata_evt *w_evt,
+                      const char *diff) {
     cJSON * changed_attributes = NULL;
 
     if (old_data != NULL) {
@@ -1213,8 +1219,22 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     return;
 }
 
-char *fim_get_real_path(int position) {
-    return syscheck.symbolic_links[position] == NULL ? syscheck.dir[position] : syscheck.symbolic_links[position];
+const char *fim_get_real_path(int position) {
+#ifndef WIN32
+    if ((syscheck.opts[position] & CHECK_FOLLOW) == 0) {
+        return syscheck.dir[position];
+    }
+
+    if (syscheck.symbolic_links[position]) {
+        return syscheck.symbolic_links[position];
+    }
+
+    if (IsLink(syscheck.dir[position]) == 0) { // Broken link
+        return "";
+    }
+#endif // WIN32
+
+    return syscheck.dir[position];
 }
 
 // Sleep during rt_delay milliseconds
