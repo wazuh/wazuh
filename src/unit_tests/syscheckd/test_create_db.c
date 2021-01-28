@@ -3510,6 +3510,24 @@ static void test_fim_check_db_state_80_percentage_to_normal(void **state) {
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
 }
 
+static void test_fim_check_db_state_nodes_count_database_error(void **state) {
+    (void) state;
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_lock);
+#endif
+    expect_wrapper_fim_db_get_count_entries(syscheck.database, -1);
+#ifdef TEST_WINAGENT
+    expect_function_call(__wrap_pthread_mutex_unlock);
+#endif
+    expect_string(__wrap__mwarn, formatted_msg, "(6947): Unable to get the number of entries in database.");
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+
+    fim_check_db_state();
+
+    assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
+}
+
 /* fim_directory */
 static void test_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
@@ -4163,6 +4181,7 @@ int main(void) {
         cmocka_unit_test(test_fim_check_db_state_full_to_90_percentage),
         cmocka_unit_test(test_fim_check_db_state_90_percentage_to_80_percentage),
         cmocka_unit_test(test_fim_check_db_state_80_percentage_to_normal),
+        cmocka_unit_test(test_fim_check_db_state_nodes_count_database_error),
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_scan_no_realtime, setup_fim_scan_realtime, teardown_fim_scan_realtime),
         cmocka_unit_test_setup_teardown(test_fim_scan_realtime_enabled, setup_fim_scan_realtime, teardown_fim_scan_realtime),
