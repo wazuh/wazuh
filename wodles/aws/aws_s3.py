@@ -42,12 +42,12 @@ import zipfile
 import re
 import io
 from os import path
-import subprocess
 import operator
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from time import mktime
+from wazuh.core import common
 
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
@@ -139,8 +139,8 @@ class WazuhIntegration:
                             DROP TABLE {table};
                             """
 
-        self.wazuh_path = get_wazuh_path()
-        self.wazuh_version = get_wazuh_version()
+        self.wazuh_path = common.find_wazuh_path()
+        self.wazuh_version = common.get_wazuh_version()
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
@@ -2329,7 +2329,7 @@ class AWSCloudWatchLogs(AWSService):
                  remove_log_streams):
 
         self.sql_cloudwatch_create_table = """
-                                CREATE TABLE 
+                                CREATE TABLE
                                     {table_name} (
                                         aws_region 'text' NOT NULL,
                                         aws_log_group 'text' NOT NULL,
@@ -2356,7 +2356,7 @@ class AWSCloudWatchLogs(AWSService):
                                     '{end_time}');"""
 
         self.sql_cloudwatch_update = """
-                                UPDATE 
+                                UPDATE
                                     {table_name}
                                 SET
                                     next_token='{next_token}',
@@ -2375,8 +2375,8 @@ class AWSCloudWatchLogs(AWSService):
                             FROM
                                 '{table_name}'
                             WHERE
-                                aws_region='{aws_region}' AND 
-                                aws_log_group='{aws_log_group}' AND 
+                                aws_region='{aws_region}' AND
+                                aws_log_group='{aws_log_group}' AND
                                 aws_log_stream='{aws_log_stream}'"""
         self.sql_cloudwatch_select_logstreams = """
                             SELECT
@@ -2384,7 +2384,7 @@ class AWSCloudWatchLogs(AWSService):
                             FROM
                                 '{table_name}'
                             WHERE
-                                aws_region='{aws_region}' AND 
+                                aws_region='{aws_region}' AND
                                 aws_log_group='{aws_log_group}'
                             ORDER BY
                                 aws_log_stream;"""
@@ -2392,8 +2392,8 @@ class AWSCloudWatchLogs(AWSService):
                             DELETE FROM
                                 {table_name}
                             WHERE
-                                aws_region='{aws_region}' AND 
-                                aws_log_group='{aws_log_group}' AND 
+                                aws_region='{aws_region}' AND
+                                aws_log_group='{aws_log_group}' AND
                                 aws_log_stream='{aws_log_stream}';"""
 
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
@@ -2841,35 +2841,6 @@ def get_script_arguments():
                         help='Remove processed log streams from the log group', default=False)
 
     return parser.parse_args()
-
-def call_wazuh_control(option) -> str:
-    wazuh_control = path.join(get_wazuh_path(), "bin", "wazuh-control")    
-    try:
-        proc = subprocess.Popen([wazuh_control, option], stdout=subprocess.PIPE)
-        (stdout, stderr) = proc.communicate() 
-        return stdout.decode()
-    except:            
-        return None 
-
-def get_wazuh_path() -> str:
-    return path.abspath(path.join(__file__, "../../.."))
-
-def get_wazuh_info(field) -> str:    
-    wazuh_info = call_wazuh_control("info")     
-    if not wazuh_info:
-        return "ERROR"
-    
-    env_variables = wazuh_info.rsplit("\n")
-    env_variables.remove("")
-    wazuh_env_vars = dict()
-    for env_variable in env_variables:
-        key, value = env_variable.split("=")
-        wazuh_env_vars[key] = value.replace("\"", "")
-    
-    return wazuh_env_vars[field]
-
-def get_wazuh_version() -> str:
-    return get_wazuh_info("WAZUH_VERSION")
 
 
 # Main

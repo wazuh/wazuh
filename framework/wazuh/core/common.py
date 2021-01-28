@@ -4,6 +4,7 @@
 
 import json
 import os
+import subprocess
 from contextvars import ContextVar
 from functools import wraps
 from grp import getgrnam
@@ -51,6 +52,46 @@ def find_wazuh_path():
         pass
 
     return wazuh_path
+
+
+def call_wazuh_control(option) -> str:
+    wazuh_control = os.path.join(find_wazuh_path(), "bin", "wazuh-control")
+    try:
+        proc = subprocess.Popen([wazuh_control, option], stdout=subprocess.PIPE)
+        (stdout, stderr) = proc.communicate()
+        return stdout.decode()
+    except:
+        return None
+
+
+def get_wazuh_info(field) -> str:
+    wazuh_info = call_wazuh_control("info")
+    if not wazuh_info:
+        return "ERROR"
+
+    if not field:
+        return wazuh_info
+
+    env_variables = wazuh_info.rsplit("\n")
+    env_variables.remove("")
+    wazuh_env_vars = dict()
+    for env_variable in env_variables:
+        key, value = env_variable.split("=")
+        wazuh_env_vars[key] = value.replace("\"", "")
+
+    return wazuh_env_vars[field]
+
+
+def get_wazuh_version() -> str:
+    return get_wazuh_info("WAZUH_VERSION")
+
+
+def get_wazuh_revision() -> str:
+    return get_wazuh_info("TEST_REVISION")
+
+
+def get_wazuh_type() -> str:
+    return get_wazuh_info("TEST_TYPE")
 
 
 ossec_path = find_wazuh_path()

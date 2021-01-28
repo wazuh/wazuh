@@ -16,6 +16,7 @@ import struct
 import textwrap
 from wazuh.core.common import LOGTEST_SOCKET
 
+from wazuh.core import common
 
 def init_argparse():
     """Setup argpase for handle command line parameters
@@ -396,7 +397,7 @@ class Wazuh:
         Returns:
             str: install_path
         """
-        return os.path.abspath(os.path.join(__file__, "../../.."))
+        return common.find_wazuh_path()
 
     def get_info(field):
         """Get Wazuh information from wazuh-control
@@ -411,8 +412,8 @@ class Wazuh:
         wazuh_env_vars = dict()
         try:
             proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
-            (stdout, stderr) = proc.communicate() 
-        except:            
+            (stdout, stderr) = proc.communicate()
+        except:
             return "ERROR"
 
         env_variables = stdout.decode().rsplit("\n")
@@ -420,7 +421,7 @@ class Wazuh:
         for env_variable in env_variables:
             key, value = env_variable.split("=")
             wazuh_env_vars[key] = value.replace("\"", "")
-        
+
         return wazuh_env_vars[field]
 
     def get_version_str():
