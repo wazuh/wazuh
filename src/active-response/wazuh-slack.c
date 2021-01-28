@@ -9,22 +9,26 @@
 
 #include "active_responses.h"
 
-#define SITE "https://hooks.slack.com/services/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"
-#define DATA "{\"text\": '{\"type\": \"scan_start\"}'}"
-
-static char* format_output_from_alert(cJSON *alert);
+/**
+ * Get json with the data to share on slack from an alert. Example:
+ *
+ * @param alert Alert to extract info
+ * @return  json object
+ * */
+static cJSON *format_output(cJSON *alert);
 
 int main (int argc, char **argv) {
     (void)argc;
     CURL *curl;
     CURLcode res;
+    struct curl_slist *headers = NULL;
     char errbuf[CURL_ERROR_SIZE];
-    char log_msg[LOGSIZE];
     char input[BUFFERSIZE];
     char *site_url;
     char *action;
     cJSON *alert_json = NULL;
     cJSON *input_json = NULL;
+    cJSON *output_json = NULL;
 
     write_debug_file(argv[0], "Starting");
 
@@ -73,91 +77,86 @@ int main (int argc, char **argv) {
 
     curl = curl_easy_init();
 
+    headers = curl_slist_append(headers, "Accept: application/json");
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "charset: utf-8");
     curl_easy_setopt(curl, CURLOPT_URL, site_url);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    write_debug_file(argv[0], cJSON_PrintUnformatted(alert_json));
+    output_json = format_output(alert_json);
 
-
-    memset(log_msg, '\0', LOGSIZE);
-    snprintf(log_msg, LOGSIZE -1, "{\"text\": \"%s\"}", format_output_from_alert(alert_json));
-    //snprintf(log_msg, LOGSIZE -1, "{\"text\": '\"%s\"'}", cJSON_Print(alert_json));
-
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, log_msg);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(log_msg));
-    //curl_easy_escape(curl, cJSON_PrintUnformatted(root), strlen(cJSON_PrintUnformatted(root)));
+    char *output_str = cJSON_PrintUnformatted(output_json);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, output_str);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(output_str));
 
     // Enable SSL check if url is HTTPS
-    if(!strncmp(SITE, "https", 5)){
+    if(!strncmp(site_url, "https", 5)){
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
     }
 
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
     curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
-    res = curl_easy_perform(curl);
 
+    res = curl_easy_perform(curl);
     switch(res) {
         case CURLE_OK:
             write_debug_file(argv[0], "curl ok");
             break;
         case CURLE_OPERATION_TIMEDOUT:
             write_debug_file(argv[0], errbuf);
-            curl_easy_cleanup(curl);
-            return OS_INVALID;
+            break;
         default:
             write_debug_file(argv[0], errbuf);
-            curl_easy_cleanup(curl);
-            return OS_INVALID;
-        }
+            break;
+    }
 
     curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+    cJSON_Delete(input_json);
+    cJSON_Delete(output_json);
+    os_free(site_url);
+    os_free(output_str);
 
     write_debug_file(argv[0], "Ended");
-
 
     return OS_SUCCESS;
 }
 
-static char* format_output_from_alert(cJSON *alert) {
-    char *output = NULL;
-    cJSON *data_json = NULL;
+static cJSON *format_output(cJSON *alert) {
     cJSON *rule_json = NULL;
+    cJSON *agent_json = NULL;
+    cJSON *agentless_json = NULL;
+    cJSON *location_json = NULL;
     cJSON *full_log_json = NULL;
+    cJSON *rule_description_json = NULL;
+    cJSON *root_out = NULL;
+    cJSON *root_list = NULL;
+    cJSON *fields_list = NULL;
+    cJSON *item_objects =NULL;
+    cJSON *item_agent =NULL;
+    cJSON *item_agentless =NULL;
+    cJSON *item_location =NULL;
+    cJSON *item_rule =NULL;
     char str_out[LOGSIZE];
+    char str_rule[LOGSIZE];
     char temp_line[LOGSIZE];
+    char color[100];
+    int level = -1;
+
+    root_out = cJSON_CreateObject();
+    root_list = cJSON_CreateArray();
+    fields_list = cJSON_CreateArray();
+    item_objects = cJSON_CreateObject();
 
     memset(str_out, '\0', LOGSIZE);
     memset(temp_line, '\0', LOGSIZE);
-
-    // Detect data
-    data_json = cJSON_GetObjectItem(alert, "data");
-    if (data_json && (data_json->type == cJSON_Object)) {
-        cJSON *srcip_json = NULL;
-        cJSON *username_json = NULL;
-
-        // Detect srcip
-        srcip_json = cJSON_GetObjectItem(data_json, "srcip");
-        if (srcip_json && (srcip_json->type == cJSON_String)) {
-            memset(temp_line, '\0', LOGSIZE);
-            snprintf(temp_line, LOGSIZE -1, "Src IP: %s \n", srcip_json->valuestring);
-            strcat(str_out, temp_line);
-        }
-
-        // Detect username
-        username_json = cJSON_GetObjectItem(data_json, "dstuser");
-        if (username_json && (username_json->type == cJSON_String)) {
-            memset(temp_line, '\0', LOGSIZE);
-            snprintf(temp_line, LOGSIZE -1, "User: %s \n", username_json->valuestring);
-            strcat(str_out, temp_line);
-        }
-    }
 
     // Detect Rule
     rule_json = cJSON_GetObjectItem(alert, "rule");
     if (rule_json && (rule_json->type == cJSON_Object)) {
         cJSON *rule_id_json = NULL;
         cJSON *rule_level_json = NULL;
-        cJSON *rule_description_json = NULL;
         char str_level[10];
 
         // Detect Rule ID
@@ -168,31 +167,99 @@ static char* format_output_from_alert(cJSON *alert) {
         rule_level_json = cJSON_GetObjectItem(rule_json, "level");
         if (rule_level_json && (rule_level_json->type == cJSON_Number)) {
             snprintf(str_level, 9, "%d", rule_level_json->valueint);
+            level = rule_level_json->valueint;
         } else {
-            snprintf(str_level, 9, "-");
+            snprintf(str_level, 9, "N/A");
         }
 
         // Detect Rule Description
         rule_description_json = cJSON_GetObjectItem(rule_json, "description");
 
         memset(temp_line, '\0', LOGSIZE);
-        snprintf(temp_line, LOGSIZE -1, "Rule: %s (level %s) -> '%s'\n",
-                                        rule_id_json != NULL ? rule_id_json->valuestring : "-",
-                                        str_level,
-                                        rule_description_json != NULL ? rule_description_json->valuestring : "-"
+        snprintf(temp_line, LOGSIZE -1, "%s (level %s)",
+                                        rule_id_json != NULL ? rule_id_json->valuestring : "N/A",
+                                        str_level
                                         );
-        strcat(str_out, temp_line);
+
+        memset(str_rule, '\0', LOGSIZE);
+        strcpy(str_rule, temp_line);
     }
+
+    memset(color, '\0', 100);
+    if (level <= 4) {
+        strcpy(color, "good");
+        cJSON_AddStringToObject(item_objects, "color", "good");
+    } else if (level >= 5 && level <= 7){
+        strcpy(color, "warning");
+        cJSON_AddStringToObject(item_objects, "color", "warning");
+    } else {
+        strcpy(color, "danger");
+        cJSON_AddStringToObject(item_objects, "color", "danger");
+    }
+
+
+    cJSON_AddStringToObject(item_objects, "pretext", "WAZUH Alert");
+    cJSON_AddStringToObject(item_objects, "title", rule_description_json != NULL ? rule_description_json->valuestring : "N/A");
 
     // Detect full log
     full_log_json = cJSON_GetObjectItem(alert, "full_log");
-    if (full_log_json) {
-        strcat(str_out, full_log_json->valuestring);
-        strcat(str_out, "\n");
+    cJSON_AddStringToObject(item_objects, "text", full_log_json != NULL ? full_log_json->valuestring : "");
+
+    // Detect agent
+    agent_json = cJSON_GetObjectItem(alert, "agent");
+    if (agent_json && (agent_json->type == cJSON_Object)) {
+        cJSON *agent_id_json = NULL;
+        cJSON *agent_name_json = NULL;
+
+        item_agent = cJSON_CreateObject();
+
+        // Detect Agent ID
+        agent_id_json = cJSON_GetObjectItem(agent_json, "id");
+
+        // Detect Agent name
+        agent_name_json = cJSON_GetObjectItem(agent_json, "name");
+
+        memset(temp_line, '\0', LOGSIZE);
+        snprintf(temp_line, LOGSIZE -1, "(%s) - %s",
+                                        agent_id_json != NULL ? agent_id_json->valuestring : "N/A",
+                                        agent_name_json != NULL ? agent_name_json->valuestring : "N/A"
+                                        );
+
+        cJSON_AddStringToObject(item_agent, "title", "Agent");
+        cJSON_AddStringToObject(item_agent, "value", temp_line);
+        cJSON_AddItemToArray(fields_list, item_agent);
     }
 
-    os_strdup(str_out, output);
+    // Detect agentless
+    agentless_json = cJSON_GetObjectItem(alert, "agentless");
+    if (agentless_json && (agentless_json->type == cJSON_Object)) {
+        cJSON *agentless_host_json = NULL;
+        item_agentless = cJSON_CreateObject();
 
-    return output;
+        // Detect Agentless host
+        agentless_host_json = cJSON_GetObjectItem(agentless_json, "host");
 
+        cJSON_AddStringToObject(item_agentless, "title", "Agentless Host");
+        cJSON_AddStringToObject(item_agentless, "value", agentless_host_json != NULL ? agentless_host_json->valuestring : "N/A");
+        cJSON_AddItemToArray(fields_list, item_agentless);
+    }
+
+    location_json = cJSON_GetObjectItem(alert, "location");
+    item_location = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_location, "title", "Location");
+    cJSON_AddStringToObject(item_location, "value", location_json != NULL ? location_json->valuestring : "N/A");
+    cJSON_AddItemToArray(fields_list, item_location);
+
+    item_rule = cJSON_CreateObject();
+    cJSON_AddStringToObject(item_rule, "title", "Rule ID");
+    cJSON_AddStringToObject(item_rule, "value", str_rule);
+    cJSON_AddItemToArray(fields_list, item_rule);
+    cJSON_AddItemToObject(item_objects, "fields", fields_list);
+
+    cJSON_AddStringToObject(item_objects, "ts", cJSON_GetObjectItem(alert, "id")->valuestring);
+
+    cJSON_AddItemToArray(root_list, item_objects);
+    cJSON_AddItemToObject(root_out, "attachments", root_list);
+
+    return root_out;
 }
