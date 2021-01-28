@@ -12,12 +12,20 @@ from wazuh.core.ossec_queue import OssecQueue
 
 def create_message(command, custom, arguments):
     """Create the message that will be sent
-    TODO: change docstrings to numpydoc
-    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
-    a command name
-    :param custom: Whether the specified command is a custom command or not
-    :param arguments: Command arguments
-    :return: WazuhResult.
+
+    Parameters
+    ----------
+    command : str
+        Command running in the agent. If this value starts by !, then it refers to a script name instead of a command
+        name
+    custom : bool
+        Whether the specified command is a custom command or not
+    arguments : List[str]
+        Command arguments
+
+    Returns
+    -------
+    WazuhResult.
     """
     if not command:
         raise WazuhError(1650)
@@ -33,8 +41,21 @@ def create_message(command, custom, arguments):
 
 
 def create_json_message(command, arguments, alert):
-    """
-    TODO: change docstrings to numpydoc
+    """Create the JSON message that will be sent. Function used when Wazuh agent version is >= 4.2.0
+
+    Parameters
+    ----------
+    command : str
+        Command running in the agent. If this value starts by !, then it refers to a script name instead of a command
+        name
+    arguments : List[str]
+        Command arguments
+    alert : dict
+        Alert data that will be sent with the AR command
+
+    Returns
+    -------
+    WazuhResult.
     """
     if not command:
         raise WazuhError(1650)
@@ -63,10 +84,17 @@ def get_commands():
 
 def shell_escape(command):
     """Escapes some characters in the command before sending it
-    TODO: change docstrings to numpydoc
-    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of
-    a command name
-    :return: Command with escapes characters
+
+    Parameters
+    ----------
+    command : str
+        Command running in the agent. If this value starts by !, then it refers to a script name instead of a command
+        name
+
+    Returns
+    -------
+    command : str
+        Command with escapes characters
     """
     shell_escapes = \
         ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
@@ -78,11 +106,17 @@ def shell_escape(command):
 
 def send_command(msg_queue, oq, agent_id):
     """Send the message to the agent
-    TODO: change docstrings to numpydoc
-    :param msg_queue: Message previously created, contains what is necessary to launch the active response command
-    in the agent.
-    :param agent_id: Run AR command in the agent.
-    :return: WazuhResult.
+
+    Parameters
+    ----------
+    msg_queue : str
+        Message previously created, contains what is necessary to launch the active response command in the agent
+    agent_id : str
+        ID specifying the agent the msg_queue will be sent to
+
+    Returns
+    -------
+    WazuhResult.
     """
     agent_info = Agent(agent_id).get_basic_information()
     if agent_info['status'].lower() != 'active':

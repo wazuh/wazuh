@@ -58,6 +58,9 @@ class OssecQueue:
         #     - Custom command:
         #       - (msg_to_agent) [] NNS 001 !test.sh arg1 arg2 arg3
         #       - (msg_to_agent) [] ANN (null) !test.sh arg1 arg2 arg3
+        #   Agents with version >= 4.2.0:
+        #       - Existing and custom commands:
+        #           - (msg_to_agent) [] NNS 001 {JSON message}
         #   Manager: /var/ossec/queue/alerts/execq
         #     - Existing command:
         #       - restart-ossec0 arg1 arg2 arg3
