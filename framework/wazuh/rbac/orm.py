@@ -7,7 +7,6 @@ import os
 import re
 from datetime import datetime
 from enum import IntEnum, Enum
-from shutil import chown
 from time import time
 
 import yaml
@@ -15,7 +14,7 @@ from sqlalchemy import create_engine, UniqueConstraint, Column, DateTime, String
     CheckConstraint
 from sqlalchemy import desc
 from sqlalchemy.dialects.sqlite import TEXT
-from sqlalchemy.exc import IntegrityError, InvalidRequestError
+from sqlalchemy.exc import IntegrityError, InvalidRequestError, OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.orm.exc import UnmappedInstanceError
@@ -2672,17 +2671,21 @@ class DatabaseManager:
                      check_default: bool = True):
         """Get the resources from the "source" database filtering by IDs and insert them into the "target" database."""
         def get_data(table, *args):
-            if not from_id and not to_id:
-                return self.sessions[source].query(table).all()
-            result = set()
-            for column in args:
-                if from_id and to_id:
-                    partial_result = set(self.sessions[source].query(table).filter(column.between(from_id, to_id)).all())
-                elif from_id:
-                    partial_result = set(self.sessions[source].query(table).filter(column >= from_id).all())
-                elif to_id:
-                    partial_result = set(self.sessions[source].query(table).filter(column <= to_id).all())
-                result = partial_result if result == set() else result.intersection(partial_result)
+            try:
+                if not from_id and not to_id:
+                    return self.sessions[source].query(table).all()
+                result = set()
+                for column in args:
+                    if from_id and to_id:
+                        partial_result = set(self.sessions[source].query(table).filter(column.between(from_id, to_id)).all())
+                    elif from_id:
+                        partial_result = set(self.sessions[source].query(table).filter(column >= from_id).all())
+                    elif to_id:
+                        partial_result = set(self.sessions[source].query(table).filter(column <= to_id).all())
+                    result = partial_result if result == set() else result.intersection(partial_result)
+            except OperationalError:
+                # OperationalError will be raised if the database does not contain the specified table
+                pass
             return result
 
         old_users = get_data(User, User.id)
