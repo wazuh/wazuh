@@ -110,7 +110,7 @@ int main (int argc, char **argv) {
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(output_str));
 
         // Enable SSL check if url is HTTPS
-        if(!strncmp(site_url, "https", 5)){
+        if (!strncmp(site_url, "https", 5)) {
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
         }
@@ -119,7 +119,7 @@ int main (int argc, char **argv) {
         curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
 
         res = curl_easy_perform(curl);
-        switch(res) {
+        switch (res) {
             case CURLE_OK:
                 write_debug_file(argv[0], "curl ok");
                 break;
@@ -204,6 +204,7 @@ static cJSON *format_output(cJSON *alert) {
         cJSON_AddItemToArray(fields_list, item_agentless);
     }
 
+    // Detect location
     location_json = cJSON_GetObjectItem(alert, "location");
     item_location = cJSON_CreateObject();
     cJSON_AddStringToObject(item_location, "title", "Location");
