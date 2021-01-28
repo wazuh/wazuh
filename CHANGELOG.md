@@ -217,6 +217,9 @@ All notable changes to this project will be documented in this file.
 - **API:**
   - Fixed a bug when using `sort` parameter with dictionaries type fields. ([#6761](https://github.com/wazuh/wazuh/pull/6761))
 
+- **Framework:**
+  - Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
+
 
 ## [v4.1.0] - 2021-02-15
 
