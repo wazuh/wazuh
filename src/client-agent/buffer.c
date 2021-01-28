@@ -18,8 +18,15 @@
 #include <windows.h>
 #endif
 
-static volatile int i = 0;
-static volatile int j = 0;
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+STATIC volatile int i = 0;
+STATIC volatile int j = 0;
 static volatile int state = NORMAL;
 
 int warn_level;
@@ -244,7 +251,8 @@ int w_agentd_get_buffer_lenght() {
         w_mutex_lock(&mutex_lock);
         retval = (i - j) % (agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
-        retval = (retval < 0) ? (-retval) : retval;
+
+        retval = (retval < 0) ? (retval + agt->buflength + 1) : retval;
     }
 
     return retval;

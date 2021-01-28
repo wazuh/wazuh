@@ -869,7 +869,7 @@ void test_fim_diff_modify_compress_estimation_small_compresion_rate(void **state
     fim_diff_modify_compress_estimation(10240, 10240);
 
     // Rate unmodified
-    //assert_float_equal(syscheck.comp_estimation_perc, 0.9, 0.001);
+    assert_float_equal(syscheck.comp_estimation_perc, 0.9, 0.001);
 }
 
 void test_fim_diff_modify_compress_estimation_MIN_COMP_ESTIM(void **state) {
@@ -878,7 +878,7 @@ void test_fim_diff_modify_compress_estimation_MIN_COMP_ESTIM(void **state) {
     fim_diff_modify_compress_estimation(9216, 10240);
 
     // Rate set at minimun
-    //assert_float_equal(syscheck.comp_estimation_perc, 0.4, 0.001);
+    assert_float_equal(syscheck.comp_estimation_perc, 0.4, 0.001);
 }
 
 void test_fim_diff_modify_compress_estimation_ok(void **state) {
@@ -887,7 +887,7 @@ void test_fim_diff_modify_compress_estimation_ok(void **state) {
     fim_diff_modify_compress_estimation(5120, 10240);
 
     // Rate modified
-    //assert_float_equal(syscheck.comp_estimation_perc, 0.7, 0.001);
+    assert_float_equal(syscheck.comp_estimation_perc, 0.7, 0.001);
 }
 
 void test_fim_diff_compare_fail_uncompress_MD5(void **state) {

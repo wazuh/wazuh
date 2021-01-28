@@ -127,13 +127,11 @@ int write_state() {
         , __local_name, agt->notify_time, agt->max_time_reconnect_try, status,
         last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
 
-        if (buffered_event >= 0){
-            fprintf(fp,W_AGENTD_FIELD_MSG_BUFF "='%i'\n",buffered_event);
+        if (buffered_event >= 0) {
+            fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "='%i'\n", buffered_event);
         } else {
-            fprintf(fp,W_AGENTD_FIELD_MSG_BUFF "=''\n",buffered_event);
+            fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "=''\n");
         }
-        
-        
 
     fclose(fp);
 

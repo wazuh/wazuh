@@ -45,7 +45,11 @@ list(APPEND client-agent_names "test_state")
 list(APPEND client-agent_flags "-Wl,--wrap,_merror -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                                 -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddNumberToObject \
                                 -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_Delete \
-                                -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,w_agentd_get_buffer_lenght")
+                                -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,w_agentd_get_buffer_lenght \
+                                -Wl,--wrap,cJSON_AddBoolToObject")
+
+list(APPEND client-agent_names "test_buffer")
+list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
 list(LENGTH client-agent_names count)
 math(EXPR count "${count} - 1")
