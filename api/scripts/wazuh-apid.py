@@ -48,7 +48,7 @@ def start(foreground, root, config_file):
     from wazuh.core import pyDaemonModule
     from wazuh.core.cluster.cluster import get_node
     from wazuh.core.cluster.utils import read_cluster_config
-    from wazuh.rbac.orm import check_database_integrity
+    from wazuh.rbac.orm import check_database_integrity, DATABASE_FULL_PATH
 
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
@@ -110,6 +110,11 @@ def start(foreground, root, config_file):
                 print('Wazuh API SSL ERROR. Please, ensure if path to certificates is correct in the configuration '
                       f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
             sys.exit(1)
+
+    # Set correct permissions on rbac.db file
+    if os.path.exists(DATABASE_FULL_PATH):
+        os.chown(DATABASE_FULL_PATH, common.ossec_uid(), common.ossec_gid())
+        os.chmod(DATABASE_FULL_PATH, 0o640)
 
     # Drop privileges to ossec
     if not root:
