@@ -27,7 +27,9 @@ static const char * COMPONENT_NAMES[] = {
     [WDB_SYSCOLLECTOR_PORTS] = "syscollector-ports",
     [WDB_SYSCOLLECTOR_NETPROTO] = "syscollector-netproto",
     [WDB_SYSCOLLECTOR_NETADDRESS] = "syscollector-netaddress",
-    [WDB_SYSCOLLECTOR_NETINFO] = "syscollector-netinfo"
+    [WDB_SYSCOLLECTOR_NETINFO] = "syscollector-netinfo",
+    [WDB_SYSCOLLECTOR_HWINFO] = "syscollector-hwinfo",
+    [WDB_SYSCOLLECTOR_OSINFO] = "syscollector-osinfo"
 };
 
 #ifdef WAZUH_UNIT_TESTING
@@ -68,7 +70,9 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
                             [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE    };
+                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE    };
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
@@ -142,7 +146,9 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
                                    [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND,
-                                   [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND };
+                                   [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND,
+                                   [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND,
+                                   [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND };
     const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE,
                                   [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_RANGE,
                                   [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
@@ -152,7 +158,9 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
                                   [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_RANGE,
-                                  [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE };
+                                  [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE,
+                                  [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE,
+                                  [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE };
 
     assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
     assert(component < sizeof(INDEXES_RANGE) / sizeof(int));
@@ -338,7 +346,9 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
                             [WDB_SYSCOLLECTOR_PORTS] = WDB_STMT_SYSCOLLECTOR_PORTS_CLEAR,
                             [WDB_SYSCOLLECTOR_NETPROTO] = WDB_STMT_SYSCOLLECTOR_NETPROTO_CLEAR,
                             [WDB_SYSCOLLECTOR_NETADDRESS] = WDB_STMT_SYSCOLLECTOR_NETADDRESS_CLEAR,
-                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR };
+                            [WDB_SYSCOLLECTOR_NETINFO] = WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR,
+                            [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR,
+                            [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR };
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 

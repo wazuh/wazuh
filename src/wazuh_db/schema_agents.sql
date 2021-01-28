@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     release TEXT,
     version TEXT,
     os_release TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (scan_id, os_name)
 );
 
@@ -129,6 +130,7 @@ CREATE TABLE IF NOT EXISTS sys_hwinfo (
     ram_total INTEGER CHECK (ram_total > 0),
     ram_free INTEGER CHECK (ram_free > 0),
     ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (scan_id, board_serial)
 );
 
