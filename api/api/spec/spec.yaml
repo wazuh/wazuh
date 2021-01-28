@@ -371,7 +371,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/rule:file'
       example:
         actions: ['rules:update']
-        resources: ['rule:file:0610-win-ms_logs_rules.xml']
+        resources: ['*:*:*']
         effect: "allow"
     'rules:delete':
       description: "Delete Wazuh manager rules"
@@ -5201,7 +5201,7 @@ components:
     xml_filename:
       in: query
       name: filename
-      description: "Filename of one or more rule or decoder."
+      description: "Filter by filename of one or more rule or decoder files."
       schema:
         type: array
         items:
@@ -10951,7 +10951,7 @@ paths:
     get:
       tags:
         - Rules
-      summary: "Get the content of a rule"
+      summary: "Get rules file content"
       description: "Get the content of a specified rule in the ruleset"
       operationId: api.controllers.rule_controller.get_file
       x-rbac-actions:
@@ -11099,7 +11099,7 @@ paths:
     put:
       tags:
         - Rules
-      summary: "Update file to the ruleset"
+      summary: "Update rules file"
       description: "Upload or replace a user ruleset file content"
       operationId: api.controllers.rule_controller.put_file
       x-rbac-actions:
@@ -11154,7 +11154,7 @@ paths:
     delete:
       tags:
       - Rules
-      summary: "Delete rule"
+      summary: "Delete rules file"
       description: "Delete a specified rule file"
       operationId: api.controllers.rule_controller.delete_file
       x-rbac-actions:

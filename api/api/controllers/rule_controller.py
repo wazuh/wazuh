@@ -203,7 +203,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     filename : str
         Filename to download.
     raw : bool, optional
-        Whether to return the file content in raw or JSON format. Default `True`
+        Whether to return the file content in raw or JSON format. Default `False`
 
     Returns
     -------

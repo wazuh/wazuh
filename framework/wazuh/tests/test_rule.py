@@ -233,7 +233,7 @@ def test_get_requirement_invalid(mocked_config, requirement):
 ])
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file(mock_config, file_, raw):
-    """Test download a specified rule filter."""
+    """Test downloading a specified rule filter."""
     d_files = rule.get_rule_file(filename=file_, raw=raw)
     if raw:
         assert isinstance(d_files, str)
@@ -248,8 +248,8 @@ def test_get_rules_file(mock_config, file_, raw):
     ([], 'no_exists_unk_error.xml', 1415)
 ])
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_download_failed(mock_config, item, file_, error_code):
-    """Test download a specified rule filter."""
+def test_get_rules_file_failed(mock_config, item, file_, error_code):
+    """Test downloading a specified rule filter."""
     with patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
             all_msg='test', affected_items=item)):
         result = rule.get_rule_file(filename=file_)
@@ -265,17 +265,17 @@ def test_get_rules_file_download_failed(mock_config, item, file_, error_code):
 @patch('wazuh.rule.upload_xml')
 @patch('wazuh.core.manager.check_remote_commands')
 def test_upload_file(mock_remote_commands, mock_xml, mock_delete, file, overwrite):
-    """Tests uploading a file to the manager
+    """Test uploading a rule file.
 
     Parameters
     ----------
-    path : str
-        Path of destination of the new file.
+    file : str
+        Rule filename.
     overwrite : boolean
         True for updating existing files, False otherwise.
     """
     with patch('wazuh.rule.exists', return_value=overwrite):
-        result = rule.upload_rule_file(filename=[file], content='test', overwrite=overwrite)
+        result = rule.upload_rule_file(filename=file, content='test', overwrite=overwrite)
 
         # Assert data match what was expected, type of the result and correct parameters in delete() method.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
@@ -289,7 +289,7 @@ def test_upload_file(mock_remote_commands, mock_xml, mock_delete, file, overwrit
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.upload_xml')
 def test_upload_file_ko(mock_xml, mock_delete):
-    """Tests uploading a file to the manager"""
+    """Test exceptions on upload function."""
     # Error when file exists and overwrite is not True
     with patch('wazuh.rule.exists'):
         result = rule.upload_rule_file(filename='test_rules.xml', content='test', overwrite=False)
@@ -303,6 +303,7 @@ def test_upload_file_ko(mock_xml, mock_delete):
 
 
 def test_delete_rule_file():
+    """Test deleting a rule file."""
     with patch('wazuh.rule.exists', return_value=True):
         # Assert returned type is AffectedItemsWazuhResult when everything is correct
         with patch('wazuh.rule.remove'):

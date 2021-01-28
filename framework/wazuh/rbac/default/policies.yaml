@@ -178,13 +178,18 @@ default_policies:
   rules_all:
     description: Allow managing all rule files in the system.
     policies:
-      rules:
+      files:
         actions:
           - rules:read
-          - rules:update
           - rules:delete
         resources:
           - rule:file:*
+        effect: allow
+      resourceless:
+        actions:
+          - rules:update
+        resources:
+          - '*:*:*'
         effect: allow
 
   sca_read:
