@@ -36,7 +36,7 @@ else()
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap=close")
 endif()
 
-list(APPEND client-agent_names "test_state")
+list(APPEND client-agent_names "test_agentd_state")
 if(${TARGET} STREQUAL "winagent")
     # cJSON_func@x instead of cJSON_func since linker will be looking for cdecl forma
     # More info at: (https://devblogs.microsoft.com/oldnewthing/20040108-00/?p=41163)
