@@ -253,7 +253,7 @@ def get_rule_file(filename=None, raw=False):
     return result
 
 
-@expose_resources(actions=['rules:update'], resources=['rule:file:{filename}'])
+@expose_resources(actions=['rules:update'], resources=['*:*:*'])
 def upload_rule_file(filename=None, content=None, overwrite=False):
     """Upload a new rule file or update an existing one.
 
@@ -274,7 +274,7 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
                                       none_msg='Could not upload rule'
                                       )
-    path = join('etc', 'rules', filename[0])
+    path = join('etc', 'rules', filename)
     try:
         if len(content) == 0:
             raise WazuhError(1112)
@@ -285,7 +285,7 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
         elif overwrite and exists(join(common.ossec_path, path)):
             # Check if the content is valid
             prettify_xml(content)
-            delete_rule_file(filename=filename[0])
+            delete_rule_file(filename=filename)
 
         upload_xml(content, path)
         result.affected_items.append(path)

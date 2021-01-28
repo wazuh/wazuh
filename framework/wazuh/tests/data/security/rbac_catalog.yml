@@ -557,7 +557,7 @@ get_rbac_actions:
           actions:
             - rules:update
           resources:
-            - rule:file:0610-win-ms_logs_rules.xml
+            - '*:*:*'
           effect: allow
         related_endpoints:
           - PUT /rules/files/{filename}
