@@ -106,11 +106,7 @@ Install()
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries if missing
-<<<<<<< HEAD
-        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps INSTALLDIR=${INSTALLDIR}
-=======
         find external/* > /dev/null 2>&1 || ${MAKEBIN} deps
->>>>>>> 7177-make-python-portable
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
@@ -118,11 +114,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-<<<<<<< HEAD
-        ${MAKEBIN} INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
-=======
         ${MAKEBIN} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
->>>>>>> 7177-make-python-portable
 
         if [ $? != 0 ]; then
             cd ../
@@ -595,9 +587,6 @@ setEnv()
     else
         INSTALLDIR=${USER_DIR}
     fi
-
-
-    CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
 
     echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
