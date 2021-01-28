@@ -17,6 +17,7 @@
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/client-agent/buffer_wrappers.h"
+#include "../wrappers/libc/time_wrappers.h"
 
 #include "../../client-agent/state.h"
 
@@ -27,6 +28,16 @@ char * w_agentd_state_get();
 extern agent_state_t agent_state;
 
 /* setup/teardown */
+
+static int setup_group(void **state) {
+    test_mode = 1;
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    test_mode = 0;
+    return 0;
+}
 
 /* tests */
 
@@ -172,6 +183,12 @@ void test_w_agentd_state_get_last_keepalive(void ** state)
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
+    will_return(__wrap_strftime,"2021-01-25 12:18:37");
+    will_return(__wrap_strftime, 20);
+
+    will_return(__wrap_strftime,"2021-01-25 13:00:00");
+    will_return(__wrap_strftime, 20);
+
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_w_agentd_get_buffer_lenght, 0);
@@ -188,11 +205,11 @@ void test_w_agentd_state_get_last_keepalive(void ** state)
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_KEEP_ALIVE);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 12:18:37");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_LAST_ACK);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 13:00:00");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_MSG_COUNT);
@@ -229,7 +246,11 @@ void test_w_agentd_state_get_last_ack(void ** state)
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_strftime,"2021-01-25 12:18:37");
+    will_return(__wrap_strftime, 20);
 
+    will_return(__wrap_strftime,"2021-01-25 13:00:00");
+    will_return(__wrap_strftime, 20);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_w_agentd_get_buffer_lenght, 0);
@@ -246,11 +267,11 @@ void test_w_agentd_state_get_last_ack(void ** state)
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_KEEP_ALIVE);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 12:18:37");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_LAST_ACK);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 13:00:00");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_MSG_COUNT);
@@ -287,7 +308,11 @@ void test_w_agentd_state_get_buffer_disabled(void ** state)
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_strftime,"2021-01-25 12:18:37");
+    will_return(__wrap_strftime, 20);
 
+    will_return(__wrap_strftime,"2021-01-25 13:00:00");
+    will_return(__wrap_strftime, 20);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_w_agentd_get_buffer_lenght, -1);
@@ -304,11 +329,11 @@ void test_w_agentd_state_get_buffer_disabled(void ** state)
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_KEEP_ALIVE);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 12:18:37");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_LAST_ACK);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 13:00:00");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_MSG_COUNT);
@@ -345,7 +370,11 @@ void test_w_agentd_state_get_buffer_empty(void ** state)
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_strftime, "2021-01-25 12:18:37");
+    will_return(__wrap_strftime, 20);
 
+    will_return(__wrap_strftime, "2021-01-25 13:00:00");
+    will_return(__wrap_strftime, 20);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_w_agentd_get_buffer_lenght, 0);
@@ -362,11 +391,11 @@ void test_w_agentd_state_get_buffer_empty(void ** state)
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_KEEP_ALIVE);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 12:18:37");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_LAST_ACK);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 13:00:00");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_MSG_COUNT);
@@ -403,7 +432,11 @@ void test_w_agentd_state_get_pending(void ** state)
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_strftime, "2021-01-25 12:18:37");
+    will_return(__wrap_strftime, 20);
 
+    will_return(__wrap_strftime, "2021-01-25 13:00:00");
+    will_return(__wrap_strftime, 20);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_w_agentd_get_buffer_lenght, 1);
@@ -420,11 +453,11 @@ void test_w_agentd_state_get_pending(void ** state)
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_KEEP_ALIVE);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 12:18:37");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_LAST_ACK);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 13:00:00");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_MSG_COUNT);
@@ -461,7 +494,11 @@ void test_w_agentd_state_get_conected(void ** state)
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_strftime, "2021-01-25 12:18:37");
+    will_return(__wrap_strftime, 20);
 
+    will_return(__wrap_strftime, "2021-01-25 13:00:00");
+    will_return(__wrap_strftime, 20);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_w_agentd_get_buffer_lenght, 1);
@@ -478,11 +515,11 @@ void test_w_agentd_state_get_conected(void ** state)
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_KEEP_ALIVE);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 12:18:37");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_LAST_ACK);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 13:00:00");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_MSG_COUNT);
@@ -519,7 +556,11 @@ void test_w_agentd_state_get_disconected(void ** state)
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_strftime, "2021-01-25 12:18:37");
+    will_return(__wrap_strftime, 20);
 
+    will_return(__wrap_strftime, "2021-01-25 13:00:00");
+    will_return(__wrap_strftime, 20);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_w_agentd_get_buffer_lenght, 1);
@@ -536,11 +577,11 @@ void test_w_agentd_state_get_disconected(void ** state)
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_KEEP_ALIVE);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 12:18:37");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_LAST_ACK);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 13:00:00");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_MSG_COUNT);
@@ -579,7 +620,11 @@ void test_w_agentd_state_get_unknown(void ** state)
     expect_string(__wrap__merror, formatted_msg, "At get_str_status(): Unknown status (5)");
 
     expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_strftime, "2021-01-25 12:18:37");
+    will_return(__wrap_strftime, 20);
 
+    will_return(__wrap_strftime, "2021-01-25 13:00:00");
+    will_return(__wrap_strftime, 20);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     will_return(__wrap_w_agentd_get_buffer_lenght, 1);
@@ -596,11 +641,11 @@ void test_w_agentd_state_get_unknown(void ** state)
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_KEEP_ALIVE);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 12:18:37");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddStringToObject, name, W_AGENTD_FIELD_LAST_ACK);
-    expect_string(__wrap_cJSON_AddStringToObject, string, "1970-01-01 01:00:10");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "2021-01-25 13:00:00");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
     expect_string(__wrap_cJSON_AddNumberToObject, name, W_AGENTD_FIELD_MSG_COUNT);
@@ -655,5 +700,5 @@ int main(void) {
         cmocka_unit_test(test_w_agentd_state_get_unknown)
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

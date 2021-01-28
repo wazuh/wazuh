@@ -25,6 +25,16 @@ extern int j;
 
 /* setup/teardown */
 
+static int setup_group(void **state) {
+    test_mode = 1;
+    return 0;
+}
+
+static int teardown_group(void **state) {
+    test_mode = 0;
+    return 0;
+}
+
 /* tests */
 
 /* w_agentd_get_buffer_lenght */
@@ -90,5 +100,5 @@ int main(void) {
         cmocka_unit_test(test_w_agentd_get_buffer_lenght_buffer),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
