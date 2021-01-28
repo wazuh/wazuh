@@ -19,7 +19,7 @@ test_data_path = os.path.join(test_path, 'data')
 @pytest.fixture(scope='function')
 def orm_setup():
     with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
-        with patch('wazuh.rbac.orm._auth_db_file', new='test_database'):
+        with patch('wazuh.rbac.orm.DATABASE_FULL_PATH', new='test_database'):
             orm = init_db('schema_security_test.sql', test_data_path)
             yield orm
             orm.db_manager.close_sessions()
@@ -28,7 +28,7 @@ def orm_setup():
 def test_database_init(orm_setup):
     """Check users db is properly initialized"""
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.get_role('wazuh') != orm_setup.SecurityError.ROLE_NOT_EXIST
 
 
@@ -39,18 +39,18 @@ def test_json_validator(orm_setup):
 def test_add_token(orm_setup):
     """Check token rule is added to database"""
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as tm:
+        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             users = {'newUser', 'newUser1'}
             roles = {'test', 'test1', 'test2'}
-            with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+            with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
                 for user in users:
                     am.add_user(username=user, password='testingA1!')
-            with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+            with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
                 for role in roles:
                     rm.add_role(name=role)
-            with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+            with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
                 user_ids = [am.get_user(user)['id'] for user in users]
-            with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+            with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
                 role_ids = [rm.get_role(role)['id'] for role in roles]
 
             # New token rule
@@ -64,7 +64,7 @@ def test_get_all_token_rules(orm_setup):
     """Check that rules are correctly created"""
     users, roles = test_add_token(orm_setup)
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as tm:
+        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             user_rules, role_rules, run_as_rules = tm.get_all_rules()
             for user in user_rules.keys():
                 assert user in users
@@ -78,7 +78,7 @@ def test_nbf_invalid(orm_setup):
     current_timestamp = int(time())
     users, roles = test_add_token(orm_setup)
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as tm:
+        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             for user in users:
                 assert not tm.is_token_valid(user_id=user, token_nbf_time=current_timestamp)
             for role in roles:
@@ -89,7 +89,7 @@ def test_delete_all_rules(orm_setup):
     """Check that rules are correctly deleted"""
     test_add_token(orm_setup)
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as tm:
+        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             assert tm.delete_all_rules()
 
 
@@ -98,7 +98,7 @@ def test_delete_all_expired_rules(orm_setup):
     with patch('wazuh.rbac.orm.time', return_value=0):
         test_add_token(orm_setup)
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as tm:
+        with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             user_list, role_list = tm.delete_all_expired_rules()
             assert len(user_list) > 0
             assert len(role_list) > 0
@@ -107,7 +107,7 @@ def test_delete_all_expired_rules(orm_setup):
 def test_add_user(orm_setup):
     """Check user is added to database"""
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
             # New user
             am.add_user(username='newUser', password='testingA1!')
             assert am.get_user(username='newUser')
@@ -127,7 +127,7 @@ def test_add_user(orm_setup):
 def test_add_role(orm_setup):
     """Check role is added to database"""
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             # New role
             rm.add_role('newRole')
             assert rm.get_role('newRole')
@@ -145,7 +145,7 @@ def test_add_role(orm_setup):
 def test_add_policy(orm_setup):
     """Check policy is added to database"""
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
             # New policy
             policy = {
                 'actions': ['agents:update'],
@@ -171,7 +171,7 @@ def test_add_policy(orm_setup):
 def test_add_rule(orm_setup):
     """Check rules in the database"""
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rum:
+        with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rum:
             # New rule
             rum.add_rule(name='test_rule', rule={'MATCH': {'admin': ['admin_role']}})
 
@@ -188,7 +188,7 @@ def test_add_rule(orm_setup):
 def test_get_user(orm_setup):
     """Check users in the database"""
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
-        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
             users = am.get_users()
             assert users
             for user in users:
@@ -199,7 +199,7 @@ def test_get_user(orm_setup):
 
 def test_get_roles(orm_setup):
     """Check roles in the database"""
-    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
         roles = rm.get_roles()
         assert roles
         for rol in roles:
@@ -210,7 +210,7 @@ def test_get_roles(orm_setup):
 
 def test_get_policies(orm_setup):
     """Check policies in the database"""
-    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
         policies = pm.get_policies()
         assert policies
         for policy in policies:
@@ -222,7 +222,7 @@ def test_get_policies(orm_setup):
 
 def test_get_rules(orm_setup):
     """Check rules in the database"""
-    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rum:
+    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rum:
         rules = rum.get_rules()
         assert rules
         for rule in rules:
@@ -235,7 +235,7 @@ def test_get_rules(orm_setup):
 
 def test_delete_users(orm_setup):
     """Check delete users in the database"""
-    with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+    with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
         am.add_user(username='toDelete', password='testingA3!')
         len_users = len(am.get_users())
         am.delete_user(user_id=106)
@@ -244,7 +244,7 @@ def test_delete_users(orm_setup):
 
 def test_delete_roles(orm_setup):
     """Check delete roles in the database"""
-    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
         rm.add_role(name='toDelete')
         len_roles = len(rm.get_roles())
         assert rm.delete_role_by_name(role_name='toDelete')
@@ -253,7 +253,7 @@ def test_delete_roles(orm_setup):
 
 def test_delete_all_roles(orm_setup):
     """Check delete roles in the database"""
-    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
         assert rm.delete_all_roles()
         rm.add_role(name='toDelete')
         rm.add_role(name='toDelete1')
@@ -264,7 +264,7 @@ def test_delete_all_roles(orm_setup):
 
 def test_delete_rules(orm_setup):
     """Check delete rules in the database"""
-    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rum:
+    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rum:
         rum.add_rule(name='toDelete', rule={'Unittest': 'Rule'})
         rum.add_rule(name='toDelete2', rule={'Unittest': 'Rule2'})
         len_rules = len(rum.get_rules())
@@ -282,7 +282,7 @@ def test_delete_rules(orm_setup):
 
 def test_delete_all_security_rules(orm_setup):
     """Check delete all rules in the database"""
-    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rum:
+    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rum:
         assert rum.delete_all_rules()
         # Only admin rules are left
         assert all(rule.id < orm_setup.max_id_reserved for rule in rum.get_rules())
@@ -295,7 +295,7 @@ def test_delete_all_security_rules(orm_setup):
 
 def test_delete_policies(orm_setup):
     """Check delete policies in the database"""
-    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
         policy = {
             'actions': ['agents:update'],
             'resources': [
@@ -311,7 +311,7 @@ def test_delete_policies(orm_setup):
 
 def test_delete_all_policies(orm_setup):
     """Check delete policies in the database"""
-    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
         assert pm.delete_all_policies()
         policy = {
             'actions': ['agents:update'],
@@ -330,7 +330,7 @@ def test_delete_all_policies(orm_setup):
 
 def test_update_user(orm_setup):
     """Check update a user in the database"""
-    with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+    with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
         am.add_user(username='toUpdate', password='testingA6!')
         assert am.update_user(user_id='106', password='testingA0!', allow_run_as=False)
         assert not am.update_user(user_id='999', password='testingA0!', allow_run_as=True)
@@ -338,7 +338,7 @@ def test_update_user(orm_setup):
 
 def test_update_role(orm_setup):
     """Check update a role in the database"""
-    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+    with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
         rm.add_role(name='toUpdate')
         tid = rm.get_role_id(role_id=106)['id']
         tname = rm.get_role(name='toUpdate')['name']
@@ -350,7 +350,7 @@ def test_update_role(orm_setup):
 
 def test_update_rule(orm_setup):
     """Check update a rule in the database"""
-    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rum:
+    with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rum:
         tname = 'toUpdate'
         rum.add_rule(name=tname, rule={'Unittest': 'Rule'})
         tid = rum.get_rule_by_name(rule_name=tname)['id']
@@ -362,7 +362,7 @@ def test_update_rule(orm_setup):
 
 def test_update_policy(orm_setup):
     """Check update a policy in the database"""
-    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
         policy = {
             'actions': ['agents:update'],
             'resources': [
@@ -382,22 +382,22 @@ def test_update_policy(orm_setup):
 
 def test_add_policy_role(orm_setup):
     """Check role-policy relation is added to database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
-        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
+        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
             assert pm.delete_all_policies()
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.delete_all_roles()
 
         policies_ids = list()
         roles_ids = list()
 
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             rm.add_role(name='normal')
             roles_ids.append(rm.get_role('normal')['id'])
             rm.add_role(name='advanced')
             roles_ids.append(rm.get_role('advanced')['id'])
 
-        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
             policy = {
                 'actions': ['agents:update'],
                 'resources': [
@@ -424,8 +424,8 @@ def test_add_policy_role(orm_setup):
 
 def test_add_user_roles(orm_setup):
     """Check user-roles relation is added to database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
-        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
+        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
             for user in am.get_users():
                 result = am.delete_user(user_id=user['user_id'])
                 if result is True:
@@ -434,19 +434,19 @@ def test_add_user_roles(orm_setup):
                 else:
                     assert am.get_user_id(user_id=user['user_id'])
                     assert len(urm.get_all_roles_from_user(user_id=user['user_id'])) > 0
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.delete_all_roles()
 
         user_list = list()
         roles_ids = list()
 
-        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
             assert am.add_user(username='normalUser', password='testingA1!')
             user_list.append(am.get_user('normalUser')['id'])
             assert am.add_user(username='normalUser1', password='testingA1!')
             user_list.append(am.get_user('normalUser1')['id'])
 
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.add_role('normal')
             roles_ids.append(rm.get_role('normal')['id'])
             assert rm.add_role('advanced')
@@ -462,22 +462,22 @@ def test_add_user_roles(orm_setup):
 
 def test_add_role_rule(orm_setup):
     """Check roles-rules relation is added to database"""
-    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rrum:
-        with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rum:
+    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rrum:
+        with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rum:
             rum.delete_all_rules()
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.delete_all_roles()
 
         rule_ids = list()
         role_ids = list()
 
-        with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rum:
+        with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rum:
             assert rum.add_rule(name='normalRule', rule={'rule': ['testing']})
             rule_ids.append(rum.get_rule_by_name('normalRule')['id'])
             assert rum.add_rule(name='normalRule1', rule={'rule1': ['testing1']})
             rule_ids.append(rum.get_rule_by_name('normalRule1')['id'])
 
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.add_role('normal')
             role_ids.append(rm.get_role('normal')['id'])
             assert rm.add_role('advanced')
@@ -494,22 +494,22 @@ def test_add_role_rule(orm_setup):
 
 def test_add_role_policy(orm_setup):
     """Check role-policy relation is added to database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
-        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
+        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
             assert pm.delete_all_policies()
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.delete_all_roles()
 
         policies_ids = list()
         roles_ids = list()
 
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             rm.add_role('normalUnit')
             roles_ids.append(rm.get_role('normalUnit')['id'])
             rm.add_role('advancedUnit')
             roles_ids.append(rm.get_role('advancedUnit')['id'])
 
-        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
             policy = {
                 'actions': ['agents:update'],
                 'resources': [
@@ -535,19 +535,19 @@ def test_add_role_policy(orm_setup):
 
 def test_add_user_role_level(orm_setup):
     """Check user-role relation is added with level to database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
-        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
+        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
             for user in am.get_users():
                 assert am.delete_user(user_id=user['user_id'])
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.delete_all_roles()
         roles_ids = list()
 
-        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+        with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
             assert am.add_user(username='normal_level', password='testingA1!')
             user_id = am.get_user(username='normal_level')['id']
 
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.add_role('normal')
             roles_ids.append(rm.get_role('normal')['id'])
             assert rm.add_role('advanced')
@@ -577,19 +577,19 @@ def test_add_user_role_level(orm_setup):
 
 def test_add_role_policy_level(orm_setup):
     """Check role-policy relation is added with level to database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
-        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
+        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
             assert pm.delete_all_policies()
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.delete_all_roles()
 
         policies_ids = list()
 
-        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rm:
+        with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             rm.add_role('normal')
             role_id = rm.get_role('normal')['id']
 
-        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as pm:
+        with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
             policy = {
                 'actions': ['agents:update'],
                 'resources': [
@@ -630,11 +630,11 @@ def test_add_role_policy_level(orm_setup):
 
 def test_exist_user_role(orm_setup):
     """Check user-role relation exist in the database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
         user_ids, roles_ids = test_add_user_roles(orm_setup)
         for role in roles_ids:
             for user_id in user_ids:
-                with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as am:
+                with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
                     assert am.get_user(username='normalUser')
                 assert urm.exist_user_role(user_id=user_id, role_id=role)
 
@@ -644,7 +644,7 @@ def test_exist_user_role(orm_setup):
 
 def test_exist_role_rule(orm_setup):
     """Check role-rule relation exist in the database"""
-    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rrum:
+    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rrum:
         role_ids, rule_ids = test_add_role_rule(orm_setup)
         for role in role_ids:
             for rule in rule_ids:
@@ -657,7 +657,7 @@ def test_exist_role_rule(orm_setup):
 
 def test_exist_policy_role(orm_setup):
     """Check role-policy relation exist in the database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         for policy in policies_ids:
             for role in roles_ids:
@@ -668,7 +668,7 @@ def test_exist_role_policy(orm_setup):
     """
     Check role-policy relation exist in the database
     """
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         for policy in policies_ids:
             for role in roles_ids:
@@ -680,7 +680,7 @@ def test_exist_role_policy(orm_setup):
 
 def test_get_all_roles_from_user(orm_setup):
     """Check all roles in one user in the database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
         user_ids, roles_ids = test_add_user_roles(orm_setup)
         for user_id in user_ids:
             roles = urm.get_all_roles_from_user(user_id=user_id)
@@ -690,7 +690,7 @@ def test_get_all_roles_from_user(orm_setup):
 
 def test_get_all_rules_from_role(orm_setup):
     """Check all rules in one role in the database"""
-    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rrum:
+    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rrum:
         role_ids, rule_ids = test_add_role_rule(orm_setup)
         for rule in rule_ids:
             roles = rrum.get_all_roles_from_rule(rule_id=rule)
@@ -700,7 +700,7 @@ def test_get_all_rules_from_role(orm_setup):
 
 def test_get_all_roles_from_rule(orm_setup):
     """Check all roles in one rule in the database"""
-    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rrum:
+    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rrum:
         role_ids, rule_ids = test_add_role_rule(orm_setup)
         for role in role_ids:
             rules = rrum.get_all_rules_from_role(role_id=role)
@@ -710,7 +710,7 @@ def test_get_all_roles_from_rule(orm_setup):
 
 def test_get_all_users_from_role(orm_setup):
     """Check all roles in one user in the database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
         user_id, roles_ids = test_add_user_roles(orm_setup)
         for role in roles_ids:
             users = urm.get_all_users_from_role(role_id=role)
@@ -720,7 +720,7 @@ def test_get_all_users_from_role(orm_setup):
 
 def test_get_all_policy_from_role(orm_setup):
     """Check all policies in one role in the database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         for role in roles_ids:
             policies = rpm.get_all_policies_from_role(role_id=role)
@@ -730,7 +730,7 @@ def test_get_all_policy_from_role(orm_setup):
 
 def test_get_all_role_from_policy(orm_setup):
     """Check all policies in one role in the database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         for policy in policies_ids:
             roles = [role.id for role in rpm.get_all_roles_from_policy(policy_id=policy)]
@@ -740,7 +740,7 @@ def test_get_all_role_from_policy(orm_setup):
 
 def test_remove_all_roles_from_user(orm_setup):
     """Remove all roles in one user in the database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
         user_ids, roles_ids = test_add_user_roles(orm_setup)
         for user in user_ids:
             urm.remove_all_roles_in_user(user_id=user)
@@ -750,7 +750,7 @@ def test_remove_all_roles_from_user(orm_setup):
 
 def test_remove_all_users_from_role(orm_setup):
     """Remove all roles in one user in the database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
         user_ids, roles_ids = test_add_user_roles(orm_setup)
         for role in roles_ids:
             urm.remove_all_users_in_role(role_id=role)
@@ -760,7 +760,7 @@ def test_remove_all_users_from_role(orm_setup):
 
 def test_remove_all_rules_from_role(orm_setup):
     """Remove all rules in one role in the database"""
-    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rrum:
+    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rrum:
         role_ids, rule_ids = test_add_role_rule(orm_setup)
         for role in role_ids:
             rrum.remove_all_rules_in_role(role_id=role)
@@ -770,7 +770,7 @@ def test_remove_all_rules_from_role(orm_setup):
 
 def test_remove_all_roles_from_rule(orm_setup):
     """Remove all roles in one rule in the database"""
-    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rrum:
+    with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rrum:
         role_ids, rule_ids = test_add_role_rule(orm_setup)
         no_admin_rules = list()
         for rule in rule_ids:
@@ -782,7 +782,7 @@ def test_remove_all_roles_from_rule(orm_setup):
 
 def test_remove_all_policies_from_role(orm_setup):
     """Remove all policies in one role in the database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         for role in roles_ids:
             rpm.remove_all_policies_in_role(role_id=role)
@@ -792,7 +792,7 @@ def test_remove_all_policies_from_role(orm_setup):
 
 def test_remove_all_roles_from_policy(orm_setup):
     """Remove all policies in one role in the database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         for policy in policies_ids:
             rpm.remove_all_roles_in_policy(policy_id=policy)
@@ -802,7 +802,7 @@ def test_remove_all_roles_from_policy(orm_setup):
 
 def test_remove_role_from_user(orm_setup):
     """Remove specified role in user in the database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
         user_ids, roles_ids = test_add_user_roles(orm_setup)
         for role in roles_ids:
             urm.remove_role_in_user(role_id=role, user_id=user_ids[0])
@@ -811,7 +811,7 @@ def test_remove_role_from_user(orm_setup):
 
 def test_remove_policy_from_role(orm_setup):
     """Remove specified policy in role in the database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         for policy in policies_ids:
             rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policy)
@@ -821,7 +821,7 @@ def test_remove_policy_from_role(orm_setup):
 
 def test_remove_role_from_policy(orm_setup):
     """Remove specified role in policy in the database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         for policy in policies_ids:
             rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policy)
@@ -831,7 +831,7 @@ def test_remove_role_from_policy(orm_setup):
 
 def test_update_role_from_user(orm_setup):
     """Replace specified role in user in the database"""
-    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as urm:
+    with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as urm:
         user_ids, roles_ids = test_add_user_roles(orm_setup)
         urm.remove_role_in_user(user_id=user_ids[0], role_id=roles_ids[-1])
         assert urm.replace_user_role(user_id=user_ids[0], actual_role_id=roles_ids[0],
@@ -843,7 +843,7 @@ def test_update_role_from_user(orm_setup):
 
 def test_update_policy_from_role(orm_setup):
     """Replace specified policy in role in the database"""
-    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup._auth_db_file]) as rpm:
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rpm:
         policies_ids, roles_ids = test_add_role_policy(orm_setup)
         rpm.remove_policy_in_role(role_id=roles_ids[0], policy_id=policies_ids[-1])
         assert rpm.replace_role_policy(role_id=roles_ids[0], current_policy_id=policies_ids[0],

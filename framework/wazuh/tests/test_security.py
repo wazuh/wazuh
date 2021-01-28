@@ -52,7 +52,7 @@ def db_setup():
         with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    with patch('wazuh.rbac.orm._auth_db_file', new='test_database'):
+                    with patch('wazuh.rbac.orm.DATABASE_FULL_PATH', new='test_database'):
                         import wazuh.rbac.orm as orm
                         import wazuh.rbac.decorators as decorators
                         from wazuh.tests.util import RBAC_bypasser
@@ -62,10 +62,10 @@ def db_setup():
                         from wazuh.core.results import WazuhResult
                         from wazuh.core import security as core_security
                         try:
-                            orm.db_manager.connect(orm._auth_db_file)
-                            orm.db_manager.create_database(orm._auth_db_file)
-                            orm.db_manager.insert_data_from_yaml(orm._auth_db_file)
-                            create_memory_db('schema_security_test.sql', orm.db_manager.sessions[orm._auth_db_file])
+                            orm.db_manager.connect(orm.DATABASE_FULL_PATH)
+                            orm.db_manager.create_database(orm.DATABASE_FULL_PATH)
+                            orm.db_manager.insert_data_from_yaml(orm.DATABASE_FULL_PATH)
+                            create_memory_db('schema_security_test.sql', orm.db_manager.sessions[orm.DATABASE_FULL_PATH])
                         except OperationalError:
                             pass
 

@@ -34,8 +34,8 @@ cloud_reserved_range = 89
 
 # Database variables
 DATABASE_FILENAME = 'rbac.db'
-_auth_db_file = os.path.join(SECURITY_PATH, DATABASE_FILENAME)
-_tmp_db_file = f'{_auth_db_file}.tmp'
+DATABASE_FULL_PATH = os.path.join(SECURITY_PATH, DATABASE_FILENAME)
+_tmp_db_file = f'{DATABASE_FULL_PATH}.tmp'
 _Base = declarative_base()
 
 # Required rules for role
@@ -504,7 +504,7 @@ class TokenManager:
     """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
+            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
 
     def is_token_valid(self, token_nbf_time: int, user_id: int = None, role_id: int = None, run_as: bool = False):
         """Check if specified token is valid
@@ -707,7 +707,7 @@ class AuthenticationManager:
     """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
+            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
 
     def add_user(self, username: str, password: str, user_id: int = None, hash_password: bool = False,
                  allow_run_as: bool = False, created_at: DateTime = None, resource_type: ResourceType = None,
@@ -917,7 +917,7 @@ class RolesManager:
     """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
+            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
 
     def get_role(self, name: str):
         """Get the information about one role specified by name
@@ -1129,7 +1129,7 @@ class RulesManager:
         """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
+            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
 
     def get_rule(self, rule_id: int):
         """Get the information about one rule specified by id.
@@ -1348,7 +1348,7 @@ class PoliciesManager:
     """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
+            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
 
     def get_policy(self, name: str):
         """Get the information about one policy specified by name
@@ -1604,7 +1604,7 @@ class UserRolesManager:
     """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
+            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
 
     def add_role_to_user(self, user_id: int, role_id: int, position: int = None, created_at: DateTime = None,
                          force_admin: bool = False, atomic: bool = True):
@@ -1937,7 +1937,7 @@ class RolesPoliciesManager:
     """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
+            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
 
     def add_policy_to_role(self, role_id: int, policy_id: int, position: int = None, created_at: DateTime = None,
                            force_admin: bool = False, atomic: bool = True):
@@ -2294,7 +2294,7 @@ class RolesRulesManager:
     """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + _auth_db_file, echo=False))()
+            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
 
     def add_rule_to_role(self, rule_id: int, role_id: int, position: int = None, created_at: DateTime = None,
                          atomic: bool = True, force_admin: bool = False):
@@ -2764,17 +2764,17 @@ class DatabaseManager:
 def check_database_integrity():
     """Check if the rbac database needs to be upgraded or created."""
     def set_permission(database):
-        chown(database, 'ossec', 'ossec')
+        os.chown(database, common.ossec_uid(), common.ossec_gid())
         os.chmod(database, 0o640)
 
     logger = logging.getLogger('wazuh-api')
     try:
         logger.info('Checking RBAC database integrity...')
-        if os.path.exists(_auth_db_file):
-            logger.info(f'{_auth_db_file} file was detected')
-            set_permission(_auth_db_file)
-            db_manager.connect(_auth_db_file)
-            current_version = db_manager.get_database_version(_auth_db_file)
+        if os.path.exists(DATABASE_FULL_PATH):
+            logger.info(f'{DATABASE_FULL_PATH} file was detected')
+            set_permission(DATABASE_FULL_PATH)
+            db_manager.connect(DATABASE_FULL_PATH)
+            current_version = db_manager.get_database_version(DATABASE_FULL_PATH)
             expected_version = db_manager.get_api_revision()
 
             # Check if an upgrade is required
@@ -2790,16 +2790,16 @@ def check_database_integrity():
 
                     # Create new tmp database and populate it
                     db_manager.connect(_tmp_db_file)
-                    db_manager.connect(_auth_db_file)
+                    db_manager.connect(DATABASE_FULL_PATH)
                     db_manager.create_database(_tmp_db_file)
                     set_permission(_tmp_db_file)
                     db_manager.insert_data_from_yaml(_tmp_db_file)
 
                     # Migrate data from old database
-                    db_manager.migrate_data(source=_auth_db_file, target=_tmp_db_file, from_id=cloud_reserved_range,
+                    db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=cloud_reserved_range,
                                             to_id=max_id_reserved, resource_type=ResourceType.PROTECTED,
                                             check_default=False)
-                    db_manager.migrate_data(source=_auth_db_file, target=_tmp_db_file, from_id=max_id_reserved + 1,
+                    db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=max_id_reserved + 1,
                                             resource_type=ResourceType.USER)
 
                     # Apply changes and replace database
@@ -2807,20 +2807,20 @@ def check_database_integrity():
                     db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
                     db_manager.close_sessions()
                     # Create a backup file for development purposes and overwrite the old one
-                    safe_move(_auth_db_file, f'{_auth_db_file}.bkp', permissions=0o640)
-                    safe_move(_tmp_db_file, _auth_db_file, permissions=0o640)
-                    logger.info(f'{_auth_db_file} database upgraded successfully.')
+                    safe_move(DATABASE_FULL_PATH, f'{DATABASE_FULL_PATH}.bkp', permissions=0o640)
+                    safe_move(_tmp_db_file, DATABASE_FULL_PATH, permissions=0o640)
+                    logger.info(f'{DATABASE_FULL_PATH} database upgraded successfully.')
 
         # If database does not exists it means this is a fresh installation and must be created properly
         else:
             logger.info(f'RBAC database not found. Creating a new one.')
-            db_manager.connect(_auth_db_file)
-            db_manager.create_database(_auth_db_file)
-            set_permission(_auth_db_file)
-            db_manager.insert_data_from_yaml(_auth_db_file)
-            db_manager.set_database_version(_auth_db_file, db_manager.get_api_revision())
+            db_manager.connect(DATABASE_FULL_PATH)
+            db_manager.create_database(DATABASE_FULL_PATH)
+            set_permission(DATABASE_FULL_PATH)
+            db_manager.insert_data_from_yaml(DATABASE_FULL_PATH)
+            db_manager.set_database_version(DATABASE_FULL_PATH, db_manager.get_api_revision())
             db_manager.close_sessions()
-            logger.info(f'{_auth_db_file} database created successfully')
+            logger.info(f'{DATABASE_FULL_PATH} database created successfully')
 
     except Exception as e:
         logger.error('Error during the database migration. Restoring the previous database file.')
