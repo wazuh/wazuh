@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "state.h"
 
 #ifdef WIN32
 
@@ -466,8 +467,13 @@ void readel(os_el *el, int printit)
                          computer_name,
                          descriptive_msg != NULL ? descriptive_msg : el_string);
 
+                w_logcollector_state_update_file(el->name, strlen(final_msg));
+
                 if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
                     merror(QUEUE_SEND);
+                    w_logcollector_state_update_target(el->name, "agent", true);
+                } else {
+                    w_logcollector_state_update_target(el->name, "agent", false);
                 }
             }
 
@@ -626,6 +632,9 @@ void win_startel(char *evt_log)
             merror("Unable to create DLL hash.");
         }
     }
+
+    w_logcollector_state_add_file(evt_log);
+    w_logcollector_state_add_target(evt_log, "agent");
 
     /* Start event log -- going to last available record */
     if (entries_count = startEL(evt_log, &el[el_last]), entries_count < 0) {

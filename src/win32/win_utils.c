@@ -263,7 +263,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
     const char *pl;
     char tmpstr[OS_MAXSTR + 2];
     DWORD dwWaitResult;
-
+    int retval = -1;
     tmpstr[OS_MAXSTR + 1] = '\0';
 
     os_wait();
@@ -280,10 +280,10 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
                     continue;
                 case WAIT_ABANDONED:
                     merror("Error waiting mutex (abandoned).");
-                    return (0);
+                    return retval;
                 default:
                     merror("Error waiting mutex.");
-                    return (0);
+                    return retval;
             }
         } else {
             /* Lock acquired */
@@ -305,15 +305,17 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
         agent_state.msg_count++;
-        send_msg(tmpstr, -1);
-    }else{
-        buffer_append(tmpstr);
+        if (send_msg(tmpstr, -1) >= 0) {
+            retval = 0;
+        }
+    } else if (buffer_append(tmpstr) == 0) {
+            retval = 0;
     }
 
     if (!ReleaseMutex(hMutex)) {
         merror("Error releasing mutex.");
     }
-    return (0);
+    return retval;
 }
 
 /* StartMQ for Windows */

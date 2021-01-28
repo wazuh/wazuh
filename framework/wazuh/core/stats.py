@@ -1,0 +1,62 @@
+# Copyright (C) 2015-2021, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+import json
+import os
+
+from wazuh.core import common
+from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.wazuh_socket import OssecSocket
+
+
+def get_daemons_stats_from_socket(agent_id, daemon):
+    """Get a daemon stats from an agent or manager.
+
+    Parameters
+    ----------
+    agent_id : string
+        Id of the agent to get stats from.
+    daemon : string
+        Name of the service to get stats from.
+
+    Returns
+    -------
+    Dict
+        Object with daemon's stats.
+    """
+    if not agent_id or not daemon:
+        raise WazuhError(1307)
+
+    sockets_path = os.path.join(common.ossec_path, "queue", "ossec")
+
+    if str(agent_id).zfill(3) == '000':
+        dest_socket = os.path.join(sockets_path, daemon)
+        command = "getstate"
+    else:
+        dest_socket = os.path.join(sockets_path, "request")
+        command = f"{str(agent_id).zfill(3)} {daemon} getstate"
+
+    # Socket connection
+    try:
+        s = OssecSocket(dest_socket)
+    except Exception:
+        raise WazuhInternalError(1121)
+
+    # Send message
+    s.send(command.encode())
+
+    # Receive response
+    try:
+        rec_msg = s.receive().decode()
+    except ValueError:
+        raise WazuhInternalError(1118, extra_message="Data could not be received")
+
+    s.close()
+
+    # Format response
+    try:
+        return json.loads(rec_msg)['data']
+    except Exception:
+        rec_msg = rec_msg.split(" ", 1)
+        raise WazuhError(1117, extra_message=rec_msg)

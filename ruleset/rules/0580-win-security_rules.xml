@@ -56,7 +56,7 @@
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <!--{"win":{"system":{"providerName":"Microsoft-Windows-Security-Auditing","providerGuid":"{54849625-5478-4994-A5BA-3E3B0328C30D}","eventID":"4624","version":"1","level":"0","task":"12544","opcode":"0","keywords":"0x802000000000000","systemTime":"2018-12-18T10:55:48.073081500Z","eventRecordID":"7017","processID":"548","threadID":"3212","channel":"Security","computer":"qnu","severityValue":"AUDIT_SUCCESS","message":"L’ouverture de session d’un compte s’est correctement déroulée."},"eventdata":{"subjectUserSid":"S-1-5-18","subjectUserName":"QNU$","subjectDomainName":"WORKGROUP","subjectLogonId":"0x3e7","targetUserSid":"S-1-5-18","targetUserName":"Système","targetDomainName":"AUTORITE NT","targetLogonId":"0x3e7","logonType":"5","logonProcessName":"Advapi  ","authenticationPackageName":"Negotiate","workstationName":"-","logonGuid":"{00000000-0000-0000-0000-000000000000}","transmittedServices":"-","lmPackageName":"-","keyLength":"0","processId":"0x21c","processName":"C:\\\\Windows\\\\System32\\\\services.exe","ipAddress":"-","ipPort":"-","impersonationLevel":"%%1833"}}}-->
+  <!--{"win":{"system":{"providerName":"Microsoft-Windows-Security-Auditing","providerGuid":"{54849625-5478-4994-A5BA-3E3B0328C30D}","eventID":"4624","version":"1","level":"0","task":"12544","opcode":"0","keywords":"0x802000000000000","systemTime":"2018-12-18T10:55:48.073081500Z","eventRecordID":"7017","processID":"548","threadID":"3212","channel":"Security","computer":"qnu","severityValue":"AUDIT_SUCCESS","message":"L&#8217;ouverture de session d&#8217;un compte s&#8217;est correctement d&#233;roul&#233;e."},"eventdata":{"subjectUserSid":"S-1-5-18","subjectUserName":"QNU$","subjectDomainName":"WORKGROUP","subjectLogonId":"0x3e7","targetUserSid":"S-1-5-18","targetUserName":"Syst&#232;me","targetDomainName":"AUTORITE NT","targetLogonId":"0x3e7","logonType":"5","logonProcessName":"Advapi  ","authenticationPackageName":"Negotiate","workstationName":"-","logonGuid":"{00000000-0000-0000-0000-000000000000}","transmittedServices":"-","lmPackageName":"-","keyLength":"0","processId":"0x21c","processName":"C:\\\\Windows\\\\System32\\\\services.exe","ipAddress":"-","ipPort":"-","impersonationLevel":"%%1833"}}}-->
 
   <rule id="60106" level="3">
     <if_sid>60103</if_sid>
@@ -192,8 +192,7 @@
     <description>Windows audit log was cleared</description>
     <options>no_full_log</options>
     <mitre>
-      <id>T1070</id>
-      <id>T1107</id>
+      <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
     </mitre>
     <group>logs_cleared,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -1021,8 +1020,8 @@
     <field name="win.eventdata.failureCode">0x22</field>
     <description>Windows DC - Possible replay attack</description>
     <mitre>
-      <id>T1207</id>
-      <id>T1075</id>
+      <id technique="Rogue Domain Controller" tactic="Defense Evasion" tacticID="TA0005">T1207</id>
+      <id technique="Use Alternate Authentication Material: Pass the Hash" tactic="Lateral Movement" tacticID="TA0008">T1550.002</id>
     </mitre>
     <options>no_full_log</options>
     <group>win_authentication_failed,attacks,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
@@ -1277,3 +1276,4 @@
   </rule>
 
 </group>
+

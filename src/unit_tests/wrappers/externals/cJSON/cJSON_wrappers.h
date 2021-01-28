@@ -23,6 +23,8 @@ extern cJSON_bool __real_cJSON_AddItemToObject(cJSON *object, const char *string
 
 cJSON * __wrap_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string);
 
+cJSON* __wrap_cJSON_AddObjectToObject(cJSON * const object, const char * const name);
+
 extern cJSON * __real_cJSON_AddStringToObject(cJSON * const object, const char * const name, const char * const string);
 
 cJSON* __wrap_cJSON_AddArrayToObject(cJSON * const object, const char * const name);
