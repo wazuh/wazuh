@@ -1825,7 +1825,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
                     syscheck->file_limit = atoi(children[j]->content);
 
-                    if (syscheck->file_limit > MAX_FILE_LIMIT) {
+                    if (syscheck->file_limit < 0) {
                         mdebug2("Maximum value allowed for file_limit is '%d'", MAX_FILE_LIMIT);
                         syscheck->file_limit = MAX_FILE_LIMIT;
                     }

@@ -3519,7 +3519,7 @@ static void test_fim_check_db_state_nodes_count_database_error(void **state) {
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
-    expect_string(__wrap__mwarn, formatted_msg, "(6947): Unable to get the number of entries in database.");
+    expect_string(__wrap__mwarn, formatted_msg, "(6948): Unable to get the number of entries in database.");
 
     assert_int_equal(_db_state, FIM_STATE_DB_NORMAL);
 
