@@ -632,6 +632,7 @@ STATIC void fim_link_update(int pos, char *new_path) {
     int i;
     int in_configuration = false;
 
+    char *directory = NULL;
     // Check if the previously pointed folder is in the configuration
     // and delete its database entries if it isn't
     for (i = 0; syscheck.dir[i] != NULL; i++) {
@@ -640,10 +641,13 @@ STATIC void fim_link_update(int pos, char *new_path) {
             continue;
         }
 
-        if (strcmp(syscheck.symbolic_links[pos], fim_get_real_path(i)) == 0) {
+        directory = fim_get_real_path(i);
+        if (strcmp(syscheck.symbolic_links[pos], directory) == 0) {
             in_configuration = true;
+            os_free(directory);
             break;
         }
+        os_free(directory);
     }
 
     if (in_configuration == false) {
@@ -654,7 +658,7 @@ STATIC void fim_link_update(int pos, char *new_path) {
     for (i = 0; syscheck.dir[i] != NULL; i++) {
         if (strcmp(new_path, syscheck.dir[i]) == 0) {
             mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
-            syscheck.symbolic_links[pos] = NULL;
+            os_free(syscheck.symbolic_links[pos]);
             return;
         }
     }
@@ -684,7 +688,7 @@ STATIC void fim_link_check_delete(int pos) {
                 remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
             }
 #endif
-            syscheck.symbolic_links[pos] = NULL;
+            os_free(syscheck.symbolic_links[pos]);
             return;
         }
 
@@ -700,7 +704,7 @@ STATIC void fim_link_check_delete(int pos) {
             remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
         }
 #endif
-        syscheck.symbolic_links[pos] = NULL;
+        os_free(syscheck.symbolic_links[pos]);
     }
 }
 
