@@ -54,11 +54,11 @@ def test_send_msg_ok(mock_socket):
     client.send_msg(test_message)
 
 
-@pytest.mark.xfail(raises=socket.error)
 def test_send_msg_ko():
     """Test send_msg method when a socket exception happens."""
-    client = get_wazuhgcloud_subscriber()
-    client.send_msg(test_message)
+    with pytest.raises(FileNotFoundError):
+        client = get_wazuhgcloud_subscriber()
+        client.send_msg(test_message)
 
 
 def test_format_msg():

@@ -23,11 +23,11 @@
 #   13 - Unexpected error sending message to Wazuh
 #   14 - Empty bucket
 
-import signal
-import sys
-import sqlite3
 import argparse
+import signal
 import socket
+import sqlite3
+import sys
 
 try:
     import boto3

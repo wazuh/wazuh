@@ -11,11 +11,10 @@
 import argparse
 import logging
 import os
-import subprocess
-import re
 import sys
-from wazuh.core import common
 from logging.handlers import TimedRotatingFileHandler
+
+from wazuh.core import common
 
 logger_name = 'gcloud_wodle'
 logger = logging.getLogger(logger_name)
