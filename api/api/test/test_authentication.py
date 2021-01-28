@@ -25,7 +25,7 @@ test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
 
 security_conf = WazuhResult({
-    'auth_token_exp_timeout': 3600,
+    'auth_token_exp_timeout': 900,
     'rbac_mode': 'black'
 })
 decoded_payload = {
@@ -196,6 +196,6 @@ def test_decode_token_ko(mock_generate_secret, mock_raise_if_exc, mock_submit, m
 
                         with pytest.raises(Unauthorized):
                             mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
-                                                             WazuhResult({'auth_token_exp_timeout': 3600,
+                                                             WazuhResult({'auth_token_exp_timeout': 900,
                                                                           'rbac_mode': 'white'})]
                             authentication.decode_token(token='test_token')

@@ -1,31 +1,22 @@
 import os
-import sqlite3
+import socket
 
 
-database = '/var/ossec/queue/db/'
-
-
-def create_connection(agent_id):
-    agent_db = f"{database}{agent_id}.db"
-    conn = None
-    try:
-        conn = sqlite3.connect(agent_db)
-    except sqlite3.Error as e:
-        print(e)
-
-    return conn
-
-
-def get_health():
-    os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
-    check = os.popen("diff -q /tmp/output.txt /configuration_files/healthcheck/agent_control_check.txt").read()
-    output = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
-
-    if "differ" not in check and output == 0:
+def check(result):
+    if result == 0:
         return 0
     else:
         return 1
 
 
+def get_master_health():
+    os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
+    check0 = check(os.system("diff -q /tmp/output.txt /configuration_files/healthcheck/agent_control_check.txt"))
+    check1 = check(os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log"))
+    check2 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
+    return check0 or check1 or check2
+
+
 if __name__ == "__main__":
-    exit(get_health())
+    # Workers are not needed in this test, so the exit code is set to 0 (healthy).
+    exit(get_master_health()) if socket.gethostname() == 'wazuh-master' else exit(0)

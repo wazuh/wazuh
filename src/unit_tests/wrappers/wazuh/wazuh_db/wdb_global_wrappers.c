@@ -262,8 +262,3 @@ cJSON* __wrap_wdb_global_get_agents_to_disconnect(__attribute__((unused)) wdb_t 
     *status = mock();
     return mock_ptr_type(cJSON*);
 }
-
-int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb) {
-    (void)wdb;
-    return mock();
-}

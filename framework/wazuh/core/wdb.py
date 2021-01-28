@@ -60,13 +60,13 @@ class WazuhDBConnection:
         else:
             input_val_errors = [
                 (query_elements[sql_first_index] == 'sql', "Incorrect WDB request type."),
-                (query_elements[0] == 'agent' or query_elements[0] == 'global',
+                (query_elements[0] == 'agent' or query_elements[0] == 'global' or query_elements[0] == 'task',
                  "The {} database is not valid".format(query_elements[0])),
                 (query_elements[1].isdigit() if query_elements[0] == 'agent' else True,
                  "Incorrect agent ID {}".format(query_elements[1])),
                 (query_elements[sql_first_index + 1] == 'select' or query_elements[sql_first_index + 1] == 'delete' or
                  query_elements[sql_first_index + 1] == 'update', 'Only "select", "delete" or "update" requests can be '
-                                                                'sent to WDB'),
+                                                                  'sent to WDB'),
                 (not ';' in query, "Found a not valid symbol in database query: ;")
             ]
 

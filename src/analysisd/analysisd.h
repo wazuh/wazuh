@@ -95,7 +95,7 @@ void w_get_initial_queues_size();
 void w_init_queues();
 
 
-#define OSSEC_SERVER    "ossec-server"
+#define WAZUH_SERVER    "wazuh-server"
 #define MAX_DECODER_ORDER_SIZE  1024
 
 extern OSHash *fim_agentinfo;

@@ -42,6 +42,8 @@ int __wrap_OSHash_setSize(OSHash *self, unsigned int new_size);
 
 int __wrap_OSHash_Update_ex(OSHash *self, const char *key, void *data);
 
+int __wrap_OSHash_Update(OSHash *self, const char *key, void *data);
+
 extern int OSHash_Add_ex_check_data;
 
 #endif

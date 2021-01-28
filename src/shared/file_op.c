@@ -19,6 +19,8 @@
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
 #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "unit_tests/wrappers/windows/fileapi_wrappers.h"
+#include "unit_tests/wrappers/windows/handleapi_wrappers.h"
 #endif
 #endif
 
@@ -1269,6 +1271,27 @@ end:
 }
 
 
+time_t get_UTC_modification_time(const char *file){
+    HANDLE hdle;
+    FILETIME modification_date;
+    if (hdle = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
+        hdle == INVALID_HANDLE_VALUE) {
+        mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
+        return 0;
+    }
+
+    if (!GetFileTime(hdle, NULL, NULL, &modification_date)) {
+        CloseHandle(hdle);
+        mferror(FIM_WARN_GET_FILETIME, file, GetLastError());
+        return 0;
+    }
+
+    CloseHandle(hdle);
+
+    return (time_t) get_windows_file_time_epoch(modification_date);
+}
+
+
 char *basename_ex(char *path)
 {
     return (PathFindFileNameA(path));
@@ -2005,6 +2028,33 @@ void w_ch_exec_dir() {
         print_out(CHDIR_ERROR, path, errno, strerror(errno));
         exit(EXIT_FAILURE);
     }
+}
+
+FILE * w_fopen_r(const char *file, const char * mode) {
+
+    FILE *fp = NULL;
+    int fd;
+    HANDLE h;
+
+    h = CreateFile(file, GENERIC_READ, FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+                   NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) {
+        return NULL;
+    }
+
+    if (fd = _open_osfhandle((intptr_t)h, 0), fd == -1) {
+        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        CloseHandle(h);
+        return NULL;
+    }
+
+    if (fp = _fdopen(fd, mode), fp == NULL) {
+        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        CloseHandle(h);
+        return NULL;
+    }
+
+    return fp;
 }
 
 #endif /* WIN32 */
@@ -3068,7 +3118,7 @@ float DirSize(const char *path) {
 #endif
 
 
-int64_t w_ftell (FILE *x) {
+int64_t w_ftell(FILE *x) {
 
 #ifndef WIN32
     int64_t z = ftell(x);
@@ -3078,6 +3128,21 @@ int64_t w_ftell (FILE *x) {
 
     if (z < 0)  {
         merror("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno));
+        return -1;
+    } else {
+        return z;
+    }
+}
+
+int w_fseek(FILE *x, int64_t pos, int mode) {
+
+#ifndef WIN32
+    int64_t z = fseek(x, pos, mode);
+#else
+    int64_t z = _fseeki64(x, pos, mode);
+#endif
+    if (z < 0)  {
+        mwarn("Fseek function failed due to [(%d)-(%s)]", errno, strerror(errno));
         return -1;
     } else {
         return z;

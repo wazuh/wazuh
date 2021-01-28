@@ -100,9 +100,12 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
     """
     time.sleep(interval)
     if node_type == 'manager':
-        health = subprocess.check_output(
-            "docker inspect env_wazuh-master_1 -f '{{json .State.Health.Status}}'", shell=True)
-        return False if not health.startswith(b'"healthy"') else True
+        for node in ['master', 'worker1', 'worker2']:
+            health = subprocess.check_output(
+                f"docker inspect env_wazuh-{node}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+            if not health.startswith(b'"healthy"'):
+                return False
+        return True
     elif node_type == 'agent':
         for agent in agents:
             health = subprocess.check_output(
@@ -151,13 +154,15 @@ def healthcheck_procedure(module: str):
 
     os.popen(f'cp -rf {master_base_folder} {os.path.join(tmp_content, "manager")}')
     os.popen(f'cp -rf {agent_base_folder} {os.path.join(tmp_content, "agent")}')
+    # Avoid race condition
+    time.sleep(2)
     if os.path.exists(manager_folder):
         os.popen(f'cp -rf {manager_folder} {os.path.join(tmp_content, "manager")}')
-    elif os.path.exists(agent_folder):
+    if os.path.exists(agent_folder):
         os.popen(f'cp -rf {agent_folder} {os.path.join(tmp_content, "agent")}')
 
 
-def change_rbac_mode(rbac_mode: str):
+def change_rbac_mode(rbac_mode: str = 'white'):
     """Modify security.yaml in base folder to change RBAC mode for the current test.
 
     Parameters
@@ -165,22 +170,26 @@ def change_rbac_mode(rbac_mode: str):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'security.yaml'),
-              'r+') as rbac_conf:
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'config', 'api', 'configuration',
+                           'security', 'security.yaml'), 'r+') as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
         rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: {rbac_mode}', content))
 
 
+def enable_white_mode():
+    """Set white mode for non-rbac integration tests
+    """
+    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'config', 'api', 'configuration',
+                           'security', 'security.yaml'), '+r') as rbac_conf:
+        content = rbac_conf.read()
+        rbac_conf.seek(0)
+        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: white', content))
+
+
 def clean_tmp_folder():
     """Remove temporal folder used te configure the environment and set RBAC mode to Black.
     """
-    with open(os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'security.yaml'),
-              'r+') as rbac_conf:
-        content = rbac_conf.read()
-        rbac_conf.seek(0)
-        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: black', content))
-
     shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp'), ignore_errors=True)
 
 
@@ -231,14 +240,37 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     sql_sentences = list()
     sql_sentences.append('PRAGMA foreign_keys=OFF;\n')
     sql_sentences.append('BEGIN TRANSACTION;\n')
-    sql_sentences.append('DELETE FROM roles_policies WHERE role_id=99;\n')
+    sql_sentences.append('DELETE FROM user_roles WHERE user_id=99;\n')  # Current DB status: User 99 - Role 1 (Base)
     for index, permission in enumerate(list_custom_policy):
         sql_sentences.extend(generate_rbac_pair(index, permission))
+    sql_sentences.append('INSERT INTO user_roles VALUES(99,99,99,0,\'1970-01-01 00:00:00\');')
     sql_sentences.append('COMMIT')
 
     os.makedirs(os.path.dirname(custom_rbac_path), exist_ok=True)
     with open(custom_rbac_path, 'w') as rbac_config:
         rbac_config.writelines(sql_sentences)
+
+
+def save_logs(test_name):
+    """Save api, cluster and ossec log if tests fail.
+
+    Parameters
+    ----------
+    test_name : str
+        Name of the test.
+    """
+    logs_path = '/var/ossec/logs'
+    logs = ['api.log', 'cluster.log', 'ossec.log']
+    test_logs_path = os.path.join(current_path, '_test_results', 'logs')
+    os.makedirs(test_logs_path, exist_ok=True)
+    for log in logs:
+        try:
+            subprocess.check_output(
+                f"docker cp env_wazuh-master_1:{os.path.join(logs_path, log)} "
+                f"{os.path.join(test_logs_path, f'{test_name}-{log}')}",
+                shell=True)
+        except:
+            continue
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -264,6 +296,8 @@ def api_test(request):
     if rbac_mode:
         change_rbac_mode(rbac_mode)
         rbac_custom_config_generator(module, rbac_mode)
+    else:
+        enable_white_mode()
 
     values = build_and_up(interval=10)
     while values['retries'] < values['max_retries']:
@@ -276,6 +310,8 @@ def api_test(request):
         else:
             values['retries'] += 1
     clean_tmp_folder()
+    if request.session.testsfailed > 0:
+        save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
     down_env()
 
 

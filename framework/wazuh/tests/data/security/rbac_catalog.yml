@@ -96,6 +96,7 @@ get_rbac_actions:
           - GET /agents/{agent_id}/config/{component}/{configuration}
           - GET /agents/{agent_id}/group/is_sync
           - GET /agents/{agent_id}/key
+          - GET /agents/{agent_id}/stats/{component}
           - GET /groups/{group_id}/agents
           - GET /agents/no_group
           - GET /agents/outdated
@@ -314,20 +315,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/api/config
-      cluster:update_api_config:
-        description: Modify Wazuh's cluster nodes API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - cluster:update_api_config
-          resources:
-            - node:id:worker1
-            - node:id:worker3
-          effect: allow
-        related_endpoints:
-          - PUT /cluster/api/config
-          - DELETE /cluster/api/config
       cluster:read_file:
         description: Read Wazuh's cluster nodes files
         resources:
@@ -483,19 +470,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /manager/api/config
-      manager:update_api_config:
-        description: Modify Wazuh manager API configuration
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:update_api_config
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /manager/api/config
-          - DELETE /manager/api/config
       manager:restart:
         description: Restart Wazuh managers
         resources:
@@ -797,6 +771,18 @@ get_rbac_actions:
         related_endpoints:
           - PUT /security/config
           - DELETE /security/config
+      task:status:
+        description: Access task's status information
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - task:status
+          resources:
+            - "*:*:*"
+          effect: deny
+        related_endpoints:
+          - GET /tasks/status
 
 
 get_rbac_resources:

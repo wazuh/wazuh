@@ -532,6 +532,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
     if ((*str == 'a') || (*str == 'A')) {
         str++;
         if ((*str == 'm') || (*str == 'M')) {
+            if (chour == 12) chour = 0;
             snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
             str++;
             return (str);
@@ -539,6 +540,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
     } else if ((*str == 'p') || (*str == 'P')) {
         str++;
         if ((*str == 'm') || (*str == 'M')) {
+            if (chour == 12) chour = 0;
             chour += 12;
 
             /* New hour must be valid */
@@ -900,4 +902,35 @@ int w_validate_interval(int interval, int force) {
     }
 
     return ret;
+}
+
+long long w_validate_bytes(const char *content) {
+
+    long long converted_value = 0;
+    char * end;
+    long read_value = strtol(content, &end, 10);
+
+    if (read_value < 0 || read_value > LONG_MAX || content == end) {
+        return -1;
+    }
+
+    switch (*end) {
+        case 'K':
+        case 'k':
+            converted_value = read_value * 1024LL;
+            break;
+        case 'M':
+        case 'm':
+            converted_value = read_value * (1024 * 1024LL);
+            break;
+        case 'G':
+        case 'g':
+            converted_value = read_value * (1024 * 1024 * 1024LL);
+            break;
+        default:
+            converted_value = read_value;
+            break;
+    }
+
+    return converted_value;
 }

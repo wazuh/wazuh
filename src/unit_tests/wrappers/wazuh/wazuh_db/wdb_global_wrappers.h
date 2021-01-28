@@ -87,6 +87,4 @@ cJSON* __wrap_wdb_global_get_agents_by_connection_status (wdb_t *wdb, int last_a
 
 cJSON* __wrap_wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int keep_alive, const char *sync_status, wdbc_result* status);
 
-int __wrap_wdb_global_check_manager_keepalive(wdb_t *wdb);
-
 #endif

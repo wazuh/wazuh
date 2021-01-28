@@ -13,12 +13,6 @@
 #include "eventinfo.h"
 #include "os_regex/os_regex.h"
 
-/* Global definitions */
-#ifdef TESTRULE
-int full_output;
-int alert_only;
-#endif
-
 #define OS_COMMENT_MAX 1024
 
 time_t current_time = 0;
@@ -123,9 +117,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, __attribute__((unused)) EventList *
     do {
         lf = (Eventinfo *)lf_node->data;
 
-#ifdef TESTRULE
-        time(&current_time);
- #endif
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
@@ -300,9 +291,6 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, __attribute__((unused)) EventList
     do {
         lf = (Eventinfo *)lf_node->data;
 
-#ifdef TESTRULE
-        time(&current_time);
-#endif
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
@@ -473,9 +461,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, EventList *last_events, RuleInfo 
     while (eventnode_pt) {
         lf = eventnode_pt->event;
 
-#ifdef TESTRULE
-        time(&current_time);
-#endif
         /* If time is outside the timeframe, return */
         if ((current_time - lf->generate_time) > rule->timeframe) {
             lf = NULL;
@@ -653,7 +638,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->dstuser = NULL;
     lf->id = NULL;
     lf->status = NULL;
-    lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
     lf->extra_data = NULL;
@@ -856,9 +840,6 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->id) {
         free(lf->id);
     }
-    if (lf->command) {
-        free(lf->command);
-    }
     if (lf->url) {
         free(lf->url);
     }
@@ -1048,11 +1029,13 @@ char* ParseRuleComment(Eventinfo *lf) {
 #ifdef LIBGEOIP_ENABLED
         } else if (strcmp(var, "srcgeoip") == 0) {
             field = lf->srcgeoip;
-        } else if (strcmp(var, "dstuser") == 0) {
+        } else if (strcmp(var, "dstgeoip") == 0) {
             field = lf->dstgeoip;
 #endif
         } else if (strcmp(var, "srcport") == 0) {
             field = lf->srcport;
+        } else if (strcmp(var, "dstport") == 0) {
+            field = lf->dstport;
         } else if (strcmp(var, "protocol") == 0) {
             field = lf->protocol;
         } else if (strcmp(var, "action") == 0) {
@@ -1069,6 +1052,13 @@ char* ParseRuleComment(Eventinfo *lf) {
             field = lf->extra_data;
         } else if (strcmp(var, "system_name") == 0) {
             field = lf->systemname;
+        }
+
+        // Find pre-decoding fields
+        else if (strcmp(var, "program_name") == 0) {
+            field = lf->program_name;
+        } else if (strcmp(var, "hostname") == 0) {
+            field = lf->hostname;
         }
 
         // Find dynamic fields
@@ -1176,10 +1166,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->status){
         os_strdup(lf->status,lf_cpy->status);
-    }
-
-    if(lf->command){
-        os_strdup(lf->command,lf_cpy->command);
     }
 
     if(lf->url){

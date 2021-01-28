@@ -261,7 +261,7 @@ def get_agents_keys(agent_list=None):
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def delete_agents(agent_list=None, backup=False, purge=False, status="all", older_than="7d", use_only_authd=False):
+def delete_agents(agent_list=None, backup=False, purge=False, status=None, older_than="7d", use_only_authd=False):
     """Deletes a list of agents.
 
     :param agent_list: List of agents ID's.
@@ -752,7 +752,7 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
                                    extra_message=agent_result['message'])
                 result.add_failed_item(id_=str(agent_result['agent']).zfill(3), error=error)
     result.affected_items = sorted(result.affected_items, key=lambda k: k['agent'])
-    
+
     return result
 
 

@@ -32,7 +32,7 @@ echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ${DIREC
 status="pending"
 COUNTER=30
 while [ "$status" != "connected" -a $COUNTER -gt 0  ]; do
-    . ${DIRECTORY}/var/run/ossec-agentd.state >> ${DIRECTORY}/logs/upgrade.log 2>&1
+    . ${DIRECTORY}/var/run/wazuh-agentd.state >> ${DIRECTORY}/logs/upgrade.log 2>&1
     sleep 1
     COUNTER=$[COUNTER - 1]
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Waiting connection... Status = "${status}". Remaining attempts: ${COUNTER}." >> ${DIRECTORY}/logs/upgrade.log
@@ -46,8 +46,19 @@ if [ "$status" = "connected" -a $RESULT -eq 0  ]; then
 else
     # Restoring backup
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Restoring..." >> ${DIRECTORY}/logs/upgrade.log
-    ${DIRECTORY}/bin/ossec-control stop >> ${DIRECTORY}/logs/upgrade.log 2>&1
+
+    CONTROL="$DIRECTORY/bin/wazuh-control"
+    if [ ! -f $CONTROL ]; then
+        CONTROL="$DIRECTORY/bin/ossec-control"
+    fi
+
+    $CONTROL stop >> ${DIRECTORY}/logs/upgrade.log 2>&1
     tar xzf ${DIRECTORY}/backup/backup_${VERSION}_[${BDATE}].tar.gz -C / >> ${DIRECTORY}/logs/upgrade.log 2>&1
     echo -ne "2" > ${DIRECTORY}/var/upgrade/upgrade_result
-    ${DIRECTORY}/bin/ossec-control start >> ${DIRECTORY}/logs/upgrade.log 2>&1
+
+    CONTROL="$DIRECTORY/bin/wazuh-control"
+    if [ ! -f $CONTROL ]; then
+        CONTROL="$DIRECTORY/bin/ossec-control"
+    fi
+    $CONTROL start >> ${DIRECTORY}/logs/upgrade.log 2>&1
 fi

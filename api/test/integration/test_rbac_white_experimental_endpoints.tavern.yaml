@@ -28,7 +28,7 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
-        
+
   - name: Request a list of agents (Partially allowed, user aware)
     request:
       verify: False
@@ -54,7 +54,7 @@ stages:
                 - '006'
           total_affected_items: 2
           total_failed_items: 2
-        
+
 ---
 test_name: GET /experimental/ciscat/results
 
@@ -70,17 +70,13 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
-          affected_items:
-            - agent_id: '001'
-            - agent_id: '003'
-            - agent_id: '005'
-            - agent_id: '007'
+          affected_items: []
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 0
           total_failed_items: 0
-        
+
   - name: Request a list of agents (Partially allowed, user aware)
     request:
       verify: False
@@ -95,18 +91,16 @@ stages:
       json:
         error: !anyint
         data:
-          affected_items:
-            - agent_id: '003'
-            - agent_id: '007'
+          affected_items: []
           failed_items:
             - error:
                 code: 4000
               id:
                 - '004'
                 - '008'
-          total_affected_items: 2
+          total_affected_items: 0
           total_failed_items: 2
-        
+
 ---
 test_name: GET /experimental/syscollector/hardware
 
@@ -158,7 +152,7 @@ stages:
                 - '006'
           total_affected_items: 2
           total_failed_items: 2
-        
+
 ---
 test_name: GET /experimental/syscollector/netaddr
 
@@ -210,7 +204,7 @@ stages:
                 - '008'
           total_affected_items: 2
           total_failed_items: 2
-        
+
 ---
 test_name: GET /experimental/syscollector/netiface
 
@@ -262,7 +256,7 @@ stages:
                 - '008'
           total_affected_items: 3
           total_failed_items: 1
-        
+
 ---
 test_name: GET /experimental/syscollector/netproto
 
@@ -314,7 +308,7 @@ stages:
                 - '008'
           total_affected_items: 1
           total_failed_items: 3
-        
+
 ---
 test_name: GET /experimental/syscollector/os
 
@@ -366,7 +360,7 @@ stages:
                 - '004'
           total_affected_items: 2
           total_failed_items: 2
-        
+
 ---
 test_name: GET /experimental/syscollector/packages
 
@@ -375,7 +369,7 @@ stages:
   - name:  Request all agents (Partially allowed, user agnostic)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages?wait_for_complete=true"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -388,7 +382,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        
+
   - name:  Request all agents (Denied)
     request:
       verify: False
@@ -476,7 +470,7 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
-        
+
   - name: Request
     request:
       verify: False
@@ -500,7 +494,7 @@ stages:
                 - '008'
           total_affected_items: !anyint
           total_failed_items: 2
-        
+
 ---
 test_name: GET /experimental/syscollector/hotfixes
 
@@ -522,7 +516,7 @@ stages:
           failed_items: []
           total_affected_items: 0  # Only the agent 000 will have results but we don't have permissions
           total_failed_items: 0
-        
+
   - name: Request
     request:
       verify: False

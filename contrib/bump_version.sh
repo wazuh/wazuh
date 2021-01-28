@@ -59,7 +59,7 @@ cd $(dirname $0)
 VERSION_FILE="../src/VERSION"
 REVISION_FILE="../src/REVISION"
 DEFS_FILE="../src/headers/defs.h"
-NSIS_FILE="../src/win32/ossec-installer.nsi"
+NSIS_FILE="../src/win32/wazuh-installer.nsi"
 MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
@@ -67,7 +67,6 @@ CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
 API_SETUP="../api/setup.py"
 API_SPEC="../api/api/spec/spec.yaml"
 VERSION_DOCU="../src/Doxyfile"
-RULESET_VERSION="../src/update/ruleset/RULESET_VERSION"
 
 if [ -n "$version" ]
 then
@@ -88,7 +87,7 @@ then
 
     sed -E -i'' -e "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
 
-    # File ossec-installer.nsi
+    # File wazuh-installer.nsi
 
     egrep "^\!define VERSION \".+\"" $NSIS_FILE > /dev/null
 
@@ -128,10 +127,6 @@ then
     # Documentation config file
 
     sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$version\"/g" $VERSION_DOCU
-
-    # Ruleset version
-
-    sed -E -i'' -e "s/RULESET_VERSION=\".+\"/RULESET_VERSION=\"$version\"/g" $RULESET_VERSION
 fi
 
 if [ -n "$revision" ]
@@ -142,7 +137,7 @@ then
 
     echo $revision > $REVISION_FILE
 
-    # File ossec-installer.nsi
+    # File wazuh-installer.nsi
 
     egrep "^\!define REVISION \".+\"" $NSIS_FILE > /dev/null
 
@@ -170,7 +165,7 @@ fi
 if [ -n "$product" ]
 then
 
-    # File ossec-installer.nsi
+    # File wazuh-installer.nsi
 
     egrep "^VIProductVersion \".+\"" $NSIS_FILE > /dev/null
 

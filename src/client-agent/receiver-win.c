@@ -153,6 +153,14 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     ag_send_syscheck(tmp_msg + strlen(HC_SK));
                     continue;
                 }
+                else if (strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0) {
+                    ag_send_syscheck(tmp_msg + strlen(HC_FIM_FILE));
+                    continue;
+                }
+                else if (strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
+                    ag_send_syscheck(tmp_msg + strlen(HC_FIM_REGISTRY));
+                    continue;
+                }
 
                 /* Ack from server */
                 else if (strcmp(tmp_msg, HC_ACK) == 0) {
@@ -256,7 +264,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                                     if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
                                         char msg_output[OS_MAXSTR];
 
-                                        snprintf(msg_output, OS_MAXSTR, "%c:%s:%s:",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
+                                        snprintf(msg_output, OS_MAXSTR, "%c:%s:%s:",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                         send_msg(msg_output, -1);
                                     }
                                     else if (agt->flags.remote_conf && !verifyRemoteConf()) {

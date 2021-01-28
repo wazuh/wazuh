@@ -48,15 +48,15 @@ fi
 
 StartService ()
 {
-        ${DIRECTORY}/bin/ossec-control start
+        ${DIRECTORY}/bin/wazuh-control start
 }
 StopService ()
 {
-        ${DIRECTORY}/bin/ossec-control stop
+        ${DIRECTORY}/bin/wazuh-control stop
 }
 RestartService ()
 {
-        ${DIRECTORY}/bin/ossec-control restart
+        ${DIRECTORY}/bin/wazuh-control restart
 }
 RunService "$1"
 ' > $STARTUP_SCRIPT
@@ -103,12 +103,12 @@ if [ "X${DIRECTORY}" = "X" ]; then
 fi
 
 capture_sigterm() {
-    ${DIRECTORY}/bin/ossec-control stop
+    ${DIRECTORY}/bin/wazuh-control stop
     exit $?
 }
 
-if ! ${DIRECTORY}/bin/ossec-control start; then
-    ${DIRECTORY}/bin/ossec-control stop
+if ! ${DIRECTORY}/bin/wazuh-control start; then
+    ${DIRECTORY}/bin/wazuh-control stop
 fi
 
 while : ; do

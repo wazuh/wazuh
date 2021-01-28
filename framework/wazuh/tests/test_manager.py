@@ -55,11 +55,11 @@ def test_manager():
     return test_manager
 
 
-manager_status = {'ossec-agentlessd': 'running', 'ossec-analysisd': 'running', 'ossec-authd': 'running',
- 'ossec-csyslogd': 'running', 'ossec-dbd': 'running', 'ossec-monitord': 'running',
- 'ossec-execd': 'running', 'ossec-integratord': 'running', 'ossec-logcollector': 'running',
- 'ossec-maild': 'running', 'ossec-remoted': 'running', 'ossec-reportd': 'running',
- 'ossec-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
+manager_status = {'wazuh-agentlessd': 'running', 'wazuh-analysisd': 'running', 'wazuh-authd': 'running',
+ 'wazuh-csyslogd': 'running', 'wazuh-dbd': 'running', 'wazuh-monitord': 'running',
+ 'wazuh-execd': 'running', 'wazuh-integratord': 'running', 'wazuh-logcollector': 'running',
+ 'wazuh-maild': 'running', 'wazuh-remoted': 'running', 'wazuh-reportd': 'running',
+ 'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
  'wazuh-db': 'running', 'wazuh-apid': 'running'}
 
 
@@ -80,8 +80,8 @@ def test_get_status(mock_status):
     ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
     ('wazuh-modulesd:syscollector', None, 2, None, None, ''),
     ('wazuh-modulesd:aws-s3', None, 5, None, None, ''),
-    ('ossec-execd', None, 1, None, None, ''),
-    ('ossec-csyslogd', None, 2, None, None, ''),
+    ('wazuh-execd', None, 1, None, None, ''),
+    ('wazuh-csyslogd', None, 2, None, None, ''),
     ('random', None, 0, ['timestamp'], True, ''),
     (None, 'info', 7, ['timestamp'], False, ''),
     (None, 'error', 2, ['level'], True, ''),
@@ -98,7 +98,7 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
     level : str
         Filters by log type: all, error or info.
     tag : str
-        Filters by log category (i.e. ossec-remoted).
+        Filters by log category (i.e. wazuh-remoted).
     total_items : int
         Expected items to be returned after calling ossec_log.
     sort_by : list
@@ -128,6 +128,15 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
 
 def test_ossec_log_summary():
     """Tests ossec_log_summary function works and returned data match with expected"""
+    expected_result = {
+        'wazuh-csyslogd': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
+        'wazuh-execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
+        'wazuh-modulesd:aws-s3': {'all': 5, 'info': 2, 'error': 1, 'critical': 0, 'warning': 2, 'debug': 0},
+        'wazuh-modulesd:database': {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 2},
+        'wazuh-modulesd:syscollector': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
+        'wazuh-rootcheck': {'all': 1, 'info': 1, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0}
+    }
+
     logs = get_logs().splitlines()
     with patch('wazuh.core.manager.tail', return_value=logs):
         result = ossec_log_summary()
@@ -135,13 +144,8 @@ def test_ossec_log_summary():
         # Assert data match what was expected and type of the result.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
         assert result.render()['data']['total_affected_items'] == 6
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['all'] == 2
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['info'] == 2
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['error'] == 0
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['critical'] == 0
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['warning'] == 0
-        assert result.render()['data']['affected_items'][0]['ossec-csyslogd']['debug'] == 0
-
+        assert all(all(value == expected_result[key] for key, value in item.items())
+                   for item in result.render()['data']['affected_items'])
 
 @pytest.mark.parametrize('path, overwrite', [
     ('test.xml', False),
@@ -150,8 +154,9 @@ def test_ossec_log_summary():
 ])
 @patch('wazuh.manager.delete_file')
 @patch('wazuh.manager.upload_xml')
+@patch('wazuh.core.manager.check_remote_commands')
 @patch('wazuh.manager.upload_list')
-def test_upload_file(mock_list, mock_xml, mock_delete, path, overwrite):
+def test_upload_file(mock_list, mock_remote_commands, mock_xml, mock_delete, path, overwrite):
     """Tests uploading a file to the manager
 
     Parameters
@@ -261,31 +266,6 @@ def test_get_api_config():
     assert result['data']['affected_items'][0]['node_name'] == 'manager', 'Not expected node name'
 
 
-@patch('wazuh.core.manager.yaml.dump')
-@patch('wazuh.core.manager.open')
-def test_update_api_config(mock_open, mock_yaml):
-    """Checks that update_api_config method is updating current api_conf dict and returning expected result."""
-    old_config = {'experimental_features': True}
-    new_config = {'experimental_features': False}
-
-    with patch('wazuh.core.manager.configuration.api_conf', new=old_config):
-        result = update_api_config(updated_config=new_config)
-
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
-        assert result.render()['data']['total_failed_items'] == 0, 'Total_failed_items should be 0.'
-        assert old_config != new_config, 'Old configuration should be equal to new configuration.'
-        mock_yaml.assert_called_once_with(new_config, ANY)
-
-
-def test_update_api_config_ko():
-    """Checks that update_api_config method is returning expected fail."""
-    with patch('wazuh.core.manager.configuration.api_conf'):
-        result = update_api_config()
-
-        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type.'
-        assert result.render()['data']['total_failed_items'] == 1, 'Total_failed_items should be 1.'
-
-
 @patch('socket.socket')
 @patch('wazuh.core.cluster.utils.fcntl')
 @patch('wazuh.core.cluster.utils.open')
@@ -325,8 +305,8 @@ def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
     (0, ""),
     (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
         "Unspecified key"),
-    (1, "2019/02/27 11:30:24 ossec-authd: ERROR: (1230): Invalid element in the configuration: "
-        "'use_source_i'.\n2019/02/27 11:30:24 ossec-authd: ERROR: (1202): Configuration error at "
+    (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
+        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
         "'/var/ossec/etc/ossec.conf'.")
 ])
 @patch('wazuh.core.manager.open')

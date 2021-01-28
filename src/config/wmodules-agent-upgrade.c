@@ -261,6 +261,7 @@ static int wm_agent_upgrade_read_ca_verification_old(unsigned int *verification_
             }
             else {
                 mwarn("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
+                free_strarray(ca_verification);
                 return OS_INVALID;
             }
         }

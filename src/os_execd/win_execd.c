@@ -20,7 +20,7 @@
 #undef ARGV0
 #endif
 
-#define ARGV0 "ossec-execd"
+#define ARGV0 "wazuh-execd"
 extern w_queue_t * winexec_queue;
 
 /* Timeout list */

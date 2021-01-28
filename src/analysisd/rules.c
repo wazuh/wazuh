@@ -37,13 +37,6 @@ w_queue_t * writer_queue_log_fts;
 
 EventList *os_analysisd_last_events;
 
-/* Change path for test rule */
-#ifdef TESTRULE
-#undef RULEPATH
-#define RULEPATH "ruleset/rules/"
-#endif
-
-
 /* Prototypes */
 STATIC int getattributes(char **attributes,
                   char **values,
@@ -1789,7 +1782,9 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
             } /* end of elements block */
 
             /* Assign an active response to the rule */
-            Rule_AddAR(config_ruleinfo);
+            if (os_analysisd_rulelist == *r_node) {
+                Rule_AddAR(config_ruleinfo);
+            }
 
             j++; /* next rule */
 
@@ -2497,12 +2492,6 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         return (NULL);
     }
 
-#ifdef TESTRULE
-    if (full_output && !alert_only)
-        print_out("    Trying rule: %d - %s", rule->sigid,
-                  rule->comment);
-#endif
-
     /* Check if any decoder pre-matched here for syscheck event */
     if(lf->decoder_syscheck_id != 0 && (rule->decoded_as &&
             rule->decoded_as != lf->decoder_syscheck_id)){
@@ -2975,22 +2964,10 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         }
     }
 
-#ifdef TESTRULE
-    if (full_output && !alert_only) {
-        print_out("       *Rule %d matched.", rule->sigid);
-    }
-#endif
-
     /* Search for dependent rules */
     if (curr_node->child) {
         RuleNode *child_node = curr_node->child;
         RuleInfo *child_rule = NULL;
-
-#ifdef TESTRULE
-        if (full_output && !alert_only) {
-            print_out("       *Trying child rules.");
-        }
-#endif
 
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, last_events, cdblists, child_node, rule_match,

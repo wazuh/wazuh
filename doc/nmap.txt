@@ -28,7 +28,7 @@ ossec-test# touch /var/log/nmap-out.log
 
 3- Restart ossec:
 
-ossec-test# /var/ossec/bin/ossec-control restart
+ossec-test# /var/ossec/bin/wazuh-control restart
 
 
 4- Run your nmap scans (example scanning 192.168.2.0/24 network):

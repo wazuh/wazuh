@@ -50,7 +50,6 @@ typedef struct _Eventinfo {
     char *dstuser;
     char *id;
     char *status;
-    char *command;
     char *url;
     char *data;
     char *extra_data;
@@ -155,11 +154,6 @@ struct EventList {
     pthread_mutex_t event_mutex;
 };
 
-#ifdef TESTRULE
-extern int full_output;
-extern int alert_only;
-#endif
-
 /* Types of events (from decoders) */
 #define UNKNOWN         0   /* Unknown */
 #define SYSLOG          1   /* syslog messages */
@@ -230,8 +224,8 @@ const char* FindField(const Eventinfo *lf, const char *name);
 char* ParseRuleComment(Eventinfo *lf);
 
 /**
- * @brief Function to check for repetitions from same fields 
- * 
+ * @brief Function to check for repetitions from same fields
+ *
  * @param rule has rule information
  * @param lf has event information
  * @param my_lf has last event information
@@ -241,8 +235,8 @@ char* ParseRuleComment(Eventinfo *lf);
 bool same_loop(RuleInfo *rule, Eventinfo *lf, Eventinfo *my_lf);
 
 /**
- * @brief Function to check for repetitions from different fields 
- * 
+ * @brief Function to check for repetitions from different fields
+ *
  * @param rule has rule information
  * @param lf has event information
  * @param my_lf has last event information

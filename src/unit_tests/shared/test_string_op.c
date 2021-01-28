@@ -195,6 +195,58 @@ void test_W_JSON_AddField_string_time(void **state)
     os_free(output);
     cJSON_Delete(root);
 }
+/* w_strndup */
+void test_w_strndup_null_str(void ** state)
+{
+    const char * str = NULL;
+    assert_null(w_strndup(NULL, 5));
+}
+
+void test_w_strndup_str_less_than_n(void ** state)
+{    
+    const char * str = "Test";
+    const char * expected_str = "Test";
+    char * retval;
+
+    retval = w_strndup(str, strlen(str)+10);
+    assert_string_equal(retval, expected_str);
+    assert_int_equal(strlen(retval), strlen(expected_str));
+    os_free(retval);
+}
+
+void test_w_strndup_str_greater_than_n(void ** state) {
+    const char * str = "Test Test Test Test";
+    const char * expected_str = "Test Test ";
+    char * retval;
+
+    retval = w_strndup(str, 10);
+    assert_string_equal(retval, expected_str);
+    assert_int_equal(strlen(retval), 10);
+    os_free(retval);
+}
+
+void test_w_strndup_str_equal_to_n(void ** state) {
+    const char * str = "Test Test Test Test";
+    const char * expected_str = "Test Test Test Test";
+    char * retval;
+
+    retval = w_strndup(str, strlen(expected_str));
+    assert_string_equal(retval, expected_str);
+    assert_int_equal(strlen(retval), strlen(expected_str));
+    os_free(retval);
+}
+
+
+void test_w_strndup_str_zero_n(void ** state) {
+    const char * str = "Test Test Test Test";
+    const char * expected_str = "Test Test Test Test";
+    char * retval;
+
+    retval = w_strndup(str, 0);
+    assert_string_equal(retval, "");
+    assert_int_equal(strlen(retval), 0);
+    os_free(retval);
+}
 
 /* Tests */
 
@@ -216,6 +268,12 @@ int main(void) {
         cmocka_unit_test(test_W_JSON_AddField_JSON_valid),
         cmocka_unit_test(test_W_JSON_AddField_JSON_invalid),
         cmocka_unit_test(test_W_JSON_AddField_string_time),
+        // Tests w_strndup
+        cmocka_unit_test(test_w_strndup_null_str),
+        cmocka_unit_test(test_w_strndup_str_less_than_n),
+        cmocka_unit_test(test_w_strndup_str_greater_than_n),
+        cmocka_unit_test(test_w_strndup_str_equal_to_n),
+        cmocka_unit_test(test_w_strndup_str_zero_n),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
