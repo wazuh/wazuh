@@ -15,6 +15,8 @@ class OssecQueue:
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
     RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
+    RESTART_AGENTS_JSON = "{\"version\": 1,\"origin\": {\"module\": \"api/framework\"},\"command\": \"restart-wazuh\", " \
+                          "\"parameters\": {\"extra_args\": [], \"alert\": {}}}"  # Agents, not manager (000)
 
     # Types
     AR_TYPE = "ar-message"
@@ -103,7 +105,7 @@ class OssecQueue:
         else:
             if msg == OssecQueue.HC_SK_RESTART:
                 socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NO_AR_C, str_agent, str_agent_id, OssecQueue.HC_SK_RESTART)
-            elif msg == OssecQueue.RESTART_AGENTS:
+            elif msg == OssecQueue.RESTART_AGENTS or msg == OssecQueue.RESTART_AGENTS_JSON:
                 socket_msg = "{0} {1}{2}{3} {4} {5} - {6} (from_the_server) (no_rule_id)".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent, str_agent_id, OssecQueue.RESTART_AGENTS, "null")
             else:
                 raise WazuhInternalError(1012, msg)

@@ -273,8 +273,8 @@ def validate_ossec_conf():
         api_socket_path = join(common.ossec_path, api_socket_relative_path)
         execq_socket_path = common.EXECQ
         # Message for checking Wazuh configuration
-        execq_msg = 'check-manager-configuration '
-
+        execq_msg = "{\"version\": 1, \"origin\": {\"module\": \"api\"}, \"command\": " \
+                    "\"check-manager-configuration\",\"parameters\": {\"extra_args\": [], \"alert\": {}}} "
         # Remove api_socket if exists
         try:
             remove(api_socket_path)

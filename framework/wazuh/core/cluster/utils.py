@@ -141,7 +141,7 @@ def get_cluster_status() -> typing.Dict:
 def manager_restart():
     """Restart Wazuh manager.
 
-    Send 'restart-wazuh' command to common.EXECQ socket.
+    Send JSON message with the 'restart-wazuh' command to common.EXECQ socket.
 
     Returns
     -------
@@ -153,8 +153,9 @@ def manager_restart():
     try:
         # execq socket path
         socket_path = common.EXECQ
-        # msg for restarting Wazuh manager
-        msg = 'restart-wazuh '
+        # json msg for restarting Wazuh manager
+        msg = "{\"version\": 1, \"origin\": {\"module\": \"api/framework\"}, \"command\": \"restart-wazuh\"," \
+              "\"parameters\": {\"extra_args\": [], \"alert\": {}}}"
         # initialize socket
         if exists(socket_path):
             try:

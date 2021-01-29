@@ -1131,7 +1131,13 @@ def send_restart_command(agent_id):
     :return OSSEC message
     """
     oq = OssecQueue(common.ARQUEUE)
-    ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, agent_id)
+
+    # If the Wazuh agent version is >= 4.2.0, the message sent will have JSON format
+    agent_version = Agent(agent_id).get_basic_information(select=['version'])['version']
+    if WazuhVersion(agent_version) >= WazuhVersion('Wazuh v4.2.0'):
+        ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS_JSON, agent_id)
+    else:
+        ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, agent_id)
     oq.close()
 
     return ret_msg
