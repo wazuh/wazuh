@@ -651,6 +651,12 @@ STATIC void fim_link_update(int pos, char *new_path) {
     }
 
     if (in_configuration == false) {
+#ifdef ENABLE_AUDIT
+        // Remove the audit rule for the previous link only if the path is not configured in other entry.
+        if (syscheck.opts[pos] & WHODATA_ACTIVE) {
+            remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
+        }
+#endif
         fim_link_delete_range(pos);
     }
 
@@ -662,13 +668,6 @@ STATIC void fim_link_update(int pos, char *new_path) {
             return;
         }
     }
-#ifdef ENABLE_AUDIT
-    // Clean audit rule if monitored with whodata
-    if (syscheck.opts[pos] & WHODATA_ACTIVE) {
-        remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
-    }
-#endif
-
     w_mutex_lock(&syscheck.fim_symlink_mutex);
     os_free(syscheck.symbolic_links[pos]);
     os_strdup(new_path, syscheck.symbolic_links[pos]);

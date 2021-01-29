@@ -615,7 +615,9 @@ void test_fim_link_update_already_added(void **state) {
     snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
 
     expect_string(__wrap__mdebug1, formatted_msg, error_msg);
-
+    if (syscheck.opts[pos] & WHODATA_ACTIVE) {
+        expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
+    }
     fim_link_update(pos, link_path);
 
     assert_string_equal(syscheck.dir[pos], link_path);
