@@ -775,7 +775,7 @@ void test_check_max_fps_no_sleep(void **state) {
 #ifndef TEST_WINAGENT
     will_return(__wrap_time, 0);
 #endif
-    check_max_fps(FIM_SCHEDULED, 1);
+    check_max_fps(1);
 }
 
 void test_check_max_fps_sleep(void **state) {
@@ -786,7 +786,7 @@ void test_check_max_fps_sleep(void **state) {
     expect_value(wrap_Sleep, dwMilliseconds, 1000);
 #endif
     expect_string(__wrap__mdebug2, formatted_msg, FIM_REACHED_MAX_FPS);
-    check_max_fps(FIM_SCHEDULED, 1);
+    check_max_fps(1);
 }
 
 int main(void) {
