@@ -587,6 +587,7 @@ int main(int argc, char **argv)
 
     queue_free(client_queue);
     minfo("Exiting...");
+	os_free(home_path);
     return (0);
 }
 

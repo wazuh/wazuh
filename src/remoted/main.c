@@ -47,8 +47,8 @@ int main(int argc, char **argv)
     int test_config = 0, run_foreground = 0;
     int nocmerged = 0;
 
-    const char *cfg = DEFAULTCPATH;
     home_path = w_homedir(argv[0]);
+	const char *cfg = DEFAULTCPATH;
     const char *dir = HOMEDIR;
     const char *user = REMUSER;
     const char *group = GROUPGLOBAL;
@@ -219,5 +219,6 @@ int main(int argc, char **argv)
         }
     }
 
+	os_free(home_path);
     return (0);
 }

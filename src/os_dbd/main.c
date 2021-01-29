@@ -268,6 +268,9 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     OS_DBD(&db_config);
+
+	os_free(home_path);
+	return (0);
 }
 
 void cleanup() {

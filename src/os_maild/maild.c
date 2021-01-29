@@ -215,6 +215,9 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     OS_Run(&mail);
+
+	os_free(home_path);
+	return (0);
 }
 
 /* Read the queue and send the appropriate alerts

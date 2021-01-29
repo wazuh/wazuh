@@ -676,5 +676,6 @@ int main(int argc, char **argv)
     printf("\n** Invalid argument combination.\n");
     helpmsg();
 
+	os_free(home_path);
     return (0);
 }

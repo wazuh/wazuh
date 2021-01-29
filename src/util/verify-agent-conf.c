@@ -139,6 +139,8 @@ int main(int argc, char **argv)
         closedir(gdir);
     }
     printf("\n");
+
+	os_free(home_path);
     return (error);
 }
 

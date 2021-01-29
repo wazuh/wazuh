@@ -68,6 +68,7 @@ int main(int argc, char **argv)
     int c;
     int test_config = 0;
 #ifndef WIN32
+	home_path = w_homedir(argv[0]):
     gid_t gid = 0;
     const char *group = GROUPGLOBAL;
 #endif
@@ -240,6 +241,8 @@ int main(int argc, char **argv)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+
+	os_free(home_path);
 #else
     /* Initialize Windows socket stuff */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {

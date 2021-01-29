@@ -28,7 +28,8 @@ static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static volatile int running = 1;
 rlim_t nofile;
 
-int main(int argc, char ** argv) {
+int main(int argc, char ** argv) 
+{
     int test_config = 0;
     int run_foreground = 0;
     int i;
@@ -223,10 +224,12 @@ int main(int argc, char ** argv) {
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
 
+	os_free(home_path);
     return EXIT_SUCCESS;
 
 failure:
-    free(worker_pool);
+    os_free(worker_pool);
+	os_free(home_path);
     return EXIT_FAILURE;
 }
 

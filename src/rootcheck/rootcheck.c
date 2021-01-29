@@ -54,6 +54,7 @@ int main(int argc, char **argv)
 {
     int test_config = 0;
     const char *cfg = "./rootcheck.conf";
+	home_path = w_homedir(argv[0]);
 
 #else
 
@@ -238,6 +239,7 @@ int rootcheck_init(int test_config)
     run_rk_check();
 
     mtdebug1(ARGV0, "Leaving...");
+	os_free(home_path);
 #endif /* OSSECHIDS */
     return (0);
 }

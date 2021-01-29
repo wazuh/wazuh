@@ -205,5 +205,6 @@ int main(int argc, char **argv)
     /* The real stuff now */
     os_ReportdStart(&r_filter);
 
+	os_free(home_path);
     exit(0);
 }

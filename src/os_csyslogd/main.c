@@ -184,4 +184,7 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     OS_CSyslogD(syslog_config);
+
+	os_free(home_path);
+	return (0);
 }

@@ -164,4 +164,7 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     Agentlessd();
+
+	os_free(home_path);
+	return (0);
 }

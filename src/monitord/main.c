@@ -252,5 +252,7 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     Monitord();
+
+	os_free(home_path);
     exit(0);
 }

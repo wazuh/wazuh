@@ -31,6 +31,7 @@ static void helpmsg()
 
 int main(int argc, char **argv)
 {
+	home_path = w_homedir(argv[0]);
     const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
@@ -104,5 +105,7 @@ int main(int argc, char **argv)
     } else {
         printf("** No agent available.\n");
     }
+
+	os_free(home_path);
     return (0);
 }
