@@ -442,11 +442,8 @@ void Agentlessd()
     int today = 0;
     int test_it = 1;
 
-    char str[OS_SIZE_1024 + 1];
-
     /* Wait a few seconds to settle */
     sleep(2);
-    memset(str, '\0', OS_SIZE_1024 + 1);
 
     /* Get current time before starting */
     tm = time(NULL);
