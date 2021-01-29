@@ -563,6 +563,8 @@ ConfigureServer()
 setInstallDir()
 {
     if [ "X${USER_DIR}" = "X" ]; then
+        # If we don't have a value in USER_DIR, it means that the user
+        # should specify the installation directory.
         while [ 1 ]; do
             echo ""
             $ECHO "2- ${wheretoinstall} [$INSTALLDIR]: "
@@ -578,6 +580,10 @@ setInstallDir()
             fi
         done
     else
+        # This else statement handles the case in which it was determined that the installation
+        # is an upgrade. So, the USER_DIR variable was previously set with the value of PREINSTALLEDDIR.
+        # Another possibility is that USER_DIR could have been set before running the script in
+        # order to run an unattended installation.
         INSTALLDIR=${USER_DIR}
     fi
 }

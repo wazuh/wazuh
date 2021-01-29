@@ -343,10 +343,11 @@ UpdateStartOSSEC()
     elif [ `stat /proc/1/exe 2> /dev/null | grep "init.d" | wc -l` -ne 0 ]; then
         service wazuh-$TYPE start
     else
-        if [ "X$PREINSTALLEDDIR" = "X" ]; then
-            getPreinstalledDir
-        fi
-        $PREINSTALLEDDIR/bin/wazuh-control start
+        # Considering that this function is only used after finishing the installation
+        # the INSTALLDIR variable is always set. It could have either the default value,
+        # or a value equals to the PREINSTALLEDDIR, or a value specified by the user.
+        # The last two possibilities are set in the setInstallDir function.
+        $INSTALLDIR/bin/wazuh-control start
     fi
 }
 
