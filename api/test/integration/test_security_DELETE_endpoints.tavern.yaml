@@ -542,7 +542,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 5004
+                code: 5008
               id:
                 - 99
           total_affected_items: 0
@@ -700,7 +700,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 4008
+                code: 4027
               id:
                 - 1
           total_affected_items: 0
@@ -745,9 +745,14 @@ stages:
             - id: 103
             - id: 104
             - id: 105
+          failed_items:
+            - error:
+                code: 4027
+              id:
+                - 1
+                - 2
           total_affected_items: 5
-          total_failed_items: 0
-          failed_items: []
+          total_failed_items: 2
 
 ---
 test_name: DELETE /security/rules (invalid)

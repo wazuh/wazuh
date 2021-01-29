@@ -1299,7 +1299,7 @@ class RulesManager:
             self.session.rollback()
             return False
 
-    def update_rule(self, rule_id: int, name: str, rule: dict):
+    def update_rule(self, rule_id: int, name: str, rule: dict, resource_type: ResourceType = ResourceType.USER):
         """Update an existent rule in the system.
 
         Parameters
@@ -1311,6 +1311,12 @@ class RulesManager:
         rule : dict
             Dictionary with the rule itself.
 
+        resource_type : ResourceType
+            Type of the resource:
+                'default': A system resource that cannot be modified or removed by a user.
+                'protected': A user-created resource that is protected so it cannot be modified or removed without using
+                 the CLI.
+                'user': A user-created resource that is NOT protected and can be modified or removed by a user.
         Returns
         -------
         True -> Success | Invalid rule | Name already in use | Rule already in use | Rule not exists
@@ -1318,13 +1324,15 @@ class RulesManager:
         try:
             if rule_id > max_id_reserved:
                 rule_to_update = self.session.query(Rules).filter_by(id=rule_id).first()
-                if rule_to_update:
+                if rule_to_update and rule_to_update is not None:
                     if rule is not None and not json_validator(rule):
                         return SecurityError.INVALID
                     if name is not None:
                         rule_to_update.name = name
                     if rule is not None:
                         rule_to_update.rule = json.dumps(rule)
+                    if resource_type is not None:
+                        role.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
                     self.session.commit()
                     return True
                 return SecurityError.RULE_NOT_EXIST
@@ -1569,7 +1577,7 @@ class PoliciesManager:
                         return SecurityError.INVALID
                     if name is not None:
                         policy_to_update.name = name
-                    if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
+                    if policy is not None and 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
                         # Regular expression that prevents the creation of invalid policies
                         regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
                         for action in policy['actions']:

@@ -202,6 +202,7 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
         status = False
 
         if user:
+            resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
             # We allow the API to change the password/run_as of a DEFAULT user resource but not its resource_type value
             if resource_type is None or user['resource_type'] == ResourceType.USER.value \
                     or (resource_type is not None and user['resource_type'] == resource_type):
@@ -261,6 +262,7 @@ def remove_users(user_ids, resource_type: ResourceType = ResourceType.USER) -> A
             status = False
 
             if user:
+                resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
                 if not isinstance(current_user, bool) and user_id == int(current_user['id']) \
                         and user['resource_type'] != ResourceType.DEFAULT.value:
                     result.add_failed_item(id_=user_id, error=WazuhError(5008))
@@ -364,6 +366,7 @@ def remove_roles(role_ids, resource_type: ResourceType = ResourceType.USER) -> A
             status = False
 
             if role and role != SecurityError.ROLE_NOT_EXIST:
+                resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
                 if role['resource_type'] == ResourceType.USER.value \
                         or (resource_type is not None and role['resource_type'] == resource_type):
                     status = rm.delete_role(int(r_id))
@@ -460,9 +463,10 @@ def update_role(role_id=None, name=None, resource_type: ResourceType = None) -> 
         status = False
 
         if role and role != SecurityError.ROLE_NOT_EXIST:
+            resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
             if role['resource_type'] == ResourceType.USER.value \
                     or (resource_type is not None and role['resource_type'] == resource_type):
-                status = rm.update_role(role_id=role_id[0], name=name, resource_type=resource_type)
+                status = rm.update_role(role_id=int(role_id[0]), name=name, resource_type=resource_type)
             else:
                 status = SecurityError.ADMIN_RESOURCES if role['resource_type'] == ResourceType.DEFAULT.value \
                     else SecurityError.PROTECTED_RESOURCES
@@ -559,6 +563,7 @@ def remove_policies(policy_ids=None, resource_type: ResourceType = ResourceType.
             status = False
 
             if policy and policy != SecurityError.POLICY_NOT_EXIST:
+                resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
                 if policy['resource_type'] == ResourceType.USER.value \
                         or (resource_type is not None and policy['resource_type'] == resource_type):
                     status = pm.delete_policy(int(p_id))
@@ -662,9 +667,10 @@ def update_policy(policy_id=None, name=None, policy=None, resource_type: Resourc
         status = False
 
         if pol and pol != SecurityError.POLICY_NOT_EXIST:
+            resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
             if pol['resource_type'] == ResourceType.USER.value \
                     or (resource_type is not None and pol['resource_type'] == resource_type):
-                status = pm.update_policy(policy_id=policy_id[0], name=name, policy=policy, resource_type=resource_type)
+                status = pm.update_policy(policy_id=int(policy_id[0]), name=name, policy=policy, resource_type=resource_type)
             else:
                 status = SecurityError.ADMIN_RESOURCES if pol['resource_type'] == ResourceType.DEFAULT.value \
                     else SecurityError.PROTECTED_RESOURCES
@@ -794,6 +800,7 @@ def remove_rules(rule_ids=None, resource_type: ResourceType = ResourceType.USER)
     result = AffectedItemsWazuhResult(none_msg='No security rule was deleted',
                                       some_msg='Some security rules were not deleted',
                                       all_msg='All specified security rules were deleted')
+    resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
     with RulesManager() as rum:
         for r_id in rule_ids:
             rule = rum.get_rule(int(r_id))
@@ -859,18 +866,20 @@ def update_rule(rule_id=None, name=None, rule=None, resource_type: ResourceType 
     result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
                                       all_msg='Security rule was successfully updated')
     with RulesManager() as rum:
-        rule = rum.get_rule(int(rule_id))
-        status = False
+        rule = rum.get_rule(int(rule_id[0]))
 
         if rule and rule != SecurityError.RULE_NOT_EXIST:
+            resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
             if rule['resource_type'] == ResourceType.USER.value \
                     or (resource_type is not None and rule['resource_type'] == resource_type):
-                status = rum.update_rule(rule_id=rule_id[0], name=name, rule=rule, resource_type=resource_type)
+                status = rum.update_rule(rule_id=int(rule_id[0]), name=name, rule=rule, resource_type=resource_type)
             else:
                 status = SecurityError.ADMIN_RESOURCES if rule['resource_type'] == ResourceType.DEFAULT.value \
                     else SecurityError.PROTECTED_RESOURCES
+        else:
+            status = SecurityError.RULE_NOT_EXIST
 
-        if not status or status == SecurityError.RULE_NOT_EXIST:
+        if status == SecurityError.RULE_NOT_EXIST:
             result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4022))
         elif status == SecurityError.INVALID:
             result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4003))
@@ -881,7 +890,8 @@ def update_rule(rule_id=None, name=None, rule=None, resource_type: ResourceType 
         elif status == SecurityError.ADMIN_RESOURCES:
             result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4027))
         else:
-            result.affected_items.append(rum.get_rule(rule_id[0]))
+            updated = rum.get_rule(rule_id[0])
+            result.affected_items.append(updated)
             result.total_affected_items += 1
             invalid_roles_tokens(roles=updated['roles'])
     return result
@@ -975,7 +985,7 @@ def remove_user_role(user_id, role_ids):
     success = False
     with UserRolesManager() as urm:
         for role_id in role_ids:
-            user_role = urm.remove_role_in_user(user_id=int(user_id[0]), role_id=role_id)
+            user_role = urm.remove_role_in_user(user_id=int(user_id[0]), role_id=int(role_id))
             if user_role == SecurityError.INVALID:
                 result.add_failed_item(id_=int(role_id), error=WazuhError(4016))
             elif user_role == SecurityError.ROLE_NOT_EXIST:
@@ -1060,11 +1070,11 @@ def remove_role_rule(role_id, rule_ids):
         for rule_id in rule_ids:
             role_rule = rrm.remove_rule_in_role(role_id=int(role_id[0]), rule_id=int(rule_id))
             if role_rule == SecurityError.INVALID:
-                result.add_failed_item(id_=rule_id, error=WazuhError(4024))
+                result.add_failed_item(id_=int(rule_id), error=WazuhError(4024))
             elif role_rule == SecurityError.ROLE_NOT_EXIST:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
             elif role_rule == SecurityError.RULE_NOT_EXIST:
-                result.add_failed_item(id_=rule_id, error=WazuhError(4022))
+                result.add_failed_item(id_=int(rule_id), error=WazuhError(4022))
             elif role_rule == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
             else:
@@ -1108,11 +1118,11 @@ def set_role_policy(role_id, policy_ids, position=None):
             policy_id = int(policy_id)
             role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id, position=position)
             if role_policy == SecurityError.ALREADY_EXIST:
-                result.add_failed_item(id_=policy_id, error=WazuhError(4011))
+                result.add_failed_item(id_=int(policy_id), error=WazuhError(4011))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
+                result.add_failed_item(id_=int(policy_id), error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
             else:
@@ -1148,11 +1158,11 @@ def remove_role_policy(role_id, policy_ids):
             policy_id = int(policy_id)
             role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.INVALID:
-                result.add_failed_item(id_=policy_id, error=WazuhError(4010))
+                result.add_failed_item(id_=int(policy_id), error=WazuhError(4010))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
+                result.add_failed_item(id_=int(policy_id), error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
             else:
