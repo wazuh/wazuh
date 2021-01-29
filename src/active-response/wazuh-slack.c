@@ -98,14 +98,14 @@ int main (int argc, char **argv) {
         output_str = cJSON_PrintUnformatted(output_json);
 
         memset(system_command, '\0', LOGSIZE);
-        snprintf(system_command, LOGSIZE -1, "curl -H \"Accept: application/json\"  -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
+        snprintf(system_command, LOGSIZE -1, "curl -H \"Accept: application/json\" -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
         if (system(system_command) != 0) {
             write_debug_file(argv[0], "Unable to run curl");
 
             // Try with wget
             char *new_output_str = wstr_replace(output_str, "\"", "'");
             memset(system_command, '\0', LOGSIZE);
-            snprintf(system_command, LOGSIZE -1, "wget --keep-session-cookies --post-data=\"%s\"  %s", new_output_str, site_url);
+            snprintf(system_command, LOGSIZE -1, "wget --keep-session-cookies --post-data=\"%s\" %s", new_output_str, site_url);
             if (system(system_command) != 0) {
                 write_debug_file(argv[0], "Unable to run wget");
             }

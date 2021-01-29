@@ -22,9 +22,8 @@
  * @param[in] ar Active Response information.
  * @param[in] extra_args Extra arguments escaped.
  * @param[out] temp_msg Message in JSON format.
- * @return int, 0 on success or 1 on failure.
  */
-int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg)
+void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg)
 {
     cJSON *_object = NULL;
     cJSON *_array = NULL;
@@ -34,10 +33,6 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     char *msg = NULL;
 
     cJSON *message = cJSON_CreateObject();
-    if (message == NULL) {
-        merror("Failed to create active response JSON");
-        return OS_INVALID;
-    }
 
     cJSON_AddNumberToObject(message, "version", VERSION);
 
@@ -73,11 +68,7 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     alert_string = Eventinfo_to_jsonstr(lf, false);
     json_alert = cJSON_Parse(alert_string);
     os_free(alert_string);
-    if (json_alert == NULL) {
-        merror("Cannot parse alert JSON");
-        cJSON_Delete(message);
-        return OS_INVALID;
-    }
+
     cJSON_AddItemToObject(_object, "alert", json_alert);
 
     msg = cJSON_PrintUnformatted(message);
@@ -86,8 +77,6 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
 
     // Clean up Memory
     cJSON_Delete(message);
-
-    return OS_SUCCESS;
 }
 
 /**

@@ -22,7 +22,7 @@ void getActiveResponseInString(const Eventinfo *lf,
                                 char *filename,
                                 char *extra_args,
                                 char *temp_msg);
-void get_exec_msg(const Eventinfo *lf, const active_response *ar, char *agent_id, const char *temp_msg, char *exec_msg);
+void get_exec_msg(const active_response *ar, char *agent_id, const char *temp_msg, char *exec_msg);
 
 
 #endif /* EXEC_H */
