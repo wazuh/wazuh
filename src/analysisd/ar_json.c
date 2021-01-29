@@ -57,17 +57,15 @@ int getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char
     _array = cJSON_CreateArray();
     cJSON_AddItemToObject(_object, "extra_args", _array);
 
-    // extra_args will be split by " " and "\"
+    // extra_args will be split by " "
     if (extra_args) {
         char str[OS_SIZE_1024];
-        char * pch;
+        char *pch;
         strcpy(str, extra_args);
-        pch = strtok (str," ");
+        pch = strtok(str, " ");
         while (pch != NULL) {
-            if(pch[0] != '\\') {
-                cJSON_AddItemToArray(_array, cJSON_CreateString(pch));
-            }
-            pch = strtok (NULL, " ");
+            cJSON_AddItemToArray(_array, cJSON_CreateString(pch));
+            pch = strtok(NULL, " ");
         }
     }
 

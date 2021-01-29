@@ -68,7 +68,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
         if (!(Config.ar & LOCAL_AR)) {
             goto cleanup;
         }
-        if(getActiveResponseInJSON(lf, ar, extra_args, exec_msg)) {
+        if(getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, exec_msg)) {
             goto cleanup;
         }
         if (OS_SendUnix(execq, exec_msg, 0) < 0) {
@@ -145,7 +145,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                     if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
                         getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                     } else {
-                        if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                        if(getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg)) {
                             labels_free(agt_labels);
                             cJSON_Delete(json_agt_info);
                             continue;
@@ -228,7 +228,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
                     getActiveResponseInString(lf, ar, ip, user, filename, extra_args, msg);
                 } else {
-                    if(getActiveResponseInJSON(lf, ar, extra_args, msg)) {
+                    if(getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, msg)) {
                         labels_free(agt_labels);
                         cJSON_Delete(json_agt_info);
                         goto cleanup;

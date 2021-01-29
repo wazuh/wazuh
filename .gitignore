@@ -78,6 +78,7 @@ src/ip-customblock
 src/restart-wazuh
 src/route-null
 src/kaspersky
+src/wazuh-slack
 
 # Windows agent
 src/win32/*.exe

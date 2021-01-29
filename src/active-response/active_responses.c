@@ -160,6 +160,23 @@ char* get_extra_args_from_json (cJSON *input) {
     return extra_args;
 }
 
+cJSON* get_alert_from_json (cJSON *input) {
+    cJSON *parameters_json = NULL;
+    cJSON *alert_json = NULL;
+
+    // Detect parameters
+    if (parameters_json = cJSON_GetObjectItem(input, "parameters"), !parameters_json || (parameters_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    // Detect alert
+    if (alert_json = cJSON_GetObjectItem(parameters_json, "alert"), !alert_json || (alert_json->type != cJSON_Object)) {
+        return NULL;
+    }
+
+    return alert_json;
+}
+
 char* get_srcip_from_json (cJSON *input) {
     cJSON *parameters_json = NULL;
     cJSON *alert_json = NULL;

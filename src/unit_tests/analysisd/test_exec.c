@@ -756,8 +756,8 @@ void test_getActiveResponseInJSON_extra_args(void **state){
     char msg[OS_SIZE_8192 + 1];
     char *c_device = NULL;
     const char *alert_info = "[{\"test\":\"test\"}]";
-    char *extra_args = "-arg1 --arg2 arg3 \\; cat /etc/passwd";
-    char *result = "[\"-arg1\",\"--arg2\",\"arg3\",\"cat\",\"/etc/passwd\"]";
+    char *extra_args = "-arg1 --arg2 arg3 ; cat /etc/passwd";
+    char *result = "[\"-arg1\",\"--arg2\",\"arg3\",\";\",\"cat\",\"/etc/passwd\"]";
     char *node = NULL;
 
     os_strdup("node01", node);
