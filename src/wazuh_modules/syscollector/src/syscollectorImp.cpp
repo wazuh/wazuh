@@ -1157,7 +1157,7 @@ nlohmann::json Syscollector::getHardwareData()
 
 void Syscollector::insertHardware()
 {
-    if (m_os)
+    if (m_hardware)
     {
         const auto& osData{getHardwareData()};
         nlohmann::json toInsert;
