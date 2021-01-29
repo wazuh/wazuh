@@ -332,9 +332,12 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary_status(mock_socke
 
     query_group.select = {'os.name', 'count', 'status', 'lastKeepAlive', 'version'}
     query_group._data = [
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'disconnected', 'lastKeepAlive': 1593093968},
-        {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'disconnected', 'lastKeepAlive': 1593093968},
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'disconnected', 'lastKeepAlive': 1593093976}]
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'disconnected',
+         'lastKeepAlive': 1593093968},
+        {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'disconnected',
+         'lastKeepAlive': 1593093968},
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'disconnected',
+         'lastKeepAlive': 1593093976}]
 
     result = query_group._format_data_into_dictionary()
     assert result == {'items': [{'os': {'name': 'Ubuntu'}, 'status': 'disconnected', 'count': 4}], 'totalItems': 0}
@@ -690,7 +693,8 @@ def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd
 
         # make sure the mock is called with a string according to a non-backup path
         exists_mock.assert_any_call('{0}/queue/agent-info/agent-1-any'.format(test_data_path))
-        safe_move_mock.assert_called_with(common.client_keys + '.tmp', common.client_keys, permissions=stat_mock().st_mode)
+        safe_move_mock.assert_called_with(common.client_keys + '.tmp', common.client_keys,
+                                          permissions=stat_mock().st_mode)
         if backup:
             if exists_backup_dir:
                 backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any-002')
@@ -1392,6 +1396,7 @@ def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
             with pytest.raises(WazuhError, match='.* 1745 .*'):
                 Agent.unset_single_group_agent('002', 'default')
 
+
 @patch('wazuh.core.configuration.OssecSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -1461,11 +1466,26 @@ def test_calculate_status(last_keep_alive, pending, expected_status):
     assert result == expected_status, 'Result message is not as expected.'
 
 
+@pytest.mark.parametrize('agents_list, versions_list', [
+    (['001', '002', '003', '004'], [{'version': ver} for ver in ['v4.2.0', 'v4.0.0', 'v4.2.1', 'v3.13.2']])
+])
 @patch('wazuh.core.agent.OssecQueue')
-def test_send_restart_command(mock_ossec_queue):
-    """Test that restart_command calls send_msg_to_agent with correct params"""
-    send_restart_command('001')
-    mock_ossec_queue.return_value.send_msg_to_agent.assert_called_once_with(ANY, '001')
+def test_send_restart_command(mock_ossec_queue, agents_list, versions_list):
+    """Test that restart_command calls send_msg_to_agent with correct params
+
+    Parameters
+    ----------
+    agents_list : List[str]
+        List of agents' ids to test the send restart command with
+    versions_list : List[dict]
+        List of agents' versions to test whether the message sent was the correct one or not
+    """
+    with patch('wazuh.core.agent.Agent.get_basic_information', side_effect=versions_list):
+        for idx, agent_id in enumerate(agents_list):
+            send_restart_command(agent_id)
+            expected_msg = mock_ossec_queue.RESTART_AGENTS_JSON if WazuhVersion(
+                versions_list[idx]['version']) >= WazuhVersion('Wazuh v4.2.0') else mock_ossec_queue.RESTART_AGENTS
+            mock_ossec_queue.return_value.send_msg_to_agent.assert_called_with(expected_msg, agent_id)
 
 
 def test_get_agents_info():
@@ -1533,6 +1553,7 @@ def test_expand_group(group, expected_agents):
             pytest.fail(f'Exception raised: {e}')
         finally:
             rmtree(agent_groups)
+
 
 @pytest.mark.parametrize('agent_id, expected_exception', [
     ('001', 1746),

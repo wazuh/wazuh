@@ -13,7 +13,6 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.exception import WazuhError
         from wazuh.core import active_response
 
-
 # Variables
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -26,6 +25,14 @@ def agent_info(expected_exception):
         return {'status': 'random'}
     else:
         return {'status': 'active'}
+
+
+def agent_info_exception_and_version(expected_exception, version):
+    """Returns dict to cause or not a exception code 1651 on active_response.send_command()."""
+    if expected_exception == 1651:
+        return {'status': 'random', 'version': version} if version else {'status': 'random'}
+    else:
+        return {'status': 'active', 'version': version} if version else {'status': 'active'}
 
 
 def agent_config(expected_exception):
@@ -42,13 +49,13 @@ def agent_config(expected_exception):
     (1650, None, [], False),
     (1652, 'random', [], False),
     (1652, 'invalid_cmd', [], False),
-    (None, 'restart-ossec0', [], False),
-    (None, 'restart-ossec0', [], True),
-    (None, 'restart-ossec0', ["arg1", "arg2"], False)
+    (None, 'restart-wazuh0', [], False),
+    (None, 'restart-wazuh0', [], True),
+    (None, 'restart-wazuh0', ["arg1", "arg2"], False)
 ])
 @patch('wazuh.core.common.ossec_path', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):
-    """Checks message returned is correct
+    """Check if the message returned is correct
 
     Checks if message returned by create_message(...) contains the command, arguments and '!' symbol
     when it is needed.
@@ -74,6 +81,44 @@ def test_create_message(expected_exception, command, arguments, custom):
             assert (arg in ret for arg in arguments), f'Arguments not being added'
         if custom:
             assert '!' in ret, f'! symbol not being added when custom command'
+
+
+@pytest.mark.parametrize('expected_exception, command, arguments, alert', [
+    (1650, None, [], None),
+    (None, 'restart-wazuh0', [], None),
+    (None, 'restart-wazuh0', [], None),
+    (None, 'restart-wazuh0', ["arg1", "arg2"], None),
+    (None, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
+])
+@patch('wazuh.core.common.ossec_path', new=test_data_path)
+def test_create_json_message(expected_exception, command, arguments, alert):
+    """Check if the json message returned is correct
+
+    Checks if json message returned by create_json_message(...) contains the
+    appropriate json ar message structure
+
+    Parameters
+    ----------
+    expected_exception : str
+        Exception code expected when calling create_message.
+    command : str
+        Command to be introduced in the message.
+    arguments : list
+        Arguments for the command/script.
+    alert : dict
+        Alert data for the AR message.
+    """
+    if expected_exception:
+        with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
+            active_response.create_json_message(command=command, arguments=arguments, alert=alert)
+    else:
+        ret = active_response.create_json_message(command=command, arguments=arguments, alert=alert)
+        assert ret["version"] == 1, f'Wrong message version'
+        assert command in ret["command"], f'Command not being returned'
+        if arguments:
+            assert (arg in ret["parameters"]["extra_args"] for arg in arguments), f'Arguments not being added'
+        if alert:
+            assert alert == ret["parameters"]["alert"], f'Alert information not being added'
 
 
 @patch('wazuh.core.common.ossec_path', new=test_data_path)

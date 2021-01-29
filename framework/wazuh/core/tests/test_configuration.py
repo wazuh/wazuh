@@ -221,7 +221,9 @@ def test_get_file_conf():
         rootkit_trojans = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'description': 'TESTING'}]
         assert configuration.get_file_conf(filename='rootkit_trojans.txt', group_id='default',
                                            return_format='xml') == rootkit_trojans
-        ar_list = ['restart-ossec0 - restart-ossec.sh - 0', 'restart-ossec0 - restart-ossec.cmd - 0', '']
+        ar_list = ['restart-ossec0 - restart-ossec.sh - 0', 'restart-ossec0 - restart-ossec.cmd - 0',
+                   'restart-wazuh0 - restart-ossec.sh - 0', 'restart-wazuh0 - restart-ossec.cmd - 0',
+                   'restart-wazuh0 - restart-wazuh - 0', 'restart-wazuh0 - restart-wazuh.exe - 0']
         assert configuration.get_file_conf(filename='ar.conf', group_id='default', return_format='xml') == ar_list
         rcl = {'vars': {}, 'controls': [{}, {'name': 'NEW_ELEMENT', 'cis': [], 'pci': [], 'condition': 'FOR',
                                              'reference': 'TESTING', 'checks': []}]}
@@ -275,7 +277,8 @@ def test_upload_group_configuration():
                     with patch('wazuh.core.utils.chmod', side_effect=None):
                         with patch('wazuh.core.configuration.safe_move'):
                             assert isinstance(configuration.upload_group_configuration('default',
-                                              "<agent_config>new_config</agent_config>"), str)
+                                                                                       "<agent_config>new_config</agent_config>"),
+                                              str)
                         with patch('wazuh.core.configuration.safe_move', side_effect=Exception):
                             with pytest.raises(WazuhInternalError, match=".* 1016 .*"):
                                 configuration.upload_group_configuration('default',
@@ -310,7 +313,7 @@ def test_upload_group_file(mock_safe_move, mock_open):
                 with patch('wazuh.core.utils.chmod', side_effect=None):
                     assert configuration.upload_group_file('default',
                                                            "<agent_config>new_config</agent_config>", 'agent.conf') == \
-                                                           'Agent configuration was successfully updated'
+                           'Agent configuration was successfully updated'
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1111 .*"):
