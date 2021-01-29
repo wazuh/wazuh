@@ -2434,34 +2434,56 @@ char* check_ascci_hex (char *input) {
 
 static char **get_paths_from_env_variable (char *environment_variable) {
 
+    char *expandedpath = NULL;
     char **paths = NULL;
+    os_calloc(2, sizeof(char *), paths);
 
 #ifdef WIN32
-    char expandedpath[PATH_MAX + 1];
-
-    if (!ExpandEnvironmentStrings(environment_variable, expandedpath, PATH_MAX + 1)) {
-        merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+    DWORD env_var_size = ExpandEnvironmentStrings(environment_variable, NULL, 0);
+    if (env_var_size <= 0) {
+        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable, GetLastError());
+        os_strdup(environment_variable, paths[0]);
+        return paths;
     }
-    /* The env. variable may have multiples paths split by ; */
-    paths = OS_StrBreak(';', expandedpath, MAX_DIR_SIZE);
+    os_calloc(env_var_size, sizeof(char), expandedpath);
+    if(!ExpandEnvironmentStrings(environment_variable, expandedpath, env_var_size)){
+        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable, GetLastError());
+        os_strdup(environment_variable, paths[0]);
+        return paths;
+    }
+    str_lowercase(expandedpath);
 #else
-    char *expandedpath = NULL;
-
-    if (environment_variable[0] == '$') {
+    if(environment_variable[0] == '$') {
         environment_variable++;
     }
-
-    if (expandedpath = getenv(environment_variable), expandedpath) {
-        /* The env. variable may have multiples paths split by : */
-        paths = OS_StrBreak(':', expandedpath, MAX_DIR_SIZE);
+    expandedpath = getenv(environment_variable);
+    if (!expandedpath) {
+        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable);
+        os_strdup(environment_variable, paths[0]);
+        return paths;
     }
-
 #endif
 
-    if (paths == NULL) {
-        os_calloc(2, sizeof(char *), paths);
+    /* The env. variable may have multiples paths split by ; */
+    char *token;
+    char *state;
+    int i = 0;
+
+#ifdef WIN32
+    char delim[2] = ";";
+#else
+    char delim[2] = ":";
+#endif
+
+    for(token = strtok_r(expandedpath, delim, &state); token; token = strtok_r(NULL, delim, &state)){
+        token = w_strtrim(token);
+        os_realloc(paths, (i + 2) * sizeof(char *), paths);
+        os_strdup(token, paths[i]);
+        paths[i + 1] = NULL;
+        i++;
+    }
+    if (paths[0] == NULL) {
         os_strdup(environment_variable, paths[0]);
-        paths[1] = NULL;
     }
 
     return paths;
