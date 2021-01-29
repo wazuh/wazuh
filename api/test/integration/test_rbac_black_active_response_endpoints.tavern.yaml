@@ -15,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: '001'
@@ -33,14 +33,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: '002'
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - '002'
@@ -58,14 +58,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: 002,004,005,007,010,011
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - '002'
@@ -94,14 +94,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: '009'
     response:
       <<: *permission_denied
 
-  - name: Try to send a message to an unexisting agent (Allow)
+  - name: Try to send a message to unexisting agents (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/active-response"
@@ -110,14 +110,14 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: 251,252
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -144,12 +144,12 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items: !anything
           failed_items:
@@ -157,6 +157,9 @@ stages:
                 code: 1651
               id:
                 - '010'
+            - error:
+                code: 1657
+              id:
                 - '012'
           total_affected_items: 5
           total_failed_items: 2
