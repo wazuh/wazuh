@@ -8,8 +8,7 @@ file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
 
 add_executable(sysInfoPackagesLinuxHelper_unit_test 
-    ${sysinfo_UNIT_TEST_SRC}
-    ${SYSINFO_SRC})
+    ${sysinfo_UNIT_TEST_SRC})
 
 target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
     debug gtestd
