@@ -175,6 +175,6 @@ int main(int argc, char **argv)
     /* the real daemon now */
     OS_IntegratorD(integrator_config);
 
-	os_free(home_path);
+    os_free(home_path);
     exit(0);
 }

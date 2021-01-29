@@ -809,7 +809,7 @@ int main(int argc, char **argv)
     /* Going to main loop */
     OS_ReadMSG(m_queue);
 
-	os_free(home_path);
+    os_free(home_path);
     exit(0);
 }
 

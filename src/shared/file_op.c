@@ -3383,8 +3383,8 @@ char *w_homedir(char *arg) {
     else if (arg != NULL) {
         if (realpath(arg, buff) == NULL) {
             mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
-            os_free(buff);
-            return NULL;
+            strncpy(buff, FALLBACKDIR, w_strlen(FALLBACKDIR) + 1);
+            return buff;
         }
 
         dirname(buff);

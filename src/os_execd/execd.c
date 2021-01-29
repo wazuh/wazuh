@@ -83,7 +83,7 @@ int main(int argc, char **argv)
     int debug_level = 0;
     pthread_t wcom_thread;
 
-	home_path = w_homedir(argv[0]);
+    home_path = w_homedir(argv[0]);
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
 
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
     /* The real daemon Now */
     ExecdStart(m_queue);
 
-	os_free(home_path);
+    os_free(home_path);
     exit(0);
 }
 

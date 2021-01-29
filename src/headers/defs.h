@@ -124,7 +124,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #else
 #define HOMEDIR ({ \
     struct stat wazuh_homedir_test; \
-    char * wazuh_homedir = (home_path == NULL)? w_homedir(NULL) : home_path; \
+    char * wazuh_homedir = home_path; \
     if (wazuh_homedir != NULL) { \
         if (stat(wazuh_homedir, &wazuh_homedir_test) < 0 || !S_ISDIR(wazuh_homedir_test.st_mode)) wazuh_homedir = FALLBACKDIR; \
     } else { \

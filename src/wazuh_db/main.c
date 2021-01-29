@@ -224,12 +224,12 @@ int main(int argc, char ** argv)
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
 
-	os_free(home_path);
+    os_free(home_path);
     return EXIT_SUCCESS;
 
 failure:
     os_free(worker_pool);
-	os_free(home_path);
+    os_free(home_path);
     return EXIT_FAILURE;
 }
 

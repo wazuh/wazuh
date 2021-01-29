@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     int c;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-	home_path = w_homedir(argv[0]);
+    home_path = w_homedir(argv[0]);
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
     const char *group = GROUPGLOBAL;
@@ -186,6 +186,6 @@ int main(int argc, char **argv)
     /* Main loop */
     LogCollectorStart();
 
-	os_free(home_path);
-	exit (0);
+    os_free(home_path);
+    return (0);
 }

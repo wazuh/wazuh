@@ -219,6 +219,6 @@ int main(int argc, char **argv)
         }
     }
 
-	os_free(home_path);
+    os_free(home_path);
     return (0);
 }

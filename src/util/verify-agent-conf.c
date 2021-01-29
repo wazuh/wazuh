@@ -140,7 +140,7 @@ int main(int argc, char **argv)
     }
     printf("\n");
 
-	os_free(home_path);
+    os_free(home_path);
     return (error);
 }
 
