@@ -91,12 +91,12 @@ def get_wazuh_version() -> str:
 
 @lru_cache(maxsize=None)
 def get_wazuh_revision() -> str:
-    return get_wazuh_info("TEST_REVISION")
+    return get_wazuh_info("WAZUH_REVISION")
 
 
 @lru_cache(maxsize=None)
 def get_wazuh_type() -> str:
-    return get_wazuh_info("TEST_TYPE")
+    return get_wazuh_info("WAZUH_TYPE")
 
 
 ossec_path = find_wazuh_path()
