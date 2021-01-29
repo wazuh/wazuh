@@ -9,8 +9,6 @@
 
 #include "active_responses.h"
 
-#define JSON_FILE "/active-response/bin/send_info.json"
-
 /**
  * Get json with the data to share on slack from an alert. Example:
  * {
