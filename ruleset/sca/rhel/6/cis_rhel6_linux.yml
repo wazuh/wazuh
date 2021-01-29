@@ -628,7 +628,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:dmesg -> r:NX \(Execute Disable\) protection: active'
+      - 'c:sh -c "dmesg | grep NX" -> r:NX \(Execute Disable\) protection: active'
 
 # 1.5.3 Enable Randomized Virtual Memory Region Placement (Scored)
   - id: 4035

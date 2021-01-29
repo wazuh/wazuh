@@ -499,7 +499,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:dmesg -> r:NX \(Execute Disable\) protection: active'
+      - 'c:sh -c "dmesg | grep NX" -> r:NX \(Execute Disable\) protection: active'
 
   - id: 1530
     title: "Ensure address space layout randomization (ASLR) is enabled"

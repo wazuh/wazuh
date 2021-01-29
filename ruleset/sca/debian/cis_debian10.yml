@@ -583,7 +583,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:journalctl -> r:NX \(Execute Disable\) protection: active'
+      - 'c:sh -c "journalctl | grep \"protection: active\"" -> r:NX \(Execute Disable\) protection: active'
 
   - id: 2534
     title: "Ensure address space layout randomization (ASLR) is enabled"
