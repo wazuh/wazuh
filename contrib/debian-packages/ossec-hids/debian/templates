@@ -11,7 +11,7 @@ Description: This is the email address where alerts will be sent to.
 
 Template: ossec-hids/email_from
 Type: string
-Default: ossecm@localhost
+Default: wazuh@localhost
 Description: This is the from email address used to send alerts.
 
 Template: ossec-hids/smtp_server

@@ -9,11 +9,11 @@ Index: ossec-hids-2.8.2/etc/ossec-server.conf
 -    <email_notification>yes</email_notification>
 -    <email_to>recipient@example.com</email_to>
 -    <smtp_server>smtp.example.com.</smtp_server>
--    <email_from>ossecm@ossec.example.com.</email_from>
+-    <email_from>wazuh@ossec.example.com.</email_from>
 +    <email_notification>no</email_notification>
 +    <email_to>your_email_address@example.com</email_to>
 +    <smtp_server>smtp.your_domain.com.</smtp_server>
-+    <email_from>ossecm@ossec.your_domain.com.</email_from>
++    <email_from>wazuh@ossec.your_domain.com.</email_from>
    </global>
 
    <rules>
