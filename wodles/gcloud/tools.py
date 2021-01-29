@@ -11,10 +11,10 @@
 import argparse
 import logging
 import os
-import subprocess
-import re
 import sys
 from logging.handlers import TimedRotatingFileHandler
+
+from wazuh.core import common
 
 logger_name = 'gcloud_wodle'
 logger = logging.getLogger(logger_name)
@@ -93,36 +93,6 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
 
     return logger_file
 
-def call_wazuh_control(option) -> str:
-    wazuh_control = os.path.join(get_wazuh_path(), "bin", "wazuh-control")    
-    try:
-        proc = subprocess.Popen([wazuh_control, option], stdout=subprocess.PIPE)
-        (stdout, stderr) = proc.communicate() 
-        return stdout.decode()
-    except:            
-        return None 
-
-def get_wazuh_path() -> str:
-    """Get Wazuh installation path, obtained relative to the path of this file"""
-    return os.path.abspath(os.path.join(__file__, "../../.."))
-
 def get_wazuh_queue() -> str:
     """Get Wazuh queue"""
-    return os.path.join(get_wazuh_path(), 'queue', 'ossec', 'queue')
-
-def get_wazuh_info(field) -> str:    
-    wazuh_info = call_wazuh_control("info")     
-    if not wazuh_info:
-        return "ERROR"
-    
-    env_variables = wazuh_info.rsplit("\n")
-    env_variables.remove("")
-    wazuh_env_vars = dict()
-    for env_variable in env_variables:
-        key, value = env_variable.split("=")
-        wazuh_env_vars[key] = value.replace("\"", "")
-    
-    return wazuh_env_vars[field]
-
-def get_wazuh_version() -> str:
-    return get_wazuh_info("WAZUH_VERSION")
+    return os.path.join(common.find_wazuh_path(), 'queue', 'ossec', 'queue')

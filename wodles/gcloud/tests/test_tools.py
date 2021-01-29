@@ -13,16 +13,14 @@ import sys
 from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
-from tools import get_wazuh_version
+from tools import get_wazuh_queue
 
-wazuh_control_info = 'WAZUH_VERSION="TEST_VERSION"\n\
-                      WAZUH_REVISION="TEST_REVISION"\n\
-                      WAZUH_TYPE="TEST_TYPE"\n'
+wazuh_installation_path = '/var/ossec'
 
-def test_get_wazuh_version():
-    """Test get_wazuh_version function."""
-        
-    with patch(f'tools.call_wazuh_control', return_value=wazuh_control_info):
-        wazuh_version = get_wazuh_version()
+def test_get_wazuh_queue():
+    """Test get_wazuh_queue function."""
 
-    assert "TEST_VERSION" == wazuh_version
+    with patch(f'tools.common.find_wazuh_path', return_value=wazuh_installation_path):
+        wazuh_queue = get_wazuh_queue()
+
+    assert "/var/ossec/queue/ossec/queue" == wazuh_queue
