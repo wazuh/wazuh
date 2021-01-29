@@ -257,7 +257,6 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
 static const char* get_ip(const Eventinfo *lf)
 {
     const char *ip;
-    ip = "-";
 
     if (strncmp(lf->srcip, "::ffff:", 7) == 0) {
         ip = lf->srcip + 7;

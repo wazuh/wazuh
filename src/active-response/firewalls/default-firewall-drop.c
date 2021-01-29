@@ -212,15 +212,17 @@ int main (int argc, char **argv) {
         wfd_t *wfd = NULL;
         if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDIN), !wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
+        } else {
+            fprintf(wfd->file, "%s\n", arg1);
+            wpclose(wfd);
         }
-        fprintf(wfd->file, "%s\n", arg1);
-        wpclose(wfd);
 
         if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDIN), !wfd) {
             write_debug_file(argv[0], "Unable to run ipf");
+        } else {
+            fprintf(wfd->file, "%s\n", arg2);
+            wpclose(wfd);
         }
-        fprintf(wfd->file, "%s\n", arg2);
-        wpclose(wfd);
 
     } else if (!strcmp("AIX", uname_buffer.sysname)) {
         char genfilt_path[20] = "/usr/sbin/genfilt";
