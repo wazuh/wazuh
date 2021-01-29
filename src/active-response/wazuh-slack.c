@@ -9,6 +9,8 @@
 
 #include "active_responses.h"
 
+#define JSON_FILE "/active-response/bin/send_info.json"
+
 /**
  * Get json with the data to share on slack from an alert. Example:
  * {
@@ -38,16 +40,11 @@ static cJSON *format_output(cJSON *alert);
 
 int main (int argc, char **argv) {
     (void)argc;
-    CURL *curl;
-    CURLcode res;
-    struct curl_slist *headers = NULL;
-    char errbuf[CURL_ERROR_SIZE];
     char input[BUFFERSIZE];
     char *site_url;
     char *action;
     cJSON *alert_json = NULL;
     cJSON *input_json = NULL;
-    cJSON *output_json = NULL;
 
     write_debug_file(argv[0], "Starting");
 
@@ -95,43 +92,29 @@ int main (int argc, char **argv) {
     }
 
     if (strcmp("add", action) == 0) {
-        curl = curl_easy_init();
-
-        headers = curl_slist_append(headers, "Accept: application/json");
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-        headers = curl_slist_append(headers, "charset: utf-8");
-        curl_easy_setopt(curl, CURLOPT_URL, site_url);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        char *output_str;
+        cJSON *output_json = NULL;
+        char system_command[LOGSIZE];
 
         output_json = format_output(alert_json);
+        output_str = cJSON_PrintUnformatted(output_json);
 
-        char *output_str = cJSON_PrintUnformatted(output_json);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, output_str);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(output_str));
+        memset(system_command, '\0', LOGSIZE);
+        snprintf(system_command, LOGSIZE -1, "curl -H \"Accept: application/json\"  -H \"Content-Type: application/json\" -d '%s' %s", output_str, site_url);
+        if (system(system_command) != 0) {
+            write_debug_file(argv[0], "Unable to run curl");
 
-        // Enable SSL check if url is HTTPS
-        if (!strncmp(site_url, "https", 5)) {
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+            // Try with wget
+            char *new_output_str = wstr_replace(output_str, "\"", "'");
+            memset(system_command, '\0', LOGSIZE);
+            snprintf(system_command, LOGSIZE -1, "wget --keep-session-cookies --post-data=\"%s\"  %s", new_output_str, site_url);
+            if (system(system_command) != 0) {
+                write_debug_file(argv[0], "Unable to run wget");
+            }
+            os_free(new_output_str);
         }
-
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
-
-        res = curl_easy_perform(curl);
-        switch (res) {
-            case CURLE_OK:
-                write_debug_file(argv[0], "curl ok");
-                break;
-            default:
-                write_debug_file(argv[0], errbuf);
-                break;
-        }
-
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-        cJSON_Delete(output_json);
         os_free(output_str);
+        cJSON_Delete(output_json);
     }
 
     cJSON_Delete(input_json);
