@@ -979,9 +979,9 @@ char * w_strndup(const char * str, size_t n) {
         str_len = n;
     }
 
-    os_calloc(str_len + 1, sizeof(char), str_cpy);
+    os_malloc(str_len + 1, str_cpy);
     if (str_len > 0) {
-        strncpy(str_cpy, str, str_len);
+        memcpy(str_cpy, str, str_len);
     }
 
     str_cpy[str_len] = '\0';
