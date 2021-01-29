@@ -8109,7 +8109,7 @@ paths:
                         logall_json: no
                         email_notification: no
                         smtp_server: smtp.example.wazuh.com
-                        email_from: ossecm@example.wazuh.com
+                        email_from: wazuh@example.wazuh.com
                         email_to: recipient@example.wazuh.com
                         email_maxperhour: 12
                         email_log_source: alerts.log
@@ -9537,7 +9537,7 @@ paths:
                         logall_json: no
                         email_notification: no
                         smtp_server: smtp.example.wazuh.com
-                        email_from: ossecm@example.wazuh.com
+                        email_from: wazuh@example.wazuh.com
                         email_to: recipient@example.wazuh.com
                         email_maxperhour: 12
                         email_log_source: alerts.log
