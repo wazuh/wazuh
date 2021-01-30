@@ -1178,7 +1178,7 @@ void Syscollector::scanHardware()
 
 void Syscollector::syncHardware()
 {
-    if (m_os)
+    if (m_hardware)
     {
         m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HW_START_CONFIG_STATEMENT), m_reportSyncFunction);
     }
