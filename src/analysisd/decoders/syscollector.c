@@ -170,15 +170,15 @@ static const char* NETWORK_ADDRESS_FIELDS[] = {
 
 static const char* HARDWARE_FIELDS[] = {
     "scan_time",
-    "board_serial", 
-    "cpu_name", 
-    "cpu_cores", 
-    "cpu_MHz", 
-    "ram_total", 
-    "ram_free", 
-    "ram_usage", 
+    "board_serial",
+    "cpu_name",
+    "cpu_cores",
+    "cpu_mhz",
+    "ram_total",
+    "ram_free",
+    "ram_usage",
     "checksum",
-    NULL 
+    NULL
 };
 
 static const char* OS_FIELDS[] = {
