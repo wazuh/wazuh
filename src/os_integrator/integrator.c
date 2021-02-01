@@ -125,13 +125,15 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         /* Get JSON message if available (timeout of 5 seconds) */
         mdebug2("jqueue_next()");
         al_json = jqueue_next(&jfileq);
-        if(!al_json)
+        if(!al_json) {
+            sleep(1);
             continue;
+        }
 
         mdebug1("sending new alert.");
         temp_file_created = 0;
 
-        /* If JSON does not contain rule block, continue*/
+        /* If JSON does not contain rule block, continue */
         if (rule = cJSON_GetObjectItem(al_json, "rule"), !rule){
                 s++;
                 mdebug2("skipping: Alert does not contain a rule block");
