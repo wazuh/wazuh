@@ -736,7 +736,7 @@ void test_w_homedir_argv_realpath_fail(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, debug_message);
 
     val = w_homedir("a\\b");
-    assert_ptr_equal(val, NULL);
+    assert_string_equal(val, FALLBACKDIR);
 }
 
 #ifdef TEST_WINAGENT
