@@ -54,7 +54,6 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationCentosGreaterThan5)
     EXPECT_EQ("1-0.9.git5baa1e5.el8-1.0.1", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["format"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["os_patch"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("GLX support for libglvnd", jsPackageInfo["description"]);
 }
@@ -88,7 +87,6 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationCentos5)
     EXPECT_EQ("6.el5_5-1.0.3", jsPackageInfo["version"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["format"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["os_patch"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("Header files and libraries for developing apps which will use bzip2.", jsPackageInfo["description"]);
 }
@@ -134,7 +132,6 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_EQ("1:1.2.11.dfsg-2ubuntu1.2", jsPackageInfo["version"]);
     EXPECT_EQ("amd64", jsPackageInfo["architecture"]);
     EXPECT_EQ("deb", jsPackageInfo["format"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["os_patch"]);
     EXPECT_EQ("Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>", jsPackageInfo["vendor"]);
     EXPECT_EQ("compression library - development\n\
          zlib is a library implementing the deflate compression method found\n\

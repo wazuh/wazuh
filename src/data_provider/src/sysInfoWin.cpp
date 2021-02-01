@@ -389,7 +389,6 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                 packageJson["location"]     = location;
                 packageJson["architecture"] = architecture;
                 packageJson["format"]       = "win";
-                packageJson["os_patch"]     = UNKNOWN_VALUE;
 
                 data.push_back(packageJson);
             }
