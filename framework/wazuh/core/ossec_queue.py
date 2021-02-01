@@ -15,7 +15,7 @@ class OssecQueue:
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
     RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
-    RESTART_AGENTS_JSON = "{\"version\": 1,\"origin\": {\"module\": \"api/framework\"},\"command\": \"restart-wazuh\", " \
+    RESTART_AGENTS_JSON = "{\"version\": 1,\"origin\": {\"module\": \"api/framework\"}, \"command\": \"restart-wazuh0\", " \
                           "\"parameters\": {\"extra_args\": [], \"alert\": {}}}"  # Agents, not manager (000)
 
     # Types
