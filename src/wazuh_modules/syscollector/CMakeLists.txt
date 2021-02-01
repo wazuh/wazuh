@@ -98,9 +98,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
     link_directories(${SRC_FOLDER}/external/googletest/lib/)
   endif(UNIT_TEST)
-else()
-    add_subdirectory(testtool)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+add_subdirectory(testtool)
 
 if(UNIT_TEST)
 add_subdirectory(tests)

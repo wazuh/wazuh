@@ -103,7 +103,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   endif(UNIT_TEST)
 else()
     target_link_libraries(sysinfo cjson)
-    add_subdirectory(testtool)
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -130,6 +129,8 @@ if(APPLE)
     ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"
     $<TARGET_FILE:sysinfo>)
 endif(APPLE)
+
+add_subdirectory(testtool)
 
 if(UNIT_TEST)
 add_subdirectory(tests)
