@@ -192,10 +192,18 @@ void wm_cleanup()
 
 void wm_handler(int signum)
 {
+    wmodule * cur_module;
     switch (signum) {
     case SIGHUP:
     case SIGINT:
     case SIGTERM:
+        // For the moment only gracefull shutdown will be for syscollector, in the future
+        // it will be modified for all wmodules, modifying the mainloop of each thread.
+        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+            if (0 == strncmp(cur_module->context->name, "syscollector", strlen(cur_module->context->name))) {
+                cur_module->context->destroy(cur_module->data);
+            }
+        }
         exit(EXIT_SUCCESS);
     default:
         merror("unknown signal (%d)", signum);
