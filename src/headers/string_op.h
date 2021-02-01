@@ -204,7 +204,7 @@ char *encode_base64(int size, const char *src);
 
 /**
  * @brief Verify the string is not truncated after executing snprintf
- * 
+ *
  * @param str Pointer to a buffer where the resulting string is stored.
  * @param size Maximum number of bytes to be used in the buffer.
  * @param format String that contains a format string that follows the same specifications as format in printf.
@@ -215,7 +215,7 @@ int os_snprintf(char *str, size_t size, const char *format, ...);
 
 /**
  * @brief Remove a substring from a string.
- * 
+ *
  * @param str Original string.
  * @param sub Substring to remove from the string.
  * @return char* String after removing the substring.
@@ -224,7 +224,7 @@ char * w_remove_substr(char *str, const char *sub);
 
 /**
  * @brief Returns a copy of the first n characters of str.
- * 
+ *
  * If str is longer than n, only n characters are copied (a terminating character ('\0') is added).
  * if n is zero an empty string is returned.
  * @param str String to copy.
@@ -232,5 +232,14 @@ char * w_remove_substr(char *str, const char *sub);
  * @return char* New string copy of str[:n] or NULL if str is null
  */
 char * w_strndup(const char *str, size_t n);
+
+/**
+ * @brief Split a string into multiples strings by a delimiters given.
+ * @param string_to_split String to split.
+ * @param DELIM String with the delimiters to split.
+ * @param max_array_size Maximum number of strings returned in the array, if it is 0, size will be the maximun possible.
+ * @return char** Returns an array of string.
+ */
+char ** w_string_split(const char *string_to_split, const char *DELIM, int max_array_size);
 
 #endif

@@ -2435,8 +2435,6 @@ char* check_ascci_hex (char *input) {
 static char **get_paths_from_env_variable (char *environment_variable) {
     char **paths = NULL;
     char *expandedpath = NULL;
-    char *token;
-    char *state;
     int i = 0;
 
 #ifdef WIN32
@@ -2457,23 +2455,23 @@ static char **get_paths_from_env_variable (char *environment_variable) {
     static const char *DELIM = ":";
     if(environment_variable[0] == '$') {
         environment_variable++;
-    }
-    char *aux = getenv(environment_variable);
-    if (!aux) {
-        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable);
-        goto error;
+        char *aux = getenv(environment_variable);
+        if (!aux) {
+            merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable);
+            goto error;
+        } else {
+            os_strdup(aux, expandedpath);
+        }
     } else {
-        os_strdup(aux, expandedpath);
+        os_strdup(environment_variable, expandedpath);
     }
 #endif
 
     /* The env. variable may have multiples paths split by a delimiter */
-    os_calloc(2, sizeof(char *), paths);
-    for(token = strtok_r(expandedpath, DELIM, &state); token; token = strtok_r(NULL, DELIM, &state)){
-        token = w_strtrim(token);
-        os_realloc(paths, (i + 2) * sizeof(char *), paths);
-        os_strdup(token, paths[i]);
-        paths[i + 1] = NULL;
+    paths = w_string_split(expandedpath, DELIM, 0);
+
+    while (paths[i]){
+        paths[i] = w_strtrim(paths[i]);
         i++;
     }
     if (paths[0] == NULL) {

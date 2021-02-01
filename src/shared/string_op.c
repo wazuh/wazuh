@@ -988,3 +988,24 @@ char * w_strndup(const char * str, size_t n) {
 
     return str_cpy;
 }
+
+char ** w_string_split(const char *string_to_split, const char *DELIM, int max_array_size) {
+    char **paths = NULL;
+    char *state;
+    char *token;
+    int i = 0;
+    char *aux;
+    os_strdup(string_to_split, aux);
+
+    os_calloc(1, sizeof(char *), paths);
+    for(token = strtok_r(aux, DELIM, &state); token; token = strtok_r(NULL, DELIM, &state)){
+        os_realloc(paths, (i + 2) * sizeof(char *), paths);
+        os_strdup(token, paths[i]);
+        paths[i + 1] = NULL;
+        i++;
+        if (max_array_size && i > max_array_size) break;
+    }
+    os_free(aux);
+
+    return paths;
+}
