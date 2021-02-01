@@ -127,6 +127,7 @@ TEST_F(SysInfoParsersTest, Centos)
     EXPECT_EQ("Core", output["os_codename"]);
     EXPECT_EQ("8", output["os_major"]);
     EXPECT_EQ("2", output["os_minor"]);
+    EXPECT_EQ("2004", output["os_patch"]);
 }
 
 TEST_F(SysInfoParsersTest, BSDFreeBSD)
@@ -428,4 +429,5 @@ TEST_F(SysInfoParsersTest, MacOS)
     EXPECT_EQ("Sierra", output["os_codename"]);
     EXPECT_EQ("10", output["os_major"]);
     EXPECT_EQ("12", output["os_minor"]);
+    EXPECT_EQ("6", output["os_patch"]);
 }

@@ -116,7 +116,6 @@ namespace PackageLinuxHelper
             ret["version"]      = version.empty() ? UNKNOWN_VALUE : version;
             ret["architecture"] = architecture;
             ret["format"]       = "rpm";
-            ret["os_patch"]     = UNKNOWN_VALUE;
             ret["vendor"]       = vendor;
             ret["description"]  = description;
         }
@@ -205,7 +204,6 @@ namespace PackageLinuxHelper
             ret["source"]       = source;
             ret["version"]      = version;
             ret["format"]       = "deb";
-            ret["os_patch"]     = UNKNOWN_VALUE;
             ret["vendor"]       = vendor;
             ret["description"]  = description;
         }
