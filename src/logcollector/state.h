@@ -16,7 +16,7 @@
 #define LOGCOLLECTOR_STATE_PATH "wazuh-logcollector.state"
 #else
 #define LOGCOLLECTOR_STATE      "/var/run/wazuh-logcollector.state"
-#define LOGCOLLECTOR_STATE_PATH DEFAULTDIR LOGCOLLECTOR_STATE
+#define LOGCOLLECTOR_STATE_PATH BUILDDIR(HOMEDIR,LOGCOLLECTOR_STATE)
 #endif
 
 // Double of max value of logcollector.queue_size
