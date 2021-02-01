@@ -336,15 +336,12 @@ void *OSList_AddData(OSList *list, void *data)
 }
 
 void OSList_CleanNodes(OSList *list) {
-    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
-    w_mutex_lock((pthread_mutex_t *)&list->mutex);
-
     if (list == NULL || list->free_data_function == NULL) {
-        w_mutex_unlock((pthread_mutex_t *)&list->mutex);
-        w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-
         return;
     }
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
 
     OSListNode *aux_node = NULL;
 

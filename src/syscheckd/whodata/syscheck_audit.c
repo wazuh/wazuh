@@ -240,6 +240,7 @@ int add_audit_rules_syscheck(bool first_time) {
                 mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
             }
             reported = 1;
+            free(directory);
             break;
         }
 
