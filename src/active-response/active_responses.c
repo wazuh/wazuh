@@ -291,8 +291,8 @@ int lock (const char *lock_path, const char *lock_pid_path, const char *log_path
                             unlock(lock_path, log_path);
                             i = 0;
                             saved_pid = -1;
-                            break;
                         }
+                        break;
                     }
                 }
                 wpclose(wfd);
