@@ -38,15 +38,29 @@ syscollector_sync_message_func syscollector_sync_message_ptr = NULL;
 
 
 int queue_fd = 0;                                   // Output queue file descriptor
+bool in_shutdown = false;
+static pthread_mutex_t shutdown_mutex;
 
 static void wm_sys_send_diff_message(const void* data) {
     const int eps = 1000000/wm_max_eps;
-    wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    pthread_mutex_lock(&shutdown_mutex);
+    bool in_shutdown_process = in_shutdown;
+    pthread_mutex_unlock(&shutdown_mutex);
+
+    if (!in_shutdown_process) {
+        wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    }
  }
 
 static void wm_sys_send_dbsync_message(const void* data) {
     const int eps = 1000000/wm_max_eps;
-    wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
+    pthread_mutex_lock(&shutdown_mutex);
+    bool in_shutdown_process = in_shutdown;
+    pthread_mutex_unlock(&shutdown_mutex);
+
+    if (!in_shutdown_process) {
+        wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
+    }
 }
 
 static void wm_sys_log_error(const char* log) {
@@ -81,6 +95,7 @@ void* wm_sys_main(wm_sys_t *sys)
         pthread_exit(NULL);
     }
 
+    pthread_mutex_init(&shutdown_mutex, NULL);
     if (syscollector_start_ptr) {
         mtinfo(WM_SYS_LOGTAG, "Starting Syscollector.");
         syscollector_start_ptr(sys->interval,
@@ -101,14 +116,18 @@ void* wm_sys_main(wm_sys_t *sys)
                                sys->flags.hotfixinfo);
     } else {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
+        pthread_mutex_destroy(&shutdown_mutex);
+        pthread_exit(NULL);
     }
-    
     return 0;
 }
 
 void wm_sys_destroy(wm_sys_t *data) 
 {
     mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
+    pthread_mutex_lock(&shutdown_mutex);
+    in_shutdown = true;
+    pthread_mutex_unlock(&shutdown_mutex);
 
     syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
@@ -126,6 +145,7 @@ void wm_sys_destroy(wm_sys_t *data)
     syscollector_start_ptr = NULL;
     syscollector_stop_ptr = NULL;
     free(data);
+    pthread_mutex_destroy(&shutdown_mutex);
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) 
