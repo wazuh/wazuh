@@ -343,7 +343,7 @@ int test_setup_hardware_valid_msg(void **state)
     os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
     Zero_Eventinfo(lf);
     if (lf->log = strdup("{\
-        \"type\":\"dbsync_hardware\",\
+        \"type\":\"dbsync_hwinfo\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{\
             \"board_serial\" : \"86\",\
@@ -352,7 +352,8 @@ int test_setup_hardware_valid_msg(void **state)
             \"cpu_MHz\" : \"89\",\
             \"ram_total\" : \"90\",\
             \"ram_free\" : \"91\",\
-            \"ram_usage\" : \"92\"\
+            \"ram_usage\" : \"92\",\
+            \"checksum\" : \"93\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -369,7 +370,7 @@ int test_setup_os_valid_msg(void **state)
     os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
     Zero_Eventinfo(lf);
     if (lf->log = strdup("{ \
-        \"type\":\"dbsync_os\",\
+        \"type\":\"dbsync_osinfo\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{\
             \"host_name\" : \"93\",\
@@ -385,7 +386,8 @@ int test_setup_os_valid_msg(void **state)
             \"sysname\" : \"103\",\
             \"release\" : \"104\",\
             \"version\" : \"105\",\
-            \"os_release\" : \"106\"\
+            \"os_release\" : \"106\",\
+            \"checksum\" : \"107\"\
     }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -613,7 +615,7 @@ void test_syscollector_dbsync_hardware_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync hardware MODIFIED NULL|86|87|88|89|90|91|92|";
+    const char *query = "agent 001 dbsync hwinfo MODIFIED NULL|86|87|88|89|90|91|92|93|";
     const char *result = "ok";
     int sock = 1;
 
@@ -631,7 +633,7 @@ void test_syscollector_dbsync_os_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync os MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|";
+    const char *query = "agent 001 dbsync osinfo MODIFIED NULL|93|94|95|96|97|98|99|100|101|102|103|104|105|106|107|";
     const char *result = "ok";
     int sock = 1;
 

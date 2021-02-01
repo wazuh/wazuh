@@ -374,7 +374,7 @@ int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -412,7 +412,9 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         sysname,
         release,
         version,
-        os_release) < 0) {
+        os_release,
+        checksum,
+        replace) < 0) {
 
         return -1;
     }
@@ -421,15 +423,15 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert OS info tuple. Return 0 on success or -1 on error. (v2)
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release) {
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_INSERT) < 0) {
+    if (wdb_stmt_cache(wdb, replace ? WDB_STMT_OSINFO_INSERT2 : WDB_STMT_OSINFO_INSERT) < 0) {
         mdebug1("at wdb_osinfo_insert(): cannot cache statement");
         return -1;
     }
 
-    stmt = wdb->stmt[WDB_STMT_OSINFO_INSERT];
+    stmt = wdb->stmt[replace ? WDB_STMT_OSINFO_INSERT2 : WDB_STMT_OSINFO_INSERT];
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
     sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
@@ -447,6 +449,7 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_bind_text(stmt, 14, release, -1, NULL);
     sqlite3_bind_text(stmt, 15, version, -1, NULL);
     sqlite3_bind_text(stmt, 16, os_release, -1, NULL);
+    sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
@@ -673,7 +676,7 @@ int wdb_package_delete(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage) {
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -704,7 +707,9 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
         cpu_mhz,
         ram_total,
         ram_free,
-        ram_usage) < 0) {
+        ram_usage,
+        checksum,
+        replace) < 0) {
 
         return -1;
     }
@@ -713,15 +718,15 @@ int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
-int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage) {
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_HWINFO_INSERT) < 0) {
+    if (wdb_stmt_cache(wdb, replace ? WDB_STMT_HWINFO_INSERT2 : WDB_STMT_HWINFO_INSERT) < 0) {
         mdebug1("at wdb_hardware_insert(): cannot cache statement");
         return -1;
     }
 
-    stmt = wdb->stmt[WDB_STMT_HWINFO_INSERT];
+    stmt = wdb->stmt[replace ? WDB_STMT_HWINFO_INSERT2 : WDB_STMT_HWINFO_INSERT];
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
     sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
@@ -734,17 +739,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
         sqlite3_bind_null(stmt, 5);
     }
 
-    double cpumhz = 0;
-    if (cpu_mhz == NULL || strlen(cpu_mhz) == 0) {
-        cpumhz = 0;
-    } else {
-        cpumhz = atof(cpu_mhz);
-    }
-    if (cpumhz > 0) {
-        sqlite3_bind_double(stmt, 6, cpumhz);
-    } else {
-        sqlite3_bind_null(stmt, 6);
-    }
+    sqlite3_bind_double(stmt, 6, cpu_mhz);
 
     if (ram_total > 0) {
         sqlite3_bind_int64(stmt, 7, ram_total);
@@ -763,6 +758,7 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
     } else {
         sqlite3_bind_null(stmt, 9);
     }
+    sqlite3_bind_text(stmt, 10, checksum, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
@@ -1214,6 +1210,44 @@ int wdb_syscollector_netinfo_save2(wdb_t * wdb, const cJSON * attributes)
     return wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, checksum, item_id, TRUE);
 }
 
+int wdb_syscollector_hwinfo_save2(wdb_t * wdb, const cJSON * attributes)
+{
+    const char * scan_id = "0";
+    const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
+    const char * serial = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "board_serial"));
+    const char * cpu_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "cpu_name"));
+    const int cpu_cores = cJSON_GetObjectItem(attributes, "cpu_cores") ? cJSON_GetObjectItem(attributes, "cpu_cores")->valueint : 0;
+    const double cpu_mhz = cJSON_GetObjectItem(attributes, "cpu_mhz") ? cJSON_GetObjectItem(attributes, "cpu_mhz")->valuedouble : 0.0;
+    const long ram_total = cJSON_GetObjectItem(attributes, "ram_total") ? cJSON_GetObjectItem(attributes, "ram_total")->valueint : 0;
+    const long ram_free = cJSON_GetObjectItem(attributes, "ram_free") ? cJSON_GetObjectItem(attributes, "ram_free")->valueint : 0;
+    const long ram_usage = cJSON_GetObjectItem(attributes, "ram_usage") ? cJSON_GetObjectItem(attributes, "ram_usage")->valueint : 0;
+    const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
+    return wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, checksum, TRUE);
+}
+
+int wdb_syscollector_osinfo_save2(wdb_t * wdb, const cJSON * attributes)
+{
+    const char * scan_id = "0";
+    const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
+    const char * hostname = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "hostname"));
+    const char * architecture = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "architecture"));
+    const char * os_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_name"));
+    const char * os_version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_version"));
+    const char * os_codename = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_codename"));
+    const char * os_major = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_major"));
+    const char * os_minor = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_minor"));
+    const char * os_patch = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_patch"));
+    const char * os_build = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_build"));
+    const char * os_platform = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_platform"));
+    const char * sysname = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "sysname"));
+    const char * release = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "release"));
+    const char * version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "version"));
+    const char * os_release = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "os_release"));
+    const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
+    return wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, checksum, TRUE);
+}
+
+
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload)
 {
     int result = -1;
@@ -1257,6 +1291,14 @@ int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * 
     else if(component == WDB_SYSCOLLECTOR_NETINFO)
     {
         result = wdb_syscollector_netinfo_save2(wdb, attributes);
+    }
+    else if(component == WDB_SYSCOLLECTOR_HWINFO)
+    {
+        result = wdb_syscollector_hwinfo_save2(wdb, attributes);
+    }
+    else if(component == WDB_SYSCOLLECTOR_OSINFO)
+    {
+        result = wdb_syscollector_osinfo_save2(wdb, attributes);
     }
     if(data)
     {

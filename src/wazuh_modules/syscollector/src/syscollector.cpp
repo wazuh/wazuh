@@ -12,6 +12,7 @@
 #include "syscollector.h"
 #include "syscollector.hpp"
 #include "sysInfo.hpp"
+#include "dbsync.h"
 #include <iostream>
 
 #ifdef __cplusplus
@@ -34,6 +35,7 @@ void syscollector_start(const unsigned int inverval,
                         const bool processes,
                         const bool hotfixes)
 {
+    dbsync_initialize(callbackLogError);
     std::function<void(const std::string&)> callbackDiffWrapper
     {
         [callbackDiff](const std::string& data)
