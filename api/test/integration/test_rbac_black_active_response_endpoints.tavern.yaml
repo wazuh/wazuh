@@ -158,8 +158,12 @@ stages:
               id:
                 - '010'
             - error:
+                code: 1652
+              id:
+                - '000'
+            - error:
                 code: 1657
               id:
                 - '012'
-          total_affected_items: 5
-          total_failed_items: 2
+          total_affected_items: 4
+          total_failed_items: 3
