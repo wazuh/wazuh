@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -299,7 +299,7 @@
 #define DB_MISS_CONFIG        "(5205): Missing database configuration. "\
                               "It requires host, user, pass and database."
 #define DB_CONFIGERR          "(5206): Database configuration error."
-#define DB_COMPILED           "(5207): OSSEC not compiled with support for '%s'."
+#define DB_COMPILED           "(5207): Wazuh not compiled with support for '%s'."
 #define DB_MAINERROR          "(5208): Multiple database errors. Exiting."
 #define DB_CLOSING            "(5209): Closing connection to database."
 #define DB_ATTEMPT            "(5210): Attempting to reconnect to database."
