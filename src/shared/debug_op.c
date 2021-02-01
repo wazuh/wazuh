@@ -67,7 +67,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 
     if (!flags.initialized) {
         w_logging_init();
-        mdebug1("Logging module auto-initialized");  
+        mdebug1("Logging module auto-initialized");
     }
 
     if (filename = strrchr(file, '/'), filename) {
@@ -79,7 +79,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR LOGJSONFILE, sizeof(logfile) - 1);
+        strncpy(logfile, isChroot() ? LOGJSONFILE : BUILDDIR(HOMEDIR,LOGJSONFILE), sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -126,7 +126,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
             cJSON_AddStringToObject(json_log, "description", jsonstr);
 
             output = cJSON_PrintUnformatted(json_log);
-            
+
             w_mutex_lock(&logging_mutex);
             (void)fprintf(fp, "%s", output);
             (void)fprintf(fp, "\n");
@@ -145,7 +145,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR LOGFILE, sizeof(logfile) - 1);
+        strncpy(logfile, isChroot() ? LOGFILE : BUILDDIR(HOMEDIR,LOGFILE), sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -223,7 +223,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 void w_logging_init(){
     flags.initialized = 1;
     w_mutex_init(&logging_mutex, NULL);
-    os_logging_config();    
+    os_logging_config();
 }
 
 void os_logging_config(){

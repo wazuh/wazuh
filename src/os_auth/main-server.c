@@ -80,14 +80,14 @@ static void help_authd()
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into. Default: %s.", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into. Default: %s.", HOMEDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication, at %s or random.", AUTHDPASS_PATH);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
-    print_out("    -x <path>   Full path to server certificate. Default: %s%s.", DEFAULTDIR, CERTFILE);
-    print_out("    -k <path>   Full path to server key. Default: %s%s.", DEFAULTDIR, KEYFILE);
+    print_out("    -x <path>   Full path to server certificate. Default: %s.", BUILDDIR(HOMEDIR,CERTFILE));
+    print_out("    -k <path>   Full path to server key. Default: %s.", BUILDDIR(HOMEDIR,KEYFILE));
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
@@ -154,7 +154,8 @@ int main(int argc, char **argv)
     int run_foreground = 0;
     gid_t gid;
     int client_sock = 0;
-    const char *dir  = DEFAULTDIR;
+    home_path = w_homedir(argv[0]);
+    const char *dir  = HOMEDIR;
     const char *group = GROUPGLOBAL;
     char buf[4096 + 1];
     struct sockaddr_in _nc;
@@ -200,7 +201,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'i':
-                    mwarn(DEPRECATED_OPTION_WARN,"-i");
+                    mwarn(DEPRECATED_OPTION_WARN, "-i", DEFAULTCPATH);
                     break;
 
                 case 'g':
@@ -272,11 +273,11 @@ int main(int argc, char **argv)
                     break;
 
                 case 'F':
-                    mwarn(DEPRECATED_OPTION_WARN,"-F");
+                    mwarn(DEPRECATED_OPTION_WARN, "-F", DEFAULTCPATH);
                     break;
 
                 case 'r':
-                    mwarn(DEPRECATED_OPTION_WARN,"-r");
+                    mwarn(DEPRECATED_OPTION_WARN, "-r", DEFAULTCPATH);
                     break;
 
                 case 'a':
@@ -375,6 +376,7 @@ int main(int argc, char **argv)
 
     /* Start daemon -- NB: need to double fork and setsid */
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
@@ -585,6 +587,7 @@ int main(int argc, char **argv)
 
     queue_free(client_queue);
     minfo("Exiting...");
+    os_free(home_path);
     return (0);
 }
 

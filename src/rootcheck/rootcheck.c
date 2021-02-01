@@ -45,7 +45,7 @@ void help_rootcheck()
     print_out("    -s          Scan the whole system");
     print_out("    -r          Read all the files for kernel-based detection");
     print_out("    -c <config> Configuration file to use");
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
     print_out(" ");
     exit(1);
 }
@@ -54,6 +54,7 @@ int main(int argc, char **argv)
 {
     int test_config = 0;
     const char *cfg = "./rootcheck.conf";
+    home_path = w_homedir(argv[0]);
 
 #else
 
@@ -205,9 +206,11 @@ int rootcheck_init(int test_config)
 #endif
 
     /* Set default values */
+#ifndef WIN32
     if (rootcheck.workdir == NULL) {
-        rootcheck.workdir = DEFAULTDIR;
+        rootcheck.workdir = HOMEDIR;
     }
+#endif
 
 #ifdef OSSECHIDS
     /* Start up message */
@@ -236,6 +239,7 @@ int rootcheck_init(int test_config)
     run_rk_check();
 
     mtdebug1(ARGV0, "Leaving...");
+    os_free(home_path);
 #endif /* OSSECHIDS */
     return (0);
 }

@@ -13,6 +13,8 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include <os_net/os_net.h>
 
+#ifndef WIN32
+
 struct MemoryStruct {
   char *memory;
   size_t size;
@@ -295,6 +297,7 @@ char * wurl_http_get(const char * url) {
     return chunk.memory;
 }
 
+#endif
 #ifndef CLIENT
 
 // Request a download of a bzip2 file and uncompress it.

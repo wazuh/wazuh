@@ -348,7 +348,7 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 
     // Clean up upgrade folder
 #ifndef WIN32
-    if (cldir_ex(isChroot() ? UPGRADE_DIR : DEFAULTDIR UPGRADE_DIR)) {
+    if (cldir_ex(isChroot() ? UPGRADE_DIR : BUILDDIR(HOMEDIR,UPGRADE_DIR))) {
 #else
     if (cldir_ex(UPGRADE_DIR)) {
 #endif
@@ -358,7 +358,7 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 
     //Unmerge
 #ifndef WIN32
-    if (UnmergeFiles(merged, isChroot() ? UPGRADE_DIR : DEFAULTDIR UPGRADE_DIR, OS_BINARY) == 0) {
+    if (UnmergeFiles(merged, isChroot() ? UPGRADE_DIR : BUILDDIR(HOMEDIR,UPGRADE_DIR), OS_BINARY) == 0) {
 #else
     if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY) == 0) {
 #endif
@@ -397,7 +397,7 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
 
 STATIC char * wm_agent_upgrade_com_clear_result() {
 #ifndef WIN32
-    const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : DEFAULTDIR UPGRADE_DIR "/upgrade_result";
+    const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : WM_AGENT_UPGRADE_RESULT_FILE;
 #else
     const char * PATH = UPGRADE_DIR "\\upgrade_result";
 #endif
@@ -417,7 +417,7 @@ STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const c
     }
 
 #ifndef WIN32
-    return snprintf(finalpath, PATH_MAX + 1, "%s/%s/%s", isChroot() ? "" : DEFAULTDIR, basedir, filename) > PATH_MAX ? -1 : 0;
+    return snprintf(finalpath, PATH_MAX + 1, "%s/%s/%s", isChroot() ? "" : HOMEDIR, basedir, filename) > PATH_MAX ? -1 : 0;
 #else
     return snprintf(finalpath, PATH_MAX + 1, "%s\\%s", basedir, filename) > PATH_MAX ? -1 : 0;
 #endif

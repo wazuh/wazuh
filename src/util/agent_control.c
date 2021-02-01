@@ -43,7 +43,8 @@ static void helpmsg()
 
 int main(int argc, char **argv)
 {
-    const char *dir = DEFAULTDIR;
+    home_path = w_homedir(argv[0]);
+    const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
     const char *agent_id = NULL;
@@ -675,5 +676,6 @@ int main(int argc, char **argv)
     printf("\n** Invalid argument combination.\n");
     helpmsg();
 
+    os_free(home_path);
     return (0);
 }

@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     int c, r;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
+    home_path = w_homedir(argv[0]);
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
     const char *group = GROUPGLOBAL;
@@ -98,6 +99,7 @@ int main(int argc, char **argv)
     read_internal(debug_level);
 
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {
@@ -154,8 +156,8 @@ int main(int argc, char **argv)
         nowDaemon();
         goDaemon();
     } else {
-        if (chdir(DEFAULTDIR) == -1) {
-            merror_exit(CHDIR_ERROR, DEFAULTDIR, errno, strerror(errno));
+        if (chdir(HOMEDIR) == -1) {
+            merror_exit(CHDIR_ERROR, HOMEDIR, errno, strerror(errno));
         }
     }
 
@@ -277,12 +279,14 @@ int main(int argc, char **argv)
 
     /* Start the daemon */
     start_daemon();
+    os_free(home_path);
 
     // We shouldn't reach this point unless syscheck is disabled
     while(1) {
         pause();
     }
 
+    return (0);
 }
 
 #endif /* !WIN32 */

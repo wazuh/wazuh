@@ -262,7 +262,7 @@ static void help_analysisd(void)
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
     print_out(" ");
     exit(1);
 }
@@ -274,7 +274,8 @@ int main(int argc, char **argv)
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int debug_level = 0;
-    const char *dir = DEFAULTDIR;
+    home_path = w_homedir(argv[0]);
+    const char *dir = HOMEDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
@@ -363,6 +364,7 @@ int main(int argc, char **argv)
 
     /* Start daemon */
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
     srandom_init();
@@ -807,6 +809,7 @@ int main(int argc, char **argv)
     /* Going to main loop */
     OS_ReadMSG(m_queue);
 
+    os_free(home_path);
     exit(0);
 }
 

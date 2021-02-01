@@ -710,7 +710,7 @@ void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -738,7 +738,7 @@ void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -766,7 +766,7 @@ void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -795,7 +795,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -828,7 +828,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -863,7 +863,7 @@ void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -894,7 +894,7 @@ void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -923,7 +923,7 @@ void test_wm_agent_upgrade_listen_messages_select_error(void **state)
 
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, socket);
@@ -940,7 +940,7 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
 {
     will_return(__wrap_isChroot, 0);
 
-    expect_string(__wrap_OS_BindUnixDomain, path, DEFAULTDIR AGENT_UPGRADE_SOCK);
+    expect_string(__wrap_OS_BindUnixDomain, path, HOMEDIR AGENT_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_BindUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_BindUnixDomain, -1);

@@ -25,6 +25,7 @@ int main(int argc, char **argv)
     int c;
     int wm_debug = 0;
     int test_config = 0;
+    home_path = w_homedir(argv[0]);
     wmodule *cur_module;
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
@@ -93,6 +94,7 @@ int main(int argc, char **argv)
         pthread_join(cur_module->thread, NULL);
     }
 
+    os_free(home_path);
     return EXIT_SUCCESS;
 }
 
@@ -144,8 +146,9 @@ void wm_setup()
 
     // Change working directory
 
-    if (chdir(DEFAULTDIR) < 0)
+    if (chdir(HOMEDIR) < 0) {
         merror_exit("chdir(): %s", strerror(errno));
+    }
 
     if (wm_check() < 0) {
         minfo("No configuration defined. Exiting...");

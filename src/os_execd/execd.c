@@ -83,6 +83,7 @@ int main(int argc, char **argv)
     int debug_level = 0;
     pthread_t wcom_thread;
 
+    home_path = w_homedir(argv[0]);
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
 
@@ -196,6 +197,7 @@ int main(int argc, char **argv)
     /* The real daemon Now */
     ExecdStart(m_queue);
 
+    os_free(home_path);
     exit(0);
 }
 
@@ -433,7 +435,7 @@ static void ExecdStart(int q)
 
             if(cmd_api[0] == NULL) {
                 char script_path[PATH_MAX] = {0};
-                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "active-response/bin/restart.sh");
+                snprintf(script_path, PATH_MAX, "%s", BUILDDIR(HOMEDIR,"/active-response/bin/restart.sh"));
                 os_strdup(script_path, cmd_api[0]);
             }
 
@@ -689,7 +691,7 @@ static int CheckManagerConfiguration(char ** output) {
 
     for (i = 0; daemons[i]; i++) {
         output_msg = NULL;
-        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
+        snprintf(command_in, PATH_MAX, "%s/%s %s", HOMEDIR, daemons[i], "-t");
 
         if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
             if (result_code == EXECVE_ERROR) {

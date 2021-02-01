@@ -35,7 +35,8 @@ int main(int argc, char **argv)
     int clear_daily = 0;
     int clear_weekly = 0;
 
-    const char *dir = DEFAULTDIR;
+    home_path = w_homedir(argv[0]);
+    const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
     gid_t gid;
@@ -155,5 +156,7 @@ int main(int argc, char **argv)
     }
 
     printf("\n** Internal stats clear.\n\n");
+
+	os_free(home_path);
     return (0);
 }

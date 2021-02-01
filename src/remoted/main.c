@@ -32,7 +32,7 @@ static void help_remoted()
     print_out("    -u <user>   User to run as (default: %s)", REMUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
     print_out("    -m          Avoid creating shared merged file (read only)");
     print_out(" ");
     exit(1);
@@ -47,8 +47,9 @@ int main(int argc, char **argv)
     int test_config = 0, run_foreground = 0;
     int nocmerged = 0;
 
-    const char *cfg = DEFAULTCPATH;
-    const char *dir = DEFAULTDIR;
+    home_path = w_homedir(argv[0]);
+	const char *cfg = DEFAULTCPATH;
+    const char *dir = HOMEDIR;
     const char *user = REMUSER;
     const char *group = GROUPGLOBAL;
 
@@ -119,6 +120,7 @@ int main(int argc, char **argv)
     }
 
     mdebug1(STARTED_MSG);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Return 0 if not configured */
     if (RemotedConfig(cfg, &logr) < 0) {
@@ -217,5 +219,6 @@ int main(int argc, char **argv)
         }
     }
 
+    os_free(home_path);
     return (0);
 }

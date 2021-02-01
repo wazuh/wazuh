@@ -79,15 +79,16 @@ char shost[512];
 
 int main(int argc, char **argv)
 {
-    char *user_msg;
     int c = 0, cmdlist = 0, json_output = 0;
     int force_antiquity;
+    char *user_msg;
     char *end;
     const char *cmdexport = NULL;
     const char *cmdimport = NULL;
     const char *cmdbulk = NULL;
 #ifndef WIN32
-    const char *dir = DEFAULTDIR;
+    home_path = w_homedir(argv[0]);
+    const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     gid_t gid;
 #else
@@ -345,5 +346,8 @@ int main(int argc, char **argv)
         printf(EXIT);
     }
 
+#ifndef WIN32
+    os_free(home_path);
+#endif
     return (0);
 }

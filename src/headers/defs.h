@@ -112,8 +112,42 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define GROUPGLOBAL     "ossec"
 #endif
 
-#ifndef DEFAULTDIR
-#define DEFAULTDIR      "/var/ossec"
+#ifndef FALLBACKDIR
+#define FALLBACKDIR     "/var/ossec"
+#endif
+
+/* Default directory - Checked at runtime */
+#ifndef WIN32
+#ifndef HOMEDIR
+#ifdef WAZUH_UNIT_TESTING
+#define HOMEDIR FALLBACKDIR
+#else
+#define HOMEDIR ({ \
+    struct stat wazuh_homedir_test; \
+    char * wazuh_homedir = home_path; \
+    if (wazuh_homedir != NULL) { \
+        if (stat(wazuh_homedir, &wazuh_homedir_test) < 0 || !S_ISDIR(wazuh_homedir_test.st_mode)) wazuh_homedir = FALLBACKDIR; \
+    } else { \
+        wazuh_homedir = FALLBACKDIR; \
+    } \
+    wazuh_homedir; \
+})
+#endif
+#endif
+#endif
+
+#ifndef BUILDDIR
+#ifndef WAZUH_UNIT_TESTING
+#define BUILDDIR(x,y) ({ \
+    char wazuh_fulldir[MAXPATHLEN + 1] = {'\0'}; \
+    char *wazuh_str1 = (x); \
+    char *wazuh_str2 = (y); \
+    if (wazuh_str1 && *wazuh_str1 && wazuh_str2 && *wazuh_str2) snprintf(wazuh_fulldir, MAXPATHLEN, "%s%s", wazuh_str1, wazuh_str2); \
+    wazuh_fulldir; \
+})
+#else
+#define BUILDDIR(x,y)   x y
+#endif
 #endif
 
 /* Default queue */
@@ -121,7 +155,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 // Authd local socket
 #define AUTH_LOCAL_SOCK "/queue/ossec/auth"
-#define AUTH_LOCAL_SOCK_PATH DEFAULTDIR AUTH_LOCAL_SOCK
+#define AUTH_LOCAL_SOCK_PATH BUILDDIR(HOMEDIR,AUTH_LOCAL_SOCK)
 
 // Remote requests socket
 #define REMOTE_REQ_SOCK "/queue/ossec/request"
@@ -147,7 +181,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define TASK_QUEUE "/queue/tasks/task"
 
 // Absolute path local requests socket
-#define CONTROL_SOCK_PATH DEFAULTDIR CONTROL_SOCK
+#define CONTROL_SOCK_PATH BUILDDIR(HOMEDIR,CONTROL_SOCK)
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS   10
@@ -155,21 +189,21 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
 #ifndef WIN32
-#define WDB_LOCAL_SOCK_PATH DEFAULTDIR WDB_LOCAL_SOCK
+#define WDB_LOCAL_SOCK_PATH BUILDDIR(HOMEDIR,WDB_LOCAL_SOCK)
 #endif
 
 #define WM_DOWNLOAD_SOCK "/queue/ossec/download"
-#define WM_DOWNLOAD_SOCK_PATH DEFAULTDIR WM_DOWNLOAD_SOCK
+#define WM_DOWNLOAD_SOCK_PATH BUILDDIR(HOMEDIR,WM_DOWNLOAD_SOCK)
 
 #define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
-#define WM_KEY_REQUEST_SOCK_PATH DEFAULTDIR WM_KEY_REQUEST_SOCK
+#define WM_KEY_REQUEST_SOCK_PATH BUILDDIR(HOMEDIR,WM_KEY_REQUEST_SOCK)
 
 // Tasks socket
 #define WM_UPGRADE_SOCK "/queue/tasks/upgrade"
-#define WM_UPGRADE_SOCK_PATH DEFAULTDIR WM_UPGRADE_SOCK
+#define WM_UPGRADE_SOCK_PATH BUILDDIR(HOMEDIR,WM_UPGRADE_SOCK)
 
 #define WM_TASK_MODULE_SOCK "/queue/tasks/task"
-#define WM_TASK_MODULE_SOCK_PATH DEFAULTDIR WM_TASK_MODULE_SOCK
+#define WM_TASK_MODULE_SOCK_PATH BUILDDIR(HOMEDIR,WM_TASK_MODULE_SOCK)
 
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
@@ -178,8 +212,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULTAR       "/etc/shared/" DEFAULTAR_FILE
 #define AR_BINDIR       "/active-response/bin"
 #define AGENTCONFIGINT  "/etc/shared/agent.conf"
-#define AGENTCONFIG     DEFAULTDIR "/etc/shared/agent.conf"
-#define DEF_CA_STORE    DEFAULTDIR "/etc/wpk_root.pem"
+#define AGENTCONFIG     BUILDDIR(HOMEDIR,"/etc/shared/agent.conf")
+#define DEF_CA_STORE    BUILDDIR(HOMEDIR,"/etc/wpk_root.pem")
 #else
 #define DEFAULTAR       "shared/" DEFAULTAR_FILE
 #define AR_BINDIR       "active-response/bin"
@@ -230,7 +264,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Diff queue */
 #ifndef WIN32
 #define DIFF_DIR        "/queue/diff"
-#define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
+#define DIFF_DIR_PATH   BUILDDIR(HOMEDIR,DIFF_DIR)
 #else
 #define DIFF_DIR        "queue/diff"
 #define DIFF_DIR_PATH   DIFF_DIR
@@ -257,7 +291,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Agent information file */
 #ifndef WIN32
 #define AGENT_INFO_FILE "/queue/ossec/.agent_info"
-#define AGENT_INFO_FILEP DEFAULTDIR AGENT_INFO_FILE
+#define AGENT_INFO_FILEP BUILDDIR(HOMEDIR,AGENT_INFO_FILE)
 #else
 #define AGENT_INFO_FILE ".agent_info"
 #define AGENT_INFO_FILEP AGENT_INFO_FILE
@@ -266,7 +300,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Syscheck restart */
 #ifndef WIN32
 #define SYSCHECK_RESTART        "/var/run/.syscheck_run"
-#define SYSCHECK_RESTART_PATH   DEFAULTDIR SYSCHECK_RESTART
+#define SYSCHECK_RESTART_PATH   BUILDDIR(HOMEDIR,SYSCHECK_RESTART)
 #else
 #define SYSCHECK_RESTART        "syscheck/.syscheck_run"
 #define SYSCHECK_RESTART_PATH   "syscheck/.syscheck_run"
@@ -279,14 +313,14 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Integration directory. */
 #define INTEGRATORDIR "/integrations"
-#define INTEGRATORDIRPATH    DEFAULTDIR INTEGRATORDIR
+#define INTEGRATORDIRPATH    BUILDDIR(HOMEDIR,INTEGRATORDIR)
 
 
 /* Internal definitions files */
 #ifndef WIN32
 #define OSSEC_DEFINES   "/etc/internal_options.conf"
 #define OSSEC_LDEFINES   "/etc/local_internal_options.conf"
-#define OSSEC_DEFINES_PATH DEFAULTDIR OSSEC_DEFINES
+#define OSSEC_DEFINES_PATH BUILDDIR(HOMEDIR,OSSEC_DEFINES)
 #else
 #define OSSEC_DEFINES   "internal_options.conf"
 #define OSSEC_LDEFINES   "local_internal_options.conf"
@@ -296,7 +330,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define EVENTS            "/logs/archives"
 #define EVENTS_DAILY      "/logs/archives/archives.log"
 #define ALERTS            "/logs/alerts"
-#define ALERTS_PATH       DEFAULTDIR ALERTS
+#define ALERTS_PATH       BUILDDIR(HOMEDIR,ALERTS)
 #define ALERTS_DAILY      "/logs/alerts/alerts.log"
 #define ALERTSJSON_DAILY  "/logs/alerts/alerts.json"
 #define FWLOGS            "/logs/firewall"
@@ -312,8 +346,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define KEYS_FILE       "/etc/client.keys"
 #define AUTHD_PASS      "/etc/authd.pass"
-#define KEYSFILE_PATH   DEFAULTDIR KEYS_FILE
-#define AUTHDPASS_PATH  DEFAULTDIR AUTHD_PASS
+#define KEYSFILE_PATH   BUILDDIR(HOMEDIR,KEYS_FILE)
+#define AUTHDPASS_PATH  BUILDDIR(HOMEDIR,AUTHD_PASS)
 #else
 #define KEYS_FILE       "client.keys"
 #define KEYSFILE_PATH   KEYS_FILE
@@ -359,22 +393,26 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DOWNLOAD_DIR  "/var/download"
 
 /* Built-in defines */
-#define DEFAULTQPATH    DEFAULTDIR DEFAULTQUEUE
+#ifdef WIN32
+#define DEFAULTQPATH    DEFAULTQUEUE
+#else
+#define DEFAULTQPATH    BUILDDIR(HOMEDIR,DEFAULTQUEUE)
+#endif
 
 #ifndef WIN32
 #define OSSECCONF       "/etc/ossec.conf"
-#define DEFAULTCPATH    DEFAULTDIR OSSECCONF
+#define DEFAULTCPATH    BUILDDIR(HOMEDIR,OSSECCONF)
 #else
 #define OSSECCONF       "ossec.conf"
 #define DEFAULTCPATH    "ossec.conf"
 #endif
 
 #ifndef WIN32
-#define DEFAULTARPATH           DEFAULTDIR DEFAULTAR
-#define AR_BINDIRPATH           DEFAULTDIR AR_BINDIR
-#define AGENTLESSDIRPATH        DEFAULTDIR AGENTLESSDIR
-#define AGENTLESSPASSPATH       DEFAULTDIR AGENTLESSPASS
-#define AGENTLESS_ENTRYDIRPATH  DEFAULTDIR AGENTLESS_ENTRYDIR
+#define DEFAULTARPATH           BUILDDIR(HOMEDIR,DEFAULTAR)
+#define AR_BINDIRPATH           BUILDDIR(HOMEDIR,AR_BINDIR)
+#define AGENTLESSDIRPATH        BUILDDIR(HOMEDIR,AGENTLESSDIR)
+#define AGENTLESSPASSPATH       BUILDDIR(HOMEDIR,AGENTLESSPASS)
+#define AGENTLESS_ENTRYDIRPATH  BUILDDIR(HOMEDIR,AGENTLESS_ENTRYDIR)
 #else
 #define DEFAULTARPATH           "shared/ar.conf"
 #define AR_BINDIRPATH           "active-response/bin"
@@ -382,27 +420,31 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENTLESSPASSPATH       AGENTLESSPASS
 #define AGENTLESS_ENTRYDIRPATH  AGENTLESS_ENTRYDIR
 #endif
-#define EXECQUEUEPATH           DEFAULTDIR EXECQUEUE
-#define CFGASSESSMENTQUEUEPATH  DEFAULTDIR CFGAQUEUE
+#define EXECQUEUEPATH           BUILDDIR(HOMEDIR,EXECQUEUE)
+#define CFGASSESSMENTQUEUEPATH  BUILDDIR(HOMEDIR,CFGAQUEUE)
 
-#define EXECQUEUEPATHAPI        DEFAULTDIR EXECQUEUEA
+#define EXECQUEUEPATHAPI        BUILDDIR(HOMEDIR,EXECQUEUEA)
 
 #ifdef WIN32
 #define SHAREDCFG_DIRPATH   SHAREDCFG_DIR
 #else
-#define SHAREDCFG_DIRPATH   DEFAULTDIR SHAREDCFG_DIR
+#define SHAREDCFG_DIRPATH   BUILDDIR(HOMEDIR,SHAREDCFG_DIR)
 #endif
 
 #define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"
+#ifdef WIN32
 #define SHAREDCFG_FILEPATH  SHAREDCFG_DIRPATH "/merged.mg"
+#else
+#define SHAREDCFG_FILEPATH  BUILDDIR(HOMEDIR,SHAREDCFG_DIR "/merged.mg")
+#endif
 #define SHAREDCFG_FILENAME  "merged.mg"
 
-#define WAIT_FILE_PATH  DEFAULTDIR WAIT_FILE
+#define WAIT_FILE_PATH  BUILDDIR(HOMEDIR,WAIT_FILE)
 
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 
 #define TMP_DIR "tmp"
-#define TMP_PATH DEFAULTDIR "/" TMP_DIR
+#define TMP_PATH BUILDDIR(HOMEDIR,TMP_DIR)
 
 /* Windows COMSPEC */
 #define COMSPEC "C:\\Windows\\System32\\cmd.exe"

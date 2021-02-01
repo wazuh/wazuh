@@ -19,20 +19,20 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
+#define AUDIT_CONF_FILE BUILDDIR(HOMEDIR,"/etc/af_wazuh.conf")
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
-#define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
+#define AUDIT_SOCKET BUILDDIR(HOMEDIR,"/queue/ossec/audit")
 #define BUF_SIZE OS_MAXSTR
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 #define RELOAD_RULES_INTERVAL 30 // Seconds to re-add Audit rules
 
-#define AUDIT_HEALTHCHECK_DIR DEFAULTDIR "/tmp"
+#define AUDIT_HEALTHCHECK_DIR BUILDDIR(HOMEDIR,"/tmp")
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
-#define AUDIT_HEALTHCHECK_FILE AUDIT_HEALTHCHECK_DIR "/audit_hc"
+#define AUDIT_HEALTHCHECK_FILE BUILDDIR(HOMEDIR,"/tmp/audit_hc")
 
 #ifndef WAZUH_UNIT_TESTING
 #define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \

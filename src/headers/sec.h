@@ -164,7 +164,7 @@ void os_set_agent_crypto_method(keystore * keys,const int method);
 /** Remote IDs directories and internal definitions */
 #ifndef WIN32
 #define RIDS_DIR        "/queue/rids"
-#define RIDS_DIR_PATH   DEFAULTDIR RIDS_DIR
+#define RIDS_DIR_PATH   BUILDDIR(HOMEDIR,RIDS_DIR)
 #else
 #define RIDS_DIR        "rids"
 #define RIDS_DIR_PATH   RIDS_DIR

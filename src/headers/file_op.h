@@ -23,6 +23,10 @@
 #include <windows.h>
 #endif
 
+#ifdef __MACH__
+#include <libproc.h>
+#endif
+
 #define OS_PIDFILE  "/var/run"
 #define UCS2_LE 1
 #define UCS2_BE 2
@@ -625,4 +629,13 @@ int w_is_compressed_bz2_file(const char * path);
  */
 int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 #endif /* CLIENT */
+
+/**
+ * @brief Gets the installation path of a binary file at runtime
+ *
+ * @param arg Argv[0] - Command running a binary
+ * @retval NULL Can't get the path
+ * @retval Pointer to the installation path 
+ */
+char *w_homedir(char *arg);
 #endif /* FILE_OP_H */

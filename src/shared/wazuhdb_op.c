@@ -10,6 +10,8 @@
 
 #include "wazuhdb_op.h"
 
+#ifndef WIN32
+
 /**
  * @brief Connects to Wazuh-DB socket
  *
@@ -24,7 +26,7 @@ int wdbc_connect() {
     if (isChroot()) {
         strcpy(sockname, WDB_LOCAL_SOCK);
     } else {
-        strcpy(sockname, DEFAULTDIR WDB_LOCAL_SOCK);
+        strcpy(sockname, BUILDDIR(HOMEDIR,WDB_LOCAL_SOCK));
     }
 
     for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
@@ -274,3 +276,4 @@ int wdbc_close(int* sock) {
     }
     return ret;
 }
+#endif

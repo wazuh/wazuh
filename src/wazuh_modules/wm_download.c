@@ -12,6 +12,8 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 
+#ifndef WIN32
+
 #undef minfo
 #undef mwarn
 #undef merror
@@ -210,7 +212,7 @@ unsc:
 
     // Jail path
 
-    if (snprintf(jpath, sizeof(jpath), "%s/%s", DEFAULTDIR, unsc_fpath) >= (int)sizeof(jpath)) {
+    if (snprintf(jpath, sizeof(jpath), "%s/%s", HOMEDIR, unsc_fpath) >= (int)sizeof(jpath)) {
         mdebug1("Path too long: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err path too long");
         goto end;
@@ -287,3 +289,4 @@ cJSON *wm_download_dump() {
     cJSON_AddItemToObject(root,"wazuh_download",wm_wd);
     return root;
 }
+#endif
