@@ -47,6 +47,9 @@ void fim_link_reload_broken_link(char *path, int index);
 void fim_delete_realtime_watches(int pos);
 #endif
 
+extern time_t last_time;
+extern unsigned int files_read;
+
 /* redefinitons/wrapping */
 
 #ifdef TEST_WINAGENT
@@ -772,19 +775,15 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 #endif
 
 void test_check_max_fps_no_sleep(void **state) {
-#ifndef TEST_WINAGENT
-    will_return(__wrap_time, 0);
-#endif
+    will_return(__wrap_gettime, last_time + 1);
     check_max_fps(1);
 }
 
 void test_check_max_fps_sleep(void **state) {
-#ifndef TEST_WINAGENT
-    will_return(__wrap_time, 0);
-    expect_value(__wrap_sleep, seconds, 1);
-#else
-    expect_value(wrap_Sleep, dwMilliseconds, 1000);
-#endif
+    last_time = 10;
+    files_read = syscheck.max_files_per_second;
+
+    will_return(__wrap_gettime, last_time);
     expect_string(__wrap__mdebug2, formatted_msg, FIM_REACHED_MAX_FPS);
     check_max_fps(1);
 }

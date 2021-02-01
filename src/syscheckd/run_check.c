@@ -125,7 +125,7 @@ void fim_send_scan_info(fim_scan_event event) {
 }
 
 void check_max_fps(int baseline) {
-#ifndef WAZUH_TESTING
+#ifndef WAZUH_UNIT_TESTING
     static unsigned int files_read = 0;
     static time_t last_time = 0;
 #endif
