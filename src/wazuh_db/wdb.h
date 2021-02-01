@@ -63,6 +63,7 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_GET_ATTRIBUTES,
     WDB_STMT_FIM_UPDATE_ATTRIBUTES,
     WDB_STMT_OSINFO_INSERT,
+    WDB_STMT_OSINFO_INSERT2,
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_INSERT2,
@@ -70,6 +71,7 @@ typedef enum wdb_stmt {
     WDB_STMT_PROGRAM_UPD,
     WDB_STMT_PROGRAM_GET,
     WDB_STMT_HWINFO_INSERT,
+    WDB_STMT_HWINFO_INSERT2,
     WDB_STMT_HOTFIX_INSERT,
     WDB_STMT_HOTFIX_INSERT2,
     WDB_STMT_HWINFO_DEL,
@@ -212,6 +214,14 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -286,6 +296,8 @@ typedef enum {
     WDB_SYSCOLLECTOR_NETPROTO,       ///< Net protocols integrity monitoring.
     WDB_SYSCOLLECTOR_NETADDRESS,     ///< Net addresses integrity monitoring.
     WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
+    WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
+    WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
 } wdb_component_t;
 
 extern char *schema_global_sql;
@@ -941,16 +953,16 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
 
 // Save OS info into DB.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
-int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace);
 
 // Save HW info into DB.
-int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace);
 
 // Insert package info tuple. Return 0 on success or -1 on error.
 int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char * checksum, const char * item_id, const char * os_patch, const bool replace);

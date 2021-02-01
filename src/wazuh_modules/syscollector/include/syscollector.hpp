@@ -70,6 +70,8 @@ private:
     Syscollector& operator=(const Syscollector&) = delete;
     
     std::string getCreateStatement() const;
+    nlohmann::json getOSData();
+    nlohmann::json getHardwareData();
     nlohmann::json getNetworkData();
     nlohmann::json getPackagesData();
     nlohmann::json getPortsData();
@@ -77,6 +79,8 @@ private:
 
     void registerWithRsync();
     void updateAndNotifyChanges(const std::string& table, const nlohmann::json& values);
+    void insertOs();
+    void insertHardware();
     void insertNetwork();
     void insertPackages();
     void insertPorts();
@@ -87,6 +91,8 @@ private:
     void scanPackages();
     void scanPorts();
     void scanProcesses();
+    void syncOs();
+    void syncHardware();
     void syncNetwork();
     void syncPackages();
     void syncPorts();

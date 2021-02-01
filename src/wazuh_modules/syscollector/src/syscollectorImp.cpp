@@ -32,6 +32,186 @@ do                                                                      \
     }                                                                   \
 }while(0)
 
+constexpr auto OS_SQL_STATEMENT
+{
+    R"(CREATE TABLE dbsync_osinfo (
+    hostname TEXT,
+    architecture TEXT,
+    os_name TEXT,
+    os_version TEXT,
+    os_codename TEXT,
+    os_major TEXT,
+    os_minor TEXT,
+    os_patch TEXT,
+    os_build TEXT,
+    os_platform TEXT,
+    sysname TEXT,
+    release TEXT,
+    version TEXT,
+    os_release TEXT,
+    checksum TEXT,
+    PRIMARY KEY (os_name)) WITHOUT ROWID;)"
+};
+
+constexpr auto OS_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_osinfo",
+        "component":"syscollector_osinfo",
+        "index":"os_name",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE os_name ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto OS_START_CONFIG_STATEMENT
+{
+    R"({"table":"dbsync_osinfo",
+        "first_query":
+            {
+                "column_list":["os_name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"os_name DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["os_name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"os_name ASC",
+                "count_opt":1
+            },
+        "component":"syscollector_osinfo",
+        "index":"os_name",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
+                "column_list":["os_name, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
+constexpr auto HW_SQL_STATEMENT
+{
+    R"(CREATE TABLE dbsync_hwinfo (
+    board_serial TEXT,
+    cpu_name TEXT,
+    cpu_cores INTEGER,
+    cpu_mhz DOUBLE,
+    ram_total INTEGER,
+    ram_free INTEGER,
+    ram_usage INTEGER,
+    checksum TEXT,
+    PRIMARY KEY (board_serial)) WITHOUT ROWID;)"
+};
+
+constexpr auto HW_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_hwinfo",
+        "component":"syscollector_hwinfo",
+        "index":"board_serial",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":" ",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE board_serial ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto HW_START_CONFIG_STATEMENT
+{
+    R"({"table":"dbsync_hwinfo",
+        "first_query":
+            {
+                "column_list":["board_serial"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"board_serial DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["board_serial"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"board_serial ASC",
+                "count_opt":1
+            },
+        "component":"syscollector_hwinfo",
+        "index":"board_serial",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
+                "column_list":["board_serial, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
+
 constexpr auto HOTFIXES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hotfixes(
@@ -57,7 +237,7 @@ constexpr auto HOTFIXES_SYNC_CONFIG_STATEMENT
         },
         "count_range_query_json": {
                 "row_filter":"WHERE hotfix BETWEEN '?' and '?' ORDER BY hotfix",
-                "count_field_hotfix":"count",
+                "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -680,6 +860,8 @@ constexpr auto PACKAGES_TABLE     { "dbsync_packages"         };
 constexpr auto HOTFIXES_TABLE     { "dbsync_hotfixes"         };
 constexpr auto PORTS_TABLE        { "dbsync_ports"            };
 constexpr auto PROCESSES_TABLE    { "dbsync_processes"        };
+constexpr auto OS_TABLE           { "dbsync_osinfo"           };
+constexpr auto HW_TABLE           { "dbsync_hwinfo"           };
 
 
 static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
@@ -742,6 +924,7 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
                     msg["type"] = table;
                     msg["operation"] = operationsMap.at(result);
                     msg["data"] = item;
+                    msg["data"]["scan_time"] = m_scanTime;
                     m_reportDiffFunction(msg.dump());
                 }
             }
@@ -752,6 +935,7 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
                 msg["type"] = table;
                 msg["operation"] = operationsMap.at(result);
                 msg["data"] = data;
+                msg["data"]["scan_time"] = m_scanTime;
                 m_reportDiffFunction(msg.dump());
                 // LCOV_EXCL_STOP
             }
@@ -790,6 +974,14 @@ Syscollector::Syscollector()
 std::string Syscollector::getCreateStatement() const
 {
     std::string ret;
+    if (m_os)
+    {
+        ret += OS_SQL_STATEMENT;
+    }
+    if (m_hardware)
+    {
+        ret += HW_SQL_STATEMENT;
+    }
     if (m_packages)
     {
         ret += PACKAGES_SQL_STATEMENT;
@@ -847,6 +1039,20 @@ void Syscollector::registerWithRsync()
         }
     };
 
+    if (m_os)
+    {
+        m_spRsync->registerSyncID("syscollector_osinfo",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(OS_SYNC_CONFIG_STATEMENT),
+                                  reportSyncWrapper);
+    }
+    if (m_hardware)
+    {
+        m_spRsync->registerSyncID("syscollector_hwinfo",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(HW_SYNC_CONFIG_STATEMENT),
+                                  reportSyncWrapper);
+    }
     if (m_processes)
     {
         m_spRsync->registerSyncID("syscollector_processes", 
@@ -941,31 +1147,79 @@ void Syscollector::destroy()
     lock.unlock();
 }
 
+nlohmann::json Syscollector::getHardwareData()
+{
+    nlohmann::json ret;
+    ret[0] = m_spInfo->hardware();
+    ret[0]["checksum"] = getItemChecksum(ret[0]);
+    return ret;
+}
+
+void Syscollector::insertHardware()
+{
+    if (m_hardware)
+    {
+        const auto& osData{getHardwareData()};
+        nlohmann::json toInsert;
+        toInsert["table"] = HW_TABLE;
+        toInsert["data"] = osData;
+        m_spDBSync->insertData(toInsert);
+    }
+}
+
 void Syscollector::scanHardware()
 {
     if (m_hardware)
     {
-        nlohmann::json msg;
-        msg["type"] = "dbsync_hardware";
-        msg["operation"] = "MODIFIED";
-        msg["data"] = m_spInfo->hardware();
-        m_reportDiffFunction(msg.dump());
+        const auto& hwData{getHardwareData()};
+        updateAndNotifyChanges(HW_TABLE, hwData);
+    }
+}
+
+void Syscollector::syncHardware()
+{
+    if (m_hardware)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HW_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    }
+}
+
+nlohmann::json Syscollector::getOSData()
+{
+    nlohmann::json ret;
+    ret[0] = m_spInfo->os();
+    ret[0]["checksum"] = getItemChecksum(ret[0]);
+    return ret;
+}
+
+void Syscollector::insertOs()
+{
+    if (m_os)
+    {
+        const auto& osData{getOSData()};
+        nlohmann::json toInsert;
+        toInsert["table"] = OS_TABLE;
+        toInsert["data"] = osData;
+        m_spDBSync->insertData(toInsert);
     }
 }
 
 void Syscollector::scanOs()
 {
-    if(m_os)
+    if (m_os)
     {
-        nlohmann::json msg;
-        msg["type"] = "dbsync_os";
-        msg["operation"] = "MODIFIED";
-        msg["data"] = m_spInfo->os();
-        msg["data"]["scan_time"] = m_scanTime;
-        m_reportDiffFunction(msg.dump());
+        const auto& osData{getOSData()};
+        updateAndNotifyChanges(OS_TABLE, osData);
     }
 }
 
+void Syscollector::syncOs()
+{
+    if (m_os)
+    {
+        m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(OS_START_CONFIG_STATEMENT), m_reportSyncFunction);
+    }
+}
 
 nlohmann::json Syscollector::getNetworkData()
 {
@@ -1000,7 +1254,6 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["rx_dropped"] = item.at("rx_dropped");
                 ifaceTableData["checksum"]   = getItemChecksum(ifaceTableData);
                 ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
-                ifaceTableData["scan_time"]  = m_scanTime;
                 ifaceTableDataList.push_back(ifaceTableData);
 
                 // "dbsync_network_protocol" table data to update and notify
@@ -1020,7 +1273,6 @@ nlohmann::json Syscollector::getNetworkData()
                     addressTableData["proto"]     = "IPv4";
                     addressTableData["checksum"]  = getItemChecksum(addressTableData);
                     addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                    addressTableData["scan_time"] = m_scanTime;
                     addressTableDataList.push_back(addressTableData);
                 }
 
@@ -1035,12 +1287,10 @@ nlohmann::json Syscollector::getNetworkData()
                     addressTableData["proto"]     = "IPv6";
                     addressTableData["checksum"]  = getItemChecksum(addressTableData);
                     addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
-                    addressTableData["scan_time"] = m_scanTime;
                     addressTableDataList.push_back(addressTableData);
                 }
                 protoTableData["checksum"]  = getItemChecksum(protoTableData);
                 protoTableData["item_id"]   = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
-                protoTableData["scan_time"] = m_scanTime;
                 protoTableDataList.push_back(protoTableData);
             }
             ret[NET_IFACE_TABLE] = ifaceTableDataList;
@@ -1106,7 +1356,6 @@ nlohmann::json Syscollector::getPackagesData()
         for (auto item : normalizedPackagesData)
         {
             item["checksum"] = getItemChecksum(item);
-            item["scan_time"] = m_scanTime;
             if(item.find("hotfix") != item.end())
             {
                 hotfixesList.push_back(item);
@@ -1186,7 +1435,6 @@ nlohmann::json Syscollector::getPortsData()
                 {
                     item["checksum"] = getItemChecksum(item);
                     item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
-                    item["scan_time"] = m_scanTime;
                     // Only update and notify "Listening" state ports
                     if (m_portsAll)
                     {
@@ -1247,7 +1495,6 @@ nlohmann::json Syscollector::getProcessesData()
         for (auto item : processes)
         {
             item["checksum"] = getItemChecksum(item);
-            item["scan_time"] = m_scanTime;
             ret.push_back(item);
         }
     }
@@ -1285,7 +1532,8 @@ void Syscollector::syncProcesses()
 
 void Syscollector::insert()
 {
-    m_scanTime = Utils::getCurrentTimestamp();
+    TRY_CATCH_TASK(insertHardware);
+    TRY_CATCH_TASK(insertOs);
     TRY_CATCH_TASK(insertNetwork);
     TRY_CATCH_TASK(insertPackages);
     TRY_CATCH_TASK(insertPorts);
@@ -1305,6 +1553,8 @@ void Syscollector::scan()
 
 void Syscollector::sync()
 {
+    TRY_CATCH_TASK(syncHardware);
+    TRY_CATCH_TASK(syncOs);
     TRY_CATCH_TASK(syncNetwork);
     TRY_CATCH_TASK(syncPackages);
     TRY_CATCH_TASK(syncPorts);

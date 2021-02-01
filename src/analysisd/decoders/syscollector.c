@@ -170,14 +170,15 @@ static const char* NETWORK_ADDRESS_FIELDS[] = {
 
 static const char* HARDWARE_FIELDS[] = {
     "scan_time",
-    "board_serial", 
-    "cpu_name", 
-    "cpu_cores", 
-    "cpu_MHz", 
-    "ram_total", 
-    "ram_free", 
-    "ram_usage", 
-    NULL 
+    "board_serial",
+    "cpu_name",
+    "cpu_cores",
+    "cpu_mhz",
+    "ram_total",
+    "ram_free",
+    "ram_usage",
+    "checksum",
+    NULL
 };
 
 static const char* OS_FIELDS[] = {
@@ -196,6 +197,7 @@ static const char* OS_FIELDS[] = {
     "release",
     "version",
     "os_release",
+    "checksum",
     NULL 
 };
 
@@ -1941,9 +1943,9 @@ const char** get_field_list(const char *type) {
             ret_val = NETWORK_PROTOCOL_FIELDS;
         } else if(strcmp(type, "network_address") == 0) {
             ret_val = NETWORK_ADDRESS_FIELDS;
-        } else if(strcmp(type, "hardware") == 0) {
+        } else if(strcmp(type, "hwinfo") == 0) {
             ret_val = HARDWARE_FIELDS;
-        } else if(strcmp(type, "os") == 0) {
+        } else if(strcmp(type, "osinfo") == 0) {
             ret_val = OS_FIELDS;
         } else {
             merror("Incorrect/unknown type value %s.", type);

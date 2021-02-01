@@ -145,7 +145,7 @@ static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_OS[2] },
     { .value = { FIELD_TEXT, 3, false, false, "hostname" }, .next = &TABLE_OS[3] },
     { .value = { FIELD_TEXT, 4, false, false, "architecture" }, .next = &TABLE_OS[4] },
-    { .value = { FIELD_TEXT, 5, false, false, "os_name" }, .next = &TABLE_OS[5] },
+    { .value = { FIELD_TEXT, 5, false, true, "os_name" }, .next = &TABLE_OS[5] },
     { .value = { FIELD_TEXT, 6, false, false, "os_version" }, .next = &TABLE_OS[6] },
     { .value = { FIELD_TEXT, 7, false, false, "os_codename" }, .next = &TABLE_OS[7] },
     { .value = { FIELD_TEXT, 8, false, false, "os_major" }, .next = &TABLE_OS[8] },
@@ -156,19 +156,21 @@ static struct column_list const TABLE_OS[] = {
     { .value = { FIELD_TEXT, 13, false, false, "sysname" }, .next = &TABLE_OS[13] },
     { .value = { FIELD_TEXT, 14, false, false, "release" }, .next = &TABLE_OS[14] },
     { .value = { FIELD_TEXT, 15, false, false, "version" }, .next = &TABLE_OS[15] },
-    { .value = { FIELD_TEXT, 16, false, false, "os_release" }, .next = NULL }
+    { .value = { FIELD_TEXT, 16, false, false, "os_release" }, .next = &TABLE_OS[16] },
+    { .value = { FIELD_TEXT, 17, false, false, "checksum" }, .next = NULL }
 };
 
 static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HARDWARE[1] },
     { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HARDWARE[2] }, 
-    { .value = { FIELD_TEXT, 3, false, false, "board_serial" }, .next = &TABLE_HARDWARE[3] },
+    { .value = { FIELD_TEXT, 3, false, true, "board_serial" }, .next = &TABLE_HARDWARE[3] },
     { .value = { FIELD_TEXT, 4, false, false, "cpu_name" }, .next = &TABLE_HARDWARE[4] },
     { .value = { FIELD_INTEGER, 5, false, false, "cpu_cores" }, .next = &TABLE_HARDWARE[5] },
     { .value = { FIELD_REAL, 6, false, false, "cpu_mhz" }, .next = &TABLE_HARDWARE[6] },
     { .value = { FIELD_INTEGER, 7, false, false, "ram_total" }, .next = &TABLE_HARDWARE[7] },
     { .value = { FIELD_INTEGER, 8, false, false, "ram_free" }, .next = &TABLE_HARDWARE[8] },
-    { .value = { FIELD_INTEGER, 9, false, false, "ram_usage" }, .next = NULL }
+    { .value = { FIELD_INTEGER, 9, false, false, "ram_usage" }, .next = &TABLE_HARDWARE[9] },
+    { .value = { FIELD_TEXT, 10, false, false, "checksum" }, .next = NULL }
 };
 
 
@@ -177,8 +179,8 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE }, .next = &TABLE_MAP[1]},
     { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO }, .next = &TABLE_MAP[2]},
     { .current = { "network_address", "sys_netaddr", false, TABLE_NETADDR }, .next = &TABLE_MAP[3]},
-    { .current = { "os", "sys_osinfo", true, TABLE_OS }, .next = &TABLE_MAP[4]},
-    { .current = { "hardware", "sys_hwinfo", true, TABLE_HARDWARE }, .next = &TABLE_MAP[5]},
+    { .current = { "osinfo", "sys_osinfo", false, TABLE_OS }, .next = &TABLE_MAP[4]},
+    { .current = { "hwinfo", "sys_hwinfo", false, TABLE_HARDWARE }, .next = &TABLE_MAP[5]},
     { .current = { "ports", "sys_ports", false, TABLE_PORTS }, .next = &TABLE_MAP[6]},
     { .current = { "packages", "sys_programs", false, TABLE_PACKAGES }, .next = &TABLE_MAP[7]},
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES}, .next = NULL},
@@ -1334,6 +1336,16 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
     {
         component = WDB_SYSCOLLECTOR_NETINFO;
         mdebug2("DB(%s) syscollector_network_iface Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_hwinfo") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_HWINFO;
+        mdebug2("DB(%s) syscollector_hwinfo Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_osinfo") == 0)
+    {
+        component = WDB_SYSCOLLECTOR_OSINFO;
+        mdebug2("DB(%s) syscollector_osinfo Syscollector query. ", wdb->id);
     }
     else
     {
@@ -3150,7 +3162,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
         else
             os_patch = next;
 
-        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release), result < 0) {
+        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("Cannot save OS information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save OS information.");
         } else {
@@ -3174,7 +3186,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
     char * serial;
     char * cpu_name;
     int cpu_cores;
-    char * cpu_mhz;
+    double cpu_mhz;
     uint64_t ram_total;
     uint64_t ram_free;
     int ram_usage;
@@ -3267,19 +3279,16 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        cpu_mhz = curr;
+        cpu_mhz = strtod(curr, NULL);
         *next++ = '\0';
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid HW info query syntax.");
-            mdebug2("HW info query: %s", cpu_mhz);
+            mdebug2("HW info query: %f", cpu_mhz);
             snprintf(output, OS_MAXSTR + 1, "err Invalid HW info query syntax, near '%.32s'", curr);
             return -1;
         }
-
-        if (!strcmp(cpu_mhz, "NULL"))
-            cpu_mhz = NULL;
 
         ram_total = strtol(curr,NULL,10);
         *next++ = '\0';
@@ -3296,7 +3305,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         ram_usage = strtol(next,NULL,10);
 
-        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage), result < 0) {
+        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("wdb_parse_hardware(): Cannot save HW information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save HW information.");
         } else {

@@ -37,6 +37,8 @@ ALTER TABLE sys_netaddr ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(check
 ALTER TABLE sys_programs ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(checksum <> '');
 ALTER TABLE sys_hotfixes ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(checksum <> '');
 ALTER TABLE sys_processes ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(checksum <> '');
+ALTER TABLE sys_hwinfo ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(checksum <> '');
+ALTER TABLE sys_osinfo ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(checksum <> '');
 
 ALTER TABLE sys_netiface ADD COLUMN item_id TEXT DEFAULT NULL;
 ALTER TABLE sys_netproto ADD COLUMN item_id TEXT DEFAULT NULL;
