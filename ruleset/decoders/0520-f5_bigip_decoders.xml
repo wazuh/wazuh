@@ -19,11 +19,11 @@ May 17 11:28:22 HOSTNAME alert gtmd[13202]: 011a6006:1: SNMP_TRAP: VS virtual_se
 -->
 
 <decoder name="f5_bigip_decoder">
-	<prematch>\w+ \w+[\d+]: \S+ \.+</prematch>
+	<prematch>\w+ \w+[\d+]:</prematch>
 </decoder>
 
 <decoder name="f5_bigip_decoder_fields">
    <parent>f5_bigip_decoder</parent>
-   <regex>(\w+) (\w+)[(\d+)]: (\S+) (\.+)</regex>
+   <regex>(\w+) (\w+)\p(\d+)\p+ (\S+) (\.+)</regex>
    <order>level,service,pid,message_code,message_text</order>
 </decoder>
