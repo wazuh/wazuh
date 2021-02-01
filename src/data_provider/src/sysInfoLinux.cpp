@@ -24,6 +24,7 @@
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
+#include "packages/packagesLinuxParserHelper.h"
 
 struct ProcTableDeleter
 {
@@ -123,220 +124,6 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     return jsProcessInfo;
 }
 
-static nlohmann::json parsePackage(const std::vector<std::string>& entries)
-{
-    std::map<std::string, std::string> info;
-    nlohmann::json ret;
-    for (const auto& entry: entries)
-    {
-        const auto pos{entry.find(":")};
-        if (pos != std::string::npos)
-        {
-            const auto key{Utils::trim(entry.substr(0, pos))};
-            const auto value{Utils::trim(entry.substr(pos + 1), " \n")};
-            info[key] = value;
-        }
-    }
-    if (!info.empty() && info.at("Status") == "install ok installed")
-    {
-        ret["name"] = info.at("Package");
-
-        std::string priority     { UNKNOWN_VALUE };
-        std::string groups       { UNKNOWN_VALUE };
-        std::string size         { UNKNOWN_VALUE };
-        std::string multiarch    { UNKNOWN_VALUE };
-        std::string architecture { UNKNOWN_VALUE };
-        std::string source       { UNKNOWN_VALUE };
-        std::string version      { UNKNOWN_VALUE };
-
-        auto it{info.find("Priority")};
-        if (it != info.end())
-        {
-            priority = it->second;
-        }
-        it = info.find("Section");
-        if (it != info.end())
-        {
-            groups = it->second;
-        }
-        it = info.find("Installed-Size");
-        if (it != info.end())
-        {
-            size = it->second;
-        }
-        it = info.find("Multi-Arch");
-        if (it != info.end())
-        {
-            multiarch = it->second;
-        }
-        it = info.find("Architecture");
-        if (it != info.end())
-        {
-            architecture = it->second;
-        }
-        it = info.find("Source");
-        if (it != info.end())
-        {
-            source = it->second;
-        }
-        it = info.find("Version");
-        if (it != info.end())
-        {
-            version = it->second;
-        }
-
-        ret["priority"]     = priority;
-        ret["groups"]       = groups;
-        ret["size"]         = size;
-        ret["multiarch"]    = multiarch;
-        ret["architecture"] = architecture;
-        ret["source"]       = source;
-        ret["version"]      = version;
-        ret["format"]       = "deb";
-        ret["os_patch"]     = UNKNOWN_VALUE;
-    }
-    return ret;
-}
-
-static nlohmann::json getDpkgInfo(const std::string& fileName)
-{
-    nlohmann::json ret;
-    std::fstream file{fileName, std::ios_base::in};
-    if (file.is_open())
-    {
-        while(file.good())
-        {
-            std::string line;
-            std::vector<std::string> data;
-            do
-            {
-                std::getline(file, line);
-                if(line.front() == ' ')//additional info
-                {
-                    data.back() = data.back() + line + "\n";
-                }
-                else
-                {
-                    data.push_back(line + "\n");
-                }
-            }
-            while(!line.empty());//end of package item info
-            const auto& packageInfo{ parsePackage(data) };
-            if (!packageInfo.empty())
-            {
-                ret.push_back(packageInfo);
-            }
-        }
-    }
-    return ret;
-}
-
-static nlohmann::json parseRpm(const std::string& packageInfo)
-{
-    nlohmann::json ret;
-    std::string token;
-    std::istringstream tokenStream{ packageInfo };
-    std::map<std::string, std::string> info;
-    while (std::getline(tokenStream, token))
-    {
-        auto pos{token.find(":")};
-        while (pos != std::string::npos && (pos + 1) < token.size())
-        {
-            const auto key{Utils::trim(token.substr(0, pos))};
-            token = Utils::trim(token.substr(pos + 1));
-            if(((pos = token.find("  ")) != std::string::npos) ||
-               ((pos = token.find("\t")) != std::string::npos))
-            {
-                info[key] = Utils::trim(token.substr(0, pos), " \t");
-                token = Utils::trim(token.substr(pos));
-                pos = token.find(":");
-            }
-            else
-            {
-                info[key] = token;
-            }
-        }
-    }
-    auto it{info.find("Name")};
-    if (it != info.end() && it->second != "gpg-pubkey")
-    {
-        ret["name"] = it->second;
-
-        std::string size         { UNKNOWN_VALUE };
-        std::string install_time { UNKNOWN_VALUE };
-        std::string groups       { UNKNOWN_VALUE };
-        std::string version;
-        std::string architecture { UNKNOWN_VALUE };
-
-        it = info.find("Size");
-        if (it != info.end())
-        {
-            size = it->second;
-        }
-        it = info.find("Install Date");
-        if (it != info.end())
-        {
-            install_time = it->second;
-        }
-        it = info.find("Group");
-        if (it != info.end())
-        {
-            groups = it->second;
-        }
-        it = info.find("Epoch");
-        if (it != info.end())
-        {
-            version += it->second + "-";
-        }
-        it = info.find("Release");
-        if (it != info.end())
-        {
-            version +=it->second + "-";
-        }
-        it = info.find("Version");
-        if (it != info.end())
-        {
-            version += it->second;
-        }
-        it = info.find("Architecture");
-        if (it != info.end())
-        {
-            architecture = it->second;
-        }
-
-        ret["size"]         = size;
-        ret["install_time"] = install_time;
-        ret["groups"]       = groups;
-        ret["version"]      = version.empty() ? UNKNOWN_VALUE : version;
-        ret["architecture"] = architecture;
-        ret["format"]       = "rpm";
-        ret["os_patch"]     = UNKNOWN_VALUE;
-    }
-    return ret;
-}
-
-static nlohmann::json getRpmInfo()
-{
-    nlohmann::json ret;
-    auto rawData{ Utils::exec("rpm -qai") };
-    if (!rawData.empty())
-    {
-        std::vector<std::string> packages;
-        auto pos{rawData.rfind("Name")};
-        while(pos != std::string::npos)
-        {
-            const auto& package{parseRpm(rawData.substr(pos))};
-            if (!package.empty())
-            {
-                ret.push_back(package);
-            }
-            rawData = rawData.substr(0, pos);
-            pos = rawData.rfind("Name");
-        }
-    }
-    return ret;
-}
-
 std::string SysInfo::getSerialNumber() const
 {
     std::string serial;
@@ -418,6 +205,61 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_total"] = ramTotal;
     info["ram_free"] = memFree;
     info["ram_usage"] = 100 - (100*memFree/ramTotal);
+}
+
+static nlohmann::json getRpmInfo()
+{
+    nlohmann::json ret;
+    auto rawData{ Utils::exec("rpm -qai") };
+    if (!rawData.empty())
+    {
+        std::vector<std::string> packages;
+        auto pos{rawData.rfind("Name")};
+        while(pos != std::string::npos)
+        {
+            const auto& package{ PackageLinuxHelper::parseRpm(rawData.substr(pos)) };
+            if (!package.empty())
+            {
+                ret.push_back(package);
+            }
+            rawData = rawData.substr(0, pos);
+            pos = rawData.rfind("Name");
+        }
+    }
+    return ret;
+}
+
+static nlohmann::json getDpkgInfo(const std::string& fileName)
+{
+    nlohmann::json ret;
+    std::fstream file{fileName, std::ios_base::in};
+    if (file.is_open())
+    {
+        while(file.good())
+        {
+            std::string line;
+            std::vector<std::string> data;
+            do
+            {
+                std::getline(file, line);
+                if(line.front() == ' ')//additional info
+                {
+                    data.back() = data.back() + line + "\n";
+                }
+                else
+                {
+                    data.push_back(line + "\n");
+                }
+            }
+            while(!line.empty());//end of package item info
+            const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
+            if (!packageInfo.empty())
+            {
+                ret.push_back(packageInfo);
+            }
+        }
+    }
+    return ret;
 }
 
 nlohmann::json SysInfo::getPackages() const
