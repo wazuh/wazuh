@@ -6,7 +6,7 @@
 -->
 
 <decoder name="cisco-asa">
-    <prematch>^%ASA-</prematch>
+    <prematch>%ASA-|\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %ASA-</prematch>
 </decoder>
 
 <!--
