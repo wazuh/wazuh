@@ -2062,7 +2062,7 @@ clean-internals: clean-unit-tests
 	rm -f ${report_o}
 	rm -f ${client_agent_o}
 	rm -f ${addagent_o}
-	rm -f ${active_response_o} ${active_response_programs}
+	rm -f ${active_response_o} ${active_response_programs} firewall-drop
 	rm -f ${util_o} ${util_programs}
 	rm -f ${rootcheck_o} rootcheck.a
 	rm -f ${syscheck_o} ${syscheck_eventchannel_o}
