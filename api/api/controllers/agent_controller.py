@@ -7,17 +7,17 @@ import logging
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
 
-import wazuh.agent as agent
 from api import configuration
 from api.encoder import dumps, prettify
 from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
+from api.models.group_added_model import GroupAddedModel
 from api.util import parse_api_param, remove_nones_to_dict, raise_if_exc
+from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
-from wazuh.core.exception import WazuhError
 
 logger = logging.getLogger('wazuh-api')
 
@@ -476,6 +476,39 @@ async def put_upgrade_custom_agents(request, agents_list=None, pretty=False, wai
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def get_component_stats(request, pretty=False, wait_for_complete=False, agent_id=None, component=None):
+    """Get a specified agent's component stats.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : list
+        List of agent IDs. All possible values from 000 onwards.
+
+    Returns
+    -------
+    ApiResponse
+        Module stats.
+    """
+    f_kwargs = {'agent_list': [agent_id],
+                'component': component}
+
+    dapi = DistributedAPI(f=stats.get_agents_component_stats_json,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_agent_upgrade(request, agents_list=None, pretty=False, wait_for_complete=False):
     """Get upgrade results from agents.
 
@@ -693,15 +726,23 @@ async def get_agents_in_group(request, group_id, pretty=False, wait_for_complete
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def post_group(request, group_id, pretty=False, wait_for_complete=False):
+async def post_group(request, pretty=False, wait_for_complete=False):
     """Create a new group.
+    
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param group_id: Group ID.
-    :return: ApiResponse
+    Returns
+    -------
+    ApiResponse
     """
-    f_kwargs = {'group_id': group_id}
+    # Get body parameters
+    Body.validate_content_type(request, expected_content_type='application/json')
+    f_kwargs = await GroupAddedModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=agent.create_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -902,17 +943,6 @@ async def insert_agent(request, pretty=False, wait_for_complete=False):
     Body.validate_content_type(request, expected_content_type='application/json')
     f_kwargs = await AgentInsertedModel.get_kwargs(request)
 
-    # Get IP if not given
-    if not f_kwargs['ip']:
-        if configuration.api_conf['behind_proxy_server']:
-            try:
-                f_kwargs['ip'] = request.headers['X-Forwarded-For']
-            except KeyError:
-                raise_if_exc(WazuhError(1120))
-        else:
-            peername = request.transport.get_extra_info('peername')
-            if peername is not None:
-                f_kwargs['ip'], _ = peername
     f_kwargs['use_only_authd'] = configuration.api_conf['use_only_authd']
 
     dapi = DistributedAPI(f=agent.add_agent,

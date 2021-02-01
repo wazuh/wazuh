@@ -208,8 +208,6 @@ class Handler(asyncio.Protocol):
         self.in_str = {}
         # Maximum message length to send in a single request.
         self.request_chunk = 5242880
-        # Stores message to be sent.
-        self.out_msg = bytearray(self.header_len + self.request_chunk * 2)
         # Object use to encrypt and decrypt requests.
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # Logging.Logger object used to write logs.
@@ -271,10 +269,11 @@ class Handler(asyncio.Protocol):
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
         encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
-        self.out_msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
-        self.out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
+        out_msg = bytearray(self.header_len + len(encrypted_data))
+        out_msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
+        out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
 
-        return self.out_msg[:self.header_len + len(encrypted_data)]
+        return out_msg
 
     def msg_parse(self) -> bool:
         """Parse an incoming message.

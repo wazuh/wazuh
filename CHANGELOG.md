@@ -3,16 +3,45 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.2.0]
 
+### Added
+
+- **Core:**
+  - Added support for bookmarks in Logcollector, allowing to follow the log file at the point where the agent stopped. ([#3368](https://github.com/wazuh/wazuh/issues/3368))
+  - Improved support for multi-line logs with a variable number of lines. ([#5652](https://github.com/wazuh/wazuh/issues/5652))
+
+- **API:**
+  - Added new endpoint to get agent stats from different components. ([#7128](https://github.com/wazuh/wazuh/issues/7128))
+  
+- **Ruleset:**
+  - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
+
 ### Changed
 
 - **Core:**
-  - Rename daemons to new Wazuh standard. ([#6912](https://github.com/wazuh/wazuh/pull/6912))
+  - Wazuh daemons have been renamed to a unified standard. ([#6912](https://github.com/wazuh/wazuh/pull/6912))
+  - Prevent a condition in FIM that may lead to a memory error. ([#6759](https://github.com/wazuh/wazuh/pull/6759))
+  - Let FIM switch to real-time mode for directories where who-data is not available (Audit in immutable mode). ([#6828](https://github.com/wazuh/wazuh/pull/6828))
 
 - **API:**
   - Removed ruleset version from `GET /cluster/{node_id}/info` and `GET /manager/info` as it was deprecated. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
+  - Changed the `POST /groups` endpoint to specify the group name in a JSON body instead of in a query parameter. ([#6909](https://github.com/wazuh/wazuh/pull/6909))
 
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
+  
+### Fixed
+
+- Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
+
+
+### Fixed
+
+- **Core:**
+  - Fixed a bug in FIM when setting scan_time to "12am" or "12pm". ([#6934](https://github.com/wazuh/wazuh/pull/6934))
+  - Fixed a bug in FIM that produced wrong alerts when the file limit was reached. ([#6802](https://github.com/wazuh/wazuh/pull/6802))
+  - Fixed a bug in Analysisd that reserved the static decoder field name "command" but never used it. ([#7105](https://github.com/wazuh/wazuh/pull/7105))
+  - Fixed evaluation of fields in the tag `<description>` of rules. ([#7073](https://github.com/wazuh/wazuh/pull/7073))
+
 
 ## [v4.1.0]
 
@@ -27,16 +56,15 @@ All notable changes to this project will be documented in this file.
   - Let the time interval to detect that an agent got disconnected configurable. Deprecate parameter `DISCON_TIME`. ([#6396](https://github.com/wazuh/wazuh/pull/6396))
   - Added support to macOS in Vulnerability Detector. ([#6532](https://github.com/wazuh/wazuh/pull/6532))
   - Added the capability to perform FIM on values in the Windows Registry. ([#6735](https://github.com/wazuh/wazuh/pull/6735))
-
 - **API:**
   - Added endpoints to query and manage Rootcheck data. ([#6496](https://github.com/wazuh/wazuh/pull/6496))
   - Added new endpoint to check status of tasks. ([#6029](https://github.com/wazuh/wazuh/issues/6029))
   - Added new endpoints to run the logtest tool and delete a logtest session. ([#5984](https://github.com/wazuh/wazuh/pull/5984))
   - Added debug2 mode for API log and improved debug mode. ([#6822](https://github.com/wazuh/wazuh/pull/6822))
-
+  - Added missing secure headers for API responses. ([#7024](https://github.com/wazuh/wazuh/issues/7024))
+  - Added new config option to disable uploading configurations containing remote commands. ([#7016](https://github.com/wazuh/wazuh/issues/7016))
 - **AWS Module:**
   - Added support for AWS load balancers (Application Load Balancer, Classic Load Balancer and Network Load Balancer). ([#6034](https://github.com/wazuh/wazuh/issues/6034))
-
 - **Framework:**
   - Added new framework modules to use the logtest tool. ([#5870](https://github.com/wazuh/wazuh/pull/5870))
   - Improved `q` parameter on rules, decoders and cdb-lists modules to allow multiple nested fields. ([#6560](https://github.com/wazuh/wazuh/pull/6560))
@@ -48,13 +76,13 @@ All notable changes to this project will be documented in this file.
     - Migration of rootcheck results to Wazuh DB to remove the files with the results of each agent. ([#6096](https://github.com/wazuh/wazuh/issues/6096))
     - Designed new mechanism to close RIDS files when agents are disconnected. ([#6112](https://github.com/wazuh/wazuh/issues/6112))
   - Moved CA configuration section to verify WPK signatures from `active-response` section to `agent-upgrade` section. ([#5929](https://github.com/wazuh/wazuh/issues/5929))
+  - The tool ossec-logtest has been renamed to wazuh-logtest, and it uses a new testing service integrated in Analysisd. ([#6103](https://github.com/wazuh/wazuh/pull/6103))
   - Changed error message to debug when multiple daemons attempt to remove an agent simultaneously ([#6185](https://github.com/wazuh/wazuh/pull/6185))
   - Changed error message to warning when the agent fails to reach a module. ([#5817](https://github.com/wazuh/wazuh/pull/5817))
-
 - **API:**
   - Changed the `status` parameter behavior in the `DELETE /agents` endpoint to enhance security. ([#6829](https://github.com/wazuh/wazuh/pull/6829))
   - Changed upgrade endpoints to accept a list of agents, maximum 100 agents per request. ([#5336](https://github.com/wazuh/wazuh/issues/5536))
-
+  - Improved input validation regexes for `names` and `array_names`. ([#7015](https://github.com/wazuh/wazuh/issues/7015))
 - **Framework:**
   - Refactored framework to work with new upgrade module. ([#5537](https://github.com/wazuh/wazuh/issues/5537))
   - Refactored agent upgrade CLI to work with new ugprade module. It distributes petitions in a clustered environment. ([#5675](https://github.com/wazuh/wazuh/issues/5675))
@@ -64,10 +92,6 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Fixed a `cluster_control` bug that caused an error message when running `wazuh-clusterd` in foreground. ([#6724](https://github.com/wazuh/wazuh/pull/6724))
-
-- **API:**
-  - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
 - **Core:**
   - Fixed error in Analysisd when getting the ossec group ID. ([#6688](https://github.com/wazuh/wazuh/pull/6688))
   - Prevented FIM from reporting configuration error when setting patterns that match no files. ([#6187](https://github.com/wazuh/wazuh/pull/6187))
@@ -82,7 +106,38 @@ All notable changes to this project will be documented in this file.
   - Fixed a race condition in Remoted that might create agent-group files with wrong permissions. ([#6833](https://github.com/wazuh/wazuh/pull/6833))
   - Fixed a warning log in Wazuh DB when upgrading the global database. ([#6697](https://github.com/wazuh/wazuh/pull/6697))
   - Fixed a bug in FIM on Windows that caused false positive due to changes in the host timezone or the daylight saving time when monitoring files in a FAT32 filesystem. ([#6801](https://github.com/wazuh/wazuh/pull/6801))
+  - Fixed the purge of the Redhat vulnerabilities database before updating it. ([#7050](https://github.com/wazuh/wazuh/pull/7050))
+  - Fixed a condition race hazard in Authd that may prevent the daemon from updating client.keys after adding an agent. ([#7271](https://github.com/wazuh/wazuh/pull/7271))
+- **API:**
+  - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+- **Framework:**
+  - Fixed a `cluster_control` bug that caused an error message when running `wazuh-clusterd` in foreground. ([#6724](https://github.com/wazuh/wazuh/pull/6724))
+  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7062](https://github.com/wazuh/wazuh/pull/7062))
 
+
+## [v4.0.4]
+
+### Added
+
+- **API:**
+  - Added missing secure headers for API responses. ([#7138](https://github.com/wazuh/wazuh/issues/7138))
+  - Added new config option to disable uploading configurations containing remote commands. ([#7134](https://github.com/wazuh/wazuh/issues/7134))
+  - Added new config option to choose the SSL ciphers. Default value `TLSv1.2`. ([#7164](https://github.com/wazuh/wazuh/issues/7164))
+
+### Changed
+
+- **API:**
+  - Deprecated endpoints to restore and update API configuration file. ([#7132](https://github.com/wazuh/wazuh/issues/7132))
+  - Default expiration time of the JWT token set to 15 minutes. ([#7167](https://github.com/wazuh/wazuh/pull/7167))
+
+### Fixed
+
+- **API:**
+  - Fixed spec regexes for paths used in /manager/files and /cluster/{node_id}/files endpoints. ([#7131](https://github.com/wazuh/wazuh/issues/7131))
+- **Framework:**
+  - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7135](https://github.com/wazuh/wazuh/issues/7135))
+- **Core:**
+  - Fixed the purge of the Redhat vulnerabilities database before updating it. ([#7133](https://github.com/wazuh/wazuh/pull/7133))
 
 ## [v4.0.3] - 2020-11-30
 
