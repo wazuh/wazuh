@@ -157,8 +157,7 @@ int test_setup_packages_valid_msg(void **state)
             \"cpe\" : \"15\",\
             \"msu_name\" : \"16\",\
             \"checksum\" : \"17\",\
-            \"item_id\" : \"18\",\
-            \"os_patch\" : \"19\"\
+            \"item_id\" : \"18\"\
         }}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -507,7 +506,7 @@ void test_syscollector_dbsync_packages_valid_msg(void **state)
 {
     Eventinfo *lf = *state;
 
-    const char *query = "agent 001 dbsync packages MODIFIED NULL|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|";
+    const char *query = "agent 001 dbsync packages MODIFIED NULL|1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|";
     const char *result = "ok";
     int sock = 1;
 
