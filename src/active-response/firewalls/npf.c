@@ -62,7 +62,7 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    wfd_t *wfd1;
+    wfd_t *wfd1 = NULL;
     char *cmd[3] = {NPFCTL, "show", NULL};
     if (wfd1 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd1) {
         char output_buf[BUFFERSIZE];
@@ -110,7 +110,7 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    wfd_t *wfd2;
+    wfd_t *wfd2 = NULL;
     if (wfd2 = wpopenv(NPFCTL, cmd, W_BIND_STDOUT), wfd2) {
         char output_buf[BUFFERSIZE];
         int flag = false;

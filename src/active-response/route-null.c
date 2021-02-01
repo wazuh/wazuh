@@ -68,28 +68,32 @@ int main (int argc, char **argv) {
             char *cmd[5] = { "route", "add", srcip, "reject", NULL };
             if (wfd = wpopenv(*cmd, cmd, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run route");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
         } else {
             char *cmd[5] = { "route", "del", srcip, "reject", NULL };
             if (wfd = wpopenv(*cmd, cmd, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run route");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
         }
     } else if (!strcmp("FreeBSD", uname_buffer.sysname)) {
         if (!strcmp("add", action)) {
             char *cmd[7] = { "route", "-q", "add", srcip, "127.0.0.1", "-blackhole", NULL };
             if (wfd = wpopenv(*cmd, cmd, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run route");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
         } else {
             char *cmd[7] = { "route", "-q", "delete", srcip, "127.0.0.1", "-blackhole", NULL };
             if (wfd = wpopenv(*cmd, cmd, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run route");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
         }
     } else {
         write_debug_file(argv[0], "Invalid system");

@@ -21,8 +21,11 @@ void write_debug_file (const char *ar_name, const char *msg) {
 
     FILE *ar_log_file = fopen(path, "a");
 
-    fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);
-    fclose(ar_log_file);
+    if (ar_log_file) {
+        fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);
+        fclose(ar_log_file);
+    }
+
     os_free(timestamp);
 }
 
@@ -146,6 +149,9 @@ char* get_extra_args_from_json (cJSON *input) {
     for (int i = 0; i < cJSON_GetArraySize(extra_args_json); i++) {
         cJSON *subitem = cJSON_GetArrayItem(extra_args_json, i);
         if (subitem && (subitem->type == cJSON_String)) {
+            if (strlen(args) + strlen(subitem->valuestring) + 2 > COMMANDSIZE) {
+                break;
+            }
             if (args[0] != '\0') {
                 strcat(args, " ");
             }
@@ -219,20 +225,24 @@ int lock (const char *lock_path, const char *lock_pid_path, const char *log_path
     // Providing a lock.
     while (true) {
         FILE *pid_file;
-        int current_pid;
+        int current_pid = -1;
 
         if (mkdir(lock_path, S_IRWXG) == 0) {
             // Lock acquired (setting the pid)
             pid_t pid = getpid();
-            pid_file = fopen(lock_pid_path, "w");
-            fprintf(pid_file, "%d", (int)pid);
-            fclose(pid_file);
-            return OS_SUCCESS;
+            if (pid_file = fopen(lock_pid_path, "w"), !pid_file) {
+                write_debug_file(log_path, "Cannot write pid file");
+                return OS_INVALID;
+            } else {
+                fprintf(pid_file, "%d", (int)pid);
+                fclose(pid_file);
+                return OS_SUCCESS;
+            }
         }
 
         // Getting currently/saved PID locking the file
         if (pid_file = fopen(lock_pid_path, "r"), !pid_file) {
-            write_debug_file(log_path, "Can not read pid file");
+            write_debug_file(log_path, "Cannot read pid file");
         } else {
             read = fscanf(pid_file, "%d", &current_pid);
             fclose(pid_file);
@@ -247,7 +257,7 @@ int lock (const char *lock_path, const char *lock_pid_path, const char *log_path
                 }
 
             } else {
-                write_debug_file(log_path, "Can not read pid file");
+                write_debug_file(log_path, "Cannot read pid file");
             }
         }
 
@@ -267,30 +277,32 @@ int lock (const char *lock_path, const char *lock_pid_path, const char *log_path
                 while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
                     int pid = atoi(output_buf);
                     if (pid == current_pid) {
+                        wfd_t *wfd2 = NULL;
                         char pid_str[10];
                         memset(pid_str, '\0', 10);
                         snprintf(pid_str, 9, "%d", pid);
                         char *command_ex_2[4] = {"kill", "-9", pid_str, NULL};
-                        wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
-                        memset(log_msg, '\0', LOGSIZE);
-                        snprintf(log_msg, LOGSIZE -1, "Killed process %d holding lock.", pid);
-                        write_debug_file(log_path, log_msg);
-                        wpclose(wfd2);
-                        kill = true;
-                        unlock(lock_path, log_path);
-                        i = 0;
-                        saved_pid = -1;
-                        break;
+                        if (wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT), wfd2) {
+                            wpclose(wfd2);
+                            memset(log_msg, '\0', LOGSIZE);
+                            snprintf(log_msg, LOGSIZE -1, "Killed process %d holding lock.", pid);
+                            write_debug_file(log_path, log_msg);
+                            kill = true;
+                            unlock(lock_path, log_path);
+                            i = 0;
+                            saved_pid = -1;
+                            break;
+                        }
                     }
                 }
+                wpclose(wfd);
             } else {
                 write_debug_file(log_path, "Unable to run pgrep");
             }
-            wpclose(wfd);
 
             if (!kill) {
                 memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE -1, "Unable kill process %d holding lock.", current_pid);
+                snprintf(log_msg, LOGSIZE -1, "Unable to kill process %d holding lock.", current_pid);
                 write_debug_file(log_path, log_msg);
 
                 // Unlocking

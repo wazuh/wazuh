@@ -91,10 +91,10 @@ int main (int argc, char **argv) {
                     break;
                 }
             }
+            wpclose(wfd);
         } else {
             write_debug_file(argv[0], "Unable to run ipfw");
         }
-        wpclose(wfd);
 
         if (add_table) {
             char *command_ex_2[11] = { IPFW, "-q", TABLE_ID, "add", "deny", "ip", "from", table_name, "to", "any", NULL };
@@ -103,13 +103,15 @@ int main (int argc, char **argv) {
             wfd_t *wfd = NULL;
             if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run ipfw");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
 
             if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run ipfw");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
         }
 
         // Execute the command

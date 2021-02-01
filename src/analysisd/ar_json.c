@@ -54,9 +54,9 @@ void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, cha
 
     // extra_args will be split by " "
     if (extra_args) {
-        char str[OS_SIZE_1024];
+        char str[OS_SIZE_2048];
         char *pch;
-        strcpy(str, extra_args);
+        strncpy(str, extra_args, OS_SIZE_2048 - 1);
         pch = strtok(str, " ");
         while (pch != NULL) {
             cJSON_AddItemToArray(_array, cJSON_CreateString(pch));

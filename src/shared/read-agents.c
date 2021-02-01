@@ -1012,7 +1012,7 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
 
                     // Message
                     tmp_msg = cJSON_PrintUnformatted(json_message);
-                    strcpy(exec_msg, tmp_msg);
+                    strncpy(exec_msg, tmp_msg, OS_SIZE_20480);
 
                     os_free(tmp_msg);
                     cJSON_Delete(json_message);

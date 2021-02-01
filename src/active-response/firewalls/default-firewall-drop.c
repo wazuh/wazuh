@@ -98,7 +98,7 @@ int main (int argc, char **argv) {
                 return OS_SUCCESS;
             }
             memset(iptables, '\0', COMMANDSIZE);
-            strcpy(iptables, iptables_path);
+            strncpy(iptables, iptables_path, COMMANDSIZE - 1);
         }
 
         char arg[3];
@@ -140,8 +140,8 @@ int main (int argc, char **argv) {
                 }
             } else {
                 flag = false;
+                wpclose(wfd);
             }
-            wpclose(wfd);
         }
 
         count = 0;
@@ -158,8 +158,8 @@ int main (int argc, char **argv) {
                 }
             } else {
                 flag = false;
+                wpclose(wfd);
             }
-            wpclose(wfd);
         }
         unlock(lock_path, argv[0]);
 
@@ -271,21 +271,24 @@ int main (int argc, char **argv) {
             char *command_ex_1[18] = {genfilt_path, "-v", "4", "-a", "D", "-s", srcip, "-m", "255.255.255.255", "-d", "0.0.0.0", "-M", "0.0.0.0", "-w", "B", "-D", "\"Access Denied by WAZUH\"", NULL};
             if (wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run genfilt");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
 
             // Deactivate and activate the filter rules.
             char *command_ex_2[5] = {mkfilt_path, "-v", "4", "-d", NULL};
             if (wfd = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run mkfilt");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
 
             char *command_ex_3[5] = {mkfilt_path, "-v", "4", "-u", NULL};
             if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run mkfilt");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
         } else {
             wfd_t *wfd = NULL;
             char *command_ex_1[5] = {lsfilt_path, "-v", "4", "-O", NULL};
@@ -294,29 +297,33 @@ int main (int argc, char **argv) {
                 while (fgets(output_buf, BUFFERSIZE, wfd->file)) {
                     if (strstr(output_buf, srcip) != NULL) {
                         // removing a specific rule
+                        wfd_t *wfd2 = NULL;
                         char *rule_str = strtok(output_buf, "|");
-                        char *command_ex_3[6] = {rmfilt_path, "-v", "4", "-n", rule_str, NULL};
-                        wfd_t *wfd3 = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR);
-                        wpclose(wfd3);
+                        char *command_ex_2[6] = {rmfilt_path, "-v", "4", "-n", rule_str, NULL};
+                        if (wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDERR), wfd2) {
+                            wpclose(wfd2);
+                        }
                     }
                 }
+                wpclose(wfd);
             } else {
                 write_debug_file(argv[0], "Unable to run lsfilt");
             }
-            wpclose(wfd);
 
             // Deactivate and activate the filter rules.
-            char *command_ex_4[5] = {mkfilt_path, "-v", "4", "-d", NULL};
+            char *command_ex_3[5] = {mkfilt_path, "-v", "4", "-d", NULL};
+            if (wfd = wpopenv(*command_ex_3, command_ex_3, W_BIND_STDERR), !wfd) {
+                write_debug_file(argv[0], "Unable to run mkfilt");
+            } else {
+                wpclose(wfd);
+            }
+
+            char *command_ex_4[5] = {mkfilt_path, "-v", "4", "-u", NULL};
             if (wfd = wpopenv(*command_ex_4, command_ex_4, W_BIND_STDERR), !wfd) {
                 write_debug_file(argv[0], "Unable to run mkfilt");
+            } else {
+                wpclose(wfd);
             }
-            wpclose(wfd);
-
-            char *command_ex_5[5] = {mkfilt_path, "-v", "4", "-u", NULL};
-            if (wfd = wpopenv(*command_ex_5, command_ex_5, W_BIND_STDERR), !wfd) {
-                write_debug_file(argv[0], "Unable to run mkfilt");
-            }
-            wpclose(wfd);
         }
 
     } else {

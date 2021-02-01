@@ -108,7 +108,7 @@ int main (int argc, char **argv) {
                 return OS_INVALID;
             }
             memset(fw_cmd, '\0', COMMANDSIZE);
-            strcpy(fw_cmd, fw_cmd_path);
+            strncpy(fw_cmd, fw_cmd_path, COMMANDSIZE - 1);
         }
 
         memset(lock_path, '\0', PATH_MAX);

@@ -58,19 +58,16 @@ int main (int argc, char **argv) {
 
     char srcip_path[BUFFERSIZE];
     strcpy(srcip_path, IPBLOCK);
-    strcat(srcip_path, srcip);
+    strncat(srcip_path, srcip, (BUFFERSIZE - strlen(IPBLOCK)) - 1);
 
     if (!strcmp("add", action)) {
-        // Checking if we have /ipblock
-        if(access(IPBLOCK, F_OK) != 0) {
-            // If not we create the folder
-            if(mkdir(IPBLOCK, 0770) == -1) {
-                memset(log_msg, '\0', LOGSIZE);
-                snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", IPBLOCK, strerror(errno));
-                write_debug_file(argv[0], log_msg);
-                cJSON_Delete(input_json);
-                return OS_INVALID;
-            }
+        // Create directory
+        if (mkdir_ex(IPBLOCK)) {
+            memset(log_msg, '\0', LOGSIZE);
+            snprintf(log_msg, LOGSIZE - 1, "Error executing '%s' : %s", IPBLOCK, strerror(errno));
+            write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
+            return OS_INVALID;
         }
 
         FILE *fp = fopen(srcip_path, "a");
