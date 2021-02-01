@@ -59,6 +59,7 @@
 #define FIM_REGISTRY_FAIL_TO_INSERT_VALUE       "(6944): Failed to insert value '%s %s\\%s'"
 #define FIM_REGISTRY_FAIL_TO_GET_KEY_ID         "(6945): Unable to get id for registry key '%s %s'"
 #define FIM_AUDIT_DISABLED                      "(6946): Audit is disabled."
+#define FIM_WARN_FORMAT_PATH                    "(6947): Error formatting path: '%s'"
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
