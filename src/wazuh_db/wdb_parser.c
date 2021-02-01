@@ -136,8 +136,7 @@ static struct column_list const TABLE_PACKAGES[] = {
     { .value = { FIELD_TEXT, 17, false, false, "cpe" }, .next = &TABLE_PACKAGES[17] },
     { .value = { FIELD_TEXT, 18, false, false, "msu_name" }, .next = &TABLE_PACKAGES[18] },
     { .value = { FIELD_TEXT, 19, false, false, "checksum" }, .next = &TABLE_PACKAGES[19] },
-    { .value = { FIELD_TEXT, 20, false, false, "item_id" }, .next = &TABLE_PACKAGES[20] },
-    { .value = { FIELD_TEXT, 21, false, false, "os_patch" }, .next = NULL},
+    { .value = { FIELD_TEXT, 20, false, false, "item_id" }, .next = NULL },
 };
 
 static struct column_list const TABLE_OS[] = {
@@ -3530,7 +3529,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
         else
             process = next;
 
-        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
+        if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, TRUE), result < 0) {
             mdebug1("Cannot save Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Port information.");
         } else {
@@ -3581,7 +3580,6 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
     char * source;
     char * description;
     char * location;
-    char * os_patch;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -3789,43 +3787,16 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         description = curr;
         *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", source);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", description);
-            return -1;
-        }
 
         if (!strcmp(description, "NULL"))
             description = NULL;
-
-        location = curr;
-        *next++ = '\0';
-        curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", source);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", location);
-            return -1;
-        }
 
         if (!strcmp(next, "NULL"))
             location = NULL;
         else
             location = next;
 
-        os_patch = curr;
-        *next++ = '\0';
-
-        if (!strcmp(next, "NULL"))
-            os_patch = NULL;
-        else
-            os_patch = next;
-
-        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, os_patch, FALSE), result < 0) {
+        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
