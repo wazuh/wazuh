@@ -13,6 +13,7 @@ import argparse
 import atexit
 import struct
 import textwrap
+from wazuh.core.common import LOGTEST_SOCKET
 
 
 def init_argparse():
@@ -218,7 +219,7 @@ class WazuhLogtest:
             log_format (str, optional): type of log. Defaults to "syslog".
         """
         self.protocol = WazuhDeamonProtocol()
-        self.socket = WazuhSocket('/var/ossec/queue/ossec/logtest')
+        self.socket = WazuhSocket(LOGTEST_SOCKET)
         self.fixed_fields = dict()
         self.fixed_fields['location'] = location
         self.fixed_fields['log_format'] = log_format

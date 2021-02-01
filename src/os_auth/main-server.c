@@ -713,12 +713,16 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     merror("SSL write error (%d)", ret);
                     merror("Agent key not saved for %s", agentname);
                     ERR_print_errors_fp(stderr);
+                    w_mutex_lock(&mutex_keys);
                     OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+                    w_mutex_unlock(&mutex_keys);
                 } else {
                     /* Add pending key to write */
+                    w_mutex_lock(&mutex_keys);
                     add_insert(keys.keyentries[keys.keysize - 1], centralized_group);
                     write_pending = 1;
                     w_cond_signal(&cond_pending);
+                    w_mutex_unlock(&mutex_keys);
                 }
             }
         }
