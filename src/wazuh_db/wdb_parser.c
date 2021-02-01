@@ -3162,7 +3162,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
         else
             os_patch = next;
 
-        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, NULL, FALSE), result < 0) {
+        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_patch, os_build, os_platform, sysname, release, version, os_release, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("Cannot save OS information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save OS information.");
         } else {
@@ -3305,7 +3305,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         ram_usage = strtol(next,NULL,10);
 
-        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, NULL, FALSE), result < 0) {
+        if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, FALSE), result < 0) {
             mdebug1("wdb_parse_hardware(): Cannot save HW information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save HW information.");
         } else {
