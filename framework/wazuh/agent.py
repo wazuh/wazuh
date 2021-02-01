@@ -352,32 +352,33 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
                                       some_msg='Some groups information was not returned',
                                       none_msg='No group information was returned'
                                       )
+    if len(group_list) != 0:
 
-    # Add failed items
-    for invalid_group in set(group_list) - get_groups():
-        result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
+        # Add failed items
+        for invalid_group in set(group_list) - get_groups():
+            result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
-    rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list)
+        rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list)
 
-    group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
-    query_data = group_query.run()
+        group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
+        query_data = group_query.run()
 
-    for group in query_data['items']:
-        full_entry = path.join(common.shared_path, group['name'])
+        for group in query_data['items']:
+            full_entry = path.join(common.shared_path, group['name'])
 
-        # merged.mg and agent.conf sum
-        merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-        conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
+            # merged.mg and agent.conf sum
+            merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
+            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
 
-        if merged_sum:
-            group['mergedSum'] = merged_sum
+            if merged_sum:
+                group['mergedSum'] = merged_sum
 
-        if conf_sum:
-            group['configSum'] = conf_sum
-        affected_groups.append(group)
+            if conf_sum:
+                group['configSum'] = conf_sum
+            affected_groups.append(group)
 
-    result.affected_items = affected_groups
-    result.total_affected_items = query_data['totalItems']
+        result.affected_items = affected_groups
+        result.total_affected_items = query_data['totalItems']
 
     return result
 
