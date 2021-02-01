@@ -176,7 +176,6 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     msu_name TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     item_id TEXT,
-    os_patch TEXT,
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 
