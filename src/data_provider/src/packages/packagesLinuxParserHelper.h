@@ -122,6 +122,95 @@ namespace PackageLinuxHelper
         }
         return ret;
     }
+
+    static nlohmann::json parseDpkg(const std::vector<std::string>& entries)
+    {
+        std::map<std::string, std::string> info;
+        nlohmann::json ret;
+        for (const auto& entry: entries)
+        {
+            const auto pos{entry.find(":")};
+            if (pos != std::string::npos)
+            {
+                const auto key{Utils::trim(entry.substr(0, pos))};
+                const auto value{Utils::trim(entry.substr(pos + 1), " \n")};
+                info[key] = value;
+            }
+        }
+        if (!info.empty() && info.at("Status") == "install ok installed")
+        {
+            ret["name"] = info.at("Package");
+
+            std::string priority     { UNKNOWN_VALUE };
+            std::string groups       { UNKNOWN_VALUE };
+            std::string size         { UNKNOWN_VALUE };
+            std::string multiarch    { UNKNOWN_VALUE };
+            std::string architecture { UNKNOWN_VALUE };
+            std::string source       { UNKNOWN_VALUE };
+            std::string version      { UNKNOWN_VALUE };
+            std::string vendor       { UNKNOWN_VALUE };
+            std::string description  { UNKNOWN_VALUE };
+
+            auto it{info.find("Priority")};
+            if (it != info.end())
+            {
+                priority = it->second;
+            }
+            it = info.find("Section");
+            if (it != info.end())
+            {
+                groups = it->second;
+            }
+            it = info.find("Installed-Size");
+            if (it != info.end())
+            {
+                size = it->second;
+            }
+            it = info.find("Multi-Arch");
+            if (it != info.end())
+            {
+                multiarch = it->second;
+            }
+            it = info.find("Architecture");
+            if (it != info.end())
+            {
+                architecture = it->second;
+            }
+            it = info.find("Source");
+            if (it != info.end())
+            {
+                source = it->second;
+            }
+            it = info.find("Version");
+            if (it != info.end())
+            {
+                version = it->second;
+            }
+            it = info.find("Maintainer");
+            if (it != info.end())
+            {
+                vendor = it->second;
+            }
+            it = info.find("Description");
+            if (it != info.end())
+            {
+                description = it->second;
+            }
+
+            ret["priority"]     = priority;
+            ret["groups"]       = groups;
+            ret["size"]         = size;
+            ret["multiarch"]    = multiarch;
+            ret["architecture"] = architecture;
+            ret["source"]       = source;
+            ret["version"]      = version;
+            ret["format"]       = "deb";
+            ret["os_patch"]     = UNKNOWN_VALUE;
+            ret["vendor"]       = vendor;
+            ret["description"]  = description;
+        }
+        return ret;
+    }
 };
 
 #endif // _PACKAGES_LINUX_PARSER_HELPER_H
