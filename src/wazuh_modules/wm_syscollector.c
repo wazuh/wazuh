@@ -51,10 +51,10 @@ static bool is_shutdown() {
 
 static void wm_sys_send_diff_message(const void* data) {
     const int eps = 1000000/wm_max_eps;
-
-    if (!is_shutdown()) {
-        wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-    }
+    // Sending deltas is disabled due to issue: 7322 - https://github.com/wazuh/wazuh/issues/7322
+    // if (!is_shutdown()) {
+    //     wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    // }
  }
 
 static void wm_sys_send_dbsync_message(const void* data) {
