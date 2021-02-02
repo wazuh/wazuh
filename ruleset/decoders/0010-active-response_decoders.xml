@@ -33,7 +33,7 @@ Tue 08/28/2018 09:27:23.14 "active-response/bin/netsh.cmd" add "-" "1.2.3.4" "15
 
 <decoder name="ar_log_fields">
     <parent>ar_log</parent>
-    <regex offset="after_parent">^(\S+) (\S+) - (\S+) (\.+) |^(\S+)" (\S+) "-" "(\S+)" "(\.+) </regex>
+    <regex offset="after_parent">^(\S+) (\S+) \S+ (\S+) (\.+) |^(\S+)" (\S+) "\S+" "(\S+)" "(\.+) </regex>
     <order>script, type, srcip, id</order>
 </decoder>
 
