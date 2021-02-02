@@ -8,7 +8,7 @@
 #
 # python mitredb.py -> install mitre.db in /var/ossec/var/db
 # python mitredb.py -d /other/directory/mitre.db  -> install mitre.db in other directory
-# python mitredb.py -h -> Help 
+# python mitredb.py -h -> Help
 
 import json
 import sqlite3
@@ -21,7 +21,7 @@ import sys
 
 
 def create_connection(db_file):
-    """ 
+    """
     Create a database connection to the SQLite database specified by db_file.
 
     :param db_file: Database file. Examples: ('example.db'), ("/var/ossec/var/db/example.db"), etc.
@@ -38,7 +38,7 @@ def create_connection(db_file):
 
 
 def table_stmt(conn, sql_stmt):
-    """ 
+    """
     Create or delete a table from the sql statement.
 
     :param conn: Connection object
@@ -53,7 +53,7 @@ def table_stmt(conn, sql_stmt):
 
 
 def create_delete_tables(conn):
-    """ 
+    """
     First it deletes attack, has_phase and has_platform tables and then it creates them.
 
     :return:
@@ -67,6 +67,7 @@ def create_delete_tables(conn):
     sql_create_attack = """CREATE TABLE IF NOT EXISTS attack (
                                     id TEXT PRIMARY KEY,
                                     json TEXT,
+                                    url TEXT,
                                     name TEXT
                                 );"""
 
@@ -103,19 +104,20 @@ def create_delete_tables(conn):
     table_stmt(conn, sql_create_has_platform)
 
 
-def insert_attack_table(conn, id, json_object, name, database):
-    """ 
-    Insert to Mitre 'attack' table from Mitre ID technique and its JSON object. 
+def insert_attack_table(conn, id, url, json_object, name, database):
+    """
+    Insert to Mitre 'attack' table from Mitre ID technique and its JSON object.
 
     :param conn: Connection object
     :param id: Mitre ID technique (e.g. 'T1122')
+    :param url: Mitre technique URL
     :param json_object: JSON object with ID 'id' taken from the JSON file
     :param name: MITRE Technique's name
     :param database: path of MITRE database
     :return:
     """
-    attack_sql = """INSERT INTO attack ('id', 'json', 'name') VALUES (?, ?, ?);"""
-    args = (id, json_object, name)
+    attack_sql = """INSERT INTO attack ('id', 'url', 'json', 'name') VALUES (?, ?, ?, ?);"""
+    args = (id, url, json_object, name)
 
     try:
         c = conn.cursor()
@@ -130,7 +132,7 @@ def insert_attack_table(conn, id, json_object, name, database):
 
 
 def insert_phase_table(conn, attack_id, phase_name, database):
-    """ 
+    """
     Insert to Mitre 'phase' table from Mitre ID technique and its phase/tactic. It is posible that one ID has more than one phase/tactic associated.
 
     :param conn: Connection object
@@ -155,7 +157,7 @@ def insert_phase_table(conn, attack_id, phase_name, database):
 
 
 def insert_platform_table(conn, attack_id, platform_name, database):
-    """ 
+    """
     Insert to Mitre 'plaftform' table from Mitre ID technique and its platform. It is posible that one ID has more than one platform associated.
 
     :param conn: Connection object
@@ -180,7 +182,7 @@ def insert_platform_table(conn, attack_id, platform_name, database):
 
 
 def parse_json(pathfile, conn, database):
-    """ 
+    """
     Parse enterprise-attack.json and fill mitre.db's tables.
 
     :param pathfile: Path directory where enterprise-attack.json file is
@@ -209,22 +211,25 @@ def parse_json(pathfile, conn, database):
                 if data_object['type'] == 'attack-pattern' and \
                         data_object['external_references'][0]['source_name'] == 'mitre-attack':
                     string_id = json.dumps(data_object['external_references'][0]['external_id']).replace('"', '')
+                    string_url = json.dumps(data_object['external_references'][0]['url']).replace('"', '')
                     string_object = json.dumps(data_object)
                     string_name = json.dumps(data_object['name']).replace('"', '')
 
                     # Fill the attack table
-                    insert_attack_table(conn, string_id, string_object, string_name, database)
+                    insert_attack_table(conn, string_id, string_url, string_object, string_name, database)
 
                     # Fill the phase table
-                    n = len(data_object['kill_chain_phases'])
-                    for i in range(0, n):
-                        string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name']).replace('"', '')
-                        insert_phase_table(conn, string_id, string_phase, database)
+        		    if 'kill_chain_phases' in data_object:
+                        n = len(data_object['kill_chain_phases'])
+                        for i in range(0, n):
+                            string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name']).replace('"', '')
+                            insert_phase_table(conn, string_id, string_phase, database)
 
                     # Fill the platform table
-                    for platform in data_object['x_mitre_platforms']:
-                        string_platform = json.dumps(platform).replace('"', '')
-                        insert_platform_table(conn, string_id, string_platform, database)
+		            if 'x_mitre_platforms' in data_object:
+                        for platform in data_object['x_mitre_platforms']:
+                            string_platform = json.dumps(platform).replace('"', '')
+                            insert_platform_table(conn, string_id, string_platform, database)
 
     except TypeError as t_e:
         print(t_e)
@@ -279,7 +284,7 @@ def main(database=None):
     # Parse enterprise-attack.json file:
     parse_json(pathfile, conn, database)
 
-    # User and group permissions        
+    # User and group permissions
     os.chmod(database, 0o660)
     uid = pwd.getpwnam("root").pw_uid
     gid = grp.getgrnam("ossec").gr_gid
