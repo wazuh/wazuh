@@ -22,14 +22,35 @@ static const char *XML_PACKAGES = "packages";
 static const char *XML_PORTS = "ports";
 static const char *XML_PROCS = "processes";
 static const char *XML_HOTFIXES = "hotfixes";
+static const char *XML_SYNC = "synchronization";
+
+static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node) {
+    const char *XML_DB_SYNC_MAX_EPS = "max_eps";
+    const int XML_DB_SYNC_MAX_EPS_SIZE = 7;
+    for (int i = 0; node[i]; ++i) {
+        if (strncmp(node[i]->element, XML_DB_SYNC_MAX_EPS, XML_DB_SYNC_MAX_EPS_SIZE) == 0) {
+            char * end;
+            const long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 0 || value > 1000000 || *end) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                syscollector->sync.sync_max_eps = value;
+            }
+        } else {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+    }
+}
 
 // Parse XML configuration
-int wm_sys_read(XML_NODE node, wmodule *module) {
+int wm_sys_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
     wm_sys_t *syscollector;
     int i;
 
     if(!module->data) {
         os_calloc(1, sizeof(wm_sys_t), syscollector);
+        // System provider config values
         syscollector->flags.enabled = 1;
         syscollector->flags.scan_on_start = 1;
         syscollector->flags.netinfo = 1;
@@ -42,6 +63,10 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
         syscollector->flags.portsinfo = 1;
         syscollector->flags.allports = 0;
         syscollector->flags.procinfo = 1;
+
+        // Database synchronization config values
+        syscollector->sync.sync_max_eps = 10;
+
         module->context = &WM_SYS_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = syscollector;
@@ -183,6 +208,14 @@ int wm_sys_read(XML_NODE node, wmodule *module) {
             else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PORTS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
+            }
+        } else if (!strcmp(node[i]->element, XML_SYNC)) {
+            // Synchronization section - Let's get the children node and iterate
+            // the values (at the moment there is only one: max_eps)
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children) {
+                parse_synchronization_section(syscollector, children);
+                OS_ClearNode(children);
             }
         } else {
             merror("No such tag '%s' at module '%s'.", node[i]->element, WM_SYS_CONTEXT.name);
