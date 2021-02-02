@@ -69,14 +69,11 @@ typedef struct _ossec_config {
 
 /** Global variables **/
 
-/* Agent status */
-char ui_server_info[2048 + 1];
-
 /* Configuration */
-ossec_config config_inst;
+extern ossec_config config_inst;
 
 /* Status bar */
-HWND hStatus;
+extern HWND hStatus;
 
 /* Ossec icon */
 #define IDI_OSSECICON  201
