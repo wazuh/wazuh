@@ -152,7 +152,7 @@ void check_max_fps(int baseline) {
     mdebug2(FIM_REACHED_MAX_FPS);
     wait_time.tv_sec += 1;
 
-    // Wait for one second or until the mutex is unlocked using w_cond_broadcast
+    // Wait for one second or until the thread is unlocked using w_cond_broadcast
     int rt = pthread_cond_timedwait(&cond, &fps_mutex, &wait_time);
     if (rt == ETIMEDOUT) {
         // In case that the mutex is unlocked due to a timeout, free all blocked threads.
@@ -161,7 +161,6 @@ void check_max_fps(int baseline) {
     } else if (rt != 0) {
         mdebug2("pthread_cond_timedwait failed: %s", strerror(rt));
     }
-    files_read = 0;
     w_mutex_unlock(&fps_mutex);
 }
 
