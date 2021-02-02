@@ -41,4 +41,3 @@ If you are not familiar with Github, you can also share them through [our users 
 ## Web references
 
 * [Wazuh website](http://wazuh.com)
-* [OSSEC project website](http://ossec.github.io)
