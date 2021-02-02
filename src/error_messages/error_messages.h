@@ -398,6 +398,7 @@
 #define VU_OFFLINE_CONFLICT         "(5587): Feed conflict. Only '%s' will be updated offline."
 #define VU_VER_INVALID_FORMAT       "(5588): Invalid format of Wazuh version for agent '%.3d'"
 #define VU_VER_READING_ERROR        "(5589): Couldn't read Wazuh version for agent '%.3d'"
+#define VU_OVAL_VULN_NOT_FOUND      "(5590): No vulnerabilities could be found in the OVAL for agent '%.3d'"
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
