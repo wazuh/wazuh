@@ -29,10 +29,6 @@
 #define WM_SCA_STAMP          "sca"
 #define WM_CONFIGURATION_ASSESSMENT_DB_DUMP                   "sca-dump"
 
-#ifdef WIN32
-HKEY wm_sca_sub_tree;
-#endif
-
 typedef struct wm_sca_policy_t {
     unsigned int enabled:1;
     unsigned int remote:1;

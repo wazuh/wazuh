@@ -13,6 +13,8 @@
 #include "os_win32ui.h"
 #include "../os_win.h"
 
+ossec_config config_inst;
+HWND hStatus;
 
 /* Dialog -- About OSSEC */
 BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
