@@ -56,45 +56,17 @@ int jqueue_open(file_queue * queue, int tail) {
 cJSON * jqueue_next(file_queue * queue) {
     struct stat buf;
     char buffer[OS_MAXSTR + 1];
-    char *end;
-    const char *jsonErrPtr;
-    int64_t current_position;
+    int64_t current_pos;
 
     if (!queue->fp && jqueue_open(queue, 1) < 0) {
         return NULL;
     }
 
     clearerr(queue->fp);
-    current_position = w_ftell(queue->fp);
+    current_pos = w_ftell(queue->fp);
 
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
-        if (end = strchr(buffer, '\n'), end) {
-            *end = '\0';
-        }
-
-        cJSON * object = NULL;
-        if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
-            queue->read_attempts = 0;
-            return object;
-        } else {
-            // The read JSON is invalid
-            if (object) {
-                cJSON_Delete(object);
-            }
-
-            queue->read_attempts++;
-            merror("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
-
-            if (queue->read_attempts < MAX_READ_ATTEMPTS) {
-                if(current_position >= 0) {
-                    fseek(queue->fp, current_position, SEEK_SET);
-                }
-            } else {
-                queue->read_attempts = 0;
-            }
-
-            return NULL;
-        }
+        return jqueue_parse_json(queue, buffer, current_pos);
 
     } else {
 
@@ -114,35 +86,10 @@ cJSON * jqueue_next(file_queue * queue) {
                 return NULL;
             }
 
+            current_pos = w_ftell(queue->fp);
+
             if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
-                if (end = strchr(buffer, '\n'), end) {
-                    *end = '\0';
-                }
-
-                cJSON * object = NULL;
-                if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
-                    queue->read_attempts = 0;
-                    return object;
-                } else {
-                    // The read JSON is invalid
-                    if (object) {
-                        cJSON_Delete(object);
-                    }
-
-                    queue->read_attempts++;
-                    merror("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
-
-                    if (queue->read_attempts < MAX_READ_ATTEMPTS) {
-                        if(current_position >= 0) {
-                            fseek(queue->fp, current_position, SEEK_SET);
-                        }
-                    } else {
-                        // After attempts are reached we stop reading the same line
-                        queue->read_attempts = 0;
-                    }
-
-                    return NULL;
-                }
+                return jqueue_parse_json(queue, buffer, current_pos);
 
             } else {
                 return NULL;
@@ -158,4 +105,46 @@ cJSON * jqueue_next(file_queue * queue) {
 void jqueue_close(file_queue * queue) {
     fclose(queue->fp);
     queue->fp = NULL;
+}
+
+/**
+ * @brief Validate and parse a JSON object from a buffer
+ *
+ * @param queue pointer to the file_queue struct
+ * @param buffer string with the JSON to be parsed
+ * @param current_pos File position located as a backup
+ * @return cJSON object with the read JSON, NULL in the JSON is invalid
+ */
+cJSON * jqueue_parse_json(file_queue * queue, char * buffer, int64_t current_pos) {
+
+    cJSON * object = NULL;
+    const char *jsonErrPtr;
+    char * end;
+
+    if (end = strchr(buffer, '\n'), end) {
+        *end = '\0';
+    }
+
+    if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
+        queue->read_attempts = 0;
+        return object;
+    }
+
+    // The read JSON is invalid
+    if (object) {
+        cJSON_Delete(object);
+    }
+
+    queue->read_attempts++;
+    merror("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
+
+    if (queue->read_attempts < MAX_READ_ATTEMPTS) {
+        if (current_pos >= 0) {
+            fseek(queue->fp, current_pos, SEEK_SET);
+        }
+    } else {
+        queue->read_attempts = 0;
+    }
+
+    return NULL;
 }

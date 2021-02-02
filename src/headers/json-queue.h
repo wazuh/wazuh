@@ -31,4 +31,14 @@ cJSON * jqueue_next(file_queue * queue);
 // Close queue
 void jqueue_close(file_queue * queue);
 
+/**
+ * @brief Validate and parse a JSON object from a buffer
+ *
+ * @param queue pointer to the file_queue struct
+ * @param buffer string with the JSON to be parsed
+ * @param current_pos File position located as a backup
+ * @return cJSON object with the read JSON, NULL in the JSON is invalid
+ */
+cJSON * jqueue_parse_json(file_queue * queue, char * buffer, int64_t current_pos);
+
 #endif
