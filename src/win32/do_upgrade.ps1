@@ -270,12 +270,12 @@ while($status -eq $null -And $counter -gt 0)
     Start-Sleep 2
     $status = Get-Content .\wazuh-agent.state | select-string "status='connected'" -SimpleMatch
 }
-write-output "$(Get-Date -format u) - Reading status file: $($status)." >> .\upgrade\upgrade.log
+write-output "$(Get-Date -format u) - Reading status file: $($status)" >> .\upgrade\upgrade.log
+Get-ChildItem -Path ".\upgrade\" -File | Remove-Item
+Get-ChildItem -Path ".\incoming\" -File | Remove-Item -Verbose
 
 If ($status -eq $null)
 {
-    Get-Service -Name "Wazuh" | Stop-Service
-    write-output "$(Get-Date -format u) - Upgrade failed: Restoring former installation." >> .\upgrade\upgrade.log
 
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
 
