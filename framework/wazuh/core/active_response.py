@@ -16,7 +16,7 @@ def create_message(command, custom, arguments):
     Parameters
     ----------
     command : str
-        Command running in the agent. If this value starts by !, then it refers to a script name instead of a command
+        Command running in the agent. If this value starts with !, then it refers to a script name instead of a command
         name
     custom : bool
         Whether the specified command is a custom command or not
@@ -94,7 +94,7 @@ def shell_escape(command):
     Returns
     -------
     command : str
-        Command with escapes characters
+        Command with escape characters
     """
     shell_escapes = \
         ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']
@@ -112,7 +112,7 @@ def send_command(msg_queue, oq, agent_id):
     msg_queue : str
         Message previously created, contains what is necessary to launch the active response command in the agent
     agent_id : str
-        ID specifying the agent the msg_queue will be sent to
+        ID specifying the agent where the msg_queue will be sent to
 
     Returns
     -------

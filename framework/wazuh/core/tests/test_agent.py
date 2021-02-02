@@ -1471,7 +1471,7 @@ def test_calculate_status(last_keep_alive, pending, expected_status):
 ])
 @patch('wazuh.core.agent.OssecQueue')
 def test_send_restart_command(mock_ossec_queue, agents_list, versions_list):
-    """Test that restart_command calls send_msg_to_agent with correct params
+    """Test that restart_command calls send_msg_to_agent with correct params.
 
     Parameters
     ----------

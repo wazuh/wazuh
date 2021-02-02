@@ -21,6 +21,8 @@ class ActiveResponseModel(Body):
             Whether the specified command is a custom command or not
         arguments : List[str]
             Command arguments
+        alert : dict
+            Alert information depending on the AR executed
         """
         self.swagger_types = {
             'command': str,

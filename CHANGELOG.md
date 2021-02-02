@@ -11,11 +11,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Added new endpoint to get agent stats from different components. ([#7128](https://github.com/wazuh/wazuh/issues/7128))
-  - Change Active Response endpoint function to create messages with new JSON format. ([#7312](https://github.com/wazuh/wazuh/pull/7312))
   
-- **Framework:**
-  - Change framework functions to create active response messages with new JSON format. ([#7312](https://github.com/wazuh/wazuh/pull/7312))
-
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
 
@@ -29,6 +25,7 @@ All notable changes to this project will be documented in this file.
 - **API:**
   - Removed ruleset version from `GET /cluster/{node_id}/info` and `GET /manager/info` as it was deprecated. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
   - Changed the `POST /groups` endpoint to specify the group name in a JSON body instead of in a query parameter. ([#6909](https://github.com/wazuh/wazuh/pull/6909))
+  - Changed `PUT /active-response` endpoint function to create messages with new JSON format. ([#7312](https://github.com/wazuh/wazuh/pull/7312))
 
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))

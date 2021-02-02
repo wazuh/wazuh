@@ -20,13 +20,13 @@ def run_command(agent_list=None, command=None, arguments=None, custom=False, ale
     agent_list : list
         Agents list that will run the AR command.
     command : str
-        Command running in the agents. If this value starts by !, then it refers to a script name instead of a command name
+        Command running in the agents. If this value starts with !, then it refers to a script name instead of a command name
     custom : bool
         Whether the specified command is a custom command or not.
     arguments : list
         Command arguments.
     alert : dict
-        Same alert from alerts.json file in JSON format.
+        Alert information depending on the AR executed.
 
     Returns
     -------

@@ -20,7 +20,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 # Functions
 
 def agent_info(expected_exception):
-    """Returns dict to cause or not a exception code 1651 on active_response.send_command()."""
+    """Return dict to cause or not a exception code 1651 on active_response.send_command()."""
     if expected_exception == 1651:
         return {'status': 'random'}
     else:
@@ -28,7 +28,7 @@ def agent_info(expected_exception):
 
 
 def agent_info_exception_and_version(expected_exception, version):
-    """Returns dict to cause or not a exception code 1651 on active_response.send_command()."""
+    """Return dict to cause or not a exception code 1651 on active_response.send_command()."""
     if expected_exception == 1651:
         return {'status': 'random', 'version': version} if version else {'status': 'random'}
     else:
@@ -36,7 +36,7 @@ def agent_info_exception_and_version(expected_exception, version):
 
 
 def agent_config(expected_exception):
-    """Returns dict to cause or not a exception code 1750 on active_response.send_command()."""
+    """Return dict to cause or not a exception code 1750 on active_response.send_command()."""
     if expected_exception == 1750:
         return {'active-response': {'disabled': 'yes'}}
     else:
@@ -55,7 +55,7 @@ def agent_config(expected_exception):
 ])
 @patch('wazuh.core.common.ossec_path', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):
-    """Check if the message returned is correct
+    """Check if the returned message is correct.
 
     Checks if message returned by create_message(...) contains the command, arguments and '!' symbol
     when it is needed.
@@ -92,9 +92,9 @@ def test_create_message(expected_exception, command, arguments, custom):
 ])
 @patch('wazuh.core.common.ossec_path', new=test_data_path)
 def test_create_json_message(expected_exception, command, arguments, alert):
-    """Check if the json message returned is correct
+    """Check if the returned json message is correct.
 
-    Checks if json message returned by create_json_message(...) contains the
+    Checks if the json message returned by create_json_message(...) contains the
     appropriate json ar message structure
 
     Parameters
