@@ -42,9 +42,9 @@ def agent_config(expected_exception):
     (1650, None, [], False),
     (1652, 'random', [], False),
     (1652, 'invalid_cmd', [], False),
-    (None, 'restart-ossec0', [], False),
-    (None, 'restart-ossec0', [], True),
-    (None, 'restart-ossec0', ["arg1", "arg2"], False)
+    (None, 'restart-wazuh0', [], False),
+    (None, 'restart-wazuh0', [], True),
+    (None, 'restart-wazuh0', ["arg1", "arg2"], False)
 ])
 @patch('wazuh.core.common.ossec_path', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):

@@ -1,7 +1,7 @@
 #group2
 !77 ar.conf
-restart-ossec0 - restart-ossec.sh - 0
-restart-ossec0 - restart-ossec.cmd - 0
+restart-wazuh0 - restart-wazuh.sh - 0
+restart-wazuh0 - restart-wazuh.cmd - 0
 !76 agent.conf
 <agent_config>
 

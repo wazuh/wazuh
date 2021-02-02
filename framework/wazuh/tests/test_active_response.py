@@ -31,13 +31,13 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 @pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, custom', [
     (1650, None, [0], None, [], False),
     (1652, None, [0], 'random', [], False),
-    (None, 1651, [1], 'restart-ossec0', [], False),
-    (None, 1750, [1], 'restart-ossec0', [], False),
-    (None, None, [1], 'restart-ossec0', [], False),
-    (None, None, [1], 'restart-ossec0', [], True),
-    (None, None, [1], 'restart-ossec0', ["arg1", "arg2"], False),
-    (None, None, [0], 'restart-ossec0', [], False),
-    (None, None, [0, 1, 2, 3, 4, 5, 6], 'restart-ossec0', [], False),
+    (None, 1651, [1], 'restart-wazuh0', [], False),
+    (None, 1750, [1], 'restart-wazuh0', [], False),
+    (None, None, [1], 'restart-wazuh0', [], False),
+    (None, None, [1], 'restart-wazuh0', [], True),
+    (None, None, [1], 'restart-wazuh0', ["arg1", "arg2"], False),
+    (None, None, [0], 'restart-wazuh0', [], False),
+    (None, None, [0, 1, 2, 3, 4, 5, 6], 'restart-wazuh0', [], False),
 ])
 @patch("wazuh.core.ossec_queue.OssecQueue._connect")
 @patch("wazuh.syscheck.OssecQueue._send", return_value='1')

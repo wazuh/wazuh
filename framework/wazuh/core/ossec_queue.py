@@ -14,7 +14,7 @@ class OssecQueue:
 
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
-    RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
+    RESTART_AGENTS = "restart-wazuh0"  # Agents, not manager (000)
 
     # Types
     AR_TYPE = "ar-message"
@@ -53,14 +53,14 @@ class OssecQueue:
         # Active-response
         #   Agents: /var/ossec/queue/alerts/ar
         #     - Existing command:
-        #       - (msg_to_agent) [] NNS 001 restart-ossec0 arg1 arg2 arg3
-        #       - (msg_to_agent) [] ANN (null) restart-ossec0 arg1 arg2 arg3
+        #       - (msg_to_agent) [] NNS 001 restart-wazuh0 arg1 arg2 arg3
+        #       - (msg_to_agent) [] ANN (null) restart-wazuh0 arg1 arg2 arg3
         #     - Custom command:
         #       - (msg_to_agent) [] NNS 001 !test.sh arg1 arg2 arg3
         #       - (msg_to_agent) [] ANN (null) !test.sh arg1 arg2 arg3
         #   Manager: /var/ossec/queue/alerts/execq
         #     - Existing command:
-        #       - restart-ossec0 arg1 arg2 arg3
+        #       - restart-wazuh0 arg1 arg2 arg3
         #     - Custom command:
         #       - !test.sh Hello World
 
@@ -83,7 +83,7 @@ class OssecQueue:
         if msg_type == OssecQueue.AR_TYPE:
 
             if agent_id != "000":
-                # Example restart 'msg': restart-ossec0 - null (from_the_server) (no_rule_id)
+                # Example restart 'msg': restart-wazuh0 - null (from_the_server) (no_rule_id)
                 socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent, str_agent_id, msg)
             elif agent_id == "000":
                 socket_msg = msg

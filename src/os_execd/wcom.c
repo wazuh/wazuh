@@ -236,7 +236,7 @@ size_t wcom_restart(char ** output) {
             break;
         }
 #else
-        char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
+        char exec_cm[] = {"\"" AR_BINDIR "/restart-wazuh.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
         ExecCmd_Win32(exec_cm);
 #endif
     } else {

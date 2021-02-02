@@ -221,7 +221,7 @@ def test_get_file_conf():
         rootkit_trojans = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'description': 'TESTING'}]
         assert configuration.get_file_conf(filename='rootkit_trojans.txt', group_id='default',
                                            return_format='xml') == rootkit_trojans
-        ar_list = ['restart-ossec0 - restart-ossec.sh - 0', 'restart-ossec0 - restart-ossec.cmd - 0', '']
+        ar_list = ['restart-wazuh0 - restart-wazuh.sh - 0', 'restart-wazuh0 - restart-wazuh.cmd - 0', '']
         assert configuration.get_file_conf(filename='ar.conf', group_id='default', return_format='xml') == ar_list
         rcl = {'vars': {}, 'controls': [{}, {'name': 'NEW_ELEMENT', 'cis': [], 'pci': [], 'condition': 'FOR',
                                              'reference': 'TESTING', 'checks': []}]}

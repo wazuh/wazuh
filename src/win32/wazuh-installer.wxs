@@ -378,8 +378,8 @@
                     </Component>
                     <Directory Id="ACTIVE_RESPONSE" Name="active-response">
                         <Directory Id="BIN" Name="bin">
-                            <Component Id="RESTART_OSSEC.CMD" DiskId="1" Guid="5A405DD9-F4FF-4313-B242-A28DE03611CA">
-                                <File Id="RESTART_OSSEC.CMD" Name="restart-ossec.cmd" Source="restart-ossec.cmd" />
+                            <Component Id="RESTART_WAZUH.CMD" DiskId="1" Guid="5A405DD9-F4FF-4313-B242-A28DE03611CA">
+                                <File Id="RESTART_WAZUH.CMD" Name="restart-wazuh.cmd" Source="restart-wazuh.cmd" />
                             </Component>
                             <Component Id="ROUTE_NULL.CMD" DiskId="1" Guid="249F3287-B69D-46F0-9EB8-3FED24998E07">
                                 <File Id="ROUTE_NULL.CMD" Name="route-null.cmd" Source="route-null.cmd" />
@@ -587,7 +587,7 @@
             <ComponentRef Id="WAZUH_AGENT_EVENTCHANNEL.EXE" />
             <ComponentRef Id="WAZUH_AGENT.EXE" />
             <ComponentRef Id="VISTA_SEC.TXT" />
-            <ComponentRef Id="RESTART_OSSEC.CMD" />
+            <ComponentRef Id="RESTART_WAZUH.CMD" />
             <ComponentRef Id="ROUTE_NULL.CMD" />
             <ComponentRef Id="ROUTE_NULL_2012.CMD" />
             <ComponentRef Id="NETSH.CMD" />

@@ -73,7 +73,7 @@ src/win32/default-ossec.conf
 src/win32/default-ossec-pre6.conf
 src/win32/help_win.txt
 src/win32/internal_options.conf
-src/win32/restart-ossec.cmd
+src/win32/restart-wazuh.cmd
 src/win32/route-null.cmd
 src/win32/netsh-win-2016.cmd
 src/win32/route-null-2012.cmd

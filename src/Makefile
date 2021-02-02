@@ -637,7 +637,7 @@ winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscolle
 	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null-2012.cmd > route-null-2012.cmd
 	cd win32/ && ./unix2dos.pl ../../active-response/win/netsh.cmd > netsh.cmd
 	cd win32/ && ./unix2dos.pl ../../active-response/win/netsh-win-2016.cmd > netsh-win-2016.cmd
-	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
+	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-wazuh.cmd > restart-wazuh.cmd
 	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
 	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
 	cd win32/ && makensis wazuh-installer.nsi
@@ -2041,7 +2041,7 @@ clean-windows:
 	rm -f win32/default-local_internal_options.conf
 	rm -f win32/default-ossec.conf
 	rm -f win32/default-ossec-pre6.conf
-	rm -f win32/restart-ossec.cmd
+	rm -f win32/restart-wazuh.cmd
 	rm -f win32/route-null.cmd
 	rm -f win32/route-null-2012.cmd
 	rm -f win32/netsh.cmd

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Restarts ossec.
+# Restarts Wazuh.
 # Requirements: none
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Author: Daniel B. Cid
@@ -26,14 +26,14 @@ if [ "x${ACTION}" = "xadd" ]; then
    exit 0;
 
 
-# Deleting from hosts.deny   
-elif [ "x${ACTION}" = "xdelete" ]; then   
+# Deleting from hosts.deny
+elif [ "x${ACTION}" = "xdelete" ]; then
    exit 0;
 
 
-# Invalid action   
+# Invalid action
 else
    echo "$0: invalid action: ${ACTION}"
-fi       
+fi
 
 exit 1;

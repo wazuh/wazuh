@@ -8106,8 +8106,8 @@ paths:
                           executable: disable-account.sh
                           expect: user
                           timeout_allowed: yes
-                        - name: restart-ossec
-                          executable: restart-ossec.sh
+                        - name: restart-wazuh
+                          executable: restart-wazuh.sh
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0
@@ -9482,8 +9482,8 @@ paths:
                           executable: disable-account.sh
                           expect: user
                           timeout_allowed: yes
-                        - name: restart-ossec
-                          executable: restart-ossec.sh
+                        - name: restart-wazuh
+                          executable: restart-wazuh.sh
                   total_affected_items: 1
                   failed_items: []
                   total_failed_items: 0

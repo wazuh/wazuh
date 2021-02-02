@@ -93,9 +93,9 @@ def test_OssecQueue_close(mock_close, mock_conn):
     ('test_msg', '001', 'ar-message'),
     ('test_msg', None, 'ar-message'),
     ('syscheck restart', '000', None),
-    ('restart-ossec0', '001', None),
+    ('restart-wazuh0', '001', None),
     ('syscheck restart', None, None),
-    ('restart-ossec0', None, None)
+    ('restart-wazuh0', None, None)
 ])
 @patch('wazuh.core.ossec_queue.socket.socket.connect')
 @patch('wazuh.core.ossec_queue.OssecQueue._send')
@@ -115,7 +115,7 @@ def test_OssecQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
     ('test_msg', '000', None, 1012),
     ('syscheck restart', '001', None, 1601),
     ('syscheck restart', None, None, 1601),
-    ('restart-ossec0', None, None, 1702)
+    ('restart-wazuh0', None, None, 1702)
 ])
 @patch('wazuh.core.ossec_queue.socket.socket.connect')
 @patch('wazuh.core.ossec_queue.OssecQueue._send', side_effect=Exception)

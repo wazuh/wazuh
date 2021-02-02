@@ -15,7 +15,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: '001'
@@ -40,7 +40,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: '002'
@@ -61,7 +61,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: 002,004,005,007,010,011
@@ -97,7 +97,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: '009'
@@ -124,7 +124,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
       params:
         agents_list: 251,252
@@ -146,7 +146,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-ossec0"
+        command: "restart-wazuh0"
         arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
     response:
       status_code: 200

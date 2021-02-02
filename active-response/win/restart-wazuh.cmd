@@ -1,4 +1,4 @@
-:: Simple script to restart ossec agent.
+:: Simple script to restart wazuh agent.
 :: Copyright (C) 2015-2020, Wazuh Inc.
 @ECHO OFF
 ECHO.
