@@ -76,6 +76,7 @@ All notable changes to this project will be documented in this file.
   - Fixed a condition race hazard in Authd that may prevent the daemon from updating client.keys after adding an agent. ([#7271](https://github.com/wazuh/wazuh/pull/7271))
 - **API:**
   - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
+  - Fixed an error with the RBAC permissions on the `GET /groups` endpoint. ([#7328](https://github.com/wazuh/wazuh/issues/7328))
 - **Framework:**
   - Fixed a `cluster_control` bug that caused an error message when running `wazuh-clusterd` in foreground. ([#6724](https://github.com/wazuh/wazuh/pull/6724))
   - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7062](https://github.com/wazuh/wazuh/pull/7062))
