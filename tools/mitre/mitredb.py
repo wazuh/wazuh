@@ -191,46 +191,49 @@ def parse_json(pathfile, conn, database):
     :return:
     """
     try:
-        print("start parsing")
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
             data = json.dumps(datajson)
             data = data.replace(': "persistence"', ': "Persistence"')
-            data = data.replace(': "privilege-escalation"', ': "Privilege Escalation"')
+            data = data.replace(': "privilege-escalation"',
+                                ': "Privilege Escalation"')
             data = data.replace(': "defense-evasion"', ': "Defense Evasion"')
             data = data.replace(': "discovery"', ': "Discovery"')
-            data = data.replace(': "credential-access"', ': "Credential Access"')
+            data = data.replace(': "credential-access"',
+                                ': "Credential Access"')
             data = data.replace(': "execution"', ': "Execution"')
             data = data.replace(': "lateral-movement"', ': "Lateral Movement"')
             data = data.replace(': "collection"', ': "Collection"')
             data = data.replace(': "exfiltration"', ': "Exfiltration"')
-            data = data.replace(': "command-and-control"', ': "Command and Control"')
+            data = data.replace(': "command-and-control"',
+                                ': "Command and Control"')
             data = data.replace(': "initial-access"', ': "Initial Access"')
             data = data.replace(': "impact"', ': "Impact"')
             datajson = json.loads(data)
             for data_object in datajson['objects']:
-		print(data_object)
                 if data_object['type'] == 'attack-pattern' and \
                         data_object['external_references'][0]['source_name'] == 'mitre-attack':
-                    string_id = json.dumps(data_object['external_references'][0]['external_id']).replace('"', '')
-                    string_url = json.dumps(data_object['external_references'][0]['url']).replace('"', '')
-		    print("string_id -> "+string_id)
+                    string_id = json.dumps(
+                        data_object['external_references'][0]['external_id']).replace('"', '')
+                    string_url = json.dumps(
+                        data_object['external_references'][0]['url']).replace('"', '')
                     string_object = json.dumps(data_object)
-                    string_name = json.dumps(data_object['name']).replace('"', '')
+                    string_name = json.dumps(
+                        data_object['name']).replace('"', '')
 
                     # Fill the attack table
-                    insert_attack_table(conn, string_id, string_url, string_object, string_name, database)
+                    insert_attack_table(
+                        conn, string_id, string_url, string_object, string_name, database)
 
                     # Fill the phase table
-		    if 'kill_chain_phases' in data_object:
+                    if 'kill_chain_phases' in data_object:
                         n = len(data_object['kill_chain_phases'])
                         for i in range(0, n):
                             string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name']).replace('"', '')
-			    print("phase -> "+string_phase+" attack id -> "+string_id)
                             insert_phase_table(conn, string_id, string_phase, database)
 
                     # Fill the platform table
-		    if 'x_mitre_platforms' in data_object:
+                    if 'x_mitre_platforms' in data_object:
                         for platform in data_object['x_mitre_platforms']:
                             string_platform = json.dumps(platform).replace('"', '')
                             insert_platform_table(conn, string_id, string_platform, database)
