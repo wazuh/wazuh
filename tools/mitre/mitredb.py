@@ -231,12 +231,16 @@ def parse_json(pathfile, conn, database):
                         for i in range(0, n):
                             string_phase = json.dumps(data_object['kill_chain_phases'][i]['phase_name']).replace('"', '')
                             insert_phase_table(conn, string_id, string_phase, database)
+                    else:
+                        insert_phase_table(conn, string_id, 'Undefined', database)
 
                     # Fill the platform table
                     if 'x_mitre_platforms' in data_object:
                         for platform in data_object['x_mitre_platforms']:
                             string_platform = json.dumps(platform).replace('"', '')
                             insert_platform_table(conn, string_id, string_platform, database)
+                    else:
+                        insert_platform_table(conn, string_id, 'Undefined', database)
 
     except TypeError as t_e:
         print(t_e)
