@@ -1,6 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster.cluster import get_node
@@ -8,20 +9,28 @@ from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import WazuhVersion
+from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
-def create_message(command, custom, arguments):
-    """Create the message that will be sent
+def create_message(command: str = '', custom: bool = False, arguments: list = None) -> str:
+    """Create the message that will be sent.
 
     Parameters
     ----------
     command : str
         Command running in the agent. If this value starts with !, then it refers to a script name instead of a command
-        name
+        name.
     custom : bool
-        Whether the specified command is a custom command or not
-    arguments : List[str]
-        Command arguments
+        Whether the specified command is a custom command or not.
+    arguments : list
+        Command arguments.
+
+    Raises
+    ------
+    WazuhError(1650)
+        If the command is not specified.
+    WazuhError(1652)
+        If the command is not custom and the command is not one of the available commands.
 
     Returns
     -------
@@ -40,18 +49,23 @@ def create_message(command, custom, arguments):
     return msg_queue
 
 
-def create_json_message(command, arguments, alert):
-    """Create the JSON message that will be sent. Function used when Wazuh agent version is >= 4.2.0
+def create_json_message(command: str = '', arguments: list = None, alert: dict = None) -> dict:
+    """Create the JSON message that will be sent. Function used when Wazuh agent version is >= 4.2.0.
 
     Parameters
     ----------
     command : str
         Command running in the agent. If this value starts by !, then it refers to a script name instead of a command
-        name
-    arguments : List[str]
-        Command arguments
+        name.
+    arguments : list
+        Command arguments.
     alert : dict
-        Alert data that will be sent with the AR command
+        Alert data that will be sent with the AR command.
+
+    Raises
+    ------
+    WazuhError(1650)
+        If the command is not specified.
 
     Returns
     -------
@@ -63,13 +77,15 @@ def create_json_message(command, arguments, alert):
     cluster_enabled = not read_cluster_config()['disabled']
     node_name = get_node().get('node') if cluster_enabled else None
 
-    msg_queue = {'version': 1, 'origin': {'name': node_name, 'module': 'api'}, 'command': command,
-                 'parameters': {'extra_args': arguments if arguments else [], 'alert': alert if alert else {}}}
+    msg_queue = create_wazuh_socket_message(origin={'node': node_name, 'module': 'api/framework'}, command=command,
+                                            parameters={'extra_args': arguments if arguments else [],
+                                                        'alert': alert if alert else {}})
 
     return msg_queue
 
 
-def send_ar_message(agent_id, oq, command, arguments, custom, alert):
+def send_ar_message(agent_id: str = '', oq: OssecQueue = None, command: str = '', arguments: list = None,
+                    custom: bool = False, alert: dict = None):
     """Send the active response message to the agent.
 
     Parameters
@@ -86,6 +102,11 @@ def send_ar_message(agent_id, oq, command, arguments, custom, alert):
         Command arguments.
     alert : dict
         Alert information depending on the AR executed.
+
+    Raises
+    ------
+    WazuhError(1651)
+        If the agent with ID agent_id is not active.
     """
     # Agent basic information
     agent_info = Agent(agent_id).get_basic_information()
@@ -111,12 +132,16 @@ def send_ar_message(agent_id, oq, command, arguments, custom, alert):
     oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
 
 
-def get_commands():
-    """Gets the available commands"""
-    ar_conf_path = '{0}/etc/shared/ar.conf'.format(common.ossec_path)
+def get_commands() -> list:
+    """Get the available commands.
 
+    Returns
+    -------
+    list
+        List with the available commands.
+    """
     commands = list()
-    with open(ar_conf_path) as f:
+    with open(common.ar_conf_path) as f:
         for line in f:
             cmd = line.split(" - ")[0]
             commands.append(cmd)
@@ -124,19 +149,19 @@ def get_commands():
     return commands
 
 
-def shell_escape(command):
-    """Escapes some characters in the command before sending it
+def shell_escape(command: str = '') -> str:
+    """Escape some characters in the command before sending it.
 
     Parameters
     ----------
     command : str
-        Command running in the agent. If this value starts by !, then it refers to a script name instead of a command
-        name
+        Command running in the agent. If this value starts with !, then it refers to a script name instead of a
+        command name.
 
     Returns
     -------
-    command : str
-        Command with escape characters
+    str
+        Command with escape characters.
     """
     shell_escapes = \
         ['"', '\'', '\t', ';', '`', '>', '<', '|', '#', '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')']

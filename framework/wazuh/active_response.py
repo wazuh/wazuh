@@ -12,21 +12,30 @@ from wazuh.rbac.decorators import expose_resources
 
 @expose_resources(actions=['active-response:command'], resources=['agent:id:{agent_list}'],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def run_command(agent_list=None, command=None, arguments=None, custom=False, alert=None):
-    """Run AR command in a specific agent
+def run_command(agent_list: list = None, command: str = '', arguments: list = None, custom: bool = False,
+                alert: dict = None) -> AffectedItemsWazuhResult:
+    """Run AR command in a specific agent.
 
     Parameters
     ----------
     agent_list : list
         Agents list that will run the AR command.
     command : str
-        Command running in the agents. If this value starts with !, then it refers to a script name instead of a command name
+        Command running in the agents. If this value starts with !, then it refers to a script name instead of a
+        command name.
     custom : bool
         Whether the specified command is a custom command or not.
     arguments : list
         Command arguments.
     alert : dict
         Alert information depending on the AR executed.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1701)
+        If an agent id from the agents list is not one of the system agents id.
+    WazuhError(1703)
+        If an agent id from the agents list is '000'.
 
     Returns
     -------

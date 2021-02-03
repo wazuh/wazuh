@@ -14,21 +14,45 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core import active_response
 
 # Variables
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
 
 
 # Functions
 
-def agent_info(expected_exception):
-    """Return dict to cause or not a exception code 1651 on active_response.send_command()."""
+def agent_info(expected_exception: int = None) -> dict:
+    """Return dict to cause or not a exception code 1651 on active_response.send_command().
+
+    Parameters
+    ----------
+    expected_exception : int
+        Test expected exception with the parameters given.
+
+    Returns
+    -------
+    dict
+        Agent basic information with status depending on the expected_exception.
+    """
     if expected_exception == 1651:
         return {'status': 'random'}
     else:
         return {'status': 'active'}
 
 
-def agent_info_exception_and_version(expected_exception, version):
-    """Return dict to cause or not a exception code 1651 on active_response.send_command()."""
+def agent_info_exception_and_version(expected_exception: int = None, version: str = '') -> dict:
+    """Return dict with status and version to cause or not a exception code 1651 on active_response.send_command().
+
+    Parameters
+    ----------
+    expected_exception : int
+        Test expected exception with the parameters given.
+    version : str
+        Agent version to return in the agent basic information dictionary.
+
+    Returns
+    -------
+    dict
+        Agent basic information with status depending on the expected_exception.
+    """
     if expected_exception == 1651:
         return {'status': 'random', 'version': version} if version else {'status': 'random'}
     else:
@@ -53,7 +77,7 @@ def agent_config(expected_exception):
     (None, 'restart-wazuh0', [], True),
     (None, 'restart-wazuh0', ["arg1", "arg2"], False)
 ])
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):
     """Check if the returned message is correct.
 
@@ -90,12 +114,12 @@ def test_create_message(expected_exception, command, arguments, custom):
     (None, 'restart-wazuh0', ["arg1", "arg2"], None),
     (None, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
 ])
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
 def test_create_json_message(expected_exception, command, arguments, alert):
     """Check if the returned json message is correct.
 
     Checks if the json message returned by create_json_message(...) contains the
-    appropriate json ar message structure
+    appropriate json ar message structure.
 
     Parameters
     ----------
@@ -121,7 +145,7 @@ def test_create_json_message(expected_exception, command, arguments, alert):
             assert alert == ret["parameters"]["alert"], f'Alert information not being added'
 
 
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
 def test_get_commands():
     """
     Checks if get_commands method returns a list

@@ -21,7 +21,7 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.active_response import run_command
         from wazuh.core.tests.test_active_response import agent_config, agent_info_exception_and_version
 
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
 full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008']
 
 
@@ -44,7 +44,7 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 @patch("wazuh.core.ossec_queue.OssecQueue._connect")
 @patch("wazuh.syscheck.OssecQueue._send", return_value='1')
 @patch("wazuh.core.ossec_queue.OssecQueue.close")
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
 @patch('wazuh.active_response.get_agents_info', return_value=full_agent_list)
 def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, message_exception,
                      send_exception, agent_id, command, arguments, custom, alert, version):
@@ -60,12 +60,12 @@ def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, mes
         Agents on which to execute the Active response command.
     command : string
         Command to be executed on the agent.
-    arguments : list, optional
+    arguments : list
         Arguments of the command.
     custom : boolean
         True if command is a script.
-    version : List[dict]
-        List with the agent version to test whether the message sent was the correct one or not
+    version : list
+        List with the agent version to test whether the message sent was the correct one or not.
     """
     with patch('wazuh.core.agent.Agent.get_basic_information',
                return_value=agent_info_exception_and_version(send_exception, version)):

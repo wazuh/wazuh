@@ -6,6 +6,7 @@ import json
 import socket
 
 from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
 class OssecQueue:
@@ -16,8 +17,10 @@ class OssecQueue:
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
     RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
-    RESTART_AGENTS_JSON = json.dumps({"version": 1, "origin": {"module": "api"}, "command": "restart-wazuh0",
-                                      "parameters": {"extra_args": [], "alert": {}}})  # Agents, not manager (000)
+    RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
+                                                                 command="restart-wazuh0",
+                                                                 parameters={"extra_args": [],
+                                                                             "alert": {}}))  # Agents, not manager (000)
 
     # Types
     AR_TYPE = "ar-message"
@@ -52,23 +55,49 @@ class OssecQueue:
     def close(self):
         self.socket.close()
 
-    def send_msg_to_agent(self, msg, agent_id=None, msg_type=None):
-        # Active-response
-        #   Agents: /var/ossec/queue/alerts/ar
-        #     - Existing command:
-        #       - (msg_to_agent) [] NNS 001 restart-ossec0 arg1 arg2 arg3
-        #       - (msg_to_agent) [] ANN (null) restart-ossec0 arg1 arg2 arg3
-        #     - Custom command:
-        #       - (msg_to_agent) [] NNS 001 !test.sh arg1 arg2 arg3
-        #       - (msg_to_agent) [] ANN (null) !test.sh arg1 arg2 arg3
-        #   Agents with version >= 4.2.0:
-        #       - Existing and custom commands:
-        #           - (msg_to_agent) [] NNS 001 {JSON message}
-        #   Manager: /var/ossec/queue/alerts/execq
-        #     - Existing command:
-        #       - restart-ossec0 arg1 arg2 arg3
-        #     - Custom command:
-        #       - !test.sh Hello World
+    def send_msg_to_agent(self, msg: str = '', agent_id: str = '', msg_type: str = '') -> str:
+        """Send message to agent.
+
+        Active-response
+          Agents: /var/ossec/queue/alerts/ar
+            - Existing command:
+              - (msg_to_agent) [] NNS 001 restart-ossec0 arg1 arg2 arg3
+              - (msg_to_agent) [] ANN (null) restart-ossec0 arg1 arg2 arg3
+            - Custom command:
+              - (msg_to_agent) [] NNS 001 !test.sh arg1 arg2 arg3
+              - (msg_to_agent) [] ANN (null) !test.sh arg1 arg2 arg3
+          Agents with version >= 4.2.0:
+            - Existing and custom commands:
+              - (msg_to_agent) [] NNS 001 {JSON message}
+          Manager: /var/ossec/queue/alerts/execq
+            - Existing or custom command:
+              - {JSON message}
+
+        Parameters
+        ----------
+        msg : str
+            Message to be sent to the agent.
+        agent_id : str
+            ID of the agent we want to send the message to.
+        msg_type : str
+            Message type.
+
+        Raises
+        ------
+        WazuhError(1652)
+            If it was unable to run the command.
+        WazuhInternalError(1012)
+            If the message was invalid to queue.
+        WazuhError(1601)
+            If it was unable to run the syscheck scan on the agent because it is a non active agent.
+        WazuhError(1702)
+            If it was unable to restart the agent.
+
+        Returns
+        -------
+        str
+            Message confirming the message has been sent.
+        """
 
         # Build message
         ALL_AGENTS_C = 'A'

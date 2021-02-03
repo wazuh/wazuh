@@ -80,6 +80,7 @@ os_pidfile = os.path.join('var', 'run')
 analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-analysisd.state')
 remoted_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-remoted.state')
 lists_path = os.path.join(ossec_path, 'etc', 'lists')
+ar_conf_path = os.path.join(ossec_path, 'etc', 'shared', 'ar.conf')
 
 # Queues
 ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')
@@ -121,6 +122,8 @@ limit_seconds = 1800  # 600*3
 _ossec_uid = None
 _ossec_gid = None
 
+# Active response legacy version variable
+AR_LEGACY_VERSION = 'Wazuh v4.2.0'
 
 def ossec_uid():
     return getpwnam("ossec").pw_uid if globals()['_ossec_uid'] is None else globals()['_ossec_uid']

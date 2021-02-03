@@ -3,31 +3,31 @@
 from __future__ import absolute_import
 
 from datetime import date, datetime  # noqa: F401
-from typing import List, Dict  # noqa: F401
 
 from api.models.base_model_ import Body
 
 
 class ActiveResponseModel(Body):
 
-    def __init__(self, command: str = None, custom: bool = None, arguments: List[str] = None, alert: dict = None):
-        """ActiveResponseModel body model
+    def __init__(self, command: str = None, custom: bool = None, arguments: list = None, alert: dict = None):
+        """ActiveResponseModel body model.
 
         Parameters
         ----------
         command : str
-            Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
+            Command running in the agent. If this value starts by !, then it refers to a script name instead of a
+            command name.
         custom : bool
-            Whether the specified command is a custom command or not
-        arguments : List[str]
-            Command arguments
+            Whether the specified command is a custom command or not.
+        arguments : list
+            Command arguments.
         alert : dict
-            Alert information depending on the AR executed
+            Alert information depending on the AR executed.
         """
         self.swagger_types = {
             'command': str,
             'custom': bool,
-            'arguments': List[str],
+            'arguments': list,
             'alert': dict
         }
 
@@ -48,8 +48,8 @@ class ActiveResponseModel(Body):
         """
         Returns
         -------
-        command : str
-            Command to run in the agent
+        str
+            Command to run in the agent.
         """
         return self._command
 
@@ -59,7 +59,7 @@ class ActiveResponseModel(Body):
         Parameters
         ----------
         command : str
-            Command to run in the agent
+            Command to run in the agent.
         """
         self._command = command
 
@@ -68,8 +68,8 @@ class ActiveResponseModel(Body):
         """
         Returns
         -------
-        custom : bool
-            Whether the specified command is a custom command or not
+        bool
+            Whether the specified command is a custom command or not.
         """
         return self._custom
 
@@ -79,27 +79,27 @@ class ActiveResponseModel(Body):
         Parameters
         ----------
         custom : bool
-            Whether the specified command is a custom command or not
+            Whether the specified command is a custom command or not.
         """
         self._custom = custom
 
     @property
-    def arguments(self) -> List[str]:
+    def arguments(self) -> list:
         """
         Returns
         -------
-        arguments : List[str]
-            Command arguments
+        list
+            Command arguments.
         """
         return self._arguments
 
     @arguments.setter
-    def arguments(self, arguments: List[str]):
+    def arguments(self, arguments: list):
         """
         Parameters
         ----------
-        arguments : List[str]
-            Command arguments
+        arguments : list
+            Command arguments.
         """
         self._arguments = arguments
 
@@ -108,17 +108,17 @@ class ActiveResponseModel(Body):
         """
         Returns
         -------
-        alert : dict
-            Alert data sent with the AR command
+        dict
+            Alert data sent with the AR command.
         """
         return self._alert
 
     @alert.setter
-    def alert(self, alert: List[str]):
+    def alert(self, alert: dict):
         """
         Parameters
         ----------
         alert : dict
-            Alert data sent with the AR command
+            Alert data sent with the AR command.
         """
         self._alert = alert
