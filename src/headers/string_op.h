@@ -234,12 +234,12 @@ char * w_remove_substr(char *str, const char *sub);
 char * w_strndup(const char *str, size_t n);
 
 /**
- * @brief Split a string into multiples strings by a delimiters given.
+ * @brief Split a string into an array of strings separated by given delimiters.
  * @param string_to_split String to split.
- * @param DELIM String with the delimiters to split.
- * @param max_array_size Maximum number of strings returned in the array, if it is 0, size will be the maximun possible.
+ * @param delim String with the delimiters used to split.
+ * @param max_array_size Maximum number of strings returned in the array, if it is 0 no limit will be applied.
  * @return char** Returns an array of string.
  */
-char ** w_string_split(const char *string_to_split, const char *DELIM, int max_array_size);
+char ** w_string_split(const char *string_to_split, const char *delim, int max_array_size);
 
 #endif

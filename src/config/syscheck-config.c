@@ -2442,46 +2442,46 @@ static char **get_paths_from_env_variable (char *environment_variable) {
     DWORD env_var_size = ExpandEnvironmentStrings(environment_variable, NULL, 0);
     if (env_var_size <= 0) {
         merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable, GetLastError());
-        goto error;
+        goto end;
     }
     os_calloc(env_var_size, sizeof(char), expandedpath);
     if(!ExpandEnvironmentStrings(environment_variable, expandedpath, env_var_size)){
         merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable, GetLastError());
         os_free(expandedpath);
-        goto error;
+        goto end;
     }
     str_lowercase(expandedpath);
 #else
     static const char *DELIM = ":";
-    if(environment_variable[0] == '$') {
-        environment_variable++;
-        char *aux = getenv(environment_variable);
-        if (!aux) {
-            merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable);
-            goto error;
-        } else {
-            os_strdup(aux, expandedpath);
-        }
+    if(environment_variable[0] != '$') {
+        // not an environment variable.
+        goto end;
+    }
+    environment_variable++;
+    char *aux = getenv(environment_variable);
+    if (!aux) {
+        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable);
+        goto end;
     } else {
-        os_strdup(environment_variable, expandedpath);
+        os_strdup(aux, expandedpath);
     }
 #endif
 
     /* The env. variable may have multiples paths split by a delimiter */
     paths = w_string_split(expandedpath, DELIM, 0);
 
+    if (paths[0] == NULL) {
+        os_strdup(environment_variable, paths[0]);
+    }
     while (paths[i]){
         paths[i] = w_strtrim(paths[i]);
         i++;
-    }
-    if (paths[0] == NULL) {
-        os_strdup(environment_variable, paths[0]);
     }
 
     os_free(expandedpath);
     return paths;
 
-error:
+end:
     os_calloc(2, sizeof(char *), paths);
     os_strdup(environment_variable, paths[0]);
     return paths;
