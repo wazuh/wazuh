@@ -79,8 +79,9 @@ stages:
                 code: 1651
               id:
                 - '010'
+            # Separated errors as the message is not the same (different status)
             - error:
-                code: 1657
+                code: 1651
               id:
                 - '012'
           total_affected_items: 4
@@ -220,7 +221,6 @@ stages:
         error: 2
         data:
           affected_items:
-            - '000'
             - '001'
             - '002'
             - '004'
@@ -234,13 +234,17 @@ stages:
               id:
                 - '009'
                 - '010'
+            # Separated errors as the message is not the same (different status)
+            - error:
+                code: 1651
+              id:
                 - '011'
                 - '012'
             - error:
                 code: 1750
               id:
                 - '003'
-          total_affected_items: 8
+          total_affected_items: 7
           total_failed_items: 5
 
     # PUT /active-response
