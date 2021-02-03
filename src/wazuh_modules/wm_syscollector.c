@@ -36,7 +36,7 @@ syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
 syscollector_sync_message_func syscollector_sync_message_ptr = NULL;
 
-long syscollector_sync_max_eps = 10;    // Database syncrhonization number of events per seconds
+long syscollector_sync_max_eps = 10;    // Database syncrhonization number of events per seconds (default value)
 int queue_fd = 0;                       // Output queue file descriptor
 bool in_shutdown = false;               // In shutdown state
 static pthread_mutex_t shutdown_mutex;  // Output queue file descriptor
@@ -97,7 +97,13 @@ void* wm_sys_main(wm_sys_t *sys) {
     }
     if (syscollector_start_ptr) {
         mtinfo(WM_SYS_LOGTAG, "Starting Syscollector.");
-        syscollector_sync_max_eps = sys->sync.sync_max_eps;
+
+        const long max_eps = sys->sync.sync_max_eps;
+        if (0 != max_eps) {
+            syscollector_sync_max_eps = max_eps;
+        }
+        // else: if max_eps is 0 (from configuration) let's use the default max_eps value (10)
+
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_send_dbsync_message,
