@@ -248,7 +248,7 @@ class WazuhIntegration:
                                             aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
                                             region_name=conn_args.get('region_name')
                                             )
-                client = sts_session.client(service_name=service_name)
+                client = sts_session.client(service_name='logs' if service_name == 'cloudwatchlogs' else service_name)
             elif service_name == 'cloudwatchlogs':
                 client = boto3.client('logs', region_name=region,
                                       aws_access_key_id=access_key, aws_secret_access_key=secret_key)
