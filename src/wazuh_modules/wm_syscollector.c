@@ -1,7 +1,7 @@
 /*
  * Wazuh SYSCOLLECTOR
  * Copyright (C) 2015-2020, Wazuh Inc.
- * November 11, 2020.
+ * November 11, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -36,10 +36,10 @@ syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
 syscollector_sync_message_func syscollector_sync_message_ptr = NULL;
 
-
-int queue_fd = 0;                                   // Output queue file descriptor
-bool in_shutdown = false;
-static pthread_mutex_t shutdown_mutex;
+long syscollector_sync_max_eps = 10;    // Database syncrhonization number of events per seconds (default value)
+int queue_fd = 0;                       // Output queue file descriptor
+bool in_shutdown = false;               // In shutdown state
+static pthread_mutex_t shutdown_mutex;  // Output queue file descriptor
 
 
 static bool is_shutdown() {
@@ -49,19 +49,19 @@ static bool is_shutdown() {
     return in_shutdown_process;
 }
 
-static void wm_sys_send_diff_message(const void* data) {
-    const int eps = 1000000/wm_max_eps;
+static void wm_sys_send_diff_message(/*const void* data*/) {
+    // const int eps = 1000000/syscollector_sync_max_eps;
     // Sending deltas is disabled due to issue: 7322 - https://github.com/wazuh/wazuh/issues/7322
     // if (!is_shutdown()) {
-    //     wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
+    //     wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
     // }
  }
 
 static void wm_sys_send_dbsync_message(const void* data) {
-    const int eps = 1000000/wm_max_eps;
+    const int eps = 1000000/syscollector_sync_max_eps;
 
     if (!is_shutdown()) {
-        wm_sendmsg(eps,queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
+        wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
     }
 }
 
@@ -69,9 +69,7 @@ static void wm_sys_log_error(const char* log) {
     mterror(WM_SYS_LOGTAG, "%s", log);
 }
 
-
-void* wm_sys_main(wm_sys_t *sys) 
-{
+void* wm_sys_main(wm_sys_t *sys) {
     pthread_mutex_init(&shutdown_mutex, NULL);
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
@@ -99,6 +97,13 @@ void* wm_sys_main(wm_sys_t *sys)
     }
     if (syscollector_start_ptr) {
         mtinfo(WM_SYS_LOGTAG, "Starting Syscollector.");
+
+        const long max_eps = sys->sync.sync_max_eps;
+        if (0 != max_eps) {
+            syscollector_sync_max_eps = max_eps;
+        }
+        // else: if max_eps is 0 (from configuration) let's use the default max_eps value (10)
+
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_send_dbsync_message,
@@ -122,8 +127,7 @@ void* wm_sys_main(wm_sys_t *sys)
     return 0;
 }
 
-void wm_sys_destroy(wm_sys_t *data) 
-{
+void wm_sys_destroy(wm_sys_t *data) {
     mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
     pthread_mutex_lock(&shutdown_mutex);
     in_shutdown = true;
@@ -148,11 +152,11 @@ void wm_sys_destroy(wm_sys_t *data)
     pthread_mutex_destroy(&shutdown_mutex);
 }
 
-cJSON *wm_sys_dump(const wm_sys_t *sys) 
-{
+cJSON *wm_sys_dump(const wm_sys_t *sys) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_sys = cJSON_CreateObject();
 
+    // System provider values
     if (sys->flags.enabled) cJSON_AddStringToObject(wm_sys,"disabled","no"); else cJSON_AddStringToObject(wm_sys,"disabled","yes");
     if (sys->flags.scan_on_start) cJSON_AddStringToObject(wm_sys,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_sys,"scan-on-start","no");
     cJSON_AddNumberToObject(wm_sys,"interval",sys->interval);
@@ -166,6 +170,8 @@ cJSON *wm_sys_dump(const wm_sys_t *sys)
 #ifdef WIN32
     if (sys->flags.hotfixinfo) cJSON_AddStringToObject(wm_sys,"hotfixes","yes"); else cJSON_AddStringToObject(wm_sys,"hotfixes","no");
 #endif
+    // Database synchronization values
+    cJSON_AddNumberToObject(wm_sys,"sync_max_eps",sys->sync.sync_max_eps);
 
     cJSON_AddItemToObject(root,"syscollector",wm_sys);
 

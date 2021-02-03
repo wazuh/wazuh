@@ -114,3 +114,9 @@ int __wrap_OSHash_Update_ex(__attribute__((unused)) OSHash *self,
                             __attribute__((unused)) void *data) {
     return mock();
 }
+
+int __wrap_OSHash_Update(__attribute__((unused)) OSHash *self,
+                            __attribute__((unused)) const char *key,
+                            __attribute__((unused)) void *data) {
+    return mock();
+}

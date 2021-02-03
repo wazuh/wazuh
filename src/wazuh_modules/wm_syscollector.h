@@ -36,13 +36,18 @@ typedef struct wm_sys_state_t {
     time_t next_time;                       // Absolute time for next scan
 } wm_sys_state_t;
 
+typedef struct wm_sys_db_sync_flags_t {
+    long sync_max_eps;                      // Maximum events per second for synchronization messages.
+} wm_sys_db_sync_flags_t;
+
 typedef struct wm_sys_t {
     unsigned int interval;                  // Time interval between cycles (seconds)
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
+    wm_sys_db_sync_flags_t sync;            // Database synchronization value
 } wm_sys_t;
 
 // Parse XML configuration
-int wm_sys_read(XML_NODE node, wmodule *module);
+int wm_sys_read(const OS_XML *xml, XML_NODE node, wmodule *module);
 
 #endif
