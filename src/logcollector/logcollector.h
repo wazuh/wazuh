@@ -153,6 +153,7 @@ extern int reload_interval;
 extern int reload_delay;
 extern int free_excluded_files_interval;
 extern int state_interval;
+extern int check_host_interval;
 
 typedef enum {
     CONTINUE_IT,

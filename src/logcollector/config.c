@@ -51,6 +51,7 @@ int LogCollectorConfig(const char *cfgfile)
     reload_delay = getDefine_Int("logcollector", "reload_delay", 0, 30000);
     free_excluded_files_interval = getDefine_Int("logcollector", "exclude_files_interval", 1, 172800);
     state_interval = getDefine_Int("logcollector", "state_interval", 0, 3600);
+    check_host_interval = getDefine_Int("logcollector", "check_host_interval", 1, 60);
 
     /* Current and total files counter */
     total_files = 0;
@@ -257,6 +258,7 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"reload_delay",reload_delay);
     cJSON_AddNumberToObject(logcollector, "exclude_files_interval", free_excluded_files_interval);
     cJSON_AddNumberToObject(logcollector, "state_interval", state_interval);
+    cJSON_AddNumberToObject(logcollector,"check_host_interval", check_host_interval);
 
 #ifndef WIN32
     cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);

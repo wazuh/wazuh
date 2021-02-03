@@ -97,6 +97,7 @@ int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
 int state_interval;
+int check_host_interval;
 OSHash * msg_queues_table;
 
 ///< To asociate the path, the position to read, and the hash key of lines read.
@@ -137,6 +138,8 @@ void LogCollectorStart()
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
     logreader *current;
+    time_t last_host_update = 0;
+    time_t now = 0;
 
     /* Create store data */
     excluded_files = OSHash_Create();
@@ -839,8 +842,13 @@ void LogCollectorStart()
             f_check = 0;
         }
 
-        if (mq_log_builder_update() == -1) {
-            mdebug1("Output log pattern data could not be updated.");
+        // Avoid calling mq_log_builder_update every second.
+        now = time(NULL);
+        if (last_host_update + check_host_interval < now) {
+            last_host_update = now;
+            if (mq_log_builder_update() == -1) {
+                mdebug1("Output log pattern data could not be updated.");
+            }
         }
 
         sleep(1);
