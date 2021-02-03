@@ -27,14 +27,14 @@ static const char *XML_SYNC = "synchronization";
 static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node) {
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
     const int XML_DB_SYNC_MAX_EPS_SIZE = 7;
-    const int MIN_SYNC_MESSAGES_THROUGHOUT = 0; // It means disabled
-    const int MAX_SYNC_MESSAGES_THROUGHOUT = 1000000;
+    const int MIN_SYNC_MESSAGES_THROUGHPUT = 0; // It means disabled
+    const int MAX_SYNC_MESSAGES_THROUGHPUT = 1000000;
     for (int i = 0; node[i]; ++i) {
         if (strncmp(node[i]->element, XML_DB_SYNC_MAX_EPS, XML_DB_SYNC_MAX_EPS_SIZE) == 0) {
             char * end;
             const long value = strtol(node[i]->content, &end, 10);
 
-            if (value < MIN_SYNC_MESSAGES_THROUGHOUT || value > MAX_SYNC_MESSAGES_THROUGHOUT || *end) {
+            if (value < MIN_SYNC_MESSAGES_THROUGHPUT || value > MAX_SYNC_MESSAGES_THROUGHPUT || *end) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscollector->sync.sync_max_eps = value;
