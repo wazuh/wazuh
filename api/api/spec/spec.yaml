@@ -31,8 +31,8 @@ info:
 
     <SecurityDefinitions />
 
-  version: '4.1.0'
-  x-revision: '40106'
+  version: '4.1.1'
+  x-revision: '40107'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -5254,7 +5254,7 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.1.0"
+                api_version: "v4.1.1"
                 revision: '40100'
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/4.1/LICENSE"
