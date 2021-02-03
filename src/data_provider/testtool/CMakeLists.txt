@@ -34,6 +34,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(sysinfo_test_tool
         pthread)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    target_link_libraries(sysinfo_test_tool
+        sysinfo
+        dl
+        pthread
+    )
 else()
     target_link_libraries(sysinfo_test_tool
         sysinfo

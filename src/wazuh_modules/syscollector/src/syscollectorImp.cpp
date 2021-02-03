@@ -1306,15 +1306,30 @@ void Syscollector::insertNetwork()
     {
         const auto& networkData{getNetworkData()};
         nlohmann::json toInsert;
-        toInsert["table"] = NET_IFACE_TABLE;
-        toInsert["data"] = networkData[NET_IFACE_TABLE];
-        m_spDBSync->insertData(toInsert);
-        toInsert["table"] = NET_PROTOCOL_TABLE;
-        toInsert["data"] = networkData[NET_PROTOCOL_TABLE];
-        m_spDBSync->insertData(toInsert);
-        toInsert["table"] = NET_ADDRESS_TABLE;
-        toInsert["data"] = networkData[NET_ADDRESS_TABLE];
-        m_spDBSync->insertData(toInsert);
+        if (!networkData.is_null())
+        {
+            const auto itIface { networkData.find(NET_IFACE_TABLE) };
+            if (itIface != networkData.end())
+            {
+                toInsert["table"] = NET_IFACE_TABLE;
+                toInsert["data"] = itIface.value();
+                m_spDBSync->insertData(toInsert);
+            }
+            const auto itProtocol { networkData.find(NET_PROTOCOL_TABLE) };
+            if (itProtocol != networkData.end())
+            {
+                toInsert["table"] = NET_PROTOCOL_TABLE;
+                toInsert["data"] = itProtocol.value();
+                m_spDBSync->insertData(toInsert);
+            }
+            const auto itAddress { networkData.find(NET_ADDRESS_TABLE) };
+            if (itAddress != networkData.end())
+            {
+                toInsert["table"] = NET_ADDRESS_TABLE;
+                toInsert["data"] = itAddress.value();
+                m_spDBSync->insertData(toInsert);
+            }
+        }
     }
 }
 
@@ -1323,9 +1338,24 @@ void Syscollector::scanNetwork()
     if (m_network)
     {
         const auto& networkData{getNetworkData()};
-        updateAndNotifyChanges(NET_IFACE_TABLE, networkData[NET_IFACE_TABLE]);
-        updateAndNotifyChanges(NET_PROTOCOL_TABLE, networkData[NET_PROTOCOL_TABLE]);
-        updateAndNotifyChanges(NET_ADDRESS_TABLE, networkData[NET_ADDRESS_TABLE]);
+        if (!networkData.is_null())
+        {
+            const auto itIface { networkData.find(NET_IFACE_TABLE) };
+            if (itIface != networkData.end())
+            {
+                updateAndNotifyChanges(NET_IFACE_TABLE, itIface.value());
+            }
+            const auto itProtocol { networkData.find(NET_PROTOCOL_TABLE) };
+            if (itProtocol != networkData.end())
+            {
+                updateAndNotifyChanges(NET_PROTOCOL_TABLE, itProtocol.value());
+            }
+            const auto itAddress { networkData.find(NET_ADDRESS_TABLE) };
+            if (itAddress != networkData.end())
+            {
+                updateAndNotifyChanges(NET_ADDRESS_TABLE, itAddress.value());
+            }
+        }
     }
 }
 
@@ -1377,14 +1407,25 @@ void Syscollector::insertPackages()
     {
         const auto& packagesData { getPackagesData() };
         nlohmann::json toInsert;
-        toInsert["table"] = PACKAGES_TABLE;
-        toInsert["data"] = packagesData[PACKAGES_TABLE];
-        m_spDBSync->insertData(toInsert);
-        if (m_hotfixes)
+        if (!packagesData.is_null())
         {
-            toInsert["table"] = HOTFIXES_TABLE;
-            toInsert["data"] = packagesData[HOTFIXES_TABLE];
-            m_spDBSync->insertData(toInsert);
+            const auto itPackages { packagesData.find(PACKAGES_TABLE) };
+            if (itPackages != packagesData.end())
+            {
+                toInsert["table"] = PACKAGES_TABLE;
+                toInsert["data"] = itPackages.value();
+                m_spDBSync->insertData(toInsert);
+            }
+            if (m_hotfixes)
+            {
+                const auto itHotFixes { packagesData.find(HOTFIXES_TABLE) };
+                if (itHotFixes != packagesData.end())
+                {
+                    toInsert["table"] = HOTFIXES_TABLE;
+                    toInsert["data"] = itHotFixes.value();
+                    m_spDBSync->insertData(toInsert);
+                }
+            }
         }
     }
 }
@@ -1394,10 +1435,21 @@ void Syscollector::scanPackages()
     if (m_packages)
     {
         const auto& packagesData { getPackagesData() };
-        updateAndNotifyChanges(PACKAGES_TABLE, packagesData[PACKAGES_TABLE]);
-        if (m_hotfixes)
+        if (!packagesData.is_null())
         {
-            updateAndNotifyChanges(HOTFIXES_TABLE, packagesData[HOTFIXES_TABLE]);
+            const auto itPackages { packagesData.find(PACKAGES_TABLE) };
+            if (itPackages != packagesData.end())
+            {
+                updateAndNotifyChanges(PACKAGES_TABLE, itPackages.value());
+            }
+            if (m_hotfixes)
+            {
+                const auto itHotFixes { packagesData.find(HOTFIXES_TABLE) };
+                if (itHotFixes != packagesData.end())
+                {
+                    updateAndNotifyChanges(HOTFIXES_TABLE, itHotFixes.value());
+                }
+            }
         }
     }
 }

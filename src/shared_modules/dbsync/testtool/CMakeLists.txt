@@ -11,7 +11,7 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14 -pthread")
 
 add_executable(dbsync_test_tool
                ${CMAKE_SOURCE_DIR}/testtool/main.cpp )

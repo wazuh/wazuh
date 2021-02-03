@@ -20,7 +20,7 @@ if(COVERITY)
 endif(COVERITY)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
 
 file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/testtool/*.cpp"
@@ -51,6 +51,13 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
         sysinfo
         syscollector
         pthread)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    target_link_libraries(syscollector_test_tool
+        rsync
+        dbsync
+        sysinfo
+        syscollector
+        dl)
 else()
     target_link_libraries(syscollector_test_tool
         rsync

@@ -16,7 +16,7 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
@@ -61,7 +61,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(UNIX AND NOT APPLE)
   set_target_properties(rsync PROPERTIES
         LINK_FLAGS "-static-libgcc -static-libstdc++")
-  string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
+  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     
 
@@ -83,7 +85,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_subdirectory(integrationTests)
   endif(UNIT_TEST)
 else()
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     target_link_libraries(rsync dbsync cjson crypto pthread)
+  else()
+    string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
+    string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
+    target_link_libraries(rsync dbsync cjson crypto pthread -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
+  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 if(NOT DEFINED COVERITY)

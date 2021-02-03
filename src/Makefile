@@ -78,6 +78,10 @@ WIN_CMAKE_RULES+=win32/shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 WIN_CMAKE_RULES+=win32/syscollector
 endif
+else
+ifeq (${uname_S},AIX)
+WIN_CMAKE_OPTS=-DINSTALL_PREFIX=${PREFIX}
+endif
 endif
 
 
@@ -148,7 +152,7 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX -D__unix
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
+		OSSEC_LDFLAGS+=-pthread -L${PREFIX}/lib/
 		PATH:=${PATH}:/usr/vac/bin
 		CC=gcc
 else
