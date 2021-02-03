@@ -82,7 +82,7 @@ void test_jqueue_parse_json_invalid(void ** state) {
     snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
     snprintf(buffer, OS_MAXSTR, "%s\n", "{\"test\":\"invalid_value");
 
-    expect_string(__wrap__merror, formatted_msg, "Invalid JSON alert read from '/home/test'. Remaining attempts: 2");
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid JSON alert read from '/home/test'. Remaining attempts: 2");
     will_return(__wrap_fseek, 0);
 
     object = jqueue_parse_json(queue, buffer, current_pos);
@@ -102,7 +102,8 @@ void test_jqueue_parse_json_max_attempts(void ** state) {
     snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
     snprintf(buffer, OS_MAXSTR, "%s\n", "{\"test\":\"invalid_value");
 
-    expect_string(__wrap__merror, formatted_msg, "Invalid JSON alert read from '/home/test'. Remaining attempts: 0");
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid JSON alert read from '/home/test'. Remaining attempts: 0");
+    expect_string(__wrap__merror, formatted_msg, "Invalid JSON alert read from '/home/test'. Skipping it.");
 
     object = jqueue_parse_json(queue, buffer, current_pos);
 

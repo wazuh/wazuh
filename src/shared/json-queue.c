@@ -136,7 +136,7 @@ cJSON * jqueue_parse_json(file_queue * queue, char * buffer, int64_t current_pos
     }
 
     queue->read_attempts++;
-    merror("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
+    mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
 
     if (queue->read_attempts < MAX_READ_ATTEMPTS) {
         if (current_pos >= 0) {
@@ -144,6 +144,7 @@ cJSON * jqueue_parse_json(file_queue * queue, char * buffer, int64_t current_pos
         }
     } else {
         queue->read_attempts = 0;
+        merror("Invalid JSON alert read from '%s'. Skipping it.", queue->file_name);
     }
 
     return NULL;
