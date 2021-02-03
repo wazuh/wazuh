@@ -223,7 +223,7 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         else:
             rbac_value = None
 
-        if rbac_value:
+        if rbac_value is not None:
             self.query_filters += [{'value': rbac_value,
                                     'field': 'rbac_name',
                                     'operator': operator,
