@@ -98,7 +98,6 @@ void* wm_sys_main(wm_sys_t *sys) {
     if (syscollector_start_ptr) {
         mtinfo(WM_SYS_LOGTAG, "Starting Syscollector.");
         syscollector_sync_max_eps = sys->sync.sync_max_eps;
-        mtinfo(WM_SYS_LOGTAG, "MNB: sync_max_eps vale: %ld", syscollector_sync_max_eps);
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
                                wm_sys_send_dbsync_message,
