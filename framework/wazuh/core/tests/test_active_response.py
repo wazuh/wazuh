@@ -146,33 +146,3 @@ def test_shell_escape(command, expected_escape):
     """
     ret = active_response.shell_escape(command)
     assert ret.count('\\') == expected_escape, f'Number of escaped symbols do not match'
-
-
-@pytest.mark.parametrize('expected_exception, command, agent_id', [
-    (1651, 'random', 0),
-    (1750, 'random', 0),
-    (None, 'random', 5)
-])
-def test_send_command(expected_exception, command, agent_id):
-    """Checks if send_command method is correct
-
-    Verify that send_command raise specific exceptions in some cases and that arguments are correct.
-
-    Parameters
-    ----------
-    expected_exception : int
-        Exception code expected when calling send_command.
-    command : str
-        Command to be introduced in the message.
-    agent_id : int
-        ID number to be set on the agent.
-    """
-    with patch('wazuh.core.agent.Agent.get_basic_information', return_value=agent_info(expected_exception)):
-        with patch('wazuh.core.agent.Agent.getconfig', return_value=agent_config(expected_exception)):
-            if expected_exception:
-                with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
-                    active_response.send_command(command, MagicMock(), agent_id)
-            else:
-                mock_oq = MagicMock()
-                active_response.send_command(command, mock_oq, agent_id)
-                mock_oq.send_msg_to_agent.assert_called_with(agent_id=agent_id, msg=command, msg_type='ar-message')

@@ -1071,7 +1071,7 @@ class Agent:
         config : str
             Configuration to get, written on disk.
         agent_version : str
-            Agent version to compare with the required version. The format is vX.Y.Z.
+            Agent version to compare with the required version. The format is vX.Y.Z or Wazuh vX.Y.Z.
         """
         required_version = 'v3.7.0'
         if WazuhVersion(agent_version) < WazuhVersion(required_version):

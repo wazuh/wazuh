@@ -571,7 +571,7 @@ def test_agent_restart(socket_mock, send_mock, mock_queue):
         agent.restart()
 
         # Assert methods are called with correct params
-        mock_config.assert_called_once_with('com', 'active-response')
+        mock_config.assert_called_once_with('com', 'active-response', 'Wazuh v3.9.0')
         mock_queue.assert_called_once()
 
 
@@ -1404,7 +1404,7 @@ def test_agent_getconfig(socket_mock, send_mock, mock_ossec_socket):
     """Test getconfig method returns expected message."""
     agent = Agent('001')
     mock_ossec_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
-    result = agent.getconfig('com', 'active-response')
+    result = agent.getconfig('com', 'active-response', 'v4.0.0')
     assert result == {"test": "conf"}, 'Result message is not as expected.'
 
 
@@ -1413,15 +1413,21 @@ def test_agent_getconfig(socket_mock, send_mock, mock_ossec_socket):
 @patch('socket.socket.connect')
 def test_agent_getconfig_ko(socket_mock, send_mock, mock_ossec_socket):
     """Test getconfig method raises expected exceptions."""
-    # Agent version is null
-    agent = Agent('004')
-    with pytest.raises(WazuhInternalError, match=".* 1015 .*"):
-        agent.getconfig('com', 'active-response')
+    # Invalid component
+    agent = Agent('003')
+    with pytest.raises(WazuhError, match=".* 1101 .*"):
+        agent.getconfig('invalid_component', 'active-response', 'v4.0.0')
+
+    # Component or config is none
+    agent = Agent('003')
+    with pytest.raises(WazuhError, match=".* 1307 .*"):
+        agent.getconfig('com', None, 'v4.0.0')
+        agent.getconfig(None, 'active-response', 'v4.0.0')
 
     # Agent Wazuh version is lower than v3.7.0
     agent = Agent('002')
     with pytest.raises(WazuhInternalError, match=".* 1735 .*"):
-        agent.getconfig('com', 'active-response')
+        agent.getconfig('com', 'active-response', 'v3.6.0')
 
 
 @patch('wazuh.core.stats.OssecSocket')
@@ -1481,10 +1487,10 @@ def test_send_restart_command(mock_ossec_queue, agents_list, versions_list):
         List of agents' versions to test whether the message sent was the correct one or not
     """
     with patch('wazuh.core.agent.Agent.get_basic_information', side_effect=versions_list):
-        for idx, agent_id in enumerate(agents_list):
-            send_restart_command(agent_id)
+        for agent_id, agent_version in zip(agents_list, versions_list):
+            send_restart_command(agent_id, agent_version['version'])
             expected_msg = mock_ossec_queue.RESTART_AGENTS_JSON if WazuhVersion(
-                versions_list[idx]['version']) >= WazuhVersion('Wazuh v4.2.0') else mock_ossec_queue.RESTART_AGENTS
+                agent_version['version']) >= WazuhVersion('Wazuh v4.2.0') else mock_ossec_queue.RESTART_AGENTS
             mock_ossec_queue.return_value.send_msg_to_agent.assert_called_with(expected_msg, agent_id)
 
 
