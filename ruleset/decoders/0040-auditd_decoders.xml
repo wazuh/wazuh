@@ -30,6 +30,21 @@ type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes e
     <order>audit.arch,audit.syscall,audit.success,audit.exit,audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
 </decoder>
 
+<!-- SYSCALL - command -->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">comm=\p*(\w+)\p*</regex>
+    <order>audit.command</order>
+</decoder>
+
+<!-- SYSCALL - exe -->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">exe=\p(\S+)\p</regex>
+    <order>audit.exe</order>
+</decoder>
+
+
 <!-- SYSCALL - key -->
 <decoder name="auditd-syscall">
     <parent>auditd</parent>

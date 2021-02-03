@@ -88,7 +88,7 @@ typedef enum fdb_stmt {
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   1
-#define MAX_FILE_LIMIT  2147483647
+#define MAX_FILE_LIMIT  INT_MAX
 #define MIN_COMP_ESTIM  0.4         // Minimum value to be taken by syscheck.comp_estimation_perc
 
 /* Checking options */
@@ -356,7 +356,7 @@ typedef struct _config {
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
 
-    unsigned int file_limit;        /* maximum number of files to monitor */
+    int file_limit;        /* maximum number of files to monitor */
     unsigned int file_limit_enabled;    /* Enable file_limit option */
 
     char **ignore;                  /* list of files/dirs to ignore */

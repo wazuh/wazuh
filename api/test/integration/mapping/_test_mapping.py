@@ -32,7 +32,7 @@ def calculate_test_mappings():
     chdir(integration_tests)
     test_mapping = defaultdict(list)
 
-    for test in glob.glob('test_*.yaml'):
+    for test in sorted(glob.glob('test_*.yaml')):
         test_tag = re.match(test_tag_regex, test).group(1)
         if test_tag.startswith('rbac'):
             # Add RBAC tests
@@ -42,7 +42,7 @@ def calculate_test_mappings():
             test_mapping[test_tag.lower()].append(test)
 
     # Create custom tag for basic tests
-    for test in [tests for tests in map(lambda x: test_mapping[x], ['agent', 'security', 'cluster', 'experimental'])]:
+    for test in sorted([tests for tests in map(lambda x: test_mapping[x], ['agent', 'security', 'cluster', 'experimental'])]):
         test_mapping['basic'].extend(test)
 
     return test_mapping
@@ -68,7 +68,7 @@ def get_file_and_test_info(test_name, test_mapping, module_name):
         # If no tag is matched, basic tests will be assigned
         related_tests = test_mapping['basic']
 
-    return [test_name, test_tag, related_tests]
+    return [test_name, test_tag, sorted(related_tests)]
 
 
 if __name__ == '__main__':
@@ -79,11 +79,11 @@ if __name__ == '__main__':
         mapping_list = list()
         for module in wazuh_modules:
             chdir(module)
-            for root, dirs, files in walk('.'):
+            for root, dirs, files in sorted(walk('.')):
                 mappings = dict()
                 mappings['path'] = path.join(path.relpath(module, base), root.lstrip('./')).strip('/')
                 mappings['files'] = list()
-                for file in files:
+                for file in sorted(files):
                     if file.endswith(allowed_extensions):
                         test_info = get_file_and_test_info(file.lower(), test_tags, module)
                         if test_info and test_info[2]:
