@@ -80,7 +80,7 @@ WIN_CMAKE_RULES+=win32/syscollector
 endif
 else
 ifeq (${uname_S},AIX)
-WIN_CMAKE_OPTS=-DPREFIX=${PREFIX}
+WIN_CMAKE_OPTS=-DINSTALL_PREFIX=${PREFIX}
 endif
 endif
 

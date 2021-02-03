@@ -29,6 +29,7 @@ void* so_get_module_handle(const char *so){
 #else
     snprintf(file_name, 4096-1, "lib%s.so", so);
 #endif
+#
     return dlopen(file_name, RTLD_LAZY);
 #endif
 }
