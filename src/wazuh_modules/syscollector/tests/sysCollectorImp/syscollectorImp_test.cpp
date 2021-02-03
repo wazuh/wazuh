@@ -37,7 +37,7 @@ public:
     MOCK_METHOD(nlohmann::json, ports, (), (override));
 };
 
-void reportFunction(const std::string& payload)
+void reportFunction(const std::string& /*payload*/)
 {
     // std::cout << payload << std::endl;
 }
