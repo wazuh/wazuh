@@ -48,8 +48,8 @@ int main(int argc, char **argv)
     int nocmerged = 0;
 
     home_path = w_homedir(argv[0]);
-	const char *cfg = DEFAULTCPATH;
-    const char *dir = HOMEDIR;
+	const char *dir = HOMEDIR;
+    const char *cfg = DEFAULTCPATH;
     const char *user = REMUSER;
     const char *group = GROUPGLOBAL;
 

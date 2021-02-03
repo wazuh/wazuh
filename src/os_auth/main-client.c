@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     int c;
     int test_config = 0;
 #ifndef WIN32
-    home_path = w_homedir(argv[0]):
+    home_path = w_homedir(argv[0]);
     gid_t gid = 0;
     const char *group = GROUPGLOBAL;
 #endif
