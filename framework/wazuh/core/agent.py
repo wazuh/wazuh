@@ -12,7 +12,7 @@ from json import dumps, loads
 from os import chown, chmod, makedirs, urandom, stat, remove
 from os import listdir, path
 from platform import platform
-from shutil import copyfile, rmtree
+from shutil import rmtree
 from time import time
 
 from wazuh.core import common, configuration, stats
@@ -1088,7 +1088,8 @@ class Agent:
             Object with component's stats.
         """
         # Available daemons and the minimum required agent's version.
-        stats_min_ver = {'logcollector': 'v4.2.0'}
+        stats_min_ver = {'logcollector': 'v4.2.0',
+                         'agent': 'v4.2.0'}
 
         # Check if agent version is compatible with this feature
         self.load_info_from_db()
