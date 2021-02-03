@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **API:**
+  - Fixed an error with the RBAC permissions in the `GET /groups` endpoint. ([#7328](https://github.com/wazuh/wazuh/issues/7328))
 - **AWS Module:**
   - Fixed a bug that caused an error when attempting to use an IAM Role with **CloudWatchLogs** service. ([#7330](https://github.com/wazuh/wazuh/pull/7330))
 
