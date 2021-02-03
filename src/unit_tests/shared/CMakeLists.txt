@@ -115,7 +115,7 @@ if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_json-queue")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,fopen -Wl,--wrap,fclose \
                                 -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
-                                -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets")
+                                -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell")
 endif()
 
 # Compiling tests

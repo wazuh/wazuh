@@ -55,20 +55,20 @@ int jqueue_open(file_queue * queue, int tail) {
  */
 cJSON * jqueue_next(file_queue * queue) {
     struct stat buf;
-    char buffer[OS_MAXSTR + 1];
-    int64_t current_pos;
+    cJSON * alert;
 
     if (!queue->fp && jqueue_open(queue, 1) < 0) {
         return NULL;
     }
 
     clearerr(queue->fp);
-    current_pos = w_ftell(queue->fp);
+    alert = jqueue_parse_json(queue);
 
-    if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
-        return jqueue_parse_json(queue, buffer, current_pos);
+    if (alert && !queue->flags) {
+        return alert;
 
     } else {
+        queue->flags = 0;
 
         if (stat(queue->file_name, &buf) < 0) {
             merror(FSTAT_ERROR, queue->file_name, errno, strerror(errno));
@@ -86,14 +86,8 @@ cJSON * jqueue_next(file_queue * queue) {
                 return NULL;
             }
 
-            current_pos = w_ftell(queue->fp);
+            return jqueue_parse_json(queue);
 
-            if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
-                return jqueue_parse_json(queue, buffer, current_pos);
-
-            } else {
-                return NULL;
-            }
         } else {
             sleep(1);
             return NULL;
@@ -108,43 +102,50 @@ void jqueue_close(file_queue * queue) {
 }
 
 /**
- * @brief Validate and parse a JSON object from a buffer
+ * @brief Read and validate a JSON alert from the file queue
  *
  * @param queue pointer to the file_queue struct
- * @param buffer string with the JSON to be parsed
- * @param current_pos File position located as a backup
- * @return cJSON object with the read JSON, NULL in the JSON is invalid
+ * @return cJSON object with the read JSON, NULL if the JSON is invalid
  */
-cJSON * jqueue_parse_json(file_queue * queue, char * buffer, int64_t current_pos) {
-
+cJSON * jqueue_parse_json(file_queue * queue) {
     cJSON * object = NULL;
-    const char *jsonErrPtr;
+    char buffer[OS_MAXSTR + 1];
+    int64_t current_pos;
+    const char * jsonErrPtr;
     char * end;
 
-    if (end = strchr(buffer, '\n'), end) {
-        *end = '\0';
-    }
+    current_pos = w_ftell(queue->fp);
 
-    if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
-        queue->read_attempts = 0;
-        return object;
-    }
+    if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
 
-    // The read JSON is invalid
-    if (object) {
-        cJSON_Delete(object);
-    }
+        if (end = strchr(buffer, '\n'), end) {
+            *end = '\0';
+        }
 
-    queue->read_attempts++;
-    mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
+        if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
+            queue->read_attempts = 0;
+            return object;
+        }
 
-    if (queue->read_attempts < MAX_READ_ATTEMPTS) {
-        if (current_pos >= 0) {
-            fseek(queue->fp, current_pos, SEEK_SET);
+        // The read JSON is invalid
+        if (object) {
+            cJSON_Delete(object);
+        }
+
+        queue->read_attempts++;
+        mdebug2("Invalid JSON alert read from '%s'. Remaining attempts: %d", queue->file_name, MAX_READ_ATTEMPTS - queue->read_attempts);
+
+        if (queue->read_attempts < MAX_READ_ATTEMPTS) {
+            if (current_pos >= 0) {
+                fseek(queue->fp, current_pos, SEEK_SET);
+            }
+        } else {
+            queue->read_attempts = 0;
+            merror("Invalid JSON alert read from '%s'. Skipping it.", queue->file_name);
         }
     } else {
-        queue->read_attempts = 0;
-        merror("Invalid JSON alert read from '%s'. Skipping it.", queue->file_name);
+        // Force the queue reload when the read fails
+        queue->flags = 1;
     }
 
     return NULL;
