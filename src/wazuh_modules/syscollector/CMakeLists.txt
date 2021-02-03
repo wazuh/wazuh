@@ -76,12 +76,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  set_target_properties(syscollector PROPERTIES
-        LINK_FLAGS "-static-libgcc -static-libstdc++")
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
+    set_target_properties(syscollector PROPERTIES
+          LINK_FLAGS "-static-libgcc -static-libstdc++")
   else()
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS "-L${INSTALL_PREFIX}/lib")
+    string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
+    string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
+    set_target_properties(syscollector PROPERTIES
+          LINK_FLAGS "-static-libgcc -static-libstdc++ -Wl,-blibpath: ${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR}")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
