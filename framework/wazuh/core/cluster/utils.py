@@ -154,7 +154,7 @@ def manager_restart():
         # execq socket path
         socket_path = common.EXECQ
         # json msg for restarting Wazuh manager
-        msg = json.dumps({"version": 1, "origin": {"module": "api/framework"}, "command": "restart-wazuh",
+        msg = json.dumps({"version": 1, "origin": {"module": "api"}, "command": "restart-wazuh",
                           "parameters": {"extra_args": [], "alert": {}}})
         # initialize socket
         if exists(socket_path):

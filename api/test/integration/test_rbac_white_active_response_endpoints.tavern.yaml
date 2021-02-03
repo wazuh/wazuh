@@ -75,7 +75,7 @@ stages:
             - '007'
           failed_items:
             - error:
-                code: 1657
+                code: 1651
               id:
                 - '011'
             - error:
@@ -159,9 +159,6 @@ stages:
                 code: 1651
               id:
                 - '009'
-            - error:
-                code: 1657
-              id:
                 - '011'
             - error:
                 code: 1750

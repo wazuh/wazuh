@@ -220,6 +220,7 @@ stages:
         error: 2
         data:
           affected_items:
+            - '000'
             - '001'
             - '002'
             - '004'
@@ -233,21 +234,14 @@ stages:
               id:
                 - '009'
                 - '010'
-            - error:
-                code: 1652
-              id:
-                - '000'
-            - error:
-                code: 1657
-              id:
                 - '011'
                 - '012'
             - error:
                 code: 1750
               id:
                 - '003'
-          total_affected_items: 7
-          total_failed_items: 6
+          total_affected_items: 8
+          total_failed_items: 5
 
     # PUT /active-response
   - name: Try to send a message to all agents, malformed body

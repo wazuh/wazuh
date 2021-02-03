@@ -1,11 +1,12 @@
-
-
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.core.exception import WazuhInternalError, WazuhError
+import json
 import socket
+
+from wazuh.core.exception import WazuhInternalError, WazuhError
+
 
 class OssecQueue:
     """
@@ -15,8 +16,8 @@ class OssecQueue:
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
     RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
-    RESTART_AGENTS_JSON = "{\"version\": 1,\"origin\": {\"module\": \"api/framework\"}, \"command\": \"restart-wazuh0\", " \
-                          "\"parameters\": {\"extra_args\": [], \"alert\": {}}}"  # Agents, not manager (000)
+    RESTART_AGENTS_JSON = json.dumps({"version": 1, "origin": {"module": "api"}, "command": "restart-wazuh0",
+                                      "parameters": {"extra_args": [], "alert": {}}})  # Agents, not manager (000)
 
     # Types
     AR_TYPE = "ar-message"
@@ -89,7 +90,8 @@ class OssecQueue:
 
             if agent_id != "000":
                 # Example restart 'msg': restart-ossec0 - null (from_the_server) (no_rule_id)
-                socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent, str_agent_id, msg)
+                socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent,
+                                                            str_agent_id, msg)
             elif agent_id == "000":
                 socket_msg = msg
 
@@ -104,9 +106,14 @@ class OssecQueue:
         # Legacy: Restart syscheck, restart agents
         else:
             if msg == OssecQueue.HC_SK_RESTART:
-                socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NO_AR_C, str_agent, str_agent_id, OssecQueue.HC_SK_RESTART)
+                socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NO_AR_C, str_agent,
+                                                            str_agent_id, OssecQueue.HC_SK_RESTART)
             elif msg == OssecQueue.RESTART_AGENTS or msg == OssecQueue.RESTART_AGENTS_JSON:
-                socket_msg = "{0} {1}{2}{3} {4} {5} - {6} (from_the_server) (no_rule_id)".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent, str_agent_id, OssecQueue.RESTART_AGENTS, "null")
+                socket_msg = "{0} {1}{2}{3} {4} {5} - {6} (from_the_server) (no_rule_id)".format("(msg_to_agent) []",
+                                                                                                 str_all_agents, NONE_C,
+                                                                                                 str_agent,
+                                                                                                 str_agent_id,
+                                                                                                 msg, "null")
             else:
                 raise WazuhInternalError(1012, msg)
 

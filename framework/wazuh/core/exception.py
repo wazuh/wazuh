@@ -6,7 +6,6 @@
 from copy import deepcopy
 from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, wazuh_version as wazuh_full_version
 
-
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
 WAZUH_VERSION = 'current' if wazuh_full_version == '' else '.'.join(wazuh_full_version.split('.')[:2]).lstrip('v')
 
@@ -86,13 +85,14 @@ class WazuhException(Exception):
         1120: {
             'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
             'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
-            },
+        },
         1121: {'message': "Error connecting with socket"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
                               'using API endpoint https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.manager_controller.put_api_config or '
                               'https://documentation.wazuh.com/current/user-manual/api/reference.html#operation/api.controllers.cluster_controller.put_api_config'},
-        1123: {'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
+        1123: {
+            'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
         1124: {'message': 'Remote command detected',
                'remediation': f'To solve this issue please enable the remote commands in the API settings or add an exception: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#remote-commands-configuration'},
 
@@ -203,7 +203,9 @@ class WazuhException(Exception):
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
         1650: 'Active response - Command not specified',
-        1651: 'Active response - Agent is not active',
+        1651: {'message': 'Cannot send Active Response message to non-active agent, agent status is',
+               'remediation': f'Check non-active agents connection and try again. Please, visit the official '
+                              f'documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-connection.html)'},
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent ID not specified',
         1655: 'Active response - Command not available',
@@ -211,8 +213,6 @@ class WazuhException(Exception):
                'remediation': 'Please, visit the official documentation '
                               f'(https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/reference.html#tag/active-response) '
                               'to get more information about `active-response` API call'},
-        1657: {'message': 'Active response - Cannot send AR command, agent version is null',
-               'remediation': 'Please activate the agent to synchronize it'},
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -279,7 +279,7 @@ class WazuhException(Exception):
         1729: {
             'message': 'Agent status not valid. Valid statuses are active, disconnected, pending and never_connected',
             'remediation': 'Please check used status and try again.'
-            },
+        },
         1730: {'message': 'Node does not exist',
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
                               f'`cluster_control -l` (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
