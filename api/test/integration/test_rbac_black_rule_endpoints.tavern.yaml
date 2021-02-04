@@ -199,7 +199,7 @@ test_name: GET RULES FILES RBAC (CONTENT)
 
 stages:
 
-  - name: Try to get one rule file
+  - name: Get one rule file
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
@@ -232,7 +232,7 @@ test_name: PUT RULES FILES RBAC
 
 stages:
 
-  - name: Try to update one rule file
+  - name: Update one rule file
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule_file.xml"
@@ -262,7 +262,7 @@ test_name: DELETE RULES FILES RBAC
 
 stages:
 
-  - name: Try to delete a rule file (allow)
+  - name: Delete a rule file (allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule_file.xml"

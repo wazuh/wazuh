@@ -366,7 +366,7 @@ x-rbac-catalog:
         resources: ['rule:file:0610-win-ms_logs_rules.xml']
         effect: "allow"
     'rules:update':
-      description: "Update or upload rule files to Wazuh manager"
+      description: "Update or upload custom rule files"
       resources:
         - $ref: '#/x-rbac-catalog/resources/rule:file'
       example:
@@ -374,7 +374,7 @@ x-rbac-catalog:
         resources: ['*:*:*']
         effect: "allow"
     'rules:delete':
-      description: "Delete Wazuh manager rules"
+      description: "Delete custom rule files"
       resources:
         - $ref: '#/x-rbac-catalog/resources/rule:file'
       example:
