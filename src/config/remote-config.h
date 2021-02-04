@@ -14,6 +14,10 @@
 #define SYSLOG_CONN 1
 #define SECURE_CONN 2
 
+#define REMOTED_PROTO_TCP     (0x1 << 0)
+#define REMOTED_PROTO_UDP     (0x1 << 1)
+#define REMOTED_PROTO_DEFAULT REMOTED_PROTO_TCP
+
 #include "shared.h"
 #include "global-config.h"
 
