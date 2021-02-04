@@ -64,7 +64,7 @@ cJSON * jqueue_next(file_queue * queue) {
     clearerr(queue->fp);
     alert = jqueue_parse_json(queue);
 
-    if (alert && !queue->flags) {
+    if (alert && !(queue->flags & CRALERT_READ_FAILED)) {
         return alert;
 
     } else {
@@ -105,7 +105,9 @@ void jqueue_close(file_queue * queue) {
  * @brief Read and validate a JSON alert from the file queue
  *
  * @param queue pointer to the file_queue struct
- * @return cJSON object with the read JSON, NULL if the JSON is invalid
+ * @post The flag variable may be set to CRALERT_READ_FAILED if the read operation got no data.
+ * @post The read position is restored if failed to get a JSON object.
+ * @retval NULL No data read or could not get a valid JSON object. Pointer to the JSON object otherwise.
  */
 cJSON * jqueue_parse_json(file_queue * queue) {
     cJSON * object = NULL;
@@ -120,11 +122,11 @@ cJSON * jqueue_parse_json(file_queue * queue) {
 
         if (end = strchr(buffer, '\n'), end) {
             *end = '\0';
-        }
 
-        if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
-            queue->read_attempts = 0;
-            return object;
+            if ((object = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0), object) && (*jsonErrPtr == '\0')) {
+                queue->read_attempts = 0;
+                return object;
+            }
         }
 
         // The read JSON is invalid
@@ -145,7 +147,7 @@ cJSON * jqueue_parse_json(file_queue * queue) {
         }
     } else {
         // Force the queue reload when the read fails
-        queue->flags = 1;
+        queue->flags = CRALERT_READ_FAILED;
     }
 
     return NULL;

@@ -138,7 +138,7 @@ void test_jqueue_parse_json_fgets_fail(void ** state) {
 
     assert_null(object);
     assert_int_equal(queue->read_attempts, 0);
-    assert_int_equal(queue->flags, 1);
+    assert_int_equal(queue->flags, CRALERT_READ_FAILED);
 }
 
 int main(void) {

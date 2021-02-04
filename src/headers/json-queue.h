@@ -32,10 +32,12 @@ cJSON * jqueue_next(file_queue * queue);
 void jqueue_close(file_queue * queue);
 
 /**
- * @brief Validate and parse a JSON object from a buffer
+ * @brief Read and validate a JSON alert from the file queue
  *
  * @param queue pointer to the file_queue struct
- * @return cJSON object with the read JSON, NULL in the JSON is invalid
+ * @post The flag variable may be set to CRALERT_READ_FAILED if the read operation got no data.
+ * @post The read position is restored if failed to get a JSON object.
+ * @retval NULL No data read or could not get a valid JSON object. Pointer to the JSON object otherwise.
  */
 cJSON * jqueue_parse_json(file_queue * queue);
 
