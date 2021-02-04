@@ -91,5 +91,7 @@
 /* Logcollector */
 #define REMOTED_PROTO_ERROR                     "(9000): Error getting protocol. Default value will be taken."
 #define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
+#define REMOTED_PROTO_ONLY_SECURE               "(9002): Only secure protocol support TCP&UDP at the same time." \
+                                                " Default value will be taken."
 
 #endif /* WARN_MESSAGES_H */
