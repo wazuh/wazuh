@@ -79,7 +79,7 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
     cluster_enabled = not read_cluster_config()['disabled']
     node_name = get_node().get('node') if cluster_enabled else None
 
-    msg_queue = create_wazuh_socket_message(origin={'node': node_name, 'module': 'api/framework'}, command=command,
+    msg_queue = create_wazuh_socket_message(origin={'name': node_name, 'module': 'api/framework'}, command=command,
                                             parameters={'extra_args': arguments if arguments else [],
                                                         'alert': alert if alert else {}})
 

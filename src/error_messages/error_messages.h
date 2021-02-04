@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -302,7 +302,7 @@
 #define DB_MISS_CONFIG        "(5205): Missing database configuration. "\
                               "It requires host, user, pass and database."
 #define DB_CONFIGERR          "(5206): Database configuration error."
-#define DB_COMPILED           "(5207): OSSEC not compiled with support for '%s'."
+#define DB_COMPILED           "(5207): Wazuh not compiled with support for '%s'."
 #define DB_MAINERROR          "(5208): Multiple database errors. Exiting."
 #define DB_CLOSING            "(5209): Closing connection to database."
 #define DB_ATTEMPT            "(5210): Attempting to reconnect to database."
@@ -401,6 +401,7 @@
 #define VU_OFFLINE_CONFLICT         "(5587): Feed conflict. Only '%s' will be updated offline."
 #define VU_VER_INVALID_FORMAT       "(5588): Invalid format of Wazuh version for agent '%.3d'"
 #define VU_VER_READING_ERROR        "(5589): Couldn't read Wazuh version for agent '%.3d'"
+#define VU_OVAL_VULN_NOT_FOUND      "(5590): No vulnerabilities could be found in the OVAL for agent '%.3d'"
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"

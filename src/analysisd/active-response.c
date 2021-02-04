@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -56,12 +56,12 @@ int AR_ReadConfig(const char *cfgfile)
 #ifndef WIN32
     gid_t gr_gid;
     if (gr_gid = Privsep_GetGroup(USER), gr_gid == (uid_t) -1) {
-        merror("Could not get ossec gid.");
+        merror("Could not get '%s' gid.", USER);
         return (OS_INVALID);
     }
 
     if ((chown(DEFAULTARPATH, (uid_t) - 1, gr_gid)) == -1) {
-        merror("Could not change the group to ossec: %d", errno);
+        merror("Could not change the group to '%s': %d", GROUPGLOBAL, errno);
         return (OS_INVALID);
     }
 #endif

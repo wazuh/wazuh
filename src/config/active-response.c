@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -68,7 +68,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     }
 
     if ((chown(DEFAULTARPATH, (uid_t) - 1, gid)) == -1) {
-        merror("Could not change the group to ossec: %d.", errno);
+        merror("Could not change the group to '%s': %d.", GROUPGLOBAL, errno);
         fclose(fp);
         return OS_INVALID;
     }

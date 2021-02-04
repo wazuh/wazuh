@@ -33,11 +33,8 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
-
-
-### Fixed
-
+- **Cluster:**
+  - Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
 - **Core:**
   - Fixed a bug in FIM when setting scan_time to "12am" or "12pm". ([#6934](https://github.com/wazuh/wazuh/pull/6934))
   - Fixed a bug in FIM that produced wrong alerts when the file limit was reached. ([#6802](https://github.com/wazuh/wazuh/pull/6802))
@@ -78,6 +75,7 @@ All notable changes to this project will be documented in this file.
     - Migration of rootcheck results to Wazuh DB to remove the files with the results of each agent. ([#6096](https://github.com/wazuh/wazuh/issues/6096))
     - Designed new mechanism to close RIDS files when agents are disconnected. ([#6112](https://github.com/wazuh/wazuh/issues/6112))
   - Moved CA configuration section to verify WPK signatures from `active-response` section to `agent-upgrade` section. ([#5929](https://github.com/wazuh/wazuh/issues/5929))
+  - The tool ossec-logtest has been renamed to wazuh-logtest, and it uses a new testing service integrated in Analysisd. ([#6103](https://github.com/wazuh/wazuh/pull/6103))
   - Changed error message to debug when multiple daemons attempt to remove an agent simultaneously ([#6185](https://github.com/wazuh/wazuh/pull/6185))
   - Changed error message to warning when the agent fails to reach a module. ([#5817](https://github.com/wazuh/wazuh/pull/5817))
 - **API:**
@@ -108,6 +106,7 @@ All notable changes to this project will be documented in this file.
   - Fixed a warning log in Wazuh DB when upgrading the global database. ([#6697](https://github.com/wazuh/wazuh/pull/6697))
   - Fixed a bug in FIM on Windows that caused false positive due to changes in the host timezone or the daylight saving time when monitoring files in a FAT32 filesystem. ([#6801](https://github.com/wazuh/wazuh/pull/6801))
   - Fixed the purge of the Redhat vulnerabilities database before updating it. ([#7050](https://github.com/wazuh/wazuh/pull/7050))
+  - Fixed a condition race hazard in Authd that may prevent the daemon from updating client.keys after adding an agent. ([#7271](https://github.com/wazuh/wazuh/pull/7271))
 - **API:**
   - Fixed an error with `/groups/{group_id}/config` endpoints (GET and PUT) when using complex `localfile` configurations. ([#6276](https://github.com/wazuh/wazuh/pull/6383))
 - **Framework:**
