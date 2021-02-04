@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.1.1]
 
+### Added
+
+- **API:**
+  - Added new endpoints to manage rules files. ([#7178](https://github.com/wazuh/wazuh/issues/7178))
+
 ### Fixed
 
 - **API:**

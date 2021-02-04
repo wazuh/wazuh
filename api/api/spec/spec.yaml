@@ -365,6 +365,22 @@ x-rbac-catalog:
         actions: ['rules:read']
         resources: ['rule:file:0610-win-ms_logs_rules.xml']
         effect: "allow"
+    'rules:update':
+      description: "Update or upload custom rule files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/rule:file'
+      example:
+        actions: ['rules:update']
+        resources: ['*:*:*']
+        effect: "allow"
+    'rules:delete':
+      description: "Delete custom rule files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/rule:file'
+      example:
+        actions: ['rules:delete']
+        resources: ['rule:file:0610-win-ms_logs_rules.xml']
+        effect: "allow"
     'sca:read':
       description: "Access agents security configuration assessment"
       resources:
@@ -5188,6 +5204,24 @@ components:
       schema:
         type: string
         format: alphanumeric
+    xml_filename:
+      in: query
+      name: filename
+      description: "Filter by filename of one or more rule or decoder files."
+      schema:
+        type: array
+        items:
+          type: string
+          pattern: '^[\w\-]+\.xml(,[\w\-]+\.xml)*$'
+    xml_filename_path:
+      in: path
+      name: filename
+      description: "Filename (rule or decoder) to download/upload/edit file."
+      required: true
+      schema:
+        type: string
+        pattern: '^[\w\-]+\.xml$'
+
 
 tags:
   - name: API Info
@@ -10864,7 +10898,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
@@ -10909,23 +10943,90 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /rules/files/{filename}/download:
+  /rules/files/{filename}:
     get:
       tags:
         - Rules
-      summary: "Download rule"
-      description: "Download an specified rule file"
-      operationId: api.controllers.rule_controller.get_download_file
+      summary: "Get rules file content"
+      description: "Get the content of a specified rule in the ruleset"
+      operationId: api.controllers.rule_controller.get_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/rules:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/downloadFile'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/raw'
       responses:
         '200':
-          description: "Rule contents"
+          description: "Rule content"
           content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - group:
+                      - "@name": syslog
+                        rule:
+                          "@id": '1'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: syslog
+                          description: "Generic template for all syslog rules."
+                      - "@name": firewall,
+                        rule:
+                          "@id": '2'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: firewall
+                          description: "Generic template for all firewall rules."
+                      - "@name": ids
+                        rule:
+                          "@id": '3'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: ids
+                          description: "Generic template for all ids rules."
+                      - "@name": web-log
+                        rule:
+                          "@id": '4'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: web-log
+                          description: "Generic template for all web rules."
+                      - "@name": squid
+                        rule:
+                          "@id": '5'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: squid
+                          description: "Generic template for all web proxy rules."
+                      - "@name": windows
+                        rule:
+                          "@id": '6'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: windows
+                          description: "Generic template for all windows rules."
+                      - "@name": ossec
+                        rule:
+                          "@id": '7'
+                          "@level": '0'
+                          "@noalert": '1'
+                          category: ossec
+                          description: "Generic template for all ossec rules."
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Selected rule was returned
+                error: 0
             application/xml:
               schema:
                 type: string
@@ -10980,6 +11081,105 @@ paths:
                     <description>Generic template for all ossec rules.</description>
                   </rule>
                 </group>
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - Rules
+      summary: "Update rules file"
+      description: "Upload or replace a user ruleset file content"
+      operationId: api.controllers.rule_controller.put_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:update'
+        - $ref: '#/x-rbac-catalog/actions/rules:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: "Content of the rule to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "etc/rules/new_rule.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Rule was successfully uploaded"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+      - Rules
+      summary: "Delete rules file"
+      description: "Delete a specified rule file"
+      operationId: api.controllers.rule_controller.delete_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/rules:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "etc/rules/new_rule.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Rule was successfully deleted"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

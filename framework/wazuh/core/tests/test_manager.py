@@ -141,6 +141,22 @@ def test_prettify_xml(mock_remote_commands, test_manager):
     mock_remote_commands.assert_called_once_with(result)
 
 
+@patch('wazuh.core.manager.check_remote_commands')
+@patch('wazuh.core.manager.common.ossec_path', new=test_data_path)
+def test_prettify_xml_formula_injection(mock_remote_commands):
+    """Test that prettify_xml method avoids formula injections."""
+    with open(os.path.join(test_data_path, 'test_rules_injection.xml')) as f:
+        xml_file = f.read()
+    m = mock_open(read_data=xml_file)
+    with patch('builtins.open', m):
+        result = prettify_xml(xml_file)
+
+    assert isinstance(result, str)
+    description = re.search(r'<description>(.+)</description>', result)
+    assert description, 'Could not find description tag in XML file'
+    assert description.group(1).startswith("'"), f'Did not prepend formulas: {description}'
+
+
 @patch('time.time', return_value=0)
 @patch('random.randint', return_value=0)
 @patch('wazuh.core.manager.chmod')
