@@ -121,6 +121,6 @@ def get_wazuh_paths() -> tuple:
             "Wodle cannot start"
         raise Exception(error_message)
 
-    wazuh_queue = os.path.join(wazuh_path, 'queue', 'ossec', 'queue')
+    wazuh_queue = os.path.join(wazuh_path, 'queue', 'sockets', 'queue')
 
     return wazuh_path, wazuh_version, wazuh_queue

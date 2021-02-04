@@ -25,7 +25,7 @@ def test_get_wazuh_paths(mock_ossec_init):
     """Test get_wazuh_paths function."""
     expected_wazuh_path = os.path.join('/', 'var', 'ossec')
     expected_wazuh_version = 'v3.11.0'
-    expected_wazuh_queue = os.path.join(expected_wazuh_path, 'queue', 'ossec',
+    expected_wazuh_queue = os.path.join(expected_wazuh_path, 'queue', 'sockets',
                                         'queue')
     wazuh_path, wazuh_version, wazuh_queue = get_wazuh_paths()
 
