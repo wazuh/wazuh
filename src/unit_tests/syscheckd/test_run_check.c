@@ -776,7 +776,7 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 
 void test_check_max_fps_no_sleep(void **state) {
     will_return(__wrap_gettime, last_time + 1);
-    check_max_fps(1);
+    check_max_fps();
 }
 
 void test_check_max_fps_sleep(void **state) {
@@ -785,7 +785,7 @@ void test_check_max_fps_sleep(void **state) {
 
     will_return(__wrap_gettime, last_time);
     expect_string(__wrap__mdebug2, formatted_msg, FIM_REACHED_MAX_FPS);
-    check_max_fps(1);
+    check_max_fps();
 }
 
 int main(void) {

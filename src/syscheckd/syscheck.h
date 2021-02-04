@@ -151,9 +151,8 @@ void fim_scan();
  * @brief Stop scanning files for one second if the max number of files scanned has been reached.
  * This check is not performed in the first scan.
  *
- * @param baseline 0 when the first scan hasn't been executed, 1 otherwise.
  */
-void check_max_fps(int baseline);
+void check_max_fps();
 
 /**
  * @brief

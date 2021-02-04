@@ -124,7 +124,7 @@ void fim_send_scan_info(fim_scan_event event) {
     cJSON_Delete(json);
 }
 
-void check_max_fps(int baseline) {
+void check_max_fps() {
 #ifndef WAZUH_UNIT_TESTING
     static unsigned int files_read = 0;
     static time_t last_time = 0;
@@ -133,7 +133,7 @@ void check_max_fps(int baseline) {
     static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
     struct timespec wait_time = {0, 0};
 
-    if (syscheck.max_files_per_second == 0 || baseline == 0) {
+    if (syscheck.max_files_per_second == 0) {
         return;
     }
     w_mutex_lock(&fps_mutex);
