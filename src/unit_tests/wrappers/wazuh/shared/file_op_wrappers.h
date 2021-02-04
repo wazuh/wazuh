@@ -16,6 +16,7 @@
 #include <stdbool.h>
 
 #ifdef WIN32
+#include <stdint.h>
 #include <winsock2.h>
 #include <windows.h>
 #endif
