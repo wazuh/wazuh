@@ -1,11 +1,14 @@
-
-
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.core.exception import WazuhInternalError, WazuhError
+import json
 import socket
+from typing import Union
+
+from wazuh.core.exception import WazuhInternalError, WazuhError
+from wazuh.core.wazuh_socket import create_wazuh_socket_message
+
 
 class OssecQueue:
     """
@@ -15,6 +18,10 @@ class OssecQueue:
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
     RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
+    RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
+                                                                 command="restart-wazuh0",
+                                                                 parameters={"extra_args": [],
+                                                                             "alert": {}}))  # Agents, not manager (000)
 
     # Types
     AR_TYPE = "ar-message"
@@ -49,20 +56,49 @@ class OssecQueue:
     def close(self):
         self.socket.close()
 
-    def send_msg_to_agent(self, msg, agent_id=None, msg_type=None):
-        # Active-response
-        #   Agents: /var/ossec/queue/alerts/ar
-        #     - Existing command:
-        #       - (msg_to_agent) [] NNS 001 restart-ossec0 arg1 arg2 arg3
-        #       - (msg_to_agent) [] ANN (null) restart-ossec0 arg1 arg2 arg3
-        #     - Custom command:
-        #       - (msg_to_agent) [] NNS 001 !test.sh arg1 arg2 arg3
-        #       - (msg_to_agent) [] ANN (null) !test.sh arg1 arg2 arg3
-        #   Manager: /var/ossec/queue/alerts/execq
-        #     - Existing command:
-        #       - restart-ossec0 arg1 arg2 arg3
-        #     - Custom command:
-        #       - !test.sh Hello World
+    def send_msg_to_agent(self, msg: Union[str, dict] = '', agent_id: str = '', msg_type: str = '') -> str:
+        """Send message to agent.
+
+        Active-response
+          Agents: /var/ossec/queue/alerts/ar
+            - Existing command:
+              - (msg_to_agent) [] NNS 001 restart-ossec0 arg1 arg2 arg3
+              - (msg_to_agent) [] ANN (null) restart-ossec0 arg1 arg2 arg3
+            - Custom command:
+              - (msg_to_agent) [] NNS 001 !test.sh arg1 arg2 arg3
+              - (msg_to_agent) [] ANN (null) !test.sh arg1 arg2 arg3
+          Agents with version >= 4.2.0:
+            - Existing and custom commands:
+              - (msg_to_agent) [] NNS 001 {JSON message}
+          Manager: /var/ossec/queue/alerts/execq
+            - Existing or custom command:
+              - {JSON message}
+
+        Parameters
+        ----------
+        msg : str
+            Message to be sent to the agent.
+        agent_id : str
+            ID of the agent we want to send the message to.
+        msg_type : str
+            Message type.
+
+        Raises
+        ------
+        WazuhError(1652)
+            If it was unable to run the command.
+        WazuhInternalError(1012)
+            If the message was invalid to queue.
+        WazuhError(1601)
+            If it was unable to run the syscheck scan on the agent because it is a non active agent.
+        WazuhError(1702)
+            If it was unable to restart the agent.
+
+        Returns
+        -------
+        str
+            Message confirming the message has been sent.
+        """
 
         # Build message
         ALL_AGENTS_C = 'A'
@@ -84,7 +120,8 @@ class OssecQueue:
 
             if agent_id != "000":
                 # Example restart 'msg': restart-ossec0 - null (from_the_server) (no_rule_id)
-                socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent, str_agent_id, msg)
+                socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent,
+                                                            str_agent_id, msg)
             elif agent_id == "000":
                 socket_msg = msg
 
@@ -99,9 +136,14 @@ class OssecQueue:
         # Legacy: Restart syscheck, restart agents
         else:
             if msg == OssecQueue.HC_SK_RESTART:
-                socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NO_AR_C, str_agent, str_agent_id, OssecQueue.HC_SK_RESTART)
-            elif msg == OssecQueue.RESTART_AGENTS:
-                socket_msg = "{0} {1}{2}{3} {4} {5} - {6} (from_the_server) (no_rule_id)".format("(msg_to_agent) []", str_all_agents, NONE_C, str_agent, str_agent_id, OssecQueue.RESTART_AGENTS, "null")
+                socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NO_AR_C, str_agent,
+                                                            str_agent_id, OssecQueue.HC_SK_RESTART)
+            elif msg == OssecQueue.RESTART_AGENTS or msg == OssecQueue.RESTART_AGENTS_JSON:
+                socket_msg = "{0} {1}{2}{3} {4} {5} - {6} (from_the_server) (no_rule_id)".format("(msg_to_agent) []",
+                                                                                                 str_all_agents, NONE_C,
+                                                                                                 str_agent,
+                                                                                                 str_agent_id,
+                                                                                                 msg, "null")
             else:
                 raise WazuhInternalError(1012, msg)
 
