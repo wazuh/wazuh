@@ -454,7 +454,7 @@ def chown_r(filepath, uid, gid):
                 chown_r(itempath, uid, gid)
 
 
-def delete_file(full_path):
+def delete_wazuh_file(full_path):
     """Delete a Wazuh file.
 
     Parameters
@@ -477,8 +477,6 @@ def delete_file(full_path):
             raise WazuhError(1907)
     else:
         raise WazuhError(1906)
-
-    return True
 
 
 def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid()), time=None, permissions=None):

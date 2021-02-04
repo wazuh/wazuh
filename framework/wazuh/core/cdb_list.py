@@ -4,16 +4,16 @@
 
 import re
 import uuid
-from os import listdir, chmod
-from os.path import isfile, isdir, join, exists
-from shutil import Error
+from os import listdir, chmod, remove
+from os.path import isfile, isdir, join
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhInternalError
-from wazuh.core.utils import find_nth, safe_move, delete_file
+from wazuh.core.utils import find_nth, delete_wazuh_file
 
 REQUIRED_FIELDS = ['relative_dirname', 'filename']
 SORT_FIELDS = ['relative_dirname', 'filename']
+CDB_EXTENSION = '.cdb'
 
 _regex_path = r'^(etc/lists/)[\w\.\-/]+$'
 _pattern_path = re.compile(_regex_path)
@@ -255,7 +255,27 @@ def create_tmp_list(content):
 
     # Validate CDB list
     if not validate_cdb_list(tmp_file_path):
-        delete_file(tmp_file_path)
+        try:
+            remove(tmp_file_path)
+        except (IOError, OSError):
+            pass
         raise WazuhError(1800)
 
     return tmp_file_path
+
+
+def delete_list(rel_path):
+    """Delete a Wazuh CDB list file.
+
+    Parameters
+    ----------
+    rel_path : str
+        Relative path of the file to delete.
+    """
+    delete_wazuh_file(join(common.ossec_path, rel_path))
+
+    # Also delete .cdb file (if exists).
+    try:
+        remove(join(common.ossec_path, rel_path + CDB_EXTENSION))
+    except (IOError, OSError):
+        pass

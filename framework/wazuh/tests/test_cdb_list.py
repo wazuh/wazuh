@@ -30,9 +30,7 @@ with patch('wazuh.core.common.getgrnam'):
 RELATIVE_PATH = os.path.join("framework", "wazuh", "tests", "data", "test_cdb_list")
 NAME_FILE_1 = "test_lists_1"
 NAME_FILE_2 = "test_lists_2"
-PATH_FILE_1 = os.path.join(RELATIVE_PATH, NAME_FILE_1)
-PATH_FILE_2 = os.path.join(RELATIVE_PATH, NAME_FILE_2)
-PATHS_FILES = [PATH_FILE_1, PATH_FILE_2]
+NAME_FILES = [NAME_FILE_1, NAME_FILE_2]
 
 RESULT_GET_LIST_FILE_1 = [{'items': [{'key': 'test-wazuh-w', 'value': 'write'},
                                      {'key': 'test-wazuh-r', 'value': 'read'},
@@ -56,7 +54,7 @@ RESULT_GET_PATH_LIST_FILE_2 = [{'filename': NAME_FILE_2, 'relative_dirname': REL
 RESULTS_GET_LIST = RESULT_GET_LIST_FILE_1 + RESULT_GET_LIST_FILE_2
 RESULTS_GET_PATH_LIST = RESULT_GET_PATH_LIST_FILE_1 + RESULT_GET_PATH_LIST_FILE_2
 
-TOTAL_LISTS = len(PATHS_FILES)
+TOTAL_LISTS = len(NAME_FILES)
 
 
 def lists_path_mock(**kwargs):
@@ -68,9 +66,10 @@ def lists_path_mock(**kwargs):
 # Tests
 
 @pytest.mark.parametrize("paths, expected_result", [
-    ([PATH_FILE_1], RESULT_GET_LIST_FILE_1),
-    (PATHS_FILES, RESULTS_GET_LIST)
+    ([NAME_FILE_1], RESULT_GET_LIST_FILE_1),
+    (NAME_FILES, RESULTS_GET_LIST)
 ])
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 def test_get_lists(paths, expected_result):
     """Test basic `get_list` functionality.
 
@@ -83,13 +82,14 @@ def test_get_lists(paths, expected_result):
     expected_result : list of dict
         The content of the CDB file or files read
     """
-    result = get_lists(path=paths)
+    result = get_lists(filename=paths)
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(paths)
     assert result.affected_items == expected_result
 
 
 @pytest.mark.parametrize("limit", [1, 2])
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 def test_get_lists_limit(limit):
     """Test `get_lists` functionality when using the `limit` parameter.
 
@@ -98,7 +98,7 @@ def test_get_lists_limit(limit):
     limit : int
         Maximum number of items to be returned by `get_lists`
     """
-    result = get_lists(path=PATHS_FILES, limit=limit)
+    result = get_lists(filename=NAME_FILES, limit=limit)
     assert limit > 0
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == TOTAL_LISTS
@@ -106,6 +106,7 @@ def test_get_lists_limit(limit):
 
 
 @pytest.mark.parametrize("offset", [0, 1])
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 def test_get_lists_offset(offset):
     """Test `get_lists` functionality when using the `offset` parameter.
 
@@ -114,33 +115,34 @@ def test_get_lists_offset(offset):
     offset : int
          Indicates the first item to return.
     """
-    result = get_lists(path=PATHS_FILES, offset=offset)
+    result = get_lists(filename=NAME_FILES, offset=offset)
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == TOTAL_LISTS
     assert result.affected_items == RESULTS_GET_LIST[offset:]
 
 
 @pytest.mark.parametrize("search_text, complementary_search, search_in_fields, paths, expected_result", [
-    ("command", False, None, PATHS_FILES, RESULT_GET_LIST_FILE_1),
-    ("test-ossec-w", False, None, PATHS_FILES, RESULT_GET_LIST_FILE_2),
-    ("command", False, None, [PATH_FILE_2], []),
-    ("command", False, None, PATHS_FILES, RESULT_GET_LIST_FILE_1),
-    ("command", False, "items", [PATH_FILE_2], []),
-    ("write", False, "items", PATHS_FILES, RESULTS_GET_LIST),
-    ("test-wazuh-w", False, "items", PATHS_FILES, RESULT_GET_LIST_FILE_1),
-    ("test-ossec-w", False, "items", PATHS_FILES, RESULT_GET_LIST_FILE_2),
-    ("test-wazuh-w", False, "items", [PATH_FILE_2], []),
-    ("command", True, None, PATHS_FILES, RESULT_GET_LIST_FILE_2),
-    ("test-ossec-w", True, None, PATHS_FILES, RESULT_GET_LIST_FILE_1),
-    ("command", True, None, [PATH_FILE_2], RESULT_GET_LIST_FILE_2),
-    ("command", True, "items", PATHS_FILES, RESULT_GET_LIST_FILE_2),
-    ("command", True, "items", [PATH_FILE_2], RESULT_GET_LIST_FILE_2),
-    ("command", True, "items", [PATH_FILE_1], []),
-    ("write", True, "items", PATHS_FILES, []),
-    ("test-wazuh-w", True, "items", PATHS_FILES, RESULT_GET_LIST_FILE_2),
-    ("test-ossec-w", True, "items", PATHS_FILES, RESULT_GET_LIST_FILE_1),
-    ("test-wazuh-w", True, "items", [PATH_FILE_2], RESULT_GET_LIST_FILE_2),
+    ("command", False, None, NAME_FILES, RESULT_GET_LIST_FILE_1),
+    ("test-ossec-w", False, None, NAME_FILES, RESULT_GET_LIST_FILE_2),
+    ("command", False, None, [NAME_FILE_2], []),
+    ("command", False, None, NAME_FILES, RESULT_GET_LIST_FILE_1),
+    ("command", False, "items", [NAME_FILE_2], []),
+    ("write", False, "items", NAME_FILES, RESULTS_GET_LIST),
+    ("test-wazuh-w", False, "items", NAME_FILES, RESULT_GET_LIST_FILE_1),
+    ("test-ossec-w", False, "items", NAME_FILES, RESULT_GET_LIST_FILE_2),
+    ("test-wazuh-w", False, "items", [NAME_FILE_2], []),
+    ("command", True, None, NAME_FILES, RESULT_GET_LIST_FILE_2),
+    ("test-ossec-w", True, None, NAME_FILES, RESULT_GET_LIST_FILE_1),
+    ("command", True, None, [NAME_FILE_2], RESULT_GET_LIST_FILE_2),
+    ("command", True, "items", NAME_FILES, RESULT_GET_LIST_FILE_2),
+    ("command", True, "items", [NAME_FILE_2], RESULT_GET_LIST_FILE_2),
+    ("command", True, "items", [NAME_FILE_1], []),
+    ("write", True, "items", NAME_FILES, []),
+    ("test-wazuh-w", True, "items", NAME_FILES, RESULT_GET_LIST_FILE_2),
+    ("test-ossec-w", True, "items", NAME_FILES, RESULT_GET_LIST_FILE_1),
+    ("test-wazuh-w", True, "items", [NAME_FILE_2], RESULT_GET_LIST_FILE_2),
 ])
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 def test_get_lists_search(search_text, complementary_search, search_in_fields, paths, expected_result):
     """Test `get_lists` functionality when using the `search` parameter.
 
@@ -158,17 +160,18 @@ def test_get_lists_search(search_text, complementary_search, search_in_fields, p
     expected_result : list of dict
         The content expected to be returned by `get_lists` when using the specified search parameters.
     """
-    result = get_lists(path=paths, search_text=search_text, complementary_search=complementary_search,
+    result = get_lists(filename=paths, search_text=search_text, complementary_search=complementary_search,
                        search_in_fields=search_in_fields)
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(expected_result)
     assert result.affected_items == expected_result
 
 
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 def test_get_lists_sort():
     """Test `get_lists` functionality when using the `sort` parameter."""
-    result_a = get_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=True)
-    result_b = get_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=False)
+    result_a = get_lists(filename=NAME_FILES, sort_by=['filename'], sort_ascending=True)
+    result_b = get_lists(filename=NAME_FILES, sort_by=['filename'], sort_ascending=False)
 
     assert isinstance(result_a, AffectedItemsWazuhResult)
     assert isinstance(result_b, AffectedItemsWazuhResult)
@@ -177,6 +180,7 @@ def test_get_lists_sort():
     assert result_b.affected_items == RESULT_GET_LIST_FILE_2 + RESULT_GET_LIST_FILE_1
 
 
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists(iterate_mock):
     """Test `get_path_lists` functionality without any other parameter aside from `path`.
@@ -185,7 +189,7 @@ def test_get_path_lists(iterate_mock):
     `DATA_PATH`) and will remove from the result any file that is not in the `path` parameter provided.
     """
     common.reset_context_cache()
-    result = get_path_lists(path=[PATH_FILE_1])
+    result = get_path_lists(filename=[NAME_FILE_1])
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(RESULT_GET_PATH_LIST_FILE_1)
@@ -193,6 +197,7 @@ def test_get_path_lists(iterate_mock):
 
 
 @pytest.mark.parametrize("limit", [1, 2])
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists_limit(iterate_mock, limit):
     """Test `get_path_lists` functionality when using the `limit` parameter.
@@ -203,7 +208,7 @@ def test_get_path_lists_limit(iterate_mock, limit):
         Maximum number of items to be returned by `get_path_lists`
     """
     common.reset_context_cache()
-    result = get_path_lists(path=PATHS_FILES, limit=limit, sort_by=['filename'])
+    result = get_path_lists(filename=NAME_FILES, limit=limit, sort_by=['filename'])
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == TOTAL_LISTS
@@ -211,6 +216,7 @@ def test_get_path_lists_limit(iterate_mock, limit):
 
 
 @pytest.mark.parametrize("offset", [0, 1])
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists_offset(iterate_mock, offset):
     """Test `get__path_lists` functionality when using the `offset` parameter.
@@ -221,7 +227,7 @@ def test_get_path_lists_offset(iterate_mock, offset):
          Indicates the first item to return.
     """
     common.reset_context_cache()
-    result = get_path_lists(path=PATHS_FILES, offset=offset, sort_by=['filename'])
+    result = get_path_lists(filename=NAME_FILES, offset=offset, sort_by=['filename'])
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == TOTAL_LISTS
@@ -229,22 +235,23 @@ def test_get_path_lists_offset(iterate_mock, offset):
 
 
 @pytest.mark.parametrize("search_text, complementary_search, search_in_fields, paths, expected_result", [
-    ("lists_1", False, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("lists_2", False, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("invalid", False, None, PATHS_FILES, []),
-    ("test_cdb_list", False, "relative_dirname", PATHS_FILES, RESULTS_GET_PATH_LIST),
-    ("invalid", False, "relative_dirname", PATHS_FILES, []),
-    ("lists_1", False, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("lists_2", False, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("invalid", False, "filename", PATHS_FILES, []),
-    ("lists_1", True, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("lists_2", True, None, PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("invalid", True, None, PATHS_FILES, RESULTS_GET_PATH_LIST),
-    ("invalid", True, "relative_dirname", PATHS_FILES, RESULTS_GET_PATH_LIST),
-    ("lists_1", True, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_2),
-    ("lists_2", True, "filename", PATHS_FILES, RESULT_GET_PATH_LIST_FILE_1),
-    ("invalid", True, "filename", PATHS_FILES, RESULTS_GET_PATH_LIST)
+    ("lists_1", False, None, NAME_FILES, RESULT_GET_PATH_LIST_FILE_1),
+    ("lists_2", False, None, NAME_FILES, RESULT_GET_PATH_LIST_FILE_2),
+    ("invalid", False, None, NAME_FILES, []),
+    ("test_cdb_list", False, "relative_dirname", NAME_FILES, RESULTS_GET_PATH_LIST),
+    ("invalid", False, "relative_dirname", NAME_FILES, []),
+    ("lists_1", False, "filename", NAME_FILES, RESULT_GET_PATH_LIST_FILE_1),
+    ("lists_2", False, "filename", NAME_FILES, RESULT_GET_PATH_LIST_FILE_2),
+    ("invalid", False, "filename", NAME_FILES, []),
+    ("lists_1", True, None, NAME_FILES, RESULT_GET_PATH_LIST_FILE_2),
+    ("lists_2", True, None, NAME_FILES, RESULT_GET_PATH_LIST_FILE_1),
+    ("invalid", True, None, NAME_FILES, RESULTS_GET_PATH_LIST),
+    ("invalid", True, "relative_dirname", NAME_FILES, RESULTS_GET_PATH_LIST),
+    ("lists_1", True, "filename", NAME_FILES, RESULT_GET_PATH_LIST_FILE_2),
+    ("lists_2", True, "filename", NAME_FILES, RESULT_GET_PATH_LIST_FILE_1),
+    ("invalid", True, "filename", NAME_FILES, RESULTS_GET_PATH_LIST)
 ])
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists_search(iterate_mock, search_text, complementary_search, search_in_fields, paths, expected_result):
     """Test `get_path_lists` functionality when using the `search` parameter.
@@ -264,18 +271,19 @@ def test_get_path_lists_search(iterate_mock, search_text, complementary_search, 
         The content expected to be returned by `get_lists` when using the specified search parameters.
     """
     common.reset_context_cache()
-    result = get_path_lists(path=paths, search_text=search_text, complementary_search=complementary_search,
+    result = get_path_lists(filename=paths, search_text=search_text, complementary_search=complementary_search,
                             search_in_fields=search_in_fields, sort_by=['filename'])
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == len(expected_result)
     assert result.affected_items == expected_result
 
 
+@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists_sort(iterate_mock):
     """Test `get_path_lists` functionality when using the `sort` parameter."""
-    result_a = get_path_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=True)
-    result_b = get_path_lists(path=PATHS_FILES, sort_by=['filename'], sort_ascending=False)
+    result_a = get_path_lists(filename=NAME_FILES, sort_by=['filename'], sort_ascending=True)
+    result_b = get_path_lists(filename=NAME_FILES, sort_by=['filename'], sort_ascending=False)
 
     assert isinstance(result_a, AffectedItemsWazuhResult)
     assert isinstance(result_b, AffectedItemsWazuhResult)
@@ -332,12 +340,12 @@ def test_get_list_file(filename, raw, expected_result, total_failed_items):
 @patch('wazuh.cdb_list.os.path.exists', return_value=True)
 def test_upload_list_file(mock_exists, mock_safe_move, mock_delete_file, mock_delete_list_file, mock_create_tmp_list):
     """Cehck that functions inside upload_list_file are called with expected params"""
-    filename = ['test_file']
+    filename = 'test_file'
     content = 'test_key:test_value\n'
     result = upload_list_file(filename, content, overwrite=True)
 
     mock_create_tmp_list.assert_called_once_with(content)
-    mock_delete_list_file.assert_called_once_with(filename=filename[0])
+    mock_delete_list_file.assert_called_once_with(filename=filename)
     mock_safe_move.assert_called_once_with('/path/to/tmp', ANY, permissions=0o660)
     mock_delete_file.assert_called_once_with('/path/to/tmp')
     print(result)
@@ -346,22 +354,22 @@ def test_upload_list_file(mock_exists, mock_safe_move, mock_delete_file, mock_de
 @patch('wazuh.cdb_list.delete_file')
 def test_upload_list_file_ko(mock_delete_file):
     """Check whether expected exceptions are raised."""
-    result = upload_list_file(filename=['test'], content='')
+    result = upload_list_file(filename='test', content='')
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1112
 
     with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
-        upload_list_file(filename=['test'], content='test:content')
+        upload_list_file(filename='test', content='test:content')
 
     with patch('wazuh.cdb_list.create_tmp_list', return_value='/path/to/tmp'):
         with patch('wazuh.cdb_list.os.path.exists', return_value=True):
-            result = upload_list_file(filename=['test'], content='test:content')
+            result = upload_list_file(filename='test', content='test:content')
             assert result.render()['data']['failed_items'][0]['error']['code'] == 1905
 
             with patch('wazuh.cdb_list.os.path.exists', return_value=False):
                 with patch('wazuh.cdb_list.safe_move', side_effect=shutil.Error):
                     with pytest.raises(WazuhInternalError, match=r'\b1016\b'):
-                        upload_list_file(filename=['test'], content='test:content', overwrite=True)
+                        upload_list_file(filename='test', content='test:content', overwrite=True)
 
 
 @patch('wazuh.cdb_list.delete_file')
@@ -369,24 +377,22 @@ def test_delete_list_file(mock_delete_file):
     """Check that expected result is returned when the file is deleted."""
     try:
         # Create directory for the test
-        test_dir = os.path.join(DATA_PATH, 'test_dir')
-        test_file = os.path.join(test_dir, 'test_file')
-        shutil.rmtree(test_dir, ignore_errors=True)
-        os.makedirs(test_dir)
+        test_file = os.path.join(DATA_PATH, 'test_file')
         with open(test_file, 'a') as f:
             f.write('key:value\n"ke:y2":value2\n')
 
         with patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH):
             result = delete_list_file(['test_file'])
             assert result.render()['data']['affected_items'][0] ==\
-                   'framework/wazuh/tests/data/test_cdb_list/test_dir/test_file'
-        mock_delete_file.assert_called_once_with(test_file)
+                   'framework/wazuh/tests/data/test_cdb_list/test_file'
     finally:
-        shutil.rmtree(test_dir, ignore_errors=True)
+        os.remove(test_file)
+
+    mock_delete_file.assert_called_once_with(test_file)
 
 
 def test_delete_list_file_ko():
     """Check that expected error code is returned when the file can't be deleted."""
     with patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH):
         result = delete_list_file(['test_file'])
-        assert result.render()['data']['failed_items'][0]['error']['code'] == 1907
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1906

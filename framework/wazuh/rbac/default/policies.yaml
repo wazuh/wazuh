@@ -140,7 +140,7 @@ default_policies:
         actions:
           - lists:read
         resources:
-          - list:path:*
+          - list:file:*
         effect: allow
 
   lists_all:
@@ -149,10 +149,15 @@ default_policies:
       rules:
         actions:
           - lists:read
-          - lists:update
           - lists:delete
         resources:
-          - list:path:*
+          - list:file:*
+        effect: allow
+      resourceless:
+        actions:
+          - lists:update
+        resources:
+          - '*:*:*'
         effect: allow
 
   rootcheck_read:

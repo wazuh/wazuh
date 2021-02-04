@@ -1423,8 +1423,8 @@ stages:
             description: Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)
           decoder:file:
             description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
-          list:path:
-            description: Reference list files via its path (i.e. list:path:etc/lists/audit-keys)
+          list:file:
+            description: Reference list files via its path (i.e. list:file:audit-keys)
           rule:file:
             description: Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)
           policy:id:

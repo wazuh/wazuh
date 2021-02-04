@@ -347,6 +347,9 @@ class WazuhException(Exception):
         1804: {'message': 'Error reading lists file',
                'remediation': 'Please, make sure you provide a correct filepath'
                },
+        1805: {'message': 'File with the same name already exists in a subdirectory.',
+               'remediation': 'Please, make sure to use a name which is not repeated. '
+               },
 
         1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                           'The error message will be the output of upgrade module'},

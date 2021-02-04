@@ -370,12 +370,12 @@ get_rbac_actions:
       lists:read:
         description: Read cdb lists files
         resources:
-          - list:path
+          - list:file
         example:
           actions:
             - lists:read
           resources:
-            - list:path:etc/lists/audit-keys
+            - list:file:audit-keys
           effect: deny
         related_endpoints:
           - GET /lists
@@ -384,24 +384,24 @@ get_rbac_actions:
       lists:update:
         description: Update cdb lists files
         resources:
-          - list:path
+          - list:file
         example:
           actions:
             - lists:update
           resources:
-            - list:path:etc/lists/audit-keys
+            - '*:*:*'
           effect: allow
         related_endpoints:
           - PUT /lists/files/{filename}
       lists:delete:
         description: Delete cdb lists files
         resources:
-          - list:path
+          - list:file
         example:
           actions:
             - lists:delete
           resources:
-            - list:path:etc/lists/audit-keys
+            - list:file:audit-keys
           effect: deny
         related_endpoints:
           - PUT /lists/files/{filename}
@@ -854,8 +854,8 @@ get_rbac_resources:
         description: Reference files via its path (i.e. file:path:etc/rules/new_rule.xml)
       decoder:file:
         description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
-      list:path:
-        description: Reference list files via its path (i.e. list:path:etc/lists/audit-keys)
+      list:file:
+        description: Reference list files via its path (i.e. list:file:audit-keys)
       rule:file:
         description: Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)
       policy:id:

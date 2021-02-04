@@ -12,7 +12,7 @@ with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core import common
         from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists, \
-            split_key_value_with_quotes, validate_cdb_list, create_tmp_list
+            split_key_value_with_quotes, validate_cdb_list, create_tmp_list, delete_list
         from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 
 
@@ -27,16 +27,6 @@ ABSOLUTE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data"
 RELATIVE_PATH = os.path.join("framework", "wazuh", "core", "tests", "data", "test_cdb_list")
 PATH_FILE = os.path.join(RELATIVE_PATH, "test_lists")
 
-# CONTENT_FILE = [{'key': 'test-wazuh-w', 'value': 'write'},
-#                 {'key': 'test-wazuh-r', 'value': 'read'},
-#                 {'key': 'test-wazuh-a', 'value': 'attribute'},
-#                 {'key': 'test-wazuh-x', 'value': 'execute'},
-#                 {'key': 'test-wazuh-c', 'value': 'command'},
-#                 {'key': 'test-key', 'value': 'value:1'},
-#                 {'key': 'test-key:1', 'value': 'value'},
-#                 {'key': 'test-key:2', 'value': 'value:2'},
-#                 {'key': 'test-key::::::3', 'value': 'value3'},
-#                 {'key': 'test-key4', 'value': 'value:::4'}]
 CONTENT_FILE = {'test-wazuh-w': 'write',
                 'test-wazuh-r': 'read',
                 'test-wazuh-a': 'attribute',
@@ -233,7 +223,7 @@ def test_validate_cdb_list_ko():
 
 @patch('wazuh.core.cdb_list.chmod')
 @patch('wazuh.core.cdb_list.uuid.uuid4', return_value='0')
-@patch('wazuh.core.cdb_list.delete_file')
+@patch('wazuh.core.cdb_list.delete_wazuh_file')
 def test_create_tmp_list(mock_delete, mock_uuid, mock_chmod):
     """Test that create_tmp_list function"""
 
@@ -248,7 +238,7 @@ def test_create_tmp_list(mock_delete, mock_uuid, mock_chmod):
 
 
 def test_create_tmp_list_ko():
-    """Test that create_tmp_list function works and methods inside are called with expected parameters"""
+    """Test that create_tmp_list function works and methods inside are called with expected parameters."""
     with pytest.raises(WazuhError, match=r'\b1112\b'):
         create_tmp_list('')
 
@@ -261,7 +251,17 @@ def test_create_tmp_list_ko():
 
         with patch('wazuh.core.cdb_list.chmod'):
             with patch('wazuh.core.cdb_list.validate_cdb_list', return_value=False):
-                with patch('wazuh.core.cdb_list.delete_file') as mock_delete:
+                with patch('wazuh.core.cdb_list.remove') as mock_remove:
                     with pytest.raises(WazuhError, match=r'\b1800\b'):
                         create_tmp_list(' ')
-                    mock_delete.assert_called_once()
+                    mock_remove.assert_called_once()
+
+
+@patch('wazuh.core.cdb_list.remove')
+@patch('wazuh.core.cdb_list.delete_wazuh_file')
+def test_delete_list(mock_delete_wazuh_file, mock_remove):
+    """Check that delete_list function uses expected params."""
+    path = 'etc/list/test_list'
+    delete_list(path)
+    mock_delete_wazuh_file.assert_called_once_with(os.path.join(common.ossec_path, path))
+    mock_remove.assert_called_once_with(os.path.join(common.ossec_path, path + '.cdb'))

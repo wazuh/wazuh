@@ -3,7 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-import os
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
@@ -21,21 +20,34 @@ logger = logging.getLogger('wazuh-api')
 async def get_lists(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
                     select: list = None, sort: str = None, search: str = None, filename: str = None,
                     relative_dirname: str = None):
-    """ Get all CDB lists
+    """Get all CDB lists.
 
-    :param pretty: Show results in human-readable format.
-    :param wait_for_complete: Disable timeout response.
-    :param offset: First element to return in the collection.
-    :param limit: Maximum number of elements to return.
-    :param select: List of selected fields to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string.
-    :param filename: List of filenames to filter by.
-    :param relative_dirname: Filters by relative dirname
-    :return: Data object
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    select : list
+        Select which fields to return (separated by comma).
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    filename : str
+        Filenames to filter by (separated by comma).
+    relative_dirname : str
+        Filter by relative dirname.
+
+    Returns
+    -------
+    web.json_response
     """
-    path = [os.path.join(relative_dirname, item) for item in filename] if filename and relative_dirname else None
     f_kwargs = {'offset': offset,
                 'select': select,
                 'limit': limit,
@@ -46,7 +58,6 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'filename': filename,
                 'relative_dirname': relative_dirname,
-                'path': path
                 }
 
     dapi = DistributedAPI(f=cdb_list.get_lists,
@@ -76,6 +87,14 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
         Name of filename to get data from.
     raw : bool, optional
         Respond in raw format.
+
+    Returns
+    -------
+    web.json_response, ConnexionResponse
+        Depending on the `raw` parameter, it will return an object or other:
+            raw=True            -> ConnexionResponse (text/plain)
+            raw=False (default) -> web.json_response (application/json)
+        If any exception was raised, it will return a web.json_response with details.
     """
     f_kwargs = {'filename': filename, 'raw': raw}
 
@@ -91,7 +110,7 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     if isinstance(data, AffectedItemsWazuhResult):
         response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
     else:
-        response = ConnexionResponse(body=data["message"], mimetype='text/plain')
+        response = ConnexionResponse(body=data["message"], mimetype='text/plain', content_type='text/plain')
 
     return response
 
@@ -111,6 +130,10 @@ async def put_file(request, body, overwrite=False, pretty=False, wait_for_comple
         If set to false, an exception will be raised when updating contents of an already existing filename.
     filename : str
         Name of the new CDB list file.
+
+    Returns
+    -------
+    web.json_response
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
@@ -144,6 +167,10 @@ async def delete_file(request, pretty=False, wait_for_complete=False, filename=N
         Disable timeout response.
     filename : str
         Name of the file to delete.
+
+    Returns
+    -------
+    web.json_response
     """
     f_kwargs = {'filename': filename}
 
@@ -163,20 +190,32 @@ async def delete_file(request, pretty=False, wait_for_complete=False, filename=N
 async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                           limit: int = None, sort: str = None, search: str = None, filename: str = None,
                           relative_dirname: str = None):
-    """ Get paths from all CDB lists
-
-    :param pretty: Show results in human-readable format.
-    :param wait_for_complete: Disable timeout response.
-    :param offset: First element to return in the collection.
-    :param limit: Maximum number of elements to return.
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string.
-    :param filename: List of filenames to filter by.
-    :param relative_dirname: Filters by relative dirname
-    :return: Data object
     """
-    path = [os.path.join(relative_dirname, item) for item in filename] if filename and relative_dirname else None
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning
+        to list in ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    filename : str
+        Filenames to filter by (separated by comma).
+    relative_dirname : str
+        Filter by relative dirname.
+
+    Returns
+    -------
+    web.json_response
+    """
     f_kwargs = {'offset': offset,
                 'limit': limit,
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['relative_dirname',
@@ -187,7 +226,6 @@ async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool
                 'search_in_fields': ['filename', 'relative_dirname'],
                 'filename': filename,
                 'relative_dirname': relative_dirname,
-                'path': path
                 }
 
     dapi = DistributedAPI(f=cdb_list.get_path_lists,

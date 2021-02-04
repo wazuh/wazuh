@@ -360,26 +360,26 @@ def test_chown_r(mock_chown):
 
 
 @patch('wazuh.core.utils.common.ossec_path', new='/test/path')
-def test_delete_file():
+def test_delete_wazuh_file():
     """Check delete_file calls functions with expected params"""
     with pytest.raises(WazuhError, match=r'\b1907\b'):
-        delete_file('/test/different_path/etc/file')
+        delete_wazuh_file('/test/different_path/etc/file')
 
     with patch('wazuh.core.utils.path.exists', return_value=False):
         with pytest.raises(WazuhError, match=r'\b1906\b'):
-            delete_file('/test/path/etc/file')
+            delete_wazuh_file('/test/path/etc/file')
 
     with patch('wazuh.core.utils.path.exists', return_value=True):
         with pytest.raises(WazuhError, match=r'\b1907\b'):
-            delete_file('/test/path/etc/file')
+            delete_wazuh_file('/test/path/etc/file')
 
 
 @patch('wazuh.core.utils.common.ossec_path', new='/test/path')
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.remove')
-def test_delete_file_ko(mock_remove, mock_exists):
+def test_delete_wazuh_file_ko(mock_remove, mock_exists):
     """Check delete_file calls functions with expected params"""
-    assert delete_file('/test/path/etc/file')
+    assert delete_wazuh_file('/test/path/etc/file')
     mock_remove.assert_called_once_with('/test/path/etc/file')
 
 
