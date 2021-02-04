@@ -548,7 +548,32 @@ get_rbac_actions:
           - GET /rules/groups
           - GET /rules/requirement/{requirement}
           - GET /rules/files
-          - GET /rules/files/{filename}/download
+          - GET /rules/files/{filename}
+      rules:update:
+        description: Update or upload rule files to Wazuh manager
+        resources:
+          - rule:file
+        example:
+          actions:
+            - rules:update
+          resources:
+            - '*:*:*'
+          effect: allow
+        related_endpoints:
+          - PUT /rules/files/{filename}
+      rules:delete:
+        description: Delete Wazuh manager rules
+        resources:
+          - rule:file
+        example:
+          actions:
+            - rules:delete
+          resources:
+            - rule:file:0610-win-ms_logs_rules.xml
+          effect: allow
+        related_endpoints:
+          - PUT /rules/files/{filename}
+          - DELETE /rules/files/{filename}
       sca:read:
         description: Access agents security configuration assessment
         resources:
