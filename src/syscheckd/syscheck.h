@@ -149,7 +149,6 @@ void fim_scan();
 
 /**
  * @brief Stop scanning files for one second if the max number of files scanned has been reached.
- * This check is not performed in the first scan.
  *
  */
 void check_max_fps();
