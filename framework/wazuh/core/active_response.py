@@ -91,11 +91,12 @@ def send_ar_message(agent_id: str = '', oq: OssecQueue = None, command: str = ''
     Parameters
     ----------
     agent_id : str
-        ID specifying the agent where the msg_queue will be sent to
+        ID specifying the agent where the msg_queue will be sent to.
     oq : OssecQueue
-        OssecQueue used for the active response messages
+        OssecQueue used for the active response messages.
     command : str
-        Command running in the agents. If this value starts with !, then it refers to a script name instead of a command name
+        Command running in the agents. If this value starts with !, then it refers to a script name instead of a
+        command name.
     custom : bool
         Whether the specified command is a custom command or not.
     arguments : list

@@ -564,7 +564,7 @@ def test_agent_get_key_ko(socket_mock, send_mock):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_restart(socket_mock, send_mock, mock_queue):
-    """Tests if method restart calls other methods with correct params."""
+    """Test if method restart calls other methods with correct params."""
     with patch('wazuh.core.agent.Agent.getconfig', return_value={'active-response': {'disabled': 'no'}}) as \
             mock_config:
         agent = Agent(0)
@@ -578,7 +578,7 @@ def test_agent_restart(socket_mock, send_mock, mock_queue):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_restart_ko(socket_mock, send_mock):
-    """Tests if method restart raises exception."""
+    """Test if method restart raises exception."""
     # Assert exception is raised when status of agent is not 'active'
     with patch('wazuh.core.agent.Agent.getconfig', return_value={'active-response': {'disabled': 'no'}}):
         with pytest.raises(WazuhError, match='.* 1707 .*'):

@@ -4,6 +4,7 @@
 
 import json
 import socket
+from typing import Union
 
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
@@ -55,7 +56,7 @@ class OssecQueue:
     def close(self):
         self.socket.close()
 
-    def send_msg_to_agent(self, msg: str = '', agent_id: str = '', msg_type: str = '') -> str:
+    def send_msg_to_agent(self, msg: Union[str, dict] = '', agent_id: str = '', msg_type: str = '') -> str:
         """Send message to agent.
 
         Active-response

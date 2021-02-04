@@ -1148,7 +1148,7 @@ def calculate_status(last_keep_alive, pending, today=datetime.utcnow()):
 
 
 def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
-    """ Send restart command to an agent.
+    """Send restart command to an agent.
 
     Parameters
     ----------
