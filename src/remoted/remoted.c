@@ -31,6 +31,7 @@ void HandleRemote(int uid)
     int position = logr.position;
     int recv_timeout;    //timeout in seconds waiting for a client reply
     int send_timeout;
+    char * str_protocol = NULL;
 
     recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
     send_timeout = getDefine_Int("remoted", "send_timeout", 1, 60);
@@ -67,7 +68,7 @@ void HandleRemote(int uid)
     }
 
     /* Bind TCP */
-    if (logr.proto[position] == IPPROTO_TCP) {
+    if (logr.proto[position] == REMOTED_PROTO_TCP) {
         if ((logr.sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         } else if (logr.conn[position] == SECURE_CONN) {
@@ -106,17 +107,24 @@ void HandleRemote(int uid)
     }
 
     /* Start up message */
+    if (logr.proto[position] & REMOTED_PROTO_TCP) {
+        wm_strcat(&str_protocol, "TCP", 0);
+    }
+    if (logr.proto[position] & REMOTED_PROTO_UDP) {
+        wm_strcat(&str_protocol, "UDP", (str_protocol == NULL) ? 0 : ' ');
+    }
     minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
-    (int)getpid(),
-    logr.port[position],
-    logr.proto[position] == IPPROTO_TCP ? "TCP" : "UDP",
-    logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
+         (int)getpid(),
+         logr.port[position],
+         str_protocol,
+         logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
+    os_free(str_protocol);
 
     /* If secure connection, deal with it */
     if (logr.conn[position] == SECURE_CONN) {
         HandleSecure();
     }
-    else if (logr.proto[position] == IPPROTO_TCP) {
+    else if (logr.proto[position] == REMOTED_PROTO_TCP) {
         HandleSyslogTCP();
     }
     else { /* If not, deal with syslog */
