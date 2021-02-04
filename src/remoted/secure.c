@@ -154,7 +154,7 @@ void HandleSecure()
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    if (protocol == IPPROTO_TCP) {
+    if (protocol == REMOTED_PROTO_TCP) {
         if (notify = wnotify_init(MAX_EVENTS), !notify) {
             merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
         }
@@ -166,7 +166,7 @@ void HandleSecure()
 
     while (1) {
         /* Receive message  */
-        if (protocol == IPPROTO_TCP) {
+        if (protocol == REMOTED_PROTO_TCP) {
             if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
                 if (errno != EINTR) {
                     merror("Waiting for connection: %s (%d)", strerror(errno), errno);
@@ -411,7 +411,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             char *msg = "#pong";
             ssize_t msg_size = strlen(msg);
 
-            if (protocol == IPPROTO_UDP) {
+            if (protocol == REMOTED_PROTO_UDP) {
                 retval = sendto(logr.sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
             } else {
                 retval = OS_SendSecureTCP(sock_client, msg_size, msg);
@@ -470,7 +470,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == IPPROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        r = (protocol == REMOTED_PROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
         keys.keyentries[agentid]->rcvd = time(0);
 
         switch (r) {
