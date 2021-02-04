@@ -30,8 +30,6 @@ from wazuh.core.wazuh_socket import create_wazuh_socket_message
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
 
-CHECK_CONFIG_COMMAND = "check-manager-configuration"
-
 
 def status():
     """ Returns the Manager processes that are running. """
@@ -286,7 +284,7 @@ def validate_ossec_conf() -> dict:
         execq_socket_path = common.EXECQ
         # Message for checking Wazuh configuration
         execq_msg = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
-                                                           command=CHECK_CONFIG_COMMAND,
+                                                           command=common.CHECK_CONFIG_COMMAND,
                                                            parameters={"extra_args": [], "alert": {}}))
 
         # Remove api_socket if exists

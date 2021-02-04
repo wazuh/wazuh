@@ -118,12 +118,17 @@ database_limit = 500
 maximum_database_limit = 1000
 limit_seconds = 1800  # 600*3
 
-
 _ossec_uid = None
 _ossec_gid = None
 
-# Active response legacy version variable
+# Version variables (legacy, required, etc)
 AR_LEGACY_VERSION = 'Wazuh v4.2.0'
+ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
+
+# Command variables
+CHECK_CONFIG_COMMAND = 'check-manager-configuration'
+RESTART_WAZUH_COMMAND = 'restart-wazuh'
+
 
 def ossec_uid():
     return getpwnam("ossec").pw_uid if globals()['_ossec_uid'] is None else globals()['_ossec_uid']
@@ -163,7 +168,9 @@ def context_cached(key):
                 result = func(*args, **kwargs)
                 _context_cache[key].set(result)
             return deepcopy(_context_cache[key].get())
+
         return wrapper
+
     return decorator
 
 

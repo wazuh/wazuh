@@ -28,18 +28,18 @@ full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008'
 # Tests
 
 @pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, custom, alert, version', [
-    (1701, None, ['999'], 'restart-wazuh0', [], False, None, 'v4.0.0'),
-    (1703, None, ['000'], 'restart-wazuh0', [], False, None, 'v4.0.0'),
-    (1650, None, ['001'], None, [], False, None, 'v4.0.0'),
-    (1652, None, ['002'], 'random', [], False, None, 'v4.0.0'),
+    (1701, None, ['999'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (1703, None, ['000'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (1650, None, ['001'], None, [], False, None, 'Wazuh v4.0.0'),
+    (1652, None, ['002'], 'random', [], False, None, 'Wazuh v4.0.0'),
     (None, 1651, ['003'], 'restart-wazuh0', [], False, None, None),
-    (None, 1750, ['004'], 'restart-wazuh0', [], False, None, 'v4.0.0'),
-    (None, None, ['005'], 'restart-wazuh0', [], False, None, 'v4.0.0'),
-    (None, None, ['006'], 'custom-ar', [], True, None, 'v4.0.0'),
-    (None, None, ['007'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'v4.0.0'),
-    (None, None, ['001', '002', '003', '004', '005', '006'], 'restart-wazuh0', [], False, None, 'v4.0.0'),
-    (None, None, ['001'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'v4.2.0'),
-    (None, None, ['002'], 'restart-wazuh0', [], False, None, 'v4.2.1'),
+    (None, 1750, ['004'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['005'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['006'], 'custom-ar', [], True, None, 'Wazuh v4.0.0'),
+    (None, None, ['007'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['001', '002', '003', '004', '005', '006'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['001'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'Wazuh v4.2.0'),
+    (None, None, ['002'], 'restart-wazuh0', [], False, None, 'Wazuh v4.2.1'),
 ])
 @patch("wazuh.core.ossec_queue.OssecQueue._connect")
 @patch("wazuh.syscheck.OssecQueue._send", return_value='1')

@@ -34,7 +34,8 @@ def create_message(command: str = '', custom: bool = False, arguments: list = No
 
     Returns
     -------
-    WazuhResult.
+    str
+        Message that will be sent to the socket.
     """
     if not command:
         raise WazuhError(1650)
@@ -85,7 +86,7 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
 
 
 def send_ar_message(agent_id: str = '', oq: OssecQueue = None, command: str = '', arguments: list = None,
-                    custom: bool = False, alert: dict = None):
+                    custom: bool = False, alert: dict = None) -> None:
     """Send the active response message to the agent.
 
     Parameters
@@ -125,7 +126,7 @@ def send_ar_message(agent_id: str = '', oq: OssecQueue = None, command: str = ''
         raise WazuhError(1750)
 
     # Create classic msg or JSON msg depending on the agent version
-    if WazuhVersion(agent_version) >= WazuhVersion('Wazuh v4.2.0'):
+    if WazuhVersion(agent_version) >= WazuhVersion(common.AR_LEGACY_VERSION):
         msg_queue = create_json_message(command=command, arguments=arguments, alert=alert)
     else:
         msg_queue = create_message(command=command, arguments=arguments, custom=custom)

@@ -30,13 +30,6 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
     alert : dict
         Alert information depending on the AR executed.
 
-    Raises
-    ------
-    WazuhResourceNotFound(1701)
-        If an agent id from the agents list is not one of the system agents id.
-    WazuhError(1703)
-        If an agent id from the agents list is '000'.
-
     Returns
     -------
     AffectedItemsWazuhResult.

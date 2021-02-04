@@ -24,8 +24,6 @@ from wazuh.core.wlogging import WazuhLogger
 logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
 
-RESTART_WAZUH_COMMAND = 'restart-wazuh'
-
 
 def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
     """Read cluster configuration from ossec.conf.
@@ -167,7 +165,7 @@ def manager_restart() -> WazuhResult:
         socket_path = common.EXECQ
         # json msg for restarting Wazuh manager
         msg = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
-                                                     command=RESTART_WAZUH_COMMAND,
+                                                     command=common.RESTART_WAZUH_COMMAND,
                                                      parameters={'extra_args': [], 'alert': {}}))
         # initialize socket
         if exists(socket_path):

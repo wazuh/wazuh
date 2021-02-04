@@ -1077,7 +1077,7 @@ class Agent:
         component : str
             Selected component of the agent configuration.
         config : str
-            Configuration to get, written on disk.
+            Agent's active configuration to get.
         agent_version : str
             Agent version to compare with the required version. The format is vX.Y.Z or Wazuh vX.Y.Z.
 
@@ -1091,9 +1091,8 @@ class Agent:
         dict
             Agent's active configuration.
         """
-        required_version = 'v3.7.0'
-        if WazuhVersion(agent_version) < WazuhVersion(required_version):
-            raise WazuhInternalError(1735, extra_message=f"Minimum required version is {required_version}")
+        if WazuhVersion(agent_version) < WazuhVersion(common.ACTIVE_CONFIG_VERSION):
+            raise WazuhInternalError(1735, extra_message=f"Minimum required version is {common.ACTIVE_CONFIG_VERSION}")
 
         return configuration.get_active_configuration(self.id, component, config)
 
