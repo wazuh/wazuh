@@ -242,7 +242,6 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
-    os_free(home_path);
 #else
     /* Initialize Windows socket stuff */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
@@ -265,6 +264,8 @@ int main(int argc, char **argv)
     w_enrollment_target_destroy(target_cfg);
     w_enrollment_cert_destroy(cert_cfg);
     w_enrollment_destroy(cfg);
+
+    os_free(home_path);
     
     exit((ret == 0) ? 0 : 1);
 }
