@@ -92,7 +92,11 @@ void* wm_sys_main(wm_sys_t *sys) {
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
         syscollector_sync_message_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_message");
     } else {
+#ifdef __hpux
+        mtinfo(WM_SYS_LOGTAG, "Not supported in HP-UX.");
+#else
         mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
+#endif
         pthread_exit(NULL);
     }
     if (syscollector_start_ptr) {
