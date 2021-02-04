@@ -700,7 +700,7 @@
         "path": "framework/wazuh/core",
         "files": [
             {
-                "name": "inputvalidator.py",
+                "name": "InputValidator.py",
                 "tag": "inputvalidator",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
@@ -853,7 +853,7 @@
                 ]
             },
             {
-                "name": "pydaemonmodule.py",
+                "name": "pyDaemonModule.py",
                 "tag": "pydaemonmodule",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
@@ -1777,7 +1777,7 @@
         "path": "framework/wazuh/core",
         "files": [
             {
-                "name": "inputvalidator.py",
+                "name": "InputValidator.py",
                 "tag": "inputvalidator",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
@@ -1930,7 +1930,7 @@
                 ]
             },
             {
-                "name": "pydaemonmodule.py",
+                "name": "pyDaemonModule.py",
                 "tag": "pydaemonmodule",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
@@ -2936,31 +2936,31 @@
                 ]
             },
             {
-                "name": "test_agent_delete_endpoints.tavern.yaml",
+                "name": "test_agent_DELETE_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
-                    "test_agent_delete_endpoints.tavern.yaml"
+                    "test_agent_DELETE_endpoints.tavern.yaml"
                 ]
             },
             {
-                "name": "test_agent_get_endpoints.tavern.yaml",
+                "name": "test_agent_GET_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
-                    "test_agent_get_endpoints.tavern.yaml"
+                    "test_agent_GET_endpoints.tavern.yaml"
                 ]
             },
             {
-                "name": "test_agent_post_endpoints.tavern.yaml",
+                "name": "test_agent_POST_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
-                    "test_agent_post_endpoints.tavern.yaml"
+                    "test_agent_POST_endpoints.tavern.yaml"
                 ]
             },
             {
-                "name": "test_agent_put_endpoints.tavern.yaml",
+                "name": "test_agent_PUT_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
-                    "test_agent_put_endpoints.tavern.yaml"
+                    "test_agent_PUT_endpoints.tavern.yaml"
                 ]
             },
             {
@@ -3307,31 +3307,31 @@
                 ]
             },
             {
-                "name": "test_security_delete_endpoints.tavern.yaml",
+                "name": "test_security_DELETE_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
-                    "test_security_delete_endpoints.tavern.yaml"
+                    "test_security_DELETE_endpoints.tavern.yaml"
                 ]
             },
             {
-                "name": "test_security_get_endpoints.tavern.yaml",
+                "name": "test_security_GET_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
-                    "test_security_get_endpoints.tavern.yaml"
+                    "test_security_GET_endpoints.tavern.yaml"
                 ]
             },
             {
-                "name": "test_security_post_endpoints.tavern.yaml",
+                "name": "test_security_POST_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
-                    "test_security_post_endpoints.tavern.yaml"
+                    "test_security_POST_endpoints.tavern.yaml"
                 ]
             },
             {
-                "name": "test_security_put_endpoints.tavern.yaml",
+                "name": "test_security_PUT_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
-                    "test_security_put_endpoints.tavern.yaml"
+                    "test_security_PUT_endpoints.tavern.yaml"
                 ]
             },
             {

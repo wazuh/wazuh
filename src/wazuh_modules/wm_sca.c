@@ -37,6 +37,10 @@ typedef struct request_dump_t {
     int first_scan;
 } request_dump_t;
 
+#ifdef WIN32
+static HKEY wm_sca_sub_tree;
+#endif
+
 static const int RETURN_NOT_FOUND = 0;
 static const int RETURN_FOUND = 1;
 static const int RETURN_INVALID = 2;
