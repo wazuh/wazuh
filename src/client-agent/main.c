@@ -47,9 +47,9 @@ int main(int argc, char **argv)
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
+    home_path = w_homedir(argv[0]);
     agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
-    home_path = w_homedir(argv[0]);
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
