@@ -673,28 +673,36 @@ ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
 server: external
+ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
+endif
 	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
 local: external
+ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
+endif
 	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
 hybrid: external
+ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
+endif
 	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},agent)
 $(error Do not use 'agent' directly, use 'TARGET=agent')
 endif
 agent: external
+ifneq (${uname_S},HP-UX)
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
+endif
 	${MAKE} ${BUILD_AGENT}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
