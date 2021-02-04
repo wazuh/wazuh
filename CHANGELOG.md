@@ -28,14 +28,11 @@ All notable changes to this project will be documented in this file.
 
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
-  
-### Fixed
-
-- Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
-
 
 ### Fixed
 
+- **Cluster:**
+  - Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
 - **Core:**
   - Fixed a bug in FIM when setting scan_time to "12am" or "12pm". ([#6934](https://github.com/wazuh/wazuh/pull/6934))
   - Fixed a bug in FIM that produced wrong alerts when the file limit was reached. ([#6802](https://github.com/wazuh/wazuh/pull/6802))
