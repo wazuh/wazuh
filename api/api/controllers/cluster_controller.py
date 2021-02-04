@@ -631,3 +631,34 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def update_configuration(request, node_id, body,  pretty=False, wait_for_complete=False):
+    """Update Wazuh configuration (ossec.conf) in node node_id
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+    wait_for_complete : bool, optional
+        Disable response timeout or not. Default `False`
+    """
+    # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
+
+    f_kwargs = {'node_id': node_id,
+                'new_conf': parsed_body}
+
+    nodes = raise_if_exc(await get_system_nodes())
+    dapi = DistributedAPI(f=manager.update_ossec_conf,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          nodes=nodes
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)

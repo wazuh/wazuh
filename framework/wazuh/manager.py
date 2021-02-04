@@ -10,13 +10,13 @@ from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, validate_cdb_list, \
     get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, prettify_xml
 
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import process_array
+from wazuh.core.utils import load_wazuh_xml, process_array
 from wazuh.rbac.decorators import expose_resources
 
 allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
@@ -381,6 +381,51 @@ def get_basic_info():
         result.affected_items.append(Wazuh().to_dict())
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def update_ossec_conf(new_conf=None):
+    """
+    :return: AffectedItemsWazuhResult.
+    """
+    result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully updated"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not update configuration in some nodes',
+                                      none_msg=f"Could not update configuration"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
+    backup_conf = None
+    try:
+        # Check a configuration has been provided
+        if new_conf is None or not new_conf or len(new_conf) == 0:
+            raise WazuhError(1125)
+
+        # Check if the configuration is valid
+        new_conf = prettify_xml(new_conf)
+
+        # Create a backup of the current configuration before attempting to replace it
+        backup_conf = load_wazuh_xml(common.ossec_conf)
+        write_ossec_conf(new_conf)
+        is_valid = validate_ossec_conf()
+
+        if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
+            write_ossec_conf(backup_conf)
+            raise WazuhError(1125)
+        else:
+            result.affected_items.append(node_id)
+    except WazuhError as e:
+        # Restore the backup configuration
+        if backup_conf:
+            write_ossec_conf(backup_conf)
+        result.add_failed_item(id_=node_id, error=e)
+    except Exception:
+        # Restore the backup configuration
+        if backup_conf:
+            write_ossec_conf(backup_conf)
     result.total_affected_items = len(result.affected_items)
 
     return result

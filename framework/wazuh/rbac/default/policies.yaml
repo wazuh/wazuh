@@ -276,6 +276,7 @@ default_policies:
           - cluster:status
           - manager:read
           - manager:read_api_config
+          - manager:upload_config
           - manager:upload_file
           - manager:restart
           - manager:delete_file
@@ -296,6 +297,7 @@ default_policies:
           - cluster:read
           - cluster:restart
           - cluster:upload_file
+          - cluster:upload_config
         resources:
           - node:id:*
         effect: allow

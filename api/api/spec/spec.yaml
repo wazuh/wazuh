@@ -200,6 +200,14 @@ x-rbac-catalog:
         actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
+    'cluster:update_config':
+      description: "Update current Wazuh's node configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'cluster:update_config' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
     'cluster:read_api_config':
       description: "Check Wazuh's cluster nodes API configuration"
       resources:
@@ -257,6 +265,14 @@ x-rbac-catalog:
       example:
         actions: ['manager:read']
         resources: ['*:*:*']
+        effect: "allow"
+    'manager:update_config':
+      description: "Update current Wazuh manager configuration"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'manager:update_config' ]
+        resources: [ '*:*:*' ]
         effect: "allow"
     'manager:read_api_config':
       description: "Read Wazuh manager API configuration"
@@ -1987,7 +2003,7 @@ components:
         tz_name:
           type: string
 
-    WazuhMangerConfiguration:
+    WazuhManagerConfiguration:
       type: object
       properties:
         active-response:
@@ -8037,7 +8053,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhMangerConfiguration'
+                      $ref: '#/components/schemas/WazuhManagerConfiguration'
               example:
                 data:
                   affected_items:
@@ -8087,6 +8103,50 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+      - Cluster
+      summary: "Update node configuration"
+      description: "Replace wazuh configuration for the given node with the data contained in the API request"
+      operationId: api.controllers.cluster_controller.update_configuration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:update_config'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      requestBody:
+        description: "Content of the ossec.conf to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                message: "File was uploaded successfully"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -9565,7 +9625,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/WazuhMangerConfiguration'
+                      $ref: '#/components/schemas/WazuhManagerConfiguration'
               example:
                 data:
                   affected_items:
@@ -9615,6 +9675,49 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+      - Manager
+      summary: "Update wazuh configuration"
+      description: "Replace wazuh configuration with the data contained in the API request"
+      operationId: api.controllers.manager_controller.update_configuration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:update_config'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        description: "Content of the ossec.conf to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                message: "File was uploaded successfully"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -15842,3 +15945,4 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/4.1/user-manual/api/index.html'
+

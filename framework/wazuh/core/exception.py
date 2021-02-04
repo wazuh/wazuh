@@ -97,6 +97,9 @@ class WazuhException(Exception):
         1123: {'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
         1124: {'message': 'Remote command detected',
                'remediation': f'To solve this issue please enable the remote commands in the API settings or add an exception: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#remote-commands-configuration'},
+        1125: {'message': 'Invalid ossec configuration',
+               'remediation': 'Please, provide a valid ossec configuration'
+               },
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
