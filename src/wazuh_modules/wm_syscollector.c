@@ -38,31 +38,16 @@ syscollector_sync_message_func syscollector_sync_message_ptr = NULL;
 
 long syscollector_sync_max_eps = 10;    // Database syncrhonization number of events per seconds (default value)
 int queue_fd = 0;                       // Output queue file descriptor
-bool in_shutdown = false;               // In shutdown state
-static pthread_mutex_t shutdown_mutex;  // Output queue file descriptor
-
-
-static bool is_shutdown() {
-    w_mutex_lock(&shutdown_mutex);
-    const bool in_shutdown_process = in_shutdown;
-    w_mutex_unlock(&shutdown_mutex);
-    return in_shutdown_process;
-}
 
 static void wm_sys_send_diff_message(/*const void* data*/) {
     // const int eps = 1000000/syscollector_sync_max_eps;
     // Sending deltas is disabled due to issue: 7322 - https://github.com/wazuh/wazuh/issues/7322
-    // if (!is_shutdown()) {
-    //     wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
-    // }
+    // wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, SYSCOLLECTOR_MQ);
  }
 
 static void wm_sys_send_dbsync_message(const void* data) {
     const int eps = 1000000/syscollector_sync_max_eps;
-
-    if (!is_shutdown()) {
-        wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
-    }
+    wm_sendmsg(eps, queue_fd, data, WM_SYS_LOCATION, DBSYNC_MQ);
 }
 
 static void wm_sys_log_error(const char* log) {
@@ -70,7 +55,6 @@ static void wm_sys_log_error(const char* log) {
 }
 
 void* wm_sys_main(wm_sys_t *sys) {
-    w_mutex_init(&shutdown_mutex, NULL);
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
@@ -128,32 +112,27 @@ void* wm_sys_main(wm_sys_t *sys) {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
         pthread_exit(NULL);
     }
+    syscollector_sync_message_ptr = NULL;
+    syscollector_start_ptr = NULL;
+    syscollector_stop_ptr = NULL;
+
+    if (queue_fd) {
+        close(queue_fd);
+        queue_fd = 0;
+    }
+    so_free_library(syscollector_module);
+    syscollector_module = NULL;
     return 0;
 }
 
 void wm_sys_destroy(wm_sys_t *data) {
     mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
-    w_mutex_lock(&shutdown_mutex);
-    in_shutdown = true;
-    w_mutex_unlock(&shutdown_mutex);
 
     syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
         syscollector_stop_ptr();
     }
-    if (queue_fd) {
-        close(queue_fd);
-    }
-
-    if (syscollector_module){
-        so_free_library(syscollector_module);
-    }
-    queue_fd = 0;
-    syscollector_module = NULL;
-    syscollector_start_ptr = NULL;
-    syscollector_stop_ptr = NULL;
     free(data);
-    w_mutex_destroy(&shutdown_mutex);
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
