@@ -86,9 +86,9 @@ ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')
 EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
 
 # Socket
-AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
-REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
-LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'logtest')
+AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'auth')
+REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'request')
+LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'logtest')
 UPGRADE_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'upgrade')
 
 TASKS_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'task')

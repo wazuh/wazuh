@@ -99,6 +99,32 @@ void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path);
  */
 void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 
+/**
+ * @brief Binds data into a select path like statement.
+ *
+ * @param fim_sql FIM database structure.
+ * @param pattern Pattern that will be used for the LIKE operator.
+ */
+void fim_db_bind_get_path_from_pattern(fdb_t *fim_sql, const char *pattern);
+
+/**
+ * @brief Removes paths from the FIM DB if its configuration matches with the one provided
+ *
+ * @param fim_sql FIM database structure.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param alert False don't send alert, True send delete alert.
+ * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
+ * @param configuration Position of the configuration that triggered the deletion of entries.
+ */
+void fim_db_remove_validated_path(fdb_t *fim_sql,
+                                  fim_entry *entry,
+                                  pthread_mutex_t *mutex,
+                                  void *alert,
+                                  void *fim_ev_mode,
+                                  void *configuration);
+
+
 int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
     if ((*file = fim_db_create_temp_file(storage)) == NULL) {
         return FIMDB_ERR;
@@ -121,9 +147,9 @@ int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
-int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
-                                    (void *) false, (void *) mode, NULL);
+int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage, fim_event_mode mode, int *configuration) {
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_validated_path, storage,
+                                    (void *) false, (void *) mode, (void *) configuration);
 }
 
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
@@ -262,6 +288,11 @@ void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path) {
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_GET_INODE], 1, file_path, -1, NULL);
 }
 
+/* FIMDB_STMT_GET_PATH_FROM_PATTERN */
+void fim_db_bind_get_path_from_pattern(fdb_t *fim_sql, const char *pattern) {
+    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_GET_PATH_FROM_PATTERN], 1, pattern, -1, NULL);
+}
+
 fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     fim_entry *entry = NULL;
 
@@ -353,12 +384,16 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved) {
     int inode_id;
     int res, res_data, res_path;
-    unsigned int nodes_count;
+    int nodes_count;
 
     // Add event
     if (!saved) {
         if (syscheck.file_limit_enabled) {
             nodes_count = fim_db_get_count_entries(syscheck.database);
+            if (nodes_count < 0) {
+                mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+                return FIMDB_ERR;
+            }
             if (nodes_count >= syscheck.file_limit) {
                 fim_sql->full = true;
                 mdebug1("Couldn't insert '%s' entry into DB. The DB is full, please check your configuration.",
@@ -541,13 +576,27 @@ end:
     w_mutex_unlock(mutex);
 }
 
+void fim_db_remove_validated_path(fdb_t *fim_sql,
+                                  fim_entry *entry,
+                                  pthread_mutex_t *mutex,
+                                  void *alert,
+                                  void *fim_ev_mode,
+                                  void *configuration) {
+    int *original_configuration = (int *)configuration;
+    int validated_configuration = fim_configuration_directory(entry->file_entry.path, "file");
+
+    if (validated_configuration == *original_configuration) {
+        fim_db_remove_path(fim_sql, entry, mutex, alert, fim_ev_mode, NULL);
+    }
+}
+
 int fim_db_set_all_unscanned(fdb_t *fim_sql) {
     int retval = fim_db_exec_simple_wquery(fim_sql, SQL_STMT[FIMDB_STMT_SET_ALL_UNSCANNED]);
     fim_db_check_transaction(fim_sql);
     return retval;
 }
 
-int fim_db_set_scanned(fdb_t *fim_sql, char *path) {
+int fim_db_set_scanned(fdb_t *fim_sql, const char *path) {
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_SET_SCANNED);
     fim_db_bind_set_scanned(fim_sql, path);
@@ -578,4 +627,23 @@ int fim_db_get_count_file_entry(fdb_t * fim_sql) {
         merror("Step error getting count entry path: %s", sqlite3_errmsg(fim_sql->db));
     }
     return res;
+}
+
+int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_file **file, int storage) {
+    if ((*file = fim_db_create_temp_file(storage)) == NULL) {
+        return FIMDB_ERR;
+    }
+
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_FROM_PATTERN);
+    fim_db_bind_get_path_from_pattern(fim_sql, pattern);
+
+    int ret = fim_db_multiple_row_query(fim_sql, FIMDB_STMT_GET_PATH_FROM_PATTERN,
+                                        FIM_DB_DECODE_TYPE(fim_db_decode_string), free,
+                                        FIM_DB_CALLBACK_TYPE(fim_db_callback_save_string),
+                                        storage, (void *)*file);
+    if (*file && (*file)->elements == 0) {
+        fim_db_clean_file(file, storage);
+    }
+
+    return ret;
 }

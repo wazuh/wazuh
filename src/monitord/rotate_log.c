@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * June 12, 2017.
  *
  * This program is free software; you can redistribute it
@@ -54,9 +54,9 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
         minfo("Running daily rotation of log files.");
     else {
         if (rotate_json)
-            minfo("Rotating 'ossec.json' file: Maximum size reached.");
+            minfo("Rotating '%s' file: Maximum size reached.", LOGJSONFILE);
         else
-            minfo("Rotating 'ossec.log' file: Maximum size reached.");
+            minfo("Rotating '%s' file: Maximum size reached.", LOGFILE);
     }
 
     if (new_day)

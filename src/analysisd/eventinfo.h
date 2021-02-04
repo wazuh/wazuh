@@ -50,7 +50,6 @@ typedef struct _Eventinfo {
     char *dstuser;
     char *id;
     char *status;
-    char *command;
     char *url;
     char *data;
     char *extra_data;

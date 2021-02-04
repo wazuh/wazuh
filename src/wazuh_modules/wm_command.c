@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for custom command execution
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 26, 2017.
  *
  * This program is free software; you can redistribute it
@@ -38,7 +38,7 @@ void * wm_command_main(wm_command_t * command) {
     char * timestamp = NULL;
 
     if (!command->enabled) {
-        mtwarn(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
+        mtinfo(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
         pthread_exit(0);
     }
 
@@ -192,7 +192,7 @@ void * wm_command_main(wm_command_t * command) {
             }
             break;
         case WM_ERROR_TIMEOUT:
-            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at ossec.conf. Exiting...", command->tag);
+            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at '%s'. Exiting...", command->tag, OSSECCONF);
             break;
 
         default:

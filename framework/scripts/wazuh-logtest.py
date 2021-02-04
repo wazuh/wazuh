@@ -13,6 +13,7 @@ import argparse
 import atexit
 import struct
 import textwrap
+from wazuh.core.common import LOGTEST_SOCKET
 
 
 def init_argparse():
@@ -218,7 +219,7 @@ class WazuhLogtest:
             log_format (str, optional): type of log. Defaults to "syslog".
         """
         self.protocol = WazuhDeamonProtocol()
-        self.socket = WazuhSocket('/var/ossec/queue/sockets/logtest')
+        self.socket = WazuhSocket(LOGTEST_SOCKET)
         self.fixed_fields = dict()
         self.fixed_fields['location'] = location
         self.fixed_fields['log_format'] = log_format
@@ -354,12 +355,13 @@ class WazuhLogtest:
         if output['alert']:
             logging.info('**Alert to be generated.')
 
-    def show_phase_info(phase_data, show_first=[]):
+    def show_phase_info(phase_data, show_first=[], prefix=""):
         """Show wazuh-logtest processing phase information
 
         Args:
             phase_data (dict): phase info to display
-            show_first (list, optional): fields to be shown first. Defaults to [].
+            show_first (list, optional): fields to be shown first. Defaults to []
+            prefix (str, optional): add prefix to the name of the field to print. Default empty string
         """
         # Ordered fields first
         for field in show_first:
@@ -367,7 +369,10 @@ class WazuhLogtest:
                 logging.info("\t%s: '%s'", field, phase_data.pop(field))
         # Remaining fields then
         for field in sorted(phase_data.keys()):
-                logging.info("\t%s: '%s'", field, phase_data.pop(field))
+            if isinstance(phase_data.get(field), dict):
+                WazuhLogtest.show_phase_info(phase_data.pop(field), [], prefix + field + '.')
+            else:
+                logging.info("\t%s: '%s'", prefix + field, phase_data.pop(field))
 
     def show_last_ut_result(self, ut):
         """Display unit test result

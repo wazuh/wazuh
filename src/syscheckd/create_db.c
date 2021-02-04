@@ -57,7 +57,7 @@ void fim_scan() {
     struct timespec start;
     struct timespec end;
     clock_t cputime_start;
-    unsigned int nodes_count = 0;
+    int nodes_count = 0;
     struct fim_element item;
 
     cputime_start = clock();
@@ -162,7 +162,7 @@ void fim_scan() {
     }
 }
 
-void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) {
+void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int report) {
     int node;
     int depth;
 
@@ -273,7 +273,7 @@ void fim_checker(char *path, fim_element *item, whodata_evt *w_evt, int report) 
 }
 
 
-int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report) {
+int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int report) {
     DIR *dp;
     struct dirent *entry;
     char *f_name;
@@ -325,7 +325,7 @@ int fim_directory (char *dir, fim_element *item, whodata_evt *w_evt, int report)
 }
 
 
-int fim_file(char *file, fim_element *item, whodata_evt *w_evt, int report) {
+int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report) {
     fim_entry *saved = NULL;
     fim_file_data *new = NULL;
     cJSON *json_event = NULL;
@@ -445,6 +445,7 @@ void fim_whodata_event(whodata_evt * w_evt) {
 
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     fim_entry *saved_data = NULL;
+    fim_tmp_file *files = NULL;
 
     // Search path in DB.
     w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -460,35 +461,26 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     }
 
     // Since the file doesn't exist, research if it's directory and have files in DB.
-    fim_tmp_file *files = NULL;
-    char first_entry[PATH_MAX];
-    char last_entry[PATH_MAX];
+    char pattern[PATH_MAX] = {0};
 
-#ifdef WIN32
-    snprintf(first_entry, PATH_MAX, "%s\\", pathname);
-    snprintf(last_entry, PATH_MAX, "%s]", pathname);
-
-#else
-    snprintf(first_entry, PATH_MAX, "%s/", pathname);
-    snprintf(last_entry, PATH_MAX, "%s0", pathname);
-
-#endif
+    // Create the sqlite LIKE pattern -> "pathname/%"
+    snprintf(pattern, PATH_MAX, "%s%c%%", pathname, PATH_SEP);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    fim_db_get_path_range(syscheck.database, FIM_TYPE_FILE, first_entry, last_entry, &files, syscheck.database_store);
+    fim_db_get_path_from_pattern(syscheck.database, pattern, &files, syscheck.database_store);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (files && files->elements) {
         if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
             syscheck.database_store, mode, w_evt) != FIMDB_OK) {
-                merror(FIM_DB_ERROR_RM_RANGE, first_entry, last_entry);
-            }
+                merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+        }
     }
 }
 
 // Checks the DB state, sends a message alert if necessary
 void fim_check_db_state() {
-    unsigned int nodes_count = 0;
+    int nodes_count = 0;
     cJSON *json_event = NULL;
     char *json_plain = NULL;
     char alert_msg[OS_SIZE_256] = {'\0'};
@@ -496,6 +488,11 @@ void fim_check_db_state() {
     w_mutex_lock(&syscheck.fim_entry_mutex);
     nodes_count = fim_db_get_count_entries(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (nodes_count < 0) {
+        mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+        return;
+    }
 
     switch (_db_state) {
     case FIM_STATE_DB_FULL:
@@ -610,8 +607,8 @@ int fim_configuration_directory(const char *path, const char *entry) {
     return position;
 }
 
-int fim_check_depth(char * path, int dir_position) {
-    char * pos;
+int fim_check_depth(const char * path, int dir_position) {
+    const char * pos;
     int depth = -1;
     unsigned int parent_path_size;
 
@@ -837,8 +834,14 @@ void check_deleted_files() {
     }
 }
 
-cJSON * fim_json_event(char * file_name, fim_file_data * old_data, fim_file_data * new_data, int pos, unsigned int type,
-                       fim_event_mode mode, whodata_evt * w_evt, const char *diff) {
+cJSON *fim_json_event(const char *file_name,
+                      fim_file_data *old_data,
+                      fim_file_data *new_data,
+                      int pos,
+                      unsigned int type,
+                      fim_event_mode mode,
+                      whodata_evt *w_evt,
+                      const char *diff) {
     cJSON * changed_attributes = NULL;
 
     if (old_data != NULL) {
@@ -1221,8 +1224,22 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     return;
 }
 
-char *fim_get_real_path(int position) {
-    return syscheck.symbolic_links[position] == NULL ? syscheck.dir[position] : syscheck.symbolic_links[position];
+const char *fim_get_real_path(int position) {
+#ifndef WIN32
+    if ((syscheck.opts[position] & CHECK_FOLLOW) == 0) {
+        return syscheck.dir[position];
+    }
+
+    if (syscheck.symbolic_links[position]) {
+        return syscheck.symbolic_links[position];
+    }
+
+    if (IsLink(syscheck.dir[position]) == 0) { // Broken link
+        return "";
+    }
+#endif // WIN32
+
+    return syscheck.dir[position];
 }
 
 // Sleep during rt_delay milliseconds

@@ -638,7 +638,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->dstuser = NULL;
     lf->id = NULL;
     lf->status = NULL;
-    lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
     lf->extra_data = NULL;
@@ -841,9 +840,6 @@ void Free_Eventinfo(Eventinfo *lf)
     if (lf->id) {
         free(lf->id);
     }
-    if (lf->command) {
-        free(lf->command);
-    }
     if (lf->url) {
         free(lf->url);
     }
@@ -1033,11 +1029,13 @@ char* ParseRuleComment(Eventinfo *lf) {
 #ifdef LIBGEOIP_ENABLED
         } else if (strcmp(var, "srcgeoip") == 0) {
             field = lf->srcgeoip;
-        } else if (strcmp(var, "dstuser") == 0) {
+        } else if (strcmp(var, "dstgeoip") == 0) {
             field = lf->dstgeoip;
 #endif
         } else if (strcmp(var, "srcport") == 0) {
             field = lf->srcport;
+        } else if (strcmp(var, "dstport") == 0) {
+            field = lf->dstport;
         } else if (strcmp(var, "protocol") == 0) {
             field = lf->protocol;
         } else if (strcmp(var, "action") == 0) {
@@ -1054,6 +1052,13 @@ char* ParseRuleComment(Eventinfo *lf) {
             field = lf->extra_data;
         } else if (strcmp(var, "system_name") == 0) {
             field = lf->systemname;
+        }
+
+        // Find pre-decoding fields
+        else if (strcmp(var, "program_name") == 0) {
+            field = lf->program_name;
+        } else if (strcmp(var, "hostname") == 0) {
+            field = lf->hostname;
         }
 
         // Find dynamic fields
@@ -1161,10 +1166,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
 
     if(lf->status){
         os_strdup(lf->status,lf_cpy->status);
-    }
-
-    if(lf->command){
-        os_strdup(lf->command,lf_cpy->command);
     }
 
     if(lf->url){
