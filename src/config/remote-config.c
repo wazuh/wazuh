@@ -12,6 +12,7 @@
 #include "remote-config.h"
 #include "config.h"
 
+static int w_remoted_get_proto(const char * content);
 
 /* Reads remote config */
 int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -145,20 +146,9 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_remote_proto) == 0) {
-            if (strcasecmp(node[i]->content, "tcp") == 0) {
-#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-                logr->proto[pl] = IPPROTO_TCP;
-#else
-                merror(TCP_NOT_SUPPORT);
-                return (OS_INVALID);
-#endif
-            } else if (strcasecmp(node[i]->content, "udp") == 0) {
-                logr->proto[pl] = IPPROTO_UDP;
-            } else {
-                merror(XML_VALUEERR, node[i]->element,
-                       node[i]->content);
-                return (OS_INVALID);
-            }
+            
+            logr->proto[pl] = w_remoted_get_proto(node[i]->content);
+
         } else if (strcasecmp(node[i]->element, xml_remote_ipv6) == 0) {
             if (strcasecmp(node[i]->content, "yes") == 0) {
                 logr->ipv6[pl] = 1;
@@ -263,11 +253,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Set default protocol */
     if (logr->proto[pl] == 0) {
-#if defined(__linux__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-        logr->proto[pl] = IPPROTO_TCP;
-#else
-        logr->proto[pl] = IPPROTO_UDP;
-#endif
+        logr->proto[pl] = REMOTED_PROTO_DEFAULT;
     }
 
     /* Queue_size is only for secure connections */
@@ -277,4 +263,38 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 
     return (0);
+}
+
+static int w_remoted_get_proto(const char * content) {
+
+    const size_t max_array = 64;
+    const char * xml_remote_proto = "protocol";
+    char ** proto_arr;
+    size_t current = 0;
+    int retval = 0;
+
+    if (proto_arr = OS_StrBreak(',', content, max_array), proto_arr == NULL) {
+        mwarn(REMOTED_PROTO_ERROR);
+        return REMOTED_PROTO_DEFAULT;
+    }
+
+    while (proto_arr[current]) {
+        char * word = &(proto_arr[current])[strspn(proto_arr[current], " ")];
+        word[strcspn(word, " ")] = '\0';
+
+        if (strcasecmp(word, "tcp") == 0) {
+            retval |= REMOTED_PROTO_TCP;
+        } else if(strcasecmp(word, "udp") == 0) {
+            retval |= REMOTED_PROTO_UDP;
+        } else {
+            mwarn(REMOTED_INV_VALUE_IGNORE, word, xml_remote_proto);
+        }
+
+        os_free(proto_arr[current]);
+        current++;
+    }
+
+    os_free(proto_arr);
+
+    return retval == 0 ? REMOTED_PROTO_DEFAULT : retval;
 }
