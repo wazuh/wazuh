@@ -9,6 +9,7 @@ import random
 import re
 import socket
 import time
+import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from datetime import datetime
 from datetime import timezone
@@ -18,8 +19,6 @@ from pyexpat import ExpatError
 from shutil import Error
 from typing import Dict
 from xml.dom.minidom import parseString
-
-import yaml
 
 from api import configuration
 from wazuh import WazuhInternalError, WazuhError
@@ -120,21 +119,42 @@ def prettify_xml(xml_file):
     -------
     Checked XML content
     """
+
+    def escape_formula_values(xml_string):
+        """Prepend with a single quote possible formula injections."""
+        formula_characters = ('=', '+', '-', '@')
+        et = ET.ElementTree(ET.fromstring(f'<root>{xml_string}</root>'))
+        full_preprend, beginning_preprend = list(), list()
+        for node in et.iter():
+            if node.tag and node.tag.startswith(formula_characters):
+                full_preprend.append(node.tag)
+            if node.text and node.text.startswith(formula_characters) and ("'" in node.text or '"' in node.text):
+                beginning_preprend.append(node.text)
+
+        for text in full_preprend:
+            xml_string = re.sub(f'<{re.escape(text)}>', f"<'{text}'>", xml_string)
+            xml_string = re.sub(f'</{re.escape(text)}>', f"</'{text}'>", xml_string)
+
+        for text in beginning_preprend:
+            xml_string = re.sub(f'>{re.escape(text)}<', f">'{text}<", xml_string)
+
+        return xml_string
+
     # -- characters are not allowed in XML comments
     xml_file = replace_in_comments(xml_file, '--', '%wildcard%')
 
-    # create temporary file for parsing xml input
+    # Create temporary file for parsing xml input
     try:
-        # beauty xml file
-        xml = parseString('<root>' + xml_file + '</root>')
-        # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+        # Beautify xml file and escape '&' character as it could come in some tag values unescaped
+        xml = parseString(f'<root>{xml_file}</root>'.replace('&', '&amp;'))
+        # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
         indent = '  '  # indent parameter for toprettyxml function
         pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
-        # revert xml.dom replacings
+        # Revert xml.dom replacings
         # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
         pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
             .replace("&gt;", ">").replace('&apos;', "'")
-        # delete two first spaces of each line
+        # Delete two first spaces of each line
         final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
         final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
 
@@ -142,6 +162,8 @@ def prettify_xml(xml_file):
         check_remote_commands(final_xml)
         # Check xml format
         load_wazuh_xml(xml_path='', data=final_xml)
+        # Check and escape formula injections
+        final_xml = escape_formula_values(final_xml)
 
         return final_xml
     except ExpatError:
