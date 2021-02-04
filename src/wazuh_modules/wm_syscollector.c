@@ -43,9 +43,9 @@ static pthread_mutex_t shutdown_mutex;  // Output queue file descriptor
 
 
 static bool is_shutdown() {
-    pthread_mutex_lock(&shutdown_mutex);
+    w_mutex_lock(&shutdown_mutex);
     const bool in_shutdown_process = in_shutdown;
-    pthread_mutex_unlock(&shutdown_mutex);
+    w_mutex_unlock(&shutdown_mutex);
     return in_shutdown_process;
 }
 
@@ -70,7 +70,7 @@ static void wm_sys_log_error(const char* log) {
 }
 
 void* wm_sys_main(wm_sys_t *sys) {
-    pthread_mutex_init(&shutdown_mutex, NULL);
+    w_mutex_init(&shutdown_mutex, NULL);
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
@@ -129,9 +129,9 @@ void* wm_sys_main(wm_sys_t *sys) {
 
 void wm_sys_destroy(wm_sys_t *data) {
     mtinfo(WM_SYS_LOGTAG, "Destroy received for Syscollector.");
-    pthread_mutex_lock(&shutdown_mutex);
+    w_mutex_lock(&shutdown_mutex);
     in_shutdown = true;
-    pthread_mutex_unlock(&shutdown_mutex);
+    w_mutex_unlock(&shutdown_mutex);
 
     syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
@@ -149,7 +149,7 @@ void wm_sys_destroy(wm_sys_t *data) {
     syscollector_start_ptr = NULL;
     syscollector_stop_ptr = NULL;
     free(data);
-    pthread_mutex_destroy(&shutdown_mutex);
+    w_mutex_destroy(&shutdown_mutex);
 }
 
 cJSON *wm_sys_dump(const wm_sys_t *sys) {
