@@ -199,9 +199,12 @@ void wm_handler(int signum)
     case SIGTERM:
         // For the moment only gracefull shutdown will be for syscollector, in the future
         // it will be modified for all wmodules, modifying the mainloop of each thread.
-        for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (0 == strncmp(cur_module->context->name, "syscollector", strlen(cur_module->context->name))) {
                 cur_module->context->destroy(cur_module->data);
+                if (0 != pthread_join(cur_module->thread, NULL)) {
+                    mdebug2("Thread cannot be joined.");
+                }
             }
         }
         exit(EXIT_SUCCESS);
