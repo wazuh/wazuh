@@ -335,7 +335,7 @@ def test_get_list_file(filename, raw, expected_result, total_failed_items):
 
 @patch('wazuh.cdb_list.create_tmp_list', return_value='/path/to/tmp')
 @patch('wazuh.cdb_list.delete_list_file')
-@patch('wazuh.cdb_list.delete_file')
+@patch('wazuh.cdb_list.delete_wazuh_file')
 @patch('wazuh.cdb_list.safe_move')
 @patch('wazuh.cdb_list.os.path.exists', return_value=True)
 def test_upload_list_file(mock_exists, mock_safe_move, mock_delete_file, mock_delete_list_file, mock_create_tmp_list):
@@ -351,7 +351,7 @@ def test_upload_list_file(mock_exists, mock_safe_move, mock_delete_file, mock_de
     print(result)
 
 
-@patch('wazuh.cdb_list.delete_file')
+@patch('wazuh.cdb_list.delete_wazuh_file')
 def test_upload_list_file_ko(mock_delete_file):
     """Check whether expected exceptions are raised."""
     result = upload_list_file(filename='test', content='')
@@ -372,7 +372,7 @@ def test_upload_list_file_ko(mock_delete_file):
                         upload_list_file(filename='test', content='test:content', overwrite=True)
 
 
-@patch('wazuh.cdb_list.delete_file')
+@patch('wazuh.core.cdb_list.delete_wazuh_file')
 def test_delete_list_file(mock_delete_file):
     """Check that expected result is returned when the file is deleted."""
     try:
@@ -386,7 +386,10 @@ def test_delete_list_file(mock_delete_file):
             assert result.render()['data']['affected_items'][0] ==\
                    'framework/wazuh/tests/data/test_cdb_list/test_file'
     finally:
-        os.remove(test_file)
+        try:
+            os.remove(test_file)
+        except Exception:
+            pass
 
     mock_delete_file.assert_called_once_with(test_file)
 
