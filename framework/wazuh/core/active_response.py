@@ -70,7 +70,8 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
 
     Returns
     -------
-    WazuhResult.
+    dict
+        Dict with the message that will be sent to the socket.
     """
     if not command:
         raise WazuhError(1650)
