@@ -18,6 +18,7 @@ from wazuh.core import common
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.core.results import WazuhResult
+from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
@@ -138,10 +139,19 @@ def get_cluster_status() -> typing.Dict:
             "running": "yes" if get_manager_status()['wazuh-clusterd'] == 'running' else "no"}
 
 
-def manager_restart():
+def manager_restart() -> WazuhResult:
     """Restart Wazuh manager.
 
-    Send 'restart-wazuh' command to common.EXECQ socket.
+    Send JSON message with the 'restart-wazuh' command to common.EXECQ socket.
+
+    Raises
+    ------
+    WazuhInternalError(1901)
+        If the socket path doesn't exist.
+    WazuhInternalError(1902)
+        If there is a socket connection error.
+    WazuhInternalError(1014)
+        If there is a socket communication error.
 
     Returns
     -------
@@ -153,8 +163,10 @@ def manager_restart():
     try:
         # execq socket path
         socket_path = common.EXECQ
-        # msg for restarting Wazuh manager
-        msg = 'restart-wazuh '
+        # json msg for restarting Wazuh manager
+        msg = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
+                                                     command=common.RESTART_WAZUH_COMMAND,
+                                                     parameters={'extra_args': [], 'alert': {}}))
         # initialize socket
         if exists(socket_path):
             try:

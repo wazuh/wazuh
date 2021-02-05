@@ -141,7 +141,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                     /* Run on Windows */
                     if (agt->execdq >= 0) {
-                        //WinExecdRun(tmp_msg);
                         queue_push_ex(winexec_queue, strdup(tmp_msg));
                     }
 

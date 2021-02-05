@@ -17,7 +17,6 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))  # noqa: E501
 from integration import WazuhGCloudSubscriber
-from tests.common import mock_ossec_init
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                               'data')
@@ -28,9 +27,8 @@ subscription_id = 'testing'
 test_message = 'test-message'.encode()
 
 
-@patch('tools.open', side_effect=mock_ossec_init())
 @patch('integration.pubsub.subscriber.Client.from_service_account_file')
-def get_wazuhgcloud_subscriber(mock_client, mock_ossec_init):
+def get_wazuhgcloud_subscriber(mock_client):
     """Return a WazuhGCloudSubscriber client."""
     client = WazuhGCloudSubscriber(credentials_file, project, subscription_id)
     return client
@@ -56,11 +54,11 @@ def test_send_msg_ok(mock_socket):
     client.send_msg(test_message)
 
 
-@pytest.mark.xfail(raises=socket.error)
 def test_send_msg_ko():
     """Test send_msg method when a socket exception happens."""
-    client = get_wazuhgcloud_subscriber()
-    client.send_msg(test_message)
+    with pytest.raises(FileNotFoundError):
+        client = get_wazuhgcloud_subscriber()
+        client.send_msg(test_message)
 
 
 def test_format_msg():

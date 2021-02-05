@@ -122,7 +122,7 @@ def get_agents_summary_os(agent_list=None):
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
 def restart_agents(agent_list=None):
-    """Restarts a list of agents..
+    """Restart a list of agents.
 
     :param agent_list: List of agents ID's.
     :return: AffectedItemsWazuhResult.
@@ -814,7 +814,7 @@ def get_agent_config(agent_list=None, component=None, config=None):
     if my_agent.status != "active":
         raise WazuhError(1740)
 
-    return WazuhResult({'data': my_agent.getconfig(component=component, config=config)})
+    return WazuhResult({'data': my_agent.getconfig(component=component, config=config, agent_version=my_agent.version)})
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
