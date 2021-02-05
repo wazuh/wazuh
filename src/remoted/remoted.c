@@ -113,6 +113,12 @@ void HandleRemote(int uid)
     if (logr.proto[position] & REMOTED_PROTO_UDP) {
         wm_strcat(&str_protocol, "UDP", (str_protocol == NULL) ? 0 : ' ');
     }
+
+    /* This should never happen */
+    if (str_protocol == NULL) {
+        merror_exit(REMOTED_PROTO_UNSET);
+    }
+
     minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
          (int)getpid(),
          logr.port[position],
