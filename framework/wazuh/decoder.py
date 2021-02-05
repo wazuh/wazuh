@@ -137,6 +137,7 @@ def get_decoders_files(status=None, relative_dirname=None, filename=None, offset
 
 def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedItemsWazuhResult]:
     """Read content of specified file.
+<<<<<<< HEAD
 
     Parameters
     ----------
@@ -145,6 +146,16 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
     raw : bool
         Whether to return the content in raw format (str->XML) or JSON.
 
+=======
+
+    Parameters
+    ----------
+    filename : str
+        Name of the decoder file.
+    raw : bool
+        Whether to return the content in raw format (str->XML) or JSON.
+
+>>>>>>> Add decoder/files/{filename} endpoints
     Returns
     -------
     str or dict
