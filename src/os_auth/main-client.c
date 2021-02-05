@@ -265,7 +265,9 @@ int main(int argc, char **argv)
     w_enrollment_cert_destroy(cert_cfg);
     w_enrollment_destroy(cfg);
 
+#ifndef WIN32
     os_free(home_path);
+#endif
     
     exit((ret == 0) ? 0 : 1);
 }
