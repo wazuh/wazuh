@@ -106,6 +106,7 @@ presskey="Druk op ENTER om door te gaan"
 
 # Update
 wanttoupdate="U heeft Wazuh reeds geinstalleerd. Wilt u actualiseren?"
+mustuninstall="De installatie kan niet doorgaan zonder oude versies te verwijderen. Afsluiten."
 unabletoupdate="Kan geen actualisatie uitvoeren. Een volledig nieuwe installatie is vereist."
 updatecompleted="Actualisatie succesvol uitgevoerd."
 updatefailed="Actualisatie is gefaald."

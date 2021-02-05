@@ -229,14 +229,14 @@ static void test_dispatch_send_local_success_syscollector(void **state) {
 
     snprintf(data->ctx->component, OS_SIZE_32, "syscollector-process");
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WM_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, 65555);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 65555);
-    expect_value(__wrap_OS_SendSecureTCP, size, 45);
-    expect_string(__wrap_OS_SendSecureTCP, msg, "This is a mock query, it won't go anywhere...");
+    expect_value(__wrap_OS_SendSecureTCP, size, 66);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "syscollector-process This is a mock query, it won't go anywhere...");
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     // Assertions to this function are done through wrappers.

@@ -176,7 +176,7 @@ void test_W_JSON_AddField_JSON_invalid(void **state)
     W_JSON_AddField(root, key, value);
     output = cJSON_PrintUnformatted(root);
     assert_string_equal(output, "{\"files\":\"[\\\"file1\\\",\\\"file2\\\"],\\\"file3\\\"]\"}");
-    
+
     os_free(output);
     cJSON_Delete(root);
 }
@@ -203,7 +203,7 @@ void test_w_strndup_null_str(void ** state)
 }
 
 void test_w_strndup_str_less_than_n(void ** state)
-{    
+{
     const char * str = "Test";
     const char * expected_str = "Test";
     char * retval;
@@ -248,6 +248,70 @@ void test_w_strndup_str_zero_n(void ** state) {
     os_free(retval);
 }
 
+void test_w_strcat_null_input(void ** state) {
+    const char * B = "Hello World";
+    char * a = w_strcat(NULL, B, strlen(B));
+
+    assert_string_equal(a, B);
+
+    free(a);
+}
+
+void test_w_strcat_string_input(void ** state) {
+    char * a = strdup("Hello");
+    const char * B = "World";
+    a = w_strcat(a, B, strlen(B));
+
+    assert_string_equal(a, "HelloWorld");
+
+    free(a);
+}
+
+void test_w_strarray_append(void ** state) {
+    char ** array = NULL;
+    char *a, *b;
+    int n = 0;
+
+    os_strdup("Hello", a);
+    os_strdup("World", b);
+
+    array = w_strarray_append(array, a, n++);
+    array = w_strarray_append(array, b, n++);
+
+    assert_ptr_equal(array[0], a);
+    assert_ptr_equal(array[1], b);
+    assert_null(array[2]);
+
+    free_strarray(array);
+}
+
+void test_w_strtok_empty(void ** state) {
+    char ** array = w_strtok("");
+    assert_null(array[0]);
+    free_strarray(array);
+}
+
+void test_w_strtok_nospaces(void ** state) {
+    char ** array = w_strtok("Hello");
+    assert_string_equal(array[0], "Hello");
+    assert_null(array[1]);
+    free_strarray(array);
+}
+
+void test_w_strtok_string(void ** state) {
+    char ** array = w_strtok("BB\"B BBB BBE\" \"\" F \"\\\"G\\\"\" \"BB\"B BB\\\\E\\ GGF D B");
+    assert_string_equal(array[0], "BBB BBB BBE");
+    assert_string_equal(array[1], "");
+    assert_string_equal(array[2], "F");
+    assert_string_equal(array[3], "\"G\"");
+    assert_string_equal(array[4], "BBB");
+    assert_string_equal(array[5], "BB\\E GGF");
+    assert_string_equal(array[6], "D");
+    assert_string_equal(array[7], "B");
+    assert_null(array[8]);
+    free_strarray(array);
+}
+
 /* Tests */
 
 int main(void) {
@@ -274,6 +338,15 @@ int main(void) {
         cmocka_unit_test(test_w_strndup_str_greater_than_n),
         cmocka_unit_test(test_w_strndup_str_equal_to_n),
         cmocka_unit_test(test_w_strndup_str_zero_n),
+        // Tests w_strcat
+        cmocka_unit_test(test_w_strcat_null_input),
+        cmocka_unit_test(test_w_strcat_string_input),
+        // Tests w_strarray_append
+        cmocka_unit_test(test_w_strarray_append),
+        // Tests w_strtok
+        cmocka_unit_test(test_w_strtok_empty),
+        cmocka_unit_test(test_w_strtok_nospaces),
+        cmocka_unit_test(test_w_strtok_string),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

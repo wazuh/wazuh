@@ -160,4 +160,28 @@ WazuhUpgrade()
     # Remove existing ruleset version file
 
     rm -f $DIRECTORY/ruleset/VERSION
+
+    # Remove old Active Response scripts
+
+    rm -f $DIRECTORY/active-response/bin/firewall-drop.sh
+    rm -f $DIRECTORY/active-response/bin/default-firewall-drop.sh
+    rm -f $DIRECTORY/active-response/bin/pf.sh
+    rm -f $DIRECTORY/active-response/bin/npf.sh
+    rm -f $DIRECTORY/active-response/bin/ipfw.sh
+    rm -f $DIRECTORY/active-response/bin/ipfw_mac.sh
+    rm -f $DIRECTORY/active-response/bin/firewalld-drop.sh
+    rm -f $DIRECTORY/active-response/bin/disable-account.sh
+    rm -f $DIRECTORY/active-response/bin/host-deny.sh
+    rm -f $DIRECTORY/active-response/bin/ip-customblock.sh
+    rm -f $DIRECTORY/active-response/bin/restart-ossec.sh
+    rm -f $DIRECTORY/active-response/bin/route-null.sh
+    rm -f $DIRECTORY/active-response/bin/kaspersky.sh
+    rm -f $DIRECTORY/active-response/bin/ossec-slack.sh
+    rm -f $DIRECTORY/active-response/bin/ossec-tweeter.sh
+
+    # Remove deprecated ossec-init.conf file and its link
+    if [ -f /etc/ossec-init.conf ]; then
+        rm -f $DIRECTORY/etc/ossec-init.conf
+        rm -f /etc/ossec-init.conf
+    fi
 }

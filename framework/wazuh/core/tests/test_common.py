@@ -12,12 +12,12 @@ from pwd import getpwnam
 ])
 def test_find_wazuh_path(fake_path, expected):
     with patch('wazuh.core.common.__file__', new=fake_path):
-        assert(find_wazuh_path() == expected)
+        assert(find_wazuh_path.__wrapped__() == expected)
 
 
 def test_find_wazuh_path_relative_path():
     with patch('os.path.abspath', return_value='~/framework'):
-        assert(find_wazuh_path() == '~')
+        assert(find_wazuh_path.__wrapped__() == '~')
 
 
 def test_ossec_uid():

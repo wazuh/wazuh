@@ -107,6 +107,7 @@ presskey="Pritisni ENTER da nastaviš"
 
 # Update
 wanttoupdate="Već imaš instaliran Wazuh. Da li želiš da ga ažuriraš?"
+mustuninstall="Instalacija se ne može nastaviti bez deinstalacije starih verzija. Izlaz."
 unabletoupdate="U nemogućnosti da izvrši ažuriranje. Potrebna je potpuna nova instalacija."
 updatecompleted="Ažuriranje završeno."
 updatefailed="Ažuriranje nije uspelo."
