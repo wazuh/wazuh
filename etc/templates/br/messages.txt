@@ -108,6 +108,7 @@ presskey="Pressione ENTER para continuar."
 
 # Update
 wanttoupdate="Wazuh ja esta instalado. Deseja atualiza-lo?"
+mustuninstall="A instalação não pode prosseguir sem desinstalar as versões antigas. Saindo."
 unabletoupdate="Error na atualizacao. Sera necessario reinstala-lo."
 updatecompleted="Atualizacao completada."
 updatefailed="Erro na atualizacao."

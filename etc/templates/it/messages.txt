@@ -104,7 +104,8 @@ addserveragent="E' necessario aggiungere gli agent(s) prima che siano autorizzat
 presskey="Premi ENTER per continuare."
 
 # update
-wanttoupdate="Wazuh è già stato installato. Vuoi aggiornarlo ?"
+wanttoupdate="Wazuh è già stato installato. Vuoi aggiornarlo?"
+mustuninstall="L'installazione non può procedere senza disinstallare le vecchie versioni. Uscita."
 unabletoupdate="Impossibile eseguire l'aggiornamento. E' necessaria un'installazione completa."
 updatecompleted="Aggiornamento completato."
 updatefailed="Aggiornamento fallito."

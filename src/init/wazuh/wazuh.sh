@@ -160,4 +160,10 @@ WazuhUpgrade()
     # Remove existing ruleset version file
 
     rm -f $DIRECTORY/ruleset/VERSION
+
+    # Remove deprecated ossec-init.conf file and its link
+    if [ -f /etc/ossec-init.conf ]; then
+        rm -f $DIRECTORY/etc/ossec-init.conf
+        rm -f /etc/ossec-init.conf
+    fi
 }

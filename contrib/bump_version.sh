@@ -59,6 +59,9 @@ cd $(dirname $0)
 VERSION_FILE="../src/VERSION"
 REVISION_FILE="../src/REVISION"
 DEFS_FILE="../src/headers/defs.h"
+WAZUH_SERVER="../src/init/wazuh-server.sh"
+WAZUH_AGENT="../src/init/wazuh-client.sh"
+WAZUH_LOCAL="../src/init/wazuh-local.sh"
 NSIS_FILE="../src/win32/wazuh-installer.nsi"
 MSI_FILE="../src/win32/wazuh-installer.wxs"
 FW_SETUP="../framework/setup.py"
@@ -86,6 +89,12 @@ then
     fi
 
     sed -E -i'' -e "s/^(#define __ossec_version +)\"v.*\"/\1\"$version\"/" $DEFS_FILE
+
+    # wazuh-control
+
+    sed -E -i'' -e "s/^(VERSION=+)\"v.*\"/\1\"$version\"/" $WAZUH_SERVER
+    sed -E -i'' -e "s/^(VERSION=+)\"v.*\"/\1\"$version\"/" $WAZUH_AGENT
+    sed -E -i'' -e "s/^(VERSION=+)\"v.*\"/\1\"$version\"/" $WAZUH_LOCAL
 
     # File wazuh-installer.nsi
 
@@ -121,6 +130,7 @@ then
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $CLUSTER_INIT
 
     # API
+
     sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $API_SETUP
     sed -E -i'' -e "s/version: '.+'/version: '${version:1}'/g" $API_SPEC
 
@@ -136,6 +146,12 @@ then
     # File REVISION
 
     echo $revision > $REVISION_FILE
+
+    # wazuh-control
+
+    sed -E -i'' -e "s/^(REVISION=+)\".*\"/\1\"$revision\"/" $WAZUH_SERVER
+    sed -E -i'' -e "s/^(REVISION=+)\".*\"/\1\"$revision\"/" $WAZUH_AGENT
+    sed -E -i'' -e "s/^(REVISION=+)\".*\"/\1\"$revision\"/" $WAZUH_LOCAL
 
     # File wazuh-installer.nsi
 
