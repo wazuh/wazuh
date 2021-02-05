@@ -78,13 +78,8 @@ private:
     nlohmann::json getProcessesData();
 
     void registerWithRsync();
-    void updateAndNotifyChanges(const std::string& table, const nlohmann::json& values);
-    void insertOs();
-    void insertHardware();
-    void insertNetwork();
-    void insertPackages();
-    void insertPorts();
-    void insertProcesses();
+    void updateAndNotifyChanges(const std::string& table,
+                                const nlohmann::json& values);
     void scanHardware();
     void scanOs();
     void scanNetwork();
@@ -97,7 +92,6 @@ private:
     void syncPackages();
     void syncPorts();
     void syncProcesses();
-    void insert();
     void scan();
     void sync();
     void syncLoop(std::unique_lock<std::mutex>& lock);
@@ -116,6 +110,7 @@ private:
     bool                                           m_processes;
     bool                                           m_hotfixes;
     bool                                           m_stopping;
+    bool                                           m_notify;
     std::unique_ptr<DBSync>                        m_spDBSync;
     std::unique_ptr<RemoteSync>                    m_spRsync;
     std::condition_variable                        m_cv;

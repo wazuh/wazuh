@@ -915,28 +915,31 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
             {
                 m_logErrorFunction(data.dump());
             }
-            else if (data.is_array())
+            else if(m_notify)
             {
-                for (const auto& item : data)
+                if (data.is_array())
                 {
+                    for (const auto& item : data)
+                    {
+                        nlohmann::json msg;
+                        msg["type"] = table;
+                        msg["operation"] = operationsMap.at(result);
+                        msg["data"] = item;
+                        msg["data"]["scan_time"] = m_scanTime;
+                        m_reportDiffFunction(msg.dump());
+                    }
+                }
+                else
+                {
+                    // LCOV_EXCL_START
                     nlohmann::json msg;
                     msg["type"] = table;
                     msg["operation"] = operationsMap.at(result);
-                    msg["data"] = item;
+                    msg["data"] = data;
                     msg["data"]["scan_time"] = m_scanTime;
                     m_reportDiffFunction(msg.dump());
+                    // LCOV_EXCL_STOP
                 }
-            }
-            else
-            {
-                // LCOV_EXCL_START
-                nlohmann::json msg;
-                msg["type"] = table;
-                msg["operation"] = operationsMap.at(result);
-                msg["data"] = data;
-                msg["data"]["scan_time"] = m_scanTime;
-                m_reportDiffFunction(msg.dump());
-                // LCOV_EXCL_STOP
             }
         }
     };
@@ -968,6 +971,7 @@ Syscollector::Syscollector()
 , m_processes { false }
 , m_hotfixes { false }
 , m_stopping { true }
+, m_notify { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -1154,18 +1158,6 @@ nlohmann::json Syscollector::getHardwareData()
     return ret;
 }
 
-void Syscollector::insertHardware()
-{
-    if (m_hardware)
-    {
-        const auto& osData{getHardwareData()};
-        nlohmann::json toInsert;
-        toInsert["table"] = HW_TABLE;
-        toInsert["data"] = osData;
-        m_spDBSync->insertData(toInsert);
-    }
-}
-
 void Syscollector::scanHardware()
 {
     if (m_hardware)
@@ -1189,18 +1181,6 @@ nlohmann::json Syscollector::getOSData()
     ret[0] = m_spInfo->os();
     ret[0]["checksum"] = getItemChecksum(ret[0]);
     return ret;
-}
-
-void Syscollector::insertOs()
-{
-    if (m_os)
-    {
-        const auto& osData{getOSData()};
-        nlohmann::json toInsert;
-        toInsert["table"] = OS_TABLE;
-        toInsert["data"] = osData;
-        m_spDBSync->insertData(toInsert);
-    }
 }
 
 void Syscollector::scanOs()
@@ -1300,39 +1280,6 @@ nlohmann::json Syscollector::getNetworkData()
     return ret;
 }
 
-void Syscollector::insertNetwork()
-{
-    if (m_network)
-    {
-        const auto& networkData{getNetworkData()};
-        nlohmann::json toInsert;
-        if (!networkData.is_null())
-        {
-            const auto itIface { networkData.find(NET_IFACE_TABLE) };
-            if (itIface != networkData.end())
-            {
-                toInsert["table"] = NET_IFACE_TABLE;
-                toInsert["data"] = itIface.value();
-                m_spDBSync->insertData(toInsert);
-            }
-            const auto itProtocol { networkData.find(NET_PROTOCOL_TABLE) };
-            if (itProtocol != networkData.end())
-            {
-                toInsert["table"] = NET_PROTOCOL_TABLE;
-                toInsert["data"] = itProtocol.value();
-                m_spDBSync->insertData(toInsert);
-            }
-            const auto itAddress { networkData.find(NET_ADDRESS_TABLE) };
-            if (itAddress != networkData.end())
-            {
-                toInsert["table"] = NET_ADDRESS_TABLE;
-                toInsert["data"] = itAddress.value();
-                m_spDBSync->insertData(toInsert);
-            }
-        }
-    }
-}
-
 void Syscollector::scanNetwork()
 {
     if (m_network)
@@ -1399,35 +1346,6 @@ nlohmann::json Syscollector::getPackagesData()
         ret[PACKAGES_TABLE] = packagesList;
     }
     return ret;
-}
-
-void Syscollector::insertPackages()
-{
-    if (m_packages)
-    {
-        const auto& packagesData { getPackagesData() };
-        nlohmann::json toInsert;
-        if (!packagesData.is_null())
-        {
-            const auto itPackages { packagesData.find(PACKAGES_TABLE) };
-            if (itPackages != packagesData.end())
-            {
-                toInsert["table"] = PACKAGES_TABLE;
-                toInsert["data"] = itPackages.value();
-                m_spDBSync->insertData(toInsert);
-            }
-            if (m_hotfixes)
-            {
-                const auto itHotFixes { packagesData.find(HOTFIXES_TABLE) };
-                if (itHotFixes != packagesData.end())
-                {
-                    toInsert["table"] = HOTFIXES_TABLE;
-                    toInsert["data"] = itHotFixes.value();
-                    m_spDBSync->insertData(toInsert);
-                }
-            }
-        }
-    }
 }
 
 void Syscollector::scanPackages()
@@ -1508,18 +1426,6 @@ nlohmann::json Syscollector::getPortsData()
     return ret;
 }
 
-void Syscollector::insertPorts()
-{
-    if (m_ports)
-    {
-        const auto& portsData { getPortsData() };
-        nlohmann::json toInsert;
-        toInsert["table"] = PORTS_TABLE;
-        toInsert["data"] = portsData;
-        m_spDBSync->insertData(toInsert);
-    }
-}
-
 void Syscollector::scanPorts()
 {
     if (m_ports)
@@ -1552,18 +1458,6 @@ nlohmann::json Syscollector::getProcessesData()
     return ret;
 }
 
-void Syscollector::insertProcesses()
-{
-    if (m_processes)
-    {
-        const auto& processesData { getProcessesData() };
-        nlohmann::json toInsert;
-        toInsert["table"] = PROCESSES_TABLE;
-        toInsert["data"] = processesData;
-        m_spDBSync->insertData(toInsert);
-    }
-}
-
 void Syscollector::scanProcesses()
 {
     if (m_processes)
@@ -1581,16 +1475,6 @@ void Syscollector::syncProcesses()
     }
 }
 
-void Syscollector::insert()
-{
-    TRY_CATCH_TASK(insertHardware);
-    TRY_CATCH_TASK(insertOs);
-    TRY_CATCH_TASK(insertNetwork);
-    TRY_CATCH_TASK(insertPackages);
-    TRY_CATCH_TASK(insertPorts);
-    TRY_CATCH_TASK(insertProcesses);
-}
-
 void Syscollector::scan()
 {
     m_scanTime = Utils::getCurrentTimestamp();
@@ -1600,6 +1484,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanPackages);
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
+    m_notify = true;
 }
 
 void Syscollector::sync()
@@ -1614,9 +1499,6 @@ void Syscollector::sync()
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
-    //this will send integrity clears to the server.
-    insert();
-    sync();
     if (m_scanOnStart)
     {
         scan();
