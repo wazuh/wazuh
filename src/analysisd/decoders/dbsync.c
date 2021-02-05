@@ -180,7 +180,7 @@ static void dispatch_state(dbsync_context_t * ctx) {
     case WDBC_OK:
         break;
     case WDBC_ERROR:
-        merror("dbsync: Bad response from database: %s, %s", arg, query);
+        merror("dbsync: Bad response from database: %s", arg);
         // Fallthrough
     default:
         goto end;
