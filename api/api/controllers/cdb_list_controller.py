@@ -190,7 +190,7 @@ async def delete_file(request, pretty=False, wait_for_complete=False, filename=N
 async def get_lists_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                           limit: int = None, sort: str = None, search: str = None, filename: str = None,
                           relative_dirname: str = None):
-    """
+    """Get paths from all CDB lists.
 
     Parameters
     ----------

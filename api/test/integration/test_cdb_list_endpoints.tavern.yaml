@@ -479,7 +479,7 @@ stages:
           failed_items: []
 
   # GET /lists/files/{filename}
-  - name: Get content of audit-keys
+  - name: Get content of audit-keys (raw)
     request:
       verify: False
       <<: *get_audit_keys_list

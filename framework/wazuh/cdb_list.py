@@ -139,8 +139,8 @@ def upload_list_file(filename=None, content=None, overwrite=False):
             # If file already exists and overwrite is False, raise exception.
             if not overwrite and os.path.exists(os.path.join(common.ossec_path, path)):
                 raise WazuhError(1905)
+            # Original file will not be deleted if create_tmp_list validation was not successful.
             elif overwrite and os.path.exists(os.path.join(common.ossec_path, path)):
-                # Original file will not be deleted if create_tmp_list validation was not successful.
                 delete_list_file(filename=filename)
             # If file with same name already exists in subdirectory.
             elif str(next(Path(common.lists_path).rglob(filename), '')) != '':

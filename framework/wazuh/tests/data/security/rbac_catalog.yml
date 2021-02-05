@@ -384,7 +384,7 @@ get_rbac_actions:
       lists:update:
         description: Update cdb lists files
         resources:
-          - list:file
+          - "*:*"
         example:
           actions:
             - lists:update

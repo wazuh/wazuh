@@ -325,7 +325,7 @@ x-rbac-catalog:
     'lists:update':
       description: "Update cdb lists files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/list:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['lists:update']
         resources: ['*:*:*']
@@ -3913,7 +3913,7 @@ components:
     list_filename_path:
       in: path
       name: filename
-      description: "Filename (CDB list) to get/edit."
+      description: "Filename (CDB list) to get/edit/delete."
       required: true
       schema:
         type: string
