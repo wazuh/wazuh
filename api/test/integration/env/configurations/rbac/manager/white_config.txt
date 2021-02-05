@@ -6,4 +6,5 @@
 | manager:read_file        | file:path | *                         |      |
 | manager:upload_file      | *         |                           | *    |
 | manager:restart          | *         |                           | *    |
+| manager:upload_config    | *         | *                         |      |
 | manager:read_api_config  | *         | *                         |      |

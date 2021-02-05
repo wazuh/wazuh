@@ -5,6 +5,11 @@
   - file:path:*
   effect: allow
 - actions:
+  - manager:upload_config
+  resources:
+  - "*:*:*"
+  effect: allow
+- actions:
   - manager:read_api_config
   resources:
   - "*:*:*"
