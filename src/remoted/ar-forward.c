@@ -19,18 +19,14 @@
 void *AR_Forward(__attribute__((unused)) void *arg)
 {
     int arq = 0;
-    int key_id = 0;
     int ar_location = 0;
     const char * path = isChroot() ? ARQUEUE : DEFAULTDIR ARQUEUE;
     char *msg_to_send;
     os_calloc(OS_MAXSTR, sizeof(char), msg_to_send);
     char *msg;
     os_calloc(OS_MAXSTR, sizeof(char), msg);
-    char *location = NULL;
-    char *ar_location_str = NULL;
     char *ar_agent_id = NULL;
     char *tmp_str = NULL;
-    char agent_id[KEYSIZE + 1] = "";
 
     /* Create the unix queue */
     if ((arq = StartMQ(path, READ, 0)) < 0) {
@@ -46,31 +42,23 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             /* Always zero the location */
             ar_location = 0;
 
-            /* Get the location */
-            location = msg;
-
-            /* Location is going to be the agent name */
+            /* Location */
             tmp_str = strchr(msg, ')');
             if (!tmp_str) {
                 mwarn(EXECD_INV_MSG, msg);
                 continue;
             }
-            *tmp_str = '\0';
-
-            /* Going after the ')' and space */
             tmp_str += 2;
 
-            /* Extract the source IP */
-            tmp_str = strchr(tmp_str, ' ');
+            /* Source IP */
+            tmp_str = strchr(tmp_str, ']');
             if (!tmp_str) {
                 mwarn(EXECD_INV_MSG, msg);
                 continue;
             }
-            tmp_str++;
-            location++;
+            tmp_str += 2;
 
-            /* Set ar_location */
-            ar_location_str = tmp_str;
+            /* AR location */
             if (*tmp_str == ALL_AGENTS_C) {
                 ar_location |= ALL_AGENTS;
             }
@@ -84,15 +72,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             if (*tmp_str == SPECIFIC_AGENT_C) {
                 ar_location |= SPECIFIC_AGENT;
             }
-
-            /* Extract the active response location */
-            tmp_str = strchr(ar_location_str, ' ');
-            if (!tmp_str) {
-                mwarn(EXECD_INV_MSG, msg);
-                continue;
-            }
-            *tmp_str = '\0';
-            tmp_str++;
+            tmp_str += 2;
 
             /* Extract the agent id */
             ar_agent_id = tmp_str;
@@ -120,12 +100,12 @@ void *AR_Forward(__attribute__((unused)) void *arg)
 
             /* Send to ALL agents */
             if (ar_location & ALL_AGENTS) {
-                unsigned int i;
+                char agent_id[KEYSIZE + 1] = "";
 
                 /* Lock use of keys */
                 key_lock_read();
 
-                for (i = 0; i < keys.keysize; i++) {
+                for (unsigned int i = 0; i < keys.keysize; i++) {
                     if (keys.keyentries[i]->rcvd >= (time(0) - logr.global.agents_disconnection_time)) {
                         strncpy(agent_id, keys.keyentries[i]->id, KEYSIZE);
                         key_unlock();
@@ -137,25 +117,8 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                 key_unlock();
             }
 
-            /* Send to the remote agent that generated the event */
-            else if ((ar_location & REMOTE_AGENT) && (location != NULL)) {
-                key_lock_read();
-                key_id = OS_IsAllowedName(&keys, location);
-
-                if (key_id < 0) {
-                    key_unlock();
-                    merror(AR_NOAGENT_ERROR, location);
-                    continue;
-                }
-
-                strncpy(agent_id, keys.keyentries[key_id]->id, KEYSIZE);
-                key_unlock();
-                send_msg(agent_id, msg_to_send, -1);
-            }
-
-            /* Send to a pre-defined agent */
-            else if (ar_location & SPECIFIC_AGENT) {
-                ar_location++;
+            /* Send to the remote agent that generated the event or to a pre-defined agent */
+            else if (ar_location & (REMOTE_AGENT | SPECIFIC_AGENT)) {
                 send_msg(ar_agent_id, msg_to_send, -1);
             }
         }

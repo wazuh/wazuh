@@ -138,9 +138,6 @@ void wm_kill_children();
 // Reads an HTTP header and extracts the size of the response
 long int wm_read_http_size(char *header);
 
-// Tokenize string separated by spaces, respecting double-quotes
-char** wm_strtok(char *string);
-
 /* Load or save the running state
  * op: WM_IO_READ | WM_IO_WRITE
  * Returns 0 if success, or 1 if fail.

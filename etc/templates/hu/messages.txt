@@ -107,6 +107,7 @@ presskey="A folytatáshoz nyomja meg az ENTER-t"
 
 # Update
 wanttoupdate="Az Wazuh már telepítve van. Szeretné frissíteni?"
+mustuninstall="A telepítés nem folytatható a régi verziók eltávolítása nélkül. Kilépés."
 unabletoupdate="A frissítés nem lehetséges. Egy teljesen új installáció szükséges."
 updatecompleted="A frissítés sikeresen befejeződött."
 updatefailed="A frissítés meghiúsult."

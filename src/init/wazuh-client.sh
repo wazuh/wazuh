@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -10,16 +10,17 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 
-###  Do not modify bellow here ###
+# Installation info
+VERSION="v4.2.0"
+REVISION="40200"
+TYPE="agent"
+
+###  Do not modify below here ###
 AUTHOR="Wazuh Inc."
 DAEMONS="wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-
-INITCONF="/etc/ossec-init.conf"
-
-[ -f ${INITCONF} ] && . ${INITCONF}  || echo "ERROR: No such file ${INITCONF}"
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -94,7 +95,7 @@ unlock()
 help()
 {
     # Help message
-    echo "Usage: $0 {start|stop|restart|status}";
+    echo "Usage: $0 {start|stop|restart|status|info [-v -r -t]}";
     exit 1;
 }
 
@@ -126,7 +127,7 @@ testconfig()
 }
 
 # Start function
-start()
+start_service()
 {
     echo "Starting $NAME $VERSION..."
     checkpid;
@@ -222,7 +223,7 @@ wait_pid() {
     return 0
 }
 
-stopa()
+stop_service()
 {
     checkpid;
     for i in ${DAEMONS}; do
@@ -248,40 +249,61 @@ stopa()
     echo "$NAME $VERSION Stopped"
 }
 
+info()
+{
+     if [ "X${1}" = "X" ]; then
+        echo "WAZUH_VERSION=\"${VERSION}\""
+        echo "WAZUH_REVISION=\"${REVISION}\""
+        echo "WAZUH_TYPE=\"${TYPE}\""
+    else
+        case "${1}" in
+            -v) echo "${VERSION}" ;;
+            -r) echo "${REVISION}" ;;
+            -t) echo "${TYPE}" ;;
+             *) echo "Invalid flag: ${1}" && help ;;
+        esac
+    fi
+}
+
 ### MAIN HERE ###
+
+arg=$2
 
 case "$1" in
 start)
     testconfig
     lock
-    start
+    start_service
     unlock
     ;;
 stop)
     lock
-    stopa
+    stop_service
     unlock
     ;;
 restart)
     testconfig
     lock
-    stopa
+    stop_service
     sleep 1
-    start
+    start_service
     unlock
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
     lock
-    stopa
+    stop_service
     sleep 1
-    start
+    start_service
     unlock
     ;;
 status)
     lock
     status
     unlock
+    ;;
+info)
+    info $arg
     ;;
 help)
     help

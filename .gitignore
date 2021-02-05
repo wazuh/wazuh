@@ -66,6 +66,21 @@ src/wazuh-reportd
 src/wazuh-syscheckd
 src/wazuh-integratord
 
+# Active responses
+src/firewall-drop
+src/default-firewall-drop
+src/pf
+src/npf
+src/ipfw
+src/firewalld-drop
+src/disable-account
+src/host-deny
+src/ip-customblock
+src/restart-wazuh
+src/route-null
+src/kaspersky
+src/wazuh-slack
+
 # Windows agent
 src/win32/*.exe
 src/win32/LICENSE.txt
@@ -113,7 +128,7 @@ src/unit_tests/build/*
 api/test/integration/_test_results
 
 # Old firewall-drop.sh (moved to default-firewall-drop.sh)
-active-response/firewall-drop.sh
+src/active-response/firewall-drop.sh
 
 # Databases commits
 framework/wazuh/rbac/migrations/versions/*

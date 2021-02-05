@@ -55,7 +55,7 @@ void * wm_command_main(wm_command_t * command) {
 
         command_cpy = strdup(command->command);
 
-        argv = wm_strtok(command_cpy);
+        argv = w_strtok(command_cpy);
     #ifndef __clang_analyzer__
         if (!argv) {
             merror("Could not split command: %s", command_cpy);
@@ -74,7 +74,7 @@ void * wm_command_main(wm_command_t * command) {
             os_malloc(strlen(full_path) + strlen(command->command) - strlen(binary) + 1, command->full_command);
         }
         snprintf(command->full_command, strlen(full_path) + strlen(command->command) - strlen(binary) + 1, "%s %s", full_path, command->command + strlen(binary) + 1);
-        free(argv);
+        free_strarray(argv);
 
 
         if (command->md5_hash && command->md5_hash[0]) {

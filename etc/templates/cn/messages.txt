@@ -106,6 +106,7 @@ presskey="请按ENTER继续"
 
 # Update
 wanttoupdate="您已经安装过 Wazuh ,要升级它吗?"
+mustuninstall="如果不卸载旧版本，安装将无法继续。 正在退出。"
 unabletoupdate="不能对原版本进行升级. 必须进行全新安装."
 updatecompleted="升级完成."
 updatefailed="升级失败."
