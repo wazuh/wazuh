@@ -229,7 +229,7 @@ static void test_dispatch_send_local_success_syscollector(void **state) {
 
     snprintf(data->ctx->component, OS_SIZE_32, "syscollector-process");
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WM_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, 65555);
