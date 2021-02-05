@@ -82,18 +82,11 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
  * @brief Delete entry from the BD using file path.
  *
  * @param fim_sql FIM database struct.
- * @param entry Entry data to be removed.
- * @param mutex FIM database's mutex for thread synchronization.
- * @param alert False don't send alert, True send delete alert.
- * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
- * @param w_evt Whodata information.
+ * @param path Path of the entry to be removed.
  *
- * @return FIMDB_OK on success, FIMDB_ERR otherwise.
+ * @return Number of entries that has been deleted .
  */
-void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-                        __attribute__((unused))void *alert,
-                        __attribute__((unused))void *fim_ev_mode,
-                        __attribute__((unused))void *w_evt);
+unsigned int fim_db_remove_path(fdb_t *fim_sql, const char *path);
 
 /**
  * @brief Set all entries from database to unscanned.
