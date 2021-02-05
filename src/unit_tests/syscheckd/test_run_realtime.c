@@ -365,9 +365,6 @@ void test_realtime_adddir_whodata(void **state) {
     audit_thread_active = 1;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
-    expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
-    will_return(__wrap_W_Vector_insert_unique, 1);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     ret = realtime_adddir(path, 1, 0);
@@ -384,9 +381,6 @@ void test_realtime_adddir_whodata_new_directory(void **state) {
     audit_thread_active = 1;
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_value(__wrap_W_Vector_insert_unique, v, audit_added_dirs);
-    expect_string(__wrap_W_Vector_insert_unique, element, "/etc/folder");
-    will_return(__wrap_W_Vector_insert_unique, 0);
     expect_string(__wrap__mdebug1, formatted_msg, "(6230): Monitoring with Audit: '/etc/folder'");
     expect_function_call(__wrap_pthread_mutex_unlock);
 

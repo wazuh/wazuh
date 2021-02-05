@@ -562,7 +562,6 @@ void clean_rules(void);
  */
 
 int filterkey_audit_events(char *buffer);
-extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
 extern volatile int whodata_alerts;
 extern volatile int audit_db_consistency_flag;

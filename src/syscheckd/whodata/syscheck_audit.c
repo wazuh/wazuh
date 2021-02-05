@@ -42,7 +42,6 @@
 #endif
 
 // Global variables
-W_Vector *audit_added_dirs;
 pthread_mutex_t audit_mutex;
 pthread_mutex_t audit_hc_mutex;
 pthread_mutex_t audit_rules_mutex;
@@ -494,7 +493,6 @@ int audit_init(void) {
 
     w_mutex_init(&audit_mutex, NULL);
     w_mutex_init(&audit_hc_mutex, NULL);
-    w_mutex_init(&audit_rules_mutex, NULL);
 
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
@@ -539,9 +537,6 @@ int audit_init(void) {
         minfo(FIM_AUDIT_HEALTHCHECK_DISABLE);
     }
 
-    // Add Audit rules
-    audit_added_dirs = W_Vector_init(20);
-
     add_audit_rules_syscheck(true);
 
     // Change to realtime directories that don't have any rules when Auditd is in immutable mode
@@ -564,7 +559,6 @@ int audit_init(void) {
     }
 
     atexit(clean_rules);
-    atexit(clean_regex);
     auid_err_reported = 0;
 
     // Start audit thread
@@ -1256,6 +1250,8 @@ void *audit_healthcheck_thread(int *audit_sock) {
 
 // LCOV_EXCL_START
 void * audit_main(int *audit_sock) {
+    char *path = NULL;
+    int pos;
     count_reload_retries = 0;
 
     w_mutex_lock(&audit_mutex);
@@ -1283,23 +1279,24 @@ void * audit_main(int *audit_sock) {
     // Clean regexes used for parsing events
     clean_regex();
     // Change Audit monitored folders to Inotify.
-    int i;
-    w_mutex_lock(&audit_rules_mutex);
-    if (audit_added_dirs) {
-        for (i = 0; i < W_Vector_length(audit_added_dirs); i++) {
-            const char *path = W_Vector_get(audit_added_dirs, i);
-            int pos = fim_configuration_directory(path, "file");
-
-            if (pos >= 0) {
-                syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
-                syscheck.opts[pos] |= REALTIME_ACTIVE;
-
-                realtime_adddir(path, 0, (syscheck.opts[pos] & CHECK_FOLLOW) ? 1 : 0);
-            }
+    w_mutex_lock(&audit_mutex);
+    for (pos = 0; syscheck.dir[pos]; pos++) {
+        if ((syscheck.opts[pos] & WHODATA_ACTIVE) == 0) {
+            continue;
         }
-        W_Vector_free(audit_added_dirs);
+        path = fim_get_real_path(pos);
+        // Check if it's a broken link.
+        if (*path == '\0') {
+            free(path);
+            continue;
+        }
+        syscheck.opts[pos] &= ~ WHODATA_ACTIVE;
+        syscheck.opts[pos] |= REALTIME_ACTIVE;
+
+        realtime_adddir(path, 0, (syscheck.opts[pos] & CHECK_FOLLOW) ? 1 : 0);
+        free(path);
     }
-    w_mutex_unlock(&audit_rules_mutex);
+    w_mutex_unlock(&audit_mutex);
 
     // Clean Audit added rules.
     clean_rules();
@@ -1449,7 +1446,7 @@ void audit_read_events(int *audit_sock, int mode) {
             buffer_i = 0;
         }
 
-        if (event_too_long_id) os_free(event_too_long_id);
+        os_free(event_too_long_id);
     }
 
     free(cache_id);
@@ -1462,9 +1459,9 @@ void clean_rules(void) {
     char *real_path = NULL;
     int i;
 
-    audit_thread_active = 0;
-
     w_mutex_lock(&audit_mutex);
+
+    audit_thread_active = 0;
     mdebug2(FIM_AUDIT_DELETE_RULE);
 
     for (i = 0; syscheck.dir[i]; i++) {

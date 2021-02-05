@@ -58,73 +58,60 @@ int realtime_start() {
 }
 
 /* Add a directory to real time checking */
-int realtime_adddir(const char *dir, int whodata, int followsl) {
-    if (whodata && audit_thread_active) {
-        // Save dir into saved rules list
-        w_mutex_lock(&audit_mutex);
-
-        if(!W_Vector_insert_unique(audit_added_dirs, dir)){
-            mdebug1(FIM_WHODATA_NEWDIRECTORY, dir);
-        }
-
-        w_mutex_unlock(&audit_mutex);
-
-    }
-    else {
-        if (!syscheck.realtime) {
-            if (realtime_start() < 0 ) {
-                return (-1);
-            }
-        }
-
-        /* Check if it is ready to use */
-        if (syscheck.realtime->fd < 0) {
+int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, int followsl) {
+    if (!syscheck.realtime) {
+        if (realtime_start() < 0 ) {
             return (-1);
         }
-        else {
-            int wd = 0;
+    }
 
-            wd = inotify_add_watch(syscheck.realtime->fd,
-                                   dir,
-                                   (0 == followsl) ? (REALTIME_MONITOR_FLAGS|IN_DONT_FOLLOW) : REALTIME_MONITOR_FLAGS);
-            if (wd < 0) {
-                if (errno == 28) {
-                    merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
-                }
-                else {
-                    mdebug1(FIM_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
-                }
+    /* Check if it is ready to use */
+    if (syscheck.realtime->fd < 0) {
+        return (-1);
+    }
+    else {
+        int wd = 0;
+
+        wd = inotify_add_watch(syscheck.realtime->fd,
+                                dir,
+                                (0 == followsl) ? (REALTIME_MONITOR_FLAGS|IN_DONT_FOLLOW) : REALTIME_MONITOR_FLAGS);
+        if (wd < 0) {
+            if (errno == 28) {
+                merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, wd, errno);
             }
             else {
-                char wdchar[33];
-                char *data;
-                int retval;
-                snprintf(wdchar, 33, "%d", wd);
-                os_strdup(dir, data);
-
-                w_mutex_lock(&syscheck.fim_realtime_mutex);
-                if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
-                    if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
-                        os_free(data);
-                        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
-                    }
-                    else if (retval == 1) {
-                        mdebug2(FIM_REALTIME_HASH_DUP, data);
-                        os_free(data);
-                    }
-
-                    mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
-                }
-                else {
-                    if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
-                        merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
-                        os_free(data);
-                        w_mutex_unlock(&syscheck.fim_realtime_mutex);
-                        return (-1);
-                    }
-                }
-                w_mutex_unlock(&syscheck.fim_realtime_mutex);
+                mdebug1(FIM_INOTIFY_ADD_WATCH, dir, wd, errno, strerror(errno));
             }
+        }
+        else {
+            char wdchar[33];
+            char *data;
+            int retval;
+            snprintf(wdchar, 33, "%d", wd);
+            os_strdup(dir, data);
+
+            w_mutex_lock(&syscheck.fim_realtime_mutex);
+            if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
+                if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+                    os_free(data);
+                    merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+                }
+                else if (retval == 1) {
+                    mdebug2(FIM_REALTIME_HASH_DUP, data);
+                    os_free(data);
+                }
+
+                mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
+            }
+            else {
+                if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
+                    merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
+                    os_free(data);
+                    w_mutex_unlock(&syscheck.fim_realtime_mutex);
+                    return (-1);
+                }
+            }
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
         }
     }
 
@@ -373,7 +360,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 {
     int lcount;
     size_t offset = 0;
-    char wdchar[260 + 1];
+    char wdchar[260 + 1] = {0};
     char final_path[MAX_LINE + 1];
     win32rtfim *rtlocald;
     PFILE_NOTIFY_INFORMATION pinfo;
@@ -398,7 +385,6 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     }
 
     /* Get hash to parse the data */
-    wdchar[260] = '\0';
     snprintf(wdchar, 260, "%s", (char*)overlap->hEvent);
     rtlocald = OSHash_Get(syscheck.realtime->dirtb, wdchar);
     if (rtlocald == NULL) {

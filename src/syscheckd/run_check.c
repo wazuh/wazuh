@@ -485,12 +485,7 @@ int fim_whodata_initialize() {
                 syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
                 syscheck.realtime_change = 1;
             }
-#else // Whodata on Linux
-            char *real_path = fim_get_real_path(i);
-            realtime_adddir(real_path, i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
-            free(real_path);
 #endif
-
         }
     }
 
