@@ -279,12 +279,6 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         return OS_INVALID;
     }
 
-    /* Only secure connections support TCP and UDP at the same time */
-    if (logr->conn[pl] != SECURE_CONN && (logr->proto[pl] == (REMOTED_PROTO_TCP | REMOTED_PROTO_UDP))) {
-        mwarn(REMOTED_PROTO_ONLY_SECURE);
-        logr->proto[pl] = REMOTED_PROTO_DEFAULT;
-    }
-
     return (0);
 }
 
