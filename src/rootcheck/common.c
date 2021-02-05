@@ -275,7 +275,7 @@ int pt_check_negate(const char *pattern)
 /* Checks if the specific pattern is present on str.
  * A pattern can be preceded by:
  *                                =: (for equal) - default - strcasecmp
- *                                r: (for ossec regexes)
+ *                                r: (for OS_Regex)
  *                                >: (for strcmp greater)
  *                                <: (for strcmp  lower)
  *
