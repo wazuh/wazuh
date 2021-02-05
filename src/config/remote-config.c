@@ -255,17 +255,16 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     if (logr->proto[pl] == 0) {
         logr->proto[pl] = REMOTED_PROTO_DEFAULT;
     }
+    /* Only secure connections support TCP and UDP at the same time */
+    else if (logr->conn[pl] != SECURE_CONN && (logr->proto[pl] == (REMOTED_PROTO_TCP | REMOTED_PROTO_UDP))) {
+        mwarn(REMOTED_PROTO_ONLY_SECURE, REMOTED_PROTO_DEFAULT_STR);
+        logr->proto[pl] = REMOTED_PROTO_DEFAULT;
+    }
 
     /* Queue_size is only for secure connections */
     if (logr->conn[pl] == SYSLOG_CONN && defined_queue_size) {
         merror("Invalid option <%s> for Syslog remote connection.", xml_queue_size);
         return OS_INVALID;
-    }
-
-    /* Only secure connections support TCP and UDP at the same time */
-    if (logr->conn[pl] != SECURE_CONN && (logr->proto[pl] == (REMOTED_PROTO_TCP | REMOTED_PROTO_UDP))) {
-        mwarn(REMOTED_PROTO_ONLY_SECURE);
-        logr->proto[pl] = REMOTED_PROTO_DEFAULT;
     }
 
     return (0);
@@ -280,7 +279,7 @@ static int w_remoted_get_proto(const char * content) {
     int retval = 0;
 
     if (proto_arr = OS_StrBreak(',', content, max_array), proto_arr == NULL) {
-        mwarn(REMOTED_PROTO_ERROR);
+        mwarn(REMOTED_PROTO_ERROR, REMOTED_PROTO_DEFAULT_STR);
         return REMOTED_PROTO_DEFAULT;
     }
 
