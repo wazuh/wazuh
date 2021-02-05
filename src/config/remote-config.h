@@ -23,6 +23,11 @@
 #define REMOTED_PROTO_DEFAULT_STR  (REMOTED_PROTO_DEFAULT == REMOTED_PROTO_TCP \
                               ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR) ///< String to represent default protocol
 
+#define REMOTED_PROTO_TCP_STR "TCP"
+#define REMOTED_PROTO_UDP_STR "UDP"
+#define REMOTED_PROTO_DEFAULT_STR  (REMOTED_PROTO_DEFAULT == REMOTED_PROTO_TCP \
+                                   ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR)
+
 #include "shared.h"
 #include "global-config.h"
 
