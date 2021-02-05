@@ -3,17 +3,136 @@
 <!-- Modify it at your will. -->
 <!-- Copyright (C) 2015-2020, Wazuh Inc. -->
 
-<!-- Example -->
-<group name="local,syslog,sshd,">
-
-  <!--
-  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2
-  -->
-  <rule id="100001" level="5">
-    <if_sid>5716</if_sid>
-    <srcip>1.1.1.1</srcip>
-    <description>sshd: authentication failed from IP 1.1.1.1.</description>
-    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
+<group name="windows, sysmon, sysmon_process-anomalies,">
+  <rule id="100001" level="12">
+    <if_group>sysmon_event1</if_group>
+    <!-- <field name="win.eventdata.image">mimikatz.exe</field> -->
+    <description>Sysmon - Process creation</description>
   </rule>
 
+  <rule id="100002" level="12">
+    <if_group>sysmon_event2</if_group>
+    <description>Sysmon - A process changed a file creation time</description>
+  </rule>
+
+  <rule id="100003" level="12">
+    <if_group>sysmon_event3</if_group>
+    <field name="win.eventdata.initiated">true</field>
+    <description>Sysmon - Network connection initiated</description>
+  </rule>
+
+  <rule id="100004" level="12">
+    <if_group>sysmon_event4</if_group>
+    <description>Sysmon - Sysmon service state changed</description>
+  </rule>
+
+  <rule id="100005" level="12">
+    <if_group>sysmon_event5</if_group>
+    <description>Sysmon - Process terminated</description>
+  </rule>
+
+  <rule id="100006" level="12">
+    <if_group>sysmon_event6</if_group>
+    <description>Sysmon - Driver loaded</description>
+  </rule>
+
+  <rule id="100007" level="12">
+    <if_group>sysmon_event7</if_group>
+    <description>Sysmon - Image loaded</description>
+  </rule>
+
+  <rule id="100008" level="12">
+    <if_group>sysmon_event8</if_group>
+    <description>Sysmon - CreateRemoteThread: A process creates a thread in another process</description>
+  </rule>
+
+  <rule id="100009" level="12">
+    <if_group>sysmon_event9</if_group>
+    <description>Sysmon - RawAccessRead: A process conducts reading operations from the drive using the \\.\ denotation.</description>
+  </rule>
+
+  <rule id="100010" level="12">
+    <if_group>sysmon_event_10</if_group>
+    <description>Sysmon - ProcessAccess: A process opens another process</description>
+  </rule>
+
+  <rule id="100011" level="12">
+    <if_group>sysmon_event_11</if_group>
+    <description>Sysmon - FileCreate: A file is created or overwritten</description>
+  </rule>
+
+  <rule id="100012" level="12">
+    <if_group>sysmon_event_12</if_group>
+    <description>Sysmon - RegistryEvent (Object create and delete)</description>
+  </rule>
+
+  <rule id="100013" level="12">
+    <if_group>sysmon_event_13</if_group>
+    <description>Sysmon - RegistryEvent (Value Set)</description>
+  </rule>
+
+  <rule id="100014" level="12">
+    <if_group>sysmon_event_14</if_group>
+    <description>Sysmon - RegistryEvent (Key and Value Rename)</description>
+  </rule>
+
+  <rule id="100015" level="12">
+    <if_group>sysmon_event_15</if_group>
+    <description>Sysmon - FileCreateStreamHash: A named file stream is created</description>
+  </rule>
+
+  <!-- <rule id="100016" level="12">
+    <if_group>sysmon_event_16</if_group>
+    <description>Sysmon - ServiceConfigurationChange: Config of Sysmon is updated</description>
+  </rule> -->
+
+  <!-- <rule id="100017" level="12">
+    <if_group>sysmon_event_17</if_group>
+    <description>Sysmon - PipeEvent (Pipe Created): A named pipe is created</description>
+  </rule>
+
+  <rule id="100018" level="12">
+    <if_group>sysmon_event_18</if_group>
+    <description>Sysmon - PipeEvent (Pipe Connected): A named pipe connection is made between a client and a server</description>
+  </rule> -->
+
+  <!-- <rule id="100019" level="12">
+    <if_group>sysmon_event_19</if_group>
+    <description>Sysmon - WmiEvent (WmiEventFilter activity detected)</description>
+  </rule>
+
+  <rule id="100020" level="12">
+    <if_group>sysmon_event_20</if_group>
+    <description>Sysmon - WmiEvent (WmiEventConsumer activity detected)</description>
+  </rule>
+
+  <rule id="100021" level="12">
+    <if_group>sysmon_event_21</if_group>
+    <description>Sysmon - WmiEvent (WmiEventConsumerToFilter activity detected)</description>
+  </rule> -->
+
+  <!-- <rule id="100022" level="12">
+    <if_group>sysmon_event_22</if_group>
+    <description>Sysmon - DNSEvent (DNS query): A process executes a DNS query</description>
+  </rule>
+
+  <rule id="100023" level="12">
+    <if_group>sysmon_event_23</if_group>
+    <description>Sysmon - FileDelete (A file delete was detected)</description>
+  </rule>
+
+  <rule id="100024" level="12">
+    <if_group>sysmon_event_24</if_group>
+    <description>Sysmon - ClipboardChange (New content in the clipboard)</description>
+  </rule>
+
+  <rule id="100025" level="12">
+    <if_group>sysmon_event_25</if_group>
+    <description>Sysmon - ProcessTampering (Process image change)</description>
+  </rule>
+
+  <rule id="100255" level="12">
+    <if_group>sysmon_event_255</if_group>
+    <description>Sysmon - An error occurred within Sysmon</description>
+  </rule> -->
 </group>
