@@ -30,13 +30,15 @@ extern void mock_assert(const int result, const char* const expression,
 
 static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
     int sock;
+    bool is_wmodule = false;
 
     if (strncmp(ctx->component, "syscheck", 8) == 0 ||
         strncmp(ctx->component, "fim_file", 8) == 0) {
         sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
     } else if (strncmp(ctx->component, "syscollector", 12) == 0) {
         sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
-    } else {
+        is_wmodule = true;
+    }else {
         merror("dbsync: unknown location '%s'", ctx->component);
         return;
     }
@@ -46,7 +48,16 @@ static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
         return;
     }
 
-    OS_SendSecureTCP(sock, strlen(query), query);
+
+    if (is_wmodule) {
+        char * buffer;
+        os_malloc(OS_MAXSTR, buffer);
+        snprintf(buffer, OS_MAXSTR, "%s %s", ctx->component, query);
+        OS_SendSecureTCP(sock, strlen(query), query);
+        os_free(buffer);
+    } else {
+        OS_SendSecureTCP(sock, strlen(query), query);
+    }
     close(sock);
 }
 
