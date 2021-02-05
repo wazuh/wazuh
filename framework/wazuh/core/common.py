@@ -5,11 +5,11 @@
 import json
 import os
 from contextvars import ContextVar
+from copy import deepcopy
 from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
-from typing import Dict
-from copy import deepcopy
+from typing import Dict, Any
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))
@@ -117,7 +117,6 @@ database_limit = 500
 maximum_database_limit = 1000
 limit_seconds = 1800  # 600*3
 
-
 _ossec_uid = None
 _ossec_gid = None
 
@@ -142,30 +141,41 @@ cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 _context_cache = dict()
 
 
-def context_cached(key):
-    """Saves the result of the decorated function in a cache, so next calls
-    to it just returns the previous result saving time and resources. The cache gets
+def context_cached(key: str = '') -> Any:
+    """Save the result of the decorated function in a cache.
+
+    Next calls to the decorated function returns the saved result saving time and resources. The cache gets
     invalidated at the end of the request.
 
-    :param key: unique identifier for the cache entry
-    :return: The result of the first call to the decorated function
-    """
-    if key not in _context_cache:
-        _context_cache[key] = ContextVar(key, default=None)
+    Parameters
+    ----------
+    key : str
+        Unique identifier for the cache entry.
 
-    def decorator(func):
+    Returns
+    -------
+    Any
+        The result of the first call to the decorated function.
+    """
+
+    def decorator(func) -> Any:
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            if _context_cache[key].get() is None:
+        def wrapper(*args, **kwargs) -> Any:
+            cached_key = json.dumps({'key': key, 'args': args, 'kwargs': kwargs})
+            if cached_key not in _context_cache:
+                _context_cache[cached_key] = ContextVar(cached_key, default=None)
+            if _context_cache[cached_key].get() is None:
                 result = func(*args, **kwargs)
-                _context_cache[key].set(result)
-            return deepcopy(_context_cache[key].get())
+                _context_cache[cached_key].set(result)
+            return deepcopy(_context_cache[cached_key].get())
+
         return wrapper
+
     return decorator
 
 
-def reset_context_cache():
-    """Reset context cache
+def reset_context_cache() -> None:
+    """Reset context cache.
     """
 
     for context_var in _context_cache.values():
