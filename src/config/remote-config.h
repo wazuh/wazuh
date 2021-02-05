@@ -18,6 +18,11 @@
 #define REMOTED_PROTO_UDP     (0x1 << 1)
 #define REMOTED_PROTO_DEFAULT REMOTED_PROTO_TCP
 
+#define REMOTED_PROTO_TCP_STR "TCP"
+#define REMOTED_PROTO_UDP_STR "UDP"
+#define REMOTED_PROTO_DEFAULT_STR  (REMOTED_PROTO_DEFAULT == REMOTED_PROTO_TCP \
+                                   ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR)
+
 #include "shared.h"
 #include "global-config.h"
 
