@@ -32,9 +32,10 @@ static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
     int sock;
 
     if (strncmp(ctx->component, "syscheck", 8) == 0 ||
-        strncmp(ctx->component, "fim_file", 8) == 0 ||
-        strncmp(ctx->component, "syscollector", 12) == 0) {
+        strncmp(ctx->component, "fim_file", 8) == 0) {
         sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
+    } else if (strncmp(ctx->component, "syscollector", 12) == 0) {
+        sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
     } else {
         merror("dbsync: unknown location '%s'", ctx->component);
         return;
