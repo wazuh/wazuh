@@ -126,6 +126,7 @@ os_pidfile = os.path.join('var', 'run')
 analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-analysisd.state')
 remoted_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-remoted.state')
 lists_path = os.path.join(ossec_path, 'etc', 'lists')
+ar_conf_path = os.path.join(ossec_path, 'etc', 'shared', 'ar.conf')
 
 # Queues
 ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')
@@ -163,9 +164,16 @@ database_limit = 500
 maximum_database_limit = 1000
 limit_seconds = 1800  # 600*3
 
-
 _ossec_uid = None
 _ossec_gid = None
+
+# Version variables (legacy, required, etc)
+AR_LEGACY_VERSION = 'Wazuh v4.2.0'
+ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
+
+# Command variables
+CHECK_CONFIG_COMMAND = 'check-manager-configuration'
+RESTART_WAZUH_COMMAND = 'restart-wazuh'
 
 
 def ossec_uid():
@@ -206,7 +214,9 @@ def context_cached(key):
                 result = func(*args, **kwargs)
                 _context_cache[key].set(result)
             return deepcopy(_context_cache[key].get())
+
         return wrapper
+
     return decorator
 
 

@@ -1271,6 +1271,12 @@ components:
           description: "Whether the specified command is a custom command or not"
           type: boolean
           default: false
+        alert:
+          type: object
+          properties:
+            data:
+              description: "Alert data depending on the AR executed"
+              type: object
       required:
         - command
 

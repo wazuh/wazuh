@@ -758,7 +758,7 @@ AddCAStore()
 AddPFTable()
 {
     #default pf rules
-    TABLE="ossec_fwtable"
+    TABLE="wazuh_fwtable"
 
     # Add table to the first line
     echo ""
@@ -1035,7 +1035,7 @@ main()
 
     if [ "X${update_only}" = "Xyes" ]; then
         # Message for the update
-        if [ "X`sh ./src/init/fw-check.sh`" = "XPF" -a "X${ACTIVERESPONSE}" = "Xyes" ]; then
+        if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
             if [ "X$USER_NO_STOP" = "X" ]; then
                 read ANY
             fi
@@ -1063,7 +1063,7 @@ main()
 
 
     # PF firewall message
-    if [ "X`sh ./src/init/fw-check.sh`" = "XPF" -a "X${ACTIVERESPONSE}" = "Xyes" ]; then
+    if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
         AddPFTable
     fi
 

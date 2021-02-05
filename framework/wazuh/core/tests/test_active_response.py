@@ -13,23 +13,54 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.exception import WazuhError
         from wazuh.core import active_response
 
-
 # Variables
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
 
 
 # Functions
 
-def agent_info(expected_exception):
-    """Returns dict to cause or not a exception code 1651 on active_response.send_command()."""
+def agent_info(expected_exception: int = None) -> dict:
+    """Return dict to cause or not a exception code 1651 on active_response.send_command().
+
+    Parameters
+    ----------
+    expected_exception : int
+        Test expected exception with the parameters given.
+
+    Returns
+    -------
+    dict
+        Agent basic information with status depending on the expected_exception.
+    """
     if expected_exception == 1651:
         return {'status': 'random'}
     else:
         return {'status': 'active'}
 
 
+def agent_info_exception_and_version(expected_exception: int = None, version: str = '') -> dict:
+    """Return dict with status and version to cause or not a exception code 1651 on active_response.send_command().
+
+    Parameters
+    ----------
+    expected_exception : int
+        Test expected exception with the parameters given.
+    version : str
+        Agent version to return in the agent basic information dictionary.
+
+    Returns
+    -------
+    dict
+        Agent basic information with status depending on the expected_exception.
+    """
+    if expected_exception == 1651:
+        return {'status': 'random', 'version': version} if version else {'status': 'random'}
+    else:
+        return {'status': 'active', 'version': version} if version else {'status': 'active'}
+
+
 def agent_config(expected_exception):
-    """Returns dict to cause or not a exception code 1750 on active_response.send_command()."""
+    """Return dict to cause or not a exception code 1750 on active_response.send_command()."""
     if expected_exception == 1750:
         return {'active-response': {'disabled': 'yes'}}
     else:
@@ -42,13 +73,13 @@ def agent_config(expected_exception):
     (1650, None, [], False),
     (1652, 'random', [], False),
     (1652, 'invalid_cmd', [], False),
-    (None, 'restart-ossec0', [], False),
-    (None, 'restart-ossec0', [], True),
-    (None, 'restart-ossec0', ["arg1", "arg2"], False)
+    (None, 'restart-wazuh0', [], False),
+    (None, 'restart-wazuh0', [], True),
+    (None, 'restart-wazuh0', ["arg1", "arg2"], False)
 ])
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
 def test_create_message(expected_exception, command, arguments, custom):
-    """Checks message returned is correct
+    """Check if the returned message is correct.
 
     Checks if message returned by create_message(...) contains the command, arguments and '!' symbol
     when it is needed.
@@ -76,7 +107,45 @@ def test_create_message(expected_exception, command, arguments, custom):
             assert '!' in ret, f'! symbol not being added when custom command'
 
 
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
+@pytest.mark.parametrize('expected_exception, command, arguments, alert', [
+    (1650, None, [], None),
+    (None, 'restart-wazuh0', [], None),
+    (None, 'restart-wazuh0', [], None),
+    (None, 'restart-wazuh0', ["arg1", "arg2"], None),
+    (None, 'custom-ar', ["arg1", "arg2"], {"data": {"srcip": "1.1.1.1"}})
+])
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+def test_create_json_message(expected_exception, command, arguments, alert):
+    """Check if the returned json message is correct.
+
+    Checks if the json message returned by create_json_message(...) contains the
+    appropriate json ar message structure.
+
+    Parameters
+    ----------
+    expected_exception : str
+        Exception code expected when calling create_message.
+    command : str
+        Command to be introduced in the message.
+    arguments : list
+        Arguments for the command/script.
+    alert : dict
+        Alert data for the AR message.
+    """
+    if expected_exception:
+        with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
+            active_response.create_json_message(command=command, arguments=arguments, alert=alert)
+    else:
+        ret = active_response.create_json_message(command=command, arguments=arguments, alert=alert)
+        assert ret["version"] == 1, f'Wrong message version'
+        assert command in ret["command"], f'Command not being returned'
+        if arguments:
+            assert (arg in ret["parameters"]["extra_args"] for arg in arguments), f'Arguments not being added'
+        if alert:
+            assert alert == ret["parameters"]["alert"], f'Alert information not being added'
+
+
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
 def test_get_commands():
     """
     Checks if get_commands method returns a list
@@ -101,33 +170,3 @@ def test_shell_escape(command, expected_escape):
     """
     ret = active_response.shell_escape(command)
     assert ret.count('\\') == expected_escape, f'Number of escaped symbols do not match'
-
-
-@pytest.mark.parametrize('expected_exception, command, agent_id', [
-    (1651, 'random', 0),
-    (1750, 'random', 0),
-    (None, 'random', 5)
-])
-def test_send_command(expected_exception, command, agent_id):
-    """Checks if send_command method is correct
-
-    Verify that send_command raise specific exceptions in some cases and that arguments are correct.
-
-    Parameters
-    ----------
-    expected_exception : int
-        Exception code expected when calling send_command.
-    command : str
-        Command to be introduced in the message.
-    agent_id : int
-        ID number to be set on the agent.
-    """
-    with patch('wazuh.core.agent.Agent.get_basic_information', return_value=agent_info(expected_exception)):
-        with patch('wazuh.core.agent.Agent.getconfig', return_value=agent_config(expected_exception)):
-            if expected_exception:
-                with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
-                    active_response.send_command(command, MagicMock(), agent_id)
-            else:
-                mock_oq = MagicMock()
-                active_response.send_command(command, mock_oq, agent_id)
-                mock_oq.send_msg_to_agent.assert_called_with(agent_id=agent_id, msg=command, msg_type='ar-message')
