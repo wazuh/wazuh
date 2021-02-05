@@ -737,7 +737,11 @@ int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
         sqlite3_bind_null(stmt, 5);
     }
 
-    sqlite3_bind_double(stmt, 6, cpu_mhz);
+    if (cpu_mhz > 0) {
+        sqlite3_bind_double(stmt, 6, cpu_mhz);
+    } else {
+        sqlite3_bind_null(stmt, 6);
+    }
 
     if (ram_total > 0) {
         sqlite3_bind_int64(stmt, 7, ram_total);
