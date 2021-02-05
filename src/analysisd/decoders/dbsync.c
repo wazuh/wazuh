@@ -53,7 +53,7 @@ static void dispatch_send_local(dbsync_context_t * ctx, const char * query) {
         char * buffer;
         os_malloc(OS_MAXSTR, buffer);
         snprintf(buffer, OS_MAXSTR, "%s %s", ctx->component, query);
-        OS_SendSecureTCP(sock, strlen(query), query);
+        OS_SendSecureTCP(sock, strlen(buffer), buffer);
         os_free(buffer);
     } else {
         OS_SendSecureTCP(sock, strlen(query), query);
