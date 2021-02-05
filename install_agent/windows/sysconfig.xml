@@ -1,0 +1,44 @@
+<Sysmon schemaversion="4.50">
+   <HashAlgorithms>md5</HashAlgorithms>
+   <DnsLookup>True</DnsLookup>
+   <EventFiltering>
+      <!--SYSMON EVENT ID 1 : PROCESS CREATION-->
+      <ProcessCreate onmatch="exclude" />
+      <!--SYSMON EVENT ID 2 : FILE CREATION TIME RETROACTIVELY CHANGED IN THE FILESYSTEM-->
+      <FileCreateTime onmatch="exclude" />
+      <!--SYSMON EVENT ID 3 : NETWORK CONNECTION INITIATED-->
+      <NetworkConnect onmatch="exclude" />
+      <!--SYSMON EVENT ID 4 : RESERVED FOR SYSMON STATUS MESSAGES, THIS LINE IS INCLUDED FOR DOCUMENTATION PURPOSES ONLY-->
+      <!--SYSMON EVENT ID 5 : PROCESS ENDED-->
+      <ProcessTerminate onmatch="exclude" />
+      <!--SYSMON EVENT ID 6 : DRIVER LOADED INTO KERNEL-->
+      <DriverLoad onmatch="exclude" />
+      <!--SYSMON EVENT ID 7 : DLL (IMAGE) LOADED BY PROCESS-->
+      <ImageLoad onmatch="exclude" />
+      <!--SYSMON EVENT ID 8 : REMOTE THREAD CREATED-->
+      <CreateRemoteThread onmatch="exclude" />
+      <!--SYSMON EVENT ID 9 : RAW DISK ACCESS-->
+      <RawAccessRead onmatch="exclude" />
+      <!--SYSMON EVENT ID 10 : INTER-PROCESS ACCESS-->
+      <ProcessAccess onmatch="include" />
+      <!--SYSMON EVENT ID 11 : FILE CREATED-->
+      <FileCreate onmatch="exclude" />
+      <!--SYSMON EVENT ID 12 & 13 & 14 : REGISTRY MODIFICATION-->
+      <RegistryEvent onmatch="include" />
+      <!--SYSMON EVENT ID 15 : ALTERNATE DATA STREAM CREATED-->
+      <FileCreateStreamHash onmatch="exclude" />
+      <!--SYSMON EVENT ID 16 : SYSMON CONFIGURATION CHANGE (CANNOT BE FILTERED)-->
+      <!--SYSMON EVENT ID 17 & 18 : NAMED PIPE CREATED OR CONNECTED-->
+      <PipeEvent onmatch="exclude" />
+      <!--SYSMON EVENT ID 19 & 20 & 21 : WINDOWS MANAGEMENT INSTRUMENTATION-->
+      <WmiEvent onmatch="exclude" />
+      <!--SYSMON EVENT ID 22 : DNS QUERY-->
+      <DnsQuery onmatch="exclude" />
+      <!--SYSMON EVENT ID 23 : FILE DELETION-->
+      <FileDelete onmatch="exclude" />
+      <!--SYSMON EVENT ID 24 : NEW CONTENT IN THE CLIPBOARD-->
+      <ClipboardChange onmatch="exclude" />
+      <!--SYSMON EVENT ID 25 : PROCESS IMAGE IS CHANGED FROM AN EXTERNAL SOURCE-->
+      <ProcessTampering onmatch="exclude" />
+   </EventFiltering>
+</Sysmon>
