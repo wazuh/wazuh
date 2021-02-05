@@ -6,6 +6,7 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+INSTALLATION_PATH=${1}
 SERVICE=/Library/LaunchDaemons/com.wazuh.agent.plist
 STARTUP=/Library/StartupItems/WAZUH/StartupParameters.plist
 LAUNCHER_SCRIPT=/Library/StartupItems/WAZUH/launcher.sh
@@ -41,22 +42,18 @@ launchctl load $SERVICE
 echo '
 #!/bin/sh
 . /etc/rc.common
-. /etc/ossec-init.conf
-if [ "X${DIRECTORY}" = "X" ]; then
-    DIRECTORY="/Library/Ossec"
-fi
 
 StartService ()
 {
-        ${DIRECTORY}/bin/wazuh-control start
+        '${INSTALLATION_PATH}'/bin/wazuh-control start
 }
 StopService ()
 {
-        ${DIRECTORY}/bin/wazuh-control stop
+        '${INSTALLATION_PATH}'/bin/wazuh-control stop
 }
 RestartService ()
 {
-        ${DIRECTORY}/bin/wazuh-control restart
+        '${INSTALLATION_PATH}'/bin/wazuh-control restart
 }
 RunService "$1"
 ' > $STARTUP_SCRIPT
@@ -96,19 +93,13 @@ chmod u=rw-,go=r-- $STARTUP
 
 echo '#!/bin/sh
 
-. /etc/ossec-init.conf
-
-if [ "X${DIRECTORY}" = "X" ]; then
-    DIRECTORY="/Library/Ossec"
-fi
-
 capture_sigterm() {
-    ${DIRECTORY}/bin/wazuh-control stop
+    '${INSTALLATION_PATH}'/bin/wazuh-control stop
     exit $?
 }
 
-if ! ${DIRECTORY}/bin/wazuh-control start; then
-    ${DIRECTORY}/bin/wazuh-control stop
+if ! '${INSTALLATION_PATH}'/bin/wazuh-control start; then
+    '${INSTALLATION_PATH}'/bin/wazuh-control stop
 fi
 
 while : ; do

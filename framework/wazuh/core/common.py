@@ -4,12 +4,14 @@
 
 import json
 import os
+import subprocess
 from contextvars import ContextVar
 from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict
 from copy import deepcopy
+from functools import lru_cache
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))
@@ -23,6 +25,7 @@ except (FileNotFoundError, PermissionError):
     }
 
 
+@lru_cache(maxsize=None)
 def find_wazuh_path():
     """
     Gets the path where Wazuh is installed dinamically
@@ -51,6 +54,49 @@ def find_wazuh_path():
         pass
 
     return wazuh_path
+
+
+def call_wazuh_control(option) -> str:
+    wazuh_control = os.path.join(find_wazuh_path(), "bin", "wazuh-control")
+    try:
+        proc = subprocess.Popen([wazuh_control, option], stdout=subprocess.PIPE)
+        (stdout, stderr) = proc.communicate()
+        return stdout.decode()
+    except:
+        return None
+
+
+def get_wazuh_info(field) -> str:
+    wazuh_info = call_wazuh_control("info")
+    if not wazuh_info:
+        return "ERROR"
+
+    if not field:
+        return wazuh_info
+
+    env_variables = wazuh_info.rsplit("\n")
+    env_variables.remove("")
+    wazuh_env_vars = dict()
+    for env_variable in env_variables:
+        key, value = env_variable.split("=")
+        wazuh_env_vars[key] = value.replace("\"", "")
+
+    return wazuh_env_vars[field]
+
+
+@lru_cache(maxsize=None)
+def get_wazuh_version() -> str:
+    return get_wazuh_info("WAZUH_VERSION")
+
+
+@lru_cache(maxsize=None)
+def get_wazuh_revision() -> str:
+    return get_wazuh_info("WAZUH_REVISION")
+
+
+@lru_cache(maxsize=None)
+def get_wazuh_type() -> str:
+    return get_wazuh_info("WAZUH_TYPE")
 
 
 ossec_path = find_wazuh_path()

@@ -178,4 +178,10 @@ WazuhUpgrade()
     rm -f $DIRECTORY/active-response/bin/kaspersky.sh
     rm -f $DIRECTORY/active-response/bin/ossec-slack.sh
     rm -f $DIRECTORY/active-response/bin/ossec-tweeter.sh
+
+    # Remove deprecated ossec-init.conf file and its link
+    if [ -f /etc/ossec-init.conf ]; then
+        rm -f $DIRECTORY/etc/ossec-init.conf
+        rm -f /etc/ossec-init.conf
+    fi
 }

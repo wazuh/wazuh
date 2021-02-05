@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is free software; you can redistribute it
@@ -308,19 +308,12 @@ SetHeaders()
 }
 
 ##########
-# Generate the ossec-init.conf
+# GenerateService() $1=template
 ##########
-GenerateInitConf()
+GenerateService()
 {
-    NEWINIT="./ossec-init.conf.temp"
-    echo "DIRECTORY=\"${INSTALLDIR}\"" > ${NEWINIT}
-    echo "NAME=\"${NAME}\"" >> ${NEWINIT}
-    echo "VERSION=\"${VERSION}\"" >> ${NEWINIT}
-    echo "REVISION=\"${REVISION}\"" >> ${NEWINIT}
-    echo "DATE=\"`date`\"" >> ${NEWINIT}
-    echo "TYPE=\"${INSTYPE}\"" >> ${NEWINIT}
-    cat "$NEWINIT"
-    rm "$NEWINIT"
+    SERVICE_TEMPLATE=./src/init/templates/${1}
+    sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
 }
 
 ##########

@@ -18,21 +18,19 @@
 #
 ### END INIT INFO
 
-. /etc/ossec-init.conf
-if [ "X${DIRECTORY}" = "X" ]; then
-    DIRECTORY="/var/ossec"
-fi
+WAZUH_HOME=WAZUH_HOME_TMP
+WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
 
 start() {
-    ${DIRECTORY}/bin/wazuh-control start
+    ${WAZUH_CONTROL} start
 }
 
 stop() {
-    ${DIRECTORY}/bin/wazuh-control stop
+    ${WAZUH_CONTROL} stop
 }
 
 status() {
-    ${DIRECTORY}/bin/wazuh-control status
+    ${WAZUH_CONTROL} status
 }
 
 case "$1" in

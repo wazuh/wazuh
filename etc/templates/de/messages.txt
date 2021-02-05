@@ -108,6 +108,7 @@ presskey="Drücken Sie eine Taste"
 
 # Update
 wanttoupdate="Wazuh ist bereits installiert. Möchten Sie es updaten?"
+mustuninstall="Die Installation kann nicht fortgesetzt werden, ohne alte Versionen zu deinstallieren. Verlassen."
 unabletoupdate="Update nicht möglich. Es muss eine Neuinstallation durchgeführt werden."
 updatecompleted="Update durchgeführt."
 updatefailed="Update fehlgeschlagen."

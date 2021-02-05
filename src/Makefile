@@ -1197,7 +1197,7 @@ wazuh_modules/%.o: wazuh_modules/%.c
 
 ifeq (${TARGET},winagent)
 wazuh_modules/syscollector/syscollector_win_ext.dll: wazuh_modules/syscollector/syscollector_win_ext.o
-	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS) $(JSON_LIB) -liphlpapi -lws2_32
+	${OSSEC_SHARED} ${OSSEC_LDFLAGS} $^ -o $@ $(OSSEC_LIBS) $(JSON_LIB) -liphlpapi -lws2_32 -static-libgcc
 endif # DLL for Windows
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))

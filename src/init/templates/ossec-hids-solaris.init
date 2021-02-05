@@ -16,15 +16,12 @@
 LANG=C
 export $LANG
 
-. /etc/ossec-init.conf
-
-if [ "X${DIRECTORY}" = "X" ]; then
-   DIRECTORY="/var/ossec"
-fi
+WAZUH_HOME=WAZUH_HOME_TMP
+WAZUH_CONTROL="$WAZUH_HOME/bin/wazuh-control"
 
 start() {
        echo -n "Starting Wazuh: "
-       ${DIRECTORY}/bin/wazuh-control start > /dev/null
+       ${WAZUH_CONTROL} start > /dev/null
        RETVAL=$?
        if [ $RETVAL -eq 0 ]; then
                echo success
@@ -37,7 +34,7 @@ start() {
 
 stop() {
        echo -n "Stopping Wazuh: "
-       ${DIRECTORY}/bin/wazuh-control stop > /dev/null
+       ${WAZUH_CONTROL} stop > /dev/null
        RETVAL=$?
        if [ $RETVAL -eq 0 ]; then
                echo success
@@ -49,7 +46,7 @@ stop() {
 }
 
 status() {
-       ${DIRECTORY}/bin/wazuh-control status
+       ${WAZUH_CONTROL} status
 }
 
 
