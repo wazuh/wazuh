@@ -4313,12 +4313,13 @@ components:
     stats_component:
       in: path
       name: component
-      description: "Selected stats component"
+      description: "Selected component stats"
       required: true
       schema:
         type: string
         enum:
           - logcollector
+          - agent
     status:
       in: query
       name: status
