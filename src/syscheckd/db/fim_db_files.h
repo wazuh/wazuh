@@ -79,7 +79,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved);
 
 /**
- * @brief Delete entry using file path.
+ * @brief Delete entry from the BD using file path.
  *
  * @param fim_sql FIM database struct.
  * @param entry Entry data to be removed.
