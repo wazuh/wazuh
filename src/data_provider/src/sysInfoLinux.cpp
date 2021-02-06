@@ -210,20 +210,17 @@ void SysInfo::getMemory(nlohmann::json& info) const
 static nlohmann::json getRpmInfo()
 {
     nlohmann::json ret;
-    auto rawData{ Utils::exec("rpm -qai") };
+    auto rawData{ Utils::exec("rpm -qa --qf '%{name}|%{arch}|%{summary}|%{size}|%{epoch}|%{release}|%{version}|%{vendor}|%{installtime:date}|%{group}|\n'")};
     if (!rawData.empty())
     {
-        std::vector<std::string> packages;
-        auto pos{rawData.rfind("Name")};
-        while(pos != std::string::npos)
+        const auto rows { Utils::split(rawData,'\n') };
+        for (auto row : rows)
         {
-            const auto& package{ PackageLinuxHelper::parseRpm(rawData.substr(pos)) };
+            const auto& package{ PackageLinuxHelper::parseRpm(row) };
             if (!package.empty())
             {
                 ret.push_back(package);
             }
-            rawData = rawData.substr(0, pos);
-            pos = rawData.rfind("Name");
         }
     }
     return ret;
