@@ -26,98 +26,31 @@ namespace PackageLinuxHelper
     static nlohmann::json parseRpm(const std::string& packageInfo)
     {
         nlohmann::json ret;
-        std::string token;
-        std::istringstream tokenStream{ packageInfo };
-        std::map<std::string, std::string> info;
-        while (std::getline(tokenStream, token))
+
+        const auto fields { Utils::split(packageInfo,'|') };
+        if (RPMFields::RPM_FIELDS_SIZE <= fields.size())
         {
-            auto pos{token.find(":")};
-            while (pos != std::string::npos && (pos + 1) < token.size())
+            std::string name             { fields.at(RPMFields::NAME) };
+            if ("gpg-pubkey" != fields.at(NAME) && !name.empty())
             {
-                const auto key{Utils::trim(token.substr(0, pos))};
-                token = Utils::trim(token.substr(pos + 1));
-                if(((pos = token.find("  ")) != std::string::npos) ||
-                ((pos = token.find("\t")) != std::string::npos))
-                {
-                    info[key] = Utils::trim(token.substr(0, pos), " \t");
-                    token = Utils::trim(token.substr(pos));
-                    pos = token.find(":");
-                }
-                else
-                {
-                    info[key] = token;
-                }
-            }
-        }
-        auto it{info.find("Name")};
-        if (it != info.end() && it->second != "gpg-pubkey")
-        {
-            std::string size         { UNKNOWN_VALUE };
-            std::string install_time { UNKNOWN_VALUE };
-            std::string groups       { UNKNOWN_VALUE };
-            std::string version;
-            std::string architecture { UNKNOWN_VALUE };
-            std::string vendor       { UNKNOWN_VALUE };
-            std::string description  { UNKNOWN_VALUE };
+                std::string size         { fields.at(RPMFields::SIZE) };
+                std::string install_time { fields.at(RPMFields::INSTALLTIME) };
+                std::string groups       { fields.at(RPMFields::GROUPS) };
+                std::string version      { fields.at(RPMFields::VERSION) };
+                std::string architecture { fields.at(RPMFields::ARCHITECTURE) };
+                std::string vendor       { fields.at(RPMFields::VENDOR) };
+                std::string description  { fields.at(RPMFields::SUMMARY) };
 
-            ret["name"] = it->second;
-
-            it = info.find("Size");
-            if (it != info.end())
-            {
-                size = it->second;
+                ret["name"]         = name;
+                ret["size"]         = size.empty() ? UNKNOWN_VALUE : size;
+                ret["install_time"] = install_time.empty() ? UNKNOWN_VALUE : install_time;
+                ret["groups"]       = groups.empty() ? UNKNOWN_VALUE : groups;
+                ret["version"]      = version.empty() ? UNKNOWN_VALUE : version;
+                ret["architecture"] = architecture.empty() ? UNKNOWN_VALUE : architecture;
+                ret["format"]       = "rpm";
+                ret["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : vendor;
+                ret["description"]  = description.empty() ? UNKNOWN_VALUE : description;
             }
-            it = info.find("Install Date");
-            if (it != info.end())
-            {
-                install_time = it->second;
-            }
-            it = info.find("Group");
-            if (it != info.end())
-            {
-                groups = it->second;
-            }
-            it = info.find("Epoch");
-            if (it != info.end())
-            {
-                version += it->second + "-";
-            }
-            it = info.find("Release");
-            if (it != info.end())
-            {
-                version +=it->second + "-";
-            }
-            it = info.find("Version");
-            if (it != info.end())
-            {
-                version += it->second;
-            }
-            it = info.find("Architecture");
-            if (it != info.end())
-            {
-                architecture = it->second;
-            }
-            it = info.find("Vendor");
-            if (it != info.end())
-            {
-                vendor = it->second;
-            }
-            it = info.find("Summary");
-            if (it != info.end())
-            {
-                // For the "Description" field it has been decided to populate it with the "Summary" field information
-                // so that Kibana is able to show this in a easier and clear way.
-                description = it->second;
-            }
-
-            ret["size"]         = size;
-            ret["install_time"] = install_time;
-            ret["groups"]       = groups;
-            ret["version"]      = version.empty() ? UNKNOWN_VALUE : version;
-            ret["architecture"] = architecture;
-            ret["format"]       = "rpm";
-            ret["vendor"]       = vendor;
-            ret["description"]  = description;
         }
         return ret;
     }

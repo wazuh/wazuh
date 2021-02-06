@@ -66,4 +66,19 @@ enum MacOsPackageTypes
     BREW
 };
 
+enum RPMFields
+{
+    NAME,
+    ARCHITECTURE,
+    SUMMARY,
+    SIZE,
+    EPOCH,
+    RELEASE,
+    VERSION,
+    VENDOR,
+    INSTALLTIME,
+    GROUPS,
+    RPM_FIELDS_SIZE
+};
+
 #endif //_SHARED_DEFS_H
