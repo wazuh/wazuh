@@ -30,16 +30,16 @@ namespace PackageLinuxHelper
         const auto fields { Utils::split(packageInfo,'|') };
         if (RPMFields::RPM_FIELDS_SIZE <= fields.size())
         {
-            std::string name             { fields.at(RPMFields::NAME) };
-            if ("gpg-pubkey" != fields.at(NAME) && !name.empty())
+            std::string name             { fields.at(RPMFields::RPM_FIELDS_NAME) };
+            if (name.compare("gpg-pubkey") != 0 && !name.empty())
             {
-                std::string size         { fields.at(RPMFields::SIZE) };
-                std::string install_time { fields.at(RPMFields::INSTALLTIME) };
-                std::string groups       { fields.at(RPMFields::GROUPS) };
-                std::string version      { fields.at(RPMFields::VERSION) };
-                std::string architecture { fields.at(RPMFields::ARCHITECTURE) };
-                std::string vendor       { fields.at(RPMFields::VENDOR) };
-                std::string description  { fields.at(RPMFields::SUMMARY) };
+                std::string size         { fields.at(RPMFields::RPM_FIELDS_PACKAGE_SIZE) };
+                std::string install_time { fields.at(RPMFields::RPM_FIELDS_INSTALLTIME) };
+                std::string groups       { fields.at(RPMFields::RPM_FIELDS_GROUPS) };
+                std::string version      { fields.at(RPMFields::RPM_FIELDS_VERSION) };
+                std::string architecture { fields.at(RPMFields::RPM_FIELDS_ARCHITECTURE) };
+                std::string vendor       { fields.at(RPMFields::RPM_FIELDS_VENDOR) };
+                std::string description  { fields.at(RPMFields::RPM_FIELDS_SUMMARY) };
 
                 ret["name"]         = name;
                 ret["size"]         = size.empty() ? UNKNOWN_VALUE : size;
