@@ -303,7 +303,7 @@ constexpr auto PACKAGES_SQL_STATEMENT
     architecture TEXT,
     groups TEXT,
     description TEXT,
-    size TEXT,
+    size INTEGER,
     priority TEXT,
     multiarch TEXT,
     source TEXT,
@@ -1338,8 +1338,23 @@ nlohmann::json Syscollector::getPackagesData()
             }
             else
             {
-                item["item_id"] = getItemId(item, PACKAGES_ITEM_ID_FIELDS);
-                packagesList.push_back(item);
+                const auto itemId{ getItemId(item, PACKAGES_ITEM_ID_FIELDS) };
+                const auto it
+                {
+                    std::find_if
+                    (
+                        packagesList.begin(), packagesList.end(),
+                        [&itemId](const auto& elem)
+                        {
+                            return elem.at("item_id") == itemId;
+                        }
+                    )
+                };
+                if(packagesList.end() == it)
+                {
+                    item["item_id"] = itemId;
+                    packagesList.push_back(item);
+                }
             }
         }
         ret[HOTFIXES_TABLE] = hotfixesList;
