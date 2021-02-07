@@ -22,7 +22,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformation)
 {
     constexpr auto RPM_PACKAGE_CENTOS
     {
-        R"(mktemp|x86_64|A small utility for safely making /tmp files.|15432|3|24.el5|1.5|CentOS|1425472738|System Environment/Base|)"
+        "mktemp\tx86_64\tA small utility for safely making /tmp files.\t15432\t3\t24.el5\t1.5\tCentOS\t1425472738\tSystem Environment/Base\t"
     };
 
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
@@ -42,7 +42,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationGPG)
 {
     constexpr auto RPM_PACKAGE_CENTOS
     {
-        R"(gpg-pubkey|x86_64|A small utility for safely making /tmp files.|15432|3|24.el5|1.5|CentOS|1425472738|System Environment/Base|)"
+        "gpg-pubkey\tx86_64\tA small utility for safely making /tmp files.\t15432\t3\t24.el5\t1.5\tCentOS\t1425472738\tSystem Environment/Base\t"
     };
 
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
@@ -53,7 +53,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
 {
     constexpr auto RPM_PACKAGE_CENTOS
     {
-        R"(curl||||||||||)"
+        "curl\t\t\t\t\t\t\t\t\t\t"
     };
 
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };

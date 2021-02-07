@@ -210,7 +210,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
 static nlohmann::json getRpmInfo()
 {
     nlohmann::json ret;
-    auto rawData{ Utils::exec("rpm -qa --qf '%{name}|%{arch}|%{summary}|%{size}|%{epoch}|%{release}|%{version}|%{vendor}|%{installtime:date}|%{group}|\n'")};
+    auto rawData{ Utils::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'")};
     if (!rawData.empty())
     {
         const auto rows { Utils::split(rawData,'\n') };

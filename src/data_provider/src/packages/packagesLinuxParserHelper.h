@@ -26,8 +26,7 @@ namespace PackageLinuxHelper
     static nlohmann::json parseRpm(const std::string& packageInfo)
     {
         nlohmann::json ret;
-
-        const auto fields { Utils::split(packageInfo,'|') };
+        const auto fields { Utils::split(packageInfo,'\t') };
         if (RPMFields::RPM_FIELDS_SIZE <= fields.size())
         {
             std::string name             { fields.at(RPMFields::RPM_FIELDS_NAME) };
