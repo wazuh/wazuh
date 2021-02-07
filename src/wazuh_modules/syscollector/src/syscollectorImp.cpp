@@ -303,7 +303,7 @@ constexpr auto PACKAGES_SQL_STATEMENT
     architecture TEXT,
     groups TEXT,
     description TEXT,
-    size TEXT,
+    size INTEGER,
     priority TEXT,
     multiarch TEXT,
     source TEXT,
