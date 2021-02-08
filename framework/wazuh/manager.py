@@ -390,7 +390,12 @@ def get_basic_info():
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def update_ossec_conf(new_conf=None):
     """
-    :return: AffectedItemsWazuhResult.
+    Replaces wazuh configuration (ossec.conf) with the provided configuration.
+
+    Parameters
+    ----------
+    new_conf: str
+        The new configuration to be applied.
     """
     result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully updated"
                                               f"{' in specified node' if node_id != 'manager' else ''}",
@@ -413,19 +418,15 @@ def update_ossec_conf(new_conf=None):
         is_valid = validate_ossec_conf()
 
         if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
-            write_ossec_conf(backup_conf)
             raise WazuhError(1125)
         else:
             result.affected_items.append(node_id)
-    except WazuhError as e:
-        # Restore the backup configuration
+    except Exception as e:
+        # Make sure the configuration is always restored regardless of the exception type raised
         if backup_conf:
             write_ossec_conf(backup_conf)
         result.add_failed_item(id_=node_id, error=e)
-    except Exception:
-        # Restore the backup configuration
-        if backup_conf:
-            write_ossec_conf(backup_conf)
+
     result.total_affected_items = len(result.affected_items)
 
     return result

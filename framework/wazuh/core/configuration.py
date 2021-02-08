@@ -847,11 +847,17 @@ def get_active_configuration(agent_id, component, configuration):
                          extra_message='{0}:{1}'.format(component, configuration))
 
 
-def write_ossec_conf(new_conf):
+def write_ossec_conf(new_conf: str):
     """
-    """
-    # Check if the configuration is empty
+    Replaces the current wazuh configuration (ossec.conf) with the provided configuration.
 
-    # Write the new configuration
-    with open(common.ossec_conf, 'w') as f:
-        f.writelines(new_conf)
+    Parameters
+    ----------
+    new_conf: str
+        The new configuration to be applied.
+    """
+    try:
+        with open(common.ossec_conf, 'w') as f:
+            f.writelines(new_conf)
+    except Exception:
+        raise WazuhError(1126)
