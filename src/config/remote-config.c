@@ -12,7 +12,14 @@
 #include "remote-config.h"
 #include "config.h"
 
-static int w_remoted_get_proto(const char * content);
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+STATIC int w_remoted_get_proto(const char * content);
 
 /* Reads remote config */
 int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -270,7 +277,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     return (0);
 }
 
-static int w_remoted_get_proto(const char * content) {
+STATIC int w_remoted_get_proto(const char * content) {
 
     const size_t max_array = 64;
     const char * xml_remote_proto = "protocol";
@@ -278,28 +285,32 @@ static int w_remoted_get_proto(const char * content) {
     size_t current = 0;
     int retval = 0;
 
-    if (proto_arr = OS_StrBreak(',', content, max_array), proto_arr == NULL) {
-        mwarn(REMOTED_PROTO_ERROR, REMOTED_PROTO_DEFAULT_STR);
-        return REMOTED_PROTO_DEFAULT;
-    }
+    proto_arr = OS_StrBreak(',', content, max_array);
 
-    while (proto_arr[current]) {
-        char * word = &(proto_arr[current])[strspn(proto_arr[current], " ")];
-        word[strcspn(word, " ")] = '\0';
+    if (proto_arr) {
+        while (proto_arr[current]) {
+            char * word = &(proto_arr[current])[strspn(proto_arr[current], " ")];
+            word[strcspn(word, " ")] = '\0';
 
-        if (strcasecmp(word, "tcp") == 0) {
-            retval |= REMOTED_PROTO_TCP;
-        } else if(strcasecmp(word, "udp") == 0) {
-            retval |= REMOTED_PROTO_UDP;
-        } else {
-            mwarn(REMOTED_INV_VALUE_IGNORE, word, xml_remote_proto);
+            if (strcasecmp(word, "tcp") == 0) {
+                retval |= REMOTED_PROTO_TCP;
+            } else if(strcasecmp(word, "udp") == 0) {
+                retval |= REMOTED_PROTO_UDP;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, word, xml_remote_proto);
+            }
+
+            os_free(proto_arr[current]);
+            current++;
         }
 
-        os_free(proto_arr[current]);
-        current++;
+        os_free(proto_arr);
+
     }
 
-    os_free(proto_arr);
+    if (retval == 0) {
+        mwarn(REMOTED_PROTO_ERROR, REMOTED_PROTO_DEFAULT_STR);
+    }
 
     return retval == 0 ? REMOTED_PROTO_DEFAULT : retval;
 }
