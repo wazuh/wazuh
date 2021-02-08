@@ -1,6 +1,12 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
-# July 23, 2017
+# Tool to build and compress the WPK package
+# Wazuh package generator
+# Copyright (C) 2015-2021, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
 
 from sys import argv, stderr, exit
 from tempfile import mkstemp

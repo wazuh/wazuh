@@ -1,6 +1,12 @@
 #!/usr/bin/env python
-# Copyright (C) 2015-2020, Wazuh Inc.
-# June 26, 2017
+# Tool to build and compress the WPK package
+# Wazuh package generator
+# Copyright (C) 2015-2021, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation.
 
 from io import SEEK_SET, SEEK_END
 from sys import argv, stderr, exit
@@ -30,6 +36,7 @@ def mergeappend(merged, sources):
         for s in sources:
             _mergeappend(f, s)
 
+
 def _mergeappend(fm, source):
     if isfile(source):
         with open(source, 'rb') as fs:
@@ -41,6 +48,8 @@ def _mergeappend(fm, source):
     elif isdir(source):
         for d in listdir(source):
             _mergeappend(fm, '{0}/{1}'.format(source, d))
+    else:
+        raise Exception
 
 
 def compress(source, target):

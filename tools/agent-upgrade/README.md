@@ -79,7 +79,7 @@ cp path/to/wpk_root.pem etc/wpk_root.pem
 5. Compile the WPK package. You need your SSL certificate and key:
 
 ```
-contrib/agent-upgrade/wpkpack.py output/myagent.wpk path/to/wpkcert.pem path/to/wpkcert.key *
+tools/agent-upgrade/wpkpack.py output/myagent.wpk path/to/wpkcert.pem path/to/wpkcert.key *
 ```
 
 - `output/myagent.wpk` is the name of the output WPK package.
