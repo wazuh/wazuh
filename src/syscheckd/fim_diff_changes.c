@@ -462,7 +462,7 @@ cleanup:
 diff_data *initialize_file_diff_data(const char *filename){
     diff_data *diff;
     char buffer[PATH_MAX];
-    char abs_diff_dir_path[PATH_MAX];
+    char abs_diff_dir_path[PATH_MAX + 1];
 
     os_calloc(1, sizeof(diff_data), diff);
 
