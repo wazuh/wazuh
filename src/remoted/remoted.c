@@ -108,15 +108,15 @@ void HandleRemote(int uid)
 
     /* Start up message */
     if (logr.proto[position] & REMOTED_PROTO_TCP) {
-        wm_strcat(&str_protocol, "TCP", 0);
+        wm_strcat(&str_protocol, REMOTED_PROTO_TCP_STR, 0);
     }
     if (logr.proto[position] & REMOTED_PROTO_UDP) {
-        wm_strcat(&str_protocol, "UDP", (str_protocol == NULL) ? 0 : ' ');
+        wm_strcat(&str_protocol, REMOTED_PROTO_UDP_STR, (str_protocol == NULL) ? 0 : ',');
     }
 
     /* This should never happen */
     if (str_protocol == NULL) {
-        merror_exit(REMOTED_PROTO_UNSET);
+        merror_exit(REMOTED_PROTO_NOT_SET);
     }
 
     minfo(STARTUP_MSG " Listening on port %d/%s (%s).",

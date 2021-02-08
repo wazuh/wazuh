@@ -93,10 +93,10 @@ cJSON *getRemoteConfig(void) {
                 cJSON * proto_array = cJSON_CreateArray();
 
                 if (logr.proto[i] & REMOTED_PROTO_TCP) {
-                    cJSON_AddItemToArray(proto_array, cJSON_CreateString("tcp"));
+                    cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_PROTO_TCP_STR));
                 }
                 if (logr.proto[i] & REMOTED_PROTO_UDP) {
-                    cJSON_AddItemToArray(proto_array, cJSON_CreateString("udp"));
+                    cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_PROTO_UDP_STR));
                 }
                 cJSON_AddItemToObject(conn, "protocol", proto_array);
             }
