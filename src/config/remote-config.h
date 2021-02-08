@@ -26,7 +26,7 @@
 #define REMOTED_PROTO_TCP_STR "TCP"
 #define REMOTED_PROTO_UDP_STR "UDP"
 #define REMOTED_PROTO_DEFAULT_STR  (REMOTED_PROTO_DEFAULT == REMOTED_PROTO_TCP \
-                                   ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR)
+                              ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR) ///< String to represent default protocol
 
 #include "shared.h"
 #include "global-config.h"
@@ -51,6 +51,6 @@ typedef struct _remoted {
     bool worker_node;
     int rids_closing_time;
     _Config global;
-} remoted;
+                                   } remoted;
 
 #endif /* CLOGREMOTE_H */
