@@ -150,7 +150,7 @@ def context_cached(key: str = '') -> Any:
     Parameters
     ----------
     key : str
-        Unique identifier for the cache entry.
+        Part of the cache entry identifier. The identifier will be the key + args + kwargs.
 
     Returns
     -------
@@ -180,3 +180,15 @@ def reset_context_cache() -> None:
 
     for context_var in _context_cache.values():
         context_var.set(None)
+
+
+def get_context_cache() -> dict:
+    """Get the context cache.
+
+    Returns
+    -------
+    dict
+        Dictionary with the context variables representing the cache.
+    """
+
+    return _context_cache
