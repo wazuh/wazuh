@@ -8135,7 +8135,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: "File was uploaded successfully"
+                message: "Configuration was successfully updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9706,7 +9706,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - $ref: '#/components/schemas/ConfirmationMessage'
               example:
-                message: "File was uploaded successfully"
+                message: "Configuration was successfully updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
