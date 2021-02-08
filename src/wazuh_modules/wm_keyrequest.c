@@ -474,7 +474,7 @@ void * w_socket_launcher(void * args) {
 
     mdebug1("Running integration daemon: %s", exec_path);
 
-    if (argv = wm_strtok(exec_path), !argv) {
+    if (argv = w_strtok(exec_path), !argv) {
         merror("Could not split integration command: %s", exec_path);
         pthread_exit(NULL);
     }

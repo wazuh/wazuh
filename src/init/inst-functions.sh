@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is free software; you can redistribute it
@@ -308,19 +308,12 @@ SetHeaders()
 }
 
 ##########
-# Generate the ossec-init.conf
+# GenerateService() $1=template
 ##########
-GenerateInitConf()
+GenerateService()
 {
-    NEWINIT="./ossec-init.conf.temp"
-    echo "DIRECTORY=\"${INSTALLDIR}\"" > ${NEWINIT}
-    echo "NAME=\"${NAME}\"" >> ${NEWINIT}
-    echo "VERSION=\"${VERSION}\"" >> ${NEWINIT}
-    echo "REVISION=\"${REVISION}\"" >> ${NEWINIT}
-    echo "DATE=\"`date`\"" >> ${NEWINIT}
-    echo "TYPE=\"${INSTYPE}\"" >> ${NEWINIT}
-    cat "$NEWINIT"
-    rm "$NEWINIT"
+    SERVICE_TEMPLATE=./src/init/templates/${1}
+    sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
 }
 
 ##########
@@ -816,9 +809,21 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
   ./init/fw-check.sh execute
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/*.py ${PREFIX}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/*.sh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} active-response/*.py ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} firewall-drop ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} default-firewall-drop ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} pf ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} npf ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ipfw ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} firewalld-drop ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} disable-account ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} host-deny ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ip-customblock ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} restart-wazuh ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} route-null ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} kaspersky ${PREFIX}/active-response/bin/
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} wazuh-slack ${PREFIX}/active-response/bin/
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run

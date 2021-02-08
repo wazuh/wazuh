@@ -32,10 +32,4 @@
 #define REMOTE_AR       00001
 #define LOCAL_AR        00002
 
-/* Expected values */
-#define FILENAME    0000010
-#define SRCIP       0000004
-#define DSTIP       0000002
-#define USERNAME    0000001
-
 #endif /* AR_H */

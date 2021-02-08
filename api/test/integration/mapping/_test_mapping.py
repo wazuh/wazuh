@@ -36,7 +36,7 @@ def calculate_test_mappings():
         test_tag = re.match(test_tag_regex, test).group(1)
         if test_tag.startswith('rbac'):
             # Add RBAC tests
-            test_mapping['rbac'].append(test.lower())
+            test_mapping['rbac'].append(test)
         else:
             # Add every other test
             test_mapping[test_tag.lower()].append(test)
@@ -51,7 +51,7 @@ def calculate_test_mappings():
 def get_file_and_test_info(test_name, test_mapping, module_name):
     try:
         # Get file tag, i.e.: agent.py -> agent
-        test_tag = re.match(file_tag_regex, test_name).group(1)
+        test_tag = re.match(file_tag_regex, test_name.lower()).group(1)
     except AttributeError:
         return None
 
@@ -85,7 +85,7 @@ if __name__ == '__main__':
                 mappings['files'] = list()
                 for file in sorted(files):
                     if file.endswith(allowed_extensions):
-                        test_info = get_file_and_test_info(file.lower(), test_tags, module)
+                        test_info = get_file_and_test_info(file, test_tags, module)
                         if test_info and test_info[2]:
                             mappings['files'].append({'name': test_info[0], 'tag': test_info[1], 'tests': test_info[2]})
 

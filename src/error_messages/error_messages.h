@@ -162,6 +162,9 @@
 #define EXEC_INV_CONF   "(1313): Invalid active response config: '%s'."
 #define EXEC_DISABLED   "(1350): Active response disabled."
 #define EXEC_SHUTDOWN   "(1314): Shutdown received. Deleting responses."
+#define EXEC_INV_JSON   "(1315): Invalid JSON message: '%s'"
+#define EXEC_INV_CMD    "(1316): Invalid AR command: '%s'"
+#define EXEC_CMD_FAIL   "(1317): Could not launch command %s (%d)"
 
 #define AR_NOAGENT_ERROR    "(1320): Agent '%s' not found."
 

@@ -30,7 +30,7 @@
 #ifdef WIN32
 #define PATH_SEP '\\'
 typedef uint64_t wino_t;
-int isVista;
+extern int isVista;
 #else
 #define PATH_SEP '/'
 typedef ino_t wino_t;

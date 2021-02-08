@@ -343,7 +343,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
             free(new_path);
         }
 
-        argv = wm_strtok(command);
+        argv = w_strtok(command);
 
         int fd = open("/dev/null", O_RDWR, 0);
 
