@@ -421,11 +421,15 @@ def update_ossec_conf(new_conf=None):
             raise WazuhError(1125)
         else:
             result.affected_items.append(node_id)
+    except WazuhError as e:
+        if backup_conf:
+            write_ossec_conf(backup_conf)
+        result.add_failed_item(id_=node_id, error=e)
     except Exception as e:
         # Make sure the configuration is always restored regardless of the exception type raised
         if backup_conf:
             write_ossec_conf(backup_conf)
-        result.add_failed_item(id_=node_id, error=e)
+        raise e
 
     result.total_affected_items = len(result.affected_items)
 
