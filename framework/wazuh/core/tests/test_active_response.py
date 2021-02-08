@@ -2,9 +2,9 @@
 # Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+import json
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -136,7 +136,7 @@ def test_create_json_message(expected_exception, command, arguments, alert):
         with pytest.raises(WazuhError, match=f'.* {expected_exception} .*'):
             active_response.create_json_message(command=command, arguments=arguments, alert=alert)
     else:
-        ret = active_response.create_json_message(command=command, arguments=arguments, alert=alert)
+        ret = json.loads(active_response.create_json_message(command=command, arguments=arguments, alert=alert))
         assert ret["version"] == 1, f'Wrong message version'
         assert command in ret["command"], f'Command not being returned'
         if arguments:
