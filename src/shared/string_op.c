@@ -995,15 +995,20 @@ char ** w_string_split(const char *string_to_split, const char *delim, int max_a
     char *token;
     int i = 0;
     char *aux;
-    os_strdup(string_to_split, aux);
 
     os_calloc(1, sizeof(char *), paths);
+
+    if (!string_to_split || !delim) {
+        return paths;
+    }
+    os_strdup(string_to_split, aux);
+
     for(token = strtok_r(aux, delim, &state); token; token = strtok_r(NULL, delim, &state)){
         os_realloc(paths, (i + 2) * sizeof(char *), paths);
         os_strdup(token, paths[i]);
         paths[i + 1] = NULL;
         i++;
-        if (max_array_size && i > max_array_size) break;
+        if (max_array_size && i >= max_array_size) break;
     }
     os_free(aux);
 

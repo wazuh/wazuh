@@ -2473,9 +2473,9 @@ static char **get_paths_from_env_variable (char *environment_variable) {
     if (paths[0] == NULL) {
         os_strdup(environment_variable, paths[0]);
     }
-    while (paths[i]){
+
+    for (i = 0; paths[i]; i++){
         paths[i] = w_strtrim(paths[i]);
-        i++;
     }
 
     os_free(expandedpath);

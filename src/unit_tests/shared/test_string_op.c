@@ -17,17 +17,13 @@
 
 char * w_tolower_str(const char *string);
 
-/* redefinitons/wrapping */
+/* setup/teardown */
 
-void __wrap__mwarn(const char * file, int line, const char * func, const char *msg, ...) {
-    char formatted_msg[OS_MAXSTR];
-    va_list args;
+int teardown_free_paths(void **state) {
+    char **paths = *state;
+    free_strarray(paths);
 
-    va_start(args, msg);
-    vsnprintf(formatted_msg, OS_MAXSTR, msg, args);
-    va_end(args);
-
-    check_expected(formatted_msg);
+    return 0;
 }
 
 /* tests */
@@ -312,6 +308,56 @@ void test_w_strtok_string(void ** state) {
     free_strarray(array);
 }
 
+void test_w_string_split_str_null(void ** state) {
+    const char *str = NULL;
+    char **paths = NULL;
+    const char *delim = ",";
+
+    paths = w_string_split(str, delim, 0);
+    *state = paths;
+    assert_null(paths[0]);
+}
+
+void test_w_string_split_delim_null(void ** state) {
+    const char *str = "test1,test2,test3";
+    char **paths = NULL;
+    const char *delim = NULL;
+
+    paths = w_string_split(str, delim, 0);
+    *state = paths;
+    assert_null(paths[0]);
+}
+
+void test_w_string_split_normal(void ** state) {
+    const char *str = "test1,test2,test3";
+    char *expected_str[] = {"test1","test2","test3"};
+    char **paths = NULL;
+    const char *delim = ",";
+
+    paths = w_string_split(str, delim, 0);
+    *state = paths;
+
+    assert_non_null(paths[0]);
+    for (int i = 0; paths[i]; i++){
+        assert_string_equal(paths[i], expected_str[i]);
+    }
+}
+
+void test_w_string_split_max_array_size(void ** state) {
+    const char *str = "test1,test2,test3,outofarray";
+    char *expected_str[] = {"test1","test2","test3"};
+    char **paths = NULL;
+    const char *delim = ",";
+
+    paths = w_string_split(str, delim, 3);
+    *state = paths;
+
+    assert_non_null(paths[0]);
+    for (int i = 0; paths[i]; i++){
+        assert_string_equal(paths[i], expected_str[i]);
+    }
+}
+
 /* Tests */
 
 int main(void) {
@@ -347,6 +393,11 @@ int main(void) {
         cmocka_unit_test(test_w_strtok_empty),
         cmocka_unit_test(test_w_strtok_nospaces),
         cmocka_unit_test(test_w_strtok_string),
+        // Tests w_string_split
+        cmocka_unit_test_teardown(test_w_string_split_str_null, teardown_free_paths),
+        cmocka_unit_test_teardown(test_w_string_split_delim_null, teardown_free_paths),
+        cmocka_unit_test_teardown(test_w_string_split_normal, teardown_free_paths),
+        cmocka_unit_test_teardown(test_w_string_split_max_array_size, teardown_free_paths),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
