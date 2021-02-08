@@ -19,7 +19,12 @@
 #define STATIC static
 #endif
 
-STATIC int w_remoted_get_proto(const char * content);
+/**
+ * @brief gets the remoted protocol configuration from a configuration string
+ * @param content configuration string
+ * @return returns the TCP/UDP protocol configuration 
+ */
+STATIC int w_remoted_get_net_protocol(const char * content);
 
 /* Reads remote config */
 int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -154,7 +159,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
         } else if (strcasecmp(node[i]->element, xml_remote_proto) == 0) {
             
-            logr->proto[pl] = w_remoted_get_proto(node[i]->content);
+            logr->proto[pl] = w_remoted_get_net_protocol(node[i]->content);
 
         } else if (strcasecmp(node[i]->element, xml_remote_ipv6) == 0) {
             if (strcasecmp(node[i]->content, "yes") == 0) {
@@ -277,27 +282,27 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     return (0);
 }
 
-STATIC int w_remoted_get_proto(const char * content) {
+STATIC int w_remoted_get_net_protocol(const char * content) {
 
-    const size_t max_array = 64;
-    const char * xml_remote_proto = "protocol";
+    const size_t MAX_ARRAY_SIZE = 64;
+    const char * XML_REMOTE_PROTOCOL = "protocol";
     char ** proto_arr;
     size_t current = 0;
     int retval = 0;
 
-    proto_arr = OS_StrBreak(',', content, max_array);
+    proto_arr = OS_StrBreak(',', content, MAX_ARRAY_SIZE);
 
     if (proto_arr) {
         while (proto_arr[current]) {
             char * word = &(proto_arr[current])[strspn(proto_arr[current], " ")];
             word[strcspn(word, " ")] = '\0';
 
-            if (strcasecmp(word, "tcp") == 0) {
+            if (strcasecmp(word, REMOTED_PROTO_TCP_STR) == 0) {
                 retval |= REMOTED_PROTO_TCP;
-            } else if(strcasecmp(word, "udp") == 0) {
+            } else if(strcasecmp(word, REMOTED_PROTO_UDP_STR) == 0) {
                 retval |= REMOTED_PROTO_UDP;
             } else {
-                mwarn(REMOTED_INV_VALUE_IGNORE, word, xml_remote_proto);
+                mwarn(REMOTED_INV_VALUE_IGNORE, word, XML_REMOTE_PROTOCOL);
             }
 
             os_free(proto_arr[current]);
@@ -310,7 +315,8 @@ STATIC int w_remoted_get_proto(const char * content) {
 
     if (retval == 0) {
         mwarn(REMOTED_PROTO_ERROR, REMOTED_PROTO_DEFAULT_STR);
+        retval = REMOTED_PROTO_DEFAULT;
     }
 
-    return retval == 0 ? REMOTED_PROTO_DEFAULT : retval;
+    return retval;
 }

@@ -14,14 +14,14 @@
 #define SYSLOG_CONN 1
 #define SECURE_CONN 2
 
-#define REMOTED_PROTO_TCP     (0x1 << 0)
-#define REMOTED_PROTO_UDP     (0x1 << 1)
-#define REMOTED_PROTO_DEFAULT REMOTED_PROTO_TCP
+#define REMOTED_PROTO_TCP     (0x1 << 0)        ///< Config for TCP protocol enabled
+#define REMOTED_PROTO_UDP     (0x1 << 1)        ///< Config for UDP protocol enabled
+#define REMOTED_PROTO_DEFAULT REMOTED_PROTO_TCP ///< Default remoted protocol
 
-#define REMOTED_PROTO_TCP_STR "TCP"
-#define REMOTED_PROTO_UDP_STR "UDP"
+#define REMOTED_PROTO_TCP_STR "TCP" ///< String to represent the TCP protocol
+#define REMOTED_PROTO_UDP_STR "UDP" ///< String to represent the UDP protocol
 #define REMOTED_PROTO_DEFAULT_STR  (REMOTED_PROTO_DEFAULT == REMOTED_PROTO_TCP \
-                                   ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR)
+                              ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR) ///< String to represent default protocol
 
 #include "shared.h"
 #include "global-config.h"
@@ -46,6 +46,6 @@ typedef struct _remoted {
     bool worker_node;
     int rids_closing_time;
     _Config global;
-} remoted;
+                                   } remoted;
 
 #endif /* CLOGREMOTE_H */
