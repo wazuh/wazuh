@@ -139,7 +139,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef BUILDDIR
 #ifndef WAZUH_UNIT_TESTING
 #define BUILDDIR(x,y) ({ \
-    char wazuh_fulldir[MAXPATHLEN + 1] = {'\0'}; \
+    static char wazuh_fulldir[MAXPATHLEN + 1] = {'\0'}; \
     char *wazuh_str1 = (x); \
     char *wazuh_str2 = (y); \
     if (wazuh_str1 && *wazuh_str1 && wazuh_str2 && *wazuh_str2) snprintf(wazuh_fulldir, MAXPATHLEN, "%s%s", wazuh_str1, wazuh_str2); \
