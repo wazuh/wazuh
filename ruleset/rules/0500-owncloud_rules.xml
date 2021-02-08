@@ -1,14 +1,14 @@
 <!--
   -  OwnCloud ruleset
   -  Created by Wazuh, Inc.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <!-- ID: 87300 - 87400 -->
 
 <!--
-  - It's needed to paste the following in /var/ossec/etc/ossec.conf for the decoder to work properly:
+  - It's needed to paste the following in /<INSTALLATION_PATH>/etc/ossec.conf for the decoder to work properly:
 
     <localfile>
       <location>ABSOLUTE_PATH_TO_YOUR_OWNCLOUD_.json_LOG_FILE</location>

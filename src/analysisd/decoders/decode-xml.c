@@ -496,8 +496,8 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                     pi->type = DECODER_WINDOWS;
                 } else if (strcmp(elements[j]->content, "host-information") == 0) {
                     pi->type = HOST_INFO;
-                } else if (strcmp(elements[j]->content, "ossec") == 0) {
-                    pi->type = OSSEC_RL;
+                } else if (strcmp(elements[j]->content, "wazuh") == 0) {
+                    pi->type = WAZUH_RL;
                 } else {
                     smerror(log_msg, "Invalid decoder type '%s'.", elements[j]->content);
                     goto cleanup;

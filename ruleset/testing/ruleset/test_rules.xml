@@ -47,7 +47,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_srcip. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999209" level="3">
   <match>Test same_srcip</match>
   <description>Testing same_srcip</description>
@@ -60,7 +60,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_dstip. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999211" level="3">
   <match>Test same_dstip</match>
   <description>Testing same_dstip</description>
@@ -73,7 +73,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_user. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_user 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_user 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999213" level="3">
   <match>Test same_user</match>
   <description>Testing same_user</description>
@@ -86,7 +86,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_srcport. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcport 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcport 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999215" level="3">
   <match>Test same_srcport</match>
   <description>Testing same_srcport</description>
@@ -99,7 +99,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_dstport. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstport 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstport 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999217" level="3">
   <match>Test same_dstport</match>
   <description>Testing same_dstport</description>
@@ -112,7 +112,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_protocol. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_protocol 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_protocol 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999219" level="3">
   <match>Test same_protocol</match>
   <description>Testing same_protocol</description>
@@ -125,7 +125,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_action. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_action 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_action 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999221" level="3">
   <match>Test same_action</match>
   <description>Testing same_action</description>
@@ -138,7 +138,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_id. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_id 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_id 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999223" level="3">
   <match>Test same_id</match>
   <description>Testing same_id</description>
@@ -151,7 +151,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_url. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_url 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_url 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999225" level="3">
   <match>Test same_url</match>
   <description>Testing same_url</description>
@@ -164,7 +164,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_data. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999227" level="3">
   <match>Test same_data</match>
   <description>Testing same_data</description>
@@ -177,7 +177,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_extra_data. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_extra_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_extra_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999229" level="3">
   <match>Test same_extra_data</match>
   <description>Testing same_extra_data</description>
@@ -190,7 +190,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_status. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_status 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_status 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999231" level="3">
   <match>Test same_status</match>
   <description>Testing same_status</description>
@@ -203,7 +203,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_system_name. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_system_name 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_system_name 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999233" level="3">
   <match>Test same_system_name</match>
   <description>Testing same_system_name</description>
@@ -216,7 +216,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_srcip. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999235" level="3">
   <match>Test different_srcip</match>
   <description>Testing different_srcip</description>
@@ -229,7 +229,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_dstip. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dstip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dstip 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999237" level="3">
   <match>Test different_dstip</match>
   <description>Testing different_dstip</description>
@@ -242,7 +242,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_user. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_user 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_user 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999239" level="3">
   <match>Test different_user</match>
   <description>Testing different_user</description>
@@ -255,7 +255,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_src_port. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_src_port 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_src_port 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999241" level="3">
   <match>Test different_src_port</match>
   <description>Testing different_src_port</description>
@@ -268,7 +268,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_dst_port. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dst_port 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dst_port 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999243" level="3">
   <match>Test different_dst_port</match>
   <description>Testing different_dst_port</description>
@@ -281,7 +281,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_protocol. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_protocol 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_protocol 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999245" level="3">
   <match>Test different_protocol</match>
   <description>Testing different_protocol</description>
@@ -294,7 +294,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_action. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_action 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_action 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999247" level="3">
   <match>Test different_action</match>
   <description>Testing different_action</description>
@@ -307,7 +307,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_id. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_id 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_id 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999249" level="3">
   <match>Test different_id</match>
   <description>Testing different_id</description>
@@ -320,7 +320,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_url. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_url 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_url 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999251" level="3">
   <match>Test different_url</match>
   <description>Testing different_url</description>
@@ -333,7 +333,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_data. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999253" level="3">
   <match>Test different_data</match>
   <description>Testing different_data</description>
@@ -346,7 +346,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_extra_data. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_extra_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_extra_data 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999255" level="3">
   <match>Test different_extra_data</match>
   <description>Testing different_extra_data</description>
@@ -359,7 +359,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_status. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_status 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_status 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999257" level="3">
   <match>Test different_status</match>
   <description>Testing different_status</description>
@@ -372,7 +372,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_system_name. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_system_name 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_system_name 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999259" level="3">
   <match>Test different_system_name</match>
   <description>Testing different_system_name</description>
@@ -385,7 +385,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_srcgeoip. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcgeoip 'Srcuser' 'User' logged from 2.136.147.146:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcgeoip 'Srcuser' 'User' logged from 2.136.147.146:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999261" level="3">
   <match>Test same_srcgeoip</match>
   <description>Testing same_srcgeoip</description>
@@ -398,7 +398,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_srcgeoip. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcgeoip 'Srcuser' 'User' logged from 2.136.147.146:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcgeoip 'Srcuser' 'User' logged from 2.136.147.146:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999263" level="3">
   <match>Test different_srcgeoip</match>
   <description>Testing different_srcgeoip</description>
@@ -411,7 +411,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_dstgeoip. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstgeoip 'Srcuser' 'User' logged from 192.168.1.100:8 to 2.136.147.146:8 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_dstgeoip 'Srcuser' 'User' logged from 192.168.1.100:8 to 2.136.147.146:8 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999265" level="3">
   <match>Test same_dstgeoip</match>
   <description>Testing same_dstgeoip</description>
@@ -424,7 +424,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_dstgeoip. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dstgeoip 'Srcuser' 'User' logged from 192.168.1.100:8 to 2.136.147.146:8 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_dstgeoip 'Srcuser' 'User' logged from 192.168.1.100:8 to 2.136.147.146:8 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999267" level="3">
   <match>Test different_dstgeoip</match>
   <description>Testing different_dstgeoip</description>
@@ -437,7 +437,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on same_srcuser. -->
-<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcuser 'Srcuser' 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_same_filters[12345]:Test same_srcuser 'Srcuser' 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999269" level="3">
   <match>Test same_srcuser</match>
   <description>Testing same_srcuser</description>
@@ -450,7 +450,7 @@
 </rule>
 
 <!-- Trigger alerts which depend on different_srcuser. -->
-<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcuser 'Srcuser' 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:ossec dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
+<!-- Dec 19 17:20:08 User test_different_filters[12345]:Test different_srcuser 'Srcuser' 'Srcuser' 'User' logged from 192.168.1.100:8 to 192.168.5.4:20 pro:ftp act:remove id:1 url:wazuh dat:huzaw e_data:hwazu sta:rejected systemname:system1 -->
 <rule id="999271" level="3">
   <match>Test different_srcuser</match>
   <description>Testing different_srcuser</description>

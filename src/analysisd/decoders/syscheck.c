@@ -163,7 +163,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     // Create decoder
     fim_decoder->id = getDecoderfromlist(FIM_MOD, &os_analysisd_decoder_store);
     fim_decoder->name = FIM_MOD;
-    fim_decoder->type = OSSEC_RL;
+    fim_decoder->type = WAZUH_RL;
     fim_decoder->fts = 0;
 
     os_calloc(Config.decoder_order_size, sizeof(char *), fim_decoder->fields);
@@ -247,7 +247,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     char *w_sum = NULL;
     char *f_name;
 
-    /* Every syscheck message must be in the following format (OSSEC - Wazuh v3.10):
+    /* Every syscheck message must be in the following format (Wazuh v3.10):
      * 'checksum' 'filename'
      * or
      * 'checksum'!'extradata' 'filename'

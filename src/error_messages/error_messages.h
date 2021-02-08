@@ -631,16 +631,16 @@
 #define NORMAL_BUFFER   "Agent buffer is under %d %%. Working properly again."
 #define TOLERANCE_TIME  "Tolerance time set to Zero, defined flooding condition when buffer is full."
 
-/* OSSEC alert messages */
-#define OS_AD_STARTED   "ossec: Ossec started."
-#define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
-#define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
-#define OS_AG_REMOVED   "ossec: Agent removed: '%s'."
+/* WAZUH alert messages */
+#define OS_AD_STARTED   "wazuh: Wazuh started."
+#define OS_AG_STARTED   "wazuh: Agent started: '%s->%s'."
+#define OS_AG_DISCON    "wazuh: Agent disconnected: '%s'."
+#define OS_AG_REMOVED   "wazuh: Agent removed: '%s'."
 
 #define OS_NORMAL_BUFFER  "wazuh: Agent buffer: 'normal'."
-#define OS_WARN_BUFFER  "wazuh: Agent buffer: '%d%%'."
-#define OS_FULL_BUFFER  "wazuh: Agent buffer: 'full'."
-#define OS_FLOOD_BUFFER "wazuh: Agent buffer: 'flooded'."
+#define OS_WARN_BUFFER    "wazuh: Agent buffer: '%d%%'."
+#define OS_FULL_BUFFER    "wazuh: Agent buffer: 'full'."
+#define OS_FLOOD_BUFFER   "wazuh: Agent buffer: 'flooded'."
 
 /* WIN32 errors */
 #define CONF_ERROR      "Could not read (%s) (Make sure config exists and executable is running with Administrative privileges)."

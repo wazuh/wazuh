@@ -25,8 +25,7 @@ void *SymantecWS_Decoder_Init()
 /* Symantec Web Security decoder
  * Will extract the action, srcip, id, url and username.
  *
- * Examples (also online at
- * http://www.ossec.net/wiki/index.php/Symantec_WebSecurity ).
+ * Examples:
  * 20070717,73613,1=5,11=10.1.1.3,10=userc,3=1,2=1
  * 20070717,73614,1=5,11=1.2.3.4,1106=News,60=http://news.bbc.co.uk/,10=userX,1000=212.58.240.42,2=27
  */

@@ -112,7 +112,7 @@ def test_get_rules_file_status_include(mock_ossec, status, func):
 ])
 @pytest.mark.parametrize('file_', [
     ['0010-rules_config.xml'],
-    ['0015-ossec_rules.xml']
+    ['0015-wazuh_rules.xml']
 ])
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)
 def test_get_rules_file_file_param(mock_config, file_, func):
@@ -229,7 +229,7 @@ def test_get_requirement_invalid(mocked_config, requirement):
 
 @pytest.mark.parametrize('file_', [
     {'0010-rules_config.xml': str},
-    {'0015-ossec_rules.xml': str},
+    {'0015-wazuh_rules.xml': str},
     {'no_exists.xml': 1415}
 ])
 @patch('wazuh.core.configuration.get_ossec_conf', return_value=rule_ossec_conf)

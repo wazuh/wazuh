@@ -484,8 +484,9 @@ stages:
       verify: False
       <<: *general_rules_request
       params:
-        filename: 0015-ossec_rules.xml
+        filename: 0015-wazuh_rules.xml
         limit: 5
+        q: id>500
     response:
       status_code: 200
       json:
@@ -515,9 +516,10 @@ stages:
       verify: False
       <<: *general_rules_request
       params:
-        filename: 0015-ossec_rules.xml
+        filename: 0015-wazuh_rules.xml
         offset: 1
         limit: 1
+        q: id>500
     response:
       status_code: 200
       json:

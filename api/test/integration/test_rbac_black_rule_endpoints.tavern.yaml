@@ -24,7 +24,7 @@ stages:
             - &full_item_rules
               description: !anystr
               details: !anything
-              filename: 0016-wazuh_rules.xml
+              filename: 0015-wazuh_rules.xml
               gdpr: !anything
               gpg13: !anything
               groups: !anything
@@ -81,6 +81,8 @@ stages:
           affected_items:
             - <<: *full_item_rules
               id: 200
+            - <<: *full_item_rules
+              id: 700
           failed_items:
             - error:
                 code: 1208
@@ -88,10 +90,9 @@ stages:
                 - 1
                 - 2
                 - 500
-                - 700
                 - 702
-          total_affected_items: 1
-          total_failed_items: 5
+          total_affected_items: 2
+          total_failed_items: 4
 
 ---
 test_name: GET RULES FILES RBAC
@@ -114,7 +115,7 @@ stages:
         data:
           affected_items:
             - &full_item_rules_files
-              filename: 0016-wazuh_rules.xml
+              filename: 0015-wazuh_rules.xml
               relative_dirname: ruleset/rules
               status: enabled
             - <<: *full_item_rules_files
@@ -161,13 +162,16 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        filename: local_rules.xml,0015-ossec_rules.xml,0010-rules_config.xml
+        filename: local_rules.xml,0015-wazuh_rules.xml,0010-rules_config.xml
     response:
       status_code: 200
       json:
         error: !anyint
         data:
           affected_items:
+            - <<: *full_item_rules_files
+              filename: 0015-wazuh_rules.xml
+              relative_dirname: ruleset/rules
             - <<: *full_item_rules_files
               filename: local_rules.xml
               relative_dirname: etc/rules
@@ -176,9 +180,8 @@ stages:
                 code: 4000
               id:
                 - 0010-rules_config.xml
-                - 0015-ossec_rules.xml
-          total_affected_items: 1
-          total_failed_items: 2
+          total_affected_items: 2
+          total_failed_items: 1
 
   - name: Try to show the rules files of the system (no permissions)
     request:
@@ -188,7 +191,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: GET
       params:
-        filename: 0015-ossec_rules.xml,0010-rules_config.xml
+        filename: 0010-rules_config.xml
     response: &permissions_denied
       status_code: 403
       json:
@@ -214,7 +217,7 @@ stages:
   - name: Try get one rule file (no permissions)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0015-ossec_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0010-rules_config.xml/download"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

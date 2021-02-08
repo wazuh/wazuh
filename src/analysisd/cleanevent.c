@@ -158,7 +158,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         if (*pieces == ':' && pieces[1] == ' ') {
             /* Getting solaris 8/9 messages without hostname.
              * In these cases, the process_name should be there.
-             * http://www.ossec.net/wiki/index.php/Log_Samples_Solaris
              */
             lf->program_name = lf->hostname;
             lf->hostname = NULL;
