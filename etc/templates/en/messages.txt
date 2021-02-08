@@ -109,6 +109,7 @@ presskey="Press ENTER to continue"
 
 # Update
 wanttoupdate="You already have Wazuh installed. Do you want to update it?"
+mustuninstall="The installation can't proceed without uninstalling old versions. Exiting."
 unabletoupdate="Unable to perform update. A full new install will be required."
 updatecompleted="Update completed."
 updatefailed="Update failed."

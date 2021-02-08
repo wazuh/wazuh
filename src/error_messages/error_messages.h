@@ -162,6 +162,9 @@
 #define EXEC_INV_CONF   "(1313): Invalid active response config: '%s'."
 #define EXEC_DISABLED   "(1350): Active response disabled."
 #define EXEC_SHUTDOWN   "(1314): Shutdown received. Deleting responses."
+#define EXEC_INV_JSON   "(1315): Invalid JSON message: '%s'"
+#define EXEC_INV_CMD    "(1316): Invalid AR command: '%s'"
+#define EXEC_CMD_FAIL   "(1317): Could not launch command %s (%d)"
 
 #define AR_NOAGENT_ERROR    "(1320): Agent '%s' not found."
 
@@ -398,6 +401,7 @@
 #define VU_OFFLINE_CONFLICT         "(5587): Feed conflict. Only '%s' will be updated offline."
 #define VU_VER_INVALID_FORMAT       "(5588): Invalid format of Wazuh version for agent '%.3d'"
 #define VU_VER_READING_ERROR        "(5589): Couldn't read Wazuh version for agent '%.3d'"
+#define VU_OVAL_VULN_NOT_FOUND      "(5590): No vulnerabilities could be found in the OVAL for agent '%.3d'"
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"

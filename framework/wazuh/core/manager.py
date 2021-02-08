@@ -19,14 +19,13 @@ from shutil import Error
 from typing import Dict
 from xml.dom.minidom import parseString
 
-import yaml
-
 from api import configuration
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import load_wazuh_xml, safe_move, tail, check_remote_commands
+from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
@@ -256,12 +255,23 @@ def validate_cdb_list(path):
     return True
 
 
-def validate_ossec_conf():
+def validate_ossec_conf() -> dict:
     """Check if Wazuh configuration is OK.
+
+    Raises
+    ------
+    WazuhInternalError(1014)
+        If there is a socket communication error.
+    WazuhInternalError(1013)
+        If it is unable to connect to socket.
+    WazuhInternalError(1901)
+        If 'execq' socket cannot be created.
+    WazuhInternalError(1904)
+        If there is bad data received from 'execq'.
 
     Returns
     -------
-    response : str
+    str
         Status of the configuration.
     """
     lock_file = open(execq_lockfile, 'a+')
@@ -273,7 +283,9 @@ def validate_ossec_conf():
         api_socket_path = join(common.ossec_path, api_socket_relative_path)
         execq_socket_path = common.EXECQ
         # Message for checking Wazuh configuration
-        execq_msg = 'check-manager-configuration '
+        execq_msg = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
+                                                           command=common.CHECK_CONFIG_COMMAND,
+                                                           parameters={"extra_args": [], "alert": {}}))
 
         # Remove api_socket if exists
         try:

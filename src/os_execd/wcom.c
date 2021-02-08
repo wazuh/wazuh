@@ -198,31 +198,6 @@ size_t wcom_restart(char ** output) {
             strcpy(exec_cmd[0], "/bin/wazuh-control");
         }
 
-        // wazuh-control is not supported in versions prior to 4.2.0
-        char * major = NULL;
-        char * minor = NULL;
-        char * version = NULL;
-        char * save_ptr = NULL;
-        w_strdup(__ossec_version + 1, version);
-
-        major = strtok_r(version, ".", &save_ptr);
-        minor = strtok_r(NULL, ".", &save_ptr);
-        if (!major || !minor) {
-            merror("At WCOM restart: Unable to read agent version.");
-            os_free(version);
-            os_strdup("err Reading agent's version", *output);
-            return strlen(*output);
-        } else {
-            if (atoi(major) < 4 || (atoi(major) == 4 && atoi(minor) < 2)) {
-                if (isChroot()) {
-                    exec_cmd[0] = "/bin/ossec-control";
-                } else {
-                    exec_cmd[0] = BUILDDIR(HOMEDIR,"/bin/ossec-control");
-                }
-            }
-        }
-        os_free(version);
-
         switch (fork()) {
             case -1:
                 merror("At WCOM restart: Cannot fork");
@@ -240,8 +215,18 @@ size_t wcom_restart(char ** output) {
             break;
         }
 #else
-        char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
-        ExecCmd_Win32(exec_cm);
+        static char command[OS_FLSIZE];
+        snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, "restart-wazuh.exe");
+        char *cmd[2] = { command, NULL };
+        char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"wazuh-execd\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{},\"program\":\"restart-wazuh.exe\"}}";
+        wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
+        if (wfd) {
+            fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
+            wpclose(wfd);
+        } else {
+            merror("At WCOM restart: Cannot execute restart process");
+            os_strdup("err Cannot execute restart process", *output);
+        }
 #endif
     } else {
         minfo(LOCK_RES, (int)lock);

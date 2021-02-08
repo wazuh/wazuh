@@ -387,6 +387,10 @@
 #define mkdir(x, y) mkdir(x)
 #endif /* WIN32 */
 
+#ifdef WIN32
+int isVista;
+#endif
+
 const char *__local_name = "unset";
 char *home_path = NULL;
 

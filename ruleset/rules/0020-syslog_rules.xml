@@ -501,7 +501,7 @@
 
   <rule id="2833" level="8">
     <if_sid>2832</if_sid>
-    <match>^(root)</match>
+    <match>REPLACE (root)</match>
     <description>Root's crontab entry changed.</description>
     <mitre>
       <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>

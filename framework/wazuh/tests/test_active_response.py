@@ -19,32 +19,35 @@ with patch('wazuh.core.common.ossec_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.active_response import run_command
-        from wazuh.core.tests.test_active_response import agent_config, agent_info
-        from wazuh.core.exception import WazuhError
+        from wazuh.core.tests.test_active_response import agent_config, agent_info_exception_and_version
 
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
+full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008']
 
 
 # Tests
 
-@pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, custom', [
-    (1650, None, [0], None, [], False),
-    (1652, None, [0], 'random', [], False),
-    (None, 1651, [1], 'restart-ossec0', [], False),
-    (None, 1750, [1], 'restart-ossec0', [], False),
-    (None, None, [1], 'restart-ossec0', [], False),
-    (None, None, [1], 'restart-ossec0', [], True),
-    (None, None, [1], 'restart-ossec0', ["arg1", "arg2"], False),
-    (None, None, [0], 'restart-ossec0', [], False),
-    (None, None, [0, 1, 2, 3, 4, 5, 6], 'restart-ossec0', [], False),
+@pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, custom, alert, version', [
+    (1701, None, ['999'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (1703, None, ['000'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (1650, None, ['001'], None, [], False, None, 'Wazuh v4.0.0'),
+    (1652, None, ['002'], 'random', [], False, None, 'Wazuh v4.0.0'),
+    (None, 1651, ['003'], 'restart-wazuh0', [], False, None, None),
+    (None, 1750, ['004'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['005'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['006'], 'custom-ar', [], True, None, 'Wazuh v4.0.0'),
+    (None, None, ['007'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['001', '002', '003', '004', '005', '006'], 'restart-wazuh0', [], False, None, 'Wazuh v4.0.0'),
+    (None, None, ['001'], 'restart-wazuh0', ["arg1", "arg2"], False, None, 'Wazuh v4.2.0'),
+    (None, None, ['002'], 'restart-wazuh0', [], False, None, 'Wazuh v4.2.1'),
 ])
 @patch("wazuh.core.ossec_queue.OssecQueue._connect")
 @patch("wazuh.syscheck.OssecQueue._send", return_value='1')
 @patch("wazuh.core.ossec_queue.OssecQueue.close")
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
-def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_exception, agent_id, command,
-                     arguments, custom):
+@patch('wazuh.core.common.ar_conf_path', new=test_data_path)
+@patch('wazuh.active_response.get_agents_info', return_value=full_agent_list)
+def test_run_command(mock_get_agents_info, mock_close, mock_send, mock_conn, message_exception,
+                     send_exception, agent_id, command, arguments, custom, alert, version):
     """Verify the proper operation of active_response module.
 
     Parameters
@@ -57,19 +60,23 @@ def test_run_command(mock_close,  mock_send, mock_conn, message_exception, send_
         Agents on which to execute the Active response command.
     command : string
         Command to be executed on the agent.
-    arguments : list, optional
+    arguments : list
         Arguments of the command.
     custom : boolean
         True if command is a script.
+    version : list
+        List with the agent version to test whether the message sent was the correct one or not.
     """
-    with patch('wazuh.core.agent.Agent.get_basic_information', return_value=agent_info(send_exception)):
+    with patch('wazuh.core.agent.Agent.get_basic_information',
+               return_value=agent_info_exception_and_version(send_exception, version)):
         with patch('wazuh.core.agent.Agent.getconfig', return_value=agent_config(send_exception)):
             if message_exception:
-                with pytest.raises(WazuhError, match=f'.* {message_exception} .*'):
-                    run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom)
+                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom, alert=alert)
+                assert ret.render()['data']['failed_items'][0]['error']['code'] == message_exception
             else:
-                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom)
+                ret = run_command(agent_list=agent_id, command=command, arguments=arguments, custom=custom, alert=alert)
                 if send_exception:
                     assert ret.render()['message'] == 'AR command was not sent to any agent'
+                    assert ret.render()['data']['failed_items'][0]['error']['code'] == send_exception
                 else:
                     assert ret.render()['message'] == 'AR command was sent to all agents'

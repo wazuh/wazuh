@@ -7,27 +7,27 @@
 # by Daniel B. Cid - dcid ( at ) ossec.net
 # Copyright (C) 2015-2020, Wazuh Inc.
 
-ACTION=$1
-FILE=$2
-FORMAT=$3
-
-if ! [ -e /etc/ossec-init.conf ]; then
-    echo OSSEC Manager not found. Exiting...
-    exit 1
-fi
-
-. /etc/ossec-init.conf
+WAZUH_HOME=$1
+ACTION=$2
+FILE=$3
+FORMAT=$4
 
 if [ "X$FILE" = "X" ]; then
-    echo "$0: addfile <filename> [<format>]"
-    echo "$0: addsite <domain>"
-    echo "$0: adddns  <domain>"
+    echo "$0: WAZUH_HOME addfile <filename> [<format>]"
+    echo "$0: WAZUH_HOME addsite <domain>"
+    echo "$0: WAZUH_HOME adddns  <domain>"
     #echo "$0: addcommand <command>"
     echo ""
     #echo "Example: $0 addcommand 'netstat -tan |grep LISTEN| grep -v 127.0.0.1'"
-    echo "Example: $0 adddns ossec.net"
-    echo "Example: $0 addsite dcid.me"
+    echo "Example: $0 WAZUH_HOME adddns ossec.net"
+    echo "Example: $0 WAZUH_HOME addsite dcid.me"
     exit 1;
+fi
+
+eval $(${WAZUH_HOME}/bin/wazuh-control info 2>/dev/null)
+if [ "X$WAZUH_TYPE" = "X" ]; then
+    echo Wazuh not found. Exiting...
+    exit 1
 fi
 
 if [ "X$FORMAT" = "X" ]; then
@@ -37,7 +37,7 @@ fi
 # Adding a new file
 if [ $ACTION = "addfile" ]; then
     # Checking if file is already configured
-    grep "$FILE" ${DIRECTORY}/etc/ossec.conf > /dev/null 2>&1
+    grep "$FILE" ${WAZUH_HOME}/etc/ossec.conf > /dev/null 2>&1
     if [ $? = 0 ]; then
         echo "$0: File $FILE already configured at ossec."
         exit 1;
@@ -57,7 +57,7 @@ if [ $ACTION = "addfile" ]; then
       <location>$FILE</location>
      </localfile>
    </ossec_config>  
-   " >> ${DIRECTORY}/etc/ossec.conf
+   " >> ${WAZUH_HOME}/etc/ossec.conf
 
    echo "$0: File $FILE added.";
    exit 0;            
@@ -73,7 +73,7 @@ if [ $ACTION = "adddns" ]; then
       exit 1;
    fi
 
-   grep "host -W 5 -t NS $FILE" ${DIRECTORY}/etc/ossec.conf >/dev/null 2>&1
+   grep "host -W 5 -t NS $FILE" ${WAZUH_HOME}/etc/ossec.conf >/dev/null 2>&1
    if [ $? = 0 ]; then
        echo "$0: Already configured for $FILE"
        exit 1;
@@ -87,7 +87,7 @@ if [ $ACTION = "adddns" ]; then
      <command>$COMMAND</command>
    </localfile>
    </ossec_config>
-   " >> ${DIRECTORY}/etc/ossec.conf || MYERR=1;
+   " >> ${WAZUH_HOME}/etc/ossec.conf || MYERR=1;
 
    if [ $MYERR = 1 ]; then
        echo "$0: Unable to modify the configuration file."; 
@@ -96,7 +96,7 @@ if [ $ACTION = "adddns" ]; then
 
    FIRSTRULE="150010"
    while [ 1 ]; do
-       grep "\"$FIRSTRULE\"" ${DIRECTORY}/rules/local_rules.xml > /dev/null 2>&1
+       grep "\"$FIRSTRULE\"" ${WAZUH_HOME}/etc/rules/local_rules.xml > /dev/null 2>&1
        if [ $? = 0 ]; then
            FIRSTRULE=`expr $FIRSTRULE + 1`
        else
@@ -114,7 +114,7 @@ if [ $ACTION = "adddns" ]; then
      <description>DNS Changed for $FILE</description>
    </rule>
    </group>
-   " >> ${DIRECTORY}/rules/local_rules.xml || MYERR=1;
+   " >> ${WAZUH_HOME}/etc/rules/local_rules.xml || MYERR=1;
 
    if [ $MYERR = 1 ]; then
        echo "$0: Unable to modify the local rules file.";
@@ -135,7 +135,7 @@ if [ $ACTION = "addsite" ]; then
       exit 1;
    fi
 
-   grep "lynx --connect_timeout 10 --dump $FILE" ${DIRECTORY}/etc/ossec.conf >/dev/null 2>&1
+   grep "lynx --connect_timeout 10 --dump $FILE" ${WAZUH_HOME}/etc/ossec.conf >/dev/null 2>&1
    if [ $? = 0 ]; then
        echo "$0: Already configured for $FILE"
        exit 1;
@@ -149,7 +149,7 @@ if [ $ACTION = "addsite" ]; then
      <command>$COMMAND</command>
    </localfile>
    </ossec_config>
-   " >> ${DIRECTORY}/etc/ossec.conf || MYERR=1;
+   " >> ${WAZUH_HOME}/etc/ossec.conf || MYERR=1;
 
    if [ $MYERR = 1 ]; then
        echo "$0: Unable to modify the configuration file."; 
@@ -158,7 +158,7 @@ if [ $ACTION = "addsite" ]; then
 
    FIRSTRULE="150010"
    while [ 1 ]; do
-       grep "\"$FIRSTRULE\"" ${DIRECTORY}/rules/local_rules.xml > /dev/null 2>&1
+       grep "\"$FIRSTRULE\"" ${WAZUH_HOME}/etc/rules/local_rules.xml > /dev/null 2>&1
        if [ $? = 0 ]; then
            FIRSTRULE=`expr $FIRSTRULE + 1`
        else
@@ -176,7 +176,7 @@ if [ $ACTION = "addsite" ]; then
      <description>DNS Changed for $FILE</description>
    </rule>
    </group>
-   " >> ${DIRECTORY}/rules/local_rules.xml || MYERR=1;
+   " >> ${WAZUH_HOME}/etc/rules/local_rules.xml || MYERR=1;
 
    if [ $MYERR = 1 ]; then
        echo "$0: Unable to modify the local rules file.";

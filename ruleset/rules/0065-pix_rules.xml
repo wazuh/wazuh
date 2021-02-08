@@ -10,6 +10,7 @@
 <group name="syslog,pix,">
   <rule id="4300" level="0">
     <decoded_as>pix</decoded_as>
+    <category>firewall</category>
     <description>Grouping of PIX rules</description>
   </rule>
 

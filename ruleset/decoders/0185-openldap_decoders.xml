@@ -48,7 +48,7 @@
 <decoder name="openldap-bind">
     <parent>openldap</parent>
     <prematch>BIND </prematch>
-    <regex>^conn=(\d+) op=\d+ BIND dn="\w+=(\w+),</regex>
+    <regex>^conn=(\d+) op=\d+ BIND dn="\w+=(\S+),</regex>
     <order>id, dstuser</order>
     <accumulate/>
 </decoder>

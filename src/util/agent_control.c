@@ -253,6 +253,9 @@ int main(int argc, char **argv)
                 if (strcmp(r_name, "restart-ossec0") == 0) {
                     continue;
                 }
+                if (strcmp(r_name, "restart-wazuh0") == 0) {
+                    continue;
+                }
                 printf("\n   Response name: %s, command: %s", r_name, r_cmd);
             }
 
@@ -585,7 +588,7 @@ int main(int argc, char **argv)
         }
         mdebug1("Connected...");
 
-        if (send_msg_to_agent(arq, "restart-ossec0", restart_all_agents ? NULL : agent_id, "null") == 0) {
+        if (send_msg_to_agent(arq, "restart-wazuh0", restart_all_agents ? NULL : agent_id, "null") == 0) {
             if(json_output){
                 cJSON_AddNumberToObject(root, "error", 0);
                 cJSON_AddStringToObject(root, "data", restart_all_agents ? "Restarting all agents" : "Restarting agent");
