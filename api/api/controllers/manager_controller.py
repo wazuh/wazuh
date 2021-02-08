@@ -425,7 +425,8 @@ async def get_manager_config_ondemand(request, component, pretty=False, wait_for
 
 
 async def update_configuration(request, body, pretty=False, wait_for_complete=False):
-    """Update manager's or local_node's configuration (ossec.conf)
+    """Update manager's or local_node's configuration (ossec.conf).
+
     Parameters
     ----------
     pretty : bool, optional

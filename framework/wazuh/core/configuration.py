@@ -503,45 +503,6 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
     return data
 
 
-def get_raw_ossec_conf(section=None, field=None,):
-    """
-    Returns ossec.conf (manager) as dictionary.
-    :param section: Filters by section (i.e. rules).
-    :param field: Filters by field in section (i.e. included).
-    :return: ossec.conf (manager) as dictionary.
-    """
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(common.ossec_conf)
-
-    except Exception as e:
-        raise WazuhError(1101, extra_message=str(e))
-
-    if section:
-        for xml_group in xml_data[0]:
-            if xml_group.tag.lower() == section:
-                xml_data = xml_group
-                break
-
-    if section and field:
-        try:
-            if isinstance(xml_data, list):
-                xml_data = [ET.tostring(item[field], encoding='unicode', method='xml') for item in xml_data[section]]
-            else:
-                if xml_data.findtext(field):
-                    xml_data = xml_data.findtext(field)
-                else:
-                    xml_data = xml_data.find(field)
-
-                #xml_data = ET.tostring(xml_data[section][field], encoding='unicode', method='xml')
-        except KeyError:
-            raise WazuhError(1103)
-        except Exception as e:
-            print(e)
-
-    return xml_data if isinstance(xml_data, str) else ET.tostring(xml_data, encoding='unicode', method='xml')
-
-
 def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
     """
     Returns agent.conf as dictionary.

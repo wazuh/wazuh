@@ -634,7 +634,8 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
 
 
 async def update_configuration(request, node_id, body,  pretty=False, wait_for_complete=False):
-    """Update Wazuh configuration (ossec.conf) in node node_id
+    """Update Wazuh configuration (ossec.conf) in node node_id.
+
     Parameters
     ----------
     pretty : bool, optional

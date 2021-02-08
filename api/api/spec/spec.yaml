@@ -15945,4 +15945,3 @@ paths:
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: 'https://documentation.wazuh.com/4.1/user-manual/api/index.html'
-
