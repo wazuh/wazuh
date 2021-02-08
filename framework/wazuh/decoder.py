@@ -4,6 +4,7 @@
 from os import remove
 from os.path import join, exists
 from typing import Union
+from xml.parsers.expat import ExpatError
 
 import xmltodict
 
@@ -165,6 +166,10 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
                 # Missing root tag in decoder file
                 result.affected_items.append(xmltodict.parse(f'<root>{file_content}</root>')['root'])
                 result.total_affected_items = 1
+        except ExpatError as e:
+            result.add_failed_item(id_=filename,
+                                   error=WazuhError(1501, extra_message=f"{join('WAZUH_HOME', decoder_path, filename)}:"     
+                                                                        f" {str(e)}"))
         except OSError:
             result.add_failed_item(id_=filename,
                                    error=WazuhError(1502, extra_message=join('WAZUH_HOME', decoder_path, filename)))

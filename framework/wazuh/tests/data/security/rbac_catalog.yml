@@ -669,8 +669,33 @@ get_rbac_actions:
         related_endpoints:
           - GET /decoders
           - GET /decoders/files
-          - GET /decoders/files/{filename}/download
+          - GET /decoders/files/{filename}
           - GET /decoders/parents
+      decoders:update:
+        description: Update or upload custom decoder files
+        resources:
+          - decoder:file
+        example:
+          actions:
+            - decoders:update
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - PUT /decoders/files/{filename}
+      decoders:delete:
+        description: Delete custom decoder files
+        resources:
+          - decoder:file
+        example:
+          actions:
+            - decoders:delete
+          resources:
+            - decoder:file:local_decoders.xml
+          effect: allow
+        related_endpoints:
+          - PUT /decoders/files/{filename}
+          - DELETE /decoders/files/{filename}
       syscollector:read:
         description: Access agents syscollector information
         resources:

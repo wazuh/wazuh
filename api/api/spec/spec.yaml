@@ -328,7 +328,7 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/decoder:file'
       example:
         actions: ['decoders:delete']
-        resources: ['decoder:file:0005-wazuh_decoders.xml']
+        resources: ['decoder:file:local_decoders.xml']
         effect: "allow"
     'lists:read':
       description: "Read cdb lists files"
