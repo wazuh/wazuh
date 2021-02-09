@@ -837,10 +837,10 @@ void LogCollectorStart()
             w_save_file_status();
 
             f_check = 0;
-        }
 
-        if (mq_log_builder_update() == -1) {
-            mdebug1("Output log pattern data could not be updated.");
+            if (mq_log_builder_update() == -1) {
+                mdebug1("Output log pattern data could not be updated.");
+            }
         }
 
         sleep(1);
