@@ -9681,7 +9681,7 @@ paths:
       tags:
       - Manager
       summary: "Update Wazuh configuration"
-      description: "Replace wazuh configuration with the data contained in the API request"
+      description: "Replace Wazuh configuration with the data contained in the API request"
       operationId: api.controllers.manager_controller.update_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:update_config'
