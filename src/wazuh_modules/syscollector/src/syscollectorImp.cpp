@@ -20,7 +20,10 @@ do                                                                      \
 {                                                                       \
     try                                                                 \
     {                                                                   \
-        task();                                                         \
+        if(!m_stopping)                                                 \
+        {                                                               \
+            task();                                                     \
+        }                                                               \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
@@ -915,7 +918,7 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
             {
                 m_logErrorFunction(data.dump());
             }
-            else if(m_notify)
+            else if(m_notify && !m_stopping)
             {
                 if (data.is_array())
                 {
@@ -1019,25 +1022,28 @@ void Syscollector::registerWithRsync()
         {
             auto jsonData(nlohmann::json::parse(dataString));
             auto it{jsonData.find("data")};
-            if(it != jsonData.end())
+            if(!m_stopping)
             {
-                auto& data{*it};
-                it = data.find("attributes");
-                if(it != data.end())
+                if(it != jsonData.end())
                 {
-                    (*it)["scan_time"] = Utils::getCurrentTimestamp();
-                    m_reportSyncFunction(jsonData.dump());
+                    auto& data{*it};
+                    it = data.find("attributes");
+                    if(it != data.end())
+                    {
+                        (*it)["scan_time"] = Utils::getCurrentTimestamp();
+                        m_reportSyncFunction(jsonData.dump());
+                    }
+                    else
+                    {
+                        m_reportSyncFunction(dataString);
+                    }
                 }
                 else
                 {
+                    //LCOV_EXCL_START
                     m_reportSyncFunction(dataString);
+                    //LCOV_EXCL_STOP
                 }
-            }
-            else
-            {
-                //LCOV_EXCL_START
-                m_reportSyncFunction(dataString);
-                //LCOV_EXCL_STOP
             }
         }
     };
