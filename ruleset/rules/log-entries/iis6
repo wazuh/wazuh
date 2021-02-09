@@ -1,4 +1,0 @@
-2007-01-22 05:00:11 W3SVC1 HOSTNAME 1.1.1.1 POST /SimpleAuthWebService/SimpleAuth.asmx - 80 - 2.2.2.2 HTTP/1.1 Windows-Update-Agent - - hostname 200 0 0 1467 841 31
-2007-01-22 05:00:11 W3SVC1 HOSTNAME 1.1.1.1 POST /SimpleAuthWebService/SimpleAuth.asmx - 80 - 2.2.2.2 HTTP/1.1 Windows-Update-Agent - - hostname 400 0 0 1467 841 31
-2007-01-23 05:00:11 W3SVC22 xxx.ossec.net 1.2.3.4 GET / - 80 - 192.168.2.33 HTTP/1.1 Windows-Update-Agent - - myhost.name 500 0 0 1467 841 31
-2005-05-21 05:39:27 W3SVC1 hostname123 192.168.0.101 GET /VirtualServerError/VSWebApp.exe view=1 1024 WEBBROWSER\User 192.168.0.101 HTTP/1.0 Mozilla/4.0+(User-Agent) - - xx.nada.com 200 0 0
