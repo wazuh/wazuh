@@ -386,7 +386,7 @@ def get_basic_info():
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:upload_config"],
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_config"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def update_ossec_conf(new_conf=None):
     """

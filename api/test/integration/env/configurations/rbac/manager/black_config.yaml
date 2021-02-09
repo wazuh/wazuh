@@ -5,7 +5,7 @@
   - file:path:*
   effect: deny
 - actions:
-  - manager:upload_config
+  - manager:update_config
   resources:
   - "*:*:*"
   effect: deny

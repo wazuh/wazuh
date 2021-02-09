@@ -201,7 +201,7 @@ x-rbac-catalog:
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
     'cluster:update_config':
-      description: "Update current Wazuh's node configuration"
+      description: "Change the Wazuh's cluster node configuration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
