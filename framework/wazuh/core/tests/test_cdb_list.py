@@ -219,9 +219,8 @@ def test_validate_cdb_list_ko():
 
 
 @patch('wazuh.core.cdb_list.chmod')
-@patch('wazuh.core.cdb_list.uuid.uuid4', return_value='0')
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
-def test_create_list_file(mock_delete, mock_uuid, mock_chmod):
+def test_create_list_file(mock_delete, mock_chmod):
     """Test that create_list_file function works as expected"""
 
     with open(os.path.join(common.ossec_path, PATH_FILE)) as f:

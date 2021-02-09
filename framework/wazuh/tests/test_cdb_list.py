@@ -341,8 +341,7 @@ def test_upload_list_file(mock_exists, mock_remove, mock_delete_list_file, mock_
 
 @patch('wazuh.cdb_list.common.lists_path', return_value='/test/path')
 @patch('wazuh.cdb_list.os.remove')
-@patch('wazuh.cdb_list.delete_wazuh_file')
-def test_upload_list_file_ko(mock_delete_file, mock_remove, mock_lists_path):
+def test_upload_list_file_ko(mock_remove, mock_lists_path):
     """Check whether expected exceptions are raised."""
     result = upload_list_file(filename='test', content='')
     assert isinstance(result, AffectedItemsWazuhResult)
