@@ -69,13 +69,13 @@ void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mu
              */
             case FIM_REALTIME:
                 if (!(syscheck.opts[pos] & REALTIME_ACTIVE)) {
-                    return;     // LCOV_EXCL_LINE
+                    return;
                 }
                 break;
 
             case FIM_WHODATA:
                 if (!(syscheck.opts[pos] & WHODATA_ACTIVE)) {
-                    return;     // LCOV_EXCL_LINE
+                    return;
                 }
                 break;
 

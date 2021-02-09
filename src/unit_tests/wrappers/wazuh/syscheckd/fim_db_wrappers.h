@@ -85,9 +85,7 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
                                         fim_event_mode mode,
                                         whodata_evt * w_evt);
 
-void __wrap_fim_db_remove_path(fdb_t *fim_sql,
-                               fim_entry *entry,
-                               void *arg);
+unsigned int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path);
 
 int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql);
 
@@ -157,4 +155,10 @@ void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
                                          fim_tmp_file *file,
                                          int storage,
                                          int ret);
+
+/**
+ * @brief This function loads the expect and will_return calls for the wrapper of fim_db_remove_path
+ */
+void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, unsigned int ret_val);
+
 #endif
