@@ -43,7 +43,9 @@ typedef struct _remoted {
     os_ip **denyips;
 
     int m_queue;
-    int sock;
+    int tcp_sock;
+    int udp_sock;
+    int syslog_sock;
     int position;
     int nocmerged;
     socklen_t peer_size;

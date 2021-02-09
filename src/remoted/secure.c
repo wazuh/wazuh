@@ -159,8 +159,8 @@ void HandleSecure()
             merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
         }
 
-        if (wnotify_add(notify, logr.sock) < 0) {
-            merror_exit("wnotify_add(%d): %s (%d)", logr.sock, strerror(errno), errno);
+        if (wnotify_add(notify, logr.tcp_sock) < 0) {
+            merror_exit("wnotify_add(%d): %s (%d)", logr.tcp_sock, strerror(errno), errno);
         }
     }
 
@@ -180,8 +180,8 @@ void HandleSecure()
             for (i = 0; i < n_events; i++) {
                 int fd = wnotify_get(notify, i);
 
-                if (fd == logr.sock) {
-                    sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
+                if (fd == logr.tcp_sock) {
+                    sock_client = accept(logr.tcp_sock, (struct sockaddr *)&peer_info, &logr.peer_size);
                     if (sock_client < 0) {
                         switch (errno) {
                         case ECONNABORTED:
@@ -238,7 +238,7 @@ void HandleSecure()
                 }
             }
         } else {
-            recv_b = recvfrom(logr.sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &logr.peer_size);
+            recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &logr.peer_size);
 
             /* Nothing received */
             if (recv_b <= 0) {
@@ -412,7 +412,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             ssize_t msg_size = strlen(msg);
 
             if (protocol == REMOTED_PROTO_UDP) {
-                retval = sendto(logr.sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
+                retval = sendto(logr.udp_sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
             } else {
                 retval = OS_SendSecureTCP(sock_client, msg_size, msg);
             }
