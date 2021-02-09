@@ -16,7 +16,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -90,7 +90,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &task
             - agent_id: !anystr
@@ -114,7 +114,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - agent_id: !anystr
@@ -131,17 +131,14 @@ stages:
           total_failed_items: 0
     delay_after: !float "{upgrade_delay}"
 
-  - name: Get all existent tasks, completed (Limit 1)
+  - name: Get at least one existant completed task
     request:
       verify: False
       <<: *get_tasks
-      params:
-        limit: 1
-        offset: 1
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *task
@@ -248,26 +245,22 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
           total_affected_items: 0
-          total_failed_items: !anyint
+          total_failed_items: 0
 
   - name: Verify that query parameter work as expected when using multiple values
     request:
       verify: False
       <<: *get_tasks
       params:
-        q: "agent_id=004;status=Legacy;module=upgrade_module;command=upgrade"
+        q: "status=Legacy;module=upgrade_module;command=upgrade"
     response:
       status_code: 200
       verify_response_with:
-        - function: tavern_utils:test_expected_value
-          extra_kwargs:
-            key: "agent_id"
-            expected_values: "004"
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "status"
@@ -307,16 +300,16 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               agent_id: !anystr
               task_id: 3
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               agent_id: !anystr
               task_id: 4
@@ -336,11 +329,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               agent_id: "003"
               task_id: !anyint
@@ -360,7 +353,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -379,7 +372,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - agent_id: "007"
@@ -407,27 +400,27 @@ stages:
     response:
       status_code: 200
       json: &task_module_response
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               task_id: 1
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               task_id: 2
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               task_id: 3
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               task_id: 4
             - <<: *task
-              status: "Failed"
+              status: !anystr
               last_update_time: !anyint
               task_id: 5
           failed_items: []
@@ -460,7 +453,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
           affected_items: !anything
