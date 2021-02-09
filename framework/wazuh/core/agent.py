@@ -1150,7 +1150,7 @@ def expand_group(group_name):
                     agents_ids.add(file)
             except FileNotFoundError:
                 # Agent group removed while running through listed dir
-                continue
+                pass
     else:
         for file in listdir(common.groups_path):
             try:
@@ -1159,7 +1159,7 @@ def expand_group(group_name):
                 len(file_content) == 1 and group_name in file_content[0] and agents_ids.add(file)
             except FileNotFoundError:
                 # Agent group removed while running through listed dir
-                continue
+                pass
 
     return agents_ids & get_agents_info()
 
