@@ -53,10 +53,6 @@ static int teardown_group(void ** state) {
 }
 
 /* wraps */
-time_t __wrap_time(time_t * t) {
-    return mock_type(time_t);
-}
-
 size_t __wrap_strftime(char *s, size_t max, const char *format,
                        const struct tm *tm) {
     strncpy(s, mock_type(char *), max);
