@@ -257,6 +257,15 @@ def test_get_rules_file_failed(mock_config, item, file_, error_code):
         assert result.render()['data']['failed_items'][0]['error']['code'] == error_code
 
 
+@patch('wazuh.rule.get_rules_files', return_value=AffectedItemsWazuhResult(
+    affected_items=[{'relative_dirname': 'tests/data'}]))
+def test_get_rules_file_invalid_xml(get_rules_mock):
+    """Test downloading a rule with invalid XML."""
+    result = rule.get_rule_file(filename='test_invalid_rules.xml')
+    assert not result.affected_items
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1413
+
+
 @pytest.mark.parametrize('file, overwrite', [
     ('test.xml', False),
     ('test_rules.xml', True),
