@@ -406,7 +406,7 @@ def update_ossec_conf(new_conf=None):
     backup_conf = None
     try:
         # Check a configuration has been provided
-        if new_conf is None or not new_conf or len(new_conf) == 0:
+        if not new_conf:
             raise WazuhError(1125)
 
         # Check if the configuration is valid
