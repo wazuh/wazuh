@@ -5,6 +5,7 @@
 import re
 from os import remove
 from os.path import exists, join
+from shutil import copyfile
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
@@ -16,7 +17,7 @@ from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, va
     get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, prettify_xml
 
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import load_wazuh_xml, process_array
+from wazuh.core.utils import process_array, safe_move
 from wazuh.rbac.decorators import expose_resources
 
 allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
@@ -403,7 +404,7 @@ def update_ossec_conf(new_conf=None):
                                       none_msg=f"Could not update configuration"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    backup_conf = None
+    backup_file = f'{common.ossec_conf}.backup'
     try:
         # Check a configuration has been provided
         if not new_conf:
@@ -413,7 +414,9 @@ def update_ossec_conf(new_conf=None):
         new_conf = prettify_xml(new_conf)
 
         # Create a backup of the current configuration before attempting to replace it
-        backup_conf = load_wazuh_xml(common.ossec_conf)
+        copyfile(common.ossec_conf, backup_file)
+
+        # Write the new configuration and validate it
         write_ossec_conf(new_conf)
         is_valid = validate_ossec_conf()
 
@@ -421,16 +424,15 @@ def update_ossec_conf(new_conf=None):
             raise WazuhError(1125)
         else:
             result.affected_items.append(node_id)
+
     except WazuhError as e:
-        if backup_conf:
-            write_ossec_conf(backup_conf)
+        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
         result.add_failed_item(id_=node_id, error=e)
     except Exception as e:
-        # Make sure the configuration is always restored regardless of the exception type raised
-        if backup_conf:
-            write_ossec_conf(backup_conf)
+        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
         raise e
+    finally:
+        exists(backup_file) and remove(backup_file)
 
     result.total_affected_items = len(result.affected_items)
-
     return result
