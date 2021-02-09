@@ -46,6 +46,6 @@ typedef struct _remoted {
     bool worker_node;
     int rids_closing_time;
     _Config global;
-                                   } remoted;
+} remoted;
 
 #endif /* CLOGREMOTE_H */
