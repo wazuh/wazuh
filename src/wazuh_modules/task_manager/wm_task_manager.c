@@ -33,7 +33,8 @@ const wm_context WM_TASK_MANAGER_CONTEXT = {
     TASK_MANAGER_WM_NAME,
     (wm_routine)wm_task_manager_main,
     (wm_routine)(void *)wm_task_manager_destroy,
-    (cJSON * (*)(const void *))wm_task_manager_dump
+    (cJSON * (*)(const void *))wm_task_manager_dump,
+    NULL
 };
 
 size_t wm_task_manager_dispatch(const char *msg, char **response) {

@@ -272,6 +272,7 @@ extern const char *__local_name;
 #include "schedule_scan.h"
 #include "bzip2_op.h"
 #include "enrollment_op.h"
+#include "buffer_op.h"
 
 
 #endif /* SHARED_H */

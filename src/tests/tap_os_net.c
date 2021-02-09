@@ -7,6 +7,8 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "os_err.h"
+#include "sym_load.h"
+#include "sysInfo.h"
 
 #include "tap.h"
 
@@ -15,6 +17,10 @@
 #define PORT 4321
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
+
+extern sysinfo_networks_func sysinfo_network_ptr;
+extern sysinfo_free_result_func sysinfo_free_result_ptr;
+void *test_sysinfo_module = NULL;
 
 char * getPrimaryIP();
 
@@ -292,6 +298,11 @@ int test_get_ip() {
 int main(void) {
     printf("\n\n    STARTING TEST - OS_NET   \n\n");
 
+    if (test_sysinfo_module = so_get_module_handle_on_path("data_provider/build/lib/", "sysinfo"), test_sysinfo_module) {
+        sysinfo_free_result_ptr = so_get_function_sym(test_sysinfo_module, "sysinfo_free_result");
+        sysinfo_network_ptr = so_get_function_sym(test_sysinfo_module, "sysinfo_networks");
+    }
+
     // Send and receive string using TCP IPV4 socket on localhost
     TAP_TEST_MSG(test_tcpv4_local(), "TCP IPV4 send an receive: localhost test.");
 
@@ -330,6 +341,10 @@ int main(void) {
 
     // Get IP address
     TAP_TEST_MSG(test_get_ip(), "Get primary IP address collection.");
+
+    if (test_sysinfo_module){
+        so_free_library(test_sysinfo_module);
+    }
 
     TAP_PLAN;
     int r = tap_summary();

@@ -56,6 +56,7 @@ foreach(counter RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         OSCAP_O
+        -ldl
         -lcmocka
         -fprofile-arcs
         -ftest-coverage

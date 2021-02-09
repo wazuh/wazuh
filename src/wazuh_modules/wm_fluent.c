@@ -64,7 +64,8 @@ const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
     (wm_routine)wm_fluent_main,
     (wm_routine)(void *)wm_fluent_destroy,
-    (cJSON * (*)(const void *))wm_fluent_dump
+    (cJSON * (*)(const void *))wm_fluent_dump,
+    NULL
 };
 
 // Module main function. It won't return
