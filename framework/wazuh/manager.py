@@ -390,7 +390,7 @@ def get_basic_info():
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def update_ossec_conf(new_conf=None):
     """
-    Replaces wazuh configuration (ossec.conf) with the provided configuration.
+    Replace wazuh configuration (ossec.conf) with the provided configuration.
 
     Parameters
     ----------
