@@ -88,7 +88,7 @@
 #define LOGCOLLECTOR_MULTILINE_AGE_TIMEOUT      "(8002): 'age' cannot be less than 'timeout' in multiline_regex option."\
                                                 " 'age' will be ignored."
 
-/* Logcollector */
+/* Remoted */
 #define REMOTED_PROTO_ERROR                     "(9000): Error getting protocol. Default value (%s) will be used."
 #define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
 #define REMOTED_PROTO_ONLY_SECURE               "(9002): Only secure connection supports TCP and UDP at the same time."\
