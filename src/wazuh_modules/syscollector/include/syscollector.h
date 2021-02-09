@@ -32,14 +32,16 @@ extern "C" {
 #endif
 
 
-typedef void((*log_error_callback_t)(const char* log));
+typedef void((*log_callback_t)(const char* log));
 
 typedef void((*send_data_callback_t)(const void* buffer));
 
 EXPORTED void syscollector_start(const unsigned int inverval,
                                  send_data_callback_t callbackDiff,
                                  send_data_callback_t callbackSync,
-                                 log_error_callback_t callbackLogError,
+                                 log_callback_t callbackLogError,
+                                 log_callback_t callbackLogInfo,
+                                 log_callback_t callbackLogDebug,
                                  const char* dbPath,
                                  const char* normalizerConfigPath,
                                  const char* normalizerType,
@@ -66,7 +68,9 @@ EXPORTED int syscollector_sync_message(const char* data);
 typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        send_data_callback_t callbackDiff,
                                        send_data_callback_t callbackSync,
-                                       log_error_callback_t callbackLogError,
+                                       log_callback_t callbackLogError,
+                                       log_callback_t callbackLogInfo,
+                                       log_callback_t callbackLogDebug,
                                        const char* dbPath,
                                        const char* normalizerConfigPath,
                                        const char* normalizerType,

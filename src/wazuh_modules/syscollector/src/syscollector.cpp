@@ -21,7 +21,9 @@ extern "C" {
 void syscollector_start(const unsigned int inverval,
                         send_data_callback_t callbackDiff,
                         send_data_callback_t callbackSync,
-                        log_error_callback_t callbackLogError,
+                        log_callback_t callbackLogError,
+                        log_callback_t callbackLogInfo,
+                        log_callback_t callbackLogDebug,
                         const char* dbPath,
                         const char* normalizerConfigPath,
                         const char* normalizerType,
@@ -59,12 +61,30 @@ void syscollector_start(const unsigned int inverval,
             callbackLogError(data.c_str());
         }
     };
+
+    std::function<void(const std::string&)> callbackLogInfoWrapper
+    {
+        [callbackLogInfo](const std::string& data)
+        {
+            callbackLogInfo(data.c_str());
+        }
+    };
+
+    std::function<void(const std::string&)> callbackLogDebugWrapper
+    {
+        [callbackLogDebug](const std::string& data)
+        {
+            callbackLogDebug(data.c_str());
+        }
+    };
     try
     {
         Syscollector::instance().init(std::make_shared<SysInfo>(),
                                       callbackDiffWrapper,
                                       callbackSyncWrapper,
                                       callbackLogErrorWrapper,
+                                      callbackLogInfoWrapper,
+                                      callbackLogDebugWrapper,
                                       dbPath,
                                       normalizerConfigPath,
                                       normalizerType,

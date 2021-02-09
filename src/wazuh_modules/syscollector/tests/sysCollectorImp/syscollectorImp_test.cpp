@@ -60,6 +60,8 @@ TEST_F(SyscollectorImpTest, defaultCtor)
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
+                                          reportFunction,
+                                          reportFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -89,6 +91,8 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
         [&spInfoWrapper]()
         {
             Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
@@ -124,6 +128,8 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
+                                          reportFunction,
+                                          reportFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -153,6 +159,8 @@ TEST_F(SyscollectorImpTest, noHardware)
         [&spInfoWrapper]()
         {
             Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
@@ -188,6 +196,8 @@ TEST_F(SyscollectorImpTest, noOs)
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
+                                          reportFunction,
+                                          reportFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -217,6 +227,8 @@ TEST_F(SyscollectorImpTest, noNetwork)
         [&spInfoWrapper]()
         {
             Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
@@ -252,6 +264,8 @@ TEST_F(SyscollectorImpTest, noPackages)
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
+                                          reportFunction,
+                                          reportFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -281,6 +295,8 @@ TEST_F(SyscollectorImpTest, noPorts)
         [&spInfoWrapper]()
         {
             Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
@@ -316,6 +332,8 @@ TEST_F(SyscollectorImpTest, noPortsAll)
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
+                                          reportFunction,
+                                          reportFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -345,6 +363,8 @@ TEST_F(SyscollectorImpTest, noProcesses)
         [&spInfoWrapper]()
         {
             Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
@@ -381,6 +401,8 @@ TEST_F(SyscollectorImpTest, noHotfixes)
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
+                                          reportFunction,
+                                          reportFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -414,6 +436,8 @@ TEST_F(SyscollectorImpTest, scanOnInverval)
         [&spInfoWrapper]()
         {
             Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
@@ -455,6 +479,8 @@ TEST_F(SyscollectorImpTest, pushMessageOk)
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
+                                          reportFunction,
+                                          reportFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -489,6 +515,8 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
         [&spInfoWrapper]()
         {
             Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
@@ -530,6 +558,8 @@ TEST_F(SyscollectorImpTest, pushMessageInvalid)
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,
+                                          reportFunction,
+                                          reportFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
@@ -564,6 +594,8 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
         [&spInfoWrapper]()
         {
             Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
                                           reportFunction,
                                           reportFunction,
                                           reportFunction,

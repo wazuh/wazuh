@@ -47,6 +47,8 @@ public:
               const std::function<void(const std::string&)> reportDiffFunction,
               const std::function<void(const std::string&)> reportSyncFunction,
               const std::function<void(const std::string&)> logErrorFunction,
+              const std::function<void(const std::string&)> logInfoFunction,
+              const std::function<void(const std::string&)> logDebugFunction,
               const std::string& dbPath,
               const std::string& normalizerConfigPath,
               const std::string& normalizerType,
@@ -99,6 +101,8 @@ private:
     std::function<void(const std::string&)>        m_reportDiffFunction;
     std::function<void(const std::string&)>        m_reportSyncFunction;
     std::function<void(const std::string&)>        m_logErrorFunction;
+    std::function<void(const std::string&)>        m_logInfoFunction;
+    std::function<void(const std::string&)>        m_logDebugFunction;
     unsigned int                                   m_intervalValue;
     bool                                           m_scanOnStart;
     bool                                           m_hardware;
