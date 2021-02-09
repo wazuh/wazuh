@@ -9680,7 +9680,7 @@ paths:
     put:
       tags:
       - Manager
-      summary: "Update wazuh configuration"
+      summary: "Update Wazuh configuration"
       description: "Replace wazuh configuration with the data contained in the API request"
       operationId: api.controllers.manager_controller.update_configuration
       x-rbac-actions:
