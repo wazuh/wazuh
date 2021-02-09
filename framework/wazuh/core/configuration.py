@@ -810,7 +810,7 @@ def get_active_configuration(agent_id, component, configuration):
 
 def write_ossec_conf(new_conf: str):
     """
-    Replaces the current wazuh configuration (ossec.conf) with the provided configuration.
+    Replace the current wazuh configuration (ossec.conf) with the provided configuration.
 
     Parameters
     ----------
