@@ -6,7 +6,7 @@ marks:
 
 stages:
 
-  - name: Get all existent tasks (At this point there is no task created)
+  - name: Get all existent tasks (At this point there are no tasks created)
     request: &get_tasks
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
@@ -23,7 +23,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
-  - name: Upgrade an agent
+  - name: Upgrade agents to create tasks
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -52,7 +52,7 @@ stages:
           failed_items: []
         message: !anystr
 
-  - name: Upgrade an agent (Invalid version)
+  - name: Upgrade agents to create tasks (Invalid version)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -75,12 +75,7 @@ stages:
           failed_items: []
         message: !anystr
 
----
-test_name: GET /tasks/status
-
-stages:
-
-  - name: Get all existent tasks, in progress (Limit 1)
+  - name: Get all existent tasks (Limit 1)
     request:
       verify: False
       <<: *get_tasks
@@ -96,7 +91,7 @@ stages:
             - agent_id: !anystr
               create_time: !anyint
               node: !anystr
-              status: "In progress"
+              status: !anystr
               last_update_time: !anyint
               command: "upgrade"
               module: "upgrade_module"
@@ -105,7 +100,7 @@ stages:
           total_affected_items: 5
           total_failed_items: 0
 
-  - name: Get all existent tasks, in progress (Limit 2)
+  - name: Get all existent tasks (Limit 2)
     request:
       verify: False
       <<: *get_tasks
@@ -120,29 +115,12 @@ stages:
             - agent_id: !anystr
               create_time: !anyint
               node: !anystr
-              status: "In progress"
+              status: !anystr
               last_update_time: !anyint
               command: "upgrade"
               module: "upgrade_module"
               task_id: 1
             - <<: *task
-          failed_items: []
-          total_affected_items: 5
-          total_failed_items: 0
-    delay_after: !float "{upgrade_delay}"
-
-  - name: Get at least one existant completed task
-    request:
-      verify: False
-      <<: *get_tasks
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - <<: *task
-              status: "Legacy"
           failed_items: []
           total_affected_items: 5
           total_failed_items: 0
@@ -163,7 +141,7 @@ stages:
         json:
           select_id_items: data.affected_items
 
-  - name: Try to get tasks using select parameter
+  - name: Try to get tasks using select parameter with more than a field
     request:
       verify: False
       <<: *get_tasks
@@ -194,7 +172,7 @@ stages:
     response:
       status_code: 400
 
-  - name: Try to get all tasks using sort parameter and limit parameter
+  - name: Try to get all tasks using sort and select parameter
     request:
       verify: False
       <<: *get_tasks
@@ -257,14 +235,14 @@ stages:
       verify: False
       <<: *get_tasks
       params:
-        q: "status=Legacy;module=upgrade_module;command=upgrade"
+        q: "agent_id=004;module=upgrade_module;command=upgrade"
     response:
       status_code: 200
       verify_response_with:
         - function: tavern_utils:test_expected_value
           extra_kwargs:
-            key: "status"
-            expected_values: "Legacy"
+            key: "agent_id"
+            expected_values: "004"
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "module"
@@ -360,35 +338,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
-  - name: Get all existent tasks, Failed
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        status: "Failed"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - agent_id: "007"
-              create_time: !anyint
-              node: !anystr
-              status: "Failed"
-              last_update_time: !anyint
-              command: "upgrade"
-              module: "upgrade_module"
-              error_message: !anystr
-              task_id: 5
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Get all existent tasks, upgrade_module
+  - name: Get all existent tasks with module=upgrade_module
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
@@ -427,7 +377,7 @@ stages:
           total_affected_items: 5
           total_failed_items: 0
 
-  - name: Get all existent tasks, upgrade command
+  - name: Get all existent tasks with command=upgrade
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
@@ -440,7 +390,7 @@ stages:
       status_code: 200
       json: *task_module_response
 
-  - name: Get all existent tasks, specifing node name (worker2)
+  - name: Get all existent tasks with node=worker2
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
