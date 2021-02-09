@@ -159,15 +159,13 @@ void HandleSecure()
         merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
     }
 
-    if ( protocol & REMOTED_PROTO_TCP )
-    {
+    if (protocol & REMOTED_PROTO_TCP) {
         if (wnotify_add(notify, logr.tcp_sock) < 0) {
             merror_exit("wnotify_add(%d): %s (%d)", logr.tcp_sock, strerror(errno), errno);
         }
     }
 
-    if ( protocol & REMOTED_PROTO_UDP )
-    {
+    if (protocol & REMOTED_PROTO_UDP) {
         if (wnotify_add(notify, logr.udp_sock) < 0) {
             merror_exit("wnotify_add(%d): %s (%d)", logr.udp_sock, strerror(errno), errno);
         }
@@ -175,7 +173,7 @@ void HandleSecure()
 
     while (1) {
         /* Receive message  */
-        
+
         if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
             if (errno != EINTR) {
                 merror("Waiting for connection: %s (%d)", strerror(errno), errno);
@@ -190,13 +188,13 @@ void HandleSecure()
             int fd = wnotify_get(notify, i);
 
             /// In case of failure or unexpected file descriptor
-            if ( fd <= 0 ) {
+            if (fd <= 0) {
                 merror("Unexpected file descriptor: %d, %s (%d)", fd, strerror(errno), errno);
                 continue;
             }
             /// If a new TCP connection was received
-            else if ( ( fd == logr.tcp_sock ) && ( protocol & REMOTED_PROTO_TCP ) ) {
-                sock_client = accept(logr.tcp_sock, (struct sockaddr *)&peer_info, &logr.peer_size);
+            else if ((fd == logr.tcp_sock) && (protocol & REMOTED_PROTO_TCP)) {
+                sock_client = accept(logr.tcp_sock, (struct sockaddr *) &peer_info, &logr.peer_size);
                 if (sock_client < 0) {
                     switch (errno) {
                     case ECONNABORTED:
@@ -217,21 +215,21 @@ void HandleSecure()
                     merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
                     _close_sock(&keys, sock_client);
                 }
-            } 
+            }
             /// If a new UDP connection was received
             else if (fd == logr.udp_sock && protocol & REMOTED_PROTO_UDP) {
-                recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &logr.peer_size);
+                recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *) &peer_info, &logr.peer_size);
 
                 /* Nothing received */
                 if (recv_b <= 0) {
                     continue;
                 } else {
                     rem_msgpush(buffer, recv_b, &peer_info, -1);
-                    rem_add_recv((unsigned long)recv_b);
+                    rem_add_recv((unsigned long) recv_b);
                 }
             }
             /// If a message was received through a TCP client
-            else if ( protocol & REMOTED_PROTO_TCP ) {
+            else if (protocol & REMOTED_PROTO_TCP) {
                 sock_client = fd;
 
                 switch (recv_b = nb_recv(&netbuffer, sock_client), recv_b) {
@@ -251,10 +249,12 @@ void HandleSecure()
 #if ETIMEDOUT
                     case ETIMEDOUT:
 #endif
-                        mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
+                        mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, 
+                                inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                         break;
                     default:
-                        merror("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
+                        merror("TCP peer [%d] at %s: %s (%d)", sock_client,
+                                inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                     }
                     fallthrough;
                 case 0:
@@ -262,7 +262,7 @@ void HandleSecure()
                     continue;
 
                 default:
-                    rem_add_recv((unsigned long)recv_b);
+                    rem_add_recv((unsigned long) recv_b);
                 }
             }
         }
@@ -488,6 +488,13 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         keys.keyentries[agentid]->net_protocol = protocol;
 
+        /* detect if agent chenge the network protocol @TODO */
+        if (keys.keyentries[agentid]->sock > 0 && protocol == REMOTED_PROTO_UDP) {
+            mdebug1("Agent %i change TCP->UDP", agentid);
+        } else if (keys.keyentries[agentid]->sock == -1 && protocol == REMOTED_PROTO_TCP) {
+            mdebug1("Agent %i change UDP->TCP", agentid);
+        }
+
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
         r = (protocol == REMOTED_PROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
@@ -499,6 +506,9 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             break;
         case 1:
             mdebug2("TCP socket %d already in keystore. Updating...", sock_client);
+            break;
+        case 2:
+            keys.keyentries[agentid]->sock = -1;
             break;
         default:
             ;
