@@ -68,32 +68,42 @@ void HandleRemote(int uid)
     }
 
     /* Bind TCP */
-    if (logr.proto[position] == REMOTED_PROTO_TCP) {
-        if ((logr.sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
+    if (logr.proto[position] & REMOTED_PROTO_TCP) {
+
+        logr.tcp_sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position]);
+
+        if (logr.tcp_sock < 0) {
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         } else if (logr.conn[position] == SECURE_CONN) {
 
-            if (OS_SetKeepalive(logr.sock) < 0){
+            if (OS_SetKeepalive(logr.tcp_sock) < 0){
                 merror("OS_SetKeepalive failed with error '%s'", strerror(errno));
             }
 #ifndef CLIENT
             else {
-                OS_SetKeepalive_Options(logr.sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
+                OS_SetKeepalive_Options(logr.tcp_sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
             }
 #endif
-            if (OS_SetRecvTimeout(logr.sock, recv_timeout, 0) < 0){
+            if (OS_SetRecvTimeout(logr.tcp_sock, recv_timeout, 0) < 0){
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }
-            if (OS_SetSendTimeout(logr.sock, send_timeout) < 0){
+            if (OS_SetSendTimeout(logr.tcp_sock, send_timeout) < 0){
                 merror("OS_SetSendTimeout failed with error '%s'", strerror(errno));
             }
         }
-    } else {
+    }
+    /* Bind UDP */
+    if (logr.proto[position] & REMOTED_PROTO_UDP) {
         /* Using UDP. Fast, unreliable... perfect */
-        if ((logr.sock =
-                    OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
+        logr.udp_sock = OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position]);
+
+        if (logr.udp_sock < 0) {
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         }
+    }
+
+    if ( logr.conn[position] == SYSLOG_CONN ) {
+        logr.syslog_sock = ( logr.proto[position] == REMOTED_PROTO_TCP ? logr.tcp_sock : logr.udp_sock );
     }
 
     /* Revoke privileges */
