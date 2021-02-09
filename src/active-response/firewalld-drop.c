@@ -113,8 +113,8 @@ int main (int argc, char **argv) {
 
         memset(lock_path, '\0', PATH_MAX);
         memset(lock_pid_path, '\0', PATH_MAX);
-        snprintf(lock_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_PATH);
-        snprintf(lock_pid_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_FILE);
+        snprintf(lock_path, PATH_MAX - 1, "%s%s", HOMEDIR, LOCK_PATH);
+        snprintf(lock_pid_path, PATH_MAX - 1, "%s%s", HOMEDIR, LOCK_FILE);
 
         // Taking lock
         if (lock(lock_path, lock_pid_path, argv[0], basename(argv[0])) == OS_INVALID) {

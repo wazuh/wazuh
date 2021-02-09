@@ -47,7 +47,7 @@ int main (int argc, char **argv) {
 	if (strcmp("add", action) == 0) {
 #ifndef WIN32
 	    char log_msg[LOGSIZE];
-		char *exec_cmd[3] = { DEFAULTDIR "/bin/wazuh-control", "restart", NULL};
+		char *exec_cmd[3] = { BUILDDIR(HOMEDIR,"/bin/wazuh-control"), "restart", NULL};
         wfd_t *wfd = NULL;
 
 		if (isChroot()) {
