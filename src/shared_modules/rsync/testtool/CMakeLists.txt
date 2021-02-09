@@ -14,6 +14,10 @@ endif(COVERITY)
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14 -pthread")
 
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address")
+endif(FSANITIZE)
+
 add_executable(rsync_test_tool
                "${CMAKE_SOURCE_DIR}/testtool/main.cpp"
                "${CMAKE_SOURCE_DIR}/testtool/agentEmulator.cpp"

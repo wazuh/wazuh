@@ -15,13 +15,27 @@ def printFail(msg):
     print('\033[91m' + msg + '\033[0m')
 
 headerDic = {\
-'tests':   '=================== Running Tests       ===================',\
-'valgrind':'=================== Running Valgrind    ===================',\
-'cppcheck':'=================== Running cppcheck    ===================',\
-'make':    '=================== Compiling library   ===================',\
-'clean':   '=================== Cleaning library    ===================',\
-'rtr':     '=================== Running RTR checks  ===================',\
-'coverage':'=================== Running Coverage    ===================',\
+'tests':            '=================== Running Tests       ===================',\
+'valgrind':         '=================== Running Valgrind    ===================',\
+'cppcheck':         '=================== Running cppcheck    ===================',\
+'asan':             '=================== Running ASAN        ===================',\
+'testtool':         '=================== Running TEST TOOL   ===================',\
+'cleanfolder':      '=================== Clean build Folders ===================',\
+'configurecmake':   '=================== Running CMake Conf  ===================',\
+'make':             '=================== Compiling library   ===================',\
+'clean':            '=================== Cleaning library    ===================',\
+'rtr':              '=================== Running RTR checks  ===================',\
+'coverage':         '=================== Running Coverage    ===================',\
+}
+
+smokeTestsDic = {\
+'wazuh_modules/syscollector': [{'test_tool_name': 'syscollector_test_tool', 'is_smoke_with_configuration':False, 'args':'10'}],\
+'shared_modules/dbsync':      [{'test_tool_name': 'dbsync_test_tool', 'is_smoke_with_configuration':True, 'args':'-c config.json -a snapshotsUpdate/insertData.json,snapshotsUpdate/updateWithSnapshot.json -o ./output'},\
+                               {'test_tool_name': 'dbsync_test_tool', 'is_smoke_with_configuration':True, 'args':'-c config.json -a InsertionUpdateDeleteSelect/inputSyncRowInsert.json,InsertionUpdateDeleteSelect/inputSyncRowModified.json,InsertionUpdateDeleteSelect/deleteRows.json,InsertionUpdateDeleteSelect/inputSelectRows.json -o ./output'},\
+                               {'test_tool_name': 'dbsync_test_tool', 'is_smoke_with_configuration':True, 'args':'-c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output'},\
+                               {'test_tool_name': 'dbsync_test_tool', 'is_smoke_with_configuration':True, 'args':'-c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output'}],\
+'shared_modules/rsync':       [{'test_tool_name': 'rsync_test_tool', 'is_smoke_with_configuration':False, 'args':''}],\
+'data_provider':              [{'test_tool_name': 'sysinfo_test_tool', 'is_smoke_with_configuration':False, 'args':''} ],\
 }    
 
 currentBuildDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
@@ -230,6 +244,88 @@ def cleanLib(moduleName):
     """
     currentDir = currentDirPathBuild(moduleName)
     os.system('make clean -C' + currentDir)
+
+def cleanFolder(folder, additionalFolder):
+    currentDir = currentDirPath(folder)
+    cleanFolderCommand = "rm -rf " + currentDir
+
+    if additionalFolder:
+        cleanFolderCommand += additionalFolder
+
+    out = subprocess.run(cleanFolderCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0 and not out.stderr:
+        printGreen('[Cleanfolder: PASSED]')
+    else:
+        print(out.stderr)
+        printFail('[Cleanfolder: FAILED]')
+        errorString = 'Error Running Cleanfolder: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def configureCMake(moduleName, debugMode, withAsan):
+    printHeader("<"+moduleName+">"+headerDic['configurecmake']+"<"+moduleName+">")
+    currentModuleNameDir = currentDirPath(moduleName)
+    currentPathDir = currentDirPathBuild(moduleName)
+
+    if not os.path.exists(currentPathDir):
+        os.mkdir(currentPathDir)
+
+    configureCMakeCommand = "cmake -S" + currentModuleNameDir + " -B" + currentPathDir + " -DCMAKE_BUILD_TYPE=Debug"
+
+    if debugMode:
+        configureCMakeCommand += " -DCMAKE_BUILD_TYPE=Debug"
+
+    if withAsan:
+        configureCMakeCommand += " -DFSANITIZE=1"
+
+    out = subprocess.run(configureCMakeCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0 and not out.stderr:
+        printGreen('[ConfigureCMake: PASSED]')
+    else:
+        print(out.stderr)
+        printFail('[ConfigureCMake: FAILED]')
+        errorString = 'Error Running ConfigureCMake: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def runTestTool(moduleName, testToolCommand, isSmokeTest=False):
+    printHeader("<TESTTOOL>"+headerDic['testtool']+"<TESTTOOL>")
+    printGreen(testToolCommand)
+    cwd = os.getcwd()
+
+    if isSmokeTest:
+        currentModuleNameDir = currentDirPath(moduleName)
+        os.chdir(currentModuleNameDir+'/smokeTests')
+        cleanFolder(currentModuleNameDir, '/smokeTests/output')
+
+        if not os.path.exists(currentModuleNameDir+'/smokeTests/output'):
+            os.mkdir(currentModuleNameDir+'/smokeTests/output')
+
+    out = subprocess.run(testToolCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+    os.chdir(cwd)
+
+    if out.returncode == 0 and not out.stderr:
+        printGreen('[TestTool: PASSED]')
+    else:
+        print(out.stderr)
+        printFail('[TestTool: FAILED]')
+        errorString = 'Error Running TestTool: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def runASAN(moduleName):
+    """
+    Executes Address Sanitizer dynamic analysis tool under 'moduleName' lib code.
+
+    :param moduleName: Lib to be analyzed using ASAN dynamic analysis tool.
+    """
+    printHeader("<"+moduleName+">"+headerDic['asan']+"<"+moduleName+">")
+    cleanFolder(str(moduleName), "/build")
+    configureCMake(str(moduleName), True, True)
+    makeLib(str(moduleName))
+    for element in smokeTestsDic[moduleName]:
+        testToolCommand = currentDirPathBuild(moduleName) + "/bin/" + element['test_tool_name'] + " " + element['args'] 
+        runTestTool(str(moduleName), testToolCommand, element['is_smoke_with_configuration'])
+
+    printGreen("<"+moduleName+">"+"[ASAN: PASSED]"+"<"+moduleName+">")
 
 def runReadyToReview(moduleName):
     """
