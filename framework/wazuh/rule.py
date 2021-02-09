@@ -4,6 +4,7 @@
 
 from os import remove
 from os.path import exists, join
+from xml.parsers.expat import ExpatError
 
 import xmltodict
 
@@ -243,6 +244,10 @@ def get_rule_file(filename=None, raw=False):
                 # Missing root tag in rule file
                 result.affected_items.append(xmltodict.parse(f'<root>{content}</root>')['root'])
                 result.total_affected_items = 1
+        except ExpatError as e:
+            result.add_failed_item(id_=filename,
+                                   error=WazuhError(1413, extra_message=f"{join('WAZUH_HOME', rules_path, filename)}:"     
+                                                                        f" {str(e)}"))
         except OSError:
             result.add_failed_item(id_=filename,
                                    error=WazuhError(1414, extra_message=join('WAZUH_HOME', rules_path, filename)))
