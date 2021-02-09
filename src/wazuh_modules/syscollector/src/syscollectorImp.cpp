@@ -1110,6 +1110,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
                         const std::function<void(const std::string&)> reportSyncFunction,
                         const std::function<void(const std::string&)> logErrorFunction,
+                        const std::function<void(const std::string&)> logInfoFunction,
+                        const std::function<void(const std::string&)> logDebugFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
                         const std::string& normalizerType,
@@ -1128,6 +1130,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_reportDiffFunction = reportDiffFunction;
     m_reportSyncFunction = reportSyncFunction;
     m_logErrorFunction = logErrorFunction;
+    m_logInfoFunction = logInfoFunction;
+    m_logDebugFunction = logDebugFunction;
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
@@ -1520,6 +1524,7 @@ void Syscollector::sync()
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
+    m_logInfoFunction("Syscollector started.");
     if (m_scanOnStart)
     {
         scan();
@@ -1545,6 +1550,7 @@ void Syscollector::push(const std::string& data)
         try
         {
             m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
+            m_logDebugFunction("Message pushed: " + data);
         }
         // LCOV_EXCL_START
         catch(const std::exception& ex)

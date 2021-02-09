@@ -51,6 +51,22 @@ int main(int /*argc*/, const char** /*argv[]*/)
             std::cout << log << std::endl;
         }
     };
+    const auto infoLogFunction
+    {
+        [](const std::string& log)
+        {
+            std::cout << "Info Log:" << std::endl;
+            std::cout << log << std::endl;
+        }
+    };
+    const auto debugLogFunction
+    {
+        [](const std::string& log)
+        {
+            std::cout << "Debug Log:" << std::endl;
+            std::cout << log << std::endl;
+        }
+    };
     const std::chrono::milliseconds timeout{5000};
     const auto spInfo{ std::make_shared<SysInfo>() };
     rsync_initialize(logFunction);
@@ -70,6 +86,8 @@ int main(int /*argc*/, const char** /*argv[]*/)
                                       reportDiffFunction,
                                       reportSyncFunction,
                                       errorLogFunction,
+                                      infoLogFunction,
+                                      debugLogFunction,
                                       SYSCOLLECTOR_DB_DISK_PATH,
                                       SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                       SYSCOLLECTOR_NORM_TYPE,

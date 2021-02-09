@@ -54,6 +54,14 @@ static void wm_sys_log_error(const char* log) {
     mterror(WM_SYS_LOGTAG, "%s", log);
 }
 
+static void wm_sys_log_info(const char* log) {
+    mtinfo(WM_SYS_LOGTAG, "%s", log);
+}
+
+static void wm_sys_log_debug(const char* log) {
+    mtdebug1(WM_SYS_LOGTAG, "%s", log);
+}
+
 void* wm_sys_main(wm_sys_t *sys) {
     if (!sys->flags.enabled) {
         mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
@@ -96,6 +104,8 @@ void* wm_sys_main(wm_sys_t *sys) {
                                wm_sys_send_diff_message,
                                wm_sys_send_dbsync_message,
                                wm_sys_log_error,
+                               wm_sys_log_info,
+                               wm_sys_log_debug,
                                SYSCOLLECTOR_DB_DISK_PATH,
                                SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                SYSCOLLECTOR_NORM_TYPE,
@@ -122,6 +132,8 @@ void* wm_sys_main(wm_sys_t *sys) {
     }
     so_free_library(syscollector_module);
     syscollector_module = NULL;
+    mtinfo(WM_SYS_LOGTAG, "Syscollector Stopped.");
+
     return 0;
 }
 
