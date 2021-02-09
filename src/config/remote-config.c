@@ -286,11 +286,10 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
 
     const size_t MAX_ARRAY_SIZE = 64;
     const char * XML_REMOTE_PROTOCOL = "protocol";
-    char ** proto_arr;
     size_t current = 0;
     int retval = 0;
 
-    proto_arr = OS_StrBreak(',', content, MAX_ARRAY_SIZE);
+    char ** proto_arr = OS_StrBreak(',', content, MAX_ARRAY_SIZE);
 
     if (proto_arr) {
         while (proto_arr[current]) {
