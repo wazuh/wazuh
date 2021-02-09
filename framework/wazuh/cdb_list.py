@@ -3,15 +3,14 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-from pathlib import Path
-from shutil import Error
+from shutil import copyfile
 
 from wazuh.core import common
-from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS, create_tmp_list, \
-    get_relative_path, delete_list
-from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS, create_list_file, \
+    get_relative_path, delete_list, get_filenames_paths, validate_cdb_list
+from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array, delete_wazuh_file, safe_move
+from wazuh.core.utils import process_array, safe_move
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -54,11 +53,8 @@ def get_lists(filename=None, offset=0, limit=common.database_limit, select=None,
                                       none_msg='No list was returned')
     dirname = os.path.join(common.ossec_path, relative_dirname) if relative_dirname else None
 
-    # Get full paths from filename list. I.e: test_filename -> {wazuh_path}/etc/lists/test_filename
-    paths = [str(next(Path(common.lists_path).rglob(file), os.path.join(common.lists_path, file))) for file in filename]
-
     lists = list()
-    for path in paths:
+    for path in get_filenames_paths(filename):
         if not any([dirname is not None and os.path.dirname(path) != dirname, not os.path.isfile(path)]):
             lists.append({'items': [{'key': key, 'value': value} for key, value in get_list_from_file(path).items()],
                           'relative_dirname': os.path.dirname(get_relative_path(path)),
@@ -95,7 +91,7 @@ def get_list_file(filename=None, raw=None):
 
     try:
         # Recursively search for filename inside {wazuh_path}/etc/lists/
-        content = get_list_from_file(str(next(Path(common.lists_path).rglob(filename[0]), '')), raw)
+        content = get_list_from_file(get_filenames_paths(filename)[0], raw)
         if raw:
             result = content
         else:
@@ -127,37 +123,39 @@ def upload_list_file(filename=None, content=None, overwrite=False):
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file uploaded successfully',
                                       none_msg='Could not upload CDB list file')
-    path = os.path.join('etc', 'lists', filename)
+    path = os.path.join(common.lists_path, filename)
+    backup_file = ''
 
     try:
-        if len(content) == 0:
-            raise WazuhError(1112)
+        # Raise WazuhError if CDB list is not valid
+        validate_cdb_list(content)
 
-        # Validation is performed after creating tmp file, so it has to be created before overwriting file (if needed).
-        tmp_list_file = create_tmp_list(content)
-        try:
-            # If file already exists and overwrite is False, raise exception.
-            if not overwrite and os.path.exists(os.path.join(common.ossec_path, path)):
-                raise WazuhError(1905)
-            # Original file will not be deleted if create_tmp_list validation was not successful.
-            elif overwrite and os.path.exists(os.path.join(common.ossec_path, path)):
-                delete_list_file(filename=filename)
-            # If file with same name already exists in subdirectory.
-            elif str(next(Path(common.lists_path).rglob(filename), '')) != '':
-                raise WazuhError(1805)
-
+        # If file already exists and overwrite is False, raise exception.
+        if not overwrite and os.path.exists(path):
+            raise WazuhError(1905)
+        # If file with same name already exists in subdirectory.
+        elif get_filenames_paths([filename])[0] != path:
+            raise WazuhError(1805)
+        # Create backup and delete original CDB list.
+        elif overwrite and os.path.exists(path):
             try:
-                # Move temporary file to group folder.
-                safe_move(tmp_list_file, os.path.join(common.ossec_path, path), permissions=0o660)
-            except Error:
-                raise WazuhInternalError(1016)
+                backup_file = path + '.backup'
+                copyfile(path, backup_file)
+            except IOError:
+                raise WazuhError(1806)
+            # Use delete_list_file so exception will be raised if user has no RBAC permissions.
+            delete_list_file(filename=filename)
 
-            result.affected_items.append(path)
-            result.total_affected_items = len(result.affected_items)
-        finally:
-            os.path.exists(tmp_list_file) and delete_wazuh_file(tmp_list_file)
+        create_list_file(path, content, permissions=0o660)
+        result.affected_items.append(get_relative_path(path))
+        result.total_affected_items = len(result.affected_items)
+        # Remove back up file if no exceptions were raised.
+        os.path.exists(backup_file) and os.remove(backup_file)
     except WazuhError as e:
-        result.add_failed_item(id_=path, error=e)
+        result.add_failed_item(id_=get_relative_path(path), error=e)
+    finally:
+        # If backup file was not deleted (any exception was raised), it should be restored.
+        os.path.exists(backup_file) and safe_move(backup_file, path, permissions=0o660)
 
     return result
 
@@ -226,18 +224,11 @@ def get_path_lists(filename=None, offset=0, limit=common.database_limit, sort_by
                                       some_msg='Some paths were not returned',
                                       none_msg='No path was returned')
 
-    # Get relative paths from filename list. I.e: test_filename -> etc/lists/test_filename
-    paths = [
-        os.path.relpath(
-            str(next(Path(common.lists_path).rglob(file), os.path.join(common.lists_path, file))),
-            common.ossec_path
-        ) for file in filename
-    ]
-
+    paths = get_filenames_paths(filename)
     lists = iterate_lists(only_names=True)
     for item in list(lists):
         if any([relative_dirname is not None and item['relative_dirname'] != relative_dirname,
-                os.path.join(item['relative_dirname'], item['filename']) not in paths]):
+                os.path.join(common.ossec_path, item['relative_dirname'], item['filename']) not in paths]):
             lists.remove(item)
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,

@@ -5,6 +5,7 @@
 
 import os
 from unittest.mock import mock_open, patch
+import shutil
 
 import pytest
 
@@ -12,7 +13,7 @@ with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core import common
         from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists, \
-            split_key_value_with_quotes, validate_cdb_list, create_tmp_list, delete_list
+            split_key_value_with_quotes, validate_cdb_list, create_list_file, delete_list, get_filenames_paths
         from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 
 
@@ -200,61 +201,43 @@ def test_validate_cdb_list():
     with open(os.path.join(common.ossec_path, PATH_FILE)) as f:
         ossec_cdb_list = f.read()
 
-    m = mock_open(read_data=ossec_cdb_list)
-    with patch('builtins.open', m):
-        assert validate_cdb_list('path')
+    try:
+        validate_cdb_list(ossec_cdb_list)
+    except WazuhError:
+        pytest.fail('validate_cdb_list raised an exception but no exception was expected')
 
 
 def test_validate_cdb_list_ko():
     """Test that validate_cdb_list raises expected exceptions."""
-    # Match error
-    invalid_list = "test:key:testvalue\n"
+    # Exception when content is empty
+    with pytest.raises(WazuhError, match=r'\b1112\b'):
+        validate_cdb_list('')
 
-    m = mock_open(read_data=invalid_list)
-    with patch('wazuh.core.cdb_list.open', m):
-        result = validate_cdb_list('path')
-
-    assert result is False
-
-    # Open function raise IOError
-    with pytest.raises(WazuhException, match=f'.* 1005 .*'):
-        validate_cdb_list('path')
+    # Raise exeption when using invalid CDB list
+    with pytest.raises(WazuhError, match=r'\b1800\b'):
+        validate_cdb_list("test:key:testvalue\n")
 
 
 @patch('wazuh.core.cdb_list.chmod')
 @patch('wazuh.core.cdb_list.uuid.uuid4', return_value='0')
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
-def test_create_tmp_list(mock_delete, mock_uuid, mock_chmod):
-    """Test that create_tmp_list function"""
+def test_create_list_file(mock_delete, mock_uuid, mock_chmod):
+    """Test that create_list_file function works as expected"""
 
     with open(os.path.join(common.ossec_path, PATH_FILE)) as f:
         with patch('wazuh.core.cdb_list.common.ossec_path', new='/var/ossec'):
             with patch('builtins.open') as mock_open:
                 ossec_cdb_list = f.read()
-                result = create_tmp_list(ossec_cdb_list)
+                result = create_list_file('/test/path', ossec_cdb_list, permissions=0o660)
                 assert mock_open.return_value.__enter__().write.call_count == len(ossec_cdb_list.split('\n'))-1
 
-    assert result == '/var/ossec/tmp/api_tmp_file_0.txt'
+    mock_chmod.assert_called_once_with('/test/path', 0o660)
 
 
-def test_create_tmp_list_ko():
-    """Test that create_tmp_list function works and methods inside are called with expected parameters."""
-    with pytest.raises(WazuhError, match=r'\b1112\b'):
-        create_tmp_list('')
-
-    with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
-        create_tmp_list(' ')
-
-    with patch('builtins.open'):
-        with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
-            create_tmp_list(' ')
-
-        with patch('wazuh.core.cdb_list.chmod'):
-            with patch('wazuh.core.cdb_list.validate_cdb_list', return_value=False):
-                with patch('wazuh.core.cdb_list.remove') as mock_remove:
-                    with pytest.raises(WazuhError, match=r'\b1800\b'):
-                        create_tmp_list(' ')
-                    mock_remove.assert_called_once()
+def test_create_list_file_ko():
+    """Test that create_list_file function works and methods inside are called with expected parameters."""
+    with pytest.raises(WazuhError, match=r'\b1807\b'):
+        create_list_file(full_path='/test/path', content=' ')
 
 
 @patch('wazuh.core.cdb_list.remove')
@@ -265,3 +248,20 @@ def test_delete_list(mock_delete_wazuh_file, mock_remove):
     delete_list(path)
     mock_delete_wazuh_file.assert_called_once_with(os.path.join(common.ossec_path, path))
     mock_remove.assert_called_once_with(os.path.join(common.ossec_path, path + '.cdb'))
+
+
+def test_get_filenames_paths():
+    """Check that full file path is found using only the filename."""
+    try:
+        # Create directory for the test
+        test_dir = os.path.join(ABSOLUTE_PATH, 'test_dir')
+        test_file = os.path.join(test_dir, 'test_file')
+        shutil.rmtree(test_dir, ignore_errors=True)
+        os.makedirs(test_dir)
+        with open(test_file, 'a') as f:
+            f.write('key:value\n"ke:y2":value2\n')
+
+        assert [test_file] == get_filenames_paths(['test_file'], root_directory=ABSOLUTE_PATH)
+
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)

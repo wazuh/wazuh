@@ -467,12 +467,13 @@ def delete_wazuh_file(full_path):
     bool
         True if success.
     """
-    if not full_path.startswith(common.ossec_path):
+    if not full_path.startswith(common.ossec_path) or '..' in full_path:
         raise WazuhError(1907)
 
     if path.exists(full_path):
         try:
             remove(full_path)
+            return True
         except IOError:
             raise WazuhError(1907)
     else:

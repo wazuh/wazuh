@@ -350,7 +350,10 @@ class WazuhException(Exception):
         1805: {'message': 'File with the same name already exists in a subdirectory.',
                'remediation': 'Please, make sure to use a name which is not repeated. '
                },
-
+        1806: {'message': 'Error trying to create back up file.'
+               },
+        1807: {'message': 'Error trying to create CDB list file.'
+               },
         1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                           'The error message will be the output of upgrade module'},
 

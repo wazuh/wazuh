@@ -9097,14 +9097,14 @@ paths:
         - Lists
       summary: "Get CDB list file content"
       description: "Return the content of a CDB list file. Only the filename can be specified. It will be searched
-      recursively if not found."
-      operationId: api.controllers.cdb_list_controller.get_file
+      recursively if not found"
+      operationId: api.controllers.cdb_list_controller.get_list_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:read'
       parameters:
+        - $ref: '#/components/parameters/list_filename_path'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_filename_path'
         - $ref: '#/components/parameters/raw'
       responses:
         '200':
@@ -9154,15 +9154,15 @@ paths:
       tags:
         - Lists
       summary: "Update CDB list file"
-      description: "Replace or upload a CDB list file with the data contained in the API request."
-      operationId: api.controllers.cdb_list_controller.put_file
+      description: "Replace or upload a CDB list file with the data contained in the API request"
+      operationId: api.controllers.cdb_list_controller.put_list_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:update'
         - $ref: '#/x-rbac-catalog/actions/lists:delete'
       parameters:
+        - $ref: '#/components/parameters/list_filename_path'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_filename_path'
         - $ref: '#/components/parameters/overwrite'
       requestBody:
         description: "Content of the file to be uploaded"
@@ -9205,14 +9205,14 @@ paths:
         - Lists
       summary: "Delete CDB list file"
       description: "Delete a specified CDB list file. Only the filename can be specified. It will be searched
-      recursively if not found."
-      operationId: api.controllers.cdb_list_controller.delete_file
+      recursively if not found"
+      operationId: api.controllers.cdb_list_controller.delete_list_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:delete'
       parameters:
+        - $ref: '#/components/parameters/list_filename_path'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/list_filename_path'
       responses:
         '200':
           description: "Confirmation message"
