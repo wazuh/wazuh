@@ -37,7 +37,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
     char* out;
     int i;
     char * saveptr;
-    struct tm tm_result = { .tm_sec = 0 };
 
     extern long int __crt_ftell;
 
@@ -302,8 +301,6 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
     }
 
     if(lf->fields[FIM_FILE].value) {
-        long aux_time;
-        char *end = NULL;
 
         file_diff = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "syscheck", file_diff);
@@ -313,7 +310,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddItemToObject(file_diff, "hard_links", cJSON_Parse(lf->fields[FIM_HARD_LINKS].value));
         }
 
-        if (lf->fields[FIM_MODE].value) {
+        if (lf->fields[FIM_MODE].value && *lf->fields[FIM_MODE].value) {
             cJSON_AddStringToObject(file_diff, "mode", lf->fields[FIM_MODE].value);
         }
 
@@ -321,35 +318,35 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddStringToObject(file_diff, "symbolic_path", lf->fields[FIM_SYM_PATH].value);
         }
 
-        if (lf->fields[FIM_REGISTRY_ARCH].value) {
+        if (lf->fields[FIM_REGISTRY_ARCH].value && *lf->fields[FIM_REGISTRY_ARCH].value) {
             cJSON_AddStringToObject(file_diff, "arch", lf->fields[FIM_REGISTRY_ARCH].value);
         }
 
-        if (lf->fields[FIM_REGISTRY_VALUE_NAME].value) {
+        if (lf->fields[FIM_REGISTRY_VALUE_NAME].value && *lf->fields[FIM_REGISTRY_VALUE_NAME].value) {
             cJSON_AddStringToObject(file_diff, "value_name", lf->fields[FIM_REGISTRY_VALUE_NAME].value);
         }
 
-        if (lf->fields[FIM_REGISTRY_VALUE_TYPE].value) {
+        if (lf->fields[FIM_REGISTRY_VALUE_TYPE].value && *lf->fields[FIM_REGISTRY_VALUE_TYPE].value) {
             cJSON_AddStringToObject(file_diff, "value_type", lf->fields[FIM_REGISTRY_VALUE_TYPE].value);
         }
 
-        if (print_before_field(lf->size_before, lf->fields[FIM_SIZE].value)) {
-            cJSON_AddStringToObject(file_diff, "size_before", lf->size_before);
+        if (print_before_field(lf->fields[FIM_SIZE_BEFORE].value, lf->fields[FIM_SIZE].value)) {
+            cJSON_AddStringToObject(file_diff, "size_before", lf->fields[FIM_SIZE_BEFORE].value);
         }
         if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value) {
             cJSON_AddStringToObject(file_diff, "size_after", lf->fields[FIM_SIZE].value);
         }
 
-        if (print_before_field(lf->perm_before, lf->fields[FIM_PERM].value)) {
-            if (is_win_permission(lf->perm_before)) {
+        if (print_before_field(lf->fields[FIM_PERM_BEFORE].value, lf->fields[FIM_PERM].value)) {
+            if (is_win_permission(lf->fields[FIM_PERM_BEFORE].value)) {
                 cJSON *old_perm;
-                if (old_perm = win_perm_to_json(lf->perm_before), old_perm) {
+                if (old_perm = win_perm_to_json(lf->fields[FIM_PERM_BEFORE].value), old_perm) {
                     cJSON_AddItemToObject(file_diff, "win_perm_before", old_perm);
                 } else {
                     merror("The old permissions could not be added to the JSON alert.");
                 }
             } else {
-                cJSON_AddStringToObject(file_diff, "perm_before", lf->perm_before);
+                cJSON_AddStringToObject(file_diff, "perm_before", lf->fields[FIM_PERM_BEFORE].value);
             }
         }
         if (lf->fields[FIM_PERM].value && *lf->fields[FIM_PERM].value) {
@@ -365,36 +362,36 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             }
         }
 
-        if (print_before_field(lf->owner_before, lf->fields[FIM_UID].value)) {
-            cJSON_AddStringToObject(file_diff, "uid_before", lf->owner_before);
+        if (print_before_field(lf->fields[FIM_UID_BEFORE].value, lf->fields[FIM_UID].value)) {
+            cJSON_AddStringToObject(file_diff, "uid_before", lf->fields[FIM_UID_BEFORE].value);
         }
         if (lf->fields[FIM_UID].value && *lf->fields[FIM_UID].value) {
             cJSON_AddStringToObject(file_diff, "uid_after", lf->fields[FIM_UID].value);
         }
 
-        if (print_before_field(lf->gowner_before, lf->fields[FIM_GID].value)) {
-            cJSON_AddStringToObject(file_diff, "gid_before", lf->gowner_before);
+        if (print_before_field(lf->fields[FIM_GID_BEFORE].value, lf->fields[FIM_GID].value)) {
+            cJSON_AddStringToObject(file_diff, "gid_before", lf->fields[FIM_GID_BEFORE].value);
         }
         if (lf->fields[FIM_GID].value && *lf->fields[FIM_GID].value) {
             cJSON_AddStringToObject(file_diff, "gid_after", lf->fields[FIM_GID].value);
         }
 
-        if (print_before_field(lf->md5_before, lf->fields[FIM_MD5].value)) {
-            cJSON_AddStringToObject(file_diff, "md5_before", lf->md5_before);
+        if (print_before_field(lf->fields[FIM_MD5_BEFORE].value, lf->fields[FIM_MD5].value)) {
+            cJSON_AddStringToObject(file_diff, "md5_before", lf->fields[FIM_MD5_BEFORE].value);
         }
         if (lf->fields[FIM_MD5].value && *lf->fields[FIM_MD5].value) {
             cJSON_AddStringToObject(file_diff, "md5_after", lf->fields[FIM_MD5].value);
         }
 
-        if (print_before_field(lf->sha1_before, lf->fields[FIM_SHA1].value)) {
-            cJSON_AddStringToObject(file_diff, "sha1_before", lf->sha1_before);
+        if (print_before_field(lf->fields[FIM_SHA1_BEFORE].value, lf->fields[FIM_SHA1].value)) {
+            cJSON_AddStringToObject(file_diff, "sha1_before", lf->fields[FIM_SHA1_BEFORE].value);
         }
         if (lf->fields[FIM_SHA1].value && *lf->fields[FIM_SHA1].value) {
             cJSON_AddStringToObject(file_diff, "sha1_after", lf->fields[FIM_SHA1].value);
         }
 
-        if (print_before_field(lf->sha256_before, lf->fields[FIM_SHA256].value)) {
-            cJSON_AddStringToObject(file_diff, "sha256_before", lf->sha256_before);
+        if (print_before_field(lf->fields[FIM_SHA256_BEFORE].value, lf->fields[FIM_SHA256].value)) {
+            cJSON_AddStringToObject(file_diff, "sha256_before", lf->fields[FIM_SHA256_BEFORE].value);
         }
         if (lf->fields[FIM_SHA256].value && *lf->fields[FIM_SHA256].value) {
             cJSON_AddStringToObject(file_diff, "sha256_after", lf->fields[FIM_SHA256].value);
@@ -407,40 +404,32 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             add_json_attrs(lf->fields[FIM_ATTRS].value, file_diff, 1);
         }
 
-        if (print_before_field(lf->uname_before, lf->fields[FIM_UNAME].value)) {
-            cJSON_AddStringToObject(file_diff, "uname_before", lf->uname_before);
+        if (print_before_field(lf->fields[FIM_UNAME_BEFORE].value, lf->fields[FIM_UNAME].value)) {
+            cJSON_AddStringToObject(file_diff, "uname_before", lf->fields[FIM_UNAME_BEFORE].value);
         }
         if (lf->fields[FIM_UNAME].value && *lf->fields[FIM_UNAME].value) {
             cJSON_AddStringToObject(file_diff, "uname_after", lf->fields[FIM_UNAME].value);
         }
 
-        if (print_before_field(lf->gname_before, lf->fields[FIM_GNAME].value)) {
-            cJSON_AddStringToObject(file_diff, "gname_before", lf->gname_before);
+        if (print_before_field(lf->fields[FIM_GNAME_BEFORE].value, lf->fields[FIM_GNAME].value)) {
+            cJSON_AddStringToObject(file_diff, "gname_before", lf->fields[FIM_GNAME_BEFORE].value);
         }
         if(lf->fields[FIM_GNAME].value && *lf->fields[FIM_GNAME].value) {
             cJSON_AddStringToObject(file_diff, "gname_after", lf->fields[FIM_GNAME].value);
         }
 
-        if (lf->mtime_before && w_long_str(lf->mtime_before) != lf->fields[FIM_MTIME].value) {
-            char mtime[25];
-            strftime(mtime, 20, "%FT%T%z", localtime_r(&lf->mtime_before, &tm_result));
-            cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
+        if (print_before_field(lf->fields[FIM_MTIME_BEFORE].value, lf->fields[FIM_MTIME].value)) {
+            cJSON_AddStringToObject(file_diff, "mtime_before", lf->fields[FIM_MTIME_BEFORE].value);
         }
-
         if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value) {
-            aux_time = strtol(lf->fields[FIM_MTIME].value, &end, 10);
-            if (aux_time > 0 || end == '\0') {
-                char mtime[25];
-                strftime(mtime, 20, "%FT%T%z", localtime_r(&aux_time, &tm_result));
-                cJSON_AddStringToObject(file_diff, "mtime_after", mtime);
-            }
+            cJSON_AddStringToObject(file_diff, "mtime_after", lf->fields[FIM_MTIME].value);
         }
 
-        if (lf->inode_before && lf->inode_before != lf->inode_after) {
-            cJSON_AddNumberToObject(file_diff, "inode_before", lf->inode_before);
+        if (print_before_field(lf->fields[FIM_INODE_BEFORE].value, lf->fields[FIM_INODE].value)) {
+            cJSON_AddStringToObject(file_diff, "inode_before", lf->fields[FIM_INODE_BEFORE].value);
         }
-        if (lf->inode_after) {
-            cJSON_AddNumberToObject(file_diff, "inode_after", lf->inode_after);
+        if (lf->fields[FIM_INODE].value) {
+            cJSON_AddStringToObject(file_diff, "inode_after", lf->fields[FIM_INODE].value);
         }
 
         if(Config.decoder_order_size > FIM_DIFF && lf->fields[FIM_DIFF].value && strcmp(lf->fields[FIM_DIFF].value, "0")) {

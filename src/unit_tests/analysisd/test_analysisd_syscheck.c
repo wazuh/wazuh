@@ -145,25 +145,47 @@ static int setup_event_info(void **state) {
         return -1;
     if(lf->decoder_info->fields[FIM_SIZE] = strdup("size"), lf->decoder_info->fields[FIM_SIZE] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_SIZE_BEFORE] = strdup("size_before"), lf->decoder_info->fields[FIM_SIZE_BEFORE] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_PERM] = strdup("perm"), lf->decoder_info->fields[FIM_PERM] == NULL)
+        return -1;
+    if(lf->decoder_info->fields[FIM_PERM_BEFORE] = strdup("perm_before"), lf->decoder_info->fields[FIM_PERM_BEFORE] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_UID] = strdup("uid"), lf->decoder_info->fields[FIM_UID] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_UID_BEFORE] = strdup("uid_before"), lf->decoder_info->fields[FIM_UID_BEFORE] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_GID] = strdup("gid"), lf->decoder_info->fields[FIM_GID] == NULL)
+        return -1;
+    if(lf->decoder_info->fields[FIM_GID_BEFORE] = strdup("gid_before"), lf->decoder_info->fields[FIM_GID_BEFORE] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_MD5] = strdup("md5"), lf->decoder_info->fields[FIM_MD5] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_MD5_BEFORE] = strdup("md5_before"), lf->decoder_info->fields[FIM_MD5_BEFORE] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_SHA1] = strdup("sha1"), lf->decoder_info->fields[FIM_SHA1] == NULL)
+        return -1;
+    if(lf->decoder_info->fields[FIM_SHA1_BEFORE] = strdup("sha1_before"), lf->decoder_info->fields[FIM_SHA1_BEFORE] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_UNAME] = strdup("uname"), lf->decoder_info->fields[FIM_UNAME] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_UNAME_BEFORE] = strdup("uname_before"), lf->decoder_info->fields[FIM_UNAME_BEFORE] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_GNAME] = strdup("gname"), lf->decoder_info->fields[FIM_GNAME] == NULL)
+        return -1;
+    if(lf->decoder_info->fields[FIM_GNAME_BEFORE] = strdup("gname_before"), lf->decoder_info->fields[FIM_GNAME_BEFORE] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_MTIME] = strdup("mtime"), lf->decoder_info->fields[FIM_MTIME] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_MTIME_BEFORE] = strdup("mtime_before"), lf->decoder_info->fields[FIM_MTIME_BEFORE] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_INODE] = strdup("inode"), lf->decoder_info->fields[FIM_INODE] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_INODE_BEFORE] = strdup("inode_before"), lf->decoder_info->fields[FIM_INODE_BEFORE] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_SHA256] = strdup("sha256"), lf->decoder_info->fields[FIM_SHA256] == NULL)
+        return -1;
+    if(lf->decoder_info->fields[FIM_SHA256_BEFORE] = strdup("sha256_before"), lf->decoder_info->fields[FIM_SHA256_BEFORE] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_DIFF] = strdup("diff"), lf->decoder_info->fields[FIM_DIFF] == NULL)
         return -1;
@@ -949,8 +971,7 @@ static void test_fim_fetch_attributes_state_new_attr(void **state) {
     assert_int_equal(ret, 0);
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -972,17 +993,17 @@ static void test_fim_fetch_attributes_state_old_attr(void **state) {
     ret = fim_fetch_attributes_state(attr, input->lf, 0);
 
     assert_int_equal(ret, 0);
-    assert_string_equal(input->lf->size_before, "4567");
-    assert_int_equal(input->lf->inode_before, 5678);
-    assert_int_equal(input->lf->mtime_before, 6789);
-    assert_string_equal(input->lf->perm_before, "perm");
-    assert_string_equal(input->lf->uname_before, "user_name");
-    assert_string_equal(input->lf->gname_before, "group_name");
-    assert_string_equal(input->lf->owner_before, "uid");
-    assert_string_equal(input->lf->gowner_before, "gid");
-    assert_string_equal(input->lf->md5_before, "hash_md5");
-    assert_string_equal(input->lf->sha1_before, "hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "4567");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "5678");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 01:53:09 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "hash_sha256");
 }
 
 static void test_fim_fetch_attributes_state_item_with_no_key(void **state) {
@@ -1019,8 +1040,7 @@ static void test_fim_fetch_attributes_state_invalid_element_type(void **state) {
     assert_int_equal(ret, 0);
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1066,8 +1086,7 @@ static void test_fim_fetch_attributes_success(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1079,17 +1098,17 @@ static void test_fim_fetch_attributes_success(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 }
 
 static void test_fim_fetch_attributes_invalid_attribute(void **state) {
@@ -1125,7 +1144,6 @@ static void test_fim_fetch_attributes_null_new_attrs(void **state) {
     /* assert new attributes */
     assert_null(input->lf->fields[FIM_SIZE].value);
     assert_null(input->lf->fields[FIM_INODE].value);
-    assert_int_equal(input->lf->inode_after, 0);
     assert_null(input->lf->fields[FIM_MTIME].value);
     assert_null(input->lf->fields[FIM_PERM].value);
     assert_null(input->lf->fields[FIM_UNAME].value);
@@ -1138,17 +1156,17 @@ static void test_fim_fetch_attributes_null_new_attrs(void **state) {
     assert_null(input->lf->fields[FIM_SYM_PATH].value);
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 }
 
 static void test_fim_fetch_attributes_null_old_attrs(void **state) {
@@ -1165,8 +1183,7 @@ static void test_fim_fetch_attributes_null_old_attrs(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1178,17 +1195,17 @@ static void test_fim_fetch_attributes_null_old_attrs(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_null(input->lf->size_before);
-    assert_int_equal(input->lf->inode_before, 0);
-    assert_int_equal(input->lf->mtime_before, 0);
-    assert_null(input->lf->perm_before);
-    assert_null(input->lf->uname_before);
-    assert_null(input->lf->gname_before);
-    assert_null(input->lf->owner_before);
-    assert_null(input->lf->gowner_before);
-    assert_null(input->lf->md5_before);
-    assert_null(input->lf->sha1_before);
-    assert_null(input->lf->sha256_before);
+    assert_null(input->lf->fields[FIM_SIZE_BEFORE].value);
+    assert_int_equal(input->lf->fields[FIM_INODE_BEFORE].value, 0);
+    assert_int_equal(input->lf->fields[FIM_MTIME_BEFORE].value, 0);
+    assert_null(input->lf->fields[FIM_PERM_BEFORE].value);
+    assert_null(input->lf->fields[FIM_UNAME_BEFORE].value);
+    assert_null(input->lf->fields[FIM_GNAME_BEFORE].value);
+    assert_null(input->lf->fields[FIM_UID_BEFORE].value);
+    assert_null(input->lf->fields[FIM_GID_BEFORE].value);
+    assert_null(input->lf->fields[FIM_MD5_BEFORE].value);
+    assert_null(input->lf->fields[FIM_SHA1_BEFORE].value);
+    assert_null(input->lf->fields[FIM_SHA256_BEFORE].value);
 }
 
 static void test_fim_fetch_attributes_null_lf(void **state) {
@@ -1333,8 +1350,7 @@ static void test_fim_generate_alert_full_alert(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1346,17 +1362,17 @@ static void test_fim_generate_alert_full_alert(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -1383,7 +1399,7 @@ static void test_fim_generate_alert_full_alert(void **state) {
         "User name was 'old_user_name', now it is 'user_name'\n"
         "Group ownership was 'old_gid', now it is 'gid'\n"
         "Group name was 'old_group_name', now it is 'group_name'\n"
-        "Old modification time was: '3456', now it is '6789'\n"
+        "Old modification time was: 'Thu Jan  1 00:57:36 1970', now it is 'Thu Jan  1 01:53:09 1970'\n"
         "Old inode was: '2345', now it is '5678'\n"
         "Old md5sum was: 'old_hash_md5'\n"
         "New md5sum is : 'hash_md5'\n"
@@ -1431,7 +1447,7 @@ static void test_fim_generate_alert_registry_key_alert(void **state) {
 
     // Assert fim_fetch_attributes
     /* assert new attributes */
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1439,12 +1455,12 @@ static void test_fim_generate_alert_registry_key_alert(void **state) {
     assert_string_equal(input->lf->fields[FIM_GID].value, "gid");
 
     /* assert old attributes */
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
 
     /* Assert actual output */
     assert_string_equal(input->lf->full_log,
@@ -1456,7 +1472,7 @@ static void test_fim_generate_alert_registry_key_alert(void **state) {
         "User name was 'old_user_name', now it is 'user_name'\n"
         "Group ownership was 'old_gid', now it is 'gid'\n"
         "Group name was 'old_group_name', now it is 'group_name'\n"
-        "Old modification time was: '3456', now it is '6789'\n");
+        "Old modification time was: 'Thu Jan  1 00:57:36 1970', now it is 'Thu Jan  1 01:53:09 1970'\n");
 }
 
 static void test_fim_generate_alert_registry_value_alert(void **state) {
@@ -1510,10 +1526,10 @@ static void test_fim_generate_alert_registry_value_alert(void **state) {
     assert_string_equal(input->lf->fields[FIM_SHA256].value, "hash_sha256");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert actual output */
     assert_string_equal(input->lf->full_log,
@@ -1564,8 +1580,7 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1577,17 +1592,17 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -1685,8 +1700,7 @@ static void test_fim_generate_alert_null_mode(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1698,17 +1712,17 @@ static void test_fim_generate_alert_null_mode(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -1764,8 +1778,7 @@ static void test_fim_generate_alert_null_event_type(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1777,17 +1790,17 @@ static void test_fim_generate_alert_null_event_type(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -1843,7 +1856,6 @@ static void test_fim_generate_alert_null_attributes(void **state) {
     /* assert new attributes */
     assert_null(input->lf->fields[FIM_SIZE].value);
     assert_null(input->lf->fields[FIM_INODE].value);
-    assert_int_equal(input->lf->inode_after, 0);
     assert_null(input->lf->fields[FIM_MTIME].value);
     assert_null(input->lf->fields[FIM_PERM].value);
     assert_null(input->lf->fields[FIM_UNAME].value);
@@ -1856,17 +1868,17 @@ static void test_fim_generate_alert_null_attributes(void **state) {
     assert_null(input->lf->fields[FIM_SYM_PATH].value);
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -1892,8 +1904,8 @@ static void test_fim_generate_alert_null_attributes(void **state) {
         "User name was 'old_user_name', now it is ''\n"
         "Group ownership was 'old_gid', now it is ''\n"
         "Group name was 'old_group_name', now it is ''\n"
-        "Old modification time was: '3456', now it is '(null)'\n"
-        "Old inode was: '2345', now it is '0'\n"
+        "Old modification time was: 'Thu Jan  1 00:57:36 1970', now it is '(null)'\n"
+        "Old inode was: '2345', now it is '(null)'\n"
         "Old md5sum was: 'old_hash_md5'\n"
         "New md5sum is : ''\n"
         "Old sha1sum was: 'old_hash_sha1'\n"
@@ -1936,8 +1948,7 @@ static void test_fim_generate_alert_null_old_attributes(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -1949,17 +1960,17 @@ static void test_fim_generate_alert_null_old_attributes(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_null(input->lf->size_before);
-    assert_int_equal(input->lf->inode_before, 0);
-    assert_int_equal(input->lf->mtime_before, 0);
-    assert_null(input->lf->perm_before);
-    assert_null(input->lf->uname_before);
-    assert_null(input->lf->gname_before);
-    assert_null(input->lf->owner_before);
-    assert_null(input->lf->gowner_before);
-    assert_null(input->lf->md5_before);
-    assert_null(input->lf->sha1_before);
-    assert_null(input->lf->sha256_before);
+    assert_null(input->lf->fields[FIM_SIZE_BEFORE].value);
+    assert_int_equal(input->lf->fields[FIM_INODE_BEFORE].value, 0);
+    assert_int_equal(input->lf->fields[FIM_MTIME_BEFORE].value, 0);
+    assert_null(input->lf->fields[FIM_PERM_BEFORE].value);
+    assert_null(input->lf->fields[FIM_UNAME_BEFORE].value);
+    assert_null(input->lf->fields[FIM_GNAME_BEFORE].value);
+    assert_null(input->lf->fields[FIM_UID_BEFORE].value);
+    assert_null(input->lf->fields[FIM_GID_BEFORE].value);
+    assert_null(input->lf->fields[FIM_MD5_BEFORE].value);
+    assert_null(input->lf->fields[FIM_SHA1_BEFORE].value);
+    assert_null(input->lf->fields[FIM_SHA256_BEFORE].value);
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -1985,8 +1996,8 @@ static void test_fim_generate_alert_null_old_attributes(void **state) {
         "User name was '', now it is 'user_name'\n"
         "Group ownership was '', now it is 'gid'\n"
         "Group name was '', now it is 'group_name'\n"
-        "Old modification time was: '0', now it is '6789'\n"
-        "Old inode was: '0', now it is '5678'\n"
+        "Old modification time was: '(null)', now it is 'Thu Jan  1 01:53:09 1970'\n"
+        "Old inode was: '(null)', now it is '5678'\n"
         "Old md5sum was: ''\n"
         "New md5sum is : 'hash_md5'\n"
         "Old sha1sum was: ''\n"
@@ -2030,8 +2041,7 @@ static void test_fim_generate_alert_null_audit(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2043,17 +2053,17 @@ static void test_fim_generate_alert_null_audit(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_null(input->lf->fields[FIM_PPID].value);
@@ -2079,7 +2089,7 @@ static void test_fim_generate_alert_null_audit(void **state) {
         "User name was 'old_user_name', now it is 'user_name'\n"
         "Group ownership was 'old_gid', now it is 'gid'\n"
         "Group name was 'old_group_name', now it is 'group_name'\n"
-        "Old modification time was: '3456', now it is '6789'\n"
+        "Old modification time was: 'Thu Jan  1 00:57:36 1970', now it is 'Thu Jan  1 01:53:09 1970'\n"
         "Old inode was: '2345', now it is '5678'\n"
         "Old md5sum was: 'old_hash_md5'\n"
         "New md5sum is : 'hash_md5'\n"
@@ -2137,8 +2147,7 @@ static void test_fim_process_alert_added_success(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2150,17 +2159,17 @@ static void test_fim_process_alert_added_success(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -2237,8 +2246,7 @@ static void test_fim_process_alert_modified_success(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2250,17 +2258,17 @@ static void test_fim_process_alert_modified_success(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -2286,7 +2294,7 @@ static void test_fim_process_alert_modified_success(void **state) {
         "User name was 'old_user_name', now it is 'user_name'\n"
         "Group ownership was 'old_gid', now it is 'gid'\n"
         "Group name was 'old_group_name', now it is 'group_name'\n"
-        "Old modification time was: '3456', now it is '6789'\n"
+        "Old modification time was: 'Thu Jan  1 00:57:36 1970', now it is 'Thu Jan  1 01:53:09 1970'\n"
         "Old inode was: '2345', now it is '5678'\n"
         "Old md5sum was: 'old_hash_md5'\n"
         "New md5sum is : 'hash_md5'\n"
@@ -2333,8 +2341,7 @@ static void test_fim_process_alert_deleted_success(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2346,17 +2353,17 @@ static void test_fim_process_alert_deleted_success(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -2534,8 +2541,7 @@ static void test_fim_process_alert_no_hard_links(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2547,17 +2553,17 @@ static void test_fim_process_alert_no_hard_links(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -2633,8 +2639,7 @@ static void test_fim_process_alert_no_mode(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2646,17 +2651,17 @@ static void test_fim_process_alert_no_mode(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -2731,8 +2736,7 @@ static void test_fim_process_alert_no_tags(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2744,17 +2748,17 @@ static void test_fim_process_alert_no_tags(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -2830,8 +2834,7 @@ static void test_fim_process_alert_no_content_changes(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2843,17 +2846,17 @@ static void test_fim_process_alert_no_content_changes(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -2929,8 +2932,7 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -2942,17 +2944,17 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -3050,8 +3052,7 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -3063,17 +3064,17 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_null(input->lf->size_before);
-    assert_int_equal(input->lf->inode_before, 0);
-    assert_int_equal(input->lf->mtime_before, 0);
-    assert_null(input->lf->perm_before);
-    assert_null(input->lf->uname_before);
-    assert_null(input->lf->gname_before);
-    assert_null(input->lf->owner_before);
-    assert_null(input->lf->gowner_before);
-    assert_null(input->lf->md5_before);
-    assert_null(input->lf->sha1_before);
-    assert_null(input->lf->sha256_before);
+    assert_null(input->lf->fields[FIM_SIZE_BEFORE].value);
+    assert_int_equal(input->lf->fields[FIM_INODE_BEFORE].value, 0);
+    assert_int_equal(input->lf->fields[FIM_MTIME_BEFORE].value, 0);
+    assert_null(input->lf->fields[FIM_PERM_BEFORE].value);
+    assert_null(input->lf->fields[FIM_UNAME_BEFORE].value);
+    assert_null(input->lf->fields[FIM_GNAME_BEFORE].value);
+    assert_null(input->lf->fields[FIM_UID_BEFORE].value);
+    assert_null(input->lf->fields[FIM_GID_BEFORE].value);
+    assert_null(input->lf->fields[FIM_MD5_BEFORE].value);
+    assert_null(input->lf->fields[FIM_SHA1_BEFORE].value);
+    assert_null(input->lf->fields[FIM_SHA256_BEFORE].value);
 
     /* Assert values gotten from audit */
     assert_string_equal(input->lf->fields[FIM_PPID].value, "12345");
@@ -3099,8 +3100,8 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
         "User name was '', now it is 'user_name'\n"
         "Group ownership was '', now it is 'gid'\n"
         "Group name was '', now it is 'group_name'\n"
-        "Old modification time was: '0', now it is '6789'\n"
-        "Old inode was: '0', now it is '5678'\n"
+        "Old modification time was: '(null)', now it is 'Thu Jan  1 01:53:09 1970'\n"
+        "Old inode was: '(null)', now it is '5678'\n"
         "Old md5sum was: ''\n"
         "New md5sum is : 'hash_md5'\n"
         "Old sha1sum was: ''\n"
@@ -3162,8 +3163,7 @@ static void test_fim_process_alert_no_audit(void **state) {
     /* assert new attributes */
     assert_string_equal(input->lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(input->lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(input->lf->inode_after, 5678);
-    assert_string_equal(input->lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(input->lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(input->lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(input->lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(input->lf->fields[FIM_GNAME].value, "group_name");
@@ -3175,17 +3175,17 @@ static void test_fim_process_alert_no_audit(void **state) {
     assert_string_equal(input->lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(input->lf->size_before, "1234");
-    assert_int_equal(input->lf->inode_before, 2345);
-    assert_int_equal(input->lf->mtime_before, 3456);
-    assert_string_equal(input->lf->perm_before, "old_perm");
-    assert_string_equal(input->lf->uname_before, "old_user_name");
-    assert_string_equal(input->lf->gname_before, "old_group_name");
-    assert_string_equal(input->lf->owner_before, "old_uid");
-    assert_string_equal(input->lf->gowner_before, "old_gid");
-    assert_string_equal(input->lf->md5_before, "old_hash_md5");
-    assert_string_equal(input->lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(input->lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(input->lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(input->lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(input->lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(input->lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(input->lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(input->lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(input->lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(input->lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(input->lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(input->lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(input->lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_null(input->lf->fields[FIM_PPID].value);
@@ -3274,8 +3274,7 @@ static void test_decode_fim_event_type_event(void **state) {
     /* assert new attributes */
     assert_string_equal(lf->fields[FIM_SIZE].value, "4567");
     assert_string_equal(lf->fields[FIM_INODE].value, "5678");
-    assert_int_equal(lf->inode_after, 5678);
-    assert_string_equal(lf->fields[FIM_MTIME].value, "6789");
+    assert_string_equal(lf->fields[FIM_MTIME].value, "Thu Jan  1 01:53:09 1970");
     assert_string_equal(lf->fields[FIM_PERM].value, "perm");
     assert_string_equal(lf->fields[FIM_UNAME].value, "user_name");
     assert_string_equal(lf->fields[FIM_GNAME].value, "group_name");
@@ -3287,17 +3286,17 @@ static void test_decode_fim_event_type_event(void **state) {
     assert_string_equal(lf->fields[FIM_SYM_PATH].value, "symlink_path");
 
     /* assert old attributes */
-    assert_string_equal(lf->size_before, "1234");
-    assert_int_equal(lf->inode_before, 2345);
-    assert_int_equal(lf->mtime_before, 3456);
-    assert_string_equal(lf->perm_before, "old_perm");
-    assert_string_equal(lf->uname_before, "old_user_name");
-    assert_string_equal(lf->gname_before, "old_group_name");
-    assert_string_equal(lf->owner_before, "old_uid");
-    assert_string_equal(lf->gowner_before, "old_gid");
-    assert_string_equal(lf->md5_before, "old_hash_md5");
-    assert_string_equal(lf->sha1_before, "old_hash_sha1");
-    assert_string_equal(lf->sha256_before, "old_hash_sha256");
+    assert_string_equal(lf->fields[FIM_SIZE_BEFORE].value, "1234");
+    assert_string_equal(lf->fields[FIM_INODE_BEFORE].value, "2345");
+    assert_string_equal(lf->fields[FIM_MTIME_BEFORE].value, "Thu Jan  1 00:57:36 1970");
+    assert_string_equal(lf->fields[FIM_PERM_BEFORE].value, "old_perm");
+    assert_string_equal(lf->fields[FIM_UNAME_BEFORE].value, "old_user_name");
+    assert_string_equal(lf->fields[FIM_GNAME_BEFORE].value, "old_group_name");
+    assert_string_equal(lf->fields[FIM_UID_BEFORE].value, "old_uid");
+    assert_string_equal(lf->fields[FIM_GID_BEFORE].value, "old_gid");
+    assert_string_equal(lf->fields[FIM_MD5_BEFORE].value, "old_hash_md5");
+    assert_string_equal(lf->fields[FIM_SHA1_BEFORE].value, "old_hash_sha1");
+    assert_string_equal(lf->fields[FIM_SHA256_BEFORE].value, "old_hash_sha256");
 
     /* Assert values gotten from audit */
     assert_string_equal(lf->fields[FIM_PPID].value, "12345");

@@ -515,12 +515,12 @@ void OS_PreludeLog(const Eventinfo *lf)
         FileAccess_PreludeLog(idmef,
                               "original",
                               lf->fields[FIM_FILE].value,
-                              lf->md5_before,
-                              lf->sha1_before,
-                              lf->sha256_before,
-                              lf->owner_before,
-                              lf->gowner_before,
-                              lf->perm_before);
+                              lf->fields[FIM_MD5_BEFORE].value,
+                              lf->fields[FIM_SHA1_BEFORE].value,
+                              lf->fields[FIM_SHA256_BEFORE].value,
+                              lf->fields[FIM_UID_BEFORE].value,
+                              lf->fields[FIM_GID_BEFORE].value,
+                              lf->fields[FIM_PERM_BEFORE].value);
         FileAccess_PreludeLog(idmef,
                               "current",
                               lf->fields[FIM_FILE].value,

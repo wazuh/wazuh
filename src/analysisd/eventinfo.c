@@ -685,18 +685,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->group_node_to_delete = NULL;
     lf->decoder_info = NULL_Decoder;
 
-    lf->perm_before = NULL;
-    lf->md5_before = NULL;
-    lf->sha1_before = NULL;
-    lf->sha256_before = NULL;
-    lf->size_before = NULL;
-    lf->owner_before = NULL;
-    lf->gowner_before = NULL;
-    lf->uname_before = NULL;
-    lf->gname_before = NULL;
-    lf->mtime_before = 0;
-    lf->inode_before = 0;
-    lf->inode_after = 0;
     lf->attributes_before = NULL;
     lf->diff = NULL;
     lf->previous = NULL;
@@ -868,33 +856,6 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->fields);
     }
 
-    if (lf->perm_before) {
-        free(lf->perm_before);
-    }
-    if (lf->md5_before) {
-        free(lf->md5_before);
-    }
-    if (lf->sha1_before) {
-        free(lf->sha1_before);
-    }
-    if (lf->sha256_before) {
-        free(lf->sha256_before);
-    }
-    if (lf->size_before) {
-        free(lf->size_before);
-    }
-    if (lf->owner_before) {
-        free(lf->owner_before);
-    }
-    if (lf->gowner_before) {
-        free(lf->gowner_before);
-    }
-    if (lf->uname_before) {
-        free(lf->uname_before);
-    }
-    if (lf->gname_before) {
-        free(lf->gname_before);
-    }
     if (lf->attributes_before) {
         free(lf->attributes_before);
     }
@@ -1165,51 +1126,12 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     /* SYSCHECK Results variables */
     lf_cpy->event_type = lf->event_type;
 
-    if (lf->perm_before) {
-        os_strdup(lf->perm_before, lf_cpy->perm_before);
-    }
-
-    if(lf->md5_before){
-        os_strdup(lf->md5_before,lf_cpy->md5_before);
-    }
-
-    if(lf->sha1_before){
-        os_strdup(lf->sha1_before,lf_cpy->sha1_before);
-    }
-
-    if(lf->sha256_before){
-        os_strdup(lf->sha256_before,lf_cpy->sha256_before);
-    }
-
-    if(lf->size_before){
-        os_strdup(lf->size_before,lf_cpy->size_before);
-    }
-
-    if(lf->owner_before){
-        os_strdup(lf->owner_before,lf_cpy->owner_before);
-    }
-
-    if(lf->gowner_before){
-        os_strdup(lf->gowner_before,lf_cpy->gowner_before);
-    }
-
-    if(lf->uname_before){
-        os_strdup(lf->uname_before,lf_cpy->uname_before);
-    }
-
-    if(lf->gname_before){
-        os_strdup(lf->gname_before,lf_cpy->gname_before);
-    }
-
     if(lf->attributes_before){
         os_strdup(lf->attributes_before,lf_cpy->attributes_before);
     }
 
     /* Whodata fields */
 
-    lf_cpy->mtime_before = lf->mtime_before;
-    lf_cpy->inode_before = lf->inode_before;
-    lf_cpy->inode_after = lf->inode_after;
     lf_cpy->r_firedtimes = lf->r_firedtimes;
 
 

@@ -33,13 +33,14 @@ static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(Eventinfo),init_data->lf);
+    os_calloc(1,sizeof(DynamicField), init_data->lf->fields);
     os_calloc(1,sizeof(*init_data->lf->generated_rule),init_data->lf->generated_rule);
     os_calloc(1,sizeof(active_response),init_data->ar);
     os_calloc(1,sizeof(*init_data->ar->ar_cmd),init_data->ar->ar_cmd);
 
+    init_data->lf->fields[FIM_FILE].value = "/home/vagrant/file/n44.txt";
     init_data->lf->srcip = NULL;
     init_data->lf->dstuser = NULL;
-    init_data->lf->filename = "/home/vagrant/file/n44.txt";
     init_data->lf->time.tv_sec = 160987966;
     init_data->lf->generated_rule->sigid = 554;
     init_data->lf->location = "(ubuntu) any->syscheck";

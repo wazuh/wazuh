@@ -168,40 +168,49 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
 
     os_calloc(Config.decoder_order_size, sizeof(char *), fim_decoder->fields);
     fim_decoder->fields[FIM_FILE] = "file";
-    fim_decoder->fields[FIM_SIZE] = "size";
     fim_decoder->fields[FIM_HARD_LINKS] = "hard_links";
     fim_decoder->fields[FIM_MODE] = "mode";
+    fim_decoder->fields[FIM_SIZE] = "size";
+    fim_decoder->fields[FIM_SIZE_BEFORE] = "size_before";
     fim_decoder->fields[FIM_PERM] = "perm";
+    fim_decoder->fields[FIM_PERM_BEFORE] = "perm_before";
     fim_decoder->fields[FIM_UID] = "uid";
+    fim_decoder->fields[FIM_UID_BEFORE] = "uid_before";
     fim_decoder->fields[FIM_GID] = "gid";
+    fim_decoder->fields[FIM_GID_BEFORE] = "gid_before";
     fim_decoder->fields[FIM_MD5] = "md5";
+    fim_decoder->fields[FIM_MD5_BEFORE] = "md5_before";
     fim_decoder->fields[FIM_SHA1] = "sha1";
+    fim_decoder->fields[FIM_SHA1_BEFORE] = "sha1_before";
     fim_decoder->fields[FIM_UNAME] = "uname";
+    fim_decoder->fields[FIM_UNAME_BEFORE] = "uname_before";
     fim_decoder->fields[FIM_GNAME] = "gname";
+    fim_decoder->fields[FIM_GNAME_BEFORE] = "gname_before";
     fim_decoder->fields[FIM_MTIME] = "mtime";
+    fim_decoder->fields[FIM_MTIME_BEFORE] = "mtime_before";
     fim_decoder->fields[FIM_INODE] = "inode";
+    fim_decoder->fields[FIM_INODE_BEFORE] = "inode_before";
     fim_decoder->fields[FIM_SHA256] = "sha256";
+    fim_decoder->fields[FIM_SHA256_BEFORE] = "sha256_before";
     fim_decoder->fields[FIM_DIFF] = "changed_content";
     fim_decoder->fields[FIM_ATTRS] = "win_attributes";
     fim_decoder->fields[FIM_CHFIELDS] = "changed_fields";
-    fim_decoder->fields[FIM_TAG] = "tag";
-    fim_decoder->fields[FIM_SYM_PATH] = "symbolic_path";
-
     fim_decoder->fields[FIM_USER_ID] = "user_id";
     fim_decoder->fields[FIM_USER_NAME] = "user_name";
     fim_decoder->fields[FIM_GROUP_ID] = "group_id";
     fim_decoder->fields[FIM_GROUP_NAME] = "group_name";
     fim_decoder->fields[FIM_PROC_NAME] = "process_name";
     fim_decoder->fields[FIM_PROC_PNAME] = "parent_name";
-    fim_decoder->fields[FIM_AUDIT_PCWD] = "parent_cwd";
     fim_decoder->fields[FIM_AUDIT_CWD] = "cwd";
+    fim_decoder->fields[FIM_AUDIT_PCWD] = "parent_cwd";
     fim_decoder->fields[FIM_AUDIT_ID] = "audit_uid";
     fim_decoder->fields[FIM_AUDIT_NAME] = "audit_name";
     fim_decoder->fields[FIM_EFFECTIVE_UID] = "effective_uid";
     fim_decoder->fields[FIM_EFFECTIVE_NAME] = "effective_name";
     fim_decoder->fields[FIM_PPID] = "ppid";
     fim_decoder->fields[FIM_PROC_ID] = "process_id";
-
+    fim_decoder->fields[FIM_TAG] = "tag";
+    fim_decoder->fields[FIM_SYM_PATH] = "symbolic_path";
     fim_decoder->fields[FIM_REGISTRY_ARCH] = "arch";
     fim_decoder->fields[FIM_REGISTRY_VALUE_NAME] = "value_name";
     fim_decoder->fields[FIM_REGISTRY_VALUE_TYPE] = "value_type";
@@ -566,7 +575,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                              "Size changed from '%s' to '%s'\n",
                              oldsum->size, newsum->size);
 
-                    os_strdup(oldsum->size, lf->size_before);
+                    os_strdup(oldsum->size, lf->fields[FIM_SIZE_BEFORE].value);
                 }
             }
 
@@ -579,10 +588,10 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
                     char opstr[10];
                     char npstr[10];
-                    lf->perm_before =  agent_file_perm(oldsum->perm);
+                    lf->fields[FIM_PERM_BEFORE].value =  agent_file_perm(oldsum->perm);
                     char *new_perm =  agent_file_perm(newsum->perm);
 
-                    strncpy(opstr, lf->perm_before, sizeof(opstr) - 1);
+                    strncpy(opstr, lf->fields[FIM_PERM_BEFORE].value, sizeof(opstr) - 1);
                     strncpy(npstr, new_perm, sizeof(npstr) - 1);
                     free(new_perm);
 
@@ -601,7 +610,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     changes = 1;
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
                     snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed.\n");
-                    os_strdup(oldsum->win_perm, lf->perm_before);
+                    os_strdup(oldsum->win_perm, lf->fields[FIM_PERM_BEFORE].value);
                 }
             }
 
@@ -614,11 +623,11 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, "uid", ',');
                     if (oldsum->uname && newsum->uname) {
                         snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->uname, oldsum->uid, newsum->uname, newsum->uid);
-                        os_strdup(oldsum->uname, lf->uname_before);
+                        os_strdup(oldsum->uname, lf->fields[FIM_UNAME_BEFORE].value);
                     } else {
                         snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum->uid, newsum->uid);
                     }
-                    os_strdup(oldsum->uid, lf->owner_before);
+                    os_strdup(oldsum->uid, lf->fields[FIM_UID_BEFORE].value);
                 }
             }
 
@@ -631,11 +640,11 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, "gid", ',');
                     if (oldsum->gname && newsum->gname) {
                         snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->gname, oldsum->gid, newsum->gname, newsum->gid);
-                        os_strdup(oldsum->gname, lf->gname_before);
+                        os_strdup(oldsum->gname, lf->fields[FIM_GNAME_BEFORE].value);
                     } else {
                         snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum->gid, newsum->gid);
                     }
-                    os_strdup(oldsum->gid, lf->gowner_before);
+                    os_strdup(oldsum->gid, lf->fields[FIM_GID_BEFORE].value);
                 }
             }
             /* MD5 message */
@@ -646,7 +655,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 wm_strcat(&lf->fields[FIM_CHFIELDS].value, "md5", ',');
                 snprintf(localsdb->md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
                          oldsum->md5, newsum->md5);
-                os_strdup(oldsum->md5, lf->md5_before);
+                os_strdup(oldsum->md5, lf->fields[FIM_MD5_BEFORE].value);
             }
 
             /* SHA-1 message */
@@ -657,7 +666,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha1", ',');
                 snprintf(localsdb->sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
                          oldsum->sha1, newsum->sha1);
-                os_strdup(oldsum->sha1, lf->sha1_before);
+                os_strdup(oldsum->sha1, lf->fields[FIM_SHA1_BEFORE].value);
             }
 
             /* SHA-256 message */
@@ -671,7 +680,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                         wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha256", ',');
                         snprintf(localsdb->sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
                                 oldsum->sha256, newsum->sha256);
-                        os_strdup(oldsum->sha256, lf->sha256_before);
+                        os_strdup(oldsum->sha256, lf->fields[FIM_SHA256_BEFORE].value);
                     }
                 } else {
                     changes = 1;
@@ -692,7 +701,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 new_ctime[strlen(new_ctime) - 1] = '\0';
 
                 snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
-                lf->mtime_before = oldsum->mtime;
+                os_strdup(old_ctime, lf->fields[FIM_MTIME_BEFORE].value);
                 os_free(old_ctime);
                 os_free(new_ctime);
             } else {
@@ -704,7 +713,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 changes = 1;
                 wm_strcat(&lf->fields[FIM_CHFIELDS].value, "inode", ',');
                 snprintf(localsdb->inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum->inode, newsum->inode);
-                lf->inode_before = oldsum->inode;
+                lf->fields[FIM_INODE_BEFORE].value = w_long_str(oldsum->inode);
             } else {
                 localsdb->inode[0] = '\0';
             }
@@ -1515,26 +1524,26 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
 
     // Format comment
     if (lf->event_type == FIM_MODIFIED) {
-        fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->size_before, lf->fields[FIM_SIZE].value);
-        size_t size = fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->perm_before, lf->fields[FIM_PERM].value);
+        fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->fields[FIM_SIZE_BEFORE].value, lf->fields[FIM_SIZE].value);
+        size_t size = fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->fields[FIM_PERM_BEFORE].value, lf->fields[FIM_PERM].value);
         if (size >= sizeof(change_perm)) {
             snprintf(change_perm, sizeof(change_perm), "Permissions changed.\n"); //LCOV_EXCL_LINE
         }
-        fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->owner_before, lf->fields[FIM_UID].value);
-        fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->uname_before, lf->fields[FIM_UNAME].value);
-        fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->gowner_before, lf->fields[FIM_GID].value);
-        fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->gname_before, lf->fields[FIM_GNAME].value);
+        fim_generate_comment(change_owner, sizeof(change_owner), "Ownership was '%s', now it is '%s'\n", lf->fields[FIM_UID_BEFORE].value, lf->fields[FIM_UID].value);
+        fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->fields[FIM_UNAME_BEFORE].value, lf->fields[FIM_UNAME].value);
+        fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->fields[FIM_GID_BEFORE].value, lf->fields[FIM_GID].value);
+        fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->fields[FIM_GNAME_BEFORE].value, lf->fields[FIM_GNAME].value);
 
-        if (w_long_str(lf->mtime_before) != lf->fields[FIM_MTIME].value) {
-            snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%ld', now it is '%s'\n", lf->mtime_before, lf->fields[FIM_MTIME].value);
+        if (lf->fields[FIM_MTIME_BEFORE].value != lf->fields[FIM_MTIME].value) {
+            snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%s', now it is '%s'\n", lf->fields[FIM_MTIME_BEFORE].value, lf->fields[FIM_MTIME].value);
         }
-        if (lf->inode_before != lf->inode_after) {
-            snprintf(change_inode, sizeof(change_inode), "Old inode was: '%ld', now it is '%ld'\n", lf->inode_before, lf->inode_after);
+        if (lf->fields[FIM_INODE_BEFORE].value != lf->fields[FIM_INODE].value) {
+            snprintf(change_inode, sizeof(change_inode), "Old inode was: '%s', now it is '%s'\n", lf->fields[FIM_INODE_BEFORE].value, lf->fields[FIM_INODE].value);
         }
 
-        fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->md5_before, lf->fields[FIM_MD5].value);
-        fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->sha1_before, lf->fields[FIM_SHA1].value);
-        fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->sha256_before, lf->fields[FIM_SHA256].value);
+        fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->fields[FIM_MD5_BEFORE].value, lf->fields[FIM_MD5].value);
+        fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->fields[FIM_SHA1_BEFORE].value, lf->fields[FIM_SHA1].value);
+        fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->fields[FIM_SHA256_BEFORE].value, lf->fields[FIM_SHA256].value);
         fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->attributes_before, lf->fields[FIM_ATTRS].value);
     }
 
@@ -1667,6 +1676,9 @@ int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf) {
 
 int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
     cJSON *attr_it;
+    long aux_time;
+    char *time_string = NULL;
+    char buf_ptr[26];
 
     assert(lf != NULL);
 
@@ -1682,41 +1694,43 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
                 if (new_state) {
                     lf->fields[FIM_SIZE].value = w_long_str((long) attr_it->valuedouble);
                 } else {
-                    lf->size_before = w_long_str((long) attr_it->valuedouble);
+                    lf->fields[FIM_SIZE_BEFORE].value = w_long_str((long) attr_it->valuedouble);
                 }
             } else if (!strcmp(attr_it->string, "inode")) {
                 if (new_state) {
                     lf->fields[FIM_INODE].value = w_long_str((long) attr_it->valuedouble);
-                    lf->inode_after = (long) attr_it->valuedouble;
                 } else {
-                    lf->inode_before = (long) attr_it->valuedouble;
+                    lf->fields[FIM_INODE_BEFORE].value = w_long_str((long) attr_it->valuedouble);;
                 }
             } else if (!strcmp(attr_it->string, "mtime")) {
+                aux_time = (long) attr_it->valuedouble;
+                time_string = ctime_r(&aux_time, buf_ptr);
+                time_string[strlen(time_string) - 1] = '\0';
                 if (new_state) {
-                    lf->fields[FIM_MTIME].value = w_long_str((long) attr_it->valuedouble);
+                    os_strdup(time_string, lf->fields[FIM_MTIME].value);
                 } else {
-                    lf->mtime_before = (long) attr_it->valuedouble;
+                    os_strdup(time_string, lf->fields[FIM_MTIME_BEFORE].value);
                 }
             }
         } else if (attr_it->type == cJSON_String) {
             char **dst_data = NULL;
 
             if (!strcmp(attr_it->string, "perm")) {
-                dst_data = new_state ? &lf->fields[FIM_PERM].value : &lf->perm_before;
+                dst_data = new_state ? &lf->fields[FIM_PERM].value : &lf->fields[FIM_PERM_BEFORE].value;
             } else if (!strcmp(attr_it->string, "user_name")) {
-                dst_data = new_state ? &lf->fields[FIM_UNAME].value : &lf->uname_before;
+                dst_data = new_state ? &lf->fields[FIM_UNAME].value : &lf->fields[FIM_UNAME_BEFORE].value;
             } else if (!strcmp(attr_it->string, "group_name")) {
-                dst_data = new_state ? &lf->fields[FIM_GNAME].value : &lf->gname_before;
+                dst_data = new_state ? &lf->fields[FIM_GNAME].value : &lf->fields[FIM_GNAME_BEFORE].value;
             } else if (!strcmp(attr_it->string, "uid")) {
-                dst_data = new_state ? &lf->fields[FIM_UID].value : &lf->owner_before;
+                dst_data = new_state ? &lf->fields[FIM_UID].value : &lf->fields[FIM_UID_BEFORE].value;
             } else if (!strcmp(attr_it->string, "gid")) {
-                dst_data = new_state ? &lf->fields[FIM_GID].value : &lf->gowner_before;
+                dst_data = new_state ? &lf->fields[FIM_GID].value : &lf->fields[FIM_GID_BEFORE].value;
             } else if (!strcmp(attr_it->string, "hash_md5")) {
-                dst_data = new_state ? &lf->fields[FIM_MD5].value : &lf->md5_before;
+                dst_data = new_state ? &lf->fields[FIM_MD5].value : &lf->fields[FIM_MD5_BEFORE].value;
             } else if (!strcmp(attr_it->string, "hash_sha1")) {
-                dst_data = new_state ? &lf->fields[FIM_SHA1].value : &lf->sha1_before;
+                dst_data = new_state ? &lf->fields[FIM_SHA1].value : &lf->fields[FIM_SHA1_BEFORE].value;
             } else if (strcmp(attr_it->string, "hash_sha256") == 0) {
-                dst_data = new_state ? &lf->fields[FIM_SHA256].value : &lf->sha256_before;
+                dst_data = new_state ? &lf->fields[FIM_SHA256].value : &lf->fields[FIM_SHA256_BEFORE].value;
             } else if (strcmp(attr_it->string, "attributes") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_ATTRS].value : &lf->attributes_before; //LCOV_EXCL_LINE
             } else if (new_state && strcmp(attr_it->string, "symlink_path") == 0) {

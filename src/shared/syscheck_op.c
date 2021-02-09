@@ -379,7 +379,6 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if (sum->inode) {
-        lf->inode_after = sum->inode;
         os_calloc(20, sizeof(char), lf->fields[FIM_INODE].value);
         snprintf(lf->fields[FIM_INODE].value, 20, "%ld", sum->inode);
     }
