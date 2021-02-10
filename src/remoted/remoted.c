@@ -28,7 +28,7 @@ int tcp_keepcnt;
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
-    int position = logr.position;
+    const int position = logr.position;
     int recv_timeout;    //timeout in seconds waiting for a client reply
     int send_timeout;
     char * str_protocol = NULL;
@@ -106,6 +106,8 @@ void HandleRemote(int uid)
     /// If it is a syslog connection, a specific remoted member is used to handle the socket
     if (logr.conn[position] == SYSLOG_CONN) {
         logr.syslog_sock = (logr.proto[position] == REMOTED_PROTO_TCP ? logr.tcp_sock : logr.udp_sock);
+        logr.tcp_sock = 0;
+        logr.udp_sock = 0;
     }
 
     /* Revoke privileges */
