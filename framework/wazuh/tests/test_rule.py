@@ -272,8 +272,12 @@ def test_get_rules_file_invalid_xml(get_rules_mock):
 ])
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.upload_xml')
+@patch('wazuh.rule.copyfile')
+@patch('wazuh.rule.remove')
+@patch('wazuh.rule.safe_move')
 @patch('wazuh.core.manager.check_remote_commands')
-def test_upload_file(mock_remote_commands, mock_xml, mock_delete, file, overwrite):
+def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file,
+                     overwrite):
     """Test uploading a rule file.
 
     Parameters
@@ -292,12 +296,17 @@ def test_upload_file(mock_remote_commands, mock_xml, mock_delete, file, overwrit
         assert result.affected_items[0] == rule_path, 'Expected item not found'
         mock_xml.assert_called_once_with('test', rule_path)
         if overwrite:
-            mock_delete.assert_called_once_with(filename=file), 'delete_rule_file method not called with expected parameter'
+            mock_delete.assert_called_once_with(filename=file), 'delete_rule_file method not called with expected ' \
+                                                                'parameter'
+            mock_remove.assert_called_once()
+            mock_safe_move.assert_called_once()
 
 
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.upload_xml')
-def test_upload_file_ko(mock_xml, mock_delete):
+@patch('wazuh.rule.safe_move')
+@patch('wazuh.core.manager.check_remote_commands')
+def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_delete):
     """Test exceptions on upload function."""
     # Error when file exists and overwrite is not True
     with patch('wazuh.rule.exists'):
@@ -309,6 +318,12 @@ def test_upload_file_ko(mock_xml, mock_delete):
     result = rule.upload_rule_file(filename='no_exist.xml', content='', overwrite=False)
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1112, 'Error code not expected.'
+
+    # Error doing backup
+    with patch('wazuh.rule.exists'):
+        result = rule.upload_rule_file(filename='test_rules.xml', content='test', overwrite=True)
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1019, 'Error code not expected.'
 
 
 def test_delete_rule_file():
