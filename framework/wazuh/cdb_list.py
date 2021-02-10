@@ -3,44 +3,63 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
+from shutil import copyfile
 
 from wazuh.core import common
-from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS
-from wazuh.rbac.decorators import expose_resources
+from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS, create_list_file, \
+    get_relative_path, delete_list, get_filenames_paths, validate_cdb_list
+from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array
+from wazuh.core.utils import process_array, safe_move
+from wazuh.rbac.decorators import expose_resources
 
 
-@expose_resources(actions=['lists:read'], resources=['list:path:{path}'])
-def get_lists(path=None, offset=0, limit=common.database_limit, select=None, sort_by=None, sort_ascending=True,
-              search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None,
-              filename=None):
-    """Get CDB lists
+@expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
+def get_lists(filename=None, offset=0, limit=common.database_limit, select=None, sort_by=None, sort_ascending=True,
+              search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None):
+    """Get CDB lists content.
 
-    :param path: Relative path of list file to get (if it is not specified, all lists will be returned)
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param select: List of selected fields to return
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :param relative_dirname: Filters by relative dirname.
-    :param filename: List of filenames to filter by.
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    filename : list
+        Filenames to filter by.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    select : list
+        List of selected fields to return.
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : boolean
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
+    search_in_fields : str
+        Name of the field to search in for the `search_text`.
+    relative_dirname : str
+         Filter by relative dirname.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Lists content.
     """
     result = AffectedItemsWazuhResult(all_msg='All specified lists were returned',
                                       some_msg='Some lists were not returned',
                                       none_msg='No list was returned')
+    dirname = os.path.join(common.ossec_path, relative_dirname) if relative_dirname else None
 
     lists = list()
-    for rel_p in path:
-        if not any([relative_dirname is not None and os.path.dirname(rel_p) != relative_dirname,
-                    filename is not None and os.path.split(rel_p)[1] not in filename]):
-            lists.append({'items': get_list_from_file(rel_p),
-                          'relative_dirname': os.path.dirname(rel_p),
-                          'filename': os.path.split(rel_p)[1]})
+    for path in get_filenames_paths(filename):
+        # Only files which exist and whose dirname is the one specified by the user (if any), will be added to response.
+        if not any([dirname is not None and os.path.dirname(path) != dirname, not os.path.isfile(path)]):
+            lists.append({'items': [{'key': key, 'value': value} for key, value in get_list_from_file(path).items()],
+                          'relative_dirname': os.path.dirname(get_relative_path(path)),
+                          'filename': os.path.split(get_relative_path(path))[1]})
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
@@ -52,33 +71,165 @@ def get_lists(path=None, offset=0, limit=common.database_limit, select=None, sor
     return result
 
 
-@expose_resources(actions=['lists:read'], resources=['list:path:{path}'])
-def get_path_lists(path=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
-                   search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None,
-                   filename=None):
-    """Get paths of all CDB lists
+@expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
+def get_list_file(filename=None, raw=None):
+    """Get a CDB list file content. The file is recursively searched.
 
-    :param path: List of paths to read lists from
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort_by: Fields to sort the items by
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :param relative_dirname: Filters by relative dirname.
-    :param filename: List of filenames to filter by.
-    :return: AffectedItemsWazuhResult
+    Parameters
+    ----------
+    filename : list
+        Full path of CDB list file to get.
+    raw : bool, optional
+        Respond in raw format.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        CDB list content.
+    """
+    result = AffectedItemsWazuhResult(all_msg='CDB list was returned',
+                                      none_msg='No list was returned')
+
+    try:
+        # Recursively search for filename inside {wazuh_path}/etc/lists/
+        content = get_list_from_file(get_filenames_paths(filename)[0], raw)
+        if raw:
+            result = content
+        else:
+            result.affected_items.append(content)
+            result.total_affected_items = 1
+    except WazuhError as e:
+        result.add_failed_item(id_=filename[0], error=e)
+
+    return result
+
+
+@expose_resources(actions=['lists:update'], resources=['*:*:*'])
+def upload_list_file(filename=None, content=None, overwrite=False):
+    """Upload a new list file.
+
+    Parameters
+    ----------
+    filename : str
+        Destination path of the new file.
+    content : str
+        Content of file to be uploaded.
+    overwrite : bool
+        True for updating existing files, false otherwise.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation message.
+    """
+    result = AffectedItemsWazuhResult(all_msg='CDB list file uploaded successfully',
+                                      none_msg='Could not upload CDB list file')
+    path = os.path.join(common.lists_path, filename)
+    backup_file = ''
+
+    try:
+        # Raise WazuhError if CDB list is not valid
+        validate_cdb_list(content)
+
+        # If file already exists and overwrite is False, raise exception.
+        if not overwrite and os.path.exists(path):
+            raise WazuhError(1905)
+        # If file with same name already exists in subdirectory.
+        elif get_filenames_paths([filename])[0] != path:
+            raise WazuhError(1805)
+        # Create backup and delete original CDB list.
+        elif overwrite and os.path.exists(path):
+            try:
+                backup_file = f"{path}.backup"
+                copyfile(path, backup_file)
+            except IOError:
+                raise WazuhError(1019)
+            # Use delete_list_file so exception will be raised if user has no RBAC permissions.
+            delete_list_file(filename=filename)
+
+        create_list_file(path, content, permissions=0o660)
+        result.affected_items.append(get_relative_path(path))
+        result.total_affected_items = len(result.affected_items)
+        # Remove back up file if no exceptions were raised.
+        os.path.exists(backup_file) and os.remove(backup_file)
+    except WazuhError as e:
+        result.add_failed_item(id_=get_relative_path(path), error=e)
+    finally:
+        # If backup file was not deleted (any exception was raised), it should be restored.
+        os.path.exists(backup_file) and safe_move(backup_file, path, permissions=0o660)
+
+    return result
+
+
+@expose_resources(actions=['lists:delete'], resources=['list:file:{filename}'])
+def delete_list_file(filename):
+    """Delete a CDB list file.
+
+    Parameters
+    ----------
+    filename : list
+        Destination path of the new file.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation message.
+    """
+    result = AffectedItemsWazuhResult(all_msg='CDB list file was successfully deleted',
+                                      none_msg='Could not delete CDB list file')
+    path = get_relative_path(os.path.join(common.lists_path, filename[0]))
+
+    try:
+        delete_list(path)
+        result.affected_items.append(path)
+    except WazuhError as e:
+        result.add_failed_item(id_=path, error=e)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=['lists:read'], resources=['list:file:{filename}'])
+def get_path_lists(filename=None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
+                   search_text=None, complementary_search=False, search_in_fields=None, relative_dirname=None):
+    """Get paths of all CDB lists.
+
+    Parameters
+    ----------
+    filename : list
+        List of filenames to filter by.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : boolean
+        Sort in ascending (true) or descending (false) order.
+    search_text : str
+        Find items with the specified string.
+    complementary_search : bool
+        If True, only results NOT containing `search_text` will be returned. If False, only results that contains
+        `search_text` will be returned.
+    search_in_fields : str
+        Name of the field to search in for the `search_text`.
+    relative_dirname : str
+         Filter by relative dirname.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Paths of all CDB lists.
     """
     result = AffectedItemsWazuhResult(all_msg='All specified paths were returned',
                                       some_msg='Some paths were not returned',
                                       none_msg='No path was returned')
 
+    paths = get_filenames_paths(filename)
     lists = iterate_lists(only_names=True)
     for item in list(lists):
         if any([relative_dirname is not None and item['relative_dirname'] != relative_dirname,
-                filename is not None and item['filename'] not in filename,
-                os.path.join(item['relative_dirname'], item['filename']) not in path]):
+                os.path.join(common.ossec_path, item['relative_dirname'], item['filename']) not in paths]):
             lists.remove(item)
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
