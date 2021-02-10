@@ -414,7 +414,10 @@ def update_ossec_conf(new_conf=None):
         new_conf = prettify_xml(new_conf)
 
         # Create a backup of the current configuration before attempting to replace it
-        copyfile(common.ossec_conf, backup_file)
+        try:
+            copyfile(common.ossec_conf, backup_file)
+        except IOError:
+            raise WazuhError(1019)
 
         # Write the new configuration and validate it
         write_ossec_conf(new_conf)
