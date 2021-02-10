@@ -203,10 +203,10 @@ x-rbac-catalog:
     'cluster:update_config':
       description: "Change the Wazuh's cluster node configuration"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
         actions: [ 'cluster:update_config' ]
-        resources: [ '*:*:*' ]
+        resources: ['node:id:worker1']
         effect: "allow"
     'cluster:read_api_config':
       description: "Check Wazuh's cluster nodes API configuration"
