@@ -67,14 +67,15 @@ void HandleRemote(int uid)
         }
     }
 
-    /* Bind TCP */
+    /// Bind TCP
     if (logr.proto[position] & REMOTED_PROTO_TCP) {
 
         logr.tcp_sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position]);
 
         if (logr.tcp_sock < 0) {
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
-        } else if (logr.conn[position] == SECURE_CONN) {
+        }
+        else if (logr.conn[position] == SECURE_CONN) {
 
             if (OS_SetKeepalive(logr.tcp_sock) < 0) {
                 merror("OS_SetKeepalive failed with error '%s'", strerror(errno));
@@ -92,7 +93,7 @@ void HandleRemote(int uid)
             }
         }
     }
-    /* Bind UDP */
+    /// Bind UDP
     if (logr.proto[position] & REMOTED_PROTO_UDP) {
         /* Using UDP. Fast, unreliable... perfect */
         logr.udp_sock = OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position]);
@@ -102,6 +103,7 @@ void HandleRemote(int uid)
         }
     }
 
+    /// If it is a syslog connection, a specific remoted member is used to handle the socket
     if (logr.conn[position] == SYSLOG_CONN) {
         logr.syslog_sock = (logr.proto[position] == REMOTED_PROTO_TCP ? logr.tcp_sock : logr.udp_sock);
     }
