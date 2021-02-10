@@ -916,7 +916,7 @@ void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
@@ -939,7 +939,7 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
@@ -960,7 +960,7 @@ void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
@@ -981,7 +981,7 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, "test");
 
@@ -1013,7 +1013,7 @@ void test_w_initialize_file_status_OK(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, "test");
 

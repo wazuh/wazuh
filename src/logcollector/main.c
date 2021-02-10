@@ -40,7 +40,7 @@ static void help_logcollector()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
     exit(1);
 }
@@ -51,7 +51,10 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
     home_path = w_homedir(argv[0]);
-    const char *cfg = DEFAULTCPATH;
+    if (chdir(home_path) != 0) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    const char *cfg = OSSECCONF;
     gid_t gid;
     const char *group = GROUPGLOBAL;
     lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
@@ -179,8 +182,8 @@ int main(int argc, char **argv)
     mdebug1(STARTED_MSG);
 
     /* Start the queue */
-    if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+    if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     /* Main loop */
