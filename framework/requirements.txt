@@ -16,7 +16,7 @@ chardet==3.0.4
 Click==7.0
 clickclick==1.2.2
 connexion==2.6.0
-cryptography==3.2.1
+cryptography==3.3.2
 defusedxml==0.6.0
 docker-pycreds==0.4.0
 docker==4.2.0
