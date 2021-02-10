@@ -5,18 +5,19 @@
 import re
 from os import remove
 from os.path import exists, join
+from shutil import copyfile
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, upload_xml, upload_list, validate_xml, validate_cdb_list, \
     get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf, prettify_xml
 
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import process_array
+from wazuh.core.utils import process_array, safe_move
 from wazuh.rbac.decorators import expose_resources
 
 allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
@@ -383,4 +384,54 @@ def get_basic_info():
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
 
+    return result
+
+
+@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:update_config"],
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+def update_ossec_conf(new_conf=None):
+    """
+    Replace wazuh configuration (ossec.conf) with the provided configuration.
+
+    Parameters
+    ----------
+    new_conf: str
+        The new configuration to be applied.
+    """
+    result = AffectedItemsWazuhResult(all_msg=f"Configuration was successfully updated"
+                                              f"{' in specified node' if node_id != 'manager' else ''}",
+                                      some_msg='Could not update configuration in some nodes',
+                                      none_msg=f"Could not update configuration"
+                                               f"{' in specified node' if node_id != 'manager' else ''}"
+                                      )
+    backup_file = f'{common.ossec_conf}.backup'
+    try:
+        # Check a configuration has been provided
+        if not new_conf:
+            raise WazuhError(1125)
+
+        # Check if the configuration is valid
+        new_conf = prettify_xml(new_conf)
+
+        # Create a backup of the current configuration before attempting to replace it
+        try:
+            copyfile(common.ossec_conf, backup_file)
+        except IOError:
+            raise WazuhError(1019)
+
+        # Write the new configuration and validate it
+        write_ossec_conf(new_conf)
+        is_valid = validate_ossec_conf()
+
+        if not isinstance(is_valid, dict) or ('status' in is_valid and is_valid['status'] != 'OK'):
+            raise WazuhError(1125)
+        else:
+            result.affected_items.append(node_id)
+        exists(backup_file) and remove(backup_file)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    finally:
+        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
+
+    result.total_affected_items = len(result.affected_items)
     return result
