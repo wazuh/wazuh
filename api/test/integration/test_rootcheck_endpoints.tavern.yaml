@@ -51,7 +51,7 @@ stages:
         message: !anystr
 
   # GET /rootcheck/001?limit=2&offset=0
-  - name: Try to get rootcheck scan results for agent 001 using limit and offset parameter
+  - name: Try to get rootcheck scan results for agent 001 using limit 2 and offset 0
     request:
       verify: False
       <<: *get_rootcheck_agent
@@ -74,8 +74,8 @@ stages:
         json:
           offset_item: data.affected_items[1]
 
-  # GET /rootcheck/000?limit=1&offset=1
-  - name: Try to get rootcheck scan results for agent 000 using limit and offset parameter
+  # GET /rootcheck/001?limit=1&offset=1
+  - name: Try to get rootcheck scan results for agent 001 using limit 1 and offset 1
     request:
       verify: False
       <<: *get_rootcheck_agent
