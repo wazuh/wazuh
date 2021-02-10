@@ -28,13 +28,17 @@ static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static volatile int running = 1;
 rlim_t nofile;
 
-int main(int argc, char ** argv) 
+int main(int argc, char ** argv)
 {
     int test_config = 0;
     int run_foreground = 0;
     int i;
     int status;
     home_path = w_homedir(argv[0]);
+
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 
     pthread_t thread_dealer;
     pthread_t * worker_pool = NULL;
@@ -113,7 +117,7 @@ int main(int argc, char ** argv)
     // Reset template. Basically, remove queue/db/.template.db
     // The prefix is needed here, because we are not yet chrooted
     char path_template[OS_FLSIZE + 1];
-    snprintf(path_template, sizeof(path_template), "%s/%s/%s", HOMEDIR, WDB2_DIR, WDB_PROF_NAME);
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", home_path, WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed: %s", path_template);
 
@@ -140,8 +144,8 @@ int main(int argc, char ** argv)
 
         // Change root
 
-        if (Privsep_Chroot(HOMEDIR) < 0) {
-            merror_exit(CHROOT_ERROR, HOMEDIR, errno, strerror(errno));
+        if (Privsep_Chroot(home_path) < 0) {
+            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
         }
 
         if (Privsep_SetUser(uid) < 0) {
