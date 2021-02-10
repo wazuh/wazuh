@@ -6,7 +6,7 @@ marks:
 
 stages:
 
-  - name: Get all existent tasks (At this point there is no task created)
+  - name: Get all existent tasks (At this point there are no tasks created)
     request: &get_tasks
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
@@ -16,14 +16,14 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
 
-  - name: Upgrade an agent
+  - name: Upgrade agents to create tasks
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -52,7 +52,7 @@ stages:
           failed_items: []
         message: !anystr
 
-  - name: Upgrade an agent (Invalid version)
+  - name: Upgrade agents to create tasks (Invalid version)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -75,12 +75,7 @@ stages:
           failed_items: []
         message: !anystr
 
----
-test_name: GET /tasks/status
-
-stages:
-
-  - name: Get all existent tasks, in progress (Limit 1)
+  - name: Get all existent tasks (Limit 1)
     request:
       verify: False
       <<: *get_tasks
@@ -90,13 +85,13 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &task
             - agent_id: !anystr
               create_time: !anyint
               node: !anystr
-              status: "In progress"
+              status: !anystr
               last_update_time: !anyint
               command: "upgrade"
               module: "upgrade_module"
@@ -105,7 +100,7 @@ stages:
           total_affected_items: 5
           total_failed_items: 0
 
-  - name: Get all existent tasks, in progress (Limit 2)
+  - name: Get all existent tasks (Limit 2)
     request:
       verify: False
       <<: *get_tasks
@@ -114,38 +109,18 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - agent_id: !anystr
               create_time: !anyint
               node: !anystr
-              status: "In progress"
+              status: !anystr
               last_update_time: !anyint
               command: "upgrade"
               module: "upgrade_module"
               task_id: 1
             - <<: *task
-          failed_items: []
-          total_affected_items: 5
-          total_failed_items: 0
-    delay_after: !float "{upgrade_delay}"
-
-  - name: Get all existent tasks, completed (Limit 1)
-    request:
-      verify: False
-      <<: *get_tasks
-      params:
-        limit: 1
-        offset: 1
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *task
-              status: "Legacy"
           failed_items: []
           total_affected_items: 5
           total_failed_items: 0
@@ -166,7 +141,7 @@ stages:
         json:
           select_id_items: data.affected_items
 
-  - name: Try to get tasks using select parameter
+  - name: Try to get tasks using select parameter with more than a field
     request:
       verify: False
       <<: *get_tasks
@@ -197,7 +172,7 @@ stages:
     response:
       status_code: 400
 
-  - name: Try to get all tasks using sort parameter and limit parameter
+  - name: Try to get all tasks using sort and select parameter
     request:
       verify: False
       <<: *get_tasks
@@ -211,7 +186,7 @@ stages:
           extra_kwargs:
             affected_items: "{select_id_items}"
 
-  - name: Verify that query parameter work as expected
+  - name: Verify that query parameter works as expected
     request:
       verify: False
       <<: *get_tasks
@@ -225,7 +200,7 @@ stages:
             key: "agent_id"
             expected_values: "004"
 
-  - name: Verify that query parameter work as expected
+  - name: Verify that query parameter works as expected
     request:
       verify: False
       <<: *get_tasks
@@ -239,7 +214,7 @@ stages:
             key: "agent_id"
             expected_values: "005"
 
-  - name: Verify that query parameter work as expected (using non-existent agent_id)
+  - name: Verify that query parameter works as expected (using non-existent agent_id)
     request:
       verify: False
       <<: *get_tasks
@@ -248,19 +223,19 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
           total_affected_items: 0
-          total_failed_items: !anyint
+          total_failed_items: 0
 
-  - name: Verify that query parameter work as expected when using multiple values
+  - name: Verify that query parameter works as expected when using multiple values
     request:
       verify: False
       <<: *get_tasks
       params:
-        q: "agent_id=004;status=Legacy;module=upgrade_module;command=upgrade"
+        q: "agent_id=004;module=upgrade_module;command=upgrade"
     response:
       status_code: 200
       verify_response_with:
@@ -270,10 +245,6 @@ stages:
             expected_values: "004"
         - function: tavern_utils:test_expected_value
           extra_kwargs:
-            key: "status"
-            expected_values: "Legacy"
-        - function: tavern_utils:test_expected_value
-          extra_kwargs:
             key: "module"
             expected_values: "upgrade_module"
         - function: tavern_utils:test_expected_value
@@ -281,7 +252,7 @@ stages:
             key: "command"
             expected_values: "upgrade"
 
-  - name: Verify that query parameter work as expected (wrong_field)
+  - name: Verify that query parameter works as expected (wrong_field)
     request:
       verify: False
       <<: *get_tasks
@@ -307,16 +278,16 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               agent_id: !anystr
               task_id: 3
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               agent_id: !anystr
               task_id: 4
@@ -336,11 +307,11 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               agent_id: "003"
               task_id: !anyint
@@ -360,42 +331,14 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
 
-  - name: Get all existent tasks, Failed
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        status: "Failed"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - agent_id: "007"
-              create_time: !anyint
-              node: !anystr
-              status: "Failed"
-              last_update_time: !anyint
-              command: "upgrade"
-              module: "upgrade_module"
-              error_message: !anystr
-              task_id: 5
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
-  - name: Get all existent tasks, upgrade_module
+  - name: Get all existent tasks with module=upgrade_module
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
@@ -407,34 +350,34 @@ stages:
     response:
       status_code: 200
       json: &task_module_response
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               task_id: 1
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               task_id: 2
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               task_id: 3
             - <<: *task
-              status: "Legacy"
+              status: !anystr
               last_update_time: !anyint
               task_id: 4
             - <<: *task
-              status: "Failed"
+              status: !anystr
               last_update_time: !anyint
               task_id: 5
           failed_items: []
           total_affected_items: 5
           total_failed_items: 0
 
-  - name: Get all existent tasks, upgrade command
+  - name: Get all existent tasks with command=upgrade
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
@@ -447,7 +390,7 @@ stages:
       status_code: 200
       json: *task_module_response
 
-  - name: Get all existent tasks, specifing node name (worker2)
+  - name: Get all existent tasks with node=worker2
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
@@ -456,18 +399,27 @@ stages:
         Authorization: "Bearer {test_login_token}"
       params:
         node: "worker2"
-        limit: 1
     response:
       status_code: 200
-      json:
-        error: !anyint
-        data:
-          total_affected_items: !anyint
-          affected_items: !anything
-          failed_items: []
-          total_failed_items: 0
       verify_response_with:
-        function: tavern_utils:test_response_is_different
-        extra_kwargs:
-          response_value: total_affected_items
-          unexpected_value: task_module_response.data.total_affected_items
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "node"
+            expected_values: "worker2"
+
+  - name: Get all existent tasks with status=In progress
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: "In progress"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "status"
+            expected_values: "In progress"
