@@ -233,9 +233,5 @@ void delay(struct timespec * ts_loop) {
     long interval_ns = 1000000000 / agt->events_persec;
     struct timespec ts_timeout = { interval_ns / 1000000000, interval_ns % 1000000000 };
     time_sub(&ts_timeout, ts_loop);
-
-    if (ts_timeout.tv_sec >= 0 && ts_timeout.tv_nsec >= 0) {
-        struct timeval timeout = { ts_timeout.tv_sec, ts_timeout.tv_nsec / 1000 };
-        select(0 , NULL, NULL, NULL, &timeout);
-    }
+    nanosleep(&ts_timeout, NULL);
 }

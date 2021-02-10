@@ -119,6 +119,9 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,isDebug -Wl,--wrap,OSList_AddData -Wl,--
 LIST(APPEND analysisd_names "test_decoder_rootcheck")
 LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
+LIST(APPEND analysisd_names "test_decoder_syscollector")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,wdbc_query_ex")
+
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})

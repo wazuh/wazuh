@@ -57,6 +57,7 @@ foreach(counter RANGE ${count})
         ${WAZUHEXT}
         AZURE_O
         -lcmocka
+        -ldl
         -fprofile-arcs
         -ftest-coverage
     )

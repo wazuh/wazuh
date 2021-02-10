@@ -33,3 +33,4 @@ INSERT INTO "fim_entry" VALUES('/usr/bin/apt-key','/usr/bin/apt-key','file',1578
 -- Registries
 INSERT INTO "fim_entry" VALUES('registry_key_1','registry_key_1','registry_key',1578640718,1,'[x64]',NULL,NULL,4096,'perm','uid','gid','hash_md5','hash_sha1','root','root',12345678,1024,'hash_sha256',0,NULL,NULL);
 INSERT INTO "fim_entry" VALUES('registry_value_1','registry_value_1','registry_value',1578640718,1,'[x32]','value_name','value_type',4096,'perm','uid','gid','hash_md5','hash_sha1','root','root',12345678,1024,'hash_sha256',NULL,NULL,NULL);
+INSERT INTO "fim_entry" VALUES('HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\W32Time\SecureTimeLimits\RunTime','HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\W32Time\SecureTimeLimits\RunTime','registry_key',1578640718,1,'[x32]','value_name','value_type',4096,'perm','uid','gid','hash_md5','hash_sha1','root','root',12345678,1024,'hash_sha256',NULL,NULL,NULL);
