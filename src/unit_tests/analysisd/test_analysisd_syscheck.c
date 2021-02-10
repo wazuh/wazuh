@@ -191,6 +191,8 @@ static int setup_event_info(void **state) {
         return -1;
     if(lf->decoder_info->fields[FIM_ATTRS] = strdup("attrs"), lf->decoder_info->fields[FIM_ATTRS] == NULL)
         return -1;
+    if(lf->decoder_info->fields[FIM_ATTRS_BEFORE] = strdup("attrs_before"), lf->decoder_info->fields[FIM_ATTRS_BEFORE] == NULL)
+        return -1;
     if(lf->decoder_info->fields[FIM_CHFIELDS] = strdup("chfields"), lf->decoder_info->fields[FIM_CHFIELDS] == NULL)
         return -1;
     if(lf->decoder_info->fields[FIM_USER_ID] = strdup("user_id"), lf->decoder_info->fields[FIM_USER_ID] == NULL)

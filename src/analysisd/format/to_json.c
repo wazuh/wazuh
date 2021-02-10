@@ -400,8 +400,8 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddStringToObject(file_diff, "sha256_after", lf->fields[FIM_SHA256].value);
         }
 
-        if (print_before_field(lf->attributes_before, lf->fields[FIM_ATTRS].value)) {
-            add_json_attrs(lf->attributes_before, file_diff, 0);
+        if (print_before_field(lf->fields[FIM_ATTRS_BEFORE].value, lf->fields[FIM_ATTRS].value)) {
+            add_json_attrs(lf->fields[FIM_ATTRS_BEFORE].value, file_diff, 0);
         }
         if (lf->fields[FIM_ATTRS].value) {
             add_json_attrs(lf->fields[FIM_ATTRS].value, file_diff, 1);

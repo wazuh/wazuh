@@ -724,7 +724,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 changes = 1;
                 wm_strcat(&lf->fields[FIM_CHFIELDS].value, "attributes", ',');
                 snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", oldsum->attributes, newsum->attributes);
-                os_strdup(oldsum->attributes, lf->attributes_before);
+                os_strdup(oldsum->attributes, lf->fields[FIM_ATTRS_BEFORE].value);
             } else {
                 localsdb->attrs[0] = '\0';
             }
@@ -1544,7 +1544,7 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
         fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->fields[FIM_MD5_BEFORE].value, lf->fields[FIM_MD5].value);
         fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->fields[FIM_SHA1_BEFORE].value, lf->fields[FIM_SHA1].value);
         fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->fields[FIM_SHA256_BEFORE].value, lf->fields[FIM_SHA256].value);
-        fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->attributes_before, lf->fields[FIM_ATTRS].value);
+        fim_generate_comment(change_win_attributes, sizeof(change_win_attributes), "Old attributes were: '%s'\nNow they are '%s'\n", lf->fields[FIM_ATTRS_BEFORE].value, lf->fields[FIM_ATTRS].value);
     }
 
     // Provide information about the file
@@ -1732,7 +1732,7 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
             } else if (strcmp(attr_it->string, "hash_sha256") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_SHA256].value : &lf->fields[FIM_SHA256_BEFORE].value;
             } else if (strcmp(attr_it->string, "attributes") == 0) {
-                dst_data = new_state ? &lf->fields[FIM_ATTRS].value : &lf->attributes_before; //LCOV_EXCL_LINE
+                dst_data = new_state ? &lf->fields[FIM_ATTRS].value : &lf->fields[FIM_ATTRS_BEFORE].value; //LCOV_EXCL_LINE
             } else if (new_state && strcmp(attr_it->string, "symlink_path") == 0) {
                 dst_data = &lf->fields[FIM_SYM_PATH].value;
             }

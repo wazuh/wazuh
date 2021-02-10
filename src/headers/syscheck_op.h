@@ -107,6 +107,7 @@ typedef enum fim_fields {
     FIM_SHA256_BEFORE,
     FIM_DIFF,
     FIM_ATTRS,
+    FIM_ATTRS_BEFORE,
     FIM_CHFIELDS,
     FIM_USER_ID,
     FIM_USER_NAME,
