@@ -71,17 +71,24 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
 
 
-def test_sort_response(response, affected_items):
+def test_sort_response(response, key, reverse=True):
+    """Check that the response's affected items are sorted by the specified key.
+
+    Parameters
+    ----------
+    response : Request response
+    key : str
+        Key expected to sort by.
+    reverse : bool
+        Indicate if the expected order is ascending (False) or descending (True). Default: True
+
+    Returns
+    -------
+    bool
+        True if the response's items are sorted by the key.
     """
-    :param response: Request response
-    :param affected_items: List of agent
-    :return: True if request response have this items
-    """
-    affected_items = affected_items.replace("'", '"')
-    affected_items = json.loads(affected_items)
-    reverse_index = len(affected_items) - 1
-    for index, item_response in enumerate(response.json()['data']['affected_items']):
-        assert item_response == affected_items[reverse_index - index]
+    affected_items = response.json()['data']['affected_items']
+    assert affected_items == sorted(affected_items, key=lambda item: item[key], reverse=reverse)
 
 
 def test_validate_data_dict_field(response, fields_dict):
@@ -186,10 +193,10 @@ def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental
 
 def test_validate_group_configuration(response, expected_field, expected_value):
     response_json = response.json()
-    assert len(response_json['data']['affected_items']) > 0 and\
+    assert len(response_json['data']['affected_items']) > 0 and \
            'config' in response_json['data']['affected_items'][0] and \
-           'localfile' in response_json['data']['affected_items'][0]['config'],\
-           'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
+           'localfile' in response_json['data']['affected_items'][0]['config'], \
+        'No config or localfile fields were found in the affected_items. Response: {}'.format(response_json)
 
     response_config = response_json['data']['affected_items'][0]['config']['localfile'][0]
     assert expected_field in set(response_config.keys()), \

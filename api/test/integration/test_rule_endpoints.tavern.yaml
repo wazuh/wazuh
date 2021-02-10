@@ -834,7 +834,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            affected_items: "{affected_items}"
+            key: "{id}"
 
   - name: Filter search
     request:
@@ -944,7 +944,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            affected_items: "{affected_items}"
+            key: "{id}"
 
   - name: Filter search
     request:
@@ -1064,7 +1064,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            affected_items: "{affected_items}"
+            key: "{id}"
 
   - name: Filter search
     request:
@@ -1597,7 +1597,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            affected_items: "{affected_items}"
+            key: "{filename}"
 
   - name: Invalid filter
     request:

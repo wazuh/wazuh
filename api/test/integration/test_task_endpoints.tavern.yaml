@@ -184,7 +184,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            affected_items: "{select_id_items}"
+            key: "{task_id}"
 
   - name: Verify that query parameter works as expected
     request:

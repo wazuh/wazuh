@@ -291,7 +291,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            affected_items: "{select_id_items}"
+            key: "{id}"
 
   # GET /mitre?limit=50
   - name: Verify no more than 10 elements are shown when json is included
