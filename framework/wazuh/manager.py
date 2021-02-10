@@ -424,15 +424,11 @@ def update_ossec_conf(new_conf=None):
             raise WazuhError(1125)
         else:
             result.affected_items.append(node_id)
-
-    except WazuhError as e:
-        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
-        result.add_failed_item(id_=node_id, error=e)
-    except Exception as e:
-        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
-        raise e
-    finally:
         exists(backup_file) and remove(backup_file)
+    except WazuhError as e:
+        result.add_failed_item(id_=node_id, error=e)
+    finally:
+        exists(backup_file) and safe_move(backup_file, common.ossec_conf)
 
     result.total_affected_items = len(result.affected_items)
     return result
