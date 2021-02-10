@@ -2186,12 +2186,12 @@ ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
 endif
 
-ifneq ($(wildcard external/libarchive-3.5.1/*),)
+ifneq ($(wildcard external/libarchive-3.5.1/Makefile),)
 	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
 endif
 
-ifneq ($(wildcard external/pacman-5.2.2/*),)
-	cd ${EXTERNAL_PACMAN} && ${MAKE} clean
+ifneq ($(wildcard external/pacman-5.2.2/lib/libalpm/libalpm.a),)
+	rm $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
 endif
 endif
 
