@@ -80,7 +80,7 @@ elseif(UNIX AND NOT APPLE)
           LINK_FLAGS "-static-libgcc -static-libstdc++")
           
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
+    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
