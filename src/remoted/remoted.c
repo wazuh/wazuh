@@ -16,6 +16,8 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+#define WM_STRCAT_NO_SEPARATOR 0
+
 /* Global variables */
 keystore keys;
 remoted logr;
@@ -122,10 +124,10 @@ void HandleRemote(int uid)
 
     /* Start up message */
     if (logr.proto[position] & REMOTED_PROTO_TCP) {
-        wm_strcat(&str_protocol, REMOTED_PROTO_TCP_STR, 0);
+        wm_strcat(&str_protocol, REMOTED_PROTO_TCP_STR, WM_STRCAT_NO_SEPARATOR);
     }
     if (logr.proto[position] & REMOTED_PROTO_UDP) {
-        wm_strcat(&str_protocol, REMOTED_PROTO_UDP_STR, (str_protocol == NULL) ? 0 : ',');
+        wm_strcat(&str_protocol, REMOTED_PROTO_UDP_STR, (str_protocol == NULL) ? WM_STRCAT_NO_SEPARATOR : ',');
     }
 
     /* This should never happen */
@@ -134,10 +136,10 @@ void HandleRemote(int uid)
     }
 
     minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
-         (int)getpid(),
-         logr.port[position],
-         str_protocol,
-         logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
+        (int)getpid(),
+        logr.port[position],
+        str_protocol,
+        logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
     os_free(str_protocol);
 
     /* If secure connection, deal with it */
