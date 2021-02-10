@@ -65,6 +65,8 @@ static int key_request_reconnect();
 #define OS_ADDSOCKET_KEY_ADDED      2   ///< OSHash_Set_ex returns 2 when key didn't existed, so it is added  (*)
 #define REMOTED_USING_UDP           42  ///< When using UDP, OS_AddSocket isn't called, so an arbitrary value is used
 
+#define USING_UDP_NO_CLIENT_SOCKET  -1  ///< When using UDP, no valid client socket FD is set
+
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -230,7 +232,7 @@ void HandleSecure()
                 if (recv_b <= 0) {
                     continue;
                 } else {
-                    rem_msgpush(buffer, recv_b, &peer_info, -1);
+                    rem_msgpush(buffer, recv_b, &peer_info, USING_UDP_NO_CLIENT_SOCKET);
                     rem_add_recv((unsigned long) recv_b);
                 }
             }
@@ -286,7 +288,7 @@ void * rem_handler_main(__attribute__((unused)) void * args) {
 
     while (1) {
         message = rem_msgpop();
-        if (message->sock == -1 || message->counter > rem_getCounter(message->sock)) {
+        if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter > rem_getCounter(message->sock)) {
             memcpy(buffer, message->buffer, message->size);
             HandleSecureMessage(buffer, message->size, &message->addr, message->sock, &wdb_sock);
         } else {
@@ -361,7 +363,7 @@ STATIC void * close_fp_main(void * args) {
 
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
-    const int protocol = (sock_client == -1) ? REMOTED_PROTO_UDP : REMOTED_PROTO_TCP;
+    const int protocol = (sock_client == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_PROTO_UDP : REMOTED_PROTO_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
@@ -497,7 +499,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         /* detect if agent chenge the network protocol @TODO */
         if (keys.keyentries[agentid]->sock > 0 && protocol == REMOTED_PROTO_UDP) {
             mdebug1("Agent %i change TCP->UDP", agentid);
-        } else if (keys.keyentries[agentid]->sock == -1 && protocol == REMOTED_PROTO_TCP) {
+        } else if (keys.keyentries[agentid]->sock == USING_UDP_NO_CLIENT_SOCKET && protocol == REMOTED_PROTO_TCP) {
             mdebug1("Agent %i change UDP->TCP", agentid);
         }
 
@@ -517,7 +519,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             mdebug2("TCP socket %d added to keystore.", sock_client);
             break;
         case REMOTED_USING_UDP:
-            keys.keyentries[agentid]->sock = -1;
+            keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
             break;
         default:
             ;
