@@ -74,9 +74,8 @@ def _expand_resource(resource):
                 {'status': Status.S_ALL.value, 'relative_dirname': None, 'filename': None},
                 tags)
             return {decoder['filename'] for decoder in format_decoders}
-        elif resource_type == 'list:path':
-            return {os.path.join(cdb_list['relative_dirname'], cdb_list['filename'])
-                    for cdb_list in iterate_lists(only_names=True)}
+        elif resource_type == 'list:file':
+            return {cdb_list['filename'] for cdb_list in iterate_lists(only_names=True)}
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == 'file:path':

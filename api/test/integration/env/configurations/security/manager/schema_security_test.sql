@@ -47,7 +47,7 @@ INSERT INTO policies VALUES(10,'users_all_users','{"actions": ["security:read", 
 INSERT INTO policies VALUES(11,'ciscat_read_ciscat','{"actions": ["ciscat:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.716023');
 INSERT INTO policies VALUES(12,'decoders_read_decoders','{"actions": ["decoders:read"], "resources": ["decoder:file:*"], "effect": "allow"}','2020-06-16 14:34:31.724054');
 INSERT INTO policies VALUES(13,'mitre_read_mitre','{"actions": ["mitre:read"], "resources": ["*:*:*"], "effect": "allow"}','2020-06-16 14:34:31.732129');
-INSERT INTO policies VALUES(14,'lists_read_rules','{"actions": ["lists:read"], "resources": ["list:path:*"], "effect": "allow"}','2020-06-16 14:34:31.743865');
+INSERT INTO policies VALUES(14,'lists_read_rules','{"actions": ["lists:read"], "resources": ["list:file:*"], "effect": "allow"}','2020-06-16 14:34:31.743865');
 INSERT INTO policies VALUES(15,'rules_read_rules','{"actions": ["rules:read"], "resources": ["rule:file:*"], "effect": "allow"}','2020-06-16 14:34:31.760616');
 INSERT INTO policies VALUES(16,'sca_read_sca','{"actions": ["sca:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.760616');
 INSERT INTO policies VALUES(17,'syscheck_read_syscheck','{"actions": ["syscheck:read"], "resources": ["agent:id:*"], "effect": "allow"}','2020-06-16 14:34:31.771236');
