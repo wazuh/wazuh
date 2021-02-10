@@ -295,7 +295,6 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     char *diff = strchr(f_name, '\n');
     if (diff) {
         *(diff++) = '\0';
-        os_strdup(diff, lf->diff);
         os_strdup(diff, lf->fields[FIM_DIFF].value);
     }
 

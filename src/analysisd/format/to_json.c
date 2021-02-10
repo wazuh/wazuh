@@ -403,7 +403,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         if (print_before_field(lf->fields[FIM_ATTRS_BEFORE].value, lf->fields[FIM_ATTRS].value)) {
             add_json_attrs(lf->fields[FIM_ATTRS_BEFORE].value, file_diff, 0);
         }
-        if (lf->fields[FIM_ATTRS].value) {
+        if (lf->fields[FIM_ATTRS].value && *lf->fields[FIM_ATTRS].value) {
             add_json_attrs(lf->fields[FIM_ATTRS].value, file_diff, 1);
         }
 
@@ -435,15 +435,14 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         if (print_before_field(lf->fields[FIM_INODE_BEFORE].value, lf->fields[FIM_INODE].value)) {
             cJSON_AddStringToObject(file_diff, "inode_before", lf->fields[FIM_INODE_BEFORE].value);
         }
-        if (lf->fields[FIM_INODE].value) {
+        if (lf->fields[FIM_INODE].value && *lf->fields[FIM_INODE].value) {
             cJSON_AddStringToObject(file_diff, "inode_after", lf->fields[FIM_INODE].value);
         }
 
         if(Config.decoder_order_size > FIM_DIFF && lf->fields[FIM_DIFF].value && strcmp(lf->fields[FIM_DIFF].value, "0")) {
             cJSON_AddStringToObject(file_diff, "diff", lf->fields[FIM_DIFF].value);
-        } else if(lf->diff && strcmp(lf->diff, "")) {
-            cJSON_AddStringToObject(file_diff, "diff", lf->diff);
         }
+
         if(lf->fields[FIM_TAG].value) {
             if (strcmp(lf->fields[FIM_TAG].value, "") != 0) {
                 cJSON *tags = cJSON_CreateArray();

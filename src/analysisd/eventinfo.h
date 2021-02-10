@@ -85,7 +85,6 @@ typedef struct _Eventinfo {
 
     /* SYSCHECK Results variables */
     syscheck_event_t event_type;
-    char *diff;
     char *previous;
     wlabel_t *labels;
     // Whodata fields. They are duplicated by 'fields'
