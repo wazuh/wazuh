@@ -715,7 +715,7 @@ get_rbac_actions:
           actions:
             - decoders:delete
           resources:
-            - decoder:file:local_decoders.xml
+            - decoder:file:local_decoder.xml
           effect: allow
         related_endpoints:
           - PUT /decoders/files/{filename}
