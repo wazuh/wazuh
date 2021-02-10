@@ -3,6 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from os import remove
 from os.path import join, exists
+from shutil import copyfile
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -15,7 +16,7 @@ from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.manager import prettify_xml, upload_xml
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import format_rule_decoder_file
-from wazuh.core.utils import process_array
+from wazuh.core.utils import process_array, safe_move
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -212,23 +213,32 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
                                       none_msg='Could not upload decoder'
                                       )
     path = join('etc', 'decoders', filename)
+    full_path = join(common.ossec_path, path)
+    backup_file = ''
     try:
         if len(content) == 0:
             raise WazuhError(1112)
 
+        prettify_xml(content)
         # If file already exists and overwrite is False, raise exception
-        if not overwrite and exists(join(common.ossec_path, path)):
+        if not overwrite and exists(full_path):
             raise WazuhError(1905)
-        elif overwrite and exists(join(common.ossec_path, path)):
-            # Check if the content is valid
-            prettify_xml(content)
+        elif overwrite and exists(full_path):
+            try:
+                backup_file = f'{full_path}.backup'
+                copyfile(full_path, backup_file)
+            except IOError:
+                raise WazuhError(1019)
             delete_decoder_file(filename=filename)
 
         upload_xml(content, path)
         result.affected_items.append(path)
+        result.total_affected_items = len(result.affected_items)
+        exists(backup_file) and remove(backup_file)
     except WazuhError as e:
         result.add_failed_item(id_=path, error=e)
-    result.total_affected_items = len(result.affected_items)
+    finally:
+        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o0660)
 
     return result
 
