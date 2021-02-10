@@ -41,6 +41,9 @@ static void print_db_info()
 /* Print help statement */
 static void help_dbd()
 {
+    char cwd[PATH_MAX] = {'\0'};
+
+    getcwd(cwd, sizeof(cwd));
     print_header();
     print_out("  %s: -[Vhdtfv] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
     print_out("    -V          Version and license message");
@@ -52,8 +55,8 @@ static void help_dbd()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
+    print_out("    -c <config> Configuration file to use (default: %s%s)", cwd, OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", cwd);
     print_out(" ");
     print_out("  Database Support:");
     print_db_info();
@@ -69,12 +72,17 @@ int main(int argc, char **argv)
     unsigned int d;
 
     /* Use MAILUSER (read only) */
-    home_path = w_homedir(argv[0]);
-    const char *dir = HOMEDIR;
+    const char *home_path = w_homedir(argv[0]);
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
+	/* Change working directory */
+    if (chdir(home_path) != 0) {
+        os_free(home_path);
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+	
     /* Database Structure */
     DBConfig db_config;
     db_config.error_count = 0;
@@ -112,7 +120,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+				os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'c':
                 if (!optarg) {
@@ -145,7 +154,7 @@ int main(int argc, char **argv)
 
     /* Read configuration */
     if ((c = OS_ReadDBConf(test_config, cfg, &db_config)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, home_path, cfg);
     }
 
     /* Exit here if test config is set */
@@ -215,7 +224,7 @@ int main(int argc, char **argv)
     /* If after the maxreconnect attempts, it still didn't work, exit here */
     if (!db_config.conn) {
         merror(DB_CONFIGERR);
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, home_path, cfg);
     }
 
     /* We must notify that we connected -- easy debugging */
@@ -234,8 +243,8 @@ int main(int argc, char **argv)
     }
 
     /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
 
     /* Now in chroot */
@@ -244,12 +253,12 @@ int main(int argc, char **argv)
     /* Insert server info into the db */
     db_config.server_id = OS_Server_ReadInsertDB(&db_config);
     if (db_config.server_id <= 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, home_path, cfg);
     }
 
     /* Read rules and insert into the db */
     if (OS_InsertRulesDB(&db_config) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        merror_exit(CONFIG_ERROR, home_path, cfg);
     }
 
     /* Change user */
@@ -258,7 +267,7 @@ int main(int argc, char **argv)
     }
 
     /* Basic start up completed */
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
