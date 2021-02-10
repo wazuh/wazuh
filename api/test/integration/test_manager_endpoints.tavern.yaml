@@ -239,6 +239,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+
 ---
 test_name: GET /manager/stats
 
@@ -2338,6 +2339,127 @@ stages:
         data:
           affected_items:
             - !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: PUT /manager/configuration
+
+stages:
+
+  # PUT /manager/configuration
+  - name: Upload a valid configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'manager'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  # GET /manager/configuration/
+  - name: Ensure the new config has been applied by checking a field
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        section: "alerts"
+        field: "log_alert_level"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - alerts:
+                log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+
+  # PUT /manager/configuration
+  - name: Try to upload an invalid configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - 'manager'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /manager/configuration
+  - name: Try to upload an empty configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - 'manager'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # GET /manager/configuration/
+  - name: Ensure the config didn't change
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        section: "alerts"
+        field: "log_alert_level"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - alerts:
+                log_alert_level: '300'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

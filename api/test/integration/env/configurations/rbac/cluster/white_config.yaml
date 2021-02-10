@@ -31,6 +31,7 @@
 
 - actions:
   - cluster:upload_file
+  - cluster:update_config
   - cluster:read_api_config
   resources:
   - node:id:master-node
