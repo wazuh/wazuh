@@ -1,6 +1,0 @@
-"123(\w+\s+)abc" "123sdf    abc"
-"123(\w+\s+)abc" "abc123sdf    abc"
-"123 (\d+.\d.\d.\d\d*\d*)" "123 45.6.5.567"
-"from (\S*\d+.\d+.\d+.\d\d*\d*)" "sshd[21576]: Illegal user web14 from ::ffff:212.227.60.55"
-"^sshd[\d+]: Accepted \S+ for (\S+) from (\S+) port " "sshd[21405]: Accepted password for root from 192.1.1.1 port 6023"
-": \((\S+)@(\S+)\) [" "pure-ftpd: (?@enigma.lab.ossec.net) [INFO] New connection from enigma.lab.ossec.net"
