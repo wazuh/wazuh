@@ -238,6 +238,16 @@ void * req_dispatch(req_node_t * node) {
 
         mdebug2("Sending request: '%s'", payload);
 
+        key_lock_read();
+        const int key_id = OS_IsAllowedID(&keys, agentid);
+        if (key_id < 0) {
+            key_unlock();
+            merror(AR_NOAGENT_ERROR, agentid);
+            goto cleanup;
+        }
+        const int protocol = keys.keyentries[key_id]->net_protocol;
+        key_unlock();
+
         for (attempts = 0; attempts < max_attempts; attempts++) {
 
             // Try to send message
@@ -253,7 +263,7 @@ void * req_dispatch(req_node_t * node) {
 
             // Wait for ACK or response, only in UDP mode
 
-            if (logr.proto[logr.position] == REMOTED_PROTO_UDP) {
+            if (protocol == REMOTED_PROTO_UDP) {
                 gettimeofday(&now, NULL);
                 nsec = now.tv_usec * 1000 + rto_msec * 1000000;
                 timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
@@ -303,8 +313,7 @@ void * req_dispatch(req_node_t * node) {
         }
 
         // Send ACK, only in UDP mode
-
-        if (logr.proto[logr.position] == REMOTED_PROTO_UDP) {
+        if (protocol == REMOTED_PROTO_UDP) {
             // Example: #!-req 16 ack
             mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);
