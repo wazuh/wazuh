@@ -2979,3 +2979,125 @@ stages:
           failed_items: []
           total_affected_items: 3
           total_failed_items: 0
+    delay_after: !float "{restart_delay_cluster}"
+
+---
+test_name: PUT /cluster/{node_id}/configuration
+
+stages:
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Upload a valid configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'worker1'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  # GET /cluster/{node_id}/configuration
+  - name: Ensure the new config has been applied by checking a field
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        section: "alerts"
+        field: "log_alert_level"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - alerts:
+                log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an invalid configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an empty configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # GET /cluster/{node_id}/configuration
+  - name: Ensure the config didn't change
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        section: "alerts"
+        field: "log_alert_level"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - alerts:
+                log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
