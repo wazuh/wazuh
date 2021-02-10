@@ -45,6 +45,8 @@ class WazuhException(Exception):
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         1018: 'Body request is not a valid JSON',
+        1019: 'Error trying to create backup file.',
+
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -350,9 +352,7 @@ class WazuhException(Exception):
         1805: {'message': 'File with the same name already exists in a subdirectory.',
                'remediation': 'Please, make sure to use a name which is not repeated. '
                },
-        1806: {'message': 'Error trying to create back up file.'
-               },
-        1807: {'message': 'Error trying to create CDB list file.'
+        1806: {'message': 'Error trying to create CDB list file.'
                },
         1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                           'The error message will be the output of upgrade module'},

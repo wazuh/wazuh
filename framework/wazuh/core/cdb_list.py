@@ -244,7 +244,7 @@ def create_list_file(full_path, content, permissions=0o660):
                 f.write(element.strip() + '\n')
         chmod(full_path, permissions)
     except IOError:
-        raise WazuhError(1807)
+        raise WazuhError(1806)
 
     return full_path
 

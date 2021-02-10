@@ -235,7 +235,7 @@ def test_create_list_file(mock_delete, mock_chmod):
 
 def test_create_list_file_ko():
     """Test that create_list_file function works and methods inside are called with expected parameters."""
-    with pytest.raises(WazuhError, match=r'\b1807\b'):
+    with pytest.raises(WazuhError, match=r'\b1806\b'):
         create_list_file(full_path='/test/path', content=' ')
 
 

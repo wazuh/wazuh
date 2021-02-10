@@ -142,7 +142,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
                 backup_file = path + '.backup'
                 copyfile(path, backup_file)
             except IOError:
-                raise WazuhError(1806)
+                raise WazuhError(1019)
             # Use delete_list_file so exception will be raised if user has no RBAC permissions.
             delete_list_file(filename=filename)
 

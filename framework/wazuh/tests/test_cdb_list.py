@@ -362,12 +362,12 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
 
             # Exception while trying to create back up
             result = upload_list_file(filename='test', content='test:content', overwrite=True)
-            assert result.render()['data']['failed_items'][0]['error']['code'] == 1806
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1019
 
         # Exception while trying to create list file
         with patch('wazuh.cdb_list.os.path.exists', return_value=False):
             result = upload_list_file(filename='test', content='test:content', overwrite=False)
-            assert result.render()['data']['failed_items'][0]['error']['code'] == 1807
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1806
 
 
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
