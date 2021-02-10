@@ -20,7 +20,8 @@ All notable changes to this project will be documented in this file.
   - Added new endpoints to manage rules files. ([#7178](https://github.com/wazuh/wazuh/issues/7178))
   - Added new endpoints to manage CDB lists files. ([#7180](https://github.com/wazuh/wazuh/issues/7180))
   - Added new endpoints to manage decoder files. ([#7179](https://github.com/wazuh/wazuh/issues/7179))
-
+  - Added new manager and cluster endpoints to update Wazuh configuration (ossec.conf). ([#7181](https://github.com/wazuh/wazuh/issues/7181))
+  
 ### Fixed
 
 - **API:**
