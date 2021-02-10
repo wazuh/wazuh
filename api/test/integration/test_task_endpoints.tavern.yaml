@@ -186,7 +186,7 @@ stages:
           extra_kwargs:
             affected_items: "{select_id_items}"
 
-  - name: Verify that query parameter work as expected
+  - name: Verify that query parameter works as expected
     request:
       verify: False
       <<: *get_tasks
@@ -200,7 +200,7 @@ stages:
             key: "agent_id"
             expected_values: "004"
 
-  - name: Verify that query parameter work as expected
+  - name: Verify that query parameter works as expected
     request:
       verify: False
       <<: *get_tasks
@@ -214,7 +214,7 @@ stages:
             key: "agent_id"
             expected_values: "005"
 
-  - name: Verify that query parameter work as expected (using non-existent agent_id)
+  - name: Verify that query parameter works as expected (using non-existent agent_id)
     request:
       verify: False
       <<: *get_tasks
@@ -230,7 +230,7 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
-  - name: Verify that query parameter work as expected when using multiple values
+  - name: Verify that query parameter works as expected when using multiple values
     request:
       verify: False
       <<: *get_tasks
@@ -252,7 +252,7 @@ stages:
             key: "command"
             expected_values: "upgrade"
 
-  - name: Verify that query parameter work as expected (wrong_field)
+  - name: Verify that query parameter works as expected (wrong_field)
     request:
       verify: False
       <<: *get_tasks
@@ -389,3 +389,37 @@ stages:
     response:
       status_code: 200
       json: *task_module_response
+
+  - name: Get all existent tasks with node=worker2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        node: "worker2"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "node"
+            expected_values: "worker2"
+
+  - name: Get all existent tasks with status=In progress
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        status: "In progress"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "status"
+            expected_values: "In progress"
