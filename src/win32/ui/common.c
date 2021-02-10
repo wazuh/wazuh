@@ -15,6 +15,8 @@
 #include "os_net/os_net.h"
 #include "validate_op.h"
 
+/* Agent status */
+char ui_server_info[2048 + 1];
 
 /* Generate server info (for the main status) */
 int gen_server_info(HWND hwnd)

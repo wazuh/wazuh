@@ -40,6 +40,11 @@ list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_ConnectUnixDomain 
                          -Wl,--wrap,connect_to_remoted -Wl,--wrap,send_msg_to_agent -Wl,--wrap,wdbc_query_ex \
                          -Wl,--wrap,wdbc_parse_result")
 
+list(APPEND analysisd_names "test_exec")
+list(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,OS_SendUnix -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,Eventinfo_to_jsonstr \
+                             -Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML \
+                             -Wl,--wrap,wdb_get_agents_by_connection_status -Wl,--wrap,labels_find -Wl,--wrap,labels_get -Wl,--wrap,labels_free")
+
 list(APPEND analysisd_names "test_labels")
 list(APPEND analysisd_flags "-Wl,--wrap,wdb_get_agent_labels")
 
@@ -113,6 +118,9 @@ LIST(APPEND analysisd_names "test_logmsg")
 LIST(APPEND analysisd_flags "-Wl,--wrap,isDebug -Wl,--wrap,OSList_AddData -Wl,--wrap,vsnprintf")
 LIST(APPEND analysisd_names "test_decoder_rootcheck")
 LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
+
+LIST(APPEND analysisd_names "test_decoder_syscollector")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,wdbc_query_ex")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")

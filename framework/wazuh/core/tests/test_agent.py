@@ -332,9 +332,12 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary_status(mock_socke
 
     query_group.select = {'os.name', 'count', 'status', 'lastKeepAlive', 'version'}
     query_group._data = [
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'disconnected', 'lastKeepAlive': 1593093968},
-        {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'disconnected', 'lastKeepAlive': 1593093968},
-        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'disconnected', 'lastKeepAlive': 1593093976}]
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v4.0.0', 'status': 'disconnected',
+         'lastKeepAlive': 1593093968},
+        {'os.name': 'Ubuntu', 'count': 2, 'version': 'Wazuh v3.13.0', 'status': 'disconnected',
+         'lastKeepAlive': 1593093968},
+        {'os.name': 'Ubuntu', 'count': 1, 'version': 'Wazuh v3.13.0', 'status': 'disconnected',
+         'lastKeepAlive': 1593093976}]
 
     result = query_group._format_data_into_dictionary()
     assert result == {'items': [{'os': {'name': 'Ubuntu'}, 'status': 'disconnected', 'count': 4}], 'totalItems': 0}
@@ -561,21 +564,21 @@ def test_agent_get_key_ko(socket_mock, send_mock):
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_restart(socket_mock, send_mock, mock_queue):
-    """Tests if method restart calls other methods with correct params"""
+    """Test if method restart calls other methods with correct params."""
     with patch('wazuh.core.agent.Agent.getconfig', return_value={'active-response': {'disabled': 'no'}}) as \
             mock_config:
         agent = Agent(0)
         agent.restart()
 
         # Assert methods are called with correct params
-        mock_config.assert_called_once_with('com', 'active-response')
+        mock_config.assert_called_once_with('com', 'active-response', 'Wazuh v3.9.0')
         mock_queue.assert_called_once()
 
 
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_restart_ko(socket_mock, send_mock):
-    """Tests if method restart raises exception"""
+    """Test if method restart raises exception."""
     # Assert exception is raised when status of agent is not 'active'
     with patch('wazuh.core.agent.Agent.getconfig', return_value={'active-response': {'disabled': 'no'}}):
         with pytest.raises(WazuhError, match='.* 1707 .*'):
@@ -690,7 +693,8 @@ def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd
 
         # make sure the mock is called with a string according to a non-backup path
         exists_mock.assert_any_call('{0}/queue/agent-info/agent-1-any'.format(test_data_path))
-        safe_move_mock.assert_called_with(common.client_keys + '.tmp', common.client_keys, permissions=stat_mock().st_mode)
+        safe_move_mock.assert_called_with(common.client_keys + '.tmp', common.client_keys,
+                                          permissions=stat_mock().st_mode)
         if backup:
             if exists_backup_dir:
                 backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any-002')
@@ -1392,6 +1396,7 @@ def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
             with pytest.raises(WazuhError, match='.* 1745 .*'):
                 Agent.unset_single_group_agent('002', 'default')
 
+
 @patch('wazuh.core.configuration.OssecSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -1399,7 +1404,7 @@ def test_agent_getconfig(socket_mock, send_mock, mock_ossec_socket):
     """Test getconfig method returns expected message."""
     agent = Agent('001')
     mock_ossec_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
-    result = agent.getconfig('com', 'active-response')
+    result = agent.getconfig('com', 'active-response', 'Wazuh v4.0.0')
     assert result == {"test": "conf"}, 'Result message is not as expected.'
 
 
@@ -1408,15 +1413,21 @@ def test_agent_getconfig(socket_mock, send_mock, mock_ossec_socket):
 @patch('socket.socket.connect')
 def test_agent_getconfig_ko(socket_mock, send_mock, mock_ossec_socket):
     """Test getconfig method raises expected exceptions."""
-    # Agent version is null
-    agent = Agent('004')
-    with pytest.raises(WazuhInternalError, match=".* 1015 .*"):
-        agent.getconfig('com', 'active-response')
+    # Invalid component
+    agent = Agent('003')
+    with pytest.raises(WazuhError, match=".* 1101 .*"):
+        agent.getconfig('invalid_component', 'active-response', 'Wazuh v4.0.0')
 
-    # Agent Wazuh version is lower than v3.7.0
+    # Component or config is none
+    agent = Agent('003')
+    with pytest.raises(WazuhError, match=".* 1307 .*"):
+        agent.getconfig('com', None, 'Wazuh v4.0.0')
+        agent.getconfig(None, 'active-response', 'Wazuh v4.0.0')
+
+    # Agent Wazuh version is lower than ACTIVE_CONFIG_VERSION
     agent = Agent('002')
     with pytest.raises(WazuhInternalError, match=".* 1735 .*"):
-        agent.getconfig('com', 'active-response')
+        agent.getconfig('com', 'active-response', 'Wazuh v3.6.0')
 
 
 @patch('wazuh.core.stats.OssecSocket')
@@ -1461,11 +1472,27 @@ def test_calculate_status(last_keep_alive, pending, expected_status):
     assert result == expected_status, 'Result message is not as expected.'
 
 
+@pytest.mark.parametrize('agents_list, versions_list', [
+    (['001', '002', '003', '004'],
+     [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
+])
 @patch('wazuh.core.agent.OssecQueue')
-def test_send_restart_command(mock_ossec_queue):
-    """Test that restart_command calls send_msg_to_agent with correct params"""
-    send_restart_command('001')
-    mock_ossec_queue.return_value.send_msg_to_agent.assert_called_once_with(ANY, '001')
+def test_send_restart_command(mock_ossec_queue, agents_list, versions_list):
+    """Test that restart_command calls send_msg_to_agent with correct params.
+
+    Parameters
+    ----------
+    agents_list : list
+        List of agents' ids to test the send restart command with.
+    versions_list : list
+        List of agents' versions to test whether the message sent was the correct one or not.
+    """
+    with patch('wazuh.core.agent.Agent.get_basic_information', side_effect=versions_list):
+        for agent_id, agent_version in zip(agents_list, versions_list):
+            send_restart_command(agent_id, agent_version['version'])
+            expected_msg = mock_ossec_queue.RESTART_AGENTS_JSON if WazuhVersion(
+                agent_version['version']) >= WazuhVersion(common.AR_LEGACY_VERSION) else mock_ossec_queue.RESTART_AGENTS
+            mock_ossec_queue.return_value.send_msg_to_agent.assert_called_with(expected_msg, agent_id)
 
 
 def test_get_agents_info():
@@ -1533,6 +1560,7 @@ def test_expand_group(group, expected_agents):
             pytest.fail(f'Exception raised: {e}')
         finally:
             rmtree(agent_groups)
+
 
 @pytest.mark.parametrize('agent_id, expected_exception', [
     ('001', 1746),

@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS sys_netiface (
     rx_errors INTEGER,
     tx_dropped INTEGER,
     rx_dropped INTEGER,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (scan_id, name)
 );
 
@@ -76,6 +78,8 @@ CREATE TABLE IF NOT EXISTS sys_netproto (
     gateway TEXT,
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
     metric INTEGER,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (scan_id, iface, type)
 );
 
@@ -88,6 +92,8 @@ CREATE TABLE IF NOT EXISTS sys_netaddr (
     address TEXT,
     netmask TEXT,
     broadcast TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (scan_id, iface, proto, address)
 );
 
@@ -110,6 +116,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     release TEXT,
     version TEXT,
     os_release TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (scan_id, os_name)
 );
 
@@ -123,6 +130,7 @@ CREATE TABLE IF NOT EXISTS sys_hwinfo (
     ram_total INTEGER CHECK (ram_total > 0),
     ram_free INTEGER CHECK (ram_free > 0),
     ram_usage INTEGER CHECK (ram_usage >= 0 AND ram_usage <= 100),
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (scan_id, board_serial)
 );
 
@@ -139,7 +147,10 @@ CREATE TABLE IF NOT EXISTS sys_ports (
     inode INTEGER,
     state TEXT,
     PID INTEGER,
-    process TEXT
+    process TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
+    PRIMARY KEY (protocol, local_ip, local_port, inode)
 );
 
 CREATE INDEX IF NOT EXISTS ports_id ON sys_ports (scan_id);
@@ -163,6 +174,8 @@ CREATE TABLE IF NOT EXISTS sys_programs (
     triaged INTEGER(1),
     cpe TEXT,
     msu_name TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    item_id TEXT,
     PRIMARY KEY (scan_id, name, version, architecture)
 );
 
@@ -172,6 +185,7 @@ CREATE TABLE IF NOT EXISTS sys_hotfixes (
     scan_id INTEGER,
     scan_time TEXT,
     hotfix TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (scan_id, scan_time, hotfix)
 );
 
@@ -208,6 +222,7 @@ CREATE TABLE IF NOT EXISTS sys_processes (
     tgid INTEGER,
     tty INTEGER,
     processor INTEGER,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (scan_id, pid)
 );
 
@@ -327,7 +342,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '6');
+INSERT INTO metadata (key, value) VALUES ('db_version', '7');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');

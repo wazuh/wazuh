@@ -11,7 +11,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Added new endpoint to get agent stats from different components. ([#7128](https://github.com/wazuh/wazuh/issues/7128))
-  
+
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
 
@@ -21,26 +21,39 @@ All notable changes to this project will be documented in this file.
   - Wazuh daemons have been renamed to a unified standard. ([#6912](https://github.com/wazuh/wazuh/pull/6912))
   - Prevent a condition in FIM that may lead to a memory error. ([#6759](https://github.com/wazuh/wazuh/pull/6759))
   - Let FIM switch to real-time mode for directories where who-data is not available (Audit in immutable mode). ([#6828](https://github.com/wazuh/wazuh/pull/6828))
+  - Active Response changed to receive messages in JSON format that include the full alert. ([#6954](https://github.com/wazuh/wazuh/issues/6954))
 
 - **API:**
   - Removed ruleset version from `GET /cluster/{node_id}/info` and `GET /manager/info` as it was deprecated. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
   - Changed the `POST /groups` endpoint to specify the group name in a JSON body instead of in a query parameter. ([#6909](https://github.com/wazuh/wazuh/pull/6909))
+  - Changed the `PUT /active-response` endpoint function to create messages with the new JSON format. ([#7312](https://github.com/wazuh/wazuh/pull/7312))
 
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
-  
-### Fixed
-
-- Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
-
 
 ### Fixed
 
+- **Cluster:**
+  - Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
 - **Core:**
   - Fixed a bug in FIM when setting scan_time to "12am" or "12pm". ([#6934](https://github.com/wazuh/wazuh/pull/6934))
   - Fixed a bug in FIM that produced wrong alerts when the file limit was reached. ([#6802](https://github.com/wazuh/wazuh/pull/6802))
   - Fixed a bug in Analysisd that reserved the static decoder field name "command" but never used it. ([#7105](https://github.com/wazuh/wazuh/pull/7105))
   - Fixed evaluation of fields in the tag `<description>` of rules. ([#7073](https://github.com/wazuh/wazuh/pull/7073))
+
+
+## [v4.1.1]
+
+### Fixed
+
+- **API:**
+  - Fixed an error with the RBAC permissions in the `GET /groups` endpoint. ([#7328](https://github.com/wazuh/wazuh/issues/7328))
+  - Fixed a bug with Windows registries when parsing backslashes. ([#7309](https://github.com/wazuh/wazuh/pull/7309))
+  - Fixed an error with the RBAC permissions when assigning multiple `agent:group` resources to a policy. ([#7393](https://github.com/wazuh/wazuh/pull/7393))
+- **AWS Module:**
+  - Fixed a bug that caused an error when attempting to use an IAM Role with **CloudWatchLogs** service. ([#7330](https://github.com/wazuh/wazuh/pull/7330))
+- **Framework:**
+  - Fixed a race condition bug when using RBAC expand_group function. ([#7353](https://github.com/wazuh/wazuh/pull/7353))
 
 
 ## [v4.1.0]

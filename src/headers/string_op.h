@@ -204,7 +204,7 @@ char *encode_base64(int size, const char *src);
 
 /**
  * @brief Verify the string is not truncated after executing snprintf
- * 
+ *
  * @param str Pointer to a buffer where the resulting string is stored.
  * @param size Maximum number of bytes to be used in the buffer.
  * @param format String that contains a format string that follows the same specifications as format in printf.
@@ -215,7 +215,7 @@ int os_snprintf(char *str, size_t size, const char *format, ...);
 
 /**
  * @brief Remove a substring from a string.
- * 
+ *
  * @param str Original string.
  * @param sub Substring to remove from the string.
  * @return char* String after removing the substring.
@@ -224,7 +224,7 @@ char * w_remove_substr(char *str, const char *sub);
 
 /**
  * @brief Returns a copy of the first n characters of str.
- * 
+ *
  * If str is longer than n, only n characters are copied (a terminating character ('\0') is added).
  * if n is zero an empty string is returned.
  * @param str String to copy.
@@ -232,5 +232,60 @@ char * w_remove_substr(char *str, const char *sub);
  * @return char* New string copy of str[:n] or NULL if str is null
  */
 char * w_strndup(const char *str, size_t n);
+
+/**
+ * @brief Split a string into an array of strings separated by given delimiters.
+ * @param string_to_split String to split.
+ * @param delim String with the delimiters used to split.
+ * @param max_array_size Maximum number of strings returned in the array, if it is 0 no limit will be applied.
+ * @return char** Returns an array of string.
+ */
+char ** w_string_split(const char *string_to_split, const char *delim, int max_array_size);
+
+/**
+ * @brief Append two strings
+ *
+ * This function produces a string with length #a + n, and joins the content
+ * of a and the first n bytes of b.
+ * Semantics are like: a += b[:n].
+ *
+ * @param a First string.
+ * @param b Second string.
+ * @param n Length of the left-substring in b that will be copied.
+ * @return Pointer to a zero-ended string that contains the concatenation of a + b.
+ * @pre a may be NULL. In that case, this function returns strdup(b).
+ * @pre b must contain at less n valid bytes.
+ * @post String a is freed and it's not valid after calling this function.
+ */
+char* w_strcat(char *a, const char *b, size_t n);
+
+/**
+ * @brief Append a string into the n-th position of a string array
+ *
+ * Extends the size of the array to (n + 1) pointers, sets array[n] to string,
+ * and terminates the array with NULL.
+ *
+ * @param array Pointer to the source string array, that will be extended.
+ * @param string Pointer to the string that will be inserted into the array.
+ * @param n Position of the current tail of the array (null pointer).
+ * @return A pointer to a string array.
+ * @pre array has n valid positions before calling this function.
+ * @post array holds the same pointer that this function received, i.e. strings are not duplicated.
+ * @post The pointer to array is no longer valid as it's resized.
+ */
+char** w_strarray_append(char **array, char *string, int n);
+
+/**
+ * @brief Tokenize string separated by spaces, respecting double-quotes
+ *
+ * Splits words in a string separated by spaces into an array.
+ * Parts within double-quotes are not splitted.
+ * The backslash character escapes spaces, double-quotes and backslashes.
+ *
+ * @param string Pointer to the source string.
+ * @return Pointer to a NULL-terminated string array.
+ * @post The structure returned must be freed with free_strarray().
+ */
+char** w_strtok(const char *string);
 
 #endif

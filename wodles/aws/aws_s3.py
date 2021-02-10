@@ -23,11 +23,11 @@
 #   13 - Unexpected error sending message to Wazuh
 #   14 - Empty bucket
 
-import signal
-import sys
-import sqlite3
 import argparse
+import signal
 import socket
+import sqlite3
+import sys
 
 try:
     import boto3
@@ -47,6 +47,7 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from time import mktime
+from wazuh.core import common
 
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
@@ -138,12 +139,8 @@ class WazuhIntegration:
                             DROP TABLE {table};
                             """
 
-        # get path and version from ossec.init.conf
-        with open('/etc/ossec-init.conf') as f:
-            lines = f.readlines()
-            re_ossec_init = re.compile(r'^([A-Z]+)={1}"{1}([\w\/.]+)"{1}$')
-            self.wazuh_path = re.search(re_ossec_init, lines[0]).group(2)
-            self.wazuh_version = re.search(re_ossec_init, lines[2]).group(2)
+        self.wazuh_path = common.find_wazuh_path()
+        self.wazuh_version = common.get_wazuh_version()
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
@@ -248,7 +245,7 @@ class WazuhIntegration:
                                             aws_session_token=sts_role_assumption['Credentials']['SessionToken'],
                                             region_name=conn_args.get('region_name')
                                             )
-                client = sts_session.client(service_name=service_name)
+                client = sts_session.client(service_name='logs' if service_name == 'cloudwatchlogs' else service_name)
             elif service_name == 'cloudwatchlogs':
                 client = boto3.client('logs', region_name=region,
                                       aws_access_key_id=access_key, aws_secret_access_key=secret_key)
@@ -2332,7 +2329,7 @@ class AWSCloudWatchLogs(AWSService):
                  remove_log_streams):
 
         self.sql_cloudwatch_create_table = """
-                                CREATE TABLE 
+                                CREATE TABLE
                                     {table_name} (
                                         aws_region 'text' NOT NULL,
                                         aws_log_group 'text' NOT NULL,
@@ -2359,7 +2356,7 @@ class AWSCloudWatchLogs(AWSService):
                                     '{end_time}');"""
 
         self.sql_cloudwatch_update = """
-                                UPDATE 
+                                UPDATE
                                     {table_name}
                                 SET
                                     next_token='{next_token}',
@@ -2378,8 +2375,8 @@ class AWSCloudWatchLogs(AWSService):
                             FROM
                                 '{table_name}'
                             WHERE
-                                aws_region='{aws_region}' AND 
-                                aws_log_group='{aws_log_group}' AND 
+                                aws_region='{aws_region}' AND
+                                aws_log_group='{aws_log_group}' AND
                                 aws_log_stream='{aws_log_stream}'"""
         self.sql_cloudwatch_select_logstreams = """
                             SELECT
@@ -2387,7 +2384,7 @@ class AWSCloudWatchLogs(AWSService):
                             FROM
                                 '{table_name}'
                             WHERE
-                                aws_region='{aws_region}' AND 
+                                aws_region='{aws_region}' AND
                                 aws_log_group='{aws_log_group}'
                             ORDER BY
                                 aws_log_stream;"""
@@ -2395,8 +2392,8 @@ class AWSCloudWatchLogs(AWSService):
                             DELETE FROM
                                 {table_name}
                             WHERE
-                                aws_region='{aws_region}' AND 
-                                aws_log_group='{aws_log_group}' AND 
+                                aws_region='{aws_region}' AND
+                                aws_log_group='{aws_log_group}' AND
                                 aws_log_stream='{aws_log_stream}';"""
 
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,

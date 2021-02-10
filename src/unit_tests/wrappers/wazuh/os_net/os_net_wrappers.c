@@ -45,11 +45,28 @@ int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     return mock();
 }
 
+int __wrap_OS_SendUnix(int socket, const char *msg, int size) {
+    check_expected(socket);
+    check_expected(msg);
+    check_expected(size);
+
+    return mock();
+}
+
 int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size) {
     check_expected(sock);
     check_expected(size);
 
     strncpy(ret, mock_type(char*), size);
+
+    return mock();
+}
+
+int __wrap_OS_RecvUnix(int socket, int sizet, char *ret) {
+    check_expected(socket);
+    check_expected(sizet);
+
+    strncpy(ret, mock_type(char*), sizet);
 
     return mock();
 }

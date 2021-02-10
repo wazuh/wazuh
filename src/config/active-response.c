@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -68,7 +68,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     }
 
     if ((chown(DEFAULTARPATH, (uid_t) - 1, gid)) == -1) {
-        merror("Could not change the group to ossec: %d.", errno);
+        merror("Could not change the group to '%s': %d.", GROUPGLOBAL, errno);
         fclose(fp);
         return OS_INVALID;
     }
@@ -330,7 +330,6 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
 {
     OSList *l1 = (OSList *) d1;
     int i = 0;
-    char *tmp_str = NULL;
 
     /* Xml values */
     const char *command_name = "name";
@@ -349,7 +348,6 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     }
 
     tmp_command->name = NULL;
-    tmp_command->expect = 0;
     tmp_command->executable = NULL;
     tmp_command->timeout_allowed = 0;
     tmp_command->extra_args = NULL;
@@ -358,12 +356,10 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
-            free(tmp_str);
             free(tmp_command);
             return (OS_INVALID);
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
-            free(tmp_str);
             free(tmp_command);
             return (OS_INVALID);
         }
@@ -372,15 +368,13 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
 
             if (node[i]->content[0] == '!') {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                free(tmp_str);
                 free(tmp_command);
                 return (OS_INVALID);
             }
 
             tmp_command->name = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_expect) == 0) {
-            free(tmp_str);
-            tmp_str = strdup(node[i]->content);
+            mdebug1("The <%s> tag is deprecated since version 4.2.0.", command_expect);
         } else if (strcmp(node[i]->element, command_executable) == 0) {
             tmp_command->executable = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, timeout_allowed) == 0) {
@@ -390,7 +384,6 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 tmp_command->timeout_allowed = 0;
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                free(tmp_str);
                 free(tmp_command);
                 return (OS_INVALID);
             }
@@ -398,7 +391,6 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
             tmp_command->extra_args = strdup(node[i]->content);
         } else {
             merror(XML_INVELEM, node[i]->element);
-            free(tmp_str);
             free(tmp_command);
             return (OS_INVALID);
         }
@@ -407,26 +399,9 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
 
     if (!tmp_command->name || !tmp_command->executable) {
         merror(AR_CMD_MISS);
-        free(tmp_str);
         free(tmp_command);
         return (-1);
     }
-
-    /* Get the expect */
-    if (tmp_str && strlen(tmp_str) >= 4) {
-        if (OS_Regex("user", tmp_str)) {
-            tmp_command->expect |= USERNAME;
-        }
-        if (OS_Regex("srcip", tmp_str)) {
-            tmp_command->expect |= SRCIP;
-        }
-        if (OS_Regex("filename", tmp_str)) {
-            tmp_command->expect |= FILENAME;
-        }
-    }
-
-    free(tmp_str);
-    tmp_str = NULL;
 
     /* Add command to the list */
     if (!OSList_AddData(l1, (void *)tmp_command)) {

@@ -175,6 +175,8 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\queue\diff"
     CreateDirectory "$INSTDIR\queue\fim"
     CreateDirectory "$INSTDIR\queue\fim\db"
+    CreateDirectory "$INSTDIR\queue\syscollector"
+    CreateDirectory "$INSTDIR\queue\syscollector\db"
     CreateDirectory "$INSTDIR\queue\logcollector"
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
@@ -205,16 +207,18 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=shared\win_audit_rcl.txt ..\..\ruleset\rootcheck\db\win_audit_rcl.txt
     File /oname=help.txt help_win.txt
     File vista_sec.txt
-    File /oname=active-response\bin\route-null.cmd route-null.cmd
-    File /oname=active-response\bin\route-null-2012.cmd route-null-2012.cmd
-    File /oname=active-response\bin\netsh-win-2016.cmd netsh-win-2016.cmd
-    File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
-    File /oname=active-response\bin\netsh.cmd netsh.cmd
+    File /oname=active-response\bin\route-null.exe route-null.exe
+    File /oname=active-response\bin\restart-wazuh.exe restart-wazuh.exe
+    File /oname=active-response\bin\netsh.exe netsh.exe
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
     File agent-auth.exe
     File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
-    File ../wazuh_modules/syscollector\syscollector_win_ext.dll
     File /oname=libwazuhext.dll ..\libwazuhext.dll
+    File /oname=dbsync.dll ..\shared_modules\dbsync\build\bin\dbsync.dll
+    File /oname=rsync.dll ..\shared_modules\rsync\build\bin\rsync.dll
+    File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
+    File /oname=syscollector.dll ..\wazuh_modules\syscollector\build\bin\syscollector.dll
+    File /oname=queue\syscollector\norm_config.json ..\wazuh_modules\syscollector\norm_config.json
     File /oname=ruleset\sca\sca_win_audit.yml ..\..\ruleset\sca\windows\sca_win_audit.yml
     File VERSION
     File REVISION
@@ -493,8 +497,13 @@ Section "Uninstall"
     Delete "$INSTDIR\tmp\*"
     Delete "$INSTDIR\incoming\*"
     Delete "$INSTDIR\wodles\*"
-    Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
+    Delete "$INSTDIR\dbsync.dll"
+    Delete "$INSTDIR\rsync.dll"
+    Delete "$INSTDIR\sysinfo.dll"
+    Delete "$INSTDIR\syscollector.dll"
+    Delete "$INSTDIR\queue\syscollector\db\local.db"
+    Delete "$INSTDIR\queue\syscollector\norm_config.json"
     Delete "$INSTDIR\ruleset\sca\*"
     Delete "$INSTDIR\ruleset\*"
 

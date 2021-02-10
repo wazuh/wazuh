@@ -710,7 +710,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 // In deferred delete events the access mask comes with delete access only,
                 // we need it to scan the directory this file belongs to
-                if (mask == DELETE) {
+                if (mask == DELETE || mask == (DELETE | FILE_READ_ATTRIBUTES)) {
                     w_evt->mask = DELETE;
                 } else {
                     w_evt->mask = 0;

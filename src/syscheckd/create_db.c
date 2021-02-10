@@ -57,7 +57,7 @@ void fim_scan() {
     struct timespec start;
     struct timespec end;
     clock_t cputime_start;
-    unsigned int nodes_count = 0;
+    int nodes_count = 0;
     struct fim_element item;
 
     cputime_start = clock();
@@ -480,7 +480,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
 
 // Checks the DB state, sends a message alert if necessary
 void fim_check_db_state() {
-    unsigned int nodes_count = 0;
+    int nodes_count = 0;
     cJSON *json_event = NULL;
     char *json_plain = NULL;
     char alert_msg[OS_SIZE_256] = {'\0'};
@@ -488,6 +488,11 @@ void fim_check_db_state() {
     w_mutex_lock(&syscheck.fim_entry_mutex);
     nodes_count = fim_db_get_count_entries(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+    if (nodes_count < 0) {
+        mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+        return;
+    }
 
     switch (_db_state) {
     case FIM_STATE_DB_FULL:

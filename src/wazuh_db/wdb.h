@@ -63,23 +63,32 @@ typedef enum wdb_stmt {
     WDB_STMT_FIM_GET_ATTRIBUTES,
     WDB_STMT_FIM_UPDATE_ATTRIBUTES,
     WDB_STMT_OSINFO_INSERT,
+    WDB_STMT_OSINFO_INSERT2,
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_PROGRAM_INSERT,
+    WDB_STMT_PROGRAM_INSERT2,
     WDB_STMT_PROGRAM_DEL,
     WDB_STMT_PROGRAM_UPD,
     WDB_STMT_PROGRAM_GET,
     WDB_STMT_HWINFO_INSERT,
+    WDB_STMT_HWINFO_INSERT2,
     WDB_STMT_HOTFIX_INSERT,
+    WDB_STMT_HOTFIX_INSERT2,
     WDB_STMT_HWINFO_DEL,
     WDB_STMT_HOTFIX_DEL,
     WDB_STMT_SET_HOTFIX_MET,
     WDB_STMT_PORT_INSERT,
+    WDB_STMT_PORT_INSERT2,
     WDB_STMT_PORT_DEL,
     WDB_STMT_PROC_INSERT,
+    WDB_STMT_PROC_INSERT2,
     WDB_STMT_PROC_DEL,
     WDB_STMT_NETINFO_INSERT,
+    WDB_STMT_NETINFO_INSERT2,
     WDB_STMT_PROTO_INSERT,
+    WDB_STMT_PROTO_INSERT2,
     WDB_STMT_ADDR_INSERT,
+    WDB_STMT_ADDR_INSERT2,
     WDB_STMT_NETINFO_DEL,
     WDB_STMT_PROTO_DEL,
     WDB_STMT_ADDR_DEL,
@@ -177,6 +186,42 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_DELETE_TASK,
     WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_PORTS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_NETPROTO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_NETADDRESS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -208,6 +253,16 @@ typedef enum global_db_access {
     WDB_DISCONNECT_AGENTS
 } global_db_access;
 
+struct stmt_cache { 
+    sqlite3_stmt *stmt;
+    char *query;
+};
+
+struct stmt_cache_list { 
+    struct stmt_cache value;
+    struct stmt_cache_list *next;
+};
+
 typedef struct wdb_t {
     sqlite3 * db;
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
@@ -217,6 +272,7 @@ typedef struct wdb_t {
     time_t last;
     time_t transaction_begin_time;
     pthread_mutex_t mutex;
+    struct stmt_cache_list *cache_list;
     struct wdb_t * next;
 } wdb_t;
 
@@ -230,9 +286,18 @@ typedef struct wdb_config {
 
 /// Enumeration of components supported by the integrity library.
 typedef enum {
-    WDB_FIM,            ///< Legacy file integrity monitoring.
-    WDB_FIM_FILE,       ///< File integrity monitoring.
-    WDB_FIM_REGISTRY    ///< Registry integrity monitoring.
+    WDB_FIM,                         ///< File integrity monitoring.
+    WDB_FIM_FILE,                    ///< File integrity monitoring.
+    WDB_FIM_REGISTRY,                ///< Registry integrity monitoring.
+    WDB_SYSCOLLECTOR_PROCESSES,      ///< Processes integrity monitoring.
+    WDB_SYSCOLLECTOR_PACKAGES,       ///< Packages integrity monitoring.
+    WDB_SYSCOLLECTOR_HOTFIXES,       ///< Hotfixes integrity monitoring.
+    WDB_SYSCOLLECTOR_PORTS,          ///< Ports integrity monitoring.
+    WDB_SYSCOLLECTOR_NETPROTO,       ///< Net protocols integrity monitoring.
+    WDB_SYSCOLLECTOR_NETADDRESS,     ///< Net addresses integrity monitoring.
+    WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
+    WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
+    WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
 } wdb_component_t;
 
 extern char *schema_global_sql;
@@ -244,6 +309,7 @@ extern char *schema_upgrade_v3_sql;
 extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
 extern char *schema_upgrade_v6_sql;
+extern char *schema_upgrade_v7_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 
@@ -278,6 +344,37 @@ typedef struct agent_info_data {
     char *connection_status;
     char *sync_status;
 } agent_info_data;
+
+typedef enum {
+    FIELD_INTEGER,
+    FIELD_TEXT,
+    FIELD_REAL
+} field_type_t;
+
+struct field { 
+    field_type_t type;
+    int index;
+    bool is_old_implementation;
+    bool is_pk;
+    char name[OS_SIZE_256];
+};
+
+struct column_list { 
+    struct field value;
+    const struct column_list *next;
+};
+
+struct kv { 
+    char key[OS_SIZE_256];
+    char value[OS_SIZE_256];
+    bool single_row_table;
+    struct column_list const *column_list;
+};
+
+struct kv_list { 
+    struct kv current;
+    const struct kv_list *next;
+};
 
 /**
  * @brief Opens global database and stores it in DB pool.
@@ -829,10 +926,10 @@ int wdb_vacuum(sqlite3 *db);
 int wdb_insert_info(const char *key, const char *value);
 
 // Insert network info tuple. Return 0 on success or -1 on error.
-int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped);
+int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace);
 
 // Save Network info into DB.
-int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped);
+int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace);
 
 // Delete Network info from DB.
 int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
@@ -844,40 +941,40 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id);
 int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id);
 
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
-int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric);
+int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace);
 
 // Save IPv4/IPv6 protocol info into DB.
-int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric);
+int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric, const char * checksum, const char * item_id, const bool replace);
 
 // Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
-int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast);
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Save IPv4/IPv6 address info into DB.
-int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast);
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
 
 // Save OS info into DB.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release);
+int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
-int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);
+int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace);
 
 // Save HW info into DB.
-int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);
+int wdb_hardware_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, double cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage, const char * checksum, const bool replace);
 
 // Insert package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged);
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char * checksum, const char * item_id, const bool replace);
 
 // Save Packages info into DB.
-int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location);
+int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char* checksum, const char * item_id, const bool replace);
 
 // Insert hotfix info tuple. Return 0 on success or -1 on error.
-int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix);
+int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix, const char * checksum, const bool replace);
 
 // Save Hotfixes info into DB.
-int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix);
+int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix, const char * checksum, const bool replace);
 
 // Update the new Package info with the previous scan.
 int wdb_package_update(wdb_t * wdb, const char * scan_id);
@@ -886,22 +983,24 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id);
 int wdb_package_delete(wdb_t * wdb, const char * scan_id);
 
 // Insert process info tuple. Return 0 on success or -1 on error.
-int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
+int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char * checksum, const bool replace);
 
 // Save Process info into DB.
-int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor);
+int wdb_process_save(wdb_t * wdb, const char * scan_id, const char * scan_time, int pid, const char * name, const char * state, int ppid, int utime, int stime, const char * cmd, const char * argvs, const char * euser, const char * ruser, const char * suser, const char * egroup, const char * rgroup, const char * sgroup, const char * fgroup, int priority, int nice, int size, int vm_size, int resident, int share, int start_time, int pgrp, int session, int nlwp, int tgid, int tty, int processor, const char* checksum, const bool replace);
 
 // Delete Process info about previous scan from DB.
 int wdb_process_delete(wdb_t * wdb, const char * scan_id);
 
 // Insert port info tuple. Return 0 on success or -1 on error.
-int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process);
+int wdb_port_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace);
 
 // Save port info into DB.
-int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process);
+int wdb_port_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * protocol, const char * local_ip, int local_port, const char * remote_ip, int remote_port, int tx_queue, int rx_queue, int inode, const char * state, int pid, const char * process, const char * checksum, const char * item_id, const bool replace);
 
 // Delete port info about previous scan from DB.
 int wdb_port_delete(wdb_t * wdb, const char * scan_id);
+
+int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 
 // Save CIS-CAT scan results.
 int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);
@@ -982,6 +1081,7 @@ int wdb_stmt_cache(wdb_t * wdb, int index);
 int wdb_parse(char * input, char * output);
 
 int wdb_parse_syscheck(wdb_t * wdb, wdb_component_t component, char * input, char * output);
+int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char * output);
 
 /**
  * @brief Parses a rootcheck command
@@ -1018,6 +1118,21 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
+
+
+/**
+ * @brief Function to parse generic dbsync message operation, and generate
+ * a message to process in wazuh-db process.
+ *
+ * @param wdb The Global struct database.
+ * @param input buffer input
+ * @param output buffer output, on success responses are:
+ *        "ok" -> If entry was processed
+ *        "error" -> If entry wasn't processed.
+ * @return -1 on error, and 0 on success.
+ */
+int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output);
+
 
 /**
  * @brief Function to get values from MITRE database.
@@ -1788,6 +1903,54 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
  * @retval -1 The table "agent" is missing or an error occurred.
  */
 int wdb_global_check_manager_keepalive(wdb_t *wdb);
+
+/**
+ * @brief Function to clean table and write new values, this is only
+ * for single row tables. Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @retval true when the database single row insertion is executed successfully.
+ * @retval false on error.
+ */
+bool wdb_single_row_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+
+/**
+ * @brief Function to insert new rows with a dynamic query based on metadata.
+ * Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @retval true when the database insertion is executed successfully.
+ * @retval false on error.
+ */
+bool wdb_insert_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+
+/**
+ * @brief Function to modify existing rows with a dynamic query based on metadata.
+ * Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @retval true when the database update is executed successfully.
+ * @retval false on error.
+ */
+bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
+
+/**
+ * @brief Function to delete rows with a dynamic query based on metadata.
+ * Its necessary to have the table PKs well.
+ *
+ * @param wdb The Global struct database.
+ * @param kv_value Table metadata to build dynamic queries.
+ * @param data Values separated with pipe character '|'.
+ * @retval true when the database delete is executed successfully.
+ * @retval false on error.
+ */
+bool wdb_delete_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data);
 
 /**
  * @brief Function to parse the insert upgrade request.
