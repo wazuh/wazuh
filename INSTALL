@@ -51,7 +51,7 @@ By Hand Installation steps:
 6- Set the right permissions to the files.
 
 
-This 5 steps are done in the Makefile (see make server).
+These 5 steps are done in the Makefile (see make server).
 
 The Makefile read the options from the LOCATION file. Change
 whatever you need from there.
@@ -76,7 +76,7 @@ The following step is common to all OSes:
    $> cd cmake-3.18.3 && ./bootstrap --no-system-curl
    $> make -j$(nproc) && make install
 
-Note: gcc/g++ 5.5 and CMake 3.12.4 are the minimun required versions to be installed.
+Note: `gcc/g++ 5.5` and `CMake 3.12.4` are the minimun required versions to be installed.
 
 Under wazuh/src folder:
 1- make deps
