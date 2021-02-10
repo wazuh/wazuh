@@ -43,10 +43,10 @@ typedef struct _remoted {
     os_ip **denyips;
 
     int m_queue;
-    int tcp_sock;
-    int udp_sock;
-    int syslog_sock;
-    int position;
+    int tcp_sock;       ///< This socket is used to receive requests over TCP
+    int udp_sock;       ///< This socket is used to receive requests over UDP
+    int syslog_sock;    ///< This socket is used to handle the syslog's connection
+    int position;       ///< This allows the childs to access its corresponding remoted parameters (unique per child)
     int nocmerged;
     socklen_t peer_size;
     long queue_size;
