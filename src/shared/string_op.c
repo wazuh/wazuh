@@ -989,6 +989,32 @@ char * w_strndup(const char * str, size_t n) {
     return str_cpy;
 }
 
+char ** w_string_split(const char *string_to_split, const char *delim, int max_array_size) {
+    char **paths = NULL;
+    char *state;
+    char *token;
+    int i = 0;
+    char *aux;
+
+    os_calloc(1, sizeof(char *), paths);
+
+    if (!string_to_split || !delim) {
+        return paths;
+    }
+    os_strdup(string_to_split, aux);
+
+    for(token = strtok_r(aux, delim, &state); token; token = strtok_r(NULL, delim, &state)){
+        os_realloc(paths, (i + 2) * sizeof(char *), paths);
+        os_strdup(token, paths[i]);
+        paths[i + 1] = NULL;
+        i++;
+        if (max_array_size && i >= max_array_size) break;
+    }
+    os_free(aux);
+
+    return paths;
+}
+
 // Append two strings
 
 char* w_strcat(char *a, const char *b, size_t n) {
