@@ -933,6 +933,16 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
         return (-1);
     }
 
+    key_lock_read();
+    const int key_id = OS_IsAllowedID(&keys, agent_id);
+    if (key_id < 0) {
+        key_unlock();
+        merror(AR_NOAGENT_ERROR, agent_id);
+        return (-1);
+    }
+    const int protocol = keys.keyentries[key_id]->net_protocol;
+    key_unlock();
+
     /* Send the file contents */
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
@@ -942,7 +952,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
             return (-1);
         }
 
-        if (logr.proto[logr.position] == REMOTED_PROTO_UDP) {
+        if (protocol == REMOTED_PROTO_UDP) {
             /* Sleep 1 every 30 messages -- no flood */
             if (i > 30) {
                 sleep(1);

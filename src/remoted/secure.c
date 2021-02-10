@@ -496,13 +496,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         keys.keyentries[agentid]->net_protocol = protocol;
 
-        /* detect if agent chenge the network protocol @TODO */
-        if (keys.keyentries[agentid]->sock > 0 && protocol == REMOTED_PROTO_UDP) {
-            mdebug1("Agent %i change TCP->UDP", agentid);
-        } else if (keys.keyentries[agentid]->sock == USING_UDP_NO_CLIENT_SOCKET && protocol == REMOTED_PROTO_TCP) {
-            mdebug1("Agent %i change UDP->TCP", agentid);
-        }
-
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
         r = (protocol == REMOTED_PROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : REMOTED_USING_UDP;
