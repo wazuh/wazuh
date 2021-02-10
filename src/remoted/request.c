@@ -238,6 +238,7 @@ void * req_dispatch(req_node_t * node) {
 
         mdebug2("Sending request: '%s'", payload);
 
+        /* The following code is used to get the protocol that the client is using in order to answer accordingly */
         key_lock_read();
         const int key_id = OS_IsAllowedID(&keys, agentid);
         if (key_id < 0) {
