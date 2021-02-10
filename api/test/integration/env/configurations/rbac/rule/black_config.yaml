@@ -10,7 +10,7 @@
 - actions:
   - rules:update
   resources:
-  - rule:file:local_rules.xml
+  - "*:*:*"
   effect: deny
 
 - actions:
