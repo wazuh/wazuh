@@ -39,7 +39,7 @@ stages:
             error: !anystr
 
 ---
-test_name: GET /rootcheck/001/last_scan
+test_name: GET /rootcheck/{agent_id}/last_scan
 
 stages:
 
