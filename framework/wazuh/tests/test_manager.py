@@ -431,13 +431,17 @@ def test_get_basic_info(mock_open):
 @patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
 @patch('wazuh.manager.write_ossec_conf')
 @patch('wazuh.manager.prettify_xml')
-@patch('wazuh.manager.load_wazuh_xml')
-def test_update_ossec_conf(load_mock, prettify_mock, write_mock, validate_mock):
+@patch('wazuh.manager.copyfile')
+@patch('wazuh.manager.exists', return_value=True)
+@patch('wazuh.manager.remove')
+@patch('wazuh.manager.safe_move')
+def test_update_ossec_conf(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock):
     """Test update_ossec_conf works as expected."""
     result = update_ossec_conf(new_conf="placeholder config")
     write_mock.assert_called_once()
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['total_failed_items'] == 0
+    remove_mock.assert_called_once()
 
 
 @pytest.mark.parametrize('new_conf', [
@@ -447,13 +451,14 @@ def test_update_ossec_conf(load_mock, prettify_mock, write_mock, validate_mock):
 @patch('wazuh.manager.validate_ossec_conf')
 @patch('wazuh.manager.write_ossec_conf')
 @patch('wazuh.manager.prettify_xml')
-@patch('wazuh.manager.load_wazuh_xml', return_value="original_config")
-def test_update_ossec_conf_ko(load_mock, prettify_mock, write_mock, validate_mock, new_conf):
+@patch('wazuh.manager.copyfile')
+@patch('wazuh.manager.exists', return_value=True)
+@patch('wazuh.manager.remove')
+@patch('wazuh.manager.safe_move')
+def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock, new_conf):
     """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
     is not valid."""
     result = update_ossec_conf(new_conf=new_conf)
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
-
-    if new_conf:
-        write_mock.assert_called_with("original_config")
+    move_mock.assert_called_once()
