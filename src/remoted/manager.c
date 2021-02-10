@@ -933,6 +933,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
         return (-1);
     }
 
+    /* The following code is used to get the protocol that the client is using in order to answer accordingly */
     key_lock_read();
     const int key_id = OS_IsAllowedID(&keys, agent_id);
     if (key_id < 0) {
@@ -951,7 +952,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
             fclose(fp);
             return (-1);
         }
-
+        /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
         if (protocol == REMOTED_PROTO_UDP) {
             /* Sleep 1 every 30 messages -- no flood */
             if (i > 30) {
