@@ -474,21 +474,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             free(aux_cha);
         }
 
-        switch (lf->event_type) {
-        case FIM_ADDED:
-            cJSON_AddStringToObject(file_diff, "event", "added");
-            break;
-        case FIM_MODIFIED:
-            cJSON_AddStringToObject(file_diff, "event", "modified");
-            break;
-        case FIM_READDED:
-            cJSON_AddStringToObject(file_diff, "event", "readded");
-            break;
-        case FIM_DELETED:
-            cJSON_AddStringToObject(file_diff, "event", "deleted");
-            break;
-        default: ;
-        }
+        cJSON_AddStringToObject(file_diff, "event", lf->fields[FIM_EVENT_TYPE_STR].value);
     }
 
     if (lf->program_name || lf->dec_timestamp) {

@@ -129,6 +129,7 @@ typedef enum fim_fields {
     FIM_REGISTRY_VALUE_NAME,
     FIM_REGISTRY_VALUE_TYPE,
     FIM_ENTRY_TYPE,
+    FIM_EVENT_TYPE_STR,
     FIM_NFIELDS
 } fim_fields;
 

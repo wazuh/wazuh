@@ -15,6 +15,7 @@
 #include "decoders/decoder.h"
 
 typedef enum syscheck_event_t { FIM_ADDED, FIM_MODIFIED, FIM_READDED, FIM_DELETED } syscheck_event_t;
+extern const char *SYSCHECK_EVENT_STRINGS[];
 typedef struct _EventNode EventNode;
 
 
@@ -83,17 +84,16 @@ typedef struct _Eventinfo {
     char hour[10];
     char mon[4];
 
-    /* SYSCHECK Results variables */
-    syscheck_event_t event_type;
     char *previous;
     wlabel_t *labels;
-    // Whodata fields. They are duplicated by 'fields'
+
     u_int16_t decoder_syscheck_id;
     int rootcheck_fts;
     int is_a_copy;
     char **last_events;
     int r_firedtimes;
     int queue_added;
+
     // Node reference
     EventNode *node;
     // Process thread id

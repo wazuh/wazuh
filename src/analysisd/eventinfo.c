@@ -23,6 +23,13 @@ int alert_only;
 
 time_t current_time = 0;
 
+const char *SYSCHECK_EVENT_STRINGS[] = {
+    [FIM_ADDED] = "added",
+    [FIM_MODIFIED] = "modified",
+    [FIM_READDED] = "readded",
+    [FIM_DELETED] = "deleted"
+};
+
 size_t field_offset[] = {
     offsetof(Eventinfo, srcip),
     offsetof(Eventinfo, id),
@@ -1115,11 +1122,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     memcpy(lf_cpy->hour,lf->hour,10);
     memcpy(lf_cpy->mon,lf->mon,4);
 
-    /* SYSCHECK Results variables */
-    lf_cpy->event_type = lf->event_type;
-
     /* Whodata fields */
-
     lf_cpy->r_firedtimes = lf->r_firedtimes;
 
     if(lf->previous){

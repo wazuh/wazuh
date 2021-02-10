@@ -71,14 +71,13 @@ static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
  * @brief Generate fim alert
  *
  * @param lf Event information
- * @param event_type Type of event (added, modified, deleted)
  * @param attributes New file attributes
  * @param old_attributes File attributes before the alert
  * @param audit Audit information
  *
  * @returns 0 on success, -1 on failure
 */
-static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
+static int fim_generate_alert(Eventinfo *lf, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
 
 // Send save query to Wazuh DB
 static void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data);
@@ -380,7 +379,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     wazuhdb_query[0] = '\0';
     switch (decode_newsum) {
         case 1: // File deleted
-            lf->event_type = FIM_DELETED;
+            os_strdup(SYSCHECK_EVENT_STRINGS[FIM_DELETED], lf->fields[FIM_EVENT_TYPE_STR].value);
 
             if(!*old_check_sum){
                 mdebug2("Agent '%s' Alert already reported (double delete alert)", lf->agent_id);
@@ -408,7 +407,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         case 0:
             if (*old_check_sum) {
                 // File modified
-                lf->event_type = FIM_MODIFIED;
+                os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], lf->fields[FIM_EVENT_TYPE_STR].value);
                 changes = fim_check_changes(oldsum.changes, oldsum.date_alert, lf);
                 sk_decode_sum(&oldsum, old_check_sum, NULL);
 
@@ -419,7 +418,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 }
             } else {
                 // File added
-                lf->event_type = FIM_ADDED;
+                os_strdup(SYSCHECK_EVENT_STRINGS[FIM_ADDED], lf->fields[FIM_EVENT_TYPE_STR].value);
             }
 
             if (strstr(lf->location, "syscheck-registry")) {
@@ -458,14 +457,14 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
 
             mdebug2("Agent '%s' File %s saved/updated in FIM DDBB", lf->agent_id, f_name);
 
-            if(end_first_scan = (time_t*)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
+            if (end_first_scan = (time_t *)OSHash_Get_ex(fim_agentinfo, lf->agent_id), end_first_scan == NULL) {
                 fim_get_scantime(&end_scan, lf, sdb, "end_scan");
                 os_calloc(1, sizeof(time_t), end_first_scan);
                 *end_first_scan = end_scan;
                 int res;
-                if(res = OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan), res != 2) {
+                if (res = OSHash_Add_ex(fim_agentinfo, lf->agent_id, end_first_scan), res != 2) {
                     os_free(end_first_scan);
-                    if(res == 0) {
+                    if (res == 0) {
                         merror("Unable to add scan_info to hash table for agent: %s", lf->agent_id);
                     }
                 }
@@ -473,14 +472,14 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 end_scan = *end_first_scan;
             }
 
-            if(lf->event_type == FIM_ADDED) {
-                if(end_scan == 0) {
+            if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]) == 0) {
+                if (end_scan == 0) {
                     mdebug2("Agent '%s' Alert discarded, first scan. File '%s'", lf->agent_id, f_name);
                     goto exit_ok;
-                } else if(lf->time.tv_sec < end_scan) {
+                } else if (lf->time.tv_sec < end_scan) {
                     mdebug2("Agent '%s' Alert discarded, first scan (delayed event). File '%s'", lf->agent_id, f_name);
                     goto exit_ok;
-                } else if(Config.syscheck_alert_new == 0) {
+                } else if (Config.syscheck_alert_new == 0) {
                     mdebug2("Agent '%s' Alert discarded (alert_new_files = no). File '%s'", lf->agent_id, f_name);
                     goto exit_ok;
                 }
@@ -544,194 +543,188 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     char msg_type[OS_FLSIZE];
     char buf_ptr[26];
 
-    switch (lf->event_type) {
-        case FIM_DELETED:
-            snprintf(msg_type, sizeof(msg_type), "was deleted.");
-            lf->decoder_info->id = fim_decoders[FILE_DECODER]->delete_id;
-            lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = fim_decoders[FILE_DECODER]->delete_name;
-            changes=1;
-            break;
-        case FIM_ADDED:
-            snprintf(msg_type, sizeof(msg_type), "was added.");
-            lf->decoder_info->id = fim_decoders[FILE_DECODER]->add_id;
-            lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = fim_decoders[FILE_DECODER]->add_name;
-            changes=1;
-            break;
-        case FIM_MODIFIED:
-            snprintf(msg_type, sizeof(msg_type), "checksum changed.");
-            lf->decoder_info->id = fim_decoders[FILE_DECODER]->modify_id;
-            lf->decoder_syscheck_id = lf->decoder_info->id;
-            lf->decoder_info->name = fim_decoders[FILE_DECODER]->modify_name;
-            if (oldsum->size && newsum->size) {
-                if (strcmp(oldsum->size, newsum->size) == 0) {
-                    localsdb->size[0] = '\0';
-                } else {
-                    changes = 1;
-                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "size", ',');
-                    snprintf(localsdb->size, OS_FLSIZE,
-                             "Size changed from '%s' to '%s'\n",
-                             oldsum->size, newsum->size);
-
-                    os_strdup(oldsum->size, lf->fields[FIM_SIZE_BEFORE].value);
-                }
-            }
-
-            /* Permission message */
-            if (oldsum->perm && newsum->perm) {
-                if (oldsum->perm == newsum->perm) {
-                    localsdb->perm[0] = '\0';
-                } else if (oldsum->perm > 0 && newsum->perm > 0) {
-                    changes = 1;
-                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
-                    char opstr[10];
-                    char npstr[10];
-                    lf->fields[FIM_PERM_BEFORE].value =  agent_file_perm(oldsum->perm);
-                    char *new_perm =  agent_file_perm(newsum->perm);
-
-                    strncpy(opstr, lf->fields[FIM_PERM_BEFORE].value, sizeof(opstr) - 1);
-                    strncpy(npstr, new_perm, sizeof(npstr) - 1);
-                    free(new_perm);
-
-                    opstr[9] = npstr[9] = '\0';
-                    snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
-                             "'%9.9s' to '%9.9s'\n", opstr, npstr);
-                }
-            } else if (oldsum->win_perm && newsum->win_perm) { // Check for Windows permissions
-                // We need to unescape the old permissions at this point
-                char *unesc_perms = wstr_replace(oldsum->win_perm, "\\:", ":");
-                free(oldsum->win_perm);
-                oldsum->win_perm = unesc_perms;
-                if (!strcmp(oldsum->win_perm, newsum->win_perm)) {
-                    localsdb->perm[0] = '\0';
-                } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
-                    changes = 1;
-                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
-                    snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed.\n");
-                    os_strdup(oldsum->win_perm, lf->fields[FIM_PERM_BEFORE].value);
-                }
-            }
-
-            /* Ownership message */
-            if (newsum->uid && oldsum->uid) {
-                if (strcmp(newsum->uid, oldsum->uid) == 0) {
-                    localsdb->owner[0] = '\0';
-                } else {
-                    changes = 1;
-                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "uid", ',');
-                    if (oldsum->uname && newsum->uname) {
-                        snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->uname, oldsum->uid, newsum->uname, newsum->uid);
-                        os_strdup(oldsum->uname, lf->fields[FIM_UNAME_BEFORE].value);
-                    } else {
-                        snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum->uid, newsum->uid);
-                    }
-                    os_strdup(oldsum->uid, lf->fields[FIM_UID_BEFORE].value);
-                }
-            }
-
-            /* Group ownership message */
-            if (newsum->gid && oldsum->gid) {
-                if (strcmp(newsum->gid, oldsum->gid) == 0) {
-                    localsdb->gowner[0] = '\0';
-                } else {
-                    changes = 1;
-                    wm_strcat(&lf->fields[FIM_CHFIELDS].value, "gid", ',');
-                    if (oldsum->gname && newsum->gname) {
-                        snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->gname, oldsum->gid, newsum->gname, newsum->gid);
-                        os_strdup(oldsum->gname, lf->fields[FIM_GNAME_BEFORE].value);
-                    } else {
-                        snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum->gid, newsum->gid);
-                    }
-                    os_strdup(oldsum->gid, lf->fields[FIM_GID_BEFORE].value);
-                }
-            }
-            /* MD5 message */
-            if (!*newsum->md5 || !*oldsum->md5 || strcmp(newsum->md5, oldsum->md5) == 0) {
-                localsdb->md5[0] = '\0';
+    if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]) == 0) {
+        snprintf(msg_type, sizeof(msg_type), "was deleted.");
+        lf->decoder_info->id = fim_decoders[FILE_DECODER]->delete_id;
+        lf->decoder_syscheck_id = lf->decoder_info->id;
+        lf->decoder_info->name = fim_decoders[FILE_DECODER]->delete_name;
+        changes=1;
+    } else if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]) == 0) {
+        snprintf(msg_type, sizeof(msg_type), "was added.");
+        lf->decoder_info->id = fim_decoders[FILE_DECODER]->add_id;
+        lf->decoder_syscheck_id = lf->decoder_info->id;
+        lf->decoder_info->name = fim_decoders[FILE_DECODER]->add_name;
+        changes=1;
+    } else if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]) == 0) {
+        snprintf(msg_type, sizeof(msg_type), "checksum changed.");
+        lf->decoder_info->id = fim_decoders[FILE_DECODER]->modify_id;
+        lf->decoder_syscheck_id = lf->decoder_info->id;
+        lf->decoder_info->name = fim_decoders[FILE_DECODER]->modify_name;
+        if (oldsum->size && newsum->size) {
+            if (strcmp(oldsum->size, newsum->size) == 0) {
+                localsdb->size[0] = '\0';
             } else {
                 changes = 1;
-                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "md5", ',');
-                snprintf(localsdb->md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
-                         oldsum->md5, newsum->md5);
-                os_strdup(oldsum->md5, lf->fields[FIM_MD5_BEFORE].value);
-            }
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "size", ',');
+                snprintf(localsdb->size, OS_FLSIZE,
+                            "Size changed from '%s' to '%s'\n",
+                            oldsum->size, newsum->size);
 
-            /* SHA-1 message */
-            if (!*newsum->sha1 || !*oldsum->sha1 || strcmp(newsum->sha1, oldsum->sha1) == 0) {
-                localsdb->sha1[0] = '\0';
+                os_strdup(oldsum->size, lf->fields[FIM_SIZE_BEFORE].value);
+            }
+        }
+
+        /* Permission message */
+        if (oldsum->perm && newsum->perm) {
+            if (oldsum->perm == newsum->perm) {
+                localsdb->perm[0] = '\0';
+            } else if (oldsum->perm > 0 && newsum->perm > 0) {
+                changes = 1;
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
+                char opstr[10];
+                char npstr[10];
+                lf->fields[FIM_PERM_BEFORE].value =  agent_file_perm(oldsum->perm);
+                char *new_perm =  agent_file_perm(newsum->perm);
+
+                strncpy(opstr, lf->fields[FIM_PERM_BEFORE].value, sizeof(opstr) - 1);
+                strncpy(npstr, new_perm, sizeof(npstr) - 1);
+                free(new_perm);
+
+                opstr[9] = npstr[9] = '\0';
+                snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed from "
+                            "'%9.9s' to '%9.9s'\n", opstr, npstr);
+            }
+        } else if (oldsum->win_perm && newsum->win_perm) { // Check for Windows permissions
+            // We need to unescape the old permissions at this point
+            char *unesc_perms = wstr_replace(oldsum->win_perm, "\\:", ":");
+            free(oldsum->win_perm);
+            oldsum->win_perm = unesc_perms;
+            if (!strcmp(oldsum->win_perm, newsum->win_perm)) {
+                localsdb->perm[0] = '\0';
+            } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
+                changes = 1;
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
+                snprintf(localsdb->perm, OS_FLSIZE, "Permissions changed.\n");
+                os_strdup(oldsum->win_perm, lf->fields[FIM_PERM_BEFORE].value);
+            }
+        }
+
+        /* Ownership message */
+        if (newsum->uid && oldsum->uid) {
+            if (strcmp(newsum->uid, oldsum->uid) == 0) {
+                localsdb->owner[0] = '\0';
             } else {
                 changes = 1;
-                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha1", ',');
-                snprintf(localsdb->sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
-                         oldsum->sha1, newsum->sha1);
-                os_strdup(oldsum->sha1, lf->fields[FIM_SHA1_BEFORE].value);
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "uid", ',');
+                if (oldsum->uname && newsum->uname) {
+                    snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->uname, oldsum->uid, newsum->uname, newsum->uid);
+                    os_strdup(oldsum->uname, lf->fields[FIM_UNAME_BEFORE].value);
+                } else {
+                    snprintf(localsdb->owner, OS_FLSIZE, "Ownership was '%s', now it is '%s'\n", oldsum->uid, newsum->uid);
+                }
+                os_strdup(oldsum->uid, lf->fields[FIM_UID_BEFORE].value);
             }
+        }
 
-            /* SHA-256 message */
-            if(newsum->sha256 && newsum->sha256[0] != '\0')
-            {
-                if(oldsum->sha256) {
-                    if (strcmp(newsum->sha256, oldsum->sha256) == 0) {
-                        localsdb->sha256[0] = '\0';
-                    } else {
-                        changes = 1;
-                        wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha256", ',');
-                        snprintf(localsdb->sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
-                                oldsum->sha256, newsum->sha256);
-                        os_strdup(oldsum->sha256, lf->fields[FIM_SHA256_BEFORE].value);
-                    }
+        /* Group ownership message */
+        if (newsum->gid && oldsum->gid) {
+            if (strcmp(newsum->gid, oldsum->gid) == 0) {
+                localsdb->gowner[0] = '\0';
+            } else {
+                changes = 1;
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "gid", ',');
+                if (oldsum->gname && newsum->gname) {
+                    snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s (%s)', now it is '%s (%s)'\n", oldsum->gname, oldsum->gid, newsum->gname, newsum->gid);
+                    os_strdup(oldsum->gname, lf->fields[FIM_GNAME_BEFORE].value);
+                } else {
+                    snprintf(localsdb->gowner, OS_FLSIZE, "Group ownership was '%s', now it is '%s'\n", oldsum->gid, newsum->gid);
+                }
+                os_strdup(oldsum->gid, lf->fields[FIM_GID_BEFORE].value);
+            }
+        }
+        /* MD5 message */
+        if (!*newsum->md5 || !*oldsum->md5 || strcmp(newsum->md5, oldsum->md5) == 0) {
+            localsdb->md5[0] = '\0';
+        } else {
+            changes = 1;
+            wm_strcat(&lf->fields[FIM_CHFIELDS].value, "md5", ',');
+            snprintf(localsdb->md5, OS_FLSIZE, "Old md5sum was: '%s'\nNew md5sum is : '%s'\n",
+                        oldsum->md5, newsum->md5);
+            os_strdup(oldsum->md5, lf->fields[FIM_MD5_BEFORE].value);
+        }
+
+        /* SHA-1 message */
+        if (!*newsum->sha1 || !*oldsum->sha1 || strcmp(newsum->sha1, oldsum->sha1) == 0) {
+            localsdb->sha1[0] = '\0';
+        } else {
+            changes = 1;
+            wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha1", ',');
+            snprintf(localsdb->sha1, OS_FLSIZE, "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n",
+                        oldsum->sha1, newsum->sha1);
+            os_strdup(oldsum->sha1, lf->fields[FIM_SHA1_BEFORE].value);
+        }
+
+        /* SHA-256 message */
+        if(newsum->sha256 && newsum->sha256[0] != '\0')
+        {
+            if(oldsum->sha256) {
+                if (strcmp(newsum->sha256, oldsum->sha256) == 0) {
+                    localsdb->sha256[0] = '\0';
                 } else {
                     changes = 1;
                     wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha256", ',');
-                    snprintf(localsdb->sha256, OS_FLSIZE, "New sha256sum is : '%s'\n", newsum->sha256);
+                    snprintf(localsdb->sha256, OS_FLSIZE, "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n",
+                            oldsum->sha256, newsum->sha256);
+                    os_strdup(oldsum->sha256, lf->fields[FIM_SHA256_BEFORE].value);
                 }
             } else {
-                localsdb->sha256[0] = '\0';
-            }
-
-            /* Modification time message */
-            if (oldsum->mtime && newsum->mtime && oldsum->mtime != newsum->mtime) {
                 changes = 1;
-                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "mtime", ',');
-                char *old_ctime = strdup(ctime_r(&oldsum->mtime, buf_ptr));
-                char *new_ctime = strdup(ctime_r(&newsum->mtime, buf_ptr));
-                old_ctime[strlen(old_ctime) - 1] = '\0';
-                new_ctime[strlen(new_ctime) - 1] = '\0';
-
-                snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
-                lf->fields[FIM_MTIME].value = w_long_str(oldsum->mtime);
-                os_free(old_ctime);
-                os_free(new_ctime);
-            } else {
-                localsdb->mtime[0] = '\0';
+                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "sha256", ',');
+                snprintf(localsdb->sha256, OS_FLSIZE, "New sha256sum is : '%s'\n", newsum->sha256);
             }
+        } else {
+            localsdb->sha256[0] = '\0';
+        }
 
-            /* Inode message */
-            if (oldsum->inode && newsum->inode && oldsum->inode != newsum->inode) {
-                changes = 1;
-                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "inode", ',');
-                snprintf(localsdb->inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum->inode, newsum->inode);
-                lf->fields[FIM_INODE_BEFORE].value = w_long_str(oldsum->inode);
-            } else {
-                localsdb->inode[0] = '\0';
-            }
+        /* Modification time message */
+        if (oldsum->mtime && newsum->mtime && oldsum->mtime != newsum->mtime) {
+            changes = 1;
+            wm_strcat(&lf->fields[FIM_CHFIELDS].value, "mtime", ',');
+            char *old_ctime = strdup(ctime_r(&oldsum->mtime, buf_ptr));
+            char *new_ctime = strdup(ctime_r(&newsum->mtime, buf_ptr));
+            old_ctime[strlen(old_ctime) - 1] = '\0';
+            new_ctime[strlen(new_ctime) - 1] = '\0';
 
-            /* Attributes message */
-            if (oldsum->attributes && newsum->attributes
-                && strcmp(oldsum->attributes, newsum->attributes)) {
-                changes = 1;
-                wm_strcat(&lf->fields[FIM_CHFIELDS].value, "attributes", ',');
-                snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", oldsum->attributes, newsum->attributes);
-                os_strdup(oldsum->attributes, lf->fields[FIM_ATTRS_BEFORE].value);
-            } else {
-                localsdb->attrs[0] = '\0';
-            }
+            snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
+            lf->fields[FIM_MTIME].value = w_long_str(oldsum->mtime);
+            os_free(old_ctime);
+            os_free(new_ctime);
+        } else {
+            localsdb->mtime[0] = '\0';
+        }
 
-            break;
-        default:
-            return (-1);
-            break;
+        /* Inode message */
+        if (oldsum->inode && newsum->inode && oldsum->inode != newsum->inode) {
+            changes = 1;
+            wm_strcat(&lf->fields[FIM_CHFIELDS].value, "inode", ',');
+            snprintf(localsdb->inode, OS_FLSIZE, "Old inode was: '%ld', now it is '%ld'\n", oldsum->inode, newsum->inode);
+            lf->fields[FIM_INODE_BEFORE].value = w_long_str(oldsum->inode);
+        } else {
+            localsdb->inode[0] = '\0';
+        }
+
+        /* Attributes message */
+        if (oldsum->attributes && newsum->attributes
+            && strcmp(oldsum->attributes, newsum->attributes)) {
+            changes = 1;
+            wm_strcat(&lf->fields[FIM_CHFIELDS].value, "attributes", ',');
+            snprintf(localsdb->attrs, OS_SIZE_1024, "Old attributes were: '%s'\nNow they are '%s'\n", oldsum->attributes, newsum->attributes);
+            os_strdup(oldsum->attributes, lf->fields[FIM_ATTRS_BEFORE].value);
+        } else {
+            localsdb->attrs[0] = '\0';
+        }
+    } else {
+        return (-1);
     }
 
     /* Symbolic path message */
@@ -1249,7 +1242,6 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *old_attributes = NULL;
     cJSON *audit = NULL;
     cJSON *object = NULL;
-    char *event_type = NULL;
     char *entry_type = NULL;
     fim_decoders_t *decoder = NULL;
 
@@ -1266,7 +1258,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
             } else if (strcmp(object->string, "mode") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_MODE].value);
             } else if (strcmp(object->string, "type") == 0) {
-                event_type = object->valuestring;
+                os_strdup(object->valuestring, lf->fields[FIM_EVENT_TYPE_STR].value);
             } else if (strcmp(object->string, "tags") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
             } else if (strcmp(object->string, "content_changes") == 0) {
@@ -1307,7 +1299,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         }
     }
 
-    if (event_type == NULL) {
+    if (lf->fields[FIM_EVENT_TYPE_STR].value == NULL) {
         mdebug1("No member 'type' in Syscheck JSON payload");
         return -1;
     }
@@ -1335,38 +1327,29 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     }
     os_strdup(entry_type, lf->fields[FIM_ENTRY_TYPE].value);
 
-    if (strcmp("added", event_type) == 0) {
-        lf->event_type = FIM_ADDED;
+    if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_ADDED], lf->fields[FIM_EVENT_TYPE_STR].value) == 0) {
         lf->decoder_info->name = decoder->add_name;
         lf->decoder_info->id = decoder->add_id;
-    } else if (strcmp("modified", event_type) == 0) {
-        lf->event_type = FIM_MODIFIED;
+    } else if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], lf->fields[FIM_EVENT_TYPE_STR].value) == 0) {
         lf->decoder_info->name = decoder->modify_name;
         lf->decoder_info->id = decoder->modify_id;
-    } else if (strcmp("deleted", event_type) == 0) {
-        lf->event_type = FIM_DELETED;
+    } else if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_DELETED], lf->fields[FIM_EVENT_TYPE_STR].value) == 0) {
         lf->decoder_info->name = decoder->delete_name;
         lf->decoder_info->id =  decoder->delete_id;
     } else {
-        mdebug1("Invalid 'type' value '%s' in JSON payload.", event_type);
+        mdebug1("Invalid 'type' value '%s' in JSON payload.", lf->fields[FIM_EVENT_TYPE_STR].value);
         return -1;
     }
 
     lf->decoder_syscheck_id = lf->decoder_info->id;
 
-    fim_generate_alert(lf, event_type, attributes, old_attributes, audit);
+    fim_generate_alert(lf, attributes, old_attributes, audit);
 
-    switch (lf->event_type) {
-    case FIM_ADDED:
-    case FIM_MODIFIED:
+    if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]) == 0 ||
+        strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]) == 0) {
         fim_send_db_save(sdb, lf->agent_id, event);
-        break;
-
-    case FIM_DELETED:
+    } else if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]) == 0) {
         fim_send_db_delete(sdb, lf->agent_id, lf->fields[FIM_FILE].value);
-
-    default:
-        ;
     }
 
     return 0;
@@ -1440,7 +1423,7 @@ end:
 }
 
 
-static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+static int fim_generate_alert(Eventinfo *lf, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
     static const char *ENTRY_TYPE_FILE = "File";
     static const char *ENTRY_TYPE_REGISTRY_KEY = "Registry Key";
     static const char *ENTRY_TYPE_REGISTRY_VALUE = "Registry Value";
@@ -1522,7 +1505,7 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
     }
 
     // Format comment
-    if (lf->event_type == FIM_MODIFIED) {
+    if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]) == 0) {
         fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->fields[FIM_SIZE_BEFORE].value, lf->fields[FIM_SIZE].value);
         size_t size = fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->fields[FIM_PERM_BEFORE].value, lf->fields[FIM_PERM].value);
         if (size >= sizeof(change_perm)) {
@@ -1606,7 +1589,7 @@ static int fim_generate_alert(Eventinfo *lf, char *event_type, cJSON *attributes
             "Mode: %s\n"
             "%s"
             "%s%s%s%s%s%s%s%s%s%s%s%s",
-            entry_type, path, event_type,
+            entry_type, path, lf->fields[FIM_EVENT_TYPE_STR].value,
             lf->fields[FIM_HARD_LINKS].value ? hard_links : "",
             lf->fields[FIM_MODE].value,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",
