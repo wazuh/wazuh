@@ -59,6 +59,12 @@ static void _push_request(const char *request,const char *type);
 static int key_request_connect();
 static int key_request_reconnect();
 
+/** Defines to switch according to different OS_AddSocket or, failing that, the case of using UDP protocol **/
+#define OS_ADDSOCKET_ERROR          0   ///< OSHash_Set_ex returns 0 on error (* see OS_AddSocket and OSHash_Set_ex)
+#define OS_ADDSOCKET_KEY_UPDATED    1   ///< OSHash_Set_ex returns 1 when key existed, so it is update (*)
+#define OS_ADDSOCKET_KEY_ADDED      2   ///< OSHash_Set_ex returns 2 when key didn't existed, so it is added  (*)
+#define REMOTED_USING_UDP           42  ///< When using UDP, OS_AddSocket isn't called, so an arbitrary value is used
+
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -355,11 +361,11 @@ STATIC void * close_fp_main(void * args) {
 
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
-    int protocol = (sock_client == -1) ? REMOTED_PROTO_UDP : REMOTED_PROTO_TCP;
+    const int protocol = (sock_client == -1) ? REMOTED_PROTO_UDP : REMOTED_PROTO_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
-    char agname[KEYSIZE + 1];
+    char agname[KEYSIZE + 1] = {0};
     char *tmp_msg;
     size_t msg_length;
     char ip_found = 0;
@@ -497,17 +503,20 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == REMOTED_PROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        r = (protocol == REMOTED_PROTO_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : REMOTED_USING_UDP;
         keys.keyentries[agentid]->rcvd = time(0);
 
         switch (r) {
-        case 0:
+        case OS_ADDSOCKET_ERROR:
             merror("Couldn't add TCP socket to keystore.");
             break;
-        case 1:
+        case OS_ADDSOCKET_KEY_UPDATED:
             mdebug2("TCP socket %d already in keystore. Updating...", sock_client);
             break;
-        case 2:
+        case OS_ADDSOCKET_KEY_ADDED:
+            mdebug2("TCP socket %d added to keystore.", sock_client);
+            break;
+        case REMOTED_USING_UDP:
             keys.keyentries[agentid]->sock = -1;
             break;
         default:
