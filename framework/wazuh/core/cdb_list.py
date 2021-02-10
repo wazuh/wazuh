@@ -153,6 +153,8 @@ def get_list_from_file(path, raw=False):
     result : dict, str
         CDB list.
     """
+    # Match empty lines or lines which start with "TEMPLATE:"
+    regex_template = re.compile(r'^TEMPLATE:|^\s*$')
     result = dict()
 
     try:
@@ -163,7 +165,7 @@ def get_list_from_file(path, raw=False):
             result = output
         else:
             for line in output.splitlines():
-                if 'TEMPLATE' not in line:
+                if not re.match(regex_template, line):
                     if '"' not in line:
                         # Check if key and value are not surrounded by double quotes
                         key, value = line.split(':')

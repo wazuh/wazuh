@@ -73,7 +73,7 @@ async def get_lists(request, pretty: bool = False, wait_for_complete: bool = Fal
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_list_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
+async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, filename: str = None,
                         raw: bool = False):
     """"Get content of one CDB list file, in raw or dict format.
 
@@ -115,7 +115,7 @@ async def get_list_file(request, pretty: bool = False, wait_for_complete: bool =
     return response
 
 
-async def put_list_file(request, body, overwrite=False, pretty=False, wait_for_complete=False, filename=None):
+async def put_file(request, body, overwrite=False, pretty=False, wait_for_complete=False, filename=None):
     """Upload content of CDB list file.
 
     Parameters
@@ -156,7 +156,7 @@ async def put_list_file(request, body, overwrite=False, pretty=False, wait_for_c
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def delete_list_file(request, pretty=False, wait_for_complete=False, filename=None):
+async def delete_file(request, pretty=False, wait_for_complete=False, filename=None):
     """Delete a CDB list file.
 
     Parameters

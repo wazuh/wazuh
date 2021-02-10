@@ -323,7 +323,7 @@ x-rbac-catalog:
         resources: ['list:file:audit-keys']
         effect: "deny"
     'lists:update':
-      description: "Update cdb lists files"
+      description: "Update or upload cdb lists files"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -9098,7 +9098,7 @@ paths:
       summary: "Get CDB list file content"
       description: "Return the content of a CDB list file. Only the filename can be specified. It will be searched
       recursively if not found"
-      operationId: api.controllers.cdb_list_controller.get_list_file
+      operationId: api.controllers.cdb_list_controller.get_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:read'
       parameters:
@@ -9155,7 +9155,7 @@ paths:
         - Lists
       summary: "Update CDB list file"
       description: "Replace or upload a CDB list file with the data contained in the API request"
-      operationId: api.controllers.cdb_list_controller.put_list_file
+      operationId: api.controllers.cdb_list_controller.put_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:update'
         - $ref: '#/x-rbac-catalog/actions/lists:delete'
@@ -9206,7 +9206,7 @@ paths:
       summary: "Delete CDB list file"
       description: "Delete a specified CDB list file. Only the filename can be specified. It will be searched
       recursively if not found"
-      operationId: api.controllers.cdb_list_controller.delete_list_file
+      operationId: api.controllers.cdb_list_controller.delete_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/lists:delete'
       parameters:

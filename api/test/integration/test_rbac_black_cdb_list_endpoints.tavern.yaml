@@ -6,7 +6,7 @@ marks:
 
 stages:
 
-  - name: Try to show the lists of the system
+  - name: Show the lists of the system
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists"
@@ -29,7 +29,7 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
 
-  - name: Try to show an specified filename (Allow)
+  - name: Show an specified filename (Allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists"
@@ -71,7 +71,7 @@ test_name: GET LISTS FILES RBAC
 
 stages:
 
-  - name: Try to show the lists files of the system
+  - name: Show the lists files of the system
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists/files"
@@ -107,7 +107,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Try to show content from a list (allow)
+  - name: Show content from a list (allow)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists/files/security-eventchannel"
@@ -128,7 +128,7 @@ stages:
 test_name: PUT /lists/files/{filename}
 
 stages:
-  - name: Try to update audit-keys list (deny)
+  - name: Try to update audit-keys list (indirectly denied deletion)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"

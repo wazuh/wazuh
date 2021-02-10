@@ -55,6 +55,7 @@ def get_lists(filename=None, offset=0, limit=common.database_limit, select=None,
 
     lists = list()
     for path in get_filenames_paths(filename):
+        # Only files which exist and whose dirname is the one specified by the user (if any), will be added to response.
         if not any([dirname is not None and os.path.dirname(path) != dirname, not os.path.isfile(path)]):
             lists.append({'items': [{'key': key, 'value': value} for key, value in get_list_from_file(path).items()],
                           'relative_dirname': os.path.dirname(get_relative_path(path)),
@@ -139,7 +140,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
         # Create backup and delete original CDB list.
         elif overwrite and os.path.exists(path):
             try:
-                backup_file = path + '.backup'
+                backup_file = f"{path}.backup"
                 copyfile(path, backup_file)
             except IOError:
                 raise WazuhError(1019)
