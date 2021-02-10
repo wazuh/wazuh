@@ -63,7 +63,7 @@ void normalize_path(char * path) {
 int remove_empty_folders(const char *path) {
     assert(path != NULL);
 
-    char * DIFF_PATH = DIFF_DIR_PATH;
+    char * DIFF_PATH = DIFF_DIR;
     const char *c;
     char parent[PATH_MAX] = "\0";
     char ** subdir;
@@ -79,7 +79,7 @@ int remove_empty_folders(const char *path) {
             subdir = wreaddir(parent);
             if (!(subdir && *subdir)) {
                 // Remove empty folder
-                mdebug1("Removing empty directory '%s'.", parent);
+                mdebug1("Removing empty directory '%s'", parent);
                 if (rmdir_ex(parent) != 0) {
                     mwarn("Empty directory '%s' couldn't be deleted. ('%s')", parent, strerror(errno));
                     retval = -1;
@@ -600,7 +600,7 @@ const char *get_group(int gid) {
 
 /* Send a one-way message to Syscheck */
 void ag_send_syscheck(char * message) {
-    int sock = OS_ConnectUnixDomain(BUILDDIR(HOMEDIR,SYS_LOCAL_SOCK), SOCK_STREAM, OS_MAXSTR);
+    int sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 
     if (sock < 0) {
         mwarn("dbsync: cannot connect to syscheck: %s (%d)", strerror(errno), errno);

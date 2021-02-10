@@ -86,7 +86,7 @@ int OS_RemoveAgent(const char *u_id) {
     if (!id_exist)
         return 0;
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
 
     if (!fp)
         return 0;
@@ -144,7 +144,7 @@ int OS_RemoveAgent(const char *u_id) {
 
     fclose(fp);
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0) {
+    if (TempFile(&file, isChroot() ? KEYS_FILE : KEYSFILE_PATH, 0) < 0) {
         free(buffer);
         return 0;
     }
@@ -153,7 +153,7 @@ int OS_RemoveAgent(const char *u_id) {
     fclose(file.fp);
     full_name = getFullnameById(u_id);
 
-    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (OS_MoveFile(file.name, isChroot() ? KEYS_FILE : KEYSFILE_PATH) < 0) {
         free(file.name);
         free(buffer);
         free(full_name);
@@ -235,7 +235,7 @@ char *getFullnameById(const char *id)
         return (NULL);
     }
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         return (NULL);
     }
@@ -307,7 +307,7 @@ int IDExist(const char *id, int discard_removed)
     }
 
     if (isChroot()) {
-        fp = fopen(AUTH_FILE, "r");
+        fp = fopen(KEYS_FILE, "r");
     } else {
         fp = fopen(KEYSFILE_PATH, "r");
     }
@@ -395,7 +395,7 @@ int NameExist(const char *u_name)
     }
 
     if (isChroot()) {
-        fp = fopen(AUTH_FILE, "r");
+        fp = fopen(KEYS_FILE, "r");
     } else {
         fp = fopen(KEYSFILE_PATH, "r");
     }
@@ -451,7 +451,7 @@ char *IPExist(const char *u_ip)
         return NULL;
 
     if (isChroot())
-        fp = fopen(AUTH_FILE, "r");
+        fp = fopen(KEYS_FILE, "r");
     else
         fp = fopen(KEYSFILE_PATH, "r");
 
@@ -544,7 +544,7 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
     char line_read[FILE_SIZE + 1];
     line_read[FILE_SIZE] = '\0';
 
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         return (0);
     }

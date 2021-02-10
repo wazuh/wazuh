@@ -44,7 +44,7 @@ static void GetFile_Queue(file_queue *fileq)
     fileq->file_name[0] = '\0';
     fileq->file_name[MAX_FQUEUE] = '\0';
 
-    snprintf(fileq->file_name, MAX_FQUEUE, "%s", fileq->flags & CRALERT_FP_SET ? "<stdin>" : isChroot() ? ALERTS_DAILY : BUILDDIR(HOMEDIR,ALERTS_DAILY));
+    snprintf(fileq->file_name, MAX_FQUEUE, "%s", fileq->flags & CRALERT_FP_SET ? "<stdin>" : ALERTS_DAILY);
 }
 
 /* Re Handle the file queue */

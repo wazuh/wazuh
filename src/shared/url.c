@@ -147,8 +147,10 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
 
     // Connect to downlod module
 
-    if (sock = OS_ConnectUnixDomain(isChroot() ? WM_DOWNLOAD_SOCK : WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        mwarn("Couldn't connect to download module socket '%s'", WM_DOWNLOAD_SOCK_PATH);
+    if (sock = OS_ConnectUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(WM_DOWNLOAD_SOCK, buffer, PATH_MAX);
+        mwarn("Couldn't connect to download module socket '%s'", buffer);
         goto end;
     }
 
@@ -231,7 +233,7 @@ int wurl_request_gz(const char * url, const char * dest, const char * header, co
 
 /* Check download module availability */
 int wurl_check_connection() {
-    int sock = OS_ConnectUnixDomain(isChroot() ? WM_DOWNLOAD_SOCK : WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+    int sock = OS_ConnectUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR);
 
     if (sock < 0) {
         return -1;

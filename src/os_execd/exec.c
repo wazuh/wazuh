@@ -92,7 +92,7 @@ int ReadExecConfig()
             /* Write the full command path */
             snprintf(exec_cmd[exec_size], OS_FLSIZE,
                      "%s/%s",
-                     AR_BINDIRPATH,
+                     AR_BINDIR,
                      str_pt);
             process_file = fopen(exec_cmd[exec_size], "r");
             if (!process_file) {
@@ -161,7 +161,7 @@ char *GetCommandbyName(const char *name, int *timeout)
     if (name[0] == '!') {
         static char command[OS_FLSIZE];
 
-        if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, name + 1) >= (int)sizeof(command)) {
+        if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, name + 1) >= (int)sizeof(command)) {
             mwarn("Cannot execute command '%32s...': path too long.", name + 1);
             return NULL;
         }

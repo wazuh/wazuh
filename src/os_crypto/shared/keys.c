@@ -144,17 +144,21 @@ int OS_CheckKeys()
 {
     FILE *fp;
 
-    if (File_DateofChange(KEYSFILE_PATH) < 0) {
-        merror(NO_AUTHFILE, KEYSFILE_PATH);
+    if (File_DateofChange(KEYS_FILE) < 0) {
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(KEYS_FILE, buffer, PATH_MAX);
+        merror(NO_AUTHFILE, buffer);
         merror(NO_CLIENT_KEYS);
         return (0);
     }
 
-    fp = fopen(KEYSFILE_PATH, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         /* We can leave from here */
-        merror(FOPEN_ERROR, KEYSFILE_PATH, errno, strerror(errno));
-        merror(NO_AUTHFILE, KEYSFILE_PATH);
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(KEYS_FILE, buffer, PATH_MAX);
+        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
+        merror(NO_AUTHFILE, buffer);
         merror(NO_CLIENT_KEYS);
         return (0);
     }
@@ -170,7 +174,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 {
     FILE *fp;
 
-    const char *keys_file = isChroot() ? KEYS_FILE : KEYSFILE_PATH;
+    const char *keys_file = KEYS_FILE;
     char buffer[OS_BUFFER_SIZE + 1];
     char name[KEYSIZE + 1];
     char ip[KEYSIZE + 1];
@@ -557,7 +561,7 @@ int OS_WriteKeys(const keystore *keys) {
     File file;
     char cidr[20];
 
-    if (TempFile(&file, isChroot() ? AUTH_FILE : KEYSFILE_PATH, 0) < 0)
+    if (TempFile(&file, KEYS_FILE, 0) < 0)
         return -1;
 
     for (i = 0; i < keys->keysize; i++) {
@@ -573,7 +577,7 @@ int OS_WriteKeys(const keystore *keys) {
 
     fclose(file.fp);
 
-    if (OS_MoveFile(file.name, isChroot() ? AUTH_FILE : KEYSFILE_PATH) < 0) {
+    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
         free(file.name);
         return -1;
     }

@@ -3361,6 +3361,7 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 #ifndef WIN32
 char *w_homedir(char *arg) {
     char *buff = NULL;
+    struct stat buff_stat;
     char * delim = "/bin";
     os_malloc(PATH_MAX, buff);
 #ifdef __MACH__
@@ -3393,6 +3394,10 @@ char *w_homedir(char *arg) {
 
         dirname(buff);
         buff = w_strtok_r_str_delim(delim, &buff);
+    }
+
+    if (stat(buff, &buff_stat) < 0 || !S_ISDIR(buff_stat.st_mode)) {
+        snprintf(buff, PATH_MAX, "%s", FALLBACKDIR);
     }
 
     return buff;

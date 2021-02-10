@@ -273,7 +273,4 @@ extern const char *__local_name;
 #include "bzip2_op.h"
 #include "enrollment_op.h"
 
-// Global Wazuh home directory
-extern char *home_path;
-
 #endif /* SHARED_H */

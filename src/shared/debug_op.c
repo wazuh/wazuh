@@ -235,11 +235,13 @@ void os_logging_config(){
 
   pid = (int)getpid();
 
-  if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
+  if (OS_ReadXML(OSSECCONF, &xml) < 0){
     flags.log_plain = 1;
     flags.log_json = 0;
     OS_ClearXML(&xml);
-    merror_exit(XML_ERROR, chroot_flag ? OSSECCONF : DEFAULTCPATH, xml.err, xml.err_line);
+    char buffer[PATH_MAX] = {'\0'};
+    abspath(OSSECCONF, buffer, PATH_MAX);
+    merror_exit(XML_ERROR, buffer, xml.err, xml.err_line);
   }
 
   logformat = OS_GetOneContentforElement(&xml, xmlf);
