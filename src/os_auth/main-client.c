@@ -45,7 +45,7 @@ static void help_agent_auth()
     print_out("    -t          Test configuration.");
 #ifndef WIN32
     print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s).", HOMEDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s).", FALLBACKDIR);
 #endif
     print_out("    -m <addr>   Manager IP address.");
     print_out("    -p <port>   Manager port (default: %d).", DEFAULT_PORT);
@@ -68,7 +68,6 @@ int main(int argc, char **argv)
     int c;
     int test_config = 0;
 #ifndef WIN32
-    home_path = w_homedir(argv[0]);
     gid_t gid = 0;
     const char *group = GROUPGLOBAL;
 #endif
@@ -78,15 +77,23 @@ int main(int argc, char **argv)
     bio_err = 0;
     int debug_level = 0;
 
+    /* Set the name */
+    OS_SetName(ARGV0);
+
 #ifdef WIN32
     WSADATA wsaData;
 
     // Move to the directory where this executable lives in
     w_ch_exec_dir();
+#else
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 #endif
-
-    /* Set the name */
-    OS_SetName(ARGV0);
 
     while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:aI:i"
 #ifndef WIN32
@@ -219,9 +226,6 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
-
 #ifndef WIN32
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
@@ -264,10 +268,6 @@ int main(int argc, char **argv)
     w_enrollment_target_destroy(target_cfg);
     w_enrollment_cert_destroy(cert_cfg);
     w_enrollment_destroy(cfg);
-
-#ifndef WIN32
-    os_free(home_path);
-#endif
     
     exit((ret == 0) ? 0 : 1);
 }

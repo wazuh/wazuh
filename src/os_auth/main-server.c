@@ -80,14 +80,14 @@ static void help_authd()
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into. Default: %s.", HOMEDIR);
+    print_out("    -D <dir>    Directory to chroot into. Default: %s.", FALLBACKDIR);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
-    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHDPASS_PATH);
+    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
-    print_out("    -x <path>   Full path to server certificate. Default: %s.", BUILDDIR(HOMEDIR,CERTFILE));
-    print_out("    -k <path>   Full path to server key. Default: %s.", BUILDDIR(HOMEDIR,KEYFILE));
+    print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
+    print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
@@ -154,8 +154,6 @@ int main(int argc, char **argv)
     int run_foreground = 0;
     gid_t gid;
     int client_sock = 0;
-    home_path = w_homedir(argv[0]);
-    const char *dir  = HOMEDIR;
     const char *group = GROUPGLOBAL;
     char buf[4096 + 1];
     struct sockaddr_in _nc;
@@ -165,6 +163,13 @@ int main(int argc, char **argv)
     pthread_t thread_writer = 0;
     pthread_t thread_local_server = 0;
     fd_set fdset;
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Initialize some variables */
     bio_err = 0;
@@ -374,10 +379,6 @@ int main(int argc, char **argv)
         break;
     }
 
-    /* Start daemon -- NB: need to double fork and setsid */
-    mdebug1(STARTED_MSG);
-    mdebug1(WAZUH_HOMEDIR, home_path);
-
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
@@ -392,13 +393,6 @@ int main(int argc, char **argv)
     /* Privilege separation */
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
-    }
-
-    /* chroot -- TODO: this isn't a chroot. Should also close
-     * unneeded open file descriptors (like stdin/stdout)
-     */
-    if (chdir(dir) == -1) {
-        merror_exit(CHDIR_ERROR, dir, errno, strerror(errno));
     }
 
     /* Signal manipulation */
@@ -416,7 +410,7 @@ int main(int argc, char **argv)
     if (config.flags.use_password) {
 
         /* Checking if there is a custom password file */
-        fp = fopen(AUTHDPASS_PATH, "r");
+        fp = fopen(AUTHD_PASS, "r");
         buf[0] = '\0';
         if (fp) {
             buf[4096] = '\0';
@@ -434,7 +428,7 @@ int main(int argc, char **argv)
         }
 
         if (buf[0] != '\0')
-            minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHDPASS_PATH);
+            minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
         else {
             /* Getting temporary pass. */
             authpass = __generatetmppass();
@@ -445,15 +439,17 @@ int main(int argc, char **argv)
 
     /* Getting SSL cert. */
 
-    fp = fopen(KEYSFILE_PATH, "a");
+    fp = fopen(KEYS_FILE, "a");
     if (!fp) {
-        merror("Unable to open %s (key file)", KEYSFILE_PATH);
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(KEYS_FILE, buffer, PATH_MAX);
+        merror("Unable to open %s (key file)", buffer);
         exit(1);
     }
     fclose(fp);
 
     /* Start SSL */
-    ctx = os_ssl_keys(1, dir, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
+    ctx = os_ssl_keys(1, home_path, config.ciphers, config.manager_cert, config.manager_key, config.agent_ca, config.flags.auto_negotiate);
     if (!ctx) {
         merror("SSL error. Exiting.");
         exit(1);
@@ -476,10 +472,11 @@ int main(int argc, char **argv)
     }
 
     /* Chroot */
-    if (Privsep_Chroot(dir) < 0)
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0)
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
 
     nowChroot();
+    os_free(home_path);
 
     if (config.timeout_sec || config.timeout_usec) {
         minfo("Setting network timeout to %.6f sec.", config.timeout_sec + config.timeout_usec / 1000000.);
@@ -587,7 +584,6 @@ int main(int argc, char **argv)
 
     queue_free(client_queue);
     minfo("Exiting...");
-    os_free(home_path);
     return (0);
 }
 

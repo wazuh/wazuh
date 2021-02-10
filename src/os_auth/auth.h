@@ -39,8 +39,8 @@
 #include <openssl/bio.h>
 
 extern BIO *bio_err;
-#define KEYFILE  "/etc/sslmanager.key"
-#define CERTFILE "/etc/sslmanager.cert"
+#define KEYFILE  "etc/sslmanager.key"
+#define CERTFILE "etc/sslmanager.cert"
 #define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"

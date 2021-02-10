@@ -88,7 +88,9 @@ void* run_local_server(__attribute__((unused)) void *arg) {
     mdebug1("Local server thread ready.");
 
     if (sock = OS_BindUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': '%s'. Closing local server.", AUTH_LOCAL_SOCK, strerror(errno));
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(OSSECCONF, buffer, PATH_MAX);
+        merror("Unable to bind to socket '%s': '%s'. Closing local server.", buffer, strerror(errno));
         return NULL;
     }
 
@@ -362,7 +364,6 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
         }
     }
 
-
     if (index = OS_AddNewAgent(&keys, id, name, ip, key), index < 0) {
         ierror = EKEY;
         goto fail;
@@ -371,7 +372,7 @@ cJSON* local_add(const char *id, const char *name, const char *ip, char *groups,
 
     if(groups) {
         char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : BUILDDIR(HOMEDIR,GROUPS_DIR "/%s"), keys.keyentries[index]->id) >= PATH_MAX) {
+        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
             ierror = EINVGROUP;
             goto fail;
         }
