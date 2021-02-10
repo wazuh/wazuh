@@ -374,13 +374,11 @@ void sk_fill_event(Eventinfo *lf, const char *f_name, const sk_sum_t *sum) {
     }
 
     if (sum->mtime) {
-        os_calloc(20, sizeof(char), lf->fields[FIM_MTIME].value);
-        snprintf(lf->fields[FIM_MTIME].value, 20, "%ld", sum->mtime);
+        lf->fields[FIM_MTIME].value = w_long_str(sum->mtime);
     }
 
     if (sum->inode) {
-        os_calloc(20, sizeof(char), lf->fields[FIM_INODE].value);
-        snprintf(lf->fields[FIM_INODE].value, 20, "%ld", sum->inode);
+        lf->fields[FIM_INODE].value = w_long_str(sum->inode);
     }
 
     if(sum->sha256) {

@@ -701,7 +701,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 new_ctime[strlen(new_ctime) - 1] = '\0';
 
                 snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
-                os_strdup(old_ctime, lf->fields[FIM_MTIME_BEFORE].value);
+                lf->fields[FIM_MTIME].value = w_long_str(oldsum->mtime);
                 os_free(old_ctime);
                 os_free(new_ctime);
             } else {
@@ -1707,9 +1707,9 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
                 time_string = ctime_r(&aux_time, buf_ptr);
                 time_string[strlen(time_string) - 1] = '\0';
                 if (new_state) {
-                    os_strdup(time_string, lf->fields[FIM_MTIME].value);
+                    lf->fields[FIM_MTIME].value = w_long_str((long) attr_it->valuedouble);
                 } else {
-                    os_strdup(time_string, lf->fields[FIM_MTIME_BEFORE].value);
+                    lf->fields[FIM_MTIME_BEFORE].value = w_long_str((long) attr_it->valuedouble);
                 }
             }
         } else if (attr_it->type == cJSON_String) {

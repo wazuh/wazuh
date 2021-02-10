@@ -301,6 +301,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
     }
 
     if(lf->fields[FIM_FILE].value) {
+        char mtime[25];
+        struct tm tm_result = { .tm_sec = 0 };
+        long aux_time;
 
         file_diff = cJSON_CreateObject();
         cJSON_AddItemToObject(root, "syscheck", file_diff);
@@ -419,10 +422,14 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         }
 
         if (print_before_field(lf->fields[FIM_MTIME_BEFORE].value, lf->fields[FIM_MTIME].value)) {
-            cJSON_AddStringToObject(file_diff, "mtime_before", lf->fields[FIM_MTIME_BEFORE].value);
+            aux_time = atol(lf->fields[FIM_MTIME_BEFORE].value);
+            strftime(mtime, 20, "%FT%T%z", localtime_r(&aux_time, &tm_result));
+            cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
         }
         if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value) {
-            cJSON_AddStringToObject(file_diff, "mtime_after", lf->fields[FIM_MTIME].value);
+            aux_time = atol(lf->fields[FIM_MTIME].value);
+            strftime(mtime, 20, "%FT%T%z", localtime_r(&aux_time, &tm_result));
+            cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
         }
 
         if (print_before_field(lf->fields[FIM_INODE_BEFORE].value, lf->fields[FIM_INODE].value)) {
