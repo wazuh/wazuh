@@ -184,8 +184,11 @@ def test_get_decoder_file_exceptions():
 ])
 @patch('wazuh.decoder.delete_decoder_file')
 @patch('wazuh.decoder.upload_xml')
+@patch('wazuh.decoder.copyfile')
+@patch('wazuh.decoder.remove')
+@patch('wazuh.decoder.safe_move')
 @patch('wazuh.core.manager.check_remote_commands')
-def test_upload_file(mock_remote_commands, mock_xml, mock_delete, file, overwrite):
+def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file, overwrite):
     """Test uploading a decoder file.
 
     Parameters
@@ -204,12 +207,17 @@ def test_upload_file(mock_remote_commands, mock_xml, mock_delete, file, overwrit
         assert result.affected_items[0] == decoder_path, 'Expected item not found'
         mock_xml.assert_called_once_with('test', decoder_path)
         if overwrite:
-            mock_delete.assert_called_once_with(filename=file), 'delete_decoder_file method not called with expected parameter'
+            mock_delete.assert_called_once_with(filename=file), 'delete_decoder_file method not called with expected ' \
+                                                                'parameter'
+            mock_remove.assert_called_once()
+            mock_safe_move.assert_called_once()
 
 
 @patch('wazuh.decoder.delete_decoder_file')
 @patch('wazuh.decoder.upload_xml')
-def test_upload_file_ko(mock_xml, mock_delete):
+@patch('wazuh.decoder.safe_move')
+@patch('wazuh.core.manager.check_remote_commands')
+def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_delete):
     """Test exceptions on upload function."""
     # Error when file exists and overwrite is not True
     with patch('wazuh.decoder.exists'):
@@ -221,6 +229,12 @@ def test_upload_file_ko(mock_xml, mock_delete):
     result = decoder.upload_decoder_file(filename='no_exist.xml', content='', overwrite=False)
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1112, 'Error code not expected.'
+
+    # Error doing backup
+    with patch('wazuh.decoder.exists'):
+        result = decoder.upload_decoder_file(filename='test_decoders.xml', content='test', overwrite=True)
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1019, 'Error code not expected.'
 
 
 def test_delete_decoder_file():

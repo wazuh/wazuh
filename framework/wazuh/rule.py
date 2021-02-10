@@ -4,6 +4,8 @@
 
 from os import remove
 from os.path import exists, join
+from shutil import copyfile
+from xml.parsers.expat import ExpatError
 
 import xmltodict
 
@@ -16,7 +18,7 @@ from wazuh.core.manager import upload_xml, prettify_xml
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
-from wazuh.core.utils import process_array
+from wazuh.core.utils import process_array, safe_move
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config()['disabled']
@@ -243,6 +245,10 @@ def get_rule_file(filename=None, raw=False):
                 # Missing root tag in rule file
                 result.affected_items.append(xmltodict.parse(f'<root>{content}</root>')['root'])
                 result.total_affected_items = 1
+        except ExpatError as e:
+            result.add_failed_item(id_=filename,
+                                   error=WazuhError(1413, extra_message=f"{join('WAZUH_HOME', rules_path, filename)}:"     
+                                                                        f" {str(e)}"))
         except OSError:
             result.add_failed_item(id_=filename,
                                    error=WazuhError(1414, extra_message=join('WAZUH_HOME', rules_path, filename)))
@@ -275,23 +281,32 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
                                       none_msg='Could not upload rule'
                                       )
     path = join('etc', 'rules', filename)
+    full_path = join(common.ossec_path, path)
+    backup_file = ''
     try:
         if len(content) == 0:
             raise WazuhError(1112)
 
+        prettify_xml(content)
         # If file already exists and overwrite is False, raise exception
-        if not overwrite and exists(join(common.ossec_path, path)):
+        if not overwrite and exists(full_path):
             raise WazuhError(1905)
-        elif overwrite and exists(join(common.ossec_path, path)):
-            # Check if the content is valid
-            prettify_xml(content)
+        elif overwrite and exists(full_path):
+            try:
+                backup_file = f'{full_path}.backup'
+                copyfile(full_path, backup_file)
+            except IOError:
+                raise WazuhError(1019)
             delete_rule_file(filename=filename)
 
         upload_xml(content, path)
         result.affected_items.append(path)
+        result.total_affected_items = len(result.affected_items)
+        exists(backup_file) and remove(backup_file)
     except WazuhError as e:
         result.add_failed_item(id_=path, error=e)
-    result.total_affected_items = len(result.affected_items)
+    finally:
+        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o660)
 
     return result
 

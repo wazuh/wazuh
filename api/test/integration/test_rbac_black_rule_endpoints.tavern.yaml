@@ -232,18 +232,6 @@ test_name: PUT RULES FILES RBAC
 
 stages:
 
-  - name: Update one rule file
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule_file.xml"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      data: "{new_rules:s}"
-    response:
-      status_code: 200
-
-
   - name: Try to update one rule file (denied)
     request:
       verify: False
@@ -251,8 +239,6 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        overwrite: True
       data: "{new_rules:s}"
     response:
       <<: *permission_denied

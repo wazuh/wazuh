@@ -9,7 +9,8 @@
 - actions:
   - rules:update
   resources:
-  - rule:file:local_rules.xml
+  - "*:*:*"
+  - rule:file:dummy
   effect: allow
 
 - actions:
