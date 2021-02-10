@@ -314,6 +314,22 @@ x-rbac-catalog:
         actions: ['decoders:read']
         resources: ['decoder:file:*']
         effect: "allow"
+    'decoders:update':
+      description: "Update or upload custom decoder files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+      example:
+        actions: ['decoders:update']
+        resources: ['*:*:*']
+        effect: "allow"
+    'decoders:delete':
+      description: "Delete custom decoder files"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+      example:
+        actions: ['decoders:delete']
+        resources: ['decoder:file:local_decoders.xml']
+        effect: "allow"
     'lists:read':
       description: "Read cdb lists files"
       resources:
@@ -11909,41 +11925,239 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /decoders/files/{filename}/download:
+  /decoders/files/{filename}:
     get:
       tags:
-      - Decoders
-      summary: "Download decoder"
-      description: "Download an specified decoder file"
-      operationId: api.controllers.decoder_controller.get_download_file
+        - Decoders
+      summary: "Get decoders file content"
+      description: "Get the content of a specified decoder file"
+      operationId: api.controllers.decoder_controller.get_file
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/downloadFile'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/raw'
       responses:
         '200':
-          description: "Decoder contents"
+          description: "Decoder content"
           content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - decoder:
+                        - "@name": wazuh
+                          prematch: "^wazuh:"
+                        - "@name": agent-buffer
+                          parent: wazuh
+                          prematch:
+                            "@offset": after_parent
+                            "#text": "^Agent buffer:"
+                          regex:
+                            "@offset": after_prematch
+                            "#text": "^ '(\\S+)'."
+                          order: level
+                        - "@name": agent-upgrade
+                          parent: wazuh
+                          prematch:
+                            "@offset": after_parent
+                            "#text": "^Upgrade procedure |^Custom installation"
+                          regex:
+                            "@offset": after_prematch
+                            "#text": on agent (\d\d\d)\s\((\S+)\):\s(\w+)
+                          order: agent.id, agent.name, status
+                        - "@name": agent-upgrade
+                          parent: wazuh
+                          regex: aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$
+                          order: error
+                        - "@name": agent-upgrade
+                          parent: wazuh
+                          regex: started.\sCurrent\sversion:\sWazuh\s(\.+)$
+                          order: agent.cur_version
+                        - "@name": agent-upgrade
+                          parent: wazuh
+                          regex: succeeded.\sNew\sversion:\sWazuh\s(\.+)$
+                          order: agent.new_version
+                        - "@name": agent-restart
+                          parent: wazuh
+                          prematch:
+                            "@offset": after_parent
+                            "#text": "^Invalid remote configuration:"
+                          regex:
+                            "@offset": after_prematch
+                            "#text": "^ '(\\S+)'."
+                          order: module
+                        - "@name": fim-state
+                          parent: wazuh
+                          prematch:
+                            "@offset": after_parent
+                            "#text": "^FIM DB:"
+                          plugin_decoder:
+                            "@offset": after_prematch
+                            "#text": JSON_Decoder
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: Selected decoder was returned
+                error: 0
             application/xml:
               schema:
                 type: string
               example: |
-                  <!--
-                  - JSON Decoders
-                  - Copyright (C) 2015-2020, Wazuh Inc.
-                  - April 21, 2017.
-                  -
-                  - This program is a free software; you can redistribute it
-                  - and/or modify it under the terms of the GNU General Public
-                  - License (version 2) as published by the FSF - Free Software
-                  - Foundation.
-                  -->
-                  <decoder name="json">
-                    <prematch>^{\s*"</prematch>
-                    <plugin_decoder>JSON_Decoder</plugin_decoder>
-                  </decoder>
+                <!--
+                  -  Wazuh decoders
+                  -  Created by Wazuh, Inc.
+                  -  Copyright (C) 2015-2020, Wazuh Inc.
+                  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+                -->
+                <decoder name="wazuh">
+                  <prematch>^wazuh: </prematch>
+                </decoder>
+                <decoder name="agent-buffer">
+                  <parent>wazuh</parent>
+                  <prematch offset="after_parent">^Agent buffer:</prematch>
+                  <regex offset="after_prematch">^ '(\S+)'.</regex>
+                  <order>level</order>
+                </decoder>
+                <decoder name="agent-upgrade">
+                  <parent>wazuh</parent>
+                  <prematch offset="after_parent">^Upgrade procedure |^Custom installation </prematch>
+                  <regex offset="after_prematch">on agent (\d\d\d)\s\((\S+)\):\s(\w+)</regex>
+                  <order>agent.id, agent.name, status</order>
+                </decoder>
+                <decoder name="agent-upgrade">
+                  <parent>wazuh</parent>
+                  <regex>aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$</regex>
+                  <order>error</order>
+                </decoder>
+                <decoder name="agent-upgrade">
+                  <parent>wazuh</parent>
+                  <regex>started.\sCurrent\sversion:\sWazuh\s(\.+)$</regex>
+                  <order>agent.cur_version</order>
+                </decoder>
+                <decoder name="agent-upgrade">
+                  <parent>wazuh</parent>
+                  <regex>succeeded.\sNew\sversion:\sWazuh\s(\.+)$</regex>
+                  <order>agent.new_version</order>
+                </decoder>
+                <decoder name="agent-restart">
+                  <parent>wazuh</parent>
+                  <prematch offset="after_parent">^Invalid remote configuration:</prematch>
+                  <regex offset="after_prematch">^ '(\S+)'.</regex>
+                  <order>module</order>
+                </decoder>
+                <decoder name="fim-state">
+                  <parent>wazuh</parent>
+                  <prematch offset="after_parent">^FIM DB: </prematch>
+                  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
+                </decoder>
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    put:
+      tags:
+        - Decoders
+      summary: "Update decoders file"
+      description: "Upload or replace a user decoder file content"
+      operationId: api.controllers.decoder_controller.put_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoders:update'
+        - $ref: '#/x-rbac-catalog/actions/decoders:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+        - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: "Content of the decoder to be uploaded"
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "etc/decoders/new_decoder.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Decoder was successfully uploaded"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+    delete:
+      tags:
+      - Decoders
+      summary: "Delete decoders file"
+      description: "Delete a specified decoder file"
+      operationId: api.controllers.decoder_controller.delete_file
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/decoders:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/xml_filename_path'
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - "etc/decoders/new_decoder.xml"
+                  failed_items: []
+                  total_affected_items: 1
+                  total_failed_items: 0
+                message: "Decoder file was successfully deleted"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

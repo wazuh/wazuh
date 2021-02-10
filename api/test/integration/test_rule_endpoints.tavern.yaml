@@ -1814,7 +1814,7 @@ stages:
         error: 1
 
 ---
-test_name: PUT /rule/files/{filename}
+test_name: DELETE /rules/files/{filename}
 
 stages:
 
