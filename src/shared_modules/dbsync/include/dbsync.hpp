@@ -38,7 +38,7 @@ public:
     /**
     * @brief Initializes the shared library.
     *
-    * @param log_function pointer to log function to be used by the dbsync.
+    * @param logFunction pointer to log function to be used by the dbsync.
     */
     static void initialize(std::function<void(const std::string&)> logFunction);
 

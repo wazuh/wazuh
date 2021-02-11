@@ -37,7 +37,7 @@ public:
     /**
     * @brief Initializes the shared library.
     *
-    * @param log_function pointer to log function to be used by the rsync.
+    * @param logFunction pointer to log function to be used by the rsync.
     */
     static void initialize(std::function<void(const std::string&)> logFunction);
 
