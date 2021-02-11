@@ -22,6 +22,11 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Fixed a race condition bug when using RBAC expand_group function. ([#7353](https://github.com/wazuh/wazuh/pull/7353))
   
+### Removed
+
+- **API:**
+  - Deprecated /manager/files and /cluster/{node_id}/files endpoints. ([#7209](https://github.com/wazuh/wazuh/issues/7209))
+  
 
 ## [v4.1.0]
 
