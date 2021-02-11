@@ -39,8 +39,8 @@ typedef struct _keyentry {
     ino_t inode;
 
     os_ip *ip;
-    int sock; ///< File descriptor of client's TCP socket 
-    int net_protocol; ///< Client current protocol
+    int sock;                           ///< File descriptor of client's TCP socket 
+    int net_protocol;                   ///< Client current protocol
     pthread_mutex_t mutex;
     struct sockaddr_in peer_info;
     FILE *fp;
