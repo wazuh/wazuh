@@ -229,8 +229,12 @@ int add_audit_rules_syscheck(bool first_time) {
         if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
             continue;
         }
-        directory = fim_get_real_path(i);
 
+        directory = fim_get_real_path(i);
+        if (*directory == '\0') {
+            free(directory);
+            continue;
+        }
         // Add whodata directories until max_audit_entries is reached.
         if (rules_added >= syscheck.max_audit_entries) {
             if (first_time || !reported) {
