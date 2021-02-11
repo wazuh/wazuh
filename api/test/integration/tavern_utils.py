@@ -88,6 +88,7 @@ def test_sort_response(response, key=None, reverse=True):
         True if the response's items are sorted by the key.
     """
     affected_items = response.json()['data']['affected_items']
+    # If affected_items is a list of strings instead of dictionaries, key will be None
     assert affected_items == sorted(affected_items, key=(lambda item: item[key]) if key else None, reverse=reverse)
 
 
