@@ -62,11 +62,11 @@ else()
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_link_libraries(utils_unit_test -fprofile-arcs)
 else()
   target_link_libraries(utils_unit_test gcov)
-endif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_test(NAME utils_unit_test
          COMMAND utils_unit_test)

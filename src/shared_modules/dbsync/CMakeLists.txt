@@ -65,9 +65,6 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(dbsync sqlite3 cjson)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
-  target_link_libraries(dbsync sqlite3 cjson gcov)
-endif(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND UNIT_TEST)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
@@ -79,6 +76,12 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Release")
 
 
 if(UNIT_TEST)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(dbsync -fprofile-arcs)
+  else()
+    target_link_libraries(dbsync gcov)
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
   add_subdirectory(tests)
   add_subdirectory(integrationTests)
 endif(UNIT_TEST)

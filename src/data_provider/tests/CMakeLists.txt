@@ -22,11 +22,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_subdirectory(sysInfoNetworkWindows)  
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   string(APPEND CMAKE_EXE_LINKER_FLAGS " -fprofile-arcs ")
 else()
   string(APPEND CMAKE_EXE_LINKER_FLAGS " -lgcov ")
-endif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 add_subdirectory(sysInfo)
 add_subdirectory(sysInfoPorts)

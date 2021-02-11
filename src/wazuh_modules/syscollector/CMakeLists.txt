@@ -97,6 +97,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(syscollector -fprofile-arcs)
+  else()
+    target_link_libraries(syscollector gcov)
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
   add_subdirectory(tests)
 else()
   add_subdirectory(testtool)

@@ -58,11 +58,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # MinGW generates position-independent-code for DLL by default
   )
   target_link_libraries(rsync crypto ssl ws2_32 crypt32)
-
-  if(UNIT_TEST)
-    target_link_libraries(rsync crypto ssl ws2_32 crypt32 gcov)
-  endif(UNIT_TEST)
-
 elseif(UNIX AND NOT APPLE)
   set_target_properties(rsync PROPERTIES
         LINK_FLAGS "-static-libgcc -static-libstdc++")
@@ -82,6 +77,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif(CMAKE_BUILD_TYPE STREQUAL "Release")
 
 if(UNIT_TEST)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(rsync -fprofile-arcs)
+  else()
+    target_link_libraries(rsync gcov)
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_subdirectory(tests)
   add_subdirectory(integrationTests)
 endif(UNIT_TEST)
