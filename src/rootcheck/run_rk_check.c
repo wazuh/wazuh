@@ -43,12 +43,16 @@ int notify_rk(int rk_type, const char *msg)
     if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
         mterror(ARGV0, QUEUE_SEND);
 
-        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        if ((rootcheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            char buffer[PATH_MAX] = {'\0'};
+            abspath(DEFAULTQUEUE, buffer, PATH_MAX);
+            mterror_exit(ARGV0, QUEUE_FATAL, buffer);
         }
 
         if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
-            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+            char buffer[PATH_MAX] = {'\0'};
+            abspath(DEFAULTQUEUE, buffer, PATH_MAX);
+            mterror_exit(ARGV0, QUEUE_FATAL, buffer);
         }
     }
 #endif
