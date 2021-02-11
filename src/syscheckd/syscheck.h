@@ -920,7 +920,7 @@ void fim_diff_folder_size();
 const char *fim_get_real_path(int position);
 
 /**
- * @brief Create the delete event and removes the entry from the database.
+ * @brief Create a delete event and removes the entry from the database.
  *
  * @param fim_sql FIM database struct.
  * @param entry Entry data to be removed.

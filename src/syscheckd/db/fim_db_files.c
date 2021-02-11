@@ -108,7 +108,7 @@ void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
 void fim_db_bind_get_path_from_pattern(fdb_t *fim_sql, const char *pattern);
 
 /**
- * @brief Removes paths from the FIM DB if its configuration chemats with the one provided
+ * @brief Removes paths from the FIM DB if its configuration matches with the one provided
  *
  * @param fim_sql FIM database structure.
  * @param entry Entry data to be removed.
@@ -456,9 +456,9 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
     return res_data || res_path;
 }
 
-unsigned int fim_db_remove_path(fdb_t *fim_sql, const char *path) {
-    unsigned int rows = 0;
-
+int fim_db_remove_path(fdb_t *fim_sql, const char *path) {
+    int state = FIMDB_ERR;
+    int rows = 0;
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_DATA);
@@ -490,12 +490,12 @@ unsigned int fim_db_remove_path(fdb_t *fim_sql, const char *path) {
             fim_sql->full = false;
             break;
         }
+        state = FIMDB_OK;
     }
-
 
 end:
     fim_db_check_transaction(fim_sql);
-    return rows;
+    return state;
 }
 
 void fim_db_remove_validated_path(fdb_t *fim_sql,

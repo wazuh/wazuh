@@ -53,44 +53,42 @@ void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mu
                            __attribute__((unused))void *w_evt) {
     int *send_alert = (int *) alert;
     fim_event_mode mode = (fim_event_mode) fim_ev_mode;
-    int rows = 0;
+    int state = 0;
     int pos = -1;
 
-    if(entry->type == FIM_TYPE_FILE) {
-        pos = fim_configuration_directory(entry->file_entry.path, "file");
-        if(pos == -1) {
-            mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
-            return;
-        } else {
-            switch (mode) {
-            /* Don't send alert if received mode and mode in configuration aren't the same unless the the received
-               mode is scheduled. That could mean that the realtime or whodata buffer overflowed and the events must
-               be triggered in the next scan.
-             */
-            case FIM_REALTIME:
-                if (!(syscheck.opts[pos] & REALTIME_ACTIVE)) {
-                    return;
-                }
-                break;
+    pos = fim_configuration_directory(entry->file_entry.path, "file");
 
-            case FIM_WHODATA:
-                if (!(syscheck.opts[pos] & WHODATA_ACTIVE)) {
-                    return;
-                }
-                break;
-
-            default:
-            // In case that the event's mode is scheduled, we have to process it.
-                break;
-            }
-        }
+    if(pos == -1) {
+        mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
+        return;
     }
-    // Remove the path from the DB.
+    /* Don't send alert if received mode and mode in configuration aren't the same.
+       Scheduled mode events must always be processed to preserver the state of the agent's DB.
+    */
+    switch (mode) {
+    case FIM_REALTIME:
+        if (!(syscheck.opts[pos] & REALTIME_ACTIVE)) {
+            return;
+        }
+        break;
+
+    case FIM_WHODATA:
+        if (!(syscheck.opts[pos] & WHODATA_ACTIVE)) {
+            return;
+        }
+        break;
+
+    default:
+        break;
+    }
+
+
+    // Remove path from the DB.
     w_mutex_lock(mutex);
-    rows = fim_db_remove_path(fim_sql, entry->file_entry.path);
+    state = fim_db_remove_path(fim_sql, entry->file_entry.path);
     w_mutex_unlock(mutex);
 
-    if (send_alert && rows >= 1) {
+    if (send_alert && state == FIMDB_OK) {
         whodata_evt *whodata_event = (whodata_evt *) w_evt;
         cJSON * json_event      = NULL;
         char * json_formatted    = NULL;

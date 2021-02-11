@@ -79,14 +79,14 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
 int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved);
 
 /**
- * @brief Delete entry from the BD using file path.
+ * @brief Delete entry from the DB using file path.
  *
  * @param fim_sql FIM database struct.
  * @param path Path of the entry to be removed.
  *
- * @return Number of entries that has been deleted .
+ * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-unsigned int fim_db_remove_path(fdb_t *fim_sql, const char *path);
+int fim_db_remove_path(fdb_t *fim_sql, const char *path);
 
 /**
  * @brief Set all entries from database to unscanned.
