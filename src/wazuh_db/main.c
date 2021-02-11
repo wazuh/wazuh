@@ -34,11 +34,6 @@ int main(int argc, char ** argv)
     int run_foreground = 0;
     int i;
     int status;
-    home_path = w_homedir(argv[0]);
-
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
 
     pthread_t thread_dealer;
     pthread_t * worker_pool = NULL;
@@ -46,6 +41,12 @@ int main(int argc, char ** argv)
     pthread_t thread_up;
 
     OS_SetName(ARGV0);
+
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     // Get options
 
@@ -106,9 +107,6 @@ int main(int argc, char ** argv)
     open_dbs = OSHash_Create();
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
-    mdebug1(STARTED_MSG);
-    mdebug1(WAZUH_HOMEDIR, home_path);
-
     if (!run_foreground) {
         goDaemon();
         nowDaemon();
@@ -152,6 +150,8 @@ int main(int argc, char ** argv)
             merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
         }
     }
+
+    os_free(home_path);
 
     // Signal manipulation
 
@@ -228,12 +228,10 @@ int main(int argc, char ** argv)
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
 
-    os_free(home_path);
     return EXIT_SUCCESS;
 
 failure:
     os_free(worker_pool);
-    os_free(home_path);
     return EXIT_FAILURE;
 }
 
