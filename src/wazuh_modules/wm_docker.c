@@ -35,7 +35,7 @@ const wm_context WM_DOCKER_CONTEXT = {
 
 void* wm_docker_main(wm_docker_t *docker_conf) {
     int status = 0;
-    char * command = BUILDDIR(HOMEDIR,WM_DOCKER_SCRIPT_PATH);
+    char * command = WM_DOCKER_SCRIPT_PATH;
     char * timestamp = NULL;
     int attempts = 0;
 

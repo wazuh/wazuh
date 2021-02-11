@@ -119,7 +119,7 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
 
         char * script = NULL;
         os_calloc(PATH_MAX, sizeof(char), script);
-        snprintf(script, PATH_MAX, "%s", BUILDDIR(HOMEDIR,WM_AZURE_SCRIPT_PATH));
+        snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
         wm_strcat(&command, script, '\0');
         os_free(script);
         wm_strcat(&command, "--log_analytics", ' ');
@@ -198,7 +198,7 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
 
         char * script = NULL;
         os_calloc(PATH_MAX, sizeof(char), script);
-        snprintf(script, PATH_MAX, "%s", BUILDDIR(HOMEDIR,WM_AZURE_SCRIPT_PATH));
+        snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
         wm_strcat(&command, script, '\0');
         os_free(script);
         wm_strcat(&command, "--graph", ' ');
@@ -275,7 +275,7 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
 
         char * script = NULL;
         os_calloc(PATH_MAX, sizeof(char), script);
-        snprintf(script, PATH_MAX, "%s", BUILDDIR(HOMEDIR,WM_AZURE_SCRIPT_PATH));
+        snprintf(script, PATH_MAX, "%s", WM_AZURE_SCRIPT_PATH);
         wm_strcat(&command, script, '\0');
         os_free(script);
         wm_strcat(&command, "--storage", ' ');
@@ -355,7 +355,7 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
 
     // Connect to socket
 
-    queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
     if (queue_fd < 0) {
         mterror(WM_AZURE_LOGTAG, "Can't connect to queue.");

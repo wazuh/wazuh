@@ -25,12 +25,19 @@ int main(int argc, char **argv)
     int c;
     int wm_debug = 0;
     int test_config = 0;
-    home_path = w_homedir(argv[0]);
-    wmodule *cur_module;
-    wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
-
+    
     /* Set the name */
     OS_SetName(ARGV0);
+    
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
+    wmodule *cur_module;
+    wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
 
     // Get command line options
 
@@ -146,7 +153,7 @@ void wm_setup()
 
     // Change working directory
 
-    if (chdir(HOMEDIR) < 0) {
+    if (chdir(home_path) < 0) {
         merror_exit("chdir(): %s", strerror(errno));
     }
 

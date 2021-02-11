@@ -17,11 +17,7 @@
 #include <signal.h>
 #include <stdio.h>
 
-#ifdef WIN32
 #define TMP_CONFIG_PATH "tmp/osquery.conf.tmp"
-#else
-#define TMP_CONFIG_PATH "/tmp/osquery.conf.tmp"
-#endif
 
 #ifdef WIN32
 #define OSQUERYD_BIN "osqueryd.exe"
@@ -422,7 +418,7 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 
     os_calloc(1, sizeof(wlabel_t), labels);
 
-    if (ReadConfig(CLABELS, DEFAULTCPATH, &labels, NULL) < 0)
+    if (ReadConfig(CLABELS, OSSECCONF, &labels, NULL) < 0)
         goto end;
 
 #ifdef CLIENT
@@ -484,11 +480,7 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 
     free(osquery->config_path);
 
-#ifdef WIN32
     os_strdup(TMP_CONFIG_PATH, osquery->config_path);
-#else
-    os_strdup(BUILDDIR(HOMEDIR,TMP_CONFIG_PATH), osquery->config_path);
-#endif
 
     // Write new configuration
 
@@ -558,11 +550,7 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 
     free(osquery->config_path);
 
-#ifdef WIN32
     os_strdup(TMP_CONFIG_PATH, osquery->config_path);
-#else
-    os_strdup(BUILDDIR(HOMEDIR,TMP_CONFIG_PATH), osquery->config_path);
-#endif
 
     // Write new configuration
 
@@ -591,7 +579,7 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
 #ifndef WIN32
     // Connect to queue
 
-    osquery->queue_fd = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    osquery->queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
     if (osquery->queue_fd < 0) {
         mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
         return NULL;
