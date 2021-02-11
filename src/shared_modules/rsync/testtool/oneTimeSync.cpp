@@ -58,7 +58,7 @@ OneTimeSync::OneTimeSync(const nlohmann::json& config,
             "Error creating rsync handle."
         };
     }
-    const auto rsyncRegConfig{ config.at("rsync_register_config") };
+    const auto& rsyncRegConfig{ config.at("rsync_register_config") };
     const std::unique_ptr<cJSON, SmartDeleterJson> jsRsyncRegConfig{ cJSON_Parse(rsyncRegConfig.dump().c_str()) };
 
     sync_callback_data_t callback{ rsyncCallback, this };
@@ -146,7 +146,7 @@ void OneTimeSync::rsyncCallback(const void* buffer, size_t bufferSize, void* use
         ++index;
         const auto outputFileName{ object->m_outputFolder + "/" + oFileName.str() };
         std::ofstream outputFile{ outputFileName };
-        const auto jsonResult
+        const auto& jsonResult
         {
             nlohmann::json::parse(std::string{reinterpret_cast<const char*>(buffer), bufferSize})
         };

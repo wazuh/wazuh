@@ -36,7 +36,14 @@ smokeTestsDic = {\
                                {'test_tool_name': 'dbsync_test_tool', 'is_smoke_with_configuration':True, 'args':'-c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output'}],\
 'shared_modules/rsync':       [{'test_tool_name': 'rsync_test_tool', 'is_smoke_with_configuration':False, 'args':''}],\
 'data_provider':              [{'test_tool_name': 'sysinfo_test_tool', 'is_smoke_with_configuration':False, 'args':''} ],\
-}    
+}
+
+deleteFolderDic = {\
+'wazuh_modules/syscollector':   ['/build','/smokeTests/output'],\
+'shared_modules/dbsync':        ['/build','/smokeTests/output'],\
+'shared_modules/rsync':         ['/build','/smokeTests/output'],\
+'data_provider':                ['/build','/smokeTests/output'],\
+}
 
 currentBuildDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
 
@@ -245,23 +252,25 @@ def cleanLib(moduleName):
     currentDir = currentDirPathBuild(moduleName)
     os.system('make clean -C' + currentDir)
 
-def cleanFolder(folder, additionalFolder):
-    currentDir = currentDirPath(folder)
-    cleanFolderCommand = "rm -rf " + currentDir
+def cleanFolder(moduleName, additionalFolder):
+    currentDir = currentDirPath(moduleName)
+    cleanFolderCommand = "rm -rf " + currentDir + additionalFolder
 
-    if additionalFolder:
-        cleanFolderCommand += additionalFolder
-
-    out = subprocess.run(cleanFolderCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    if out.returncode == 0 and not out.stderr:
-        printGreen('[Cleanfolder: PASSED]')
+    if deleteFolderDic[moduleName].count(additionalFolder) > 0:
+        out = subprocess.run(cleanFolderCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        if out.returncode == 0 and not out.stderr:
+            printGreen('[Cleanfolder: PASSED]')
+        else:
+            print(out.stderr)
+            printFail('[Cleanfolder: FAILED]')
+            errorString = 'Error Running Cleanfolder: ' + str(out.returncode)
+            raise ValueError(errorString)
     else:
-        print(out.stderr)
         printFail('[Cleanfolder: FAILED]')
-        errorString = 'Error Running Cleanfolder: ' + str(out.returncode)
+        errorString = 'Error Running Cleanfolder: additional folder not exist in delete folder dictionary.'
         raise ValueError(errorString)
 
-def configureCMake(moduleName, debugMode, withAsan):
+def configureCMake(moduleName, debugMode, testMode, withAsan):
     printHeader("<"+moduleName+">"+headerDic['configurecmake']+"<"+moduleName+">")
     currentModuleNameDir = currentDirPath(moduleName)
     currentPathDir = currentDirPathBuild(moduleName)
@@ -269,10 +278,13 @@ def configureCMake(moduleName, debugMode, withAsan):
     if not os.path.exists(currentPathDir):
         os.mkdir(currentPathDir)
 
-    configureCMakeCommand = "cmake -S" + currentModuleNameDir + " -B" + currentPathDir + " -DCMAKE_BUILD_TYPE=Debug"
+    configureCMakeCommand = "cmake -S" + currentModuleNameDir + " -B" + currentPathDir
 
     if debugMode:
         configureCMakeCommand += " -DCMAKE_BUILD_TYPE=Debug"
+
+    if testMode:
+        configureCMakeCommand += " -DUNIT_TEST=1"
 
     if withAsan:
         configureCMakeCommand += " -DFSANITIZE=1"
@@ -294,7 +306,7 @@ def runTestTool(moduleName, testToolCommand, isSmokeTest=False):
     if isSmokeTest:
         currentModuleNameDir = currentDirPath(moduleName)
         os.chdir(currentModuleNameDir+'/smokeTests')
-        cleanFolder(currentModuleNameDir, '/smokeTests/output')
+        cleanFolder(moduleName, '/smokeTests/output')
 
         if not os.path.exists(currentModuleNameDir+'/smokeTests/output'):
             os.mkdir(currentModuleNameDir+'/smokeTests/output')
@@ -319,7 +331,7 @@ def runASAN(moduleName):
     """
     printHeader("<"+moduleName+">"+headerDic['asan']+"<"+moduleName+">")
     cleanFolder(str(moduleName), "/build")
-    configureCMake(str(moduleName), True, True)
+    configureCMake(str(moduleName), True, False, True)
     makeLib(str(moduleName))
     for element in smokeTestsDic[moduleName]:
         testToolCommand = currentDirPathBuild(moduleName) + "/bin/" + element['test_tool_name'] + " " + element['args'] 
@@ -335,6 +347,8 @@ def runReadyToReview(moduleName):
     """
     printHeader("<"+moduleName+">"+headerDic['rtr']+"<"+moduleName+">")
     runCppCheck(str(moduleName))
+    cleanFolder(str(moduleName), "/build")
+    configureCMake(str(moduleName), True, True, False)
     makeLib(str(moduleName))
     runTests(str(moduleName))
     runValgrind(str(moduleName))
