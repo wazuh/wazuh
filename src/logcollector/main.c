@@ -25,11 +25,11 @@
 #include "logcollector.h"
 
 /* Prototypes */
-static void help_logcollector(void) __attribute__((noreturn));
+static void help_logcollector(char * home_path) __attribute__((noreturn));
 
 
 /* Print help statement */
-static void help_logcollector()
+static void help_logcollector(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -40,7 +40,7 @@ static void help_logcollector()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
     print_out(" ");
     exit(1);
 }
@@ -50,10 +50,17 @@ int main(int argc, char **argv)
     int c;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    home_path = w_homedir(argv[0]);
-    if (chdir(home_path) != 0) {
-        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+
+    /* Set the name */
+    OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     const char *cfg = OSSECCONF;
     gid_t gid;
     const char *group = GROUPGLOBAL;
@@ -61,9 +68,6 @@ int main(int argc, char **argv)
 
     /* Setup random */
     srandom_init();
-
-    /* Set the name */
-    OS_SetName(ARGV0);
 
     while ((c = getopt(argc, argv, "Vtdhfc:")) != -1) {
         switch (c) {
@@ -90,7 +94,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_logcollector();
+                help_logcollector(home_path);
                 break;
         }
 
@@ -179,7 +183,7 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
-    mdebug1(STARTED_MSG);
+    minfo(STARTUP_MSG, (int)getpid());
 
     /* Start the queue */
     if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
