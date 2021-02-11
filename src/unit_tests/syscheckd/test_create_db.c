@@ -4072,9 +4072,9 @@ void test_fim_diff_folder_size(void **state) {
     (void) state;
     char *diff_local;
 
-    diff_local = (char *)calloc(strlen(DIFF_DIR_PATH) + strlen("/local") + 1, sizeof(char));
+    diff_local = (char *)calloc(strlen(DIFF_DIR) + strlen("/local") + 1, sizeof(char));
 
-    snprintf(diff_local, strlen(DIFF_DIR_PATH) + strlen("/local") + 1, "%s/local", DIFF_DIR_PATH);
+    snprintf(diff_local, strlen(DIFF_DIR) + strlen("/local") + 1, "%s/local", DIFF_DIR);
 
     expect_string(__wrap_IsDir, file, diff_local);
     will_return(__wrap_IsDir, 0);

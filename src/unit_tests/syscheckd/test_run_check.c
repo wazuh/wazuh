@@ -279,7 +279,7 @@ void test_fim_send_msg_retry(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_StartMQ_call(DEFAULTQPATH, WRITE, 0);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
 
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
 
@@ -292,7 +292,7 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_StartMQ_call(DEFAULTQPATH, WRITE, -1);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, -1);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: '/var/ossec/queue/ossec/queue'. Giving up.");
 
