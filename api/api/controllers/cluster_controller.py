@@ -11,10 +11,8 @@ import wazuh.cluster as cluster
 import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api import configuration
 from api.encoder import dumps, prettify
 from api.models.base_model_ import Body
-from api.models.configuration_model import APIConfigurationModel
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -429,93 +427,6 @@ async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete
 
     nodes = raise_if_exc(await get_system_nodes())
     dapi = DistributedAPI(f=manager.ossec_log_summary,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def get_files_node(request, node_id, path, pretty=False, wait_for_complete=False):
-    """Get file contents from a specified node in the cluster.
-
-    :param node_id: Cluster node name.
-    :param path: Filepath to return.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'node_id': node_id,
-                'path': path}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.get_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def put_files_node(request, body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
-    """Upload file contents in a specified cluster node.
-
-    :param body: Body request with the content of the file to be uploaded
-    :param node_id: Cluster node name
-    :param path: Filepath to upload the new file
-    :param overwrite: If set to false, an exception will be raised when uploading an already existing filename.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-
-    # parse body to utf-8
-    Body.validate_content_type(request, expected_content_type='application/octet-stream')
-    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
-
-    f_kwargs = {'node_id': node_id,
-                'path': path,
-                'overwrite': overwrite,
-                'content': parsed_body}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.upload_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def delete_files_node(request, node_id, path, pretty=False, wait_for_complete=False):
-    """Removes a file in a specified cluster node.
-
-    :param node_id: Cluster node name.
-    :param path: Filepath to delete.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    f_kwargs = {'node_id': node_id,
-                'path': path}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.delete_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
