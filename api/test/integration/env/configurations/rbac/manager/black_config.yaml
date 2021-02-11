@@ -1,10 +1,5 @@
 ---
 - actions:
-  - manager:read_file
-  resources:
-  - file:path:*
-  effect: deny
-- actions:
   - manager:update_config
   resources:
   - "*:*:*"
@@ -13,9 +8,4 @@
   - manager:read_api_config
   resources:
   - "*:*:*"
-  effect: deny
-- actions:
-  - manager:delete_file
-  resources:
-  - file:path:etc/rules/local_rules.xml
   effect: deny

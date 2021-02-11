@@ -216,32 +216,6 @@ x-rbac-catalog:
         actions: ['cluster:read_api_config']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "allow"
-    'cluster:read_file':
-      description: "Read Wazuh's cluster nodes files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-        - $ref: '#/x-rbac-catalog/resources/file:path'
-      example:
-        actions: ['cluster:read_file']
-        resources: ['node:id:worker1', 'file:path:etc/rules/new-rules.xml']
-        effect: "allow"
-    'cluster:delete_file':
-      description: "Delete Wazuh's cluster nodes files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-        - $ref: '#/x-rbac-catalog/resources/file:path'
-      example:
-        actions: ['cluster:delete_file']
-        resources: ['node:id:worker1', 'file:path:etc/rules/new-rules.xml']
-        effect: "deny"
-    'cluster:upload_file':
-      description: "Upload files to Wazuh's cluster nodes"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-      example:
-        actions: ['cluster:upload_file']
-        resources: ['node:id:worker1']
-        effect: "allow"
     'cluster:restart':
       description: "Restart Wazuh's cluster nodes"
       resources:
@@ -282,30 +256,6 @@ x-rbac-catalog:
         actions: ['manager:read_api_config']
         resources: ['*:*:*']
         effect: "allow"
-    'manager:read_file':
-      description: "Read Wazuh manager files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/file:path'
-      example:
-        actions: ['manager:read_file']
-        resources: ['file:path:etc/rules/new-rules.xml']
-        effect: "allow"
-    'manager:delete_file':
-      description: "Delete Wazuh manager files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/file:path'
-      example:
-        actions: ['manager:delete_file']
-        resources: ['file:path:etc/rules/new-rules.xml']
-        effect: "allow"
-    'manager:upload_file':
-      description: "Upload files to Wazuh manager"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['manager:upload_file']
-        resources: ['*:*:*']
-        effect: "deny"
     'manager:restart':
       description: "Restart Wazuh managers"
       resources:

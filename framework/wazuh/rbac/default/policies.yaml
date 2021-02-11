@@ -277,36 +277,18 @@ default_policies:
           - manager:read
           - manager:read_api_config
           - manager:update_config
-          - manager:upload_file
           - manager:restart
-          - manager:delete_file
         resources:
           - '*:*:*'
         effect: allow
-      files:
-        actions:
-          - manager:delete_file
-          - manager:read_file
-        resources:
-          - file:path:*
-        effect: allow
       nodes:
         actions:
-          - cluster:delete_file
           - cluster:read_api_config
           - cluster:read
           - cluster:restart
-          - cluster:upload_file
           - cluster:update_config
         resources:
           - node:id:*
-        effect: allow
-      combination:
-        actions:
-          - cluster:read_file
-          - cluster:delete_file
-        resources:
-          - node:id:*&file:path:*
         effect: allow
 
   cluster_read:
@@ -334,12 +316,6 @@ default_policies:
           - cluster:read_api_config
         resources:
           - node:id:*
-        effect: allow
-      combination:
-        actions:
-          - cluster:read_file
-        resources:
-          - node:id:*&file:path:*
         effect: allow
 
   logtest_all:
