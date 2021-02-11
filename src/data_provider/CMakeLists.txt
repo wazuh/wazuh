@@ -90,11 +90,7 @@ add_library(sysinfo SHARED
 target_link_libraries(sysinfo cjson)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  if(UNIT_TEST)
-    target_link_libraries(sysinfo psapi iphlpapi ws2_32 gcov)
-  else()
-    target_link_libraries(sysinfo psapi iphlpapi ws2_32)
-  endif(UNIT_TEST)
+  target_link_libraries(sysinfo psapi iphlpapi ws2_32)
 
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
