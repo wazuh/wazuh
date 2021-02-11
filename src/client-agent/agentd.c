@@ -80,8 +80,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     os_setwait();
 
     /* Create the queue and read from it. Exit if fails. */
-    if ((agt->m_queue = StartMQ(DEFAULTQPATH, READ, 0)) < 0) {
-        merror_exit(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
+    if ((agt->m_queue = StartMQ(DEFAULTQUEUE, READ, 0)) < 0) {
+		char absPath[PATH_MAX] = {'\0'};
+		abspath(DEFAULTQUEUE, absPath, PATH_MAX);
+        merror_exit(QUEUE_ERROR, absPath, strerror(errno));
     }
 
 #ifdef HPUX
@@ -141,7 +143,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUEPATH, WRITE, 1)) < 0) {
+        if ((agt->execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
             minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;

@@ -149,7 +149,7 @@ int req_push(char * buffer, size_t length) {
 
         if (strcmp(target, "agent")) {
             char sockname[PATH_MAX];
-            snprintf(sockname, PATH_MAX, BUILDDIR(HOMEDIR,"/queue/ossec/%s"), target);
+            snprintf(sockname, PATH_MAX, "/queue/ossec/%s", target);
 
             if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
                 switch (errno) {
