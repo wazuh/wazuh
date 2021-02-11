@@ -104,7 +104,7 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
             char script_path[1024 + 1];
 
             script_path[1024] = '\0';
-            snprintf(script_path, 1024, "%s/%s", AGENTLESSDIRPATH,
+            snprintf(script_path, 1024, "%s/%s", AGENTLESSDIR,
                      node[i]->content);
 
             if (w_ref_parent_folder(script_path)) {
@@ -113,8 +113,10 @@ int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *c
             }
 
             if (File_DateofChange(script_path) <= 0) {
+                char buffer[PATH_MAX] = {'\0'};
+                abspath(AGENTLESSDIR, buffer, PATH_MAX);
                 merror("Unable to find '%s' at '%s'.",
-                       node[i]->content, AGENTLESSDIRPATH);
+                       node[i]->content, buffer);
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
