@@ -102,8 +102,8 @@ void HandleRemote(int uid)
         }
     }
 
-    if ( logr.conn[position] == SYSLOG_CONN ) {
-        logr.syslog_sock = ( logr.proto[position] == REMOTED_PROTO_TCP ? logr.tcp_sock : logr.udp_sock );
+    if (logr.conn[position] == SYSLOG_CONN) {
+        logr.syslog_sock = (logr.proto[position] == REMOTED_PROTO_TCP ? logr.tcp_sock : logr.udp_sock);
     }
 
     /* Revoke privileges */
