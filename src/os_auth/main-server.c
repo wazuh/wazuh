@@ -70,7 +70,7 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 
 /* Print help statement */
-static void help_authd()
+static void help_authd(const char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtfi] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);
@@ -80,7 +80,7 @@ static void help_authd()
     print_out("    -t          Test configuration.");
     print_out("    -f          Run in foreground.");
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into. Default: %s.", FALLBACKDIR);
+    print_out("    -D <dir>    Directory to chroot into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
     print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
@@ -91,6 +91,7 @@ static void help_authd()
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -164,6 +165,9 @@ int main(int argc, char **argv)
     pthread_t thread_local_server = 0;
     fd_set fdset;
 
+    /* Set the name */
+    OS_SetName(ARGV0);
+
     // Define current working directory
     char * home_path = w_homedir(argv[0]);
     if (chdir(home_path) == -1) {
@@ -173,9 +177,6 @@ int main(int argc, char **argv)
 
     /* Initialize some variables */
     bio_err = 0;
-
-    /* Set the name */
-    OS_SetName(ARGV0);
 
     // Get options
 
@@ -197,7 +198,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'h':
-                    help_authd();
+                    help_authd(home_path);
                     break;
 
                 case 'd':
@@ -294,7 +295,7 @@ int main(int argc, char **argv)
                     break;
 
                 default:
-                    help_authd();
+                    help_authd(home_path);
                     break;
             }
         }

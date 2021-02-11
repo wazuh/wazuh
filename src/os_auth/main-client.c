@@ -30,10 +30,10 @@
 #undef ARGV0
 #define ARGV0 "agent-auth"
 
-static void help_agent_auth(void) __attribute__((noreturn));
+static void help_agent_auth(const char * home_path) __attribute__((noreturn));
 
 /* Print help statement */
-static void help_agent_auth()
+static void help_agent_auth(const char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
@@ -45,7 +45,8 @@ static void help_agent_auth()
     print_out("    -t          Test configuration.");
 #ifndef WIN32
     print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s).", FALLBACKDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s).", home_path);
+    os_free(home_path);
 #endif
     print_out("    -m <addr>   Manager IP address.");
     print_out("    -p <port>   Manager port (default: %d).", DEFAULT_PORT);
@@ -92,7 +93,6 @@ int main(int argc, char **argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
-    os_free(home_path);
 #endif
 
     while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:aI:i"
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_agent_auth();
+                help_agent_auth(home_path);
                 break;
             case 'd':
                 debug_level = 1;
@@ -198,10 +198,12 @@ int main(int argc, char **argv)
                 target_cfg->use_src_ip = 1;
                 break;
             default:
-                help_agent_auth();
+                help_agent_auth(home_path);
                 break;
         }
     }
+
+    os_free(home_path);
 
     if (optind < argc) {
         mwarn("Extra arguments detected. They will be ignored.");
