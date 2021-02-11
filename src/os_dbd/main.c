@@ -19,7 +19,7 @@
 static void print_db_info(void);
 static void cleanup();
 static void handler(int signum);
-static void help_dbd(void) __attribute__((noreturn));
+static void help_dbd(char *home_path) __attribute__((noreturn));
 
 
 /* Print information regarding enabled databases */
@@ -39,11 +39,8 @@ static void print_db_info()
 }
 
 /* Print help statement */
-static void help_dbd()
+static void help_dbd(char *home_path)
 {
-    char cwd[PATH_MAX] = {'\0'};
-
-    getcwd(cwd, sizeof(cwd));
     print_header();
     print_out("  %s: -[Vhdtfv] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
     print_out("    -V          Version and license message");
@@ -55,8 +52,8 @@ static void help_dbd()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s%s)", cwd, OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", cwd);
+    print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out(" ");
     print_out("  Database Support:");
     print_db_info();
@@ -76,12 +73,6 @@ int main(int argc, char **argv)
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = OSSECCONF;
-
-	/* Change working directory */
-    if (chdir(home_path) != 0) {
-        os_free(home_path);
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
 	
     /* Database Structure */
     DBConfig db_config;
@@ -89,6 +80,13 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
+    }
 
     while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1) {
         switch (c) {
@@ -120,7 +118,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-				os_free(home_path);
+                os_free(home_path);
                 os_strdup(optarg, home_path);
                 break;
             case 'c':
@@ -133,13 +131,16 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_dbd();
+                help_dbd(home_path);
                 break;
         }
     }
 
+    /* Get absolute path */
+    char absPath[PATH_MAX] = {'\0'};
+    abspath(OSSECCONF, absPath, PATH_MAX);
+
     /* Start daemon */
-    mdebug1(STARTED_MSG);
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Setup random */
@@ -154,7 +155,7 @@ int main(int argc, char **argv)
 
     /* Read configuration */
     if ((c = OS_ReadDBConf(test_config, cfg, &db_config)) < 0) {
-        merror_exit(CONFIG_ERROR, home_path, cfg);
+        merror_exit(CONFIG_ERROR, absPath);
     }
 
     /* Exit here if test config is set */
@@ -224,7 +225,7 @@ int main(int argc, char **argv)
     /* If after the maxreconnect attempts, it still didn't work, exit here */
     if (!db_config.conn) {
         merror(DB_CONFIGERR);
-        merror_exit(CONFIG_ERROR, home_path, cfg);
+        merror_exit(CONFIG_ERROR, absPath);
     }
 
     /* We must notify that we connected -- easy debugging */
@@ -253,12 +254,12 @@ int main(int argc, char **argv)
     /* Insert server info into the db */
     db_config.server_id = OS_Server_ReadInsertDB(&db_config);
     if (db_config.server_id <= 0) {
-        merror_exit(CONFIG_ERROR, home_path, cfg);
+        merror_exit(CONFIG_ERROR, absPath);
     }
 
     /* Read rules and insert into the db */
     if (OS_InsertRulesDB(&db_config) < 0) {
-        merror_exit(CONFIG_ERROR, home_path, cfg);
+        merror_exit(CONFIG_ERROR, absPath);
     }
 
     /* Change user */
