@@ -300,7 +300,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         cJSON_AddStringToObject(agent, "id", lf->agent_id);
     }
 
-    if(lf->fields[FIM_FILE].value) {
+    if(strcmp(lf->location, SYSCHECK) == 0) {
         char mtime[25];
         struct tm tm_result = { .tm_sec = 0 };
         long aux_time;
@@ -567,7 +567,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         cJSON* decoder;
 
         // Dynamic fields, except for syscheck events
-        if (lf->fields && !lf->fields[FIM_FILE].value) {
+        if (strcmp(lf->location, SYSCHECK) != 0) {
             for (i = 0; i < lf->nfields; i++) {
                 if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);

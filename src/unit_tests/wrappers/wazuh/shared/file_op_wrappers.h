@@ -79,6 +79,6 @@ long long __wrap_get_UTC_modification_time(const char *file_path);
 #endif
 
 #endif
-int64_t __wrap_w_ftell (FILE *x);
+// int64_t __wrap_w_ftell (FILE *x);
 
 int __wrap_w_fseek(FILE *x, int64_t pos, int mode);

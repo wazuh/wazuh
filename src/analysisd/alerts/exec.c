@@ -51,7 +51,7 @@ void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *a
     }
 
     /* Get filename */
-    if (lf->fields[FIM_FILE].value) {
+    if (strcmp(lf->location, SYSCHECK) == 0) {
         filename = os_shell_escape(lf->fields[FIM_FILE].value);
     }
 

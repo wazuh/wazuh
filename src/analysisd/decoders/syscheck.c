@@ -193,6 +193,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_SHA256_BEFORE] = "sha256_before";
     fim_decoder->fields[FIM_DIFF] = "changed_content";
     fim_decoder->fields[FIM_ATTRS] = "win_attributes";
+    fim_decoder->fields[FIM_ATTRS_BEFORE] = "win_attributes_before";
     fim_decoder->fields[FIM_CHFIELDS] = "changed_fields";
     fim_decoder->fields[FIM_USER_ID] = "user_id";
     fim_decoder->fields[FIM_USER_NAME] = "user_name";
@@ -214,6 +215,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_REGISTRY_VALUE_NAME] = "value_name";
     fim_decoder->fields[FIM_REGISTRY_VALUE_TYPE] = "value_type";
     fim_decoder->fields[FIM_ENTRY_TYPE] = "entry_type";
+    fim_decoder->fields[FIM_EVENT_TYPE_STR] = "event_type";
 }
 
 // Initialize the necessary information to process the syscheck information
