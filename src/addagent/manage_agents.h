@@ -57,9 +57,6 @@ int list_agents(int cmdlist);
 /* Clear a line */
 char *chomp(char *str);
 
-/* Checks if the agent limit has been reached */
-int limitReached();
-
 /* Shared variables */
 extern time_t time1;
 extern time_t time2;

@@ -1120,9 +1120,6 @@ os_net/%.o: os_net/%.c
 #### Shared ##########
 # Unit tests wrappers
 
-wrappers_client_agent_c := $(wildcard unit_tests/wrappers/client-agent/*.c)
-wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
-
 wrappers_common_c := $(wildcard unit_tests/wrappers/*.c)
 wrappers_common_o := $(wrappers_common_c:.c=.o)
 
@@ -1209,6 +1206,9 @@ wrappers_wazuh_os_auth_o := $(wrappers_wazuh_os_auth_c:.c=.o)
 
 wrappers_wazuh_addagent_c := $(wildcard unit_tests/wrappers/wazuh/addagent/*.c)
 wrappers_wazuh_addagent_o := $(wrappers_wazuh_addagent_c:.c=.o)
+
+wrappers_client_agent_c := $(wildcard unit_tests/wrappers/wazuh/client-agent/*.c)
+wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
 
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
