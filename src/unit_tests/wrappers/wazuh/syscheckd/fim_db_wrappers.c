@@ -196,10 +196,10 @@ int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
     return mock();
 }
 
-unsigned int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path) {
+int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path) {
     check_expected_ptr(fim_sql);
     check_expected(path);
-    return mock_type(unsigned int);
+    return mock_type(int);
 }
 
 int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql) {
@@ -326,7 +326,7 @@ void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
     will_return(__wrap_fim_db_get_path_from_pattern, ret);
 }
 
-void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, unsigned int ret_val) {
+void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val) {
     expect_value(__wrap_fim_db_remove_path, fim_sql, fim_sql);
     expect_string(__wrap_fim_db_remove_path, path, path);
     will_return(__wrap_fim_db_remove_path, ret_val);

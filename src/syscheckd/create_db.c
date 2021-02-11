@@ -63,7 +63,7 @@ void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mu
         return;
     }
     /* Don't send alert if received mode and mode in configuration aren't the same.
-       Scheduled mode events must always be processed to preserver the state of the agent's DB.
+       Scheduled mode events must always be processed to preserve the state of the agent's DB.
     */
     switch (mode) {
     case FIM_REALTIME:
@@ -90,8 +90,8 @@ void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mu
 
     if (send_alert && state == FIMDB_OK) {
         whodata_evt *whodata_event = (whodata_evt *) w_evt;
-        cJSON * json_event      = NULL;
-        char * json_formatted    = NULL;
+        cJSON *json_event = NULL;
+        char *json_formatted = NULL;
 
         w_mutex_lock(mutex);
         json_event = fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, pos, FIM_DELETE, mode,

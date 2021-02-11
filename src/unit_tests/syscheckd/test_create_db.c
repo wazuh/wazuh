@@ -1654,7 +1654,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_string(__wrap_fim_db_get_path, file_path, "/media/test.file");
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 0);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
 
 
     fim_checker(path, fim_data->item, NULL, 1);
@@ -2364,7 +2364,7 @@ static void test_fim_scan_no_limit(void **state) {
 }
 
 /**** delete_file_event ****/
-void test_fim_delete_file_event_success_no_entries(void **state) {
+void test_fim_delete_file_event_delete_error(void **state) {
     fim_data_t *fim_data = *state;
 
     fim_data->fentry->file_entry.path = strdup("/media/test");
@@ -2389,13 +2389,13 @@ void test_fim_delete_file_event_success_no_entries(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 0);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
 
 
     fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *)true, NULL, NULL);
 }
 
-void test_fim_delete_file_event_success_multiple_entries(void **state) {
+void test_fim_delete_file_event_remove_success(void **state) {
     fim_data_t *fim_data = *state;
 
     fim_data->fentry->file_entry.path = strdup("/media/test");
@@ -2421,7 +2421,7 @@ void test_fim_delete_file_event_success_multiple_entries(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     char buffer[OS_SIZE_128] = {0};
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 4);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     // inside fim_json_event
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606060, 12345678, NULL);
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
@@ -2496,7 +2496,7 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     char buffer[OS_SIZE_128] = {0};
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 4);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     // inside fim_json_event
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606060, 12345678, NULL);
     snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
@@ -2600,7 +2600,7 @@ void test_fim_delete_file_event_report_changes(void **state) {
     syscheck.opts[pos] |= CHECK_SEECHANGES;
 
     char buffer[OS_SIZE_128] = {0};
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 4);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     // inside fim_json_event
     expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, 606060, 12345678, NULL);
     expect_fim_diff_process_delete_file(fim_data->fentry->file_entry.path, 0);
@@ -2739,7 +2739,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 0);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     fim_checker(expanded_path, fim_data->item, NULL, 1);
@@ -3272,7 +3272,7 @@ static void test_fim_scan_no_limit(void **state) {
     fim_scan();
 }
 
-void test_fim_delete_file_event_success_no_entries(void **state) {
+void test_fim_delete_file_event_delete_error(void **state) {
     fim_data_t *fim_data = *state;
 
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
@@ -3306,13 +3306,13 @@ void test_fim_delete_file_event_success_no_entries(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 0);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, (void *)true, NULL, NULL);
 }
 
-void test_fim_delete_file_event_success_multiple_entries(void **state) {
+void test_fim_delete_file_event_remove_success(void **state) {
     fim_data_t *fim_data = *state;
 
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
@@ -3346,7 +3346,7 @@ void test_fim_delete_file_event_success_multiple_entries(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 4);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -3438,7 +3438,7 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     expect_function_call(__wrap_pthread_mutex_lock);
-    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, 4);
+    expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -4753,8 +4753,8 @@ int main(void) {
         cmocka_unit_test(test_fim_diff_folder_size),
 
         /* test_fim_delete_file_event */
-        cmocka_unit_test_setup(test_fim_delete_file_event_success_no_entries, setup_fim_entry),
-        cmocka_unit_test_setup(test_fim_delete_file_event_success_multiple_entries, setup_fim_entry),
+        cmocka_unit_test_setup(test_fim_delete_file_event_delete_error, setup_fim_entry),
+        cmocka_unit_test_setup(test_fim_delete_file_event_remove_success, setup_fim_entry),
         cmocka_unit_test_setup(test_fim_delete_file_event_no_conf, setup_fim_entry),
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup(test_fim_delete_file_event_report_changes, setup_fim_entry),
