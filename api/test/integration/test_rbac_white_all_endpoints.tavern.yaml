@@ -224,7 +224,7 @@ stages:
 test_name: GET /agents/upgrade_result
 
 stages:
-  - name: Get agent 007 upgrade result
+  - name: Try to get agent 007 upgrade result
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -512,7 +512,7 @@ stages:
 test_name: GET /cluster/api/config
 
 stages:
-  - name: Try to api config (worker1)
+  - name: Try to get api config (worker1)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
