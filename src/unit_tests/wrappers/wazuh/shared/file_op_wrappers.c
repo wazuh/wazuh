@@ -194,10 +194,10 @@ long long __wrap_get_UTC_modification_time(const char *file_path) {
 }
 #endif
 
-// int64_t __wrap_w_ftell (FILE *x) {
-//    check_expected(x);
-//    return mock_type(int64_t);
-//}
+int64_t __wrap_w_ftell (FILE *x) {
+    check_expected(x);
+    return mock_type(int64_t);
+}
 
 int __wrap_w_fseek(FILE *x, int64_t pos, __attribute__((unused)) int mode) {
     check_expected(x);
