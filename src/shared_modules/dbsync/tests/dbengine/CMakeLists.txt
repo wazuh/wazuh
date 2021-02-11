@@ -33,7 +33,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gtest_main
         optimized gmock_main
         pthread
-        dbsync
         -static-libgcc -static-libstdc++
     )
 else()
@@ -47,7 +46,6 @@ else()
         optimized gtest_main
         optimized gmock_main
         pthread
-        dbsync
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
