@@ -248,10 +248,8 @@ void test_fim_whodata_initialize(void **state)
         str_lowercase(expanded_dirs[i]);
         expect_realtime_adddir_call(expanded_dirs[i], 10, 0);
     }
-#else
-    expect_realtime_adddir_call("/etc", 2, 0);
-    expect_realtime_adddir_call("/usr/bin", 5, 0);
-    expect_realtime_adddir_call("/usr/sbin", 6, 0);
+    will_return(__wrap_run_whodata_scan, 0);
+    will_return(wrap_CreateThread, (HANDLE)123456);
 #endif
 
     ret = fim_whodata_initialize();
@@ -799,8 +797,6 @@ void test_check_max_fps_sleep(void **state) {
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_fim_whodata_initialize),
-
 #ifdef TEST_WINAGENT
         cmocka_unit_test(test_set_priority_windows_thread_highest),
         cmocka_unit_test(test_set_priority_windows_thread_above_normal),
@@ -840,6 +836,7 @@ int main(void) {
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 #else  // WIN_WHODATA
     const struct CMUnitTest eventchannel_tests[] = {
+        cmocka_unit_test(test_fim_whodata_initialize),
         cmocka_unit_test(test_set_whodata_mode_changes),
         cmocka_unit_test(test_fim_whodata_initialize_eventchannel),
         cmocka_unit_test(test_fim_whodata_initialize_fail_set_policies),

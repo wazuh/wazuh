@@ -474,22 +474,18 @@ int fim_whodata_initialize() {
     set_priority_windows_thread();
 #endif
 
-    for (int i = 0; syscheck.dir[i]; i++) {
-
-        if (syscheck.opts[i] & WHODATA_ACTIVE) {
-
 #ifdef WIN_WHODATA // Whodata on Windows
+    for (int i = 0; syscheck.dir[i]; i++) {
+        if (syscheck.opts[i] & WHODATA_ACTIVE) {
             if(realtime_adddir(syscheck.dir[i], i + 1, 0) == -2) {
                 syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
                 syscheck.opts[i] &= ~WHODATA_ACTIVE;
                 syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
                 syscheck.realtime_change = 1;
             }
-#endif
+
         }
     }
-
-#ifdef WIN_WHODATA
     HANDLE t_hdle;
     long unsigned int t_id;
 

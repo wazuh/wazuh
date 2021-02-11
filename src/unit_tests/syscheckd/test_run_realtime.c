@@ -84,23 +84,6 @@ static int teardown_group(void **state) {
     return 0;
 }
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
-    static int setup_w_vector(void **state)
-    {
-        audit_added_dirs = W_Vector_init(2);
-        if(!audit_added_dirs)
-            return -1;
-
-        return 0;
-    }
-
-    static int teardown_w_vector(void **state)
-    {
-        W_Vector_free(audit_added_dirs);
-
-        return 0;
-    }
-#endif
 #ifdef TEST_WINAGENT
 #ifndef WIN_WHODATA
 static int setup_RTCallBack(void **state) {
@@ -355,38 +338,6 @@ void test_realtime_start_failure_inotify(void **state) {
     ret = realtime_start();
 
     assert_int_equal(ret, -1);
-}
-
-void test_realtime_adddir_whodata(void **state) {
-    int ret;
-
-    const char * path = "/etc/folder";
-
-    audit_thread_active = 1;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    ret = realtime_adddir(path, 1, 0);
-
-    assert_int_equal(ret, 1);
-}
-
-
-void test_realtime_adddir_whodata_new_directory(void **state) {
-    int ret;
-
-    const char * path = "/etc/folder";
-
-    audit_thread_active = 1;
-
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6230): Monitoring with Audit: '/etc/folder'");
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    ret = realtime_adddir(path, 1, 0);
-
-    assert_int_equal(ret, 1);
 }
 
 void test_realtime_adddir_realtime_start_failure(void **state)
@@ -1771,8 +1722,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
 
         /* realtime_adddir */
-        cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata, setup_w_vector, teardown_w_vector),
-        cmocka_unit_test_setup_teardown(test_realtime_adddir_whodata_new_directory, setup_w_vector, teardown_w_vector),
         cmocka_unit_test_setup_teardown(test_realtime_adddir_realtime_start_failure, setup_realtime_adddir_realtime_start_error, teardown_realtime_adddir_realtime_start_error),
         cmocka_unit_test(test_realtime_adddir_realtime_failure),
         cmocka_unit_test(test_realtime_adddir_realtime_watch_max_reached_failure),
