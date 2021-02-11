@@ -1517,14 +1517,8 @@ static int fim_generate_alert(Eventinfo *lf, cJSON *attributes, cJSON *old_attri
         fim_generate_comment(change_user, sizeof(change_owner), "User name was '%s', now it is '%s'\n", lf->fields[FIM_UNAME_BEFORE].value, lf->fields[FIM_UNAME].value);
         fim_generate_comment(change_gowner, sizeof(change_gowner), "Group ownership was '%s', now it is '%s'\n", lf->fields[FIM_GID_BEFORE].value, lf->fields[FIM_GID].value);
         fim_generate_comment(change_group, sizeof(change_gowner), "Group name was '%s', now it is '%s'\n", lf->fields[FIM_GNAME_BEFORE].value, lf->fields[FIM_GNAME].value);
-
-        if (lf->fields[FIM_MTIME_BEFORE].value != lf->fields[FIM_MTIME].value) {
-            snprintf(change_mtime, sizeof(change_mtime), "Old modification time was: '%s', now it is '%s'\n", lf->fields[FIM_MTIME_BEFORE].value, lf->fields[FIM_MTIME].value);
-        }
-        if (lf->fields[FIM_INODE_BEFORE].value != lf->fields[FIM_INODE].value) {
-            snprintf(change_inode, sizeof(change_inode), "Old inode was: '%s', now it is '%s'\n", lf->fields[FIM_INODE_BEFORE].value, lf->fields[FIM_INODE].value);
-        }
-
+        fim_generate_comment(change_mtime, sizeof(change_mtime), "Old modification time was: '%s', now it is '%s'\n", lf->fields[FIM_MTIME_BEFORE].value, lf->fields[FIM_MTIME].value);
+        fim_generate_comment(change_inode, sizeof(change_inode), "Old inode was: '%s', now it is '%s'\n", lf->fields[FIM_INODE_BEFORE].value, lf->fields[FIM_INODE].value);
         fim_generate_comment(change_md5, sizeof(change_md5), "Old md5sum was: '%s'\nNew md5sum is : '%s'\n", lf->fields[FIM_MD5_BEFORE].value, lf->fields[FIM_MD5].value);
         fim_generate_comment(change_sha1, sizeof(change_sha1), "Old sha1sum was: '%s'\nNew sha1sum is : '%s'\n", lf->fields[FIM_SHA1_BEFORE].value, lf->fields[FIM_SHA1].value);
         fim_generate_comment(change_sha256, sizeof(change_sha256), "Old sha256sum was: '%s'\nNew sha256sum is : '%s'\n", lf->fields[FIM_SHA256_BEFORE].value, lf->fields[FIM_SHA256].value);
