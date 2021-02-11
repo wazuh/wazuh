@@ -71,7 +71,7 @@ def test_select_key_affected_items_with_agent_id(response, select_key):
         assert set(response.json()["data"]["affected_items"][0].keys()) == expected_keys
 
 
-def test_sort_response(response, key, reverse=True):
+def test_sort_response(response, key=None, reverse=True):
     """Check that the response's affected items are sorted by the specified key.
 
     Parameters
@@ -88,7 +88,7 @@ def test_sort_response(response, key, reverse=True):
         True if the response's items are sorted by the key.
     """
     affected_items = response.json()['data']['affected_items']
-    assert affected_items == sorted(affected_items, key=lambda item: item[key], reverse=reverse)
+    assert affected_items == sorted(affected_items, key=(lambda item: item[key]) if key else None, reverse=reverse)
 
 
 def test_validate_data_dict_field(response, fields_dict):
