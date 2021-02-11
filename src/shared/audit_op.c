@@ -266,14 +266,9 @@ int audit_manage_rules(int action, const char *path, const char *key) {
     memset(myrule, 0, sizeof(struct audit_rule_data));
 
     // Check path
-    if (stat(path, &buf) == 0) {
-        if (S_ISDIR(buf.st_mode)){
-            type = AUDIT_DIR;
-        }
-        else {
-            type = AUDIT_WATCH;
-        }
-    } else {
+    type = AUDIT_DIR;
+
+    if (stat(path, &buf) != 0) {
         mdebug2(FIM_STAT_FAILED, path, errno, strerror(errno));
         retval = -1;
         goto end;
