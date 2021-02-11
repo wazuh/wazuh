@@ -75,6 +75,7 @@ The following step is common to all OSes:
    $> curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.18.3.tar.gz && tar -zxf cmake-3.18.3.tar.gz
    $> cd cmake-3.18.3 && ./bootstrap --no-system-curl
    $> make -j$(nproc) && make install
+   $> cd .. && rm -rf cmake-*
 
 Note: `gcc/g++ 5.5` and `CMake 3.12.4` are the minimun required versions to be installed.
 

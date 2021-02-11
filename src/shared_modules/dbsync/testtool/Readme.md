@@ -13,9 +13,9 @@ The DBSync Testing Tool was created to test and validate the dbsync module. This
 ![alt text](../images/dbsyncTestToolArchDiagram.png)
 
 ## Compile Wazuh
-In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:
+In order to run unit tests on a specific wazuh target, the project needs to be built either in release or debug mode.
 ```
-make TARGET=server|agent DEBUG=1 TEST=1
+make TARGET=server|agent <DEBUG=1>
 ```
 
 ## How to use the tool
