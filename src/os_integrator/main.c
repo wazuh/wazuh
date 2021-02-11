@@ -45,16 +45,22 @@ int main(int argc, char **argv)
 
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
-    home_path = w_homedir(argv[0]);
-    char *dir = HOMEDIR;
+    const char *home_path = w_homedir(argv[0]);
     char *user = MAILUSER;
     char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
 
     integrator_config = NULL;
 
     /* Setting the name */
     OS_SetName(ARGV0);
+
+	/* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
+    }
 
     while((c = getopt(argc, argv, "Vdhtfu:g:")) != -1){
         switch(c){
@@ -100,7 +106,6 @@ int main(int argc, char **argv)
     }
 
     /* Starting daemon */
-    mdebug1(STARTED_MSG);
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
@@ -160,7 +165,7 @@ int main(int argc, char **argv)
     w_create_thread(intgcom_main, NULL);
 
     /* Basic start up completed. */
-    mdebug1(PRIVSEP_MSG ,dir,user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

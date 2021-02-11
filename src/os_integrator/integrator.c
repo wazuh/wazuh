@@ -51,12 +51,16 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         mdebug1("JSON file queue connected.");
     }
 
+    /* Get absolulte path */
+    char absPath[PATH_MAX] = {'\0'};
+    abspath(INTEGRATORDIR, absPath, PATH_MAX);
+
     /* Connecting to syslog. */
     while(integrator_config[s])
     {
         integrator_config[s]->enabled = 1;
 
-        snprintf(integration_path, 2048 -1, "%s/%s", INTEGRATORDIRPATH, integrator_config[s]->name);
+        snprintf(integration_path, 2048 -1, "%s/%s", INTEGRATORDIR, integrator_config[s]->name);
         if(File_DateofChange(integration_path) > 0)
         {
             os_strdup(integration_path, integrator_config[s]->path);
@@ -64,7 +68,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         else
         {
             integrator_config[s]->enabled = 0;
-            merror("Unable to enable integration for: '%s'. File not found inside '%s'.", integrator_config[s]->name, INTEGRATORDIRPATH);
+            merror("Unable to enable integration for: '%s'. File not found inside '%s'.", integrator_config[s]->name, absPath);
             s++;
             continue;
         }
@@ -385,7 +389,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(temp_file_created == 1)
             {
                 int dbg_lvl = isDebug();
-                snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
+                snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", absPath, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
                 if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
                 mdebug1("Running: %s", exec_full_cmd);
@@ -406,8 +410,8 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                                 // 127 means error in exec
                                 merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
                             } else if(wstatus != 0){
-                                merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, integrator_config[s]->path);
-                                merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path, buffer);
+                                merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, absPath);
+                                merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, absPath, buffer);
                                 merror("Exit status was: %d", wstatus);
                             } else {
                                 mdebug1("Command ran successfully");

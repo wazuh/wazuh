@@ -19,11 +19,11 @@
 
 
 /* Prototypes */
-static void help_agentd(char *home_path) __attribute((noreturn));
+static void help_agentd(const char *home_path) __attribute((noreturn));
 
 
 /* Print help statement */
-static void help_agentd(char *home_path)
+static void help_agentd(const char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config]", ARGV0);
