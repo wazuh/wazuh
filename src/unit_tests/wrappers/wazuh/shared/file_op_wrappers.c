@@ -187,10 +187,6 @@ int __wrap_UnmergeFiles(const char *finalpath, const char *optdir, int mode) {
     return mock();
 }
 
-int64_t __wrap_w_ftell(__attribute__((unused)) FILE *fp) {
-    return mock();
-}
-
 #ifdef WIN32
 long long __wrap_get_UTC_modification_time(const char *file_path) {
     check_expected(file_path);
