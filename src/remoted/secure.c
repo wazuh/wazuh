@@ -337,7 +337,7 @@ STATIC void * close_fp_main(void * args) {
 
 static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
-    int protocol = logr.proto[logr.position];
+    int protocol = (sock_client == -1) ? REMOTED_PROTO_UDP : REMOTED_PROTO_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
     char srcip[IPSIZE + 1] = {0};
@@ -467,6 +467,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     if (IsValidHeader(tmp_msg)) {
 
         /* We need to save the peerinfo if it is a control msg */
+
+        keys.keyentries[agentid]->net_protocol = protocol;
 
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
