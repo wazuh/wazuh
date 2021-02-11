@@ -1300,7 +1300,7 @@ build_shared_modules:
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
-	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && make
+	cd ${SHARED_UTILS_TEST} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 endif
 endif
 
