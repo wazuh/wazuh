@@ -27,10 +27,10 @@ do                                                                      \
     }                                                                   \
     catch(const std::exception& ex)                                     \
     {                                                                   \
-        if(m_logErrorFunction)                                          \
+        if(m_logFunction)                                               \
         {                                                               \
             const std::string error{"task: " + std::string{ex.what()}}; \
-            m_logErrorFunction(error);                                  \
+            m_logFunction(SYS_LOG_ERROR, error);                        \
         }                                                               \
     }                                                                   \
 }while(0)
@@ -916,7 +916,7 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
         {
             if(result == DB_ERROR)
             {
-                m_logErrorFunction(data.dump());
+                m_logFunction(SYS_LOG_ERROR, data.dump());
             }
             else if(m_notify && !m_stopping)
             {
@@ -929,7 +929,9 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
                         msg["operation"] = operationsMap.at(result);
                         msg["data"] = item;
                         msg["data"]["scan_time"] = m_scanTime;
-                        m_reportDiffFunction(msg.dump());
+                        const auto msgToSend{msg.dump()};
+                        m_reportDiffFunction(msgToSend);
+                        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
                     }
                 }
                 else
@@ -940,7 +942,9 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
                     msg["operation"] = operationsMap.at(result);
                     msg["data"] = data;
                     msg["data"]["scan_time"] = m_scanTime;
-                    m_reportDiffFunction(msg.dump());
+                    const auto msgToSend{msg.dump()};
+                    m_reportDiffFunction(msgToSend);
+                    m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
                     // LCOV_EXCL_STOP
                 }
             }
@@ -1031,17 +1035,21 @@ void Syscollector::registerWithRsync()
                     if(it != data.end())
                     {
                         (*it)["scan_time"] = Utils::getCurrentTimestamp();
-                        m_reportSyncFunction(jsonData.dump());
+                        const auto msgToSend{jsonData.dump()};
+                        m_reportSyncFunction(msgToSend);
+                        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + msgToSend);
                     }
                     else
                     {
                         m_reportSyncFunction(dataString);
+                        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
                     }
                 }
                 else
                 {
                     //LCOV_EXCL_START
                     m_reportSyncFunction(dataString);
+                    m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
                     //LCOV_EXCL_STOP
                 }
             }
@@ -1109,9 +1117,7 @@ void Syscollector::registerWithRsync()
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
                         const std::function<void(const std::string&)> reportSyncFunction,
-                        const std::function<void(const std::string&)> logErrorFunction,
-                        const std::function<void(const std::string&)> logInfoFunction,
-                        const std::function<void(const std::string&)> logDebugFunction,
+                        const std::function<void(const syscollector_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
                         const std::string& normalizerType,
@@ -1129,9 +1135,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_spInfo = spInfo;
     m_reportDiffFunction = reportDiffFunction;
     m_reportSyncFunction = reportSyncFunction;
-    m_logErrorFunction = logErrorFunction;
-    m_logInfoFunction = logInfoFunction;
-    m_logDebugFunction = logDebugFunction;
+    m_logFunction = logFunction;
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
@@ -1172,8 +1176,10 @@ void Syscollector::scanHardware()
 {
     if (m_hardware)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting hardware scan");
         const auto& hwData{getHardwareData()};
         updateAndNotifyChanges(HW_TABLE, hwData);
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending hardware scan");
     }
 }
 
@@ -1197,8 +1203,10 @@ void Syscollector::scanOs()
 {
     if (m_os)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting os scan");
         const auto& osData{getOSData()};
         updateAndNotifyChanges(OS_TABLE, osData);
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending os scan");
     }
 }
 
@@ -1294,6 +1302,7 @@ void Syscollector::scanNetwork()
 {
     if (m_network)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting network scan");
         const auto& networkData{getNetworkData()};
         if (!networkData.is_null())
         {
@@ -1313,6 +1322,7 @@ void Syscollector::scanNetwork()
                 updateAndNotifyChanges(NET_ADDRESS_TABLE, itAddress.value());
             }
         }
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending network scan");
     }
 }
 
@@ -1377,6 +1387,7 @@ void Syscollector::scanPackages()
 {
     if (m_packages)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting packages scan");
         const auto& packagesData { getPackagesData() };
         if (!packagesData.is_null())
         {
@@ -1394,6 +1405,7 @@ void Syscollector::scanPackages()
                 }
             }
         }
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending packages scan");
     }
 }
 
@@ -1455,8 +1467,10 @@ void Syscollector::scanPorts()
 {
     if (m_ports)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting ports scan");
         const auto& portsData { getPortsData() };
         updateAndNotifyChanges(PORTS_TABLE, portsData);
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending ports scan");
     }
 }
 
@@ -1487,8 +1501,10 @@ void Syscollector::scanProcesses()
 {
     if (m_processes)
     {
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting processes scan");
         const auto& processesData{getProcessesData()};
         updateAndNotifyChanges(PROCESSES_TABLE, processesData);
+        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending processes scan");
     }
 }
 
@@ -1502,6 +1518,7 @@ void Syscollector::syncProcesses()
 
 void Syscollector::scan()
 {
+    m_logFunction(SYS_LOG_INFO, "Starting syscollector scan");
     m_scanTime = Utils::getCurrentTimestamp();
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1510,21 +1527,24 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
     m_notify = true;
+    m_logFunction(SYS_LOG_INFO, "Ending syscollector scan");
 }
 
 void Syscollector::sync()
 {
+    m_logFunction(SYS_LOG_DEBUG, "Starting syscollector sync");
     TRY_CATCH_TASK(syncHardware);
     TRY_CATCH_TASK(syncOs);
     TRY_CATCH_TASK(syncNetwork);
     TRY_CATCH_TASK(syncPackages);
     TRY_CATCH_TASK(syncPorts);
     TRY_CATCH_TASK(syncProcesses);
+    m_logFunction(SYS_LOG_DEBUG, "Ending syscollector sync");
 }
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
-    m_logInfoFunction("Syscollector started.");
+    m_logFunction(SYS_LOG_INFO, "Syscollector started.");
     if (m_scanOnStart)
     {
         scan();
@@ -1550,12 +1570,12 @@ void Syscollector::push(const std::string& data)
         try
         {
             m_spRsync->pushMessage(std::vector<uint8_t>{buff, buff + rawData.size()});
-            m_logDebugFunction("Message pushed: " + data);
+            m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Message pushed: " + data);
         }
         // LCOV_EXCL_START
         catch(const std::exception& ex)
         {
-            m_logErrorFunction(ex.what());
+            m_logFunction(SYS_LOG_ERROR, ex.what());
         }
     }
     // LCOV_EXCL_STOP
