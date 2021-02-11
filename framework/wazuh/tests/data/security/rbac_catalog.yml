@@ -267,9 +267,6 @@ get_rbac_actions:
           - GET /cluster/{node_id}/stats/remoted
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
-          - GET /cluster/{node_id}/files
-          - PUT /cluster/{node_id}/files
-          - DELETE /cluster/{node_id}/files
           - PUT /cluster/restart
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
@@ -314,47 +311,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/api/config
-      cluster:read_file:
-        description: Read Wazuh's cluster nodes files
-        resources:
-          - node:id
-          - file:path
-        example:
-          actions:
-            - cluster:read_file
-          resources:
-            - node:id:worker1
-            - file:path:etc/rules/new-rules.xml
-          effect: allow
-        related_endpoints:
-          - GET /cluster/{node_id}/files
-      cluster:delete_file:
-        description: Delete Wazuh's cluster nodes files
-        resources:
-          - node:id
-          - file:path
-        example:
-          actions:
-            - cluster:delete_file
-          resources:
-            - node:id:worker1
-            - file:path:etc/rules/new-rules.xml
-          effect: deny
-        related_endpoints:
-          - PUT /cluster/{node_id}/files
-          - DELETE /cluster/{node_id}/files
-      cluster:upload_file:
-        description: Upload files to Wazuh's cluster nodes
-        resources:
-          - node:id
-        example:
-          actions:
-            - cluster:upload_file
-          resources:
-            - node:id:worker1
-          effect: allow
-        related_endpoints:
-          - PUT /cluster/{node_id}/files
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:
@@ -452,49 +408,9 @@ get_rbac_actions:
           - GET /manager/stats/remoted
           - GET /manager/logs
           - GET /manager/logs/summary
-          - GET /manager/files
-          - PUT /manager/files
-          - DELETE /manager/files
           - PUT /manager/restart
           - GET /manager/configuration/validation
           - GET /manager/configuration/{component}/{configuration}
-      manager:read_file:
-        description: Read Wazuh manager files
-        resources:
-          - file:path
-        example:
-          actions:
-            - manager:read_file
-          resources:
-            - file:path:etc/rules/new-rules.xml
-          effect: allow
-        related_endpoints:
-          - GET /manager/files
-      manager:delete_file:
-        description: Delete Wazuh manager files
-        resources:
-          - file:path
-        example:
-          actions:
-            - manager:delete_file
-          resources:
-            - file:path:etc/rules/new-rules.xml
-          effect: allow
-        related_endpoints:
-          - PUT /manager/files
-          - DELETE /manager/files
-      manager:upload_file:
-        description: Upload files to Wazuh manager
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:upload_file
-          resources:
-            - "*:*:*"
-          effect: deny
-        related_endpoints:
-          - PUT /manager/files
       manager:update_config:
         description: Update current Wazuh manager configuration
         resources:
