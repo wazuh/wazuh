@@ -76,7 +76,7 @@ void HandleRemote(int uid)
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         } else if (logr.conn[position] == SECURE_CONN) {
 
-            if (OS_SetKeepalive(logr.tcp_sock) < 0){
+            if (OS_SetKeepalive(logr.tcp_sock) < 0) {
                 merror("OS_SetKeepalive failed with error '%s'", strerror(errno));
             }
 #ifndef CLIENT
@@ -84,10 +84,10 @@ void HandleRemote(int uid)
                 OS_SetKeepalive_Options(logr.tcp_sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
             }
 #endif
-            if (OS_SetRecvTimeout(logr.tcp_sock, recv_timeout, 0) < 0){
+            if (OS_SetRecvTimeout(logr.tcp_sock, recv_timeout, 0) < 0) {
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }
-            if (OS_SetSendTimeout(logr.tcp_sock, send_timeout) < 0){
+            if (OS_SetSendTimeout(logr.tcp_sock, send_timeout) < 0) {
                 merror("OS_SetSendTimeout failed with error '%s'", strerror(errno));
             }
         }
