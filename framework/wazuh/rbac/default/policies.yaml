@@ -302,13 +302,6 @@ default_policies:
         resources:
           - '*:*:*'
         effect: allow
-      files:
-        actions:
-          - manager:read
-          - manager:read_api_config
-        resources:
-          - file:path:*
-        effect: allow
       nodes:
         actions:
           - cluster:read_api_config

@@ -3,21 +3,18 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import os
 import re
 from collections import defaultdict
 from functools import wraps
 
+from wazuh.core.agent import get_agents_info, get_groups, expand_group
+from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.cdb_list import iterate_lists
-from wazuh.core.utils import get_files
-from wazuh.core.agent import get_agents_info, get_groups, expand_group
-from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.core.exception import WazuhPermissionError
-from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 from wazuh.core.results import AffectedItemsWazuhResult
-
+from wazuh.core.rule import format_rule_decoder_file, Status
+from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
@@ -78,8 +75,6 @@ def _expand_resource(resource):
             return {cdb_list['filename'] for cdb_list in iterate_lists(only_names=True)}
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
-        elif resource_type == 'file:path':
-            return get_files()
         elif resource_type == '*:*':  # Resourceless
             return {'*'}
         return set()
