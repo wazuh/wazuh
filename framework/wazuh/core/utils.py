@@ -981,6 +981,8 @@ class WazuhDBBackend(AbstractDatabaseBackend):
                 value = f"'{v}'"
             else:
                 raise TypeError(f'Invalid type for request parameters: {type(v)}')
+            # Escape backslash to avoid re error
+            value = value.replace('\\', '\\\\')
             query = re.sub(r':\b' + re.escape(str(k)) + r'\b', value, query)
         return query
 

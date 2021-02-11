@@ -42,6 +42,20 @@ All notable changes to this project will be documented in this file.
   - Fixed evaluation of fields in the tag `<description>` of rules. ([#7073](https://github.com/wazuh/wazuh/pull/7073))
 
 
+## [v4.1.1]
+
+### Fixed
+
+- **API:**
+  - Fixed an error with the RBAC permissions in the `GET /groups` endpoint. ([#7328](https://github.com/wazuh/wazuh/issues/7328))
+  - Fixed a bug with Windows registries when parsing backslashes. ([#7309](https://github.com/wazuh/wazuh/pull/7309))
+  - Fixed an error with the RBAC permissions when assigning multiple `agent:group` resources to a policy. ([#7393](https://github.com/wazuh/wazuh/pull/7393))
+- **AWS Module:**
+  - Fixed a bug that caused an error when attempting to use an IAM Role with **CloudWatchLogs** service. ([#7330](https://github.com/wazuh/wazuh/pull/7330))
+- **Framework:**
+  - Fixed a race condition bug when using RBAC expand_group function. ([#7353](https://github.com/wazuh/wazuh/pull/7353))
+
+
 ## [v4.1.0]
 
 ### Added

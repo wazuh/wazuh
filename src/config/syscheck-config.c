@@ -2433,37 +2433,57 @@ char* check_ascci_hex (char *input) {
 }
 
 static char **get_paths_from_env_variable (char *environment_variable) {
-
     char **paths = NULL;
+    char *expandedpath = NULL;
+    int i = 0;
 
 #ifdef WIN32
-    char expandedpath[PATH_MAX + 1];
-
-    if (!ExpandEnvironmentStrings(environment_variable, expandedpath, PATH_MAX + 1)) {
-        merror("Could not expand the environment variable %s (%ld)", expandedpath, GetLastError());
+    static const char *DELIM = ";";
+    DWORD env_var_size = ExpandEnvironmentStrings(environment_variable, NULL, 0);
+    if (env_var_size <= 0) {
+        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable, GetLastError());
+        goto end;
     }
-    /* The env. variable may have multiples paths split by ; */
-    paths = OS_StrBreak(';', expandedpath, MAX_DIR_SIZE);
+    os_calloc(env_var_size, sizeof(char), expandedpath);
+    if(!ExpandEnvironmentStrings(environment_variable, expandedpath, env_var_size)){
+        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable, GetLastError());
+        os_free(expandedpath);
+        goto end;
+    }
+    str_lowercase(expandedpath);
 #else
-    char *expandedpath = NULL;
-
-    if (environment_variable[0] == '$') {
-        environment_variable++;
+    static const char *DELIM = ":";
+    if(environment_variable[0] != '$') {
+        // not an environment variable.
+        goto end;
     }
-
-    if (expandedpath = getenv(environment_variable), expandedpath) {
-        /* The env. variable may have multiples paths split by : */
-        paths = OS_StrBreak(':', expandedpath, MAX_DIR_SIZE);
+    environment_variable++;
+    char *aux = getenv(environment_variable);
+    if (!aux) {
+        merror(FIM_ERROR_EXPAND_ENV_VAR, environment_variable);
+        goto end;
+    } else {
+        os_strdup(aux, expandedpath);
     }
-
 #endif
 
-    if (paths == NULL) {
-        os_calloc(2, sizeof(char *), paths);
+    /* The env. variable may have multiples paths split by a delimiter */
+    paths = w_string_split(expandedpath, DELIM, 0);
+
+    if (paths[0] == NULL) {
         os_strdup(environment_variable, paths[0]);
-        paths[1] = NULL;
     }
 
+    for (i = 0; paths[i]; i++){
+        paths[i] = w_strtrim(paths[i]);
+    }
+
+    os_free(expandedpath);
+    return paths;
+
+end:
+    os_calloc(2, sizeof(char *), paths);
+    os_strdup(environment_variable, paths[0]);
     return paths;
 }
 

@@ -288,11 +288,20 @@
                          </File>
                         <File Id="AGENT_AUTH.EXE.MANIFEST" Name="agent-auth.exe.manifest" Source="agent-auth.exe.manifest" />
                     </Component>
-                    <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="3F72347F-1282-44C1-8A97-40BB68CAE4FB">
-                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector_win_ext.dll" Source="..\wazuh_modules\syscollector\syscollector_win_ext.dll" />
-                    </Component>
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
+                    </Component>
+                    <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
+                        <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\shared_modules\dbsync\build\bin\dbsync.dll" />
+                    </Component>
+                    <Component Id="RSYNC_DLL" DiskId="1" Guid="9F23B2D8-609D-43F6-BB90-7C81A5DF5A67">
+                        <File Id="RSYNC_DLL" Name="rsync.dll" Source="..\shared_modules\rsync\build\bin\rsync.dll" />
+                    </Component>
+                    <Component Id="SYSINFO_DLL" DiskId="1" Guid="1D244B64-E1C3-4BED-A4CF-9C25E3B3BA0F">
+                        <File Id="SYSINFO_DLL" Name="sysinfo.dll" Source="..\data_provider\build\bin\sysinfo.dll" />
+                    </Component>
+                    <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="7CE63D8B-C959-43CC-A7B6-4226414EBADB">
+                        <File Id="SYSCOLLECTOR_DLL" Name="syscollector.dll" Source="..\wazuh_modules\syscollector\build\bin\syscollector.dll" />
                     </Component>
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
@@ -432,6 +441,12 @@
                         <Directory Id="FIM" Name="fim">
                             <Directory Id="FIM_DB" Name="db" />
                         </Directory>
+                        <Directory Id="SYSCOLLECTOR" Name="syscollector">
+                            <Component Id="SYSCOLLECTOR_NORM_CONFIG" DiskId="1" Guid="40284747-C50C-4905-9A72-6236276E192E">
+                                <File Id="SYSCOLLECTOR_NORM_CONFIG" Name="norm_config.json" Source="..\wazuh_modules\syscollector\norm_config.json" />
+                            </Component>
+                            <Directory Id="SYSCOLLECTOR_DB" Name="db" />
+                        </Directory>
                         <Directory Id="LOGCOLLECTOR" Name="logcollector" />
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
@@ -494,6 +509,20 @@
                 <CreateFolder />
                 <RemoveFile Id="purgue_fim_db" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_fim_db_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="SYSCOLLECTOR">
+            <Component Id="CMP_SYSCOLLECTOR" Guid="7349FCE4-D0BF-4D63-86A0-84FCAFD071B8" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_syscollector" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_syscollector_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="SYSCOLLECTOR_DB">
+            <Component Id="CMP_SYSCOLLECTOR_DB" Guid="A32AB5A9-0545-4262-B651-6F732CA57E5A" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_syscollector_db" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_syscollector_db_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="LOGCOLLECTOR">
@@ -576,8 +605,12 @@
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="REGISTRY_INSTALL_DIR" />
             <ComponentRef Id="AGENT_AUTH.EXE" />
+            <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
+            <ComponentRef Id="RSYNC_DLL" />
+            <ComponentRef Id="DBSYNC_DLL" />
+            <ComponentRef Id="SYSINFO_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="OSSEC_PRE6.CONF" />
@@ -605,6 +638,8 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_FIM" />
             <ComponentRef Id="CMP_FIM_DB" />
+            <ComponentRef Id="CMP_SYSCOLLECTOR" />
+            <ComponentRef Id="CMP_SYSCOLLECTOR_DB" />
             <ComponentRef Id="CMP_LOGCOLLECTOR" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />

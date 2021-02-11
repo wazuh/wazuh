@@ -129,10 +129,6 @@ void update_status(agent_status_t status);
 void update_keepalive(time_t curr_time);
 void update_ack(time_t curr_time);
 
-#ifndef WIN32
-// Com request thread dispatcher
-void * agcom_main(void * arg);
-#endif
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
 
