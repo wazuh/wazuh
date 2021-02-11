@@ -19,20 +19,20 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#define AUDIT_CONF_FILE BUILDDIR(HOMEDIR,"/etc/af_wazuh.conf")
+#define AUDIT_CONF_FILE "etc/af_wazuh.conf"
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
-#define AUDIT_SOCKET BUILDDIR(HOMEDIR,"/queue/ossec/audit")
+#define AUDIT_SOCKET "queue/ossec/audit"
 #define BUF_SIZE OS_MAXSTR
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 #define RELOAD_RULES_INTERVAL 30 // Seconds to re-add Audit rules
 
-#define AUDIT_HEALTHCHECK_DIR BUILDDIR(HOMEDIR,"/tmp")
+#define AUDIT_HEALTHCHECK_DIR "tmp"
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
-#define AUDIT_HEALTHCHECK_FILE BUILDDIR(HOMEDIR,"/tmp/audit_hc")
+#define AUDIT_HEALTHCHECK_FILE "tmp/audit_hc"
 
 #ifndef WAZUH_UNIT_TESTING
 #define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
@@ -151,7 +151,9 @@ int set_auditd_config(void) {
 
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
         return -1;
     }
 
@@ -163,7 +165,9 @@ int set_auditd_config(void) {
     fprintf(fp, "format = string\n");
 
     if (fclose(fp)) {
-        merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+        merror(FCLOSE_ERROR, buffer, errno, strerror(errno));
         return -1;
     }
 
@@ -181,7 +185,9 @@ int set_auditd_config(void) {
 
         // Fallthrough
         default:
-            merror(LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
+            char buffer[PATH_MAX] = {'\0'};
+            abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+            merror(LINK_ERROR, audit_path, buffer, errno, strerror(errno));
             return -1;
         }
     }
@@ -201,7 +207,9 @@ int init_auditd_socket(void) {
     int sfd;
 
     if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0) {
-        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(AUDIT_SOCKET, buffer, PATH_MAX);
+        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, buffer);
         return (-1);
     }
 

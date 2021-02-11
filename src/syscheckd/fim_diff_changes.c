@@ -495,7 +495,9 @@ diff_data *initialize_file_diff_data(const char *filename){
 
     // Get cwd for Windows
     if (abspath(DIFF_DIR, abs_diff_dir_path, sizeof(abs_diff_dir_path)) == NULL) {
-        merror(FIM_ERROR_GET_ABSOLUTE_PATH, DIFF_DIR, strerror(errno), errno);
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(DIFF_DIR, buffer, PATH_MAX);
+        merror(FIM_ERROR_GET_ABSOLUTE_PATH, buffer, strerror(errno), errno);
         os_free(path_filtered);
         goto error;
     }
