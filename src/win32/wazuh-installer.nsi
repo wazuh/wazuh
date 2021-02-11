@@ -200,7 +200,6 @@ Section "Wazuh Agent (required)" MainSec
     File favicon.ico
     File /oname=shared\rootkit_trojans.txt ..\..\ruleset\rootcheck\db\rootkit_trojans.txt
     File /oname=shared\rootkit_files.txt ..\..\ruleset\rootcheck\db\rootkit_files.txt
-    File add-localfile.exe
     File LICENSE.txt
     File /oname=shared\win_applications_rcl.txt ..\..\ruleset\rootcheck\db\win_applications_rcl.txt
     File /oname=shared\win_malware_rcl.txt ..\..\ruleset\rootcheck\db\win_malware_rcl.txt
