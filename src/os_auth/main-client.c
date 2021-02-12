@@ -30,10 +30,10 @@
 #undef ARGV0
 #define ARGV0 "agent-auth"
 
-static void help_agent_auth(const char * home_path) __attribute__((noreturn));
+static void help_agent_auth(char * home_path) __attribute__((noreturn));
 
 /* Print help statement */
-static void help_agent_auth(const char * home_path)
+static void help_agent_auth(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
@@ -46,7 +46,6 @@ static void help_agent_auth(const char * home_path)
 #ifndef WIN32
     print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s).", home_path);
-    os_free(home_path);
 #endif
     print_out("    -m <addr>   Manager IP address.");
     print_out("    -p <port>   Manager port (default: %d).", DEFAULT_PORT);
@@ -61,6 +60,7 @@ static void help_agent_auth(const char * home_path)
     print_out("    -I <IP>     Set the agent IP address.");
     print_out("    -i          Let the agent IP address be set by the manager connection.");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -105,7 +105,11 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
+#ifndef WIN32
                 help_agent_auth(home_path);
+#else
+                help_agent_auth(NULL);
+#endif
                 break;
             case 'd':
                 debug_level = 1;
@@ -198,12 +202,18 @@ int main(int argc, char **argv)
                 target_cfg->use_src_ip = 1;
                 break;
             default:
+#ifndef WIN32
                 help_agent_auth(home_path);
+#else
+                help_agent_auth(NULL);
+#endif
                 break;
         }
     }
 
+#ifndef WIN32
     os_free(home_path);
+#endif
 
     if (optind < argc) {
         mwarn("Extra arguments detected. They will be ignored.");
@@ -265,11 +275,11 @@ int main(int argc, char **argv)
     }
 
     w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg);
-    int ret = w_enrollment_request_key(cfg, server_address); 
-    
+    int ret = w_enrollment_request_key(cfg, server_address);
+
     w_enrollment_target_destroy(target_cfg);
     w_enrollment_cert_destroy(cert_cfg);
     w_enrollment_destroy(cfg);
-    
+
     exit((ret == 0) ? 0 : 1);
 }

@@ -72,6 +72,8 @@ int rootcheck_init(int test_config, char * home_path)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
+#else
+    os_free(home_path);
 #endif
 
     /* Zero the structure, initialize default values */
