@@ -578,7 +578,7 @@ int list_agents(int cmdlist)
 
 int limitReached() {
     FILE *fp;
-    const char *keys_file = isChroot() ? KEYS_FILE : KEYSFILE_PATH;
+    const char *keys_file = KEYS_FILE;
     char buffer[OS_BUFFER_SIZE + 1];
     int counter = 0;
 
