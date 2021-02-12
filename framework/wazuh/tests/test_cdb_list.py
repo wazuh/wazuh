@@ -6,6 +6,7 @@
 import os
 import sys
 from unittest.mock import patch, MagicMock
+from wazuh.core.exception import WazuhInternalError
 
 import pytest
 
@@ -319,26 +320,26 @@ def test_get_list_file(filename, raw, expected_result, total_failed_items):
 
 
 @patch('wazuh.cdb_list.safe_move')
-@patch('wazuh.cdb_list.copyfile')
-@patch('wazuh.cdb_list.create_list_file')
+@patch('wazuh.cdb_list.delete_file_with_backup')
+@patch('wazuh.cdb_list.upload_file')
 @patch('wazuh.cdb_list.delete_list_file')
-@patch('wazuh.cdb_list.os.remove')
-@patch('wazuh.cdb_list.os.path.exists', return_value=True)
-def test_upload_list_file(mock_exists, mock_remove, mock_delete_list_file, mock_create_list_file, mock_copyfile,
-                          mock_safe_move):
+@patch('wazuh.cdb_list.remove')
+@patch('wazuh.cdb_list.exists', return_value=True)
+def test_upload_list_file(mock_exists, mock_remove, mock_delete_list_file, mock_upload_file,
+                          mock_delete_file_with_backup, mock_safe_move):
     """Check that functions inside upload_list_file are called with expected params"""
     filename = 'test_file'
     content = 'test_key:test_value\n'
     upload_list_file(filename, content, overwrite=True)
 
-    mock_create_list_file.assert_called_once_with(os.path.join(common.lists_path, filename), content, permissions=0o660)
-    mock_delete_list_file.assert_called_once_with(filename=filename)
-    mock_copyfile.assert_called_once_with(os.path.join(common.lists_path, filename),
-                                          os.path.join(common.lists_path, filename + '.backup'))
+    mock_upload_file.assert_called_once_with(content, os.path.join('etc', 'lists', filename))
+    mock_delete_file_with_backup.assert_called_once_with(os.path.join(common.lists_path, filename + '.backup'),
+                                                         os.path.join(common.lists_path, filename),
+                                                         mock_delete_list_file)
 
 
 @patch('wazuh.cdb_list.common.lists_path', return_value='/test/path')
-@patch('wazuh.cdb_list.os.remove')
+@patch('wazuh.cdb_list.remove')
 def test_upload_list_file_ko(mock_remove, mock_lists_path):
     """Check whether expected exceptions are raised."""
     result = upload_list_file(filename='test', content='')
@@ -346,7 +347,7 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1112
 
     with patch('wazuh.cdb_list.safe_move') as mock_safe_move:
-        with patch('wazuh.cdb_list.os.path.exists', return_value=True):
+        with patch('wazuh.cdb_list.exists', return_value=True):
             # File already exists and overwrite is False, raise exception
             result = upload_list_file(filename='test', content='test:content')
             assert result.render()['data']['failed_items'][0]['error']['code'] == 1905
@@ -363,9 +364,9 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
             assert result.render()['data']['failed_items'][0]['error']['code'] == 1019
 
         # Exception while trying to create list file
-        with patch('wazuh.cdb_list.os.path.exists', return_value=False):
-            result = upload_list_file(filename='test', content='test:content', overwrite=False)
-            assert result.render()['data']['failed_items'][0]['error']['code'] == 1806
+        with patch('wazuh.cdb_list.exists', return_value=False):
+            with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
+                upload_list_file(filename='test', content='test:content', overwrite=False)
 
 
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
