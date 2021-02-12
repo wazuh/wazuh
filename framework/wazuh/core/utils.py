@@ -9,7 +9,6 @@ import json
 import operator
 import random
 import re
-import shutil
 import stat
 import sys
 import time
@@ -18,9 +17,9 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from itertools import groupby, chain
 from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove
-from os.path import join
+from os.path import join, basename, relpath
 from pyexpat import ExpatError
-from shutil import Error
+from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
 from xml.dom.minidom import parseString
 from xml.etree import ElementTree as ET
@@ -29,6 +28,7 @@ from xml.etree.ElementTree import fromstring
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
+from wazuh.core.common import ossec_path
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -503,7 +503,7 @@ def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid())
     # Create temp file. Move between
     tmp_path, tmp_filename = path.split(target)
     tmp_target = path.join(tmp_path, f".{tmp_filename}.tmp")
-    shutil.move(source, tmp_target, copy_function=shutil.copyfile)
+    move(source, tmp_target, copy_function=copyfile)
 
     try:
         # Overwrite the file atomically.
@@ -513,7 +513,7 @@ def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid())
         # For example, when target is a mounted file in a Docker container
         # However, this is not an atomic operation and could lead to race conditions
         # if the file is read/written simultaneously with other processes
-        shutil.move(tmp_target, target, copy_function=shutil.copyfile)
+        move(tmp_target, target, copy_function=copyfile)
 
     # Set up metadata
     chown(target, *ownership)
@@ -1582,6 +1582,121 @@ def prettify_xml(xml_file):
         raise WazuhError(1113, str(e))
 
 
+def validate_wazuh_xml(content: str, config_file: bool = False):
+    """Validate Wazuh XML files (rules, decoders and ossec.conf)
+
+    Parameters
+    ----------
+    xml_file : str
+        Content of the XML file
+
+    Returns
+    -------
+    Checked XML content
+    """
+
+    # -- characters are not allowed in XML comments
+    content = replace_in_comments(content, '--', '%wildcard%')
+
+    # Create temporary file for parsing xml input
+    try:
+        # Beautify xml file and escape '&' character as it could come in some tag values unescaped
+        xml = parseString(f'<root>{content}</root>'.replace('&', '&amp;'))
+        # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+        indent = '  '  # indent parameter for toprettyxml function
+        pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
+        # Revert xml.dom replacings
+        # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
+        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
+            .replace("&gt;", ">").replace('&apos;', "'")
+        # Delete two first spaces of each line
+        final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
+        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
+
+        # Check if remote commands are allowed if it is a configuration file
+        config_file and check_remote_commands(final_xml)
+        # Check xml format
+        load_wazuh_xml(xml_path='', data=final_xml)
+    except ExpatError:
+        raise WazuhError(1113)
+    except WazuhError as e:
+        raise e
+    except Exception as e:
+        raise WazuhError(1113, str(e))
+
+
+def upload_file(content, path):
+    """
+    Upload files (rules, decoders and ossec.conf)
+    :param content: content of the XML file
+    :param path: Destination of the new XML file
+    :return: Confirmation message
+    """
+
+    def escape_formula_values(xml_string):
+        """Prepend with a single quote possible formula injections."""
+        formula_characters = ('=', '+', '-', '@')
+        et = ET.ElementTree(ET.fromstring(f'<root>{xml_string}</root>'))
+        full_preprend, beginning_preprend = list(), list()
+        for node in et.iter():
+            if node.tag and node.tag.startswith(formula_characters):
+                full_preprend.append(node.tag)
+            if node.text and node.text.startswith(formula_characters) and ("'" in node.text or '"' in node.text):
+                beginning_preprend.append(node.text)
+
+        for text in full_preprend:
+            xml_string = re.sub(f'<{re.escape(text)}>', f"<'{text}'>", xml_string)
+            xml_string = re.sub(f'</{re.escape(text)}>', f"</'{text}'>", xml_string)
+
+        for text in beginning_preprend:
+            xml_string = re.sub(f'>{re.escape(text)}<', f">'{text}<", xml_string)
+
+        return xml_string
+
+    # Path of temporary files for parsing xml input
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+    try:
+        with open(tmp_file_path, 'w') as tmp_file:
+            final_xml = escape_formula_values(content)
+            tmp_file.write(final_xml)
+        chmod(tmp_file_path, 0o660)
+    except IOError:
+        raise WazuhInternalError(1005)
+
+    # Move temporary file to group folder
+    try:
+        new_conf_path = join(common.ossec_path, path)
+        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
+    except Error:
+        raise WazuhInternalError(1016)
+
+    return results.WazuhResult({'message': 'File was successfully updated'})
+
+
+def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: callable):
+    """Try to delete a file doing a backup beforehand.
+
+    Parameters
+    ----------
+    backup_file : str
+        Name of the backup file.
+    abs_path : str
+        Absolute path of the file to delete.
+    delete_function : callable
+        Function that will be used to delete the file.
+
+    Raises
+    ------
+    WazuhError(1019)
+        If there is any `IOError` while doing the backup.
+    """
+    try:
+        copyfile(abs_path, backup_file)
+    except IOError:
+        raise WazuhError(1019)
+    delete_function(filename=basename(abs_path))
+
+
 def upload_xml(xml_file, path):
     """
     Upload XML files (rules, decoders and ossec.conf)
@@ -1609,43 +1724,6 @@ def upload_xml(xml_file, path):
     return results.WazuhResult({'message': 'File was successfully updated'})
 
 
-def upload_list(list_file, path):
-    """
-    Updates CDB lists
-    :param list_file: content of the list
-    :param path: Destination of the new list file
-    :return: Confirmation message.
-    """
-    # path of temporary file
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.txt'.format(common.ossec_path, time.time(), random.randint(0, 1000))
-
-    try:
-        # create temporary file
-        with open(tmp_file_path, 'w') as tmp_file:
-            # write json in tmp_file_path
-            for element in list_file.splitlines():
-                # skip empty lines
-                if not element:
-                    continue
-                tmp_file.write(element.strip() + '\n')
-        chmod(tmp_file_path, 0o640)
-    except IOError:
-        raise WazuhInternalError(1005)
-
-    # validate CDB list
-    if not validate_cdb_list(tmp_file_path):
-        raise WazuhError(1800)
-
-    # move temporary file to group folder
-    try:
-        new_conf_path = join(common.ossec_path, path)
-        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
-    except Error:
-        raise WazuhInternalError(1016)
-
-    return results.WazuhResult({'message': 'File was successfully updated'})
-
-
 def validate_xml(path):
     """
     Validates a XML file
@@ -1664,31 +1742,24 @@ def validate_xml(path):
     return True
 
 
-def validate_cdb_list(path):
-    """
-    Validates a CDB list
-    :param path: Relative path of file from origin
-    :return: True if CDB list is OK, False otherwise
-    """
-    full_path = join(common.ossec_path, path)
-    regex_cdb = re.compile(r'^[^:\s]+:[^:]*$')
-    try:
-        with open(full_path) as f:
-            for line in f:
-                # skip empty lines
-                if not line.strip():
-                    continue
-                if not re.match(regex_cdb, line):
-                    return False
-    except IOError:
-        raise WazuhInternalError(1005)
-
-    return True
-
-
 def replace_in_comments(original_content, to_be_replaced, replacement):
     xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
     for comment in xml_comment.finditer(original_content):
         good_comment = comment.group(2).replace(to_be_replaced, replacement)
         original_content = original_content.replace(comment.group(2), good_comment)
     return original_content
+
+
+def to_relative_path(full_path: str):
+    """Return a relative path from the Wazuh base directory.
+
+    Parameters
+    ----------
+    full_path : str
+        Absolute path.
+    Returns
+    -------
+    str
+        Relative path to `full_path` from `ossec_path`.
+    """
+    return relpath(full_path, ossec_path)

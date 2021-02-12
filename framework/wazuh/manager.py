@@ -14,7 +14,7 @@ from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError
 from wazuh.core.manager import status, get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array, safe_move, prettify_xml
+from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml
 from wazuh.rbac.decorators import expose_resources
 
 allowed_api_fields = {'behind_proxy_server', 'logs', 'cache', 'cors', 'use_only_authd', 'experimental_features'}
@@ -301,7 +301,7 @@ def update_ossec_conf(new_conf=None):
             raise WazuhError(1125)
 
         # Check if the configuration is valid
-        new_conf = prettify_xml(new_conf)
+        validate_wazuh_xml(new_conf, config_file=True)
 
         # Create a backup of the current configuration before attempting to replace it
         try:

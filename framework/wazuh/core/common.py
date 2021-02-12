@@ -80,6 +80,8 @@ os_pidfile = os.path.join('var', 'run')
 analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-analysisd.state')
 remoted_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-remoted.state')
 lists_path = os.path.join(ossec_path, 'etc', 'lists')
+user_rules_path = os.path.join(ossec_path, 'etc', 'rules')
+user_decoders_path = os.path.join(ossec_path, 'etc', 'decoders')
 
 # Queues
 ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')

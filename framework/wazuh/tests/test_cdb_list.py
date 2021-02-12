@@ -4,7 +4,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import shutil
 import sys
 from unittest.mock import patch, MagicMock
 
@@ -25,7 +24,6 @@ with patch('wazuh.core.common.getgrnam'):
             delete_list_file
         from wazuh.core import common
         from wazuh.core.results import AffectedItemsWazuhResult
-        from wazuh.core.exception import *
 
 RELATIVE_PATH = os.path.join("framework", "wazuh", "tests", "data", "test_cdb_list")
 NAME_FILE_1 = "test_lists_1"

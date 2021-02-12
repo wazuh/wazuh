@@ -8,7 +8,7 @@ from pathlib import Path
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
-from wazuh.core.utils import find_nth, delete_wazuh_file
+from wazuh.core.utils import find_nth, delete_wazuh_file, to_relative_path
 
 REQUIRED_FIELDS = ['relative_dirname', 'filename']
 SORT_FIELDS = ['relative_dirname', 'filename']
@@ -16,15 +16,6 @@ CDB_EXTENSION = '.cdb'
 
 _regex_path = r'^(etc/lists/)[\w\.\-/]+$'
 _pattern_path = re.compile(_regex_path)
-
-
-def get_relative_path(path):
-    """Get relative path
-
-    :param path: Original path
-    :return: Relative path (from Wazuh base directory)
-    """
-    return path.replace(common.ossec_path, '')[1:]
 
 
 def check_path(path):
@@ -54,11 +45,11 @@ def iterate_lists(absolute_path=common.lists_path, only_names=False):
 
     for name in dir_content:
         new_absolute_path = path.join(absolute_path, name)
-        new_relative_path = get_relative_path(new_absolute_path)
+        new_relative_path = to_relative_path(new_absolute_path)
         # '.cdb' and '.swp' files are skipped
         if (path.isfile(new_absolute_path)) and ('.cdb' not in name) and ('~' not in name) and not pattern.search(name):
             if only_names:
-                relative_path = get_relative_path(absolute_path)
+                relative_path = to_relative_path(absolute_path)
                 output.append({'relative_dirname': relative_path, 'filename': name})
             else:
                 items = get_list_from_file(path.join(common.ossec_path, new_relative_path))
