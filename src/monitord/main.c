@@ -59,8 +59,8 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+    // Define current working directory
     char * home_path = w_homedir(argv[0]);
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:nw:")) != -1) {
         switch (c) {
@@ -124,6 +124,12 @@ int main(int argc, char **argv)
         }
 
     }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     if (debug_level == 0) {
         /* Get debug level */
