@@ -405,7 +405,7 @@ STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const c
     }
 
 #ifndef WIN32
-    return snprintf(finalpath, PATH_MAX + 1, "%s/%s", isChroot() ? "" : basedir, filename) > PATH_MAX ? -1 : 0;
+    return snprintf(finalpath, PATH_MAX + 1, "%s/%s", basedir, filename) > PATH_MAX ? -1 : 0;
 #else
     return snprintf(finalpath, PATH_MAX + 1, "%s\\%s", basedir, filename) > PATH_MAX ? -1 : 0;
 #endif

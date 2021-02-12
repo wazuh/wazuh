@@ -622,7 +622,7 @@ int w_init_shared_download()
         return OS_INVALID;
     }
 
-    snprintf(yaml_file, OS_SIZE_1024, "%s/%s", isChroot() ? "" : SHAREDCFG_DIR, W_SHARED_YAML_FILE);
+    snprintf(yaml_file, OS_SIZE_1024, "%s/%s", SHAREDCFG_DIR, W_SHARED_YAML_FILE);
 
     if (w_prepare_parsing() == 1) {
         /* Check download module connection */
