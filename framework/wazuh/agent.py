@@ -47,7 +47,7 @@ def get_distinct_agents(agent_list=None, offset=0, limit=common.database_limit, 
                                       none_msg='No agent information was returned'
                                       )
 
-    if len(agent_list) != 0:
+    if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         db_query = WazuhDBQueryGroupByAgents(filter_fields=fields, offset=offset, limit=limit, sort=sort,
@@ -75,7 +75,7 @@ def get_agents_summary_status(agent_list=None):
     WazuhResult
     """
     summary = {'active': 0, 'disconnected': 0, 'never_connected': 0, 'pending': 0, 'total': 0}
-    if len(agent_list) != 0:
+    if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         # We don't consider agent 000 in order to get the summary
@@ -105,7 +105,7 @@ def get_agents_summary_os(agent_list=None):
     result = AffectedItemsWazuhResult(none_msg='Could not get the operative system of the agents',
                                       all_msg='Showing the operative system of all specified agents',
                                       some_msg='Could not get the operative system of some agents')
-    if len(agent_list) != 0:
+    if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         # We don't consider agent 000 in order to get the summary
@@ -190,7 +190,7 @@ def get_agents(agent_list=None, offset=0, limit=common.database_limit, sort=None
                                       some_msg='Some agents information was not returned',
                                       none_msg='No agent information was returned'
                                       )
-    if len(agent_list) != 0:
+    if agent_list:
         if filters is None:
             filters = dict()
 
@@ -278,7 +278,7 @@ def delete_agents(agent_list=None, backup=False, purge=False, status=None, older
                                       some_msg='Some agents were not deleted',
                                       none_msg='No agents were deleted'
                                       )
-    if len(agent_list) != 0:
+    if agent_list:
         system_agents = get_agents_info()
         filters = {'older_than': older_than, 'status': status}
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
@@ -352,32 +352,33 @@ def get_agent_groups(group_list=None, offset=0, limit=None, sort=None, search=No
                                       some_msg='Some groups information was not returned',
                                       none_msg='No group information was returned'
                                       )
+    if group_list:
 
-    # Add failed items
-    for invalid_group in set(group_list) - get_groups():
-        result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
+        # Add failed items
+        for invalid_group in set(group_list) - get_groups():
+            result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
-    rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list)
+        rbac_filters = get_rbac_filters(system_resources=get_groups(), permitted_resources=group_list)
 
-    group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
-    query_data = group_query.run()
+        group_query = WazuhDBQueryGroup(offset=offset, limit=limit, sort=sort, search=search, **rbac_filters)
+        query_data = group_query.run()
 
-    for group in query_data['items']:
-        full_entry = path.join(common.shared_path, group['name'])
+        for group in query_data['items']:
+            full_entry = path.join(common.shared_path, group['name'])
 
-        # merged.mg and agent.conf sum
-        merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-        conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
+            # merged.mg and agent.conf sum
+            merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
+            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
 
-        if merged_sum:
-            group['mergedSum'] = merged_sum
+            if merged_sum:
+                group['mergedSum'] = merged_sum
 
-        if conf_sum:
-            group['configSum'] = conf_sum
-        affected_groups.append(group)
+            if conf_sum:
+                group['configSum'] = conf_sum
+            affected_groups.append(group)
 
-    result.affected_items = affected_groups
-    result.total_affected_items = query_data['totalItems']
+        result.affected_items = affected_groups
+        result.total_affected_items = query_data['totalItems']
 
     return result
 
@@ -676,7 +677,7 @@ def get_outdated_agents(agent_list=None, offset=0, limit=common.database_limit, 
                                       some_msg='Some agents information was not returned',
                                       none_msg='No agent information was returned'
                                       )
-    if len(agent_list) != 0:
+    if agent_list:
         # Get manager version
         manager = Agent(id='000')
         manager.load_info_from_db()

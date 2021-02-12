@@ -15,8 +15,8 @@
 #include <memory>
 #include <chrono>
 #include "defs.h"
-#include "dbsync.h"
-#include "rsync.h"
+#include "dbsync.hpp"
+#include "rsync.hpp"
 #include "sysInfo.hpp"
 #include "syscollector.hpp"
 
@@ -61,34 +61,33 @@ int main(int argc, const char* argv[])
         }
     };
 
-    const auto errorLogFunction
+    const auto logFunction
+    {
+        [](const syscollector_log_level_t level, const std::string& log)
+        {
+            static const std::map<syscollector_log_level_t, std::string> s_logStringMap
+            {
+                {SYS_LOG_ERROR, "ERROR"},
+                {SYS_LOG_INFO, "INFO"},
+                {SYS_LOG_DEBUG, "DEBUG"},
+                {SYS_LOG_DEBUG_VERBOSE, "DEBUG2"}
+            };
+            std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
+        }
+    };
+
+    const auto logErrorFunction
     {
         [](const std::string& log)
         {
-            std::cout << "Error Log:" << std::endl;
-            std::cout << log << std::endl;
+            std::cout << "ERROR: " << log << std::endl;
         }
     };
-    const auto infoLogFunction
-    {
-        [](const std::string& log)
-        {
-            std::cout << "Info Log:" << std::endl;
-            std::cout << log << std::endl;
-        }
-    };
-    const auto debugLogFunction
-    {
-        [](const std::string& log)
-        {
-            std::cout << "Debug Log:" << std::endl;
-            std::cout << log << std::endl;
-        }
-    };
+
     const std::chrono::milliseconds timeout{5000};
     const auto spInfo{ std::make_shared<SysInfo>() };
-    rsync_initialize(logFunction);
-    dbsync_initialize(logFunction);
+    RemoteSync::initialize(logErrorFunction);
+    DBSync::initialize(logErrorFunction);
     try
     {
         std::thread thread
@@ -110,9 +109,7 @@ int main(int argc, const char* argv[])
         Syscollector::instance().init(spInfo,
                                       reportDiffFunction,
                                       reportSyncFunction,
-                                      errorLogFunction,
-                                      infoLogFunction,
-                                      debugLogFunction,
+                                      logFunction,
                                       SYSCOLLECTOR_DB_DISK_PATH,
                                       SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
                                       SYSCOLLECTOR_NORM_TYPE,
@@ -136,7 +133,7 @@ int main(int argc, const char* argv[])
     {
         std::cout << ex.what() << std::endl;
     }
-    rsync_teardown();
-    dbsync_teardown();
+    RemoteSync::teardown();
+    DBSync::teardown();
     return 0;
 }
