@@ -216,7 +216,11 @@ namespace Utils
             const std::wstring wfriendlyName(adapterName);
             if (!wfriendlyName.empty())
             {
-                retVal.assign(wfriendlyName.begin(), wfriendlyName.end());
+                const auto wSize{static_cast<int>(wfriendlyName.size())};
+                const auto sizeNeeded {WideCharToMultiByte(CP_UTF8, 0, wfriendlyName.data(), wSize, nullptr, 0, nullptr, nullptr)};
+                const auto buffer{std::make_unique<char[]>(sizeNeeded)};
+                WideCharToMultiByte(CP_UTF8, 0, wfriendlyName.data(), wSize, buffer.get(), sizeNeeded, nullptr, nullptr);
+                retVal.assign(buffer.get(), sizeNeeded);
             }
             return retVal;
         }
