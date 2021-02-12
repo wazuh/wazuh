@@ -15,7 +15,28 @@ marks:
   - rbac_tests
 
 stages:
-  - name: Try to run an Active Response command
+  - name: Try to run an Active Response command (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/active-response"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        command: "restart-ossec0"
+        arguments: [ "-", "null", "(from_the_server)", "(no_rule_id)" ]
+    response: &empty_response
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Try to run an Active Response command (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/active-response"
@@ -37,7 +58,7 @@ stages:
 test_name: DELETE /agents
 
 stages:
-  - name: Try to remove all agents
+  - name: Try to remove all agents (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents"
@@ -47,21 +68,27 @@ stages:
         status: all
       headers:
         Authorization: "Bearer {test_login_token}"
-    response: &empty_response
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: []
-          failed_items: []
-          total_affected_items: 0
-          total_failed_items: 0
+    response:
+      <<: *empty_response
+
+  - name: Try to remove one agent (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: DELETE
+      params:
+        agents_list: '001'
+        status: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /agents
 
 stages:
-  - name: Try to get all agents
+  - name: Try to get all agents (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents"
@@ -70,6 +97,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to get one agent (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: POST /agents
@@ -224,7 +263,17 @@ stages:
 test_name: GET /agents/upgrade_result
 
 stages:
-  - name: Try to get agent 007 upgrade result
+  - name: Try to get all upgrade results (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to get agent 007 upgrade result (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_result"
@@ -364,7 +413,7 @@ stages:
 test_name: PUT /agents/restart
 
 stages:
-  - name: Try to restart all agents
+  - name: Try to restart all agents (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
@@ -373,6 +422,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to restart agent 001 (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
+      method: PUT
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /agents/stats/distinct
@@ -512,7 +573,7 @@ stages:
 test_name: GET /cluster/api/config
 
 stages:
-  - name: Try to get api config (worker1)
+  - name: Try to get all nodes api config (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
@@ -521,6 +582,19 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+
+  - name: Try to get master-node api config (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      method: GET
+      params:
+        nodes_list: master-node
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/{node_id}/status
@@ -717,7 +791,7 @@ stages:
 test_name: PUT /cluster/restart
 
 stages:
-  - name: Try to restart all nodes
+  - name: Try to restart all nodes (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
@@ -727,11 +801,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to restart master-node node (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      params:
+        nodes_list: master-node
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /cluster/configuration/validation
 
 stages:
-  - name: Try to request cluster validation
+  - name: Try to request cluster validation (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
@@ -740,6 +826,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to request master-node validation (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      method: GET
+      params:
+        nodes_list: master-node
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /cluster/{node_id}/configuration/{component}/{configuration}
@@ -759,7 +857,7 @@ stages:
 test_name: GET /decoders
 
 stages:
-  - name: Try to get decoders
+  - name: Try to get decoders (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/decoders"
@@ -769,11 +867,33 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to one decoder (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders"
+      method: GET
+      params:
+        decoder_names: agent-buffer
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1504
+          total_affected_items: 0
+          total_failed_items: 1
+
+
 ---
 test_name: GET /decoders/files
 
 stages:
-  - name: Try to get decoders files
+  - name: Try to get decoders files (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
@@ -782,6 +902,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to get one decoder file (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files"
+      method: GET
+      params:
+        filename: local_decoder.xml
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /decoders/files/{file}/download
@@ -815,7 +947,7 @@ stages:
 test_name: DELETE /experimental/syscheck
 
 stages:
-  - name: Try to delete all experimental syscheck data
+  - name: Try to delete all experimental syscheck data (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
@@ -827,11 +959,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to delete agent 001 experimental syscheck data (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscheck"
+      method: DELETE
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/ciscat/results
 
 stages:
-  - name: Try to get agents ciscat results (experimental)
+  - name: Try to get agents ciscat results (experimental) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
@@ -841,11 +985,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 ciscat results (experimental) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
+      params:
+        agents_list: '001'
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/hardware
 
 stages:
-  - name: Try to get agents hardware (experimental syscollector)
+  - name: Try to get agents hardware (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
@@ -855,11 +1011,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 hardware (experimental syscollector) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hardware"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/netaddr
 
 stages:
-  - name: Try to get agents netaddr (experimental syscollector)
+  - name: Try to get agents netaddr (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
@@ -869,11 +1037,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 netaddr (experimental syscollector) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netaddr"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/netiface
 
 stages:
-  - name: Try to get agents netiface (experimental syscollector)
+  - name: Try to get agents netiface (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
@@ -883,11 +1063,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 netiface (experimental syscollector) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netiface"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/netproto
 
 stages:
-  - name: Try to get agents netproto (experimental syscollector)
+  - name: Try to get agents netproto (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
@@ -897,11 +1089,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 netproto (experimental syscollector) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/netproto"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/os
 
 stages:
-  - name: Try to get agents OS (experimental syscollector)
+  - name: Try to get agents OS (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
@@ -911,11 +1115,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 OS (experimental syscollector) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/os"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/packages
 
 stages:
-  - name: Try to get agents packages (experimental syscollector)
+  - name: Try to get agents packages (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
@@ -925,11 +1141,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 packages (experimental syscollector) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/packages"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/ports
 
 stages:
-  - name: Try to get agents ports (experimental syscollector)
+  - name: Try to get agents ports (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
@@ -939,11 +1167,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 ports (experimental syscollector) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/ports"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/processes
 
 stages:
-  - name: Try to get agents processes (experimental syscollector)
+  - name: Try to get agents processes (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
@@ -953,11 +1193,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 processes (experimental syscollector) (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/processes"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /experimental/syscollector/hotfixes
 
 stages:
-  - name: Try to get agents hotfixes (experimental syscollector)
+  - name: Try to get agents hotfixes (experimental syscollector) (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
@@ -967,11 +1219,35 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get agent 001 hotfixes (experimental syscollector) (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/experimental/syscollector/hotfixes"
+      method: GET
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: DELETE /groups
 
 stages:
-  - name: Try to delete group3
+  - name: Try to delete all groups (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: DELETE
+      params:
+        groups_list: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete group3 (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups"
@@ -987,7 +1263,7 @@ stages:
 test_name: GET /groups
 
 stages:
-  - name: Try to get all groups
+  - name: Try to get all groups (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/groups"
@@ -996,6 +1272,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to get group1 (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups"
+      method: GET
+      params:
+        groups_list: group1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: POST /groups
@@ -1104,7 +1392,7 @@ stages:
 test_name: GET /lists
 
 stages:
-  - name: Try to get all CDB lists
+  - name: Try to get all CDB lists (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists"
@@ -1114,11 +1402,24 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get one CDB list (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      method: GET
+      params:
+        relative_dirname: etc/lists
+        filename: audit-keys
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: GET /lists/files
 
 stages:
-  - name: Try to get all CDB lists paths
+  - name: Try to get all CDB lists paths (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists/files"
@@ -1127,6 +1428,19 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to get one CDB list path (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files"
+      method: GET
+      params:
+        relative_dirname: etc/lists
+        filename: audit-keys
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: PUT /logtest
@@ -1452,7 +1766,7 @@ stages:
 test_name: DELETE /rootcheck
 
 stages:
-  - name: Try to delete rootcheck data
+  - name: Try to delete rootcheck data (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
@@ -1462,11 +1776,23 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to delete agent 001 rootcheck data (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      method: DELETE
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: PUT /rootcheck
 
 stages:
-  - name: Try to run rootcheck scan
+  - name: Try to run rootcheck scan (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
@@ -1475,6 +1801,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to run rootcheck scan (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck"
+      method: PUT
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /rootcheck/{agent_id}/last_scan
@@ -1508,7 +1846,7 @@ stages:
 test_name: GET /rules
 
 stages:
-  - name: Try to get all rules
+  - name: Try to get all rules (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/rules"
@@ -1518,6 +1856,26 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get a rule (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules"
+      method: GET
+      params:
+        rule_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1208
+          total_affected_items: 0
+          total_failed_items: 1
 ---
 test_name: GET /rules/groups
 
@@ -1550,7 +1908,7 @@ stages:
 test_name: GET /rules/files
 
 stages:
-  - name: Try to get rules files
+  - name: Try to get rules files (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/rules/files"
@@ -1559,6 +1917,19 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to get rules file (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
+      method: GET
+      params:
+        relative_dirname: ruleset/rules
+        filename: 0010-rules_config.xml
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /rules/files/{filename}/download
@@ -1592,7 +1963,7 @@ stages:
 test_name: GET /security/users
 
 stages:
-  - name: Try to get API users
+  - name: Try to get API users (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/users"
@@ -1601,6 +1972,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to get API user (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        user_ids: 1
+    response:
+      <<: *permission_denied
 
 ---
 test_name: POST /security/users
@@ -1624,7 +2007,19 @@ stages:
 test_name: DELETE /security/users
 
 stages:
-  - name: Try to delete API user
+  - name: Try to delete API users (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users"
+      method: DELETE
+      params:
+        user_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete API user (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/users"
@@ -1656,7 +2051,7 @@ stages:
 test_name: GET /security/roles
 
 stages:
-  - name: Try to get API roles
+  - name: Try to get API roles (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -1665,6 +2060,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to get API role (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: GET
+      params:
+        role_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: POST /security/roles
@@ -1686,7 +2093,20 @@ stages:
 test_name: DELETE /security/roles
 
 stages:
-  - name: Try to delete API role
+  - name: Try to delete API roles (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
+      method: DELETE
+      params:
+        role_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+
+  - name: Try to delete API role (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/roles"
@@ -1718,7 +2138,7 @@ stages:
 test_name: GET /security/rules
 
 stages:
-  - name: Try to get API rules
+  - name: Try to get API rules (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/rules"
@@ -1727,6 +2147,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to get API rule (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: GET
+      params:
+        rule_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: POST /security/rules
@@ -1770,7 +2202,19 @@ stages:
 test_name: DELETE /security/rules
 
 stages:
-  - name: Try to delete API rule
+  - name: Try to delete API rules (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/rules"
+      method: DELETE
+      params:
+        rule_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete API rule (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/rules"
@@ -1786,7 +2230,7 @@ stages:
 test_name: GET /security/policies
 
 stages:
-  - name: Try to get API policies
+  - name: Try to get API policies (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -1796,11 +2240,35 @@ stages:
     response:
       <<: *empty_response
 
+  - name: Try to get API policy (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      method: GET
+      params:
+        policy_ids: 1
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: DELETE /security/policies
 
 stages:
-  - name: Try to delete API policy
+  - name: Try to delete API policy (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/policies"
+      method: DELETE
+      params:
+        policy_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to delete API policy (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/policies"
@@ -1879,8 +2347,23 @@ stages:
 ---
 test_name: DELETE /security/users/{user_id}/roles
 
+marks:
+  - xfail # Fails due to https://github.com/wazuh/wazuh/issues/7473
+
 stages:
-  - name: Try to remove roles from user
+  - name: Try to remove roles from user (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/99/roles"
+      method: DELETE
+      params:
+        role_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to remove role from user (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/users/99/roles"
@@ -1927,8 +2410,23 @@ stages:
 ---
 test_name: DELETE /security/roles/{role_id}/policies
 
+marks:
+  - xfail # Fails due to https://github.com/wazuh/wazuh/issues/7473
+
 stages:
-  - name: Try to remove policies from role
+  - name: Try to remove policies from role (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/policies"
+      method: DELETE
+      params:
+        policy_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to remove policy from role (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/policies"
@@ -1943,8 +2441,23 @@ stages:
 ---
 test_name: DELETE /security/roles/{role_id}/rules
 
+marks:
+  - xfail # Fails due to https://github.com/wazuh/wazuh/issues/7473
+
 stages:
-  - name: Try to remove rules from role
+  - name: Try to remove rules from role (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/rules"
+      method: DELETE
+      params:
+        rule_ids: all
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to remove rule from role (specific)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/1/rules"
@@ -2032,7 +2545,7 @@ stages:
 test_name: PUT /syscheck
 
 stages:
-  - name: Try to run syscheck scan
+  - name: Try to run syscheck scan (generic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/syscheck"
@@ -2041,6 +2554,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
+
+  - name: Try to run syscheck scan (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck"
+      method: PUT
+      params:
+        agents_list: '001'
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
 
 ---
 test_name: GET /syscheck/{agent_id}
