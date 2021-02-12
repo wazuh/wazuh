@@ -137,9 +137,6 @@ stages:
         - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "task_id"
-      save:
-        json:
-          select_id_items: data.affected_items
 
   - name: Try to get tasks using select parameter with more than a field
     request:
@@ -184,7 +181,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            affected_items: "{select_id_items}"
+            key: "task_id"
 
   - name: Verify that query parameter works as expected
     request:
