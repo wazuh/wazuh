@@ -34,7 +34,7 @@
 #include "os_err.h"
 
 /* Prototypes */
-static void help_authd(const char * home_path) __attribute((noreturn));
+static void help_authd(char * home_path) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */
@@ -70,7 +70,7 @@ pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 
 /* Print help statement */
-static void help_authd(const char * home_path)
+static void help_authd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtfi] [-g group] [-D dir] [-p port] [-P] [-c ciphers] [-v path [-s]] [-x path] [-k path]", ARGV0);

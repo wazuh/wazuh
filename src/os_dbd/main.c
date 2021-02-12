@@ -19,7 +19,7 @@
 static void print_db_info(void);
 static void cleanup();
 static void handler(int signum);
-static void help_dbd(const char *home_path) __attribute__((noreturn));
+static void help_dbd(char *home_path) __attribute__((noreturn));
 
 
 /* Print information regarding enabled databases */
@@ -39,7 +39,7 @@ static void print_db_info()
 }
 
 /* Print help statement */
-static void help_dbd(const char *home_path)
+static void help_dbd(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtfv] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -73,8 +73,8 @@ int main(int argc, char **argv)
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = OSSECCONF;
-    const char *home_path = w_homedir(argv[0]);
-	
+    char *home_path = w_homedir(argv[0]);
+
     /* Database Structure */
     DBConfig db_config;
     db_config.error_count = 0;

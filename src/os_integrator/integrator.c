@@ -389,7 +389,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(temp_file_created == 1)
             {
                 int dbg_lvl = isDebug();
-                snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", absPath, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
+                os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", absPath, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
                 if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
                 mdebug1("Running: %s", exec_full_cmd);
@@ -419,7 +419,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         } else {
                             merror("Command (%s) execution exited abnormally.", exec_full_cmd);
                         }
-                        
+
                     } else {
                         merror("Could not launch command %s (%d)", strerror(errno), errno);
                     }

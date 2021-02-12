@@ -20,7 +20,7 @@
 // LCOV_EXCL_START
 
 /* Print help statement */
-__attribute__((noreturn)) static void help_syscheckd(const char *home_path)
+__attribute__((noreturn)) static void help_syscheckd(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);

@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
-    const char *home_path = w_homedir(argv[0]);
+    char *home_path = w_homedir(argv[0]);
     char *user = MAILUSER;
     char *group = GROUPGLOBAL;
     char *cfg = OSSECCONF;

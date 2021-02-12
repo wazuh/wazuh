@@ -24,13 +24,13 @@ char _g_subject[SUBJECT_SIZE + 2];
 
 /* Prototypes */
 static void OS_Run(MailConfig *mail) __attribute__((nonnull)) __attribute__((noreturn));
-static void help_maild(const char *home_path) __attribute__((noreturn));
+static void help_maild(char *home_path) __attribute__((noreturn));
 
 /* Mail Structure */
 MailConfig mail;
 
 /* Print help statement */
-static void help_maild(const char *home_path)
+static void help_maild(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
-    const char *home_path = w_homedir(argv[0]);
+    char *home_path = w_homedir(argv[0]);
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
     const char *cfg = OSSECCONF;

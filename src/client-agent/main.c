@@ -19,11 +19,11 @@
 
 
 /* Prototypes */
-static void help_agentd(const char *home_path) __attribute((noreturn));
+static void help_agentd(char *home_path) __attribute((noreturn));
 
 
 /* Print help statement */
-static void help_agentd(const char *home_path)
+static void help_agentd(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config]", ARGV0);
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
-    const char *home_path = w_homedir(argv[0]);
+    char *home_path = w_homedir(argv[0]);
     agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     const char *user = USER;
