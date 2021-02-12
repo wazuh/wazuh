@@ -90,6 +90,8 @@ int main(int argc, char **argv)
         }
     }
 
+    os_free(home_path);
+
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
@@ -158,13 +160,7 @@ int main(int argc, char **argv)
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
-    } else {
-        if (chdir(home_path) == -1) {
-            merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-        }
     }
-
-    os_free(home_path);
 
     /* Start signal handling */
     StartSIG(ARGV0);

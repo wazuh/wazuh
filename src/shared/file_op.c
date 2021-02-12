@@ -1162,11 +1162,6 @@ void goDaemonLight()
 
     dup2(1, 2);
 
-    /* Go to / */
-    if (chdir("/") == -1) {
-        merror(CHDIR_ERROR, "/", errno, strerror(errno));
-    }
-
     nowDaemon();
 }
 
@@ -1206,11 +1201,6 @@ void goDaemon()
         dup2(fd, 2);
 
         close(fd);
-    }
-
-    /* Go to / */
-    if (chdir("/") == -1) {
-        merror(CHDIR_ERROR, "/", errno, strerror(errno));
     }
 
     nowDaemon();

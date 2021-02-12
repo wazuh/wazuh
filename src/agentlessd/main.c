@@ -133,10 +133,6 @@ int main(int argc, char **argv)
         goDaemonLight();
     }
 
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
-
     /* Exit if not configured */
     if (!lessdc.entries) {
         minfo("Not configured. Exiting.");
