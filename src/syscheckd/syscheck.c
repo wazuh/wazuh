@@ -101,8 +101,6 @@ int Start_win32_Syscheck()
     /* Read internal options */
     read_internal(debug_level);
 
-    mdebug1(STARTED_MSG);
-
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {
         merror_exit(NO_CONFIG, cfg);

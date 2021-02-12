@@ -266,7 +266,7 @@ int main(int argc, char **argv)
 
     /* Basic start up completed */
     mdebug1(PRIVSEP_MSG, home_path, user);
-	os_free(home_path);
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

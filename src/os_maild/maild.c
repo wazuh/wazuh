@@ -203,7 +203,7 @@ int main(int argc, char **argv)
     }
 
     mdebug1(PRIVSEP_MSG, home_path, user);
-	os_free(home_path);
+    os_free(home_path);
 
     // Start com request thread
     w_create_thread(mailcom_main, NULL);

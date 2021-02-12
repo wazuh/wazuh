@@ -616,7 +616,6 @@
 #define WAZUH_HOMEDIR "Wazuh home directory: %s"
 
 /* Debug Messages */
-#define STARTED_MSG "Starting ..."
 #define FOUND_USER  "Found user/group ..."
 #define ASINIT      "Active response initialized ..."
 #define READ_CONFIG "Read configuration ..."

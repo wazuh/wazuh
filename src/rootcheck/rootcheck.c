@@ -201,7 +201,6 @@ int rootcheck_init(int test_config)
         mtinfo(ARGV0, "Rootcheck disabled.");
         return (1);
     }
-    mtdebug1(ARGV0, STARTED_MSG);
 
 #ifndef WIN32
     /* Check if Unix audit file is configured */
