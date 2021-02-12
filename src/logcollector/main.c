@@ -75,7 +75,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_logcollector();
+                help_logcollector(home_path);
                 break;
             case 'd':
                 nowDebug();

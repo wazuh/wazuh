@@ -94,7 +94,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_dbd();
+                help_dbd(home_path);
                 break;
             case 'd':
                 nowDebug();

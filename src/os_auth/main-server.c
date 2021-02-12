@@ -34,7 +34,7 @@
 #include "os_err.h"
 
 /* Prototypes */
-static void help_authd(void) __attribute((noreturn));
+static void help_authd(const char * home_path) __attribute((noreturn));
 static int ssl_error(const SSL *ssl, int ret);
 
 /* Thread for dispatching connection pool */

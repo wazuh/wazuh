@@ -67,7 +67,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_remoted();
+                help_remoted(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
                 nocmerged = 1;
                 break;
             default:
-                help_remoted();
+                help_remoted(home_path);
                 break;
         }
     }
