@@ -34,7 +34,7 @@ void *skthread()
 int local_start()
 {
     int rc;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
     WSADATA wsaData;
     DWORD  threadID;
     DWORD  threadID2;
