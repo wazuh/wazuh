@@ -73,12 +73,6 @@ elif [ "x$1" = "xsave" ]; then
     exit 0;
 
 elif [ "x$1" = "xrestore" ]; then
-<<<<<<< HEAD
-
-    ls -la /etc/ossec-init.conf > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        echo "ERROR: Unable to restore rules. You must have Wazuh installed to do so."
-=======
     if [ "X${2}" = "X" ]; then
         echo "ERROR: You must specify the installation path. i.e.: ${0} $1 WAZUH_HOME"
         exit 1;
@@ -88,7 +82,6 @@ elif [ "x$1" = "xrestore" ]; then
     eval $(${WAZUH_HOME}/bin/wazuh-control info 2>/dev/null)
     if [ "X$WAZUH_TYPE" = "X" ]; then
         echo "ERROR: Unable to save rules. You must have Wazuh installed to do so."
->>>>>>> master
         exit 1;
     fi
     if [ "$WAZUH_TYPE" = "agent" ]; then
