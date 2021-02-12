@@ -136,7 +136,7 @@ int Start_win32_Syscheck()
     }
 
     /* Rootcheck config */
-    if (rootcheck_init(0) == 0) {
+    if (rootcheck_init(0, NULL) == 0) {
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;

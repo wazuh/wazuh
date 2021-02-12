@@ -55,10 +55,11 @@ int main(int argc, char **argv)
 {
     int test_config = 0;
     const char *cfg = "./rootcheck.conf";
+    char * home_path = w_homedir(argv[0]);
 
 #else
 
-int rootcheck_init(int test_config)
+int rootcheck_init(int test_config, char * home_path)
 {
     const char *cfg = OSSECCONF;
 
@@ -66,11 +67,12 @@ int rootcheck_init(int test_config)
 
     int c;
 
-    char * home_path = w_homedir(argv[0]);
+#ifndef WIN32
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
+#endif
 
     /* Zero the structure, initialize default values */
     rootcheck.workdir = NULL;
@@ -215,8 +217,8 @@ int rootcheck_init(int test_config)
     if (rootcheck.workdir == NULL) {
         rootcheck.workdir = home_path;
     }
-#endif
     os_free(home_path);
+#endif
 
 #ifdef OSSECHIDS
     /* Start up message */

@@ -92,7 +92,7 @@ int __wrap_Read_Syscheck_Config(const char * file)
     return mock();
 }
 
-int __wrap_rootcheck_init(int value)
+int __wrap_rootcheck_init(int value, char * home_path)
 {
     return mock();
 }

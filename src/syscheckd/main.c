@@ -139,7 +139,7 @@ int main(int argc, char **argv)
     }
 
     /* Rootcheck config */
-    if (rootcheck_init(test_config) == 0) {
+    if (rootcheck_init(test_config, home_path) == 0) {
         syscheck.rootcheck = 1;
     } else {
         syscheck.rootcheck = 0;
