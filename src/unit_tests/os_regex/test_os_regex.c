@@ -52,6 +52,8 @@ void test_success_match(void **state)
         {"^bin$|^shell$", "shell", ""},
         {"^bin$|^shell$|^ftp$", "shell", ""},
         {"^bin$|^shell$|^ftp$", "ftp", ""},
+        {"!test1", "test2", ""},
+        {"\0", "", ""},
         {NULL, NULL, NULL}
     };
 
@@ -64,6 +66,9 @@ void test_fail_match(void **state)
 {
     (void) state;
 
+    char large_pattern[OS_PATTERN_MAXSIZE + 2] = {[0 ... OS_PATTERN_MAXSIZE + 1] 'a' };
+    large_pattern[OS_PATTERN_MAXSIZE + 1] = '\0';
+
     const char *tests[][3] = {
         {"abc", "abb", ""},
         {"^ab", " ab", ""},
@@ -75,13 +80,17 @@ void test_fail_match(void **state)
         {"lala$", "lalalalalal", ""},
         {"^ab$", "abc", ""},
         {"zzzz$", "zzzzzzzzzzzz ", ""},
+        {"zzzz$", "zzz", ""},
         {"^bin$|^shell$", "bina", ""},
         {"^bin$|^shell$", "shella", ""},
         {"^bin$|^shell$", "ashell", ""},
+        {"!test1", "test1", ""},
+        {large_pattern, "", ""},
+        {NULL, "", ""},
         {NULL, NULL, NULL}
     };
 
-    for (int i = 0; tests[i][0] != NULL ; i++) {
+    for (int i = 0; tests[i][0] != NULL || tests[i][1] != NULL ; i++) {
         assert_int_not_equal(OS_Match2(tests[i][0], tests[i][1]), 1);
     }
 }
@@ -292,6 +301,45 @@ void test_success_strhowclosedmatch(void **state)
 
     for (int i = 0; tests[i][0] != NULL ; i++) {
         assert_int_equal(OS_StrHowClosedMatch(tests[i][0], tests[i][1]), (unsigned) atoi(tests[i][2]));
+    }
+}
+
+void test_success_str_starts_with(void **state)
+{
+    (void) state;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    const char *tests[][2] = {
+        { "test1234", "test" },
+        { "test", "test" },
+        { "test", "" },
+        { "", "" },
+        {NULL, NULL},
+    };
+
+    for (int i = 0; tests[i][0] != NULL ; i++) {
+        assert_int_equal(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
+    }
+}
+
+void test_fail_str_starts_with(void **state)
+{
+    (void) state;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    const char *tests[][2] = {
+        { "test", "test1234" },
+        { "", "test" },
+        {NULL, NULL},
+    };
+
+
+    for (int i = 0; tests[i][0] != NULL ; i++) {
+        assert_int_not_equal(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
     }
 }
 
@@ -716,45 +764,6 @@ void test_regexmap_lt(void **state)
     }
 }
 
-void test_success_str_starts_with(void **state)
-{
-    (void) state;
-
-    /*
-     * Please note that all strings are \ escaped
-     */
-    const char *tests[][2] = {
-        { "test1234", "test" },
-        { "test", "test" },
-        { "test", "" },
-        { "", "" },
-        {NULL, NULL},
-    };
-
-    for (int i = 0; tests[i][0] != NULL ; i++) {
-        assert_int_equal(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
-    }
-}
-
-void test_fail_str_starts_with(void **state)
-{
-    (void) state;
-
-    /*
-     * Please note that all strings are \ escaped
-     */
-    const char *tests[][2] = {
-        { "test", "test1234" },
-        { "", "test" },
-        {NULL, NULL},
-    };
-
-
-    for (int i = 0; tests[i][0] != NULL ; i++) {
-        assert_int_not_equal(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
-    }
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_success_match),
@@ -766,6 +775,8 @@ int main(void) {
         cmocka_unit_test(test_success_strisnum),
         cmocka_unit_test(test_fail_strisnum),
         cmocka_unit_test(test_success_strhowclosedmatch),
+        cmocka_unit_test(test_success_str_starts_with),
+        cmocka_unit_test(test_fail_str_starts_with),
         cmocka_unit_test(test_strbreak),
         cmocka_unit_test(test_regex_extraction),
         cmocka_unit_test(test_hostname_map),
@@ -785,8 +796,6 @@ int main(void) {
         cmocka_unit_test(test_regexmap_dollar),
         cmocka_unit_test(test_regexmap_or),
         cmocka_unit_test(test_regexmap_lt),
-        cmocka_unit_test(test_success_str_starts_with),
-        cmocka_unit_test(test_fail_str_starts_with),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
