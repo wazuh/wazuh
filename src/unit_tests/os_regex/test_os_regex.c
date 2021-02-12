@@ -158,6 +158,13 @@ void test_success_regex(void **state)
         {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:590:12] RPC portmap ypserv request UDP [Classification: Decode of an RPC Query] [Priority: 2]: {UDP} 10.4.11.94:669 -> 10.4.3.20:111", ""},
         {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:590:12] RPC portmap ypserv request UDP [Classification: Decode of an RPC Query] [Priority: 2]: {UDP} 10.4.11.94:670 -> 10.4.3.20:111", ""},
         {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:1421:11] SNMP AgentX/tcp request [Classification: Attempted Information Leak] [Priority: 2]: {TCP} 10.4.12.26:37020 -> 10.4.10.231:705", ""},
+        {"^\\t 1234", "\t 1234", ""},
+        {"^abc\\$d", "abc$d", ""},
+        {"^abc\\|d", "abc|d", ""},
+        {"^abc\\<d", "abc<d", ""},
+        {"^\\\\ \\w$", "\\ a", ""},
+        {"^\\D+123", "test123", ""},
+        {"^\\W+abc", " \t abc", ""},
         {NULL, NULL, NULL}
     };
 
@@ -169,6 +176,9 @@ void test_success_regex(void **state)
 void test_fail_regex(void **state)
 {
     (void) state;
+
+    char large_pattern[OS_PATTERN_MAXSIZE + 2] = {[0 ... OS_PATTERN_MAXSIZE + 1] 'a' };
+    large_pattern[OS_PATTERN_MAXSIZE + 1] = '\0';
 
     /*
      * Please note that all strings are \ escaped
@@ -195,10 +205,16 @@ void test_fail_regex(void **state)
         {"test123(\\d)", "test123a", ""},
         {"\\(test)", "test", ""},
         {"(\\w+)(\\d+)", "1 1", ""},
+        {"^abc\\*d", "abc*d", ""},
+        {"^\\D+123", "te5st123", ""},
+        {"^\\W+abc", " \t 1 abc", ""},
+        {"(\\w|(\\w)", "", ""},
+        {large_pattern, "", ""},
+        {NULL, "", ""},
         {NULL, NULL, NULL},
     };
 
-    for (int i = 0; tests[i][0] != NULL ; i++) {
+    for (int i = 0; tests[i][0] != NULL || tests[i][1] != NULL ; i++) {
         assert_int_not_equal(OS_Regex(tests[i][0], tests[i][1]), 1);
     }
 }
