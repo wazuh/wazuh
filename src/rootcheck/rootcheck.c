@@ -219,7 +219,9 @@ int rootcheck_init(int test_config, char * home_path)
     if (rootcheck.workdir == NULL) {
         rootcheck.workdir = home_path;
     }
+#ifndef OSSECHIDS
     os_free(home_path);
+#endif
 #endif
 
 #ifdef OSSECHIDS

@@ -90,8 +90,6 @@ int main(int argc, char **argv)
         }
     }
 
-    os_free(home_path);
-
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
@@ -146,6 +144,8 @@ int main(int argc, char **argv)
     } else {
         syscheck.rootcheck = 0;
     }
+
+    os_free(home_path);
 
     /* Exit if testing config */
     if (test_config) {
