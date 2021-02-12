@@ -39,9 +39,9 @@ int ReadExecConfig()
     exec_size = 0;
 
     /* Open file */
-    fp = fopen(DEFAULTARPATH, "r");
+    fp = fopen(DEFAULTAR, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (0);
     }
 
@@ -55,14 +55,14 @@ int ReadExecConfig()
         // The command name must not start with '!'
 
         if (buffer[0] == '!') {
-            merror(EXEC_INV_CONF, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
 
         /* Clean up the buffer */
         tmp_str = strstr(buffer, " - ");
         if (!tmp_str) {
-            merror(EXEC_INV_CONF, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
         *tmp_str = '\0';
@@ -77,7 +77,7 @@ int ReadExecConfig()
         /* Search for ' ' and - */
         tmp_str = strstr(tmp_str, " - ");
         if (!tmp_str) {
-            merror(EXEC_INV_CONF, DEFAULTARPATH);
+            merror(EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
         *tmp_str = '\0';
