@@ -14,11 +14,10 @@ from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
-from wazuh.core.manager import upload_xml, prettify_xml
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
-from wazuh.core.utils import process_array, safe_move
+from wazuh.core.utils import process_array, safe_move, prettify_xml, upload_xml
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config()['disabled']

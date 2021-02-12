@@ -13,10 +13,9 @@ import wazuh.core.configuration as configuration
 from wazuh.core import common
 from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.manager import prettify_xml, upload_xml
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import format_rule_decoder_file
-from wazuh.core.utils import process_array, safe_move
+from wazuh.core.utils import process_array, safe_move, prettify_xml, upload_xml
 from wazuh.rbac.decorators import expose_resources
 
 

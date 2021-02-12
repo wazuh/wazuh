@@ -275,7 +275,7 @@ def test_get_rules_file_invalid_xml(get_rules_mock):
 @patch('wazuh.rule.copyfile')
 @patch('wazuh.rule.remove')
 @patch('wazuh.rule.safe_move')
-@patch('wazuh.core.manager.check_remote_commands')
+@patch('wazuh.core.utils.check_remote_commands')
 def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_copyfile, mock_xml, mock_delete, file,
                      overwrite):
     """Test uploading a rule file.
@@ -305,7 +305,7 @@ def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_cop
 @patch('wazuh.rule.delete_rule_file')
 @patch('wazuh.rule.upload_xml')
 @patch('wazuh.rule.safe_move')
-@patch('wazuh.core.manager.check_remote_commands')
+@patch('wazuh.core.utils.check_remote_commands')
 def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_delete):
     """Test exceptions on upload function."""
     # Error when file exists and overwrite is not True

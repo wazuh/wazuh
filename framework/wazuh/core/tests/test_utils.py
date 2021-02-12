@@ -7,22 +7,27 @@
 import os
 from collections.abc import KeysView
 from io import StringIO
-from os.path import join, exists
+from os.path import exists
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 from xml.etree import ElementTree
 
 import pytest
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
+        from wazuh import WazuhException
         from wazuh.core.utils import *
+        from wazuh.core.results import WazuhResult
         from wazuh.core import exception
         from wazuh.core.agent import WazuhDBQueryAgents
+        from wazuh.core.tests.test_manager import get_logs
 
 # all necessary params
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_files_path = os.path.join(test_data_path, 'utils')
+ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 
 # input data for testing q filter
 input_array = [
@@ -1566,3 +1571,269 @@ def test_add_dynamic_detail(detail, value, attribs, details):
         assert details[detail]['pattern'] == value
     for key, value in attribs.items():
         assert details[detail][key] == value
+
+
+@patch('wazuh.core.utils.check_remote_commands')
+@patch('wazuh.core.manager.common.ossec_path', new=test_files_path)
+def test_prettify_xml(mock_remote_commands):
+    """Test prettify_xml method works and methods inside are called with expected parameters"""
+
+    with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
+        xml_file = f.read()
+    m = mock_open(read_data=xml_file)
+    with patch('builtins.open', m):
+        result = prettify_xml(xml_file)
+
+    assert isinstance(result, str)
+    mock_remote_commands.assert_called_once_with(result)
+
+
+@patch('wazuh.core.utils.check_remote_commands')
+@patch('wazuh.core.manager.common.ossec_path', new=test_files_path)
+def test_prettify_xml_formula_injection(mock_remote_commands):
+    """Test that prettify_xml method avoids formula injections."""
+    with open(os.path.join(test_files_path, 'test_rules_injection.xml')) as f:
+        xml_file = f.read()
+    m = mock_open(read_data=xml_file)
+    with patch('builtins.open', m):
+        result = prettify_xml(xml_file)
+
+    assert isinstance(result, str)
+    description = re.search(r'<description>(.+)</description>', result)
+    assert description, 'Could not find description tag in XML file'
+    assert description.group(1).startswith("'"), f'Did not prepend formulas: {description}'
+
+
+@patch('time.time', return_value=0)
+@patch('random.randint', return_value=0)
+@patch('wazuh.core.utils.chmod')
+@patch('wazuh.core.utils.check_remote_commands')
+@patch('wazuh.core.utils.safe_move')
+@patch('wazuh.core.manager.common.ossec_path', new=test_files_path)
+def test_upload_xml(mock_safe, mock_check_remote_commands, mock_chmod, mock_random, mock_time):
+    """Tests upload_xml method works and methods inside are called with expected parameters"""
+    input_file = os.path.join(test_files_path, 'test_rules.xml')
+    output_file = 'uploaded_test_rules.xml'
+
+    with open(input_file) as f:
+        xml_file = f.read()
+    m = mock_open(read_data=xml_file)
+    with patch('builtins.open', m):
+        result = upload_xml(xml_file, output_file)
+
+    assert isinstance(result, WazuhResult)
+    mock_time.assert_called_once_with()
+    mock_random.assert_called_once_with(0, 1000)
+    m.assert_any_call(os.path.join(test_files_path, 'tmp', 'api_tmp_file_0_0.xml'), 'w')
+    mock_chmod.assert_called_once_with(os.path.join(test_files_path, 'tmp', 'api_tmp_file_0_0.xml'), 0o660)
+    mock_safe.assert_called_once_with(os.path.join(test_files_path, 'tmp', 'api_tmp_file_0_0.xml'),
+                                      os.path.join(test_files_path, output_file),
+                                      permissions=0o660)
+
+
+@pytest.mark.parametrize('effect, expected_exception', [
+    (ExpatError, 1113)
+])
+def test_prettify_xml_open_ko(effect, expected_exception):
+    """Tests prettify_xml function works when open function raise an exception
+
+    Parameters
+    ----------
+    effect : Exception
+        Exception to be triggered.
+    expected_exception
+        Expected code when triggering the exception.
+    """
+    input_file = os.path.join(test_files_path, 'test_rules.xml')
+
+    with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
+        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
+            prettify_xml(input_file)
+
+
+@pytest.mark.parametrize('effect, expected_exception', [
+    (IOError, 1005)
+])
+def test_upload_xml_open_ko(effect, expected_exception):
+    """Tests upload_xml function works when open function raise an exception
+
+    Parameters
+    ----------
+    effect : Exception
+        Exception to be triggered.
+    expected_exception
+        Expected code when triggering the exception.
+    """
+    input_file = os.path.join(test_files_path, 'test_rules.xml')
+    output_file = 'uploaded_test_rules.xml'
+
+    with patch('wazuh.core.utils.open', side_effect=effect):
+        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
+            upload_xml(input_file, output_file)
+
+
+@patch('time.time', return_value=0)
+@patch('random.randint', return_value=0)
+@patch('wazuh.core.utils.check_remote_commands')
+@patch('wazuh.core.utils.chmod')
+@patch('wazuh.core.utils.common.ossec_path', new=test_files_path)
+def test_upload_xml_ko(mock_chmod, mock_remote_commands, mock_random, mock_time):
+    """Tests upload_xml function exception works and methods inside are called with expected parameters"""
+    input_file = os.path.join(test_files_path, 'test_rules.xml')
+    output_file = 'uploaded_test_rules.xml'
+
+    with open(input_file) as f:
+        xml_file = f.read()
+    m = mock_open(read_data=xml_file)
+    with patch('builtins.open', m):
+        with patch('wazuh.core.utils.load_wazuh_xml', side_effect=Exception):
+            with pytest.raises(WazuhException, match=f'.* 1113 .*'):
+                upload_xml(xml_file, output_file)
+
+        with patch('wazuh.core.utils.load_wazuh_xml'):
+            with patch('wazuh.core.utils.safe_move', side_effect=Error):
+                with pytest.raises(WazuhException, match=f'.* 1016 .*'):
+                    upload_xml(xml_file, output_file)
+
+    mock_time.assert_called_with()
+    mock_random.assert_called_with(0, 1000)
+    mock_chmod.assert_called_with(os.path.join(test_files_path, 'tmp', 'api_tmp_file_0_0.xml'), 0o660)
+
+
+@patch('wazuh.core.utils.validate_cdb_list', return_value=True)
+@patch('time.time', return_value=0)
+@patch('random.randint', return_value=0)
+@patch('wazuh.core.utils.chmod')
+@patch('wazuh.core.utils.safe_move')
+@patch('wazuh.core.utils.common.ossec_path', new=test_files_path)
+def test_upload_list(mock_safe, mock_chmod, mock_random, mock_time, mock_validate_cdb):
+    """Tests upload_list function works and methods inside are called with expected parameters"""
+    input_file = os.path.join(test_files_path, 'test_rules.xml')
+    output_file = 'uploaded_test_rules.xml'
+
+    ossec_log_file = get_logs()
+
+    m = mock_open(read_data=ossec_log_file)
+    with patch('builtins.open', m):
+        result = upload_list(input_file, output_file)
+
+    assert isinstance(result, WazuhResult)
+
+    mock_validate_cdb.assert_called_once_with(os.path.join(test_files_path, 'tmp', 'api_tmp_file_0_0.txt'))
+    mock_time.assert_called_once_with()
+    mock_random.assert_called_once_with(0, 1000)
+    mock_chmod.assert_called_once_with(os.path.join(test_files_path, 'tmp', 'api_tmp_file_0_0.txt'), 0o640)
+    mock_safe.assert_called_once_with(os.path.join(test_files_path, 'tmp', 'api_tmp_file_0_0.txt'),
+                                      os.path.join(test_files_path, output_file),
+                                      permissions=0o660)
+
+
+@pytest.mark.parametrize('effect, expected_exception', [
+    (IOError, 1005)
+])
+def test_upload_list_open_ko(effect, expected_exception):
+    """Tests upload_list function works when open function raise an exception
+
+    Parameters
+    ----------
+    effect : Exception
+        Exception to be triggered.
+    expected_exception
+        Expected code when triggering the exception.
+    """
+    input_file = os.path.join(test_files_path, 'test_rules.xml')
+    output_file = 'uploaded_test_rules.xml'
+
+    with patch('wazuh.core.utils.open', side_effect=effect):
+        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
+            upload_list(input_file, output_file)
+
+
+@patch('time.time', return_value=0)
+@patch('random.randint', return_value=0)
+@patch('wazuh.core.utils.chmod')
+@patch('wazuh.core.utils.common.ossec_path', new=test_files_path)
+def test_upload_list_ko(mock_chmod, mock_random, mock_time):
+    """Tests upload_list function exception works and methods inside are called with expected parameters"""
+    output_file = 'uploaded_test_rules.xml'
+
+    ossec_log_file = get_logs()
+
+    m = mock_open(read_data=ossec_log_file)
+    with patch('builtins.open', m):
+        with pytest.raises(WazuhException, match=f'.* 1800 .*'):
+            upload_list(ossec_log_file, output_file)
+
+        with patch('wazuh.core.utils.validate_cdb_list', return_value=False):
+            with pytest.raises(WazuhException, match=f'.* 1800 .*'):
+                upload_list(ossec_log_file, output_file)
+
+        with patch('wazuh.core.utils.validate_cdb_list', return_value=True):
+            with patch('wazuh.core.utils.safe_move', side_effect=Error):
+                with pytest.raises(WazuhException, match=f'.* 1016 .*'):
+                    upload_list(ossec_log_file, output_file)
+
+        mock_time.assert_called_with()
+        mock_random.assert_called_with(0, 1000)
+        mock_chmod.assert_called_with(os.path.join(test_files_path, 'tmp', 'api_tmp_file_0_0.txt'), 0o640)
+
+
+@pytest.mark.parametrize('input_file', [
+    'test_rules.xml',
+    'test_decoders.xml',
+    'test_lists'
+])
+@patch('wazuh.core.common.ossec_path', test_files_path)
+def test_validate_xml(input_file):
+    """Tests validate_xml function works
+
+    Parameters
+    ----------
+    input_file : str
+        Name of the input file.
+    """
+    with open(os.path.join(test_files_path, input_file)) as f:
+        xml_file = f.read()
+
+    with patch('builtins.open', mock_open(read_data=xml_file)):
+        result = validate_xml(input_file)
+        assert result is True
+
+
+def test_validate_xml_ko():
+    """Tests validate_xml function exceptions works"""
+    # Open function raise IOError
+    with patch('wazuh.core.utils.open', side_effect=IOError):
+        with pytest.raises(WazuhException, match=f'.* 1005 .*'):
+            validate_xml('test_path')
+
+    # Open function raise ExpatError
+    with patch('wazuh.core.utils.open', side_effect=ExpatError):
+        result = validate_xml('test_path')
+        assert result is False
+
+
+def test_validate_cdb_list():
+    """Tests validate_cdb function works"""
+    m = mock_open(read_data=ossec_cdb_list)
+    with patch('builtins.open', m):
+        assert validate_cdb_list('path')
+
+
+@patch('wazuh.core.manager.re.match', return_value=False)
+def test_validate_cdb_list_ko(mock_match):
+    """Tests validate_cdb function exceptions works"""
+    # Match error
+
+    ossec_log_file = get_logs()
+
+    m = mock_open(read_data=ossec_log_file)
+    with patch('wazuh.core.utils.open', m):
+        result = validate_cdb_list('path')
+
+    assert result is False
+
+    # Open function raise IOError
+    with patch('wazuh.core.utils.open', side_effect=IOError):
+        with pytest.raises(WazuhException, match=f'.* 1005 .*'):
+            validate_cdb_list('path')
