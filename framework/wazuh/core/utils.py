@@ -1587,12 +1587,10 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
 
     Parameters
     ----------
-    xml_file : str
-        Content of the XML file
-
-    Returns
-    -------
-    Checked XML content
+    content : str
+        File content.
+    config_file : bool
+        Validate remote commands if True.
     """
 
     # -- characters are not allowed in XML comments
@@ -1695,33 +1693,6 @@ def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: ca
     except IOError:
         raise WazuhError(1019)
     delete_function(filename=basename(abs_path))
-
-
-def upload_xml(xml_file, path):
-    """
-    Upload XML files (rules, decoders and ossec.conf)
-    :param xml_file: content of the XML file
-    :param path: Destination of the new XML file
-    :return: Confirmation message
-    """
-    # Path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
-    try:
-        with open(tmp_file_path, 'w') as tmp_file:
-            final_xml = prettify_xml(xml_file)
-            tmp_file.write(final_xml)
-        chmod(tmp_file_path, 0o660)
-    except IOError:
-        raise WazuhInternalError(1005)
-
-    # Move temporary file to group folder
-    try:
-        new_conf_path = join(common.ossec_path, path)
-        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
-    except Error:
-        raise WazuhInternalError(1016)
-
-    return results.WazuhResult({'message': 'File was successfully updated'})
 
 
 def validate_xml(path):
