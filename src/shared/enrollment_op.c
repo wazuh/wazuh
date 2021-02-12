@@ -73,7 +73,7 @@ w_enrollment_cert *w_enrollment_cert_init(){
     w_enrollment_cert *cert_cfg;
     os_malloc(sizeof(w_enrollment_cert), cert_cfg);
     cert_cfg->ciphers = strdup(DEFAULT_CIPHERS);
-    cert_cfg->authpass_file = strdup(AUTHD_PASS_PATH);
+    cert_cfg->authpass_file = strdup(AUTHD_PASS);
     cert_cfg->authpass = NULL;
     cert_cfg->agent_cert = NULL;
     cert_cfg->agent_key = NULL;

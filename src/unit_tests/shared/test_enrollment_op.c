@@ -982,7 +982,7 @@ void test_w_enrollment_load_pass_null_cert(void **state) {
 void test_w_enrollment_load_pass_empty_file(void **state) {
     w_enrollment_cert *cert = *state;
 
-    expect_string(__wrap_fopen, filename, AUTHD_PASS_PATH);
+    expect_string(__wrap_fopen, filename, AUTHD_PASS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 4);
 #ifdef WIN32
@@ -995,7 +995,7 @@ void test_w_enrollment_load_pass_empty_file(void **state) {
     will_return(__wrap_fgets, NULL);
 #endif
     char buff[1024];
-    snprintf(buff, 1024, "Using password specified on file: %s", AUTHD_PASS_PATH);
+    snprintf(buff, 1024, "Using password specified on file: %s", AUTHD_PASS);
     expect_string(__wrap__minfo, formatted_msg, buff);
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
 
@@ -1006,7 +1006,7 @@ void test_w_enrollment_load_pass_empty_file(void **state) {
 void test_w_enrollment_load_pass_file_with_content(void **state) {
     w_enrollment_cert *cert = *state;
 
-    expect_string(__wrap_fopen, filename, AUTHD_PASS_PATH);
+    expect_string(__wrap_fopen, filename, AUTHD_PASS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 4);
 #ifdef WIN32
@@ -1019,7 +1019,7 @@ void test_w_enrollment_load_pass_file_with_content(void **state) {
     will_return(__wrap_fgets, "content_password");
 #endif
     char buff[1024];
-    snprintf(buff, 1024, "Using password specified on file: %s", AUTHD_PASS_PATH);
+    snprintf(buff, 1024, "Using password specified on file: %s", AUTHD_PASS);
     expect_string(__wrap__minfo, formatted_msg, buff);
 
     w_enrollment_load_pass(cert);
