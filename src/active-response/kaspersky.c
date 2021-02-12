@@ -11,7 +11,7 @@
 
 #define PYTHON2             "/usr/bin/python"
 #define PYTHON3             "/usr/bin/python3"
-#define PATH_TO_KASPERSKY   BUILDDIR(HOMEDIR,"/active-response/bin/kaspersky.py")
+#define PATH_TO_KASPERSKY   "active-response/bin/kaspersky.py"
 
 int main (int argc, char **argv) {
     (void)argc;
