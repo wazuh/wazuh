@@ -140,9 +140,6 @@ int main(int argc, char **argv)
     char absPath[PATH_MAX] = {'\0'};
     abspath(OSSECCONF, absPath, PATH_MAX);
 
-    /* Start daemon */
-    mdebug1(WAZUH_HOMEDIR, home_path);
-
     /* Setup random */
     srandom_init();
 
@@ -269,6 +266,7 @@ int main(int argc, char **argv)
 
     /* Basic start up completed */
     mdebug1(PRIVSEP_MSG, home_path, user);
+	os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -279,7 +277,6 @@ int main(int argc, char **argv)
     /* The real daemon now */
     OS_DBD(&db_config);
 
-    os_free(home_path);
     return (0);
 }
 

@@ -105,9 +105,6 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Starting daemon */
-    mdebug1(WAZUH_HOMEDIR, home_path);
-
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -166,6 +163,7 @@ int main(int argc, char **argv)
 
     /* Basic start up completed. */
     mdebug1(PRIVSEP_MSG, home_path, user);
+	os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -180,6 +178,5 @@ int main(int argc, char **argv)
     /* the real daemon now */
     OS_IntegratorD(integrator_config);
 
-    os_free(home_path);
     exit(0);
 }

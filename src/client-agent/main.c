@@ -116,7 +116,7 @@ int main(int argc, char **argv)
                 break;
         }
     }
-
+	os_free(home_path);
     mdebug1(STARTUP_MSG, (int)getpid());
 
     agt = (agent *)calloc(1, sizeof(agent));
@@ -180,6 +180,5 @@ int main(int argc, char **argv)
     /* Agentd Start */
     AgentdStart(uid, gid, user, group);
 
-    os_free(home_path);
     return (0);
 }

@@ -102,8 +102,8 @@ void * mailcom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-		char absPath[PATH_MAX] = {'\0'};
-		abspath(MAIL_LOCAL_SOCK, absPath, PATH_MAX);
+        char absPath[PATH_MAX] = {'\0'};
+        abspath(MAIL_LOCAL_SOCK, absPath, PATH_MAX);
         merror("Unable to bind to socket '%s': (%d) %s.", absPath, errno, strerror(errno));
         return NULL;
     }

@@ -126,8 +126,8 @@ int main(int argc, char **argv)
 
     /* Read configuration */
     if (MailConf(test_config, cfg, &mail) < 0) {
-		char absPath[PATH_MAX] = {'\0'};
-		abspath(OSSECCONF, absPath, PATH_MAX);
+        char absPath[PATH_MAX] = {'\0'};
+        abspath(OSSECCONF, absPath, PATH_MAX);
         merror_exit(CONFIG_ERROR, absPath);
     }
 
@@ -203,6 +203,7 @@ int main(int argc, char **argv)
     }
 
     mdebug1(PRIVSEP_MSG, home_path, user);
+	os_free(home_path);
 
     // Start com request thread
     w_create_thread(mailcom_main, NULL);
@@ -221,7 +222,6 @@ int main(int argc, char **argv)
     /* The real daemon now */
     OS_Run(&mail);
 
-    os_free(home_path);
     return (0);
 }
 
