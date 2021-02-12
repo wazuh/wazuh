@@ -271,8 +271,8 @@ def test_get_rules_file_invalid_xml(get_rules_mock):
     ('test_rules.xml', True),
 ])
 @patch('wazuh.rule.delete_rule_file')
-@patch('wazuh.rule.upload_xml')
-@patch('wazuh.rule.copyfile')
+@patch('wazuh.rule.upload_file')
+@patch('wazuh.core.utils.copyfile')
 @patch('wazuh.rule.remove')
 @patch('wazuh.rule.safe_move')
 @patch('wazuh.core.utils.check_remote_commands')
@@ -303,7 +303,7 @@ def test_upload_file(mock_remote_commands, mock_safe_move, mock_remove, mock_cop
 
 
 @patch('wazuh.rule.delete_rule_file')
-@patch('wazuh.rule.upload_xml')
+@patch('wazuh.rule.upload_file')
 @patch('wazuh.rule.safe_move')
 @patch('wazuh.core.utils.check_remote_commands')
 def test_upload_file_ko(mock_remote_commands, mock_safe_move, mock_xml, mock_delete):
