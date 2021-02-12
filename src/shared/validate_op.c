@@ -49,15 +49,7 @@ static char *_read_file(const char *high_name, const char *low_name, char *defin
     char *ret;
     int i;
 
-#ifndef WIN32
-    if (isChroot()) {
-        snprintf(def_file, OS_FLSIZE, "%s", defines_file);
-    } else {
-        snprintf(def_file, OS_FLSIZE, "%s%s", HOMEDIR, defines_file);
-    }
-#else
     snprintf(def_file, OS_FLSIZE, "%s", defines_file);
-#endif
 
     fp = fopen(def_file, "r");
     if (!fp) {
