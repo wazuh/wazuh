@@ -3931,7 +3931,7 @@ void test_wdb_update_groups_error_json(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to update groups.");
 
-    ret = wdb_update_groups(HOMEDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }

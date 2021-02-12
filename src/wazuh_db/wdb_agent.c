@@ -1374,11 +1374,7 @@ time_t get_agent_date_added(int agent_id) {
     struct tm t;
     time_t t_of_sec;
 
-#ifndef WIN32   // Useless condition since Wazuh DB will never run in Windows agents. Best solution is not to compile Wazuh DB for Windows
-    snprintf(path, PATH_MAX, "%s", isChroot() ? TIMESTAMP_FILE : BUILDDIR(HOMEDIR,TIMESTAMP_FILE));
-#else
     snprintf(path, PATH_MAX, "%s", TIMESTAMP_FILE);
-#endif
 
     fp = fopen(path, "r");
 
