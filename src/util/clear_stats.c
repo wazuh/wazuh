@@ -35,8 +35,6 @@ int main(int argc, char **argv)
     int clear_daily = 0;
     int clear_weekly = 0;
 
-    home_path = w_homedir(argv[0]);
-    const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
     gid_t gid;
@@ -44,6 +42,13 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    /* Define current working directory */
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* user arguments */
     if (argc != 2) {
@@ -63,9 +68,11 @@ int main(int argc, char **argv)
     }
 
     /* Chroot to the default directory */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
+
+    os_free(home_path);
 
     /* Inside chroot now */
     nowChroot();
@@ -157,6 +164,5 @@ int main(int argc, char **argv)
 
     printf("\n** Internal stats clear.\n\n");
 
-	os_free(home_path);
     return (0);
 }
