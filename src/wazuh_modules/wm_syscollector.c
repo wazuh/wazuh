@@ -150,7 +150,7 @@ void* wm_sys_main(wm_sys_t *sys) {
     }
     so_free_library(syscollector_module);
     syscollector_module = NULL;
-    mtinfo(WM_SYS_LOGTAG, "Syscollector Stopped.");
+    mtinfo(WM_SYS_LOGTAG, "Module finished.");
 
     return 0;
 }
