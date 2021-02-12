@@ -24,13 +24,13 @@ char _g_subject[SUBJECT_SIZE + 2];
 
 /* Prototypes */
 static void OS_Run(MailConfig *mail) __attribute__((nonnull)) __attribute__((noreturn));
-static void help_maild(void) __attribute__((noreturn));
+static void help_maild(const char *home_path) __attribute__((noreturn));
 
 /* Mail Structure */
 MailConfig mail;
 
 /* Print help statement */
-static void help_maild()
+static void help_maild(const char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -43,8 +43,8 @@ static void help_maild()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
+    print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out(" ");
     exit(1);
 }
@@ -54,14 +54,20 @@ int main(int argc, char **argv)
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
-    home_path = w_homedir(argv[0]);
-    const char *dir  = HOMEDIR;
+    const char *home_path = w_homedir(argv[0]);
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+	/* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
+    }
 
     while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1) {
         switch (c) {
@@ -69,7 +75,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_maild();
+                help_maild(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -93,7 +99,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'c':
                 if (!optarg) {
@@ -105,14 +112,10 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_maild();
+                help_maild(home_path);
                 break;
         }
     }
-
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
@@ -123,7 +126,9 @@ int main(int argc, char **argv)
 
     /* Read configuration */
     if (MailConf(test_config, cfg, &mail) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+		char absPath[PATH_MAX] = {'\0'};
+		abspath(OSSECCONF, absPath, PATH_MAX);
+        merror_exit(CONFIG_ERROR, absPath);
     }
 
     /* Read internal options */
@@ -185,11 +190,11 @@ int main(int argc, char **argv)
         free(aux_smtp_server);
 
         /* chroot */
-        if (Privsep_Chroot(dir) < 0) {
-            merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+        if (Privsep_Chroot(home_path) < 0) {
+            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
         }
         nowChroot();
-        mdebug1(PRIVSEP_MSG, dir, user);
+        mdebug1(PRIVSEP_MSG, home_path, user);
     }
 
     /* Change user */
@@ -197,7 +202,7 @@ int main(int argc, char **argv)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
 
     // Start com request thread
     w_create_thread(mailcom_main, NULL);

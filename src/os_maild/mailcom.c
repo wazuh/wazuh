@@ -97,16 +97,14 @@ void * mailcom_main(__attribute__((unused)) void * arg) {
     fd_set fdset;
     char socket_path[PATH_MAX + 1] = {0};
 
-    snprintf(socket_path,PATH_MAX,"%s",BUILDDIR(HOMEDIR,MAIL_LOCAL_SOCK));
-
-    if(isChroot()){
-        snprintf(socket_path,PATH_MAX,"%s",MAIL_LOCAL_SOCK);
-    }
+    snprintf(socket_path,PATH_MAX,"%s", MAIL_LOCAL_SOCK);
 
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", MAIL_LOCAL_SOCK, errno, strerror(errno));
+		char absPath[PATH_MAX] = {'\0'};
+		abspath(MAIL_LOCAL_SOCK, absPath, PATH_MAX);
+        merror("Unable to bind to socket '%s': (%d) %s.", absPath, errno, strerror(errno));
         return NULL;
     }
 
