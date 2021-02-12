@@ -41,7 +41,7 @@ namespace PackageLinuxHelper
                 std::string description  { fields.at(RPMFields::RPM_FIELDS_SUMMARY) };
 
                 ret["name"]         = name;
-                ret["size"]         = size.empty() ? UNKNOWN_VALUE : size;
+                ret["size"]         = size.empty() ? 0 : stoi(size);
                 ret["install_time"] = install_time.empty() ? UNKNOWN_VALUE : install_time;
                 ret["groups"]       = groups.empty() ? UNKNOWN_VALUE : groups;
                 ret["version"]      = version.empty() ? UNKNOWN_VALUE : version;
@@ -74,13 +74,13 @@ namespace PackageLinuxHelper
 
             std::string priority     { UNKNOWN_VALUE };
             std::string groups       { UNKNOWN_VALUE };
-            std::string size         { UNKNOWN_VALUE };
             std::string multiarch    { UNKNOWN_VALUE };
             std::string architecture { UNKNOWN_VALUE };
             std::string source       { UNKNOWN_VALUE };
             std::string version      { UNKNOWN_VALUE };
             std::string vendor       { UNKNOWN_VALUE };
             std::string description  { UNKNOWN_VALUE };
+            int size                 { 0 };
 
             auto it{info.find("Priority")};
             if (it != info.end())
@@ -95,7 +95,7 @@ namespace PackageLinuxHelper
             it = info.find("Installed-Size");
             if (it != info.end())
             {
-                size = it->second;
+                size = stoi(it->second);
             }
             it = info.find("Multi-Arch");
             if (it != info.end())
