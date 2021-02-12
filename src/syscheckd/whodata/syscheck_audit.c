@@ -117,6 +117,7 @@ int set_auditd_config(void) {
 
     FILE *fp;
     char audit_path[50] = {0};
+    char buffer[PATH_MAX] = {'\0'};
 
     // Check audisp version
     if (IsDir(PLUGINS_DIR_AUDIT_3) == 0) {
@@ -151,7 +152,6 @@ int set_auditd_config(void) {
 
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
-        char buffer[PATH_MAX] = {'\0'};
         abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
         merror(FOPEN_ERROR, buffer, errno, strerror(errno));
         return -1;
@@ -165,7 +165,6 @@ int set_auditd_config(void) {
     fprintf(fp, "format = string\n");
 
     if (fclose(fp)) {
-        char buffer[PATH_MAX] = {'\0'};
         abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
         merror(FCLOSE_ERROR, buffer, errno, strerror(errno));
         return -1;
@@ -185,7 +184,6 @@ int set_auditd_config(void) {
 
         // Fallthrough
         default:
-            char buffer[PATH_MAX] = {'\0'};
             abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
             merror(LINK_ERROR, audit_path, buffer, errno, strerror(errno));
             return -1;
