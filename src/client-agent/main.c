@@ -38,6 +38,7 @@ static void help_agentd(const char *home_path)
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -68,6 +69,7 @@ int main(int argc, char **argv)
         os_free(home_path);
         exit(1);
     }
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     while ((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1) {
         switch (c) {

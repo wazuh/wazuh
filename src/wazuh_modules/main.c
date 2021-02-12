@@ -35,6 +35,7 @@ int main(int argc, char **argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     wmodule *cur_module;
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
@@ -101,7 +102,6 @@ int main(int argc, char **argv)
         pthread_join(cur_module->thread, NULL);
     }
 
-    os_free(home_path);
     return EXIT_SUCCESS;
 }
 
@@ -149,12 +149,6 @@ void wm_setup()
 
     if (Privsep_SetGroup(gid) < 0) {
         merror_exit(SETGID_ERROR, GROUPGLOBAL, errno, strerror(errno));
-    }
-
-    // Change working directory
-
-    if (chdir(home_path) < 0) {
-        merror_exit("chdir(): %s", strerror(errno));
     }
 
     if (wm_check() < 0) {

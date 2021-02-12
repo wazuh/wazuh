@@ -28,9 +28,10 @@ static void help_csyslogd(char * home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
+    print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -48,11 +49,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    // Define current working directory
     char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1) {
@@ -85,7 +82,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                home_path = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'c':
                 if (!optarg) {

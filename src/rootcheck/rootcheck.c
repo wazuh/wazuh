@@ -47,6 +47,7 @@ void help_rootcheck(char * home_path)
     print_out("    -c <config> Configuration file to use");
     print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 

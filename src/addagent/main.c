@@ -97,9 +97,6 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 #ifndef WIN32
     char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
     mdebug1(WAZUH_HOMEDIR, home_path);
 #endif
 

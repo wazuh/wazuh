@@ -43,11 +43,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    /* Define current working directory */
     char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* User arguments */

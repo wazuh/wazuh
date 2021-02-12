@@ -44,8 +44,9 @@ static void help_maild(const char *home_path)
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -61,13 +62,6 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
-
-	/* Change working directory */
-    if (chdir(home_path) == -1) {
-        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
-        os_free(home_path);
-        exit(1);
-    }
 
     while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1) {
         switch (c) {
@@ -115,6 +109,13 @@ int main(int argc, char **argv)
                 help_maild(home_path);
                 break;
         }
+    }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
     }
 
     /* Check if the user/group given are valid */

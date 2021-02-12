@@ -35,6 +35,7 @@ static void help_remoted(char *home_path)
     print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out("    -m          Avoid creating shared merged file (read only)");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -50,11 +51,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    // Define current working directory
     char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     const char *cfg = OSSECCONF;
@@ -101,7 +98,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                home_path = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'm':
                 nocmerged = 1;
@@ -191,6 +189,7 @@ int main(int argc, char **argv)
         merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
+    os_free(home_path);
 
     /* Start the signal manipulation */
     StartSIG(ARGV0);
@@ -221,6 +220,5 @@ int main(int argc, char **argv)
         }
     }
 
-    os_free(home_path);
     return (0);
 }

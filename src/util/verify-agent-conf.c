@@ -54,6 +54,7 @@ int main(int argc, char **argv)
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* User arguments */
     if (argc > 1) {
@@ -146,7 +147,6 @@ int main(int argc, char **argv)
     }
     printf("\n");
 
-    os_free(home_path);
     return (error);
 }
 

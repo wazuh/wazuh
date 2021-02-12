@@ -59,6 +59,7 @@ static void help_execd(char * home_path)
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -156,6 +157,8 @@ int main(int argc, char **argv)
         }
     }
 
+    os_free(home_path);
+
     if (debug_level == 0) {
         /* Get debug level */
         debug_level = getDefine_Int("execd", "debug", 0, 2);
@@ -227,7 +230,6 @@ int main(int argc, char **argv)
     /* The real daemon Now */
     ExecdStart(m_queue);
 
-    os_free(home_path);
     exit(0);
 }
 

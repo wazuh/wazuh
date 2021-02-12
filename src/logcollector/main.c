@@ -42,6 +42,7 @@ static void help_logcollector(char * home_path)
     print_out("    -f          Run in foreground");
     print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -100,6 +101,8 @@ int main(int argc, char **argv)
 
     }
 
+    os_free(home_path);
+    
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {
@@ -193,6 +196,5 @@ int main(int argc, char **argv)
     /* Main loop */
     LogCollectorStart();
 
-    os_free(home_path);
     return (0);
 }

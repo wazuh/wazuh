@@ -45,7 +45,7 @@ static void help_agent_auth(const char * home_path)
     print_out("    -t          Test configuration.");
 #ifndef WIN32
     print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s).", home_path);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s).", home_path);
     os_free(home_path);
 #endif
     print_out("    -m <addr>   Manager IP address.");

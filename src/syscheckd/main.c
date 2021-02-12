@@ -20,7 +20,7 @@
 // LCOV_EXCL_START
 
 /* Print help statement */
-__attribute__((noreturn)) static void help_syscheckd()
+__attribute__((noreturn)) static void help_syscheckd(const char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -31,8 +31,9 @@ __attribute__((noreturn)) static void help_syscheckd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -65,7 +66,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_syscheckd();
+                help_syscheckd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -84,7 +85,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_syscheckd();
+                help_syscheckd(home_path);
                 break;
         }
     }

@@ -30,7 +30,7 @@ static void help_reportd(char * home_path)
     print_out("    -s          Show the alert dump");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out("    -f <filter> <value> Filter the results");
     print_out("    -r <filter> <value> Show related entries");
     print_out("    Filters allowed: group, rule, level, location,");
@@ -40,6 +40,7 @@ static void help_reportd(char * home_path)
     print_out("     -f level 10 (to filter on level >= 10)");
     print_out("     -f group authentication -r user srcip (to show srcip for all users)");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -62,9 +63,6 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     r_filter.group = NULL;
@@ -146,7 +144,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                home_path = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 't':
                 test_config = 1;

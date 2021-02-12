@@ -30,9 +30,10 @@ static void help_agentlessd(char * home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
+    print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
+    print_out("    -D <dir>    Directory to chdir and chroot into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -42,18 +43,13 @@ int main(int argc, char **argv)
     uid_t uid;
     gid_t gid;
 
+    char * home_path = w_homedir(argv[0]);
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
-
-    char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     while ((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1) {
         switch (c) {
@@ -85,7 +81,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument.");
                 }
-                home_path = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'c':
                 if (!optarg) {
@@ -101,6 +98,12 @@ int main(int argc, char **argv)
                 break;
         }
     }
+
+    /* chdir to working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
