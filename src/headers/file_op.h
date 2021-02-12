@@ -27,7 +27,7 @@
 #include <libproc.h>
 #endif
 
-#define OS_PIDFILE  "/var/run"
+#define OS_PIDFILE  "var/run"
 #define UCS2_LE 1
 #define UCS2_BE 2
 

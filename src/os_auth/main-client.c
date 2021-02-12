@@ -120,9 +120,9 @@ int main(int argc, char **argv)
                 break;
             case 'D':
                 if (!optarg) {
-                    merror_exit("-g needs an argument");
+                    merror_exit("-%c needs an argument", c);
                 }
-                mwarn(DEPRECATED_OPTION_WARN, "-D", DEFAULTCPATH);
+                mwarn(DEPRECATED_OPTION_WARN, "-D", home_path);
                 break;
 #endif
             case 't':

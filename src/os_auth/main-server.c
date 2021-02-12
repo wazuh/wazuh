@@ -207,7 +207,7 @@ int main(int argc, char **argv)
                     break;
 
                 case 'i':
-                    mwarn(DEPRECATED_OPTION_WARN, "-i", DEFAULTCPATH);
+                    mwarn(DEPRECATED_OPTION_WARN, "-i", OSSECCONF);
                     break;
 
                 case 'g':
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
                     if (!optarg) {
                         merror_exit("-D needs an argument");
                     }
-                    dir = optarg;
+                    snprintf(home_path, PATH_MAX, "%s", optarg);
                     break;
 
                 case 't':
@@ -279,11 +279,11 @@ int main(int argc, char **argv)
                     break;
 
                 case 'F':
-                    mwarn(DEPRECATED_OPTION_WARN, "-F", DEFAULTCPATH);
+                    mwarn(DEPRECATED_OPTION_WARN, "-F", OSSECCONF);
                     break;
 
                 case 'r':
-                    mwarn(DEPRECATED_OPTION_WARN, "-r", DEFAULTCPATH);
+                    mwarn(DEPRECATED_OPTION_WARN, "-r", OSSECCONF);
                     break;
 
                 case 'a':
@@ -301,8 +301,10 @@ int main(int argc, char **argv)
         }
 
         // Return -1 if not configured
-        if (authd_read_config(DEFAULTCPATH) < 0) {
-            merror_exit(CONFIG_ERROR, DEFAULTCPATH);
+        if (authd_read_config(OSSECCONF) < 0) {
+            char buffer[PATH_MAX] = {'\0'};
+            abspath(OSSECCONF, buffer, PATH_MAX);
+            merror_exit(CONFIG_ERROR, buffer);
         }
 
         // Overwrite arguments
