@@ -85,6 +85,7 @@ def makeLib(moduleName):
     currentDir = currentDirPathBuild(moduleName)
     out = subprocess.run('make -C' + currentDir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     if out.returncode != 0:
+        print('make -C' + currentDir)
         print(out.stdout)
         print(out.stderr)
         errorString = 'Error compiling library: ' + str(out.returncode)
@@ -261,6 +262,7 @@ def cleanFolder(moduleName, additionalFolder):
         if out.returncode == 0 and not out.stderr:
             printGreen('[Cleanfolder: PASSED]')
         else:
+            print(cleanFolderCommand)
             print(out.stderr)
             printFail('[Cleanfolder: FAILED]')
             errorString = 'Error Running Cleanfolder: ' + str(out.returncode)
@@ -293,6 +295,7 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
     if out.returncode == 0 and not out.stderr:
         printGreen('[ConfigureCMake: PASSED]')
     else:
+        print(configureCMakeCommand)
         print(out.stderr)
         printFail('[ConfigureCMake: FAILED]')
         errorString = 'Error Running ConfigureCMake: ' + str(out.returncode)
@@ -318,6 +321,7 @@ def runTestTool(moduleName, testToolCommand, isSmokeTest=False):
     if out.returncode == 0 and not out.stderr:
         printGreen('[TestTool: PASSED]')
     else:
+        print(testToolCommand)
         print(out.stderr)
         printFail('[TestTool: FAILED]')
         errorString = 'Error Running TestTool: ' + str(out.returncode)

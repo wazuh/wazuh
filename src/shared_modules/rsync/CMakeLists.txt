@@ -91,5 +91,8 @@ if(UNIT_TEST)
 endif(UNIT_TEST)
 
 if(NOT DEFINED COVERITY AND NOT DEFINED UNIT_TEST)
+  if(FSANITIZE)
+    target_link_libraries(rsync gcov)
+  endif(FSANITIZE)
   add_subdirectory(testtool)
 endif(NOT DEFINED COVERITY AND NOT DEFINED UNIT_TEST)

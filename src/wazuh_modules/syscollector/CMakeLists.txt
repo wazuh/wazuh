@@ -109,5 +109,8 @@ if(UNIT_TEST)
 
   add_subdirectory(tests)
 else()
+  if(FSANITIZE)
+    target_link_libraries(syscollector gcov)
+  endif(FSANITIZE)
   add_subdirectory(testtool)
 endif(UNIT_TEST)
