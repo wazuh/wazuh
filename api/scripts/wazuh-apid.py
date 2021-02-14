@@ -51,6 +51,7 @@ def start(foreground, root, config_file):
 
     configuration.api_conf.update(configuration.read_yaml_config(config_file=config_file))
     api_conf = configuration.api_conf
+    security_conf = configuration.security_conf
     log_path = api_conf['logs']['path']
 
     # Set up logger
@@ -190,7 +191,8 @@ def start(foreground, root, config_file):
 def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info'):
     for logger_name in ('connexion.aiohttp_app', 'connexion.apis.aiohttp_api', 'wazuh-api'):
         api_logger = alogging.APILogger(log_path=log_path, foreground_mode=foreground_mode,
-                                        debug_level=debug_mode,
+                                        debug_level='info' if logger_name != 'wazuh-api'
+                                        and debug_mode != 'debug2' else debug_mode,
                                         logger_name=logger_name)
         api_logger.setup_logger()
 
