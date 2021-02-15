@@ -28,7 +28,6 @@ from xml.etree.ElementTree import fromstring
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
-from wazuh.core.common import ossec_path
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
@@ -672,6 +671,7 @@ def check_remote_commands(data):
     data : str
         Configuration file
     """
+
     def check_section(command_regex, section, split_section):
         try:
             for line in command_regex.findall(data)[0].split(split_section):
@@ -1477,17 +1477,39 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.select = self.select & self.filter_fields['fields']
 
 
-@common.context_cached('system_files')
-def get_files():
-    folders = ['etc/rules', 'etc/decoders', 'etc/lists', 'ruleset/sca', 'ruleset/decoders', 'ruleset/rules']
-    files = set()
+@common.context_cached('system_rules')
+def expand_rules():
+    folders = [common.ruleset_rules_path, common.user_rules_path]
+    rules = set()
     for folder in folders:
-        for extension in '*.yml', '*.yml.disabled', '*.xml', '*.cdb':
-            files.update({f.replace(common.ossec_path + '/', "") for f in glob.glob(
-                path.join(common.ossec_path, folder, extension), recursive=True)})
-    files.add('etc/ossec.conf')
+        rules.update({basename(f) for f in glob.glob(path.join(folder, f'*{common.RULES_EXTENSION}'), recursive=True)})
 
-    return files
+    return rules
+
+
+@common.context_cached('system_decoders')
+def expand_decoders():
+    folders = [common.ruleset_decoders_path, common.user_decoders_path]
+    decoders = set()
+    for folder in folders:
+        decoders.update({basename(f) for f in glob.glob(path.join(folder, f'*{common.DECODERS_EXTENSION}'),
+                                                        recursive=True)})
+
+    return decoders
+
+
+@common.context_cached('system_lists')
+def expand_lists():
+    folders = [common.ruleset_lists_path, common.user_lists_path]
+    lists = set()
+    for folder in folders:
+        for f in glob.glob(path.join(folder, f'*{common.LISTS_EXTENSION}'), recursive=True):
+            # List files do not have an extension at the moment
+            list_file = basename(f)
+            if '.' not in list_file:
+                lists.update({list_file})
+
+    return lists
 
 
 def add_dynamic_detail(detail, value, attribs, details):
@@ -1623,9 +1645,9 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         raise WazuhError(1113, str(e))
 
 
-def upload_file(content, path):
+def upload_file(content, path, check_xml_formula_values=True):
     """
-    Upload files (rules, decoders and ossec.conf)
+    Upload files (rules, lists, decoders and ossec.conf)
     :param content: content of the XML file
     :param path: Destination of the new XML file
     :return: Confirmation message
@@ -1655,8 +1677,8 @@ def upload_file(content, path):
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.ossec_path, time.time(), random.randint(0, 1000))
     try:
         with open(tmp_file_path, 'w') as tmp_file:
-            final_xml = escape_formula_values(content)
-            tmp_file.write(final_xml)
+            final_file = escape_formula_values(content) if check_xml_formula_values else content
+            tmp_file.write(final_file)
         chmod(tmp_file_path, 0o660)
     except IOError:
         raise WazuhInternalError(1005)
@@ -1695,24 +1717,6 @@ def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: ca
     delete_function(filename=basename(abs_path))
 
 
-def validate_xml(path):
-    """
-    Validates a XML file
-    :param path: Relative path of file from origin
-    :return: True if XML is OK, False otherwise
-    """
-    full_path = join(common.ossec_path, path)
-    try:
-        with open(full_path) as f:
-            parseString('<root>' + f.read() + '</root>')
-    except IOError:
-        raise WazuhInternalError(1005)
-    except ExpatError:
-        return False
-
-    return True
-
-
 def replace_in_comments(original_content, to_be_replaced, replacement):
     xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
     for comment in xml_comment.finditer(original_content):
@@ -1721,16 +1725,19 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
     return original_content
 
 
-def to_relative_path(full_path: str):
+def to_relative_path(full_path: str, prefix: str = common.ossec_path):
     """Return a relative path from the Wazuh base directory.
 
     Parameters
     ----------
     full_path : str
         Absolute path.
+    prefix : str, opt
+        Prefix to strip from the absolute path. Default `common.ossec_path`
+
     Returns
     -------
     str
-        Relative path to `full_path` from `ossec_path`.
+        Relative path to `full_path` from `prefix`.
     """
-    return relpath(full_path, ossec_path)
+    return relpath(full_path, prefix)
