@@ -8,12 +8,9 @@ from collections import defaultdict
 from functools import wraps
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
-from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.common import rbac, broadcast, cluster_nodes
-from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rule import format_rule_decoder_file, Status
 from wazuh.core.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 

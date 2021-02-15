@@ -7,7 +7,6 @@
 import os
 from collections.abc import KeysView
 from io import StringIO
-from os.path import exists
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
 from xml.etree import ElementTree
@@ -20,6 +19,7 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.utils import *
         from wazuh.core import exception
         from wazuh.core.agent import WazuhDBQueryAgents
+        from wazuh.core.common import ossec_path
 
 # all necessary params
 
@@ -404,7 +404,7 @@ def test_safe_move(mock_utime, mock_chmod, mock_chown, ownership, time, permissi
         tmp_file = NamedTemporaryFile(dir=tmpdirname, delete=False)
         target_file = join(tmpdirname, 'target')
         safe_move(tmp_file.name, target_file, ownership=ownership, time=time, permissions=permissions)
-        assert (exists(target_file))
+        assert (os.path.exists(target_file))
         mock_chown.assert_called_once_with(target_file, *ownership)
         if time is not None:
             mock_utime.assert_called_once_with(target_file, time)
@@ -422,7 +422,7 @@ def test_safe_move_exception(mock_utime, mock_chmod, mock_chown):
         target_file = join(tmpdirname, 'target')
         with patch('wazuh.core.utils.rename', side_effect=OSError(1)):
             safe_move(tmp_file.name, target_file, ownership=(1000, 1000), time=(12345, 12345), permissions=0o660)
-        assert (exists(target_file))
+        assert (os.path.exists(target_file))
 
 
 @pytest.mark.parametrize('dir_name, path_exists', [
@@ -1644,3 +1644,33 @@ def test_delete_file_with_backup_ko(mock_copyfile):
     """Test delete_file_with_backup function exceptions."""
     with pytest.raises(WazuhError, match='.* 1019 .*'):
         delete_file_with_backup('test', 'test', str)
+
+
+def test_to_relative_path():
+    """Test to_relative_path function."""
+    path = 'etc/ossec.conf'
+    assert to_relative_path(join(ossec_path, path)) == path
+
+    assert to_relative_path(path, prefix='etc') == basename(path)
+
+
+@patch('wazuh.core.utils.common.ruleset_rules_path', new=test_files_path)
+@patch('wazuh.core.utils.common.user_rules_path', new=test_files_path)
+def test_expand_rules():
+    rules = expand_rules()
+    assert rules == set(map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.RULES_EXTENSION}'))))
+
+
+@patch('wazuh.core.utils.common.ruleset_decoders_path', new=test_files_path)
+@patch('wazuh.core.utils.common.user_decoders_path', new=test_files_path)
+def test_expand_decoders():
+    decoders = expand_decoders()
+    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.DECODERS_EXTENSION}'))))
+
+
+@patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
+@patch('wazuh.core.utils.common.user_lists_path', new=test_files_path)
+def test_expand_lists():
+    lists = expand_lists()
+    assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
+        test_files_path, f'*{common.LISTS_EXTENSION}')))))

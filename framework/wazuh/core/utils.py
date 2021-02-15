@@ -1479,6 +1479,12 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
 
 @common.context_cached('system_rules')
 def expand_rules():
+    """Return all ruleset rule files in the system.
+
+    Returns
+    -------
+    set
+    """
     folders = [common.ruleset_rules_path, common.user_rules_path]
     rules = set()
     for folder in folders:
@@ -1491,6 +1497,12 @@ def expand_rules():
 
 @common.context_cached('system_decoders')
 def expand_decoders():
+    """Return all ruleset decoder files in the system.
+
+    Returns
+    -------
+    set
+    """
     folders = [common.ruleset_decoders_path, common.user_decoders_path]
     decoders = set()
     for folder in folders:
@@ -1503,6 +1515,12 @@ def expand_decoders():
 
 @common.context_cached('system_lists')
 def expand_lists():
+    """Return all cdb list files in the system.
+
+    Returns
+    -------
+    set
+    """
     folders = [common.ruleset_lists_path, common.user_lists_path]
     lists = set()
     for folder in folders:
