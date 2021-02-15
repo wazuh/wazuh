@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 
 #else
 
-int rootcheck_init(int test_config, char * home_path)
+int rootcheck_init(int test_config)
 {
     const char *cfg = OSSECCONF;
 
@@ -67,14 +67,12 @@ int rootcheck_init(int test_config, char * home_path)
 
     int c;
 
-#ifndef WIN32
+#ifndef OSSECHIDS
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
-#else
-    os_free(home_path);
-#endif
+#endif /* OSSECHIDS */
 
     /* Zero the structure, initialize default values */
     rootcheck.workdir = NULL;
@@ -215,7 +213,7 @@ int rootcheck_init(int test_config, char * home_path)
 #endif
 
     /* Set default values */
-#ifndef WIN32
+#ifndef OSSECHIDS
     if (rootcheck.workdir == NULL) {
         rootcheck.workdir = home_path;
     }
@@ -248,6 +246,7 @@ int rootcheck_init(int test_config, char * home_path)
     run_rk_check();
 
     mtdebug1(ARGV0, "Leaving...");
+    os_free(home_path);
 #endif /* OSSECHIDS */
     return (0);
 }

@@ -95,7 +95,7 @@ int del_plist(OSList *p_list);
 int notify_rk(int rk_type, const char *msg);
 
 /* Start the rootcheck externally */
-int rootcheck_init(int test_config, char * home_path);
+int rootcheck_init(int test_config);
 
 /* Connect Rootcheck queue */
 void rootcheck_connect();
