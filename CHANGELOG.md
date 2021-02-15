@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
   - Fixed an error with the RBAC permissions in the `GET /groups` endpoint. ([#7328](https://github.com/wazuh/wazuh/issues/7328))
   - Fixed a bug with Windows registries when parsing backslashes. ([#7309](https://github.com/wazuh/wazuh/pull/7309))
   - Fixed an error with the RBAC permissions when assigning multiple `agent:group` resources to a policy. ([#7393](https://github.com/wazuh/wazuh/pull/7393))
+  - Fixed an error with search parameter when using special characters. ([#7301](https://github.com/wazuh/wazuh/pull/7301))  
 - **AWS Module:**
   - Fixed a bug that caused an error when attempting to use an IAM Role with **CloudWatchLogs** service. ([#7330](https://github.com/wazuh/wazuh/pull/7330))
 - **Framework:**
