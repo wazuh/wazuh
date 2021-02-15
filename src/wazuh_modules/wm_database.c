@@ -331,7 +331,7 @@ void wm_clean_dangling_db() {
     struct dirent * dirent = NULL;
     DIR * dir;
 
-    snprintf(dirname, sizeof(dirname), "%s%s/agents", isChroot() ? "/" : "", WDB_DIR);
+    snprintf(dirname, sizeof(dirname), "%s/agents", WDB_DIR);
     mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", dirname);
 
     if (!(dir = opendir(dirname))) {
