@@ -1214,7 +1214,7 @@ int wdb_create_agent_db(int id, const char *name) {
         }
     }
 
-    snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
 
     if (!(dest = fopen(path, "w"))) {
         fclose(source);
@@ -1260,14 +1260,14 @@ int wdb_remove_agent_db(int id, const char * name) {
     char path[PATH_MAX];
     char path_aux[PATH_MAX];
 
-    snprintf(path, PATH_MAX, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, PATH_MAX, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
 
     if (!remove(path)) {
-        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
+        snprintf(path_aux, PATH_MAX, "%s/agents/%03d-%s.db-shm", WDB_DIR, id, name);
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }
-        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
+        snprintf(path_aux, PATH_MAX, "%s/agents/%03d-%s.db-wal", WDB_DIR, id, name);
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }
