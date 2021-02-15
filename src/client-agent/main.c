@@ -49,7 +49,6 @@ int main(int argc, char **argv)
     int test_config = 0;
     int debug_level = 0;
     char *home_path = w_homedir(argv[0]);
-    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     const char *user = USER;
     const char *group = GROUPGLOBAL;
@@ -70,6 +69,8 @@ int main(int argc, char **argv)
         exit(1);
     }
     mdebug1(WAZUH_HOMEDIR, home_path);
+
+    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     while ((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1) {
         switch (c) {

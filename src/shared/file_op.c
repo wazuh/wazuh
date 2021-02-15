@@ -392,7 +392,6 @@ int isVista;
 #endif
 
 const char *__local_name = "unset";
-char *home_path = NULL;
 
 /* Set the name of the starting program */
 void OS_SetName(const char *name)
