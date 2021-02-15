@@ -31,7 +31,7 @@ for sh_file in /configuration_files/*.sh; do
 done
 
 echo "" > /var/ossec/logs/api.log
-/var/ossec/bin/wazuh-control restart
+/var/ossec/bin/ossec-control restart
 
 # Master-only configuration
 if [ "$3" == "master" ]; then
