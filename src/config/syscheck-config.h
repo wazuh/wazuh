@@ -371,6 +371,8 @@ typedef struct _config {
     float comp_estimation_perc;     /* Estimation of the percentage of compression each file will have */
     uint16_t disk_quota_full_msg;   /* Specify if the full disk_quota message can be written (Once per scan) */
 
+    unsigned int max_files_per_second;  /* Max number of files read per second. */
+
     char **nodiff;                  /* list of files/dirs to never output diff */
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 

@@ -147,6 +147,11 @@ void read_internal(int debug_level);
  */
 void fim_scan();
 
+/**
+ * @brief Stop scanning files for one second if the max number of files scanned has been reached.
+ *
+ */
+void check_max_fps();
 
 /**
  * @brief
