@@ -34,8 +34,6 @@ int main(int argc, char **argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
-    os_free(home_path);
 
     wmodule *cur_module;
     wm_debug_level = getDefine_Int("wazuh_modules", "debug", 0, 2);
@@ -74,6 +72,9 @@ int main(int argc, char **argv)
             wm_debug--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     // Setup daemon
 

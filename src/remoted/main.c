@@ -114,7 +114,6 @@ int main(int argc, char **argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -127,6 +126,8 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Return 0 if not configured */
     if (RemotedConfig(cfg, &logr) < 0) {

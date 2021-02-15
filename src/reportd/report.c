@@ -63,7 +63,6 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     char * home_path = w_homedir(argv[0]);
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     r_filter.group = NULL;
     r_filter.rule = NULL;
@@ -159,6 +158,8 @@ int main(int argc, char **argv)
         }
 
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);

@@ -76,7 +76,6 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     char * home_path = w_homedir(argv[0]);
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     int is_worker = w_is_worker();
     char *master;
@@ -175,6 +174,8 @@ int main(int argc, char **argv)
         }
 
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Prepare JSON Structure */
     if(json_output)

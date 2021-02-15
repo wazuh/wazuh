@@ -355,7 +355,6 @@ int main(int argc, char **argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
@@ -370,6 +369,8 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Start daemon */
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));

@@ -58,7 +58,6 @@ int main(int argc, char **argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     while ((c = getopt(argc, argv, "Vtdhfc:")) != -1) {
         switch (c) {
@@ -103,6 +102,8 @@ int main(int argc, char **argv)
 
     /* Read internal options */
     read_internal(debug_level);
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {

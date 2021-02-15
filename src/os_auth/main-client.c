@@ -92,7 +92,6 @@ int main(int argc, char **argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 #endif
 
     while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:aI:i"
@@ -211,10 +210,6 @@ int main(int argc, char **argv)
         }
     }
 
-#ifndef WIN32
-    os_free(home_path);
-#endif
-
     if (optind < argc) {
         mwarn("Extra arguments detected. They will be ignored.");
     }
@@ -227,6 +222,11 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+#ifndef WIN32
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
+#endif
 
     /* Exit here if test config is set */
     if (test_config) {

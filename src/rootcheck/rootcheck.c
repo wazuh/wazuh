@@ -71,7 +71,6 @@ int rootcheck_init(int test_config)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 #endif /* OSSECHIDS */
 
     /* Zero the structure, initialize default values */
@@ -214,6 +213,7 @@ int rootcheck_init(int test_config)
 
     /* Set default values */
 #ifndef OSSECHIDS
+    mdebug1(WAZUH_HOMEDIR, home_path);
     if (rootcheck.workdir == NULL) {
         rootcheck.workdir = home_path;
     }

@@ -300,7 +300,6 @@ int main(int argc, char **argv)
         if (chdir(home_path) == -1) {
             merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
         }
-        mdebug1(WAZUH_HOMEDIR, home_path);
 
         // Return -1 if not configured
         if (authd_read_config(OSSECCONF) < 0) {
@@ -371,6 +370,8 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     switch(w_is_worker()){
     case -1:

@@ -47,7 +47,6 @@ int main(int argc, char ** argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     // Get options
 
@@ -98,6 +97,8 @@ int main(int argc, char ** argv)
             nowDebug();
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     if (test_config) {
         exit(0);

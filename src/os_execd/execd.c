@@ -115,7 +115,6 @@ int main(int argc, char **argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     const char *group = GROUPGLOBAL;
     const char *cfg = OSSECCONF;
@@ -157,8 +156,6 @@ int main(int argc, char **argv)
         }
     }
 
-    os_free(home_path);
-
     if (debug_level == 0) {
         /* Get debug level */
         debug_level = getDefine_Int("execd", "debug", 0, 2);
@@ -167,6 +164,9 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);

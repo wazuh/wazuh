@@ -68,7 +68,6 @@ int main(int argc, char **argv)
         os_free(home_path);
         exit(1);
     }
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
@@ -119,8 +118,6 @@ int main(int argc, char **argv)
                 break;
         }
     }
-    os_free(home_path);
-    mdebug1(STARTUP_MSG, (int)getpid());
 
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
@@ -138,6 +135,10 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
+    mdebug1(STARTUP_MSG, (int)getpid());
 
     /* Read config */
     if (ClientConf(cfg) < 0) {
