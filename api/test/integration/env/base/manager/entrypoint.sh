@@ -45,13 +45,11 @@ if [ "$3" == "master" ]; then
 
   # Wait until Wazuh API is ready
   elapsed_time=0
-  while [[ $(grep 'Listening on' /var/ossec/logs/api.log | wc -l)  -eq 0 ]] && [[ $elapsed_time -lt 30 ]]
+  while [[ $(grep 'Listening on' /var/ossec/logs/api.log | wc -l)  -eq 0 ]] && [[ $elapsed_time -lt 120 ]]
   do
     sleep 1
     elapsed_time=$((elapsed_time+1))
   done
-
-  sqlite3 /var/ossec/api/configuration/security/rbac.db < /configuration_files/base_security_test.sql
 
   # RBAC configuration
   for sql_file in /configuration_files/*.sql; do
