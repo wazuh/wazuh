@@ -124,7 +124,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file uploaded successfully',
                                       none_msg='Could not upload CDB list file')
-    full_path = join(common.lists_path, filename)
+    full_path = join(common.user_lists_path, filename)
     backup_file = ''
 
     try:
@@ -142,7 +142,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
             backup_file = f"{full_path}.backup"
             delete_file_with_backup(backup_file, full_path, delete_list_file)
 
-        upload_file(content, to_relative_path(full_path))
+        upload_file(content, to_relative_path(full_path), check_xml_formula_values=False)
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         # Remove back up file if no exceptions were raised.
@@ -172,7 +172,7 @@ def delete_list_file(filename):
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file was successfully deleted',
                                       none_msg='Could not delete CDB list file')
-    full_path = join(common.lists_path, filename[0])
+    full_path = join(common.user_lists_path, filename[0])
 
     try:
         delete_list(to_relative_path(full_path))

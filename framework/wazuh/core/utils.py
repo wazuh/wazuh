@@ -16,7 +16,7 @@ import typing
 from copy import deepcopy
 from datetime import datetime, timedelta
 from itertools import groupby, chain
-from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove
+from os import chmod, chown, path, listdir, mkdir, curdir, rename, utime, remove, walk
 from os.path import join, basename, relpath
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
@@ -1482,7 +1482,9 @@ def expand_rules():
     folders = [common.ruleset_rules_path, common.user_rules_path]
     rules = set()
     for folder in folders:
-        rules.update({basename(f) for f in glob.glob(path.join(folder, f'*{common.RULES_EXTENSION}'), recursive=True)})
+        for _, _, files in walk(folder):
+            for f in filter(lambda x: x.endswith(common.RULES_EXTENSION), files):
+                rules.add(f)
 
     return rules
 
@@ -1492,8 +1494,9 @@ def expand_decoders():
     folders = [common.ruleset_decoders_path, common.user_decoders_path]
     decoders = set()
     for folder in folders:
-        decoders.update({basename(f) for f in glob.glob(path.join(folder, f'*{common.DECODERS_EXTENSION}'),
-                                                        recursive=True)})
+        for _, _, files in walk(folder):
+            for f in filter(lambda x: x.endswith(common.DECODERS_EXTENSION), files):
+                decoders.add(f)
 
     return decoders
 
@@ -1503,11 +1506,11 @@ def expand_lists():
     folders = [common.ruleset_lists_path, common.user_lists_path]
     lists = set()
     for folder in folders:
-        for f in glob.glob(path.join(folder, f'*{common.LISTS_EXTENSION}'), recursive=True):
-            # List files do not have an extension at the moment
-            list_file = basename(f)
-            if '.' not in list_file:
-                lists.update({list_file})
+        for _, _, files in walk(folder):
+            for f in filter(lambda x: x.endswith(common.LISTS_EXTENSION), files):
+                # List files do not have an extension at the moment
+                if '.' not in f:
+                    lists.add(f)
 
     return lists
 

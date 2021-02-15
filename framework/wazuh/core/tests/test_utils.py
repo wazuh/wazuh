@@ -1541,20 +1541,6 @@ def test_select_array(select, required_fields, expected_result):
         assert e.code == 1724
 
 
-@patch('wazuh.core.common.ossec_path', new='/var/ossec')
-@patch('wazuh.core.utils.glob.glob')
-def test_get_files(mock_glob):
-    """Test whether get_files() returns expected paths."""
-    mock_glob.return_value = ['/var/ossec/etc/rules/test.yml',
-                              '/var/ossec/etc/rules/test.xml',
-                              '/var/ossec/etc/decoders/test.cdb',
-                              '/var/ossec/etc/lists/test.yml.disabled']
-    result = get_files()
-
-    assert 'etc/ossec.conf' in result
-    assert all('/var/ossec' not in x for x in result)
-
-
 @pytest.mark.parametrize('detail, value, attribs, details', [
     ('new', '4', {'attrib': 'attrib_value'}, {'actual': '3'}),
     ('actual', '4', {'new_attrib': 'attrib_value', 'new_attrib2': 'whatever'}, {'actual': {'pattern': '3'}}),
@@ -1600,41 +1586,6 @@ def test_prettify_xml_formula_injection(mock_remote_commands):
     description = re.search(r'<description>(.+)</description>', result)
     assert description, 'Could not find description tag in XML file'
     assert description.group(1).startswith("'"), f'Did not prepend formulas: {description}'
-
-
-@pytest.mark.parametrize('input_file', [
-    'test_rules.xml',
-    'test_decoders.xml',
-    'test_lists'
-])
-@patch('wazuh.core.common.ossec_path', test_files_path)
-def test_validate_xml(input_file):
-    """Tests validate_xml function works
-
-    Parameters
-    ----------
-    input_file : str
-        Name of the input file.
-    """
-    with open(os.path.join(test_files_path, input_file)) as f:
-        xml_file = f.read()
-
-    with patch('builtins.open', mock_open(read_data=xml_file)):
-        result = validate_xml(input_file)
-        assert result is True
-
-
-def test_validate_xml_ko():
-    """Tests validate_xml function exceptions works"""
-    # Open function raise IOError
-    with patch('wazuh.core.utils.open', side_effect=IOError):
-        with pytest.raises(WazuhException, match=f'.* 1005 .*'):
-            validate_xml('test_path')
-
-    # Open function raise ExpatError
-    with patch('wazuh.core.utils.open', side_effect=ExpatError):
-        result = validate_xml('test_path')
-        assert result is False
 
 
 @patch('wazuh.core.utils.check_remote_commands')
