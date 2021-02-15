@@ -616,7 +616,7 @@ void wm_inotify_setup(wm_database * data) {
 
 #ifndef LOCAL
 
-    char * keysfile_path = KEYS_FILE;
+    char keysfile_path[PATH_MAX] = KEYS_FILE;
     char * keysfile_dir = dirname(keysfile_path);
 
     if (data->sync_agents) {
@@ -646,7 +646,7 @@ void wm_inotify_setup(wm_database * data) {
 // Real time inotify reader thread
 static void * wm_inotify_start(__attribute__((unused)) void * args) {
     char buffer[IN_BUFFER_SIZE];
-    char * keysfile_dir = KEYS_FILE;
+    char keysfile_dir[PATH_MAX] = KEYS_FILE;
     char * keysfile;
     struct inotify_event *event;
     char * dirname = NULL;
