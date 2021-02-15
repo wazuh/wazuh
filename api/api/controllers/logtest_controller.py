@@ -39,7 +39,8 @@ async def run_logtest_tool(request, pretty: bool = False, wait_for_complete: boo
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-analysisd']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -70,7 +71,8 @@ async def end_logtest_session(request, pretty: bool = False, wait_for_complete: 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          basic_services=['wazuh-analysisd']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
