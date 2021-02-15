@@ -18,7 +18,7 @@ def get_health():
     # Get agent health. The agent will be healthy if it has been connected to the manager after been
     # restarted due to shared configuration changes.
     # Using agentd when using grep as the module name can vary between ossec-agentd and wazuh-agentd,
-    # depending on the agent version
+    # depending on the agent version.
 
     shared_conf_restart = os.system(
         "grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
