@@ -1,12 +1,5 @@
-import os
-
 def get_health():
-    output = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
-
-    if output == 0:
-        return 0
-    else:
-        return 1
+    return 0
 
 
 if __name__ == "__main__":
