@@ -98,6 +98,11 @@ int main(int argc, char **argv)
 #ifndef WIN32
     char * home_path = w_homedir(argv[0]);
     mdebug1(WAZUH_HOMEDIR, home_path);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 #endif
 
     while ((c = getopt(argc, argv, "Vhle:r:i:f:ja:n:F:L")) != -1) {

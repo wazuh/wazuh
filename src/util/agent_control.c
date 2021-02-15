@@ -77,6 +77,11 @@ int main(int argc, char **argv)
 
     char * home_path = w_homedir(argv[0]);
 
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
     int is_worker = w_is_worker();
     char *master;
 
