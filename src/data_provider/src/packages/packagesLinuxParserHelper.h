@@ -40,15 +40,28 @@ namespace PackageLinuxHelper
                 std::string vendor       { fields.at(RPMFields::RPM_FIELDS_VENDOR) };
                 std::string description  { fields.at(RPMFields::RPM_FIELDS_SUMMARY) };
 
+                std::string release      { fields.at(RPMFields::RPM_FIELDS_RELEASE) };
+                std::string epoch        { fields.at(RPMFields::RPM_FIELDS_EPOCH) };
+
+                if (!epoch.empty() && epoch.compare("(none)") != 0)
+                {
+                    version = epoch + ":" + version;
+                }
+
+                if (!release.empty() && release.compare("(none)") != 0)
+                {
+                    version += "-" + release;
+                }
+
                 ret["name"]         = name;
-                ret["size"]         = size.empty() ? 0 : stoi(size);
-                ret["install_time"] = install_time.empty() ? UNKNOWN_VALUE : install_time;
-                ret["groups"]       = groups.empty() ? UNKNOWN_VALUE : groups;
-                ret["version"]      = version.empty() ? UNKNOWN_VALUE : version;
-                ret["architecture"] = architecture.empty() ? UNKNOWN_VALUE : architecture;
+                ret["size"]         = size.empty() || size.compare("(none)") == 0 ? 0 : stoi(size);
+                ret["install_time"] = install_time.empty() || install_time.compare("(none)") == 0 ? UNKNOWN_VALUE : install_time;
+                ret["groups"]       = groups.empty() || groups.compare("(none)") == 0 ? UNKNOWN_VALUE : groups;
+                ret["version"]      = version.empty() || version.compare("(none)") == 0 ? UNKNOWN_VALUE : version;
+                ret["architecture"] = architecture.empty() || architecture.compare("(none)") == 0 ? UNKNOWN_VALUE : architecture;
                 ret["format"]       = "rpm";
-                ret["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : vendor;
-                ret["description"]  = description.empty() ? UNKNOWN_VALUE : description;
+                ret["vendor"]       = vendor.empty() || vendor.compare("(none)") == 0 ? UNKNOWN_VALUE : vendor;
+                ret["description"]  = description.empty() || description.compare("(none)") == 0 ? UNKNOWN_VALUE : description;
             }
         }
         return ret;
