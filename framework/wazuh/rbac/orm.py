@@ -793,7 +793,7 @@ class AuthenticationManager:
                     user.password = generate_password_hash(password)
                 if allow_run_as is not None:
                     user.allow_run_as = allow_run_as
-                if password or allow_run_as or resource_type is not None:
+                if password or allow_run_as is not None or resource_type:
                     self.session.commit()
                     return True
             return False
@@ -1332,7 +1332,7 @@ class RulesManager:
                     if rule is not None:
                         rule_to_update.rule = json.dumps(rule)
                     if resource_type is not None:
-                        role.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
+                        rule_to_update.resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
                     self.session.commit()
                     return True
                 return SecurityError.RULE_NOT_EXIST

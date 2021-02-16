@@ -866,15 +866,15 @@ def update_rule(rule_id=None, name=None, rule=None, resource_type: ResourceType 
     result = AffectedItemsWazuhResult(none_msg='Security rule was not updated',
                                       all_msg='Security rule was successfully updated')
     with RulesManager() as rum:
-        rule = rum.get_rule(int(rule_id[0]))
+        rl = rum.get_rule(int(rule_id[0]))
 
-        if rule and rule != SecurityError.RULE_NOT_EXIST:
+        if rl and rl != SecurityError.RULE_NOT_EXIST:
             resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
-            if rule['resource_type'] == ResourceType.USER.value \
-                    or (resource_type is not None and rule['resource_type'] == resource_type):
+            if rl['resource_type'] == ResourceType.USER.value \
+                    or (resource_type is not None and rl['resource_type'] == resource_type):
                 status = rum.update_rule(rule_id=int(rule_id[0]), name=name, rule=rule, resource_type=resource_type)
             else:
-                status = SecurityError.ADMIN_RESOURCES if rule['resource_type'] == ResourceType.DEFAULT.value \
+                status = SecurityError.ADMIN_RESOURCES if rl['resource_type'] == ResourceType.DEFAULT.value \
                     else SecurityError.PROTECTED_RESOURCES
         else:
             status = SecurityError.RULE_NOT_EXIST
