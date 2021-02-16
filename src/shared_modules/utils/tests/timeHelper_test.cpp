@@ -30,7 +30,6 @@ TEST_F(TimeUtilsTest, CheckTimestampValidFormat)
     constexpr auto DATE_FORMAT_REGEX_STR { "[0-9]{4}/([0-9]|1[0-2]){2}/(([0-9]|1[0-2]){2}) (([0-9]|1[0-2]){2}):(([0-9]|1[0-2]){2}):(([0-9]|1[0-2]){2})" };
     const auto currentTimestamp { Utils::getCurrentTimestamp() };
     const auto timestamp { Utils::getTimestamp(std::time(nullptr)) };
-    std::cout << timestamp << std::endl;
     EXPECT_TRUE(std::regex_match(currentTimestamp, std::regex(DATE_FORMAT_REGEX_STR)));
     EXPECT_TRUE(std::regex_match(timestamp, std::regex(DATE_FORMAT_REGEX_STR)));
 }
