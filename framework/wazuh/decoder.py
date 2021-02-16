@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 from os import remove
 from os.path import join, exists
-from shutil import copyfile
 from typing import Union
 from xml.parsers.expat import ExpatError
 
@@ -13,10 +12,10 @@ import wazuh.core.configuration as configuration
 from wazuh.core import common
 from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.manager import prettify_xml, upload_xml
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import format_rule_decoder_file
-from wazuh.core.utils import process_array, safe_move
+from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, \
+    delete_file_with_backup, upload_file, to_relative_path
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -201,31 +200,26 @@ def upload_decoder_file(filename: str, content: str, overwrite: bool = False) ->
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
                                       none_msg='Could not upload decoder'
                                       )
-    path = join('etc', 'decoders', filename)
-    full_path = join(common.ossec_path, path)
+    full_path = join(common.user_decoders_path, filename)
     backup_file = ''
     try:
         if len(content) == 0:
             raise WazuhError(1112)
 
-        prettify_xml(content)
+        validate_wazuh_xml(content)
         # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(full_path):
             raise WazuhError(1905)
         elif overwrite and exists(full_path):
-            try:
-                backup_file = f'{full_path}.backup'
-                copyfile(full_path, backup_file)
-            except IOError:
-                raise WazuhError(1019)
-            delete_decoder_file(filename=filename)
+            backup_file = f'{full_path}.backup'
+            delete_file_with_backup(backup_file, full_path, delete_decoder_file)
 
-        upload_xml(content, path)
-        result.affected_items.append(path)
+        upload_file(content, to_relative_path(full_path))
+        result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
-        exists(backup_file) and remove(backup_file)
+        backup_file and exists(backup_file) and remove(backup_file)
     except WazuhError as e:
-        result.add_failed_item(id_=path, error=e)
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
     finally:
         exists(backup_file) and safe_move(backup_file, full_path, permissions=0o0660)
 
@@ -249,19 +243,19 @@ def delete_decoder_file(filename: str) -> AffectedItemsWazuhResult:
                                       none_msg='Could not delete decoder file'
                                       )
 
-    path = join('etc', 'decoders', filename[0])
+    full_path = join(common.user_decoders_path, filename[0])
 
     try:
-        if exists(join(common.ossec_path, path)):
+        if exists(full_path):
             try:
-                remove(join(common.ossec_path, path))
-                result.affected_items.append(path)
+                remove(full_path)
+                result.affected_items.append(to_relative_path(full_path))
             except IOError:
                 raise WazuhError(1907)
         else:
             raise WazuhError(1906)
     except WazuhError as e:
-        result.add_failed_item(id_=path, error=e)
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
     result.total_affected_items = len(result.affected_items)
 
     return result

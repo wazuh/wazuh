@@ -243,6 +243,20 @@ stages:
     response:
       <<: *permission_denied
 
+
+  - name: Try to update one rule file (denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        overwrite: True
+      data: "{new_rules:s}"
+    response:
+      <<: *permission_denied
+
 ---
 test_name: DELETE RULES FILES RBAC
 

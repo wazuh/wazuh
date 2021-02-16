@@ -12,7 +12,7 @@ import pytest
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core import common
-        from wazuh.core.cdb_list import check_path, get_list_from_file, get_relative_path, iterate_lists, \
+        from wazuh.core.cdb_list import check_path, get_list_from_file, iterate_lists, \
             split_key_value_with_quotes, validate_cdb_list, create_list_file, delete_list, get_filenames_paths
         from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 
@@ -40,21 +40,6 @@ CONTENT_FILE = {'test-wazuh-w': 'write',
                 'test-key4': 'value:::4'}
 
 # Tests
-
-@pytest.mark.parametrize("relative_path", ["testpath", "complex test path/with/sub/dir"])
-def test_get_relative_path(relative_path):
-    """Test `get_relative_path` core functionality.
-
-    This will create a full path from the relative path provided and then pass it to `get_relative_path`. The result
-    must be the same as the original `relative_path` provided.
-
-    Parameters
-    ----------
-    relative_path : str
-        Relative path to create a full path and pass it to `get_relative_path`.
-    """
-    full_path = os.path.join(common.ossec_path, relative_path)
-    assert relative_path == get_relative_path(full_path)
 
 
 @pytest.mark.parametrize('path, error_expected', [

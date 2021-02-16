@@ -8,22 +8,27 @@ from collections import defaultdict
 from functools import wraps
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
-from wazuh.core.cdb_list import iterate_lists
 from wazuh.core.common import rbac, broadcast, cluster_nodes
-from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.rule import format_rule_decoder_file, Status
+from wazuh.core.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 
 def _expand_resource(resource):
-    """This function expand a specified resource depending of it type.
+    """This function expand a specified resource depending of its type.
+    
+    Parameters
+    ----------
+    resource : str
+        Resource to be expanded
 
-    :param resource: Resource to be expanded
-    :return expanded_resource: Returns the result of the resource expansion
+    Returns
+    -------
+    str
+        Result of the resource expansion.
     """
     name, attribute, value = resource.split(':')
     resource_type = ':'.join([name, attribute])
@@ -58,21 +63,11 @@ def _expand_resource(resource):
                 rules = rum.get_rules()
             return {str(rule_id.id) for rule_id in rules}
         elif resource_type == 'rule:file':
-            tags = ['rule_include', 'rule_exclude', 'rule_dir']
-            format_rules = format_rule_decoder_file(
-                get_ossec_conf(section='ruleset')['ruleset'],
-                {'status': Status.S_ALL.value, 'relative_dirname': None, 'filename': None},
-                tags)
-            return {rule['filename'] for rule in format_rules}
+            return expand_rules()
         elif resource_type == 'decoder:file':
-            tags = ['decoder_include', 'decoder_exclude', 'decoder_dir']
-            format_decoders = format_rule_decoder_file(
-                get_ossec_conf(section='ruleset')['ruleset'],
-                {'status': Status.S_ALL.value, 'relative_dirname': None, 'filename': None},
-                tags)
-            return {decoder['filename'] for decoder in format_decoders}
+            return expand_decoders()
         elif resource_type == 'list:file':
-            return {cdb_list['filename'] for cdb_list in iterate_lists(only_names=True)}
+            return expand_lists()
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless

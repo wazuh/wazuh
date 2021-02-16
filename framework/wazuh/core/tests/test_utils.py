@@ -7,22 +7,25 @@
 import os
 from collections.abc import KeysView
 from io import StringIO
-from os.path import join, exists
 from tempfile import TemporaryDirectory, NamedTemporaryFile
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 from xml.etree import ElementTree
 
 import pytest
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
+        from wazuh import WazuhException
         from wazuh.core.utils import *
         from wazuh.core import exception
         from wazuh.core.agent import WazuhDBQueryAgents
+        from wazuh.core.common import ossec_path
 
 # all necessary params
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_files_path = os.path.join(test_data_path, 'utils')
+ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 
 # input data for testing q filter
 input_array = [
@@ -401,7 +404,7 @@ def test_safe_move(mock_utime, mock_chmod, mock_chown, ownership, time, permissi
         tmp_file = NamedTemporaryFile(dir=tmpdirname, delete=False)
         target_file = join(tmpdirname, 'target')
         safe_move(tmp_file.name, target_file, ownership=ownership, time=time, permissions=permissions)
-        assert (exists(target_file))
+        assert (os.path.exists(target_file))
         mock_chown.assert_called_once_with(target_file, *ownership)
         if time is not None:
             mock_utime.assert_called_once_with(target_file, time)
@@ -419,7 +422,7 @@ def test_safe_move_exception(mock_utime, mock_chmod, mock_chown):
         target_file = join(tmpdirname, 'target')
         with patch('wazuh.core.utils.rename', side_effect=OSError(1)):
             safe_move(tmp_file.name, target_file, ownership=(1000, 1000), time=(12345, 12345), permissions=0o660)
-        assert (exists(target_file))
+        assert (os.path.exists(target_file))
 
 
 @pytest.mark.parametrize('dir_name, path_exists', [
@@ -1538,20 +1541,6 @@ def test_select_array(select, required_fields, expected_result):
         assert e.code == 1724
 
 
-@patch('wazuh.core.common.ossec_path', new='/var/ossec')
-@patch('wazuh.core.utils.glob.glob')
-def test_get_files(mock_glob):
-    """Test whether get_files() returns expected paths."""
-    mock_glob.return_value = ['/var/ossec/etc/rules/test.yml',
-                              '/var/ossec/etc/rules/test.xml',
-                              '/var/ossec/etc/decoders/test.cdb',
-                              '/var/ossec/etc/lists/test.yml.disabled']
-    result = get_files()
-
-    assert 'etc/ossec.conf' in result
-    assert all('/var/ossec' not in x for x in result)
-
-
 @pytest.mark.parametrize('detail, value, attribs, details', [
     ('new', '4', {'attrib': 'attrib_value'}, {'actual': '3'}),
     ('actual', '4', {'new_attrib': 'attrib_value', 'new_attrib2': 'whatever'}, {'actual': {'pattern': '3'}}),
@@ -1566,3 +1555,91 @@ def test_add_dynamic_detail(detail, value, attribs, details):
         assert details[detail]['pattern'] == value
     for key, value in attribs.items():
         assert details[detail][key] == value
+
+
+@patch('wazuh.core.utils.check_remote_commands')
+@patch('wazuh.core.manager.common.ossec_path', new=test_files_path)
+def test_validate_wazuh_xml(mock_remote_commands):
+    """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
+
+    with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
+        xml_file = f.read()
+
+    m = mock_open(read_data=xml_file)
+
+    with patch('builtins.open', m):
+        validate_wazuh_xml(xml_file)
+    mock_remote_commands.assert_not_called()
+
+    with patch('builtins.open', m):
+        validate_wazuh_xml(xml_file, config_file=True)
+    mock_remote_commands.assert_called_once()
+
+
+@pytest.mark.parametrize('effect, expected_exception', [
+    (ExpatError, 1113)
+])
+def test_validate_wazuh_xml_ko(effect, expected_exception):
+    """Tests validate_wazuh_xml function works when open function raises an exception.
+    Parameters
+    ----------
+    effect : Exception
+        Exception to be triggered.
+    expected_exception
+        Expected code when triggering the exception.
+    """
+    input_file = os.path.join(test_files_path, 'test_rules.xml')
+
+    with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
+        with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
+            validate_wazuh_xml(input_file)
+
+
+@patch('wazuh.core.utils.copyfile')
+def test_delete_file_with_backup(mock_copyfile):
+    """Test delete_file_with_backup function."""
+    backup_file = 'backup'
+    abs_path = 'testing/dir/subdir/file'
+    delete_function = MagicMock()
+
+    delete_file_with_backup(backup_file, abs_path, delete_function)
+
+    mock_copyfile.assert_called_with(abs_path, backup_file)
+    delete_function.assert_called_once_with(filename=basename(abs_path))
+
+
+@patch('wazuh.core.utils.copyfile', side_effect=IOError)
+def test_delete_file_with_backup_ko(mock_copyfile):
+    """Test delete_file_with_backup function exceptions."""
+    with pytest.raises(WazuhError, match='.* 1019 .*'):
+        delete_file_with_backup('test', 'test', str)
+
+
+def test_to_relative_path():
+    """Test to_relative_path function."""
+    path = 'etc/ossec.conf'
+    assert to_relative_path(join(ossec_path, path)) == path
+
+    assert to_relative_path(path, prefix='etc') == basename(path)
+
+
+@patch('wazuh.core.utils.common.ruleset_rules_path', new=test_files_path)
+@patch('wazuh.core.utils.common.user_rules_path', new=test_files_path)
+def test_expand_rules():
+    rules = expand_rules()
+    assert rules == set(map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.RULES_EXTENSION}'))))
+
+
+@patch('wazuh.core.utils.common.ruleset_decoders_path', new=test_files_path)
+@patch('wazuh.core.utils.common.user_decoders_path', new=test_files_path)
+def test_expand_decoders():
+    decoders = expand_decoders()
+    assert decoders == set(map(os.path.basename, glob.glob(os.path.join(test_files_path, f'*{common.DECODERS_EXTENSION}'))))
+
+
+@patch('wazuh.core.utils.common.ruleset_lists_path', new=test_files_path)
+@patch('wazuh.core.utils.common.user_lists_path', new=test_files_path)
+def test_expand_lists():
+    lists = expand_lists()
+    assert lists == set(filter(lambda x: len(x.split('.')) == 1, map(os.path.basename, glob.glob(os.path.join(
+        test_files_path, f'*{common.LISTS_EXTENSION}')))))

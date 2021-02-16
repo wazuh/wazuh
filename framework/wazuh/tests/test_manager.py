@@ -319,7 +319,7 @@ def test_get_basic_info(mock_open):
 
 @patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
 @patch('wazuh.manager.write_ossec_conf')
-@patch('wazuh.manager.prettify_xml')
+@patch('wazuh.manager.validate_wazuh_xml')
 @patch('wazuh.manager.copyfile')
 @patch('wazuh.manager.exists', return_value=True)
 @patch('wazuh.manager.remove')
@@ -339,7 +339,7 @@ def test_update_ossec_conf(move_mock, remove_mock, exists_mock, copy_mock, prett
 ])
 @patch('wazuh.manager.validate_ossec_conf')
 @patch('wazuh.manager.write_ossec_conf')
-@patch('wazuh.manager.prettify_xml')
+@patch('wazuh.manager.validate_wazuh_xml')
 @patch('wazuh.manager.copyfile')
 @patch('wazuh.manager.exists', return_value=True)
 @patch('wazuh.manager.remove')

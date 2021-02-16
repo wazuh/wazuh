@@ -4,7 +4,6 @@
 
 from os import remove
 from os.path import exists, join
-from shutil import copyfile
 from xml.parsers.expat import ExpatError
 
 import xmltodict
@@ -14,11 +13,11 @@ from wazuh.core import common
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
-from wazuh.core.manager import upload_xml, prettify_xml
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
     RULE_REQUIREMENTS, SORT_FIELDS
-from wazuh.core.utils import process_array, safe_move
+from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, upload_file, delete_file_with_backup, \
+    to_relative_path
 from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config()['disabled']
@@ -280,31 +279,27 @@ def upload_rule_file(filename=None, content=None, overwrite=False):
     result = AffectedItemsWazuhResult(all_msg='Rule was successfully uploaded',
                                       none_msg='Could not upload rule'
                                       )
-    path = join('etc', 'rules', filename)
-    full_path = join(common.ossec_path, path)
+    full_path = join(common.user_rules_path, filename)
     backup_file = ''
     try:
         if len(content) == 0:
             raise WazuhError(1112)
 
-        prettify_xml(content)
+        validate_wazuh_xml(content)
+
         # If file already exists and overwrite is False, raise exception
         if not overwrite and exists(full_path):
             raise WazuhError(1905)
         elif overwrite and exists(full_path):
-            try:
-                backup_file = f'{full_path}.backup'
-                copyfile(full_path, backup_file)
-            except IOError:
-                raise WazuhError(1019)
-            delete_rule_file(filename=filename)
+            backup_file = f'{full_path}.backup'
+            delete_file_with_backup(backup_file, full_path, delete_rule_file)
 
-        upload_xml(content, path)
-        result.affected_items.append(path)
+        upload_file(content, to_relative_path(full_path))
+        result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
-        exists(backup_file) and remove(backup_file)
+        backup_file and exists(backup_file) and remove(backup_file)
     except WazuhError as e:
-        result.add_failed_item(id_=path, error=e)
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
     finally:
         exists(backup_file) and safe_move(backup_file, full_path, permissions=0o660)
 
@@ -328,19 +323,19 @@ def delete_rule_file(filename=None):
                                       none_msg='Could not delete rule'
                                       )
 
-    path = join('etc', 'rules', filename[0])
+    full_path = join(common.user_rules_path, filename[0])
 
     try:
-        if exists(join(common.ossec_path, path)):
+        if exists(full_path):
             try:
-                remove(join(common.ossec_path, path))
-                result.affected_items.append(path)
+                remove(full_path)
+                result.affected_items.append(to_relative_path(full_path))
             except IOError:
                 raise WazuhError(1907)
         else:
             raise WazuhError(1906)
     except WazuhError as e:
-        result.add_failed_item(id_=path, error=e)
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
     result.total_affected_items = len(result.affected_items)
 
     return result

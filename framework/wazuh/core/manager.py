@@ -5,27 +5,20 @@
 import copy
 import fcntl
 import json
-import random
 import re
 import socket
-import time
-import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from datetime import datetime
 from datetime import timezone
-from os import chmod, remove
+from os import remove
 from os.path import exists, join
-from pyexpat import ExpatError
-from shutil import Error
 from typing import Dict
-from xml.dom.minidom import parseString
 
 from api import configuration
 from wazuh import WazuhInternalError, WazuhError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.results import WazuhResult
-from wazuh.core.utils import load_wazuh_xml, safe_move, tail, check_remote_commands
+from wazuh.core.utils import tail
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
@@ -105,177 +98,6 @@ def get_logs_summary(limit=2000):
         tags[log['tag']][log['level']] += 1
 
     return tags
-
-
-def prettify_xml(xml_file):
-    """Prettify XML files (rules, decoders and ossec.conf)
-
-    Parameters
-    ----------
-    xml_file : str
-        Content of the XML file
-
-    Returns
-    -------
-    Checked XML content
-    """
-
-    def escape_formula_values(xml_string):
-        """Prepend with a single quote possible formula injections."""
-        formula_characters = ('=', '+', '-', '@')
-        et = ET.ElementTree(ET.fromstring(f'<root>{xml_string}</root>'))
-        full_preprend, beginning_preprend = list(), list()
-        for node in et.iter():
-            if node.tag and node.tag.startswith(formula_characters):
-                full_preprend.append(node.tag)
-            if node.text and node.text.startswith(formula_characters) and ("'" in node.text or '"' in node.text):
-                beginning_preprend.append(node.text)
-
-        for text in full_preprend:
-            xml_string = re.sub(f'<{re.escape(text)}>', f"<'{text}'>", xml_string)
-            xml_string = re.sub(f'</{re.escape(text)}>', f"</'{text}'>", xml_string)
-
-        for text in beginning_preprend:
-            xml_string = re.sub(f'>{re.escape(text)}<', f">'{text}<", xml_string)
-
-        return xml_string
-
-    # -- characters are not allowed in XML comments
-    xml_file = replace_in_comments(xml_file, '--', '%wildcard%')
-
-    # Create temporary file for parsing xml input
-    try:
-        # Beautify xml file and escape '&' character as it could come in some tag values unescaped
-        xml = parseString(f'<root>{xml_file}</root>'.replace('&', '&amp;'))
-        # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-        indent = '  '  # indent parameter for toprettyxml function
-        pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
-        # Revert xml.dom replacings
-        # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-        pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-            .replace("&gt;", ">").replace('&apos;', "'")
-        # Delete two first spaces of each line
-        final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
-        final_xml = replace_in_comments(final_xml, '%wildcard%', '--')
-
-        # Check if remote commands are allowed
-        check_remote_commands(final_xml)
-        # Check xml format
-        load_wazuh_xml(xml_path='', data=final_xml)
-        # Check and escape formula injections
-        final_xml = escape_formula_values(final_xml)
-
-        return final_xml
-    except ExpatError:
-        raise WazuhError(1113)
-    except WazuhError as e:
-        raise e
-    except Exception as e:
-        raise WazuhError(1113, str(e))
-
-
-def upload_xml(xml_file, path):
-    """
-    Upload XML files (rules, decoders and ossec.conf)
-    :param xml_file: content of the XML file
-    :param path: Destination of the new XML file
-    :return: Confirmation message
-    """
-    # Path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
-    try:
-        with open(tmp_file_path, 'w') as tmp_file:
-            final_xml = prettify_xml(xml_file)
-            tmp_file.write(final_xml)
-        chmod(tmp_file_path, 0o660)
-    except IOError:
-        raise WazuhInternalError(1005)
-
-    # Move temporary file to group folder
-    try:
-        new_conf_path = join(common.ossec_path, path)
-        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
-    except Error:
-        raise WazuhInternalError(1016)
-
-    return WazuhResult({'message': 'File was successfully updated'})
-
-
-def upload_list(list_file, path):
-    """
-    Updates CDB lists
-    :param list_file: content of the list
-    :param path: Destination of the new list file
-    :return: Confirmation message.
-    """
-    # path of temporary file
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.txt'.format(common.ossec_path, time.time(), random.randint(0, 1000))
-
-    try:
-        # create temporary file
-        with open(tmp_file_path, 'w') as tmp_file:
-            # write json in tmp_file_path
-            for element in list_file.splitlines():
-                # skip empty lines
-                if not element:
-                    continue
-                tmp_file.write(element.strip() + '\n')
-        chmod(tmp_file_path, 0o640)
-    except IOError:
-        raise WazuhInternalError(1005)
-
-    # validate CDB list
-    if not validate_cdb_list(tmp_file_path):
-        raise WazuhError(1800)
-
-    # move temporary file to group folder
-    try:
-        new_conf_path = join(common.ossec_path, path)
-        safe_move(tmp_file_path, new_conf_path, permissions=0o660)
-    except Error:
-        raise WazuhInternalError(1016)
-
-    return WazuhResult({'message': 'File was successfully updated'})
-
-
-def validate_xml(path):
-    """
-    Validates a XML file
-    :param path: Relative path of file from origin
-    :return: True if XML is OK, False otherwise
-    """
-    full_path = join(common.ossec_path, path)
-    try:
-        with open(full_path) as f:
-            parseString('<root>' + f.read() + '</root>')
-    except IOError:
-        raise WazuhInternalError(1005)
-    except ExpatError:
-        return False
-
-    return True
-
-
-def validate_cdb_list(path):
-    """
-    Validates a CDB list
-    :param path: Relative path of file from origin
-    :return: True if CDB list is OK, False otherwise
-    """
-    full_path = join(common.ossec_path, path)
-    regex_cdb = re.compile(r'^[^:\s]+:[^:]*$')
-    try:
-        with open(full_path) as f:
-            for line in f:
-                # skip empty lines
-                if not line.strip():
-                    continue
-                if not re.match(regex_cdb, line):
-                    return False
-    except IOError:
-        raise WazuhInternalError(1005)
-
-    return True
 
 
 def validate_ossec_conf():
@@ -381,14 +203,6 @@ def parse_execd_output(output: str) -> Dict:
         response = {'status': 'OK'}
 
     return response
-
-
-def replace_in_comments(original_content, to_be_replaced, replacement):
-    xml_comment = re.compile(r"(<!--(.*?)-->)", flags=re.MULTILINE | re.DOTALL)
-    for comment in xml_comment.finditer(original_content):
-        good_comment = comment.group(2).replace(to_be_replaced, replacement)
-        original_content = original_content.replace(comment.group(2), good_comment)
-    return original_content
 
 
 def get_api_conf():

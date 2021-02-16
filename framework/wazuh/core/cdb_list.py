@@ -8,23 +8,13 @@ from pathlib import Path
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
-from wazuh.core.utils import find_nth, delete_wazuh_file
+from wazuh.core.utils import find_nth, delete_wazuh_file, to_relative_path
 
 REQUIRED_FIELDS = ['relative_dirname', 'filename']
 SORT_FIELDS = ['relative_dirname', 'filename']
-CDB_EXTENSION = '.cdb'
 
 _regex_path = r'^(etc/lists/)[\w\.\-/]+$'
 _pattern_path = re.compile(_regex_path)
-
-
-def get_relative_path(path):
-    """Get relative path
-
-    :param path: Original path
-    :return: Relative path (from Wazuh base directory)
-    """
-    return path.replace(common.ossec_path, '')[1:]
 
 
 def check_path(path):
@@ -37,8 +27,7 @@ def check_path(path):
         raise WazuhError(1801)
 
 
-@common.context_cached('system_lists')
-def iterate_lists(absolute_path=common.lists_path, only_names=False):
+def iterate_lists(absolute_path=common.user_lists_path, only_names=False):
     """Get the content of all CDB lists
 
     :param absolute_path: Full path of directory to get CDB lists
@@ -54,11 +43,11 @@ def iterate_lists(absolute_path=common.lists_path, only_names=False):
 
     for name in dir_content:
         new_absolute_path = path.join(absolute_path, name)
-        new_relative_path = get_relative_path(new_absolute_path)
+        new_relative_path = to_relative_path(new_absolute_path)
         # '.cdb' and '.swp' files are skipped
         if (path.isfile(new_absolute_path)) and ('.cdb' not in name) and ('~' not in name) and not pattern.search(name):
             if only_names:
-                relative_path = get_relative_path(absolute_path)
+                relative_path = to_relative_path(absolute_path)
                 output.append({'relative_dirname': relative_path, 'filename': name})
             else:
                 items = get_list_from_file(path.join(common.ossec_path, new_relative_path))
@@ -263,12 +252,12 @@ def delete_list(rel_path):
 
     # Also delete .cdb file (if exists).
     try:
-        remove(path.join(common.ossec_path, rel_path + CDB_EXTENSION))
+        remove(path.join(common.ossec_path, rel_path + common.COMPILED_LISTS_EXTENSION))
     except (IOError, OSError):
         pass
 
 
-def get_filenames_paths(filenames_list, root_directory=common.lists_path):
+def get_filenames_paths(filenames_list, root_directory=common.user_lists_path):
     """Get full paths from filename list. I.e: test_filename -> {wazuh_path}/etc/lists/test_filename
 
     Parameters
@@ -283,4 +272,4 @@ def get_filenames_paths(filenames_list, root_directory=common.lists_path):
     list
         Full path to filenames.
     """
-    return [str(next(Path(root_directory).rglob(file), path.join(common.lists_path, file))) for file in filenames_list]
+    return [str(next(Path(root_directory).rglob(file), path.join(common.user_lists_path, file))) for file in filenames_list]

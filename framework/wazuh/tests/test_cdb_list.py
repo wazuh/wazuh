@@ -4,9 +4,9 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import shutil
 import sys
 from unittest.mock import patch, MagicMock
+from wazuh.core.exception import WazuhInternalError
 
 import pytest
 
@@ -25,7 +25,6 @@ with patch('wazuh.core.common.getgrnam'):
             delete_list_file
         from wazuh.core import common
         from wazuh.core.results import AffectedItemsWazuhResult
-        from wazuh.core.exception import *
 
 RELATIVE_PATH = os.path.join("framework", "wazuh", "tests", "data", "test_cdb_list")
 NAME_FILE_1 = "test_lists_1"
@@ -69,7 +68,7 @@ def lists_path_mock(**kwargs):
     ([NAME_FILE_1], RESULT_GET_LIST_FILE_1),
     (NAME_FILES, RESULTS_GET_LIST)
 ])
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 def test_get_lists(paths, expected_result):
     """Test basic `get_list` functionality.
 
@@ -89,7 +88,7 @@ def test_get_lists(paths, expected_result):
 
 
 @pytest.mark.parametrize("limit", [1, 2])
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 def test_get_lists_limit(limit):
     """Test `get_lists` functionality when using the `limit` parameter.
 
@@ -106,7 +105,7 @@ def test_get_lists_limit(limit):
 
 
 @pytest.mark.parametrize("offset", [0, 1])
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 def test_get_lists_offset(offset):
     """Test `get_lists` functionality when using the `offset` parameter.
 
@@ -142,7 +141,7 @@ def test_get_lists_offset(offset):
     ("test-ossec-w", True, "items", NAME_FILES, RESULT_GET_LIST_FILE_1),
     ("test-wazuh-w", True, "items", [NAME_FILE_2], RESULT_GET_LIST_FILE_2),
 ])
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 def test_get_lists_search(search_text, complementary_search, search_in_fields, paths, expected_result):
     """Test `get_lists` functionality when using the `search` parameter.
 
@@ -167,7 +166,7 @@ def test_get_lists_search(search_text, complementary_search, search_in_fields, p
     assert result.affected_items == expected_result
 
 
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 def test_get_lists_sort():
     """Test `get_lists` functionality when using the `sort` parameter."""
     result_a = get_lists(filename=NAME_FILES, sort_by=['filename'], sort_ascending=True)
@@ -180,7 +179,7 @@ def test_get_lists_sort():
     assert result_b.affected_items == RESULT_GET_LIST_FILE_2 + RESULT_GET_LIST_FILE_1
 
 
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists(iterate_mock):
     """Test `get_path_lists` functionality without any other parameter aside from `path`.
@@ -197,7 +196,7 @@ def test_get_path_lists(iterate_mock):
 
 
 @pytest.mark.parametrize("limit", [1, 2])
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists_limit(iterate_mock, limit):
     """Test `get_path_lists` functionality when using the `limit` parameter.
@@ -216,7 +215,7 @@ def test_get_path_lists_limit(iterate_mock, limit):
 
 
 @pytest.mark.parametrize("offset", [0, 1])
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists_offset(iterate_mock, offset):
     """Test `get__path_lists` functionality when using the `offset` parameter.
@@ -251,7 +250,7 @@ def test_get_path_lists_offset(iterate_mock, offset):
     ("lists_2", True, "filename", NAME_FILES, RESULT_GET_PATH_LIST_FILE_1),
     ("invalid", True, "filename", NAME_FILES, RESULTS_GET_PATH_LIST)
 ])
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists_search(iterate_mock, search_text, complementary_search, search_in_fields, paths, expected_result):
     """Test `get_path_lists` functionality when using the `search` parameter.
@@ -278,7 +277,7 @@ def test_get_path_lists_search(iterate_mock, search_text, complementary_search, 
     assert result.affected_items == expected_result
 
 
-@patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH)
+@patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH)
 @patch('wazuh.cdb_list.iterate_lists', side_effect=lists_path_mock)
 def test_get_path_lists_sort(iterate_mock):
     """Test `get_path_lists` functionality when using the `sort` parameter."""
@@ -321,26 +320,27 @@ def test_get_list_file(filename, raw, expected_result, total_failed_items):
 
 
 @patch('wazuh.cdb_list.safe_move')
-@patch('wazuh.cdb_list.copyfile')
-@patch('wazuh.cdb_list.create_list_file')
+@patch('wazuh.cdb_list.delete_file_with_backup')
+@patch('wazuh.cdb_list.upload_file')
 @patch('wazuh.cdb_list.delete_list_file')
-@patch('wazuh.cdb_list.os.remove')
-@patch('wazuh.cdb_list.os.path.exists', return_value=True)
-def test_upload_list_file(mock_exists, mock_remove, mock_delete_list_file, mock_create_list_file, mock_copyfile,
-                          mock_safe_move):
+@patch('wazuh.cdb_list.remove')
+@patch('wazuh.cdb_list.exists', return_value=True)
+def test_upload_list_file(mock_exists, mock_remove, mock_delete_list_file, mock_upload_file,
+                          mock_delete_file_with_backup, mock_safe_move):
     """Check that functions inside upload_list_file are called with expected params"""
     filename = 'test_file'
     content = 'test_key:test_value\n'
     upload_list_file(filename, content, overwrite=True)
 
-    mock_create_list_file.assert_called_once_with(os.path.join(common.lists_path, filename), content, permissions=0o660)
-    mock_delete_list_file.assert_called_once_with(filename=filename)
-    mock_copyfile.assert_called_once_with(os.path.join(common.lists_path, filename),
-                                          os.path.join(common.lists_path, filename + '.backup'))
+    mock_upload_file.assert_called_once_with(content, os.path.join('etc', 'lists', filename),
+                                             check_xml_formula_values=False)
+    mock_delete_file_with_backup.assert_called_once_with(os.path.join(common.user_lists_path, filename + '.backup'),
+                                                         os.path.join(common.user_lists_path, filename),
+                                                         mock_delete_list_file)
 
 
-@patch('wazuh.cdb_list.common.lists_path', return_value='/test/path')
-@patch('wazuh.cdb_list.os.remove')
+@patch('wazuh.cdb_list.common.user_lists_path', return_value='/test/path')
+@patch('wazuh.cdb_list.remove')
 def test_upload_list_file_ko(mock_remove, mock_lists_path):
     """Check whether expected exceptions are raised."""
     result = upload_list_file(filename='test', content='')
@@ -348,12 +348,12 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1112
 
     with patch('wazuh.cdb_list.safe_move') as mock_safe_move:
-        with patch('wazuh.cdb_list.os.path.exists', return_value=True):
+        with patch('wazuh.cdb_list.exists', return_value=True):
             # File already exists and overwrite is False, raise exception
             result = upload_list_file(filename='test', content='test:content')
             assert result.render()['data']['failed_items'][0]['error']['code'] == 1905
             # Original file is restored with safe_move
-            mock_safe_move.assert_called_once_with('', os.path.join(common.lists_path, 'test'), permissions=432)
+            mock_safe_move.assert_called_once_with('', os.path.join(common.user_lists_path, 'test'), permissions=432)
 
             # File with same name already exists in subdirectory, raise exception
             with patch('wazuh.cdb_list.get_filenames_paths', return_value=['/test']):
@@ -365,9 +365,9 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
             assert result.render()['data']['failed_items'][0]['error']['code'] == 1019
 
         # Exception while trying to create list file
-        with patch('wazuh.cdb_list.os.path.exists', return_value=False):
-            result = upload_list_file(filename='test', content='test:content', overwrite=False)
-            assert result.render()['data']['failed_items'][0]['error']['code'] == 1806
+        with patch('wazuh.cdb_list.exists', return_value=False):
+            with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
+                upload_list_file(filename='test', content='test:content', overwrite=False)
 
 
 @patch('wazuh.core.cdb_list.delete_wazuh_file')
@@ -379,7 +379,7 @@ def test_delete_list_file(mock_delete_file):
         with open(test_file, 'a') as f:
             f.write('key:value\n"ke:y2":value2\n')
 
-        with patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH):
+        with patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH):
             result = delete_list_file(['test_file'])
             assert result.render()['data']['affected_items'][0] ==\
                    'framework/wazuh/tests/data/test_cdb_list/test_file'
@@ -394,6 +394,6 @@ def test_delete_list_file(mock_delete_file):
 
 def test_delete_list_file_ko():
     """Check that expected error code is returned when the file can't be deleted."""
-    with patch('wazuh.cdb_list.common.lists_path', new=DATA_PATH):
+    with patch('wazuh.cdb_list.common.user_lists_path', new=DATA_PATH):
         result = delete_list_file(['test_file'])
         assert result.render()['data']['failed_items'][0]['error']['code'] == 1906

@@ -2,15 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
-from shutil import copyfile
+from os import remove
+from os.path import join, split, exists, isfile, dirname as path_dirname
 
 from wazuh.core import common
-from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS, create_list_file, \
-    get_relative_path, delete_list, get_filenames_paths, validate_cdb_list
+from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS, delete_list, \
+    get_filenames_paths, validate_cdb_list
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.utils import process_array, safe_move
+from wazuh.core.utils import process_array, safe_move, delete_file_with_backup, upload_file, to_relative_path
 from wazuh.rbac.decorators import expose_resources
 
 
@@ -51,15 +51,15 @@ def get_lists(filename=None, offset=0, limit=common.database_limit, select=None,
     result = AffectedItemsWazuhResult(all_msg='All specified lists were returned',
                                       some_msg='Some lists were not returned',
                                       none_msg='No list was returned')
-    dirname = os.path.join(common.ossec_path, relative_dirname) if relative_dirname else None
+    dirname = join(common.ossec_path, relative_dirname) if relative_dirname else None
 
     lists = list()
     for path in get_filenames_paths(filename):
         # Only files which exist and whose dirname is the one specified by the user (if any), will be added to response.
-        if not any([dirname is not None and os.path.dirname(path) != dirname, not os.path.isfile(path)]):
+        if not any([dirname is not None and path_dirname(path) != dirname, not isfile(path)]):
             lists.append({'items': [{'key': key, 'value': value} for key, value in get_list_from_file(path).items()],
-                          'relative_dirname': os.path.dirname(get_relative_path(path)),
-                          'filename': os.path.split(get_relative_path(path))[1]})
+                          'relative_dirname': path_dirname(to_relative_path(path)),
+                          'filename': split(to_relative_path(path))[1]})
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
@@ -124,7 +124,7 @@ def upload_list_file(filename=None, content=None, overwrite=False):
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file uploaded successfully',
                                       none_msg='Could not upload CDB list file')
-    path = os.path.join(common.lists_path, filename)
+    full_path = join(common.user_lists_path, filename)
     backup_file = ''
 
     try:
@@ -132,31 +132,26 @@ def upload_list_file(filename=None, content=None, overwrite=False):
         validate_cdb_list(content)
 
         # If file already exists and overwrite is False, raise exception.
-        if not overwrite and os.path.exists(path):
+        if not overwrite and exists(full_path):
             raise WazuhError(1905)
         # If file with same name already exists in subdirectory.
-        elif get_filenames_paths([filename])[0] != path:
+        elif get_filenames_paths([filename])[0] != full_path:
             raise WazuhError(1805)
         # Create backup and delete original CDB list.
-        elif overwrite and os.path.exists(path):
-            try:
-                backup_file = f"{path}.backup"
-                copyfile(path, backup_file)
-            except IOError:
-                raise WazuhError(1019)
-            # Use delete_list_file so exception will be raised if user has no RBAC permissions.
-            delete_list_file(filename=filename)
+        elif overwrite and exists(full_path):
+            backup_file = f"{full_path}.backup"
+            delete_file_with_backup(backup_file, full_path, delete_list_file)
 
-        create_list_file(path, content, permissions=0o660)
-        result.affected_items.append(get_relative_path(path))
+        upload_file(content, to_relative_path(full_path), check_xml_formula_values=False)
+        result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         # Remove back up file if no exceptions were raised.
-        os.path.exists(backup_file) and os.remove(backup_file)
+        exists(backup_file) and remove(backup_file)
     except WazuhError as e:
-        result.add_failed_item(id_=get_relative_path(path), error=e)
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
     finally:
         # If backup file was not deleted (any exception was raised), it should be restored.
-        os.path.exists(backup_file) and safe_move(backup_file, path, permissions=0o660)
+        exists(backup_file) and safe_move(backup_file, full_path, permissions=0o660)
 
     return result
 
@@ -177,13 +172,13 @@ def delete_list_file(filename):
     """
     result = AffectedItemsWazuhResult(all_msg='CDB list file was successfully deleted',
                                       none_msg='Could not delete CDB list file')
-    path = get_relative_path(os.path.join(common.lists_path, filename[0]))
+    full_path = join(common.user_lists_path, filename[0])
 
     try:
-        delete_list(path)
-        result.affected_items.append(path)
+        delete_list(to_relative_path(full_path))
+        result.affected_items.append(to_relative_path(full_path))
     except WazuhError as e:
-        result.add_failed_item(id_=path, error=e)
+        result.add_failed_item(id_=to_relative_path(full_path), error=e)
     result.total_affected_items = len(result.affected_items)
 
     return result
@@ -229,7 +224,7 @@ def get_path_lists(filename=None, offset=0, limit=common.database_limit, sort_by
     lists = iterate_lists(only_names=True)
     for item in list(lists):
         if any([relative_dirname is not None and item['relative_dirname'] != relative_dirname,
-                os.path.join(common.ossec_path, item['relative_dirname'], item['filename']) not in paths]):
+                join(common.ossec_path, item['relative_dirname'], item['filename']) not in paths]):
             lists.remove(item)
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,
