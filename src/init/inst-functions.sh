@@ -1102,6 +1102,7 @@ InstallAgent()
 
     InstallSecurityConfigurationAssessmentFiles "agent"
 
+    ${INSTALL} -m 0750 -o root -g 0 ./init/wazuhctl ${PREFIX}/bin/wazuhctl 
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin
 
