@@ -27,7 +27,6 @@ default_security_configuration = {
 default_api_configuration = {
     "host": "0.0.0.0",
     "port": 55000,
-    "behind_proxy_server": False,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",

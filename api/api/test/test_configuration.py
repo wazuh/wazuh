@@ -13,7 +13,6 @@ from wazuh.core import common
 custom_api_configuration = {
     "host": "127.0.1.1",
     "port": 1000,
-    "behind_proxy_server": False,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",

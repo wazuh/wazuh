@@ -2546,10 +2546,6 @@ components:
               format: int32
               minimum: 1
               example: 300
-        behind_proxy_server:
-          description: "Set this option to 'yes' in case the API is running behind a proxy server"
-          type: boolean
-          default: false
         logs:
           type: object
           additionalProperties: false
@@ -5552,9 +5548,8 @@ paths:
                     type: string
                     format: names
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a
-                    proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is
-                    setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. Allowed values:
+                    IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
                   force_time:
@@ -6923,9 +6918,8 @@ paths:
                     type: string
                     format: names
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a
-                    proxy, you must set the option behind_proxy_server to yes at api.yaml and make sure the proxy is
-                    setting HTTP header 'X-Forwarded-For' with origin IP address. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. Allowed values:
+                    IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
                   force_time:
@@ -7892,7 +7886,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        behind_proxy_server: false
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -7921,7 +7914,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        behind_proxy_server: false
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
@@ -10278,7 +10270,6 @@ paths:
                       node_api_config:
                         host: 0.0.0.0
                         port: 55000
-                        behind_proxy_server: false
                         https:
                           enabled: true
                           key: "/var/ossec/api/configuration/ssl/server.key"
