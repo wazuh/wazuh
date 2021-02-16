@@ -159,8 +159,8 @@ def cleanup(*args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='This script tests Wazuh rules.')
-    parser.add_argument('--path', '-p', required=True, dest='wazuh_home',
-                        help='Use -p or --path to specify Wazuh installation path (required)')
+    parser.add_argument('--path', '-p', default='/var/ossec', dest='wazuh_home',
+                        help='Use -p or --path to specify Wazuh installation path')
     parser.add_argument('--geoip', '-g', action='store_true', dest='geoip',
                         help='Use -g or --geoip to enable geoip tests (default: False)')
     parser.add_argument('--testfile', '-t', action='store', type=str, dest='testfile',
