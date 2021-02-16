@@ -1,6 +1,6 @@
 /*
  * Wazuh shared modules utils
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * December 28, 2020.
  *
  * This program is free software; you can redistribute it
@@ -22,21 +22,24 @@ namespace Utils
 {
     static std::string getTimestamp(std::time_t time)
     {
-        std::string timestamp;
-        tm* localTime { localtime(&time) };
-        // Final timestamp: "YYYY/MM/DD h:m:s"
-        timestamp  = std::to_string(localTime->tm_year + 1900);
-        timestamp += "/";
-        timestamp += std::to_string(localTime->tm_mon + 1);
-        timestamp += "/";
-        timestamp += std::to_string(localTime->tm_mday);
-        timestamp += " ";
-        timestamp += std::to_string(localTime->tm_hour);
-        timestamp += ":";
-        timestamp += std::to_string(localTime->tm_min);
-        timestamp += ":";
-        timestamp += std::to_string(localTime->tm_sec);
-        return timestamp;
+        std::stringstream ss;
+        // gmtime: result expressed as a UTC time
+        tm* localTime { gmtime(&time) };
+        // Final timestamp: "YYYY/MM/DD hh:mm:ss"
+        // Date
+        ss << std::hex << std::setfill('0') << std::setw(4) << std::to_string(localTime->tm_year + 1900);
+        ss << "/";
+        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mon + 1);
+        ss << "/";
+        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mday);
+        // Time
+        ss << " ";
+        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_hour);
+        ss << ":";
+        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_min);
+        ss << ":";
+        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_sec);
+        return ss.str();
     }
 
     static std::string getCurrentTimestamp()
