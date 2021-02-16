@@ -153,11 +153,13 @@ int k_import(const char *cmdimport)
                     fclose(fp);
 
                     if (rename_ex(tmp_path, KEYS_FILE)) {
+                        char buffer[PATH_MAX] = {'\0'};
+                        abspath(tmp_path, buffer, PATH_MAX);
                         if (unlink(tmp_path)) {
-                            minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
+                            minfo(DELETE_ERROR, buffer, errno, strerror(errno));
                         }
 
-                        merror_exit(RENAME_ERROR, tmp_path, KEYS_FILE, errno, strerror(errno));
+                        merror_exit(RENAME_ERROR, buffer, KEYS_FILE, errno, strerror(errno));
                     }
 
                     /* Remove sender counter */

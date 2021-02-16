@@ -475,7 +475,9 @@ int Test_Client(const char * path){
     agent test_client = { .server = NULL };
 
     if (ReadConfig(CAGENT_CONFIG | CCLIENT, path, &test_client, NULL) < 0) {
-		merror(RCONFIG_ERROR,"Client", path);
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(path, buffer, PATH_MAX);
+		merror(RCONFIG_ERROR,"Client", buffer);
 		fail = 1;
 	}
 

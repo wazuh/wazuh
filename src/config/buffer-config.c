@@ -99,7 +99,9 @@ int Test_ClientBuffer(const char * path){
     agent test_clientBuffer = { .server = 0 };
 
     if (ReadConfig(CAGENT_CONFIG | CBUFFER, path, NULL, &test_clientBuffer) < 0) {
-		merror(RCONFIG_ERROR,"ClientBuffer", path);
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(path, buffer, PATH_MAX);
+		merror(RCONFIG_ERROR,"ClientBuffer", buffer);
 		fail = 1;
 	}
 

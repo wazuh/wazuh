@@ -120,7 +120,9 @@ void * lccom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(LC_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", LC_LOCAL_SOCK, errno, strerror(errno));
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(LC_LOCAL_SOCK, buffer, PATH_MAX);
+        merror("Unable to bind to socket '%s': (%d) %s.", buffer, errno, strerror(errno));
         return NULL;
     }
 

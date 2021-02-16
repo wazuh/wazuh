@@ -57,13 +57,15 @@ static void print_totals(void)
 {
     int i, totals = 0;
     char logfile[OS_FLSIZE + 1];
+    char buffer[PATH_MAX] = {'\0'};
     FILE *flog;
 
     /* Create the path for the logs */
     snprintf(logfile, OS_FLSIZE, "%s/%d/", STATSAVED, prev_year);
     if (IsDir(logfile) == -1)
         if (mkdir(logfile, 0770) == -1) {
-            merror(MKDIR_ERROR, logfile, errno, strerror(errno));
+            abspath(logfile, buffer, PATH_MAX);
+            merror(MKDIR_ERROR, buffer, errno, strerror(errno));
             return;
         }
 
@@ -71,7 +73,8 @@ static void print_totals(void)
 
     if (IsDir(logfile) == -1)
         if (mkdir(logfile, 0770) == -1) {
-            merror(MKDIR_ERROR, logfile, errno, strerror(errno));
+            abspath(logfile, buffer, PATH_MAX);
+            merror(MKDIR_ERROR, buffer, errno, strerror(errno));
             return;
         }
 
@@ -85,7 +88,8 @@ static void print_totals(void)
 
     flog = fopen(logfile, "a");
     if (!flog) {
-        merror(FOPEN_ERROR, logfile, errno, strerror(errno));
+        abspath(logfile, buffer, PATH_MAX);
+        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
         return;
     }
 
@@ -295,18 +299,21 @@ int Check_Hour()
 int Init_Stats_Directories(){
     int i = 0;
     int j = 0;
+    char buffer[PATH_MAX] = {'\0'};
 
     /* Create the stat queue directories */
     if (IsDir(STATWQUEUE) == -1) {
         if (mkdir(STATWQUEUE, 0770) == -1) {
-            mterror("logstats", "Unable to create stat queue: %s", STATWQUEUE);
+            abspath(STATWQUEUE, buffer, PATH_MAX);
+            mterror("logstats", "Unable to create stat queue: %s", buffer);
             return (-1);
         }
     }
 
     if (IsDir(STATQUEUE) == -1) {
         if (mkdir(STATQUEUE, 0770) == -1) {
-            mterror("logstats", "Unable to create stat queue: %s", STATQUEUE);
+            abspath(STATQUEUE, buffer, PATH_MAX);
+            mterror("logstats", "Unable to create stat queue: %s", buffer);
             return (-1);
         }
     }
@@ -314,6 +321,7 @@ int Init_Stats_Directories(){
     /* Create store dir */
     if (IsDir(STATSAVED) == -1) {
         if (mkdir(STATSAVED, 0770) == -1) {
+            abspath(STATSAVED, buffer, PATH_MAX);
             mterror("logstats", "Unable to create stat directory: %s", STATSAVED);
             return (-1);
         }
@@ -353,7 +361,8 @@ int Init_Stats_Directories(){
         snprintf(_weekly, 128, "%s/%d", STATWQUEUE, i);
         if (IsDir(_weekly) == -1)
             if (mkdir(_weekly, 0770) == -1) {
-                mterror("logstats", "Unable to create stat queue: %s", _weekly);
+                abspath(_weekly, buffer, PATH_MAX);
+                mterror("logstats", "Unable to create stat queue: %s", buffer);
                 return (-1);
             }
 

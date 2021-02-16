@@ -46,6 +46,7 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     char compressed_path[PATH_MAX];
     char rename_path[PATH_MAX];
     char old_rename_path[PATH_MAX];
+    char buffer[PATH_MAX] = {'\0'};
     struct tm tm = { .tm_sec = 0 };
     time_t now;
     int counter = 0;
@@ -74,11 +75,11 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     // logs
     strcpy(base_dir, "logs");
 #else
-    // /var/ossec/logs/ossec.log
+    // logs/ossec.log
     snprintf(old_path, PATH_MAX, "%s", LOGFILE);
-    // /var/ossec/logs/ossec.json
+    // logs/ossec.json
     snprintf(old_path_json, PATH_MAX, "%s", LOGJSONFILE);
-    // /var/ossec/logs/ossec
+    // logs/ossec
     snprintf(base_dir, PATH_MAX, "%s/logs/ossec", "");
 #endif
 
@@ -91,11 +92,13 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     // Create folders
 
     if (IsDir(year_dir) < 0 && mkdir(year_dir, 0770) < 0) {
-        merror_exit(MKDIR_ERROR, year_dir, errno, strerror(errno));
+        abspath(year_dir, buffer, PATH_MAX);
+        merror_exit(MKDIR_ERROR, buffer, errno, strerror(errno));
     }
 
     if (IsDir(month_dir) < 0 && mkdir(month_dir, 0770) < 0) {
-        merror_exit(MKDIR_ERROR, month_dir, errno, strerror(errno));
+        abspath(month_dir, buffer, PATH_MAX);
+        merror_exit(MKDIR_ERROR, buffer, errno, strerror(errno));
     }
 
     if (new_day || (!new_day && !rotate_json)) {
@@ -117,7 +120,10 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 counter = 1;
                 while (counter < daily_rotations) {
                     if (rename_ex(old_rename_path, rename_path) != 0) {
-                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                        char old_buffer[PATH_MAX] = {'\0'};
+                        abspath(old_rename_path, old_buffer, PATH_MAX);
+                        abspath(rename_path, buffer, PATH_MAX);
+                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_buffer, buffer, strerror(errno));
                         return;
                     }
                     counter++;
@@ -134,7 +140,10 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                     OS_CompressLog(new_path);
                 }
             } else {
-                merror("Couldn't rename '%s' to '%s': %s", old_path, new_path, strerror(errno));
+                char old_buffer[PATH_MAX] = {'\0'};
+                abspath(old_rename_path, old_buffer, PATH_MAX);
+                abspath(rename_path, buffer, PATH_MAX);
+                merror("Couldn't rename '%s' to '%s': %s", old_buffer, buffer, strerror(errno));
             }
         }
 
@@ -161,7 +170,11 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                 counter = 1;
                 while (counter < daily_rotations) {
                     if (rename_ex(old_rename_path, rename_path) != 0) {
-                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
+                        char old_json_buffer[PATH_MAX] = {'\0'};
+                        char json_buffer[PATH_MAX] = {'\0'};
+                        abspath(old_rename_path, old_json_buffer, PATH_MAX);
+                        abspath(rename_path, json_buffer, PATH_MAX);
+                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_json_buffer, json_buffer, strerror(errno));
                         return;
                     }
                     counter++;
@@ -178,6 +191,10 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
                     OS_CompressLog(new_path_json);
                 }
             } else {
+                char old_json_buffer[PATH_MAX] = {'\0'};
+                char json_buffer[PATH_MAX] = {'\0'};
+                abspath(old_rename_path, old_json_buffer, PATH_MAX);
+                abspath(rename_path, json_buffer, PATH_MAX);
                 merror("Couldn't rename '%s' to '%s': %s", old_path_json, new_path_json, strerror(errno));
             }
         }
@@ -197,7 +214,9 @@ void remove_old_logs(const char *base_dir, int keep_log_days) {
     struct dirent *dirent = NULL;
 
     if (dir = opendir(base_dir), !dir) {
-        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(base_dir, buffer, PATH_MAX);
+        merror("Couldn't open directory '%s' to delete old logs: %s", buffer, strerror(errno));
         return;
     }
 
@@ -223,7 +242,9 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
     struct dirent *dirent = NULL;
 
     if (dir = opendir(base_dir), !dir) {
-        merror("Couldn't open directory '%s' to delete old logs: %s", base_dir, strerror(errno));
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(base_dir, buffer, PATH_MAX);
+        merror("Couldn't open directory '%s' to delete old logs: %s", buffer, strerror(errno));
         return;
     }
 
@@ -255,6 +276,7 @@ void remove_old_logs_y(const char * base_dir, int year, time_t threshold) {
 
 void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold) {
     char path[PATH_MAX];
+    char buffer[PATH_MAX] = {'\0'};
     DIR *dir;
     int day;
     struct dirent *dirent = NULL;
@@ -286,7 +308,8 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
+                abspath(path, buffer, PATH_MAX);
+                mdebug2("Removing old log '%s'", buffer);
                 unlink(path);
             }
         }
@@ -296,7 +319,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
+                memset(buffer, 0, PATH_MAX);
+                abspath(path, buffer, PATH_MAX);
+                mdebug2("Removing old log '%s'", buffer);
                 unlink(path);
             }
         }
@@ -306,7 +331,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
+                memset(buffer, 0, PATH_MAX);
+                abspath(path, buffer, PATH_MAX);
+                mdebug2("Removing old log '%s'", buffer);
                 unlink(path);
             }
         }
@@ -316,7 +343,9 @@ void remove_old_logs_m(const char * base_dir, int year, int month, time_t thresh
 
             if (mktime(&tm) <= threshold) {
                 snprintf(path, PATH_MAX, "%s/%s", base_dir, dirent->d_name);
-                mdebug2("Removing old log '%s'", path);
+                memset(buffer, 0, PATH_MAX);
+                abspath(path, buffer, PATH_MAX);
+                mdebug2("Removing old log '%s'", buffer);
                 unlink(path);
             }
         }

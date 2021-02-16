@@ -23,7 +23,7 @@ int interval;
 void * state_main(__attribute__((unused)) void * args) {
     w_mutex_init(&state_mutex, NULL);
     interval = getDefine_Int("agent", "state_interval", 0, 86400);
-
+    
     if (!interval) {
         minfo("State file is disabled.");
         return NULL;
@@ -56,6 +56,7 @@ int write_state() {
     struct tm tm = { .tm_sec = 0 };
     const char * status;
     char path[PATH_MAX - 8];
+    char buffer[PATH_MAX] = {'\0'};
     char last_keepalive[1024] = "";
     char last_ack[1024] = "";
 
@@ -81,7 +82,8 @@ int write_state() {
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
     if (fp = fopen(path_temp, "w"), !fp) {
-        merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
+        abspath(path_temp, buffer, PATH_MAX);
+        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
         w_mutex_unlock(&state_mutex);
         return -1;
     }
@@ -138,10 +140,13 @@ int write_state() {
 
 #ifndef WIN32
     if (rename(path_temp, path) < 0) {
-        merror("Renaming %s to %s: %s", path_temp, path, strerror(errno));
+        char buffer_temp[PATH_MAX] = {'\0'};
+        abspath(path_temp, buffer_temp, PATH_MAX);
+        abspath(path, buffer, PATH_MAX);
+        merror("Renaming %s to %s: %s", buffer_temp, buffer, strerror(errno));
 
         if (unlink(path_temp) < 0) {
-            merror("Deleting %s: %s", path_temp, strerror(errno));
+            merror("Deleting %s: %s", buffer_temp, strerror(errno));
         }
 
         w_mutex_unlock(&state_mutex);
