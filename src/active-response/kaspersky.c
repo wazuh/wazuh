@@ -20,7 +20,14 @@ int main (int argc, char **argv) {
     char *extra_args;
     cJSON *input_json = NULL;
     struct stat file_status;
+    char *home_path = w_homedir(argv[0]);
 
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
+    
     write_debug_file(argv[0], "Starting");
 
     memset(input, '\0', BUFFERSIZE);

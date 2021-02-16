@@ -22,8 +22,15 @@ int main (int argc, char **argv) {
     char log_msg[LOGSIZE];
     char lock_path[PATH_MAX];
     char lock_pid_path[PATH_MAX];
+    char *home_path = w_homedir(argv[0]);
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
 
     write_debug_file(argv[0], "Starting");
 

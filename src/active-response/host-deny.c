@@ -28,6 +28,13 @@ int main (int argc, char **argv) {
     struct utsname uname_buffer;
     char hosts_deny_path[PATH_MAX];
     FILE *host_deny_fp = NULL;
+    char *home_path = w_homedir(argv[0]);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
 
     write_debug_file(argv[0], "Starting");
 
@@ -155,7 +162,7 @@ int main (int argc, char **argv) {
         char temp_hosts_deny_path[PATH_MAX];
 
         memset(temp_hosts_deny_path, '\0', PATH_MAX);
-        snprintf(temp_hosts_deny_path, PATH_MAX - 1, "%s", "active-response/bin/temp-hosts-deny");
+        abspath("active-response/bin/temp-hosts-deny", temp_hosts_deny_path, PATH_MAX);
 
         // Taking lock
         if (lock(lock_path, lock_pid_path, argv[0], basename(argv[0])) == OS_INVALID) {
