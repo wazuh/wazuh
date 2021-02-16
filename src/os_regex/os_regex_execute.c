@@ -170,7 +170,7 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
 static const char *_OS_Regex(const char *pattern, const char *str, const char **prts_closure,
                              const char **prts_str, int flags)
 {
-    const char *r_code = NULL;
+    const char *r_code = str;
 
     int ok_here;
     int _regex_matched = 0;
