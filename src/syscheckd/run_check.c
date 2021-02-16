@@ -25,7 +25,11 @@
 #include "db/fim_db_files.h"
 
 #ifdef WAZUH_UNIT_TESTING
+unsigned int files_read = 0;
+time_t last_time = 0;
+
 #ifdef WIN32
+
 #include "unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
 #include "unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
 #include "unit_tests/wrappers/windows/synchapi_wrappers.h"
@@ -120,6 +124,45 @@ void fim_send_scan_info(fim_scan_event event) {
     cJSON_Delete(json);
 }
 
+void check_max_fps() {
+#ifndef WAZUH_UNIT_TESTING
+    static unsigned int files_read = 0;
+    static time_t last_time = 0;
+#endif
+    static pthread_mutex_t fps_mutex = PTHREAD_MUTEX_INITIALIZER;
+    static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    struct timespec wait_time = {0, 0};
+
+    if (syscheck.max_files_per_second == 0) {
+        return;
+    }
+    w_mutex_lock(&fps_mutex);
+    gettime(&wait_time);
+
+    if (wait_time.tv_sec != last_time) {
+        files_read = 0;
+        last_time = wait_time.tv_sec;
+    }
+
+    if (files_read < syscheck.max_files_per_second) {
+        files_read++;
+        w_mutex_unlock(&fps_mutex);
+        return;
+    }
+    mdebug2(FIM_REACHED_MAX_FPS);
+    wait_time.tv_sec += 1;
+
+    // Wait for one second or until the thread is unlocked using w_cond_broadcast
+    int rt = pthread_cond_timedwait(&cond, &fps_mutex, &wait_time);
+    if (rt == ETIMEDOUT) {
+        // In case that the mutex is unlocked due to a timeout, free all blocked threads.
+        files_read = 0;
+        w_cond_broadcast(&cond);
+    } else if (rt != 0) {
+        mdebug2("pthread_cond_timedwait failed: %s", strerror(rt));
+    }
+    w_mutex_unlock(&fps_mutex);
+}
 
 // LCOV_EXCL_START
 // Send a message related to logs
