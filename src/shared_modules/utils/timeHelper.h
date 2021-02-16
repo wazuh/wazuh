@@ -27,18 +27,18 @@ namespace Utils
         tm* localTime { gmtime(&time) };
         // Final timestamp: "YYYY/MM/DD hh:mm:ss"
         // Date
-        ss << std::hex << std::setfill('0') << std::setw(4) << std::to_string(localTime->tm_year + 1900);
+        ss << std::setfill('0') << std::setw(4) << std::to_string(localTime->tm_year + 1900);
         ss << "/";
-        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mon + 1);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mon + 1);
         ss << "/";
-        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mday);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mday);
         // Time
         ss << " ";
-        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_hour);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_hour);
         ss << ":";
-        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_min);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_min);
         ss << ":";
-        ss << std::hex << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_sec);
+        ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_sec);
         return ss.str();
     }
 
