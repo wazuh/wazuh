@@ -1518,7 +1518,7 @@ void Syscollector::syncProcesses()
 
 void Syscollector::scan()
 {
-    m_logFunction(SYS_LOG_INFO, "Starting syscollector scan");
+    m_logFunction(SYS_LOG_INFO, "Starting evaluation.");
     m_scanTime = Utils::getCurrentTimestamp();
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1527,7 +1527,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
     m_notify = true;
-    m_logFunction(SYS_LOG_INFO, "Ending syscollector scan");
+    m_logFunction(SYS_LOG_INFO, "Evaluation finished.");
 }
 
 void Syscollector::sync()
@@ -1544,7 +1544,7 @@ void Syscollector::sync()
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
-    m_logFunction(SYS_LOG_INFO, "Syscollector started.");
+    m_logFunction(SYS_LOG_INFO, "Module started.");
     if (m_scanOnStart)
     {
         scan();
