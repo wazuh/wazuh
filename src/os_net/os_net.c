@@ -819,7 +819,7 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
                 return -1;
             }
     }
-   
+
     if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
         return -2;
     }
