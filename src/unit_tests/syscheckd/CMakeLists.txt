@@ -126,7 +126,7 @@ if(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,get_UTC_modification_time")
 else()
   list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
-                                     -Wl,--wrap,get_user")
+                                     -Wl,--wrap,get_user -Wl,--wrap,abspath")
 endif()
 
 if(NOT ${TARGET} STREQUAL "winagent")
@@ -146,7 +146,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,closeproc -Wl,--wrap,_mdebug2 -Wl,--wrap,get_user \
                                      -Wl,--wrap,get_group -Wl,--wrap,realpath -Wl,--wrap,readlink -Wl,--wrap,fread \
                                      -Wl,--wrap,fseek -Wl,--wrap,remove -Wl,--wrap,atexit -Wl,--wrap,getpid \
-                                     -Wl,--wrap,FOREVER -Wl,--wrap,fgetpos -Wl,--wrap=fgetc")
+                                     -Wl,--wrap,FOREVER -Wl,--wrap,fgetpos -Wl,--wrap=fgetc -Wl,--wrap,abspath")
 
 else()
   list(APPEND syscheckd_event_tests_names "test_win_whodata")
@@ -255,7 +255,7 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mdebu
                           -Wl,--wrap,realtime_adddir -Wl,--wrap,audit_set_db_consistency -Wl,--wrap,fim_checker \
                           -Wl,--wrap,fim_db_get_path_range -Wl,--wrap,fim_db_delete_range -Wl,--wrap,lstat \
                           -Wl,--wrap,fim_configuration_directory -Wl,--wrap,inotify_rm_watch -Wl,--wrap,os_random \
-                          -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap,fim_db_get_path_from_pattern")
+                          -Wl,--wrap,stat -Wl,--wrap,getpid -Wl,--wrap,fim_db_get_path_from_pattern -Wl,--wrap,abspath")
 
 list(APPEND syscheckd_tests_names "test_run_check")
 if(${TARGET} STREQUAL "agent")

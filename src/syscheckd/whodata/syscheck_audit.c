@@ -19,20 +19,14 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#define AUDIT_CONF_FILE "etc/af_wazuh.conf"
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
-#define AUDIT_SOCKET "queue/ossec/audit"
 #define BUF_SIZE OS_MAXSTR
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 #define RELOAD_RULES_INTERVAL 30 // Seconds to re-add Audit rules
-
-#define AUDIT_HEALTHCHECK_DIR "tmp"
-#define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
-#define AUDIT_HEALTHCHECK_FILE "tmp/audit_hc"
 
 #ifndef WAZUH_UNIT_TESTING
 #define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
@@ -140,15 +134,18 @@ int set_auditd_config(void) {
         }
 
         if (syscheck.restart_audit) {
+            abspath(AUDIT_SOCKET, buffer, PATH_MAX);
             minfo(FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
             return audit_restart();
         } else {
+            abspath(AUDIT_SOCKET, buffer, PATH_MAX);
             mwarn(FIM_WARN_AUDIT_SOCKET_NOEXIST, AUDIT_SOCKET);
             return 1;
         }
     }
 
-    minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
+    abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+    minfo(FIM_AUDIT_SOCKET, buffer);
 
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
@@ -191,7 +188,8 @@ int set_auditd_config(void) {
     }
 
     if (syscheck.restart_audit) {
-        minfo(FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
+        abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+        minfo(FIM_AUDIT_RESTARTING, buffer);
         return audit_restart();
     } else {
         mwarn(FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);

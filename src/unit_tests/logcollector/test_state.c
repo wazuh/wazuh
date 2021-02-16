@@ -842,7 +842,7 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg,
                   "(1103): Could not open file "
-                  "'/var/ossec/var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
+                  "'var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
 
     w_logcollector_state_dump();
 }
@@ -862,7 +862,7 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg,
                   "(1110): Could not write file "
-                  "'/var/ossec/var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
+                  "'var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, (FILE *) 100);
     will_return(__wrap_fclose, 0);

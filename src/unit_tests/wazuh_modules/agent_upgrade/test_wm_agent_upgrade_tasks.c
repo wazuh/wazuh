@@ -523,7 +523,7 @@ void test_wm_agent_send_task_information_master_connect_error(void **state)
     will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8104): Cannot connect to '/var/ossec/queue/tasks/task'. Could not reach task manager module.");
+    expect_string(__wrap__mterror, formatted_msg, "(8104): Cannot connect to 'queue/tasks/task'. Could not reach task manager module.");
 
     cJSON *output = wm_agent_send_task_information_master(input);
 

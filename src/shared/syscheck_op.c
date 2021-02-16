@@ -79,7 +79,7 @@ int remove_empty_folders(const char *path) {
             subdir = wreaddir(parent);
             if (!(subdir && *subdir)) {
                 // Remove empty folder
-                mdebug1("Removing empty directory '%s'", parent);
+                mdebug1("Removing empty directory '%s'.", parent);
                 if (rmdir_ex(parent) != 0) {
                     mwarn("Empty directory '%s' couldn't be deleted. ('%s')", parent, strerror(errno));
                     retval = -1;

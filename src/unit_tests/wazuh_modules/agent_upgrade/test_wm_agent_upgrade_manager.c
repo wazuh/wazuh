@@ -822,7 +822,7 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_listen_messages(config);
 }
@@ -840,7 +840,7 @@ void test_wm_agent_upgrade_start_manager_module_enabled(void **state)
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_start_manager_module(config, 1);
 }
@@ -863,7 +863,7 @@ void test_wm_agent_upgrade_start_manager_module_disabled(void **state)
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/var/ossec/queue/tasks/upgrade': 'Operation not permitted'");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/tasks/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_start_manager_module(config, 0);
 }

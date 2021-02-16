@@ -54,9 +54,7 @@ void test_CreatePID_success(void **state)
 
     *state = content;
 
-    will_return(__wrap_isChroot, 1);
-
-    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, 1);
 
@@ -64,7 +62,7 @@ void test_CreatePID_success(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
     will_return(__wrap_chmod, 0);
 
     expect_value(__wrap_fclose, _File, 1);
@@ -79,9 +77,7 @@ void test_CreatePID_failure_chmod(void **state)
     (void) state;
     int ret;
 
-    will_return(__wrap_isChroot, 1);
-
-    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, 1);
 
@@ -89,10 +85,11 @@ void test_CreatePID_failure_chmod(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '/var/run/test-2345.pid' due to [(0)-(Success)].");
-
-    expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
     will_return(__wrap_chmod, -1);
+
+    expect_abspath("var/run/test-2345.pid", 1);
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/run/test-2345.pid' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
@@ -106,9 +103,7 @@ void test_CreatePID_failure_fopen(void **state)
     (void) state;
     int ret;
 
-    will_return(__wrap_isChroot, 1);
-
-    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, NULL);
 
@@ -121,11 +116,10 @@ void test_DeletePID_success(void **state)
     (void) state;
     int ret;
 
-    will_return(__wrap_isChroot, 1);
-    expect_string(__wrap_unlink, file, "/var/run/test-2345.pid");
+    expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_stat, __file, "/var/run/test-2345.pid");
+    expect_string(__wrap_stat, __file, "var/run/test-2345.pid");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
 
@@ -139,16 +133,16 @@ void test_DeletePID_failure(void **state)
     (void) state;
     int ret;
 
-    will_return(__wrap_isChroot, 0);
-    expect_string(__wrap_unlink, file, "/var/ossec/var/run/test-2345.pid");
+    expect_string(__wrap_stat, __file, "var/run/test-2345.pid");
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, 0);
+
+    expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
     will_return(__wrap_unlink, 1);
 
-    expect_string(__wrap_stat, __file, "/var/ossec/var/run/test-2345.pid");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, 0);
-
+    expect_abspath("var/run/test-2345.pid", 1);
     expect_string(__wrap__mferror, formatted_msg,
-        "(1129): Could not unlink file '/var/ossec/var/run/test-2345.pid' due to [(0)-(Success)].");
+        "(1129): Could not unlink file 'var/run/test-2345.pid' due to [(0)-(Success)].");
 
     ret = DeletePID("test");
     assert_int_equal(-1, ret);
@@ -560,9 +554,11 @@ void test_w_uncompress_gzfile_success(void **state) {
 
 }
 
+// w_homedir
+
 void test_w_homedir_unix1(void **state)
 {
-    char *path0 = "/var/ossec/bin/test";
+    char *path0 = "/usr/share/wazuh/bin/test";
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
@@ -576,33 +572,57 @@ void test_w_homedir_unix1(void **state)
     will_return(__wrap_realpath, path0);
     will_return(__wrap_realpath, (char *) 1);
 
+    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
+    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, 0);
+
     val = w_homedir(path0);
-    assert_string_equal(val, "/var/ossec");
+    assert_string_equal(val, "/usr/share/wazuh");
+    free(val);
 }
 
 void test_w_homedir_unix2(void **state)
 {
-    char *path0 = "/var/ossec/bin/testing/test";
+    char *path0 = "/usr/share/wazuh/bin/test";
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
     will_return(__wrap_realpath, NULL);
     will_return(__wrap_realpath, (char *) 0);
     expect_string(__wrap_realpath, path, "/proc/curproc/file");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-
-    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
     will_return(__wrap_realpath, path0);
     will_return(__wrap_realpath, (char *) 1);
 
+    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
+    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, 0);
+
     val = w_homedir(path0);
-    assert_string_equal(val, "/var/ossec");
+    assert_string_equal(val, "/usr/share/wazuh");
+    free(val);
 }
 
-void test_w_homedir_macOS(void **state)
+void test_w_homedir_unix3(void **state)
 {
-    char *path0 = "/var/ossec/bin/test";
+    char *path0 = "/usr/share/wazuh/bin/test";
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, path0);
+    will_return(__wrap_realpath, (char *) 1);
+
+    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
+    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, 0);
+
+    val = w_homedir(path0);
+    assert_string_equal(val, "/usr/share/wazuh");
+    free(val);
+}
+
+void test_w_homedir_check_arg(void **state)
+{
+    char *path0 = "/usr/share/wazuh/bin/test";
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
@@ -616,17 +636,22 @@ void test_w_homedir_macOS(void **state)
     will_return(__wrap_realpath, (char *) 0);
 
     expect_string(__wrap_realpath, path, path0);
-    will_return(__wrap_realpath, "/private/var/ossec/bin/test");
+    will_return(__wrap_realpath, "/realdir/usr/share/wazuh/bin/test");
     will_return(__wrap_realpath, (char *) 1);
 
+    expect_string(__wrap_stat, __file, "/realdir/usr/share/wazuh");
+    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, 0);
+
     val = w_homedir(path0);
-    assert_string_equal(val, "/private/var/ossec");
+    assert_string_equal(val, "/realdir/usr/share/wazuh");
+    free(val);
 }
 
 #ifdef __MACH__
-void test_w_homedir_macOS2(void **state)
+void test_w_homedir_macOS(void **state)
 {
-    char *path0 = "/var/ossec/bin/test";
+    char *path0 = "bin/test";
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
@@ -640,62 +665,20 @@ void test_w_homedir_macOS2(void **state)
     will_return(__wrap_realpath, (char *) 0);
 
     expect_string(__wrap_proc_pidpath, pid, getpid());
-    will_return(__wrap_proc_pidpath, "/private/var/ossec/bin/test");
+    will_return(__wrap_proc_pidpath, "/usr/share/wazuh/bin/test");
     will_return(__wrap_proc_pidpath, 1);
 
+    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
+    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, 0);
+
     val = w_homedir(path0);
-    assert_string_equal(val, "/private/var/ossec");
+    assert_string_equal(val, "/usr/share/wazuh");
+    free(val);
 }
 #endif
 
-void test_w_homedir_argv_full_path_success(void **state)
-{
-    char *path0 = "/var/ossec/bin/test";
-    char *val = NULL;
-
-    expect_string(__wrap_realpath, path, "/proc/self/exe");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-    expect_string(__wrap_realpath, path, "/proc/curproc/file");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-
-    expect_string(__wrap_realpath, path, path0);
-    will_return(__wrap_realpath, path0);
-    will_return(__wrap_realpath, (char *) 1);
-
-    val = w_homedir(path0);
-    assert_string_equal(val, "/var/ossec");
-}
-
-void test_w_homedir_argv_symlink_success(void **state)
-{
-    char *path0 = "/var/ossec/bin/test";
-    char *symlink = "/home/symlink/bin/test";
-    char *val = NULL;
-
-    expect_string(__wrap_realpath, path, "/proc/self/exe");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-    expect_string(__wrap_realpath, path, "/proc/curproc/file");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-
-    expect_string(__wrap_realpath, path, symlink);
-    will_return(__wrap_realpath, path0);
-    will_return(__wrap_realpath, (char *) 1);
-
-    val = w_homedir(symlink);
-    assert_string_equal(val, "/var/ossec");
-}
-
-void test_w_homedir_arg_fail(void **state)
+void test_w_homedir_null_arg(void **state)
 {
     char *val = NULL;
 
@@ -708,12 +691,17 @@ void test_w_homedir_arg_fail(void **state)
     expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
     will_return(__wrap_realpath, NULL);
     will_return(__wrap_realpath, (char *) 0);
+
+    expect_string(__wrap_stat, __file, NULL);
+    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, -1);
 
     val = w_homedir(NULL);
-    assert_string_equal(val, "(null)");
+    assert_string_equal(val, FALLBACKDIR);
+    free(val);
 }
 
-void test_w_homedir_argv_realpath_fail(void **state)
+void test_w_homedir_fail(void **state)
 {
     char *path0 = "a\\b";
     char *val = NULL;
@@ -737,6 +725,7 @@ void test_w_homedir_argv_realpath_fail(void **state)
 
     val = w_homedir("a\\b");
     assert_string_equal(val, FALLBACKDIR);
+    free(val);
 }
 
 #ifdef TEST_WINAGENT
@@ -834,14 +823,13 @@ int main(void) {
         // w_homedir
         cmocka_unit_test(test_w_homedir_unix1),
         cmocka_unit_test(test_w_homedir_unix2),
-        cmocka_unit_test(test_w_homedir_macOS),
+        cmocka_unit_test(test_w_homedir_unix3),
+        cmocka_unit_test(test_w_homedir_check_arg),
 #ifdef __MACH__
-        cmocka_unit_test(test_w_homedir_macOS2),
+        cmocka_unit_test(test_w_homedir_macOS),
 #endif
-        cmocka_unit_test(test_w_homedir_argv_full_path_success),
-        cmocka_unit_test(test_w_homedir_argv_symlink_success),
-        cmocka_unit_test(test_w_homedir_arg_fail),
-        cmocka_unit_test_setup_teardown(test_w_homedir_argv_realpath_fail, setup_errno, teardown_errno)
+        cmocka_unit_test(test_w_homedir_null_arg),
+        cmocka_unit_test_setup_teardown(test_w_homedir_fail, setup_errno, teardown_errno)
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),

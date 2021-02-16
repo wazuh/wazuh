@@ -3,7 +3,7 @@
 
 list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
-    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot,--wrap,stat,--wrap,chmod,--wrap,getpid \
+    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,abspath,--wrap,stat,--wrap,chmod,--wrap,getpid \
                             -Wl,--wrap,unlink,--wrap,_merror,--wrap,_minfo,--wrap,_mwarn \
                             -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose \
                             -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove \
@@ -56,7 +56,7 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
                                 -Wl,--wrap=SSL_new,--wrap=SSL_connect,--wrap=SSL_get_error,--wrap=SSL_set_bio \
                                 -Wl,--wrap=SSL_write,--wrap=fopen,--wrap=fclose,--wrap=SSL_read \
                                 -Wl,--wrap=BIO_new_socket,--wrap=_merror_exit,--wrap=TempFile,--wrap=OS_MoveFile \
-                                -Wl,--wrap=fgets -Wl,--wrap,getpid")
+                                -Wl,--wrap=fgets -Wl,--wrap,getpid -Wl,--wrap,abspath")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS}")
 else()

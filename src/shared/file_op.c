@@ -536,6 +536,7 @@ float DirSize(const char *path) {
 int CreatePID(const char *name, int pid)
 {
     char file[256];
+    char buffer[PATH_MAX] = {'\0'};
     FILE *fp;
 
     snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
@@ -547,13 +548,15 @@ int CreatePID(const char *name, int pid)
 
     fprintf(fp, "%d\n", pid);
     if (chmod(file, 0640) != 0) {
-        merror(CHMOD_ERROR, file, errno, strerror(errno));
+        abspath(file, buffer, PATH_MAX);
+        merror(CHMOD_ERROR, buffer, errno, strerror(errno));
         fclose(fp);
         return (-1);
     }
 
     if (fclose(fp)) {
-        merror("Could not write PID file '%s': %s (%d)", file, strerror(errno), errno);
+        abspath(file, buffer, PATH_MAX);
+        merror("Could not write PID file '%s': %s (%d)", buffer, strerror(errno), errno);
         return -1;
     }
 
@@ -596,7 +599,9 @@ int DeletePID(const char *name)
     }
 
     if (unlink(file)) {
-        mferror(DELETE_ERROR, file, errno, strerror(errno));
+        char buffer[PATH_MAX] = {'\0'};
+        abspath(file, buffer, PATH_MAX);
+        mferror(DELETE_ERROR, buffer, errno, strerror(errno));
         return (-1);
     }
 
@@ -3338,6 +3343,13 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 #endif
 
 #ifndef WIN32
+/**
+ * @brief Gets the Wazuh installation directory from the executable path
+ *
+ * @param arg Relative path of the executable (i.e. argv[0])
+ * @retval FALLBACKDIR when the real path is not found
+ * @retval Pointer to the Wazuh installation path
+ */
 char *w_homedir(char *arg) {
     char *buff = NULL;
     struct stat buff_stat;

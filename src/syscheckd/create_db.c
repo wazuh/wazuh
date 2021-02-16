@@ -69,7 +69,9 @@ void fim_scan() {
     fim_diff_folder_size();
     syscheck.disk_quota_full_msg = true;
 
-    mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR, syscheck.diff_folder_size);
+    char buffer[PATH_MAX] = {'\0'};
+    abspath(DIFF_DIR, buffer, PATH_MAX);
+    mdebug2(FIM_DIFF_FOLDER_SIZE, buffer, syscheck.diff_folder_size);
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
 

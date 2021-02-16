@@ -12,6 +12,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/externals/openssl/bio_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
@@ -613,6 +614,7 @@ void test_w_enrollment_store_key_entry_cannot_open(void **state) {
     will_return(__wrap_TempFile, NULL);
     will_return(__wrap_TempFile, -1);
 #endif
+    expect_abspath(KEYS_FILE, 1);
     snprintf(key_file, 1024, "(1103): Could not open file '%s' due to [(2)-(No such file or directory)].", KEYS_FILE);
     expect_string(__wrap__merror, formatted_msg, key_file);
     int ret = w_enrollment_store_key_entry(key_string);
