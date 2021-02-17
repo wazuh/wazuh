@@ -88,6 +88,21 @@ class ResourceType(Enum):
     DEFAULT = 'default'
 
 
+def delete_orphans(session):
+    """Purge unwanted relationships after a resource is removed."""
+    query = session.query(UserRoles).filter(or_(UserRoles.user_id.is_(None), UserRoles.role_id.is_(None))).all()
+    query.extend(session.query(RolesRules).filter(or_(RolesRules.role_id.is_(None),
+                                                      RolesRules.rule_id.is_(None))).all())
+    query.extend(session.query(RolesPolicies).filter(or_(RolesPolicies.role_id.is_(None),
+                                                         RolesPolicies.policy_id.is_(None))).all())
+    if query:
+        # Ensure there is no pending operations
+        session.rollback()
+        for orphan in query:
+            session.delete(orphan)
+        session.commit()
+
+
 class RolesRules(_Base):
     """
     Relational table between Roles and Policies, in this table are stored the relationship between the both entities
@@ -697,6 +712,7 @@ class TokenManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        delete_orphans(self.session)
         self.session.close()
 
 
@@ -906,6 +922,7 @@ class AuthenticationManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        delete_orphans(self.session)
         self.session.close()
 
 
@@ -1119,6 +1136,7 @@ class RolesManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        delete_orphans(self.session)
         self.session.close()
 
 
@@ -1345,6 +1363,7 @@ class RulesManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        delete_orphans(self.session)
         self.session.close()
 
 
@@ -1601,6 +1620,7 @@ class PoliciesManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        delete_orphans(self.session)
         self.session.close()
 
 
@@ -1934,6 +1954,7 @@ class UserRolesManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        delete_orphans(self.session)
         self.session.close()
 
 
@@ -2291,6 +2312,7 @@ class RolesPoliciesManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        delete_orphans(self.session)
         self.session.close()
 
 
@@ -2560,6 +2582,7 @@ class RolesRulesManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        delete_orphans(self.session)
         self.session.close()
 
 
@@ -2567,17 +2590,6 @@ class DatabaseManager:
     def __init__(self):
         self.engines = dict()
         self.sessions = dict()
-
-    def delete_orphans(self, session):
-        """Purge unwanted relationships after a resource is removed."""
-        query = self.sessions[session].query(UserRoles).filter(or_(UserRoles.user_id.is_(None),
-                                                                   UserRoles.role_id.is_(None))).all()
-        query.extend(self.sessions[session].query(RolesRules).filter(or_(RolesRules.role_id.is_(None),
-                                                                         RolesRules.rule_id.is_(None))).all())
-        query.extend(self.sessions[session].query(RolesPolicies).filter(or_(RolesPolicies.role_id.is_(None),
-                                                                            RolesPolicies.policy_id.is_(None))).all())
-        for orphan in query:
-            self.sessions[session].delete(orphan)
 
     def close_sessions(self):
         """Close every session and dispose every engine."""
@@ -2814,7 +2826,6 @@ def check_database_integrity():
                                             resource_type=ResourceType.USER)
 
                     # Apply changes and replace database
-                    db_manager.delete_orphans(_tmp_db_file)
                     db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
                     db_manager.close_sessions()
                     # Create a backup file for development purposes and overwrite the old one
@@ -2836,7 +2847,6 @@ def check_database_integrity():
     except Exception as e:
         logger.error('Error during the database migration. Restoring the previous database file.')
         logger.error(f'Error details: {str(e)}')
-        db_manager.delete_orphans(_tmp_db_file)
         db_manager.close_sessions()
 
     else:
