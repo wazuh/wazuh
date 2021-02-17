@@ -23,7 +23,7 @@ stages:
           affected_items:
             - &full_item_decoders
               details: !anything
-              filename: 0005-wazuh_decoders.xml
+              filename: 0006-json_decoders.xml
               name: !anystr
               relative_dirname: !anystr
               position: !anyint
@@ -264,9 +264,9 @@ stages:
             - <<: *full_item_decoders_parent
               filename: 0010-active-response_decoders.xml
             - <<: *full_item_decoders_parent
-              filename: 0015-aix-ipsec_decoders.xml
+              filename: 0010-active-response_decoders.xml
             - <<: *full_item_decoders_parent
-              filename: 0025-apache_decoders.xml
+              filename: 0015-aix-ipsec_decoders.xml
             - <<: *full_item_decoders_parent
               filename: 0025-apache_decoders.xml
           failed_items: []
