@@ -59,7 +59,7 @@ void HandleSyslog()
     /* Infinite loop */
     while (1) {
         /* Receive message */
-        recv_b = recvfrom(logr.syslog_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &peer_size);
+        recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &peer_size);
 
         /* Nothing received */
         if (recv_b <= 0) {

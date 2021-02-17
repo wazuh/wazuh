@@ -14,19 +14,21 @@
 #define SYSLOG_CONN 1
 #define SECURE_CONN 2
 
-#define REMOTED_PROTO_TCP     (0x1 << 0)        ///< Config for TCP protocol enabled
-#define REMOTED_PROTO_UDP     (0x1 << 1)        ///< Config for UDP protocol enabled
-#define REMOTED_PROTO_DEFAULT REMOTED_PROTO_TCP ///< Default remoted protocol
+#define REMOTED_NET_PROTOCOL_TCP     (0x1 << 0)               ///< Config for TCP protocol enabled
+#define REMOTED_NET_PROTOCOL_UDP     (0x1 << 1)               ///< Config for UDP protocol enabled
+#define REMOTED_NET_PROTOCOL_DEFAULT REMOTED_NET_PROTOCOL_TCP ///< Default remoted protocol
 
-#define REMOTED_PROTO_TCP_STR "TCP" ///< String to represent the TCP protocol
-#define REMOTED_PROTO_UDP_STR "UDP" ///< String to represent the UDP protocol
-#define REMOTED_PROTO_DEFAULT_STR  (REMOTED_PROTO_DEFAULT == REMOTED_PROTO_TCP \
-                              ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR) ///< String to represent default protocol
+#define REMOTED_NET_PROTOCOL_TCP_STR "TCP" ///< String to represent the TCP protocol
+#define REMOTED_NET_PROTOCOL_UDP_STR "UDP" ///< String to represent the UDP protocol
+#define REMOTED_NET_PROTOCOL_DEFAULT_STR  (REMOTED_NET_PROTOCOL_DEFAULT == REMOTED_NET_PROTOCOL_TCP \
+                ? REMOTED_NET_PROTOCOL_TCP_STR : REMOTED_NET_PROTOCOL_UDP_STR) ///< String to represent default protocol
 
-#define REMOTED_PROTO_TCP_STR "TCP"
-#define REMOTED_PROTO_UDP_STR "UDP"
-#define REMOTED_PROTO_DEFAULT_STR  (REMOTED_PROTO_DEFAULT == REMOTED_PROTO_TCP \
-                              ? REMOTED_PROTO_TCP_STR : REMOTED_PROTO_UDP_STR) ///< String to represent default protocol
+#define REMOTED_NET_PROTOCOL_TCP_STR "TCP"
+#define REMOTED_NET_PROTOCOL_UDP_STR "UDP"
+#define REMOTED_NET_PROTOCOL_DEFAULT_STR  (REMOTED_NET_PROTOCOL_DEFAULT == REMOTED_NET_PROTOCOL_TCP \
+                ? REMOTED_NET_PROTOCOL_TCP_STR : REMOTED_NET_PROTOCOL_UDP_STR) ///< String to represent default protocol
+
+#define REMOTED_NET_PROTOCOL_TCP_UDP (REMOTED_NET_PROTOCOL_TCP | REMOTED_NET_PROTOCOL_UDP) ///< Either UDP or TCP
 
 #include "shared.h"
 #include "global-config.h"
@@ -45,7 +47,6 @@ typedef struct _remoted {
     int m_queue;
     int tcp_sock;       ///< This socket is used to receive requests over TCP
     int udp_sock;       ///< This socket is used to receive requests over UDP
-    int syslog_sock;    ///< This socket is used to handle the syslog's connection
     int position;       ///< This allows the childs to access its corresponding remoted parameters (unique per child)
     int nocmerged;
     socklen_t peer_size;
