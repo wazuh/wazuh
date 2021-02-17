@@ -253,12 +253,12 @@ typedef enum global_db_access {
     WDB_DISCONNECT_AGENTS
 } global_db_access;
 
-struct stmt_cache { 
+struct stmt_cache {
     sqlite3_stmt *stmt;
     char *query;
 };
 
-struct stmt_cache_list { 
+struct stmt_cache_list {
     struct stmt_cache value;
     struct stmt_cache_list *next;
 };
@@ -310,6 +310,7 @@ extern char *schema_upgrade_v4_sql;
 extern char *schema_upgrade_v5_sql;
 extern char *schema_upgrade_v6_sql;
 extern char *schema_upgrade_v7_sql;
+extern char *schema_upgrade_v8_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 
@@ -351,7 +352,7 @@ typedef enum {
     FIELD_REAL
 } field_type_t;
 
-struct field { 
+struct field {
     field_type_t type;
     int index;
     bool is_old_implementation;
@@ -359,19 +360,19 @@ struct field {
     char name[OS_SIZE_256];
 };
 
-struct column_list { 
+struct column_list {
     struct field value;
     const struct column_list *next;
 };
 
-struct kv { 
+struct kv {
     char key[OS_SIZE_256];
     char value[OS_SIZE_256];
     bool single_row_table;
     struct column_list const *column_list;
 };
 
-struct kv_list { 
+struct kv_list {
     struct kv current;
     const struct kv_list *next;
 };

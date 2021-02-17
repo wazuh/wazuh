@@ -38,6 +38,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         schema_upgrade_v5_sql,
         schema_upgrade_v6_sql,
         schema_upgrade_v7_sql,
+        schema_upgrade_v8_sql
     };
 
     char db_version[OS_SIZE_256 + 2];
