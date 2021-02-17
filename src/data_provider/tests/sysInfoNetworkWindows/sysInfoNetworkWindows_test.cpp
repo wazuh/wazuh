@@ -28,7 +28,7 @@ public:
     virtual ~SysInfoNetworkWindowsWrapperMock() = default;
     MOCK_METHOD(int, family, (), (const override));
     MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, adapter, (), (const override)); 
+    MOCK_METHOD(std::string, adapter, (), (const override));
     MOCK_METHOD(std::string, address, (), (const override));
     MOCK_METHOD(std::string, netmask, (), (const override));
     MOCK_METHOD(std::string, broadcast, (), (const override));
@@ -92,13 +92,13 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV4)
     EXPECT_CALL(*mock, netmask()).Times(1).WillOnce(Return(netmask));
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return(broadcast));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(dhcp));
-    EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(metrics));   
+    EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(metrics));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
     EXPECT_EQ(address, networkInfo.at("IPv4").at("address").get_ref<const std::string&>());
     EXPECT_EQ(netmask, networkInfo.at("IPv4").at("netmask").get_ref<const std::string&>());
     EXPECT_EQ(broadcast, networkInfo.at("IPv4").at("broadcast").get_ref<const std::string&>());
     EXPECT_EQ(dhcp, networkInfo.at("IPv4").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ(metrics, networkInfo.at("IPv4").at("metric").get_ref<const std::string&>()); 
+    EXPECT_EQ(metrics, networkInfo.at("IPv4").at("metric").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkWindowsTest, Test_IPV6)
@@ -149,7 +149,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     EXPECT_EQ(type, networkInfo.at("type").get_ref<const std::string&>());
     EXPECT_EQ(state, networkInfo.at("state").get_ref<const std::string&>());
     EXPECT_EQ(MAC, networkInfo.at("mac").get_ref<const std::string&>());
-    
+
     EXPECT_EQ(1, networkInfo.at("tx_packets").get<int32_t>());
     EXPECT_EQ(0, networkInfo.at("rx_packets").get<int32_t>());
     EXPECT_EQ(3, networkInfo.at("tx_bytes").get<int32_t>());
