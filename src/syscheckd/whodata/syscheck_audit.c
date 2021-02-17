@@ -157,11 +157,11 @@ int set_auditd_config(void) {
     fprintf(fp, "format = string\n");
 
     if (fclose(fp)) {
-        merror(FCLOSE_ERROR, buffer, errno, strerror(errno));
+        merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
-    if (symlink(buffer, audit_path) < 0) {
+    if (symlink(AUDIT_CONF_FILE, audit_path) < 0) {
         switch (errno) {
         case EEXIST:
             if (unlink(audit_path) < 0) {
@@ -169,19 +169,19 @@ int set_auditd_config(void) {
                 return -1;
             }
 
-            if (symlink(buffer, audit_path) == 0) {
+            if (symlink(AUDIT_CONF_FILE, audit_path) == 0) {
                 break;
             }
 
         // Fallthrough
         default:
-            merror(LINK_ERROR, audit_path, buffer, errno, strerror(errno));
+            merror(LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
             return -1;
         }
     }
 
     if (syscheck.restart_audit) {
-        minfo(FIM_AUDIT_RESTARTING, buffer);
+        minfo(FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
         return audit_restart();
     } else {
         mwarn(FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);
