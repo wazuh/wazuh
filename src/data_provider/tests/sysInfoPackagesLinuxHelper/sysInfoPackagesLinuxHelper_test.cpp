@@ -28,7 +28,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformation)
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
-    EXPECT_EQ("15432", jsPackageInfo["size"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
     EXPECT_EQ("1.5", jsPackageInfo["version"]);
@@ -59,7 +59,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("curl", jsPackageInfo["name"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["size"]);
+    EXPECT_EQ(0, jsPackageInfo["size"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["install_time"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["groups"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
@@ -104,7 +104,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("zlib1g-dev", jsPackageInfo["name"]);
     EXPECT_EQ("optional", jsPackageInfo["priority"]);
-    EXPECT_EQ("591", jsPackageInfo["size"]);
+    EXPECT_EQ(591, jsPackageInfo["size"]);
     EXPECT_EQ("libdevel", jsPackageInfo["groups"]);
     EXPECT_EQ("same", jsPackageInfo["multiarch"]);
     EXPECT_EQ("1:1.2.11.dfsg-2ubuntu1.2", jsPackageInfo["version"]);

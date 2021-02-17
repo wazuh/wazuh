@@ -23,25 +23,19 @@ extern "C" {
 
 using namespace RSync;
 
-static log_fnc_t gs_logFunction{ nullptr };
+static std::function<void(const std::string&)> gs_logFunction;
 
 static void log_message(const std::string& msg)
 {
-    if (!msg.empty())
+    if (!msg.empty() && gs_logFunction)
     {
-        if (gs_logFunction)
-        {
-            gs_logFunction(msg.c_str());
-        }
+        gs_logFunction(msg);
     }
 }
 
 EXPORTED void rsync_initialize(log_fnc_t log_function)
 {
-    if (!gs_logFunction)
-    {
-        gs_logFunction = log_function;
-    }
+    RemoteSync::initialize([log_function](const std::string& msg){log_function(msg.c_str());});
 }
 
 EXPORTED void rsync_teardown(void)
@@ -199,6 +193,14 @@ EXPORTED int rsync_close(const RSYNC_HANDLE handle)
 #ifdef __cplusplus
 }
 #endif
+
+void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
+{
+    if (!gs_logFunction)
+    {
+        gs_logFunction = logFunction;
+    }
+}
 
 void RemoteSync::teardown()
 {

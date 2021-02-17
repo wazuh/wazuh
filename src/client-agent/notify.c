@@ -43,7 +43,7 @@ char *getsharedfiles()
 char *get_agent_ip()
 {
     char *agent_ip = NULL;
-#if defined (__linux__) || defined (__MACH__)
+#if defined (__linux__) || defined (__MACH__) || defined (sun)
     int sock;
     int i;
     os_calloc(IPSIZE + 1,sizeof(char),agent_ip);
