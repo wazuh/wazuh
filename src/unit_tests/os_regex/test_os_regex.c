@@ -103,11 +103,18 @@ void test_success_regex(void **state)
      * Please note that all strings are \ escaped
      */
     const char *tests[][3] = {
+        {"", "", ""},
+        {"", "a", ""},
         {"abc", "abcd", ""},
         {"abcd", "abcd", ""},
         {"a", "a", ""},
         {"a", "aa", ""},
         {"^a", "ab", ""},
+        {"^$", "", ""},
+        {"^", "", ""},
+        {"$", "", ""},
+        {"\\.*", "", ""},
+        {"(\\.*)", "", ""},
         {"test", "testa", ""},
         {"test", "testest", ""},
         {"lalaila", "lalalalaila", ""},
@@ -186,6 +193,8 @@ void test_fail_regex(void **state)
     const char *tests[][3] = {
         {"abc", "abb", ""},
         {"^ab", " ab", ""},
+        {"^$", "a", ""},
+        {"$", "a", ""},
         {"test", "tes", ""},
         {"abcd", "abc", ""},
         {"abbb", "abb", ""},

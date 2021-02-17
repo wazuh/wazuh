@@ -230,9 +230,9 @@ void test_getSyscheckConfig(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 20);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 21);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 27);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 28);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -369,9 +369,9 @@ void test_getSyscheckConfig_no_audit(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
     #else
-    assert_int_equal(cJSON_GetArraySize(sys_items), 19);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 20);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -501,7 +501,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
