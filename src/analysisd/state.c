@@ -97,7 +97,6 @@ int w_analysisd_write_state(){
     FILE * fp;
     char path[PATH_MAX - 8];
     char path_temp[PATH_MAX + 1];
-    char buffer[PATH_MAX] = {'\0'};
 
     if (!strcmp(__local_name, "unset")) {
         merror("At write_state(): __local_name is unset.");
@@ -110,7 +109,6 @@ int w_analysisd_write_state(){
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
     if (fp = fopen(path_temp, "w"), !fp) {
-        abspath(path_temp, buffer, PATH_MAX);
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         return -1;
     }
@@ -312,12 +310,9 @@ int w_analysisd_write_state(){
     w_reset_stats();
 
     if (rename(path_temp, path) < 0) {
-        char temp_buffer[PATH_MAX] ={'\0'};
-        abspath(path, buffer, PATH_MAX);
-        abspath(path_temp, temp_buffer, PATH_MAX);
-        merror("Renaming %s to %s: %s", temp_buffer, buffer, strerror(errno));
+        merror("Renaming %s to %s: %s", path_temp, path, strerror(errno));
         if (unlink(path_temp) < 0) {
-            merror("Deleting %s: %s", temp_buffer, strerror(errno));
+            merror("Deleting %s: %s", path_temp, strerror(errno));
         }
        return -1;
     }

@@ -101,7 +101,6 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
 FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate) {
     char next[OS_FLSIZE + 1];
-    char buffer[PATH_MAX] = {'\0'};
 
     if (fp) {
         if (ftell(fp) == 0) {
@@ -114,15 +113,13 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
     snprintf(path, OS_FLSIZE + 1, "%s/%d/", logdir, year);
 
     if (IsDir(path) == -1 && mkdir(path, 0770)) {
-        abspath(path, buffer, PATH_MAX);
-        merror_exit(MKDIR_ERROR, buffer, errno, strerror(errno));
+        merror_exit(MKDIR_ERROR, path, errno, strerror(errno));
     }
 
     snprintf(path, OS_FLSIZE + 1, "%s/%d/%s", logdir, year, month);
 
     if (IsDir(path) == -1 && mkdir(path, 0770)) {
-        abspath(path, buffer, PATH_MAX);
-        merror_exit(MKDIR_ERROR, buffer, errno, strerror(errno));
+        merror_exit(MKDIR_ERROR, path, errno, strerror(errno));
     }
 
     // Create the logfile name
@@ -140,16 +137,14 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
     }
 
     if (fp = fopen(path, "a"), !fp) {
-        abspath(path, buffer, PATH_MAX);
-        merror_exit("Error opening logfile: '%s': (%d) %s", buffer, errno, strerror(errno));
+        merror_exit("Error opening logfile: '%s': (%d) %s", path, errno, strerror(errno));
     }
 
     // Create a symlink
     unlink(lname);
 
     if (link(path, lname) == -1) {
-        abspath(path, buffer, PATH_MAX);
-        merror_exit(LINK_ERROR, buffer, lname, errno, strerror(errno));
+        merror_exit(LINK_ERROR, path, lname, errno, strerror(errno));
     }
 
     return fp;

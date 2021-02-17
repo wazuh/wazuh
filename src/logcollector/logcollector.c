@@ -1948,30 +1948,27 @@ void * w_output_thread(void * args){
             // Continuously attempt to reconnect to the queue and send the message.
             result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
                                   message->queue_mq, message->log_target);
-
-            char buffer[PATH_MAX] = {'\0'};
-            abspath(DEFAULTQUEUE, buffer, PATH_MAX);
             if (result != 0) {
                 if (result != 1) {
 #ifdef CLIENT
-                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", buffer);
+                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
-                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", buffer);
+                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
                 }
                 // Retry to connect infinitely.
                 logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-                minfo("Successfully reconnected to '%s'", buffer);
+                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
                 if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
                     result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
                     if (result != 1) {
 #ifdef CLIENT
-                        merror("Unable to send message to '%s' after a successfull reconnection...", buffer);
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
 #else
-                        merror("Unable to send message to '%s' after a successfull reconnection...", buffer);
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
 #endif
                     }
                     result = 1;
@@ -2599,10 +2596,6 @@ int w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) {
 
 STATIC void w_initialize_file_status() {
 
-    /* Get the absolute path */
-    char buffer[PATH_MAX] = {'\0'};
-    abspath(LOCALFILE_STATUS, buffer, PATH_MAX);
-
     /* Initialize hash table to associate paths and read position */
     if (files_status = OSHash_Create(), files_status == NULL) {
         merror_exit(HCREATE_ERROR, files_status_name);
@@ -2621,7 +2614,7 @@ STATIC void w_initialize_file_status() {
         char str[OS_MAXSTR] = {0};
 
         if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
-            merror(FREAD_ERROR, buffer, errno, strerror(errno));
+            merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
             clearerr(fd);
         } else {
             cJSON * global_json = cJSON_Parse(str);
@@ -2631,7 +2624,7 @@ STATIC void w_initialize_file_status() {
 
         fclose(fd);
     } else if (errno != ENOENT) {
-        merror_exit(FOPEN_ERROR, buffer, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
 }
 

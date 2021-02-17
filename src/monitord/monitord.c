@@ -40,9 +40,9 @@ void Monitord()
     /* ossec.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
-    /* logs/ossec.log */
+    /* /var/ossec/logs/ossec.log */
     snprintf(path, PATH_MAX, "%s", LOGFILE);
-    /* logs/ossec.json */
+    /* /var/ossec/logs/ossec.json */
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 
