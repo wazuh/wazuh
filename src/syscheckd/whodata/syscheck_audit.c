@@ -1494,8 +1494,13 @@ int audit_health_check(int audit_socket) {
     FILE *fp;
     audit_health_check_creation = 0;
     unsigned int timer = 10;
+    char abs_path_healthcheck[PATH_MAX] = {'\0'};
+    char abs_path_healthcheck_file[PATH_MAX] = {'\0'};
 
-    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) { // -17 Means audit rule exist EEXIST
+    abspath(AUDIT_HEALTHCHECK_DIR, abs_path_healthcheck, PATH_MAX);
+    abspath(AUDIT_HEALTHCHECK_FILE, abs_path_healthcheck_file, PATH_MAX);
+
+    if(retval = audit_add_rule(abs_path_healthcheck, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) { // -17 Means audit rule exist EEXIST
         mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
         return -1;
     }
@@ -1514,7 +1519,7 @@ int audit_health_check(int audit_socket) {
 
     // Generate open events until they get picked up
     do {
-        fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
+        fp = fopen(abs_path_healthcheck_file, "w");
 
         if(!fp) {
             mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
@@ -1534,9 +1539,9 @@ int audit_health_check(int audit_socket) {
     }
 
     // Delete that file
-    unlink(AUDIT_HEALTHCHECK_FILE);
+    unlink(abs_path_healthcheck_file);
 
-    if(audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY) <= 0){
+    if(audit_delete_rule(abs_path_healthcheck, AUDIT_HEALTHCHECK_KEY) <= 0){
         mdebug1(FIM_HEALTHCHECK_CHECK_RULE);    // LCOV_EXCL_LINE
     }
     hc_thread_active = 0;
