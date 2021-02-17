@@ -15,7 +15,6 @@
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 #include <sys/utsname.h>
-#include "osinfo/sysOsParsers.h"
 #include "sharedDefs.h"
 
 void SysInfo::getMemory(nlohmann::json& info) const
