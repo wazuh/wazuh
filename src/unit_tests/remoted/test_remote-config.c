@@ -39,7 +39,7 @@ void test_w_remoted_get_net_protocol_content_NULL(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "(9000): Error getting protocol. Default value (TCP) will be used.");
 
     int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, REMOTED_PROTO_DEFAULT);
+    assert_int_equal(ret, REMOTED_NET_PROTOCOL_DEFAULT);
 
 }
 
@@ -52,7 +52,7 @@ void test_w_remoted_get_net_protocol_content_empty(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "(9000): Error getting protocol. Default value (TCP) will be used.");
 
     int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, REMOTED_PROTO_DEFAULT);
+    assert_int_equal(ret, REMOTED_NET_PROTOCOL_DEFAULT);
 
 }
 
@@ -67,7 +67,7 @@ void test_w_remoted_get_net_protocol_content_ignore_values(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "(9000): Error getting protocol. Default value (TCP) will be used.");
 
     int ret = w_remoted_get_net_protocol(content);
-    assert_int_equal(ret, REMOTED_PROTO_DEFAULT);
+    assert_int_equal(ret, REMOTED_NET_PROTOCOL_DEFAULT);
 
 }
 

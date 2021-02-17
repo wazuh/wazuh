@@ -897,6 +897,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     FILE *fp;
     os_sha256 multi_group_hash;
     char *multi_group_hash_pt = NULL;
+    int protocol = -1; // Agent client net protocol
 
     /* Check if it is multigroup */
     if (strchr(group,MULTIGROUP_SEPARATOR)) {
@@ -935,14 +936,12 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 
     /* The following code is used to get the protocol that the client is using in order to answer accordingly */
     key_lock_read();
-    const int key_id = OS_IsAllowedID(&keys, agent_id);
-    if (key_id < 0) {
-        key_unlock();
+    protocol = w_get_agent_net_protocol_from_keystore(&keys, agent_id);
+    key_unlock();
+    if (protocol < 0) {
         merror(AR_NOAGENT_ERROR, agent_id);
         return (-1);
     }
-    const int protocol = keys.keyentries[key_id]->net_protocol;
-    key_unlock();
 
     /* Send the file contents */
     while ((n = fread(buf, 1, 900, fp)) > 0) {
@@ -953,7 +952,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
             return (-1);
         }
         /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
-        if (protocol == REMOTED_PROTO_UDP) {
+        if (protocol == REMOTED_NET_PROTOCOL_UDP) {
             /* Sleep 1 every 30 messages -- no flood */
             if (i > 30) {
                 sleep(1);

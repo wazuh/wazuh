@@ -142,7 +142,8 @@
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
 #define NO_CLIENT_KEYS  "(1751): File client.keys not found or empty."
-#define REMOTED_PROTO_NOT_SET  "(1752): Network protocol is not set."
+
+#define REMOTED_NET_PROTOCOL_NOT_SET  "(1752): Network protocol is not set."
 
 /* 1760 - 1769 -- reserved for maild */
 
