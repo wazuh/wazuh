@@ -112,9 +112,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define GROUPGLOBAL     "ossec"
 #endif
 
-#ifndef FALLBACKDIR
-#define FALLBACKDIR     "/var/ossec"
-#endif
+// Wazuh home environment variable
+#define WAZUH_HOME_ENV  "WAZUH_HOME"
 
 /* Default queue */
 #define DEFAULTQUEUE    "queue/ossec/queue"

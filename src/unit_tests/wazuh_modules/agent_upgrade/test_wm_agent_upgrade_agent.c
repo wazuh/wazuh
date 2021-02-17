@@ -148,7 +148,7 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
     will_return(__wrap_wm_sendmsg, result);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/ossec/queue' not accessible: 'Success'");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/ossec/queue' not accessible: 'Success'");
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -185,7 +185,7 @@ void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
     will_return(__wrap_wm_sendmsg, result);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/ossec/queue' not accessible: 'Success'");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/ossec/queue' not accessible: 'Success'");
 
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);

@@ -21,4 +21,6 @@ void expect_system(int ret);
 
 int __wrap_mkstemp(char *template);
 
+char *__wrap_getenv(const char *name);
+
 #endif

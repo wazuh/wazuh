@@ -631,11 +631,12 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 #endif /* CLIENT */
 
 /**
- * @brief Gets the Wazuh installation directory from the executable path
+ * @brief Get the Wazuh installation directory
  *
- * @param arg Relative path of the executable (i.e. argv[0])
- * @retval FALLBACKDIR when the real path is not found
- * @retval Pointer to the Wazuh installation path
+ * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ * 
+ * @param arg ARGV0 - Program name
+ * @return Pointer to the Wazuh installation path on success
  */
 char *w_homedir(char *arg);
 #endif /* FILE_OP_H */

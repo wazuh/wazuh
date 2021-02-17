@@ -536,7 +536,6 @@ float DirSize(const char *path) {
 int CreatePID(const char *name, int pid)
 {
     char file[256];
-    char buffer[PATH_MAX] = {'\0'};
     FILE *fp;
 
     snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, pid);
@@ -548,15 +547,13 @@ int CreatePID(const char *name, int pid)
 
     fprintf(fp, "%d\n", pid);
     if (chmod(file, 0640) != 0) {
-        abspath(file, buffer, PATH_MAX);
-        merror(CHMOD_ERROR, buffer, errno, strerror(errno));
+        merror(CHMOD_ERROR, file, errno, strerror(errno));
         fclose(fp);
         return (-1);
     }
 
     if (fclose(fp)) {
-        abspath(file, buffer, PATH_MAX);
-        merror("Could not write PID file '%s': %s (%d)", buffer, strerror(errno), errno);
+        merror("Could not write PID file '%s': %s (%d)", file, strerror(errno), errno);
         return -1;
     }
 
@@ -599,9 +596,7 @@ int DeletePID(const char *name)
     }
 
     if (unlink(file)) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(file, buffer, PATH_MAX);
-        mferror(DELETE_ERROR, buffer, errno, strerror(errno));
+        mferror(DELETE_ERROR, file, errno, strerror(errno));
         return (-1);
     }
 
@@ -3344,17 +3339,18 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest) {
 
 #ifndef WIN32
 /**
- * @brief Gets the Wazuh installation directory from the executable path
+ * @brief Get the Wazuh installation directory
  *
- * @param arg Relative path of the executable (i.e. argv[0])
- * @retval FALLBACKDIR when the real path is not found
- * @retval Pointer to the Wazuh installation path
+ * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ *
+ * @param arg ARGV0 - Program name
+ * @return Pointer to the Wazuh installation path on success
  */
 char *w_homedir(char *arg) {
     char *buff = NULL;
     struct stat buff_stat;
     char * delim = "/bin";
-    os_malloc(PATH_MAX, buff);
+    os_calloc(PATH_MAX, sizeof(char), buff);
 #ifdef __MACH__
     pid_t pid = getpid();
 #endif
@@ -3376,19 +3372,20 @@ char *w_homedir(char *arg) {
         buff = w_strtok_r_str_delim(delim, &buff);
     }
 #endif
-    else if (arg != NULL) {
-        if (realpath(arg, buff) == NULL) {
-            mdebug1("Failed to get '%s' realpath: %s", arg, strerror(errno));
-            strncpy(buff, FALLBACKDIR, w_strlen(FALLBACKDIR) + 1);
-            return buff;
-        }
-
+    else if (realpath(arg, buff) != NULL) {
         dirname(buff);
         buff = w_strtok_r_str_delim(delim, &buff);
+    } else {
+        // The path was not found so read WAZUH_HOME env var
+        char * home_env = NULL;
+        if (home_env = getenv(WAZUH_HOME_ENV), home_env) {
+            snprintf(buff, PATH_MAX, "%s", home_env);
+        }
     }
 
-    if (stat(buff, &buff_stat) < 0 || !S_ISDIR(buff_stat.st_mode)) {
-        snprintf(buff, PATH_MAX, "%s", FALLBACKDIR);
+    if ((stat(buff, &buff_stat) < 0) || !S_ISDIR(buff_stat.st_mode)) {
+        os_free(buff);
+        merror_exit(HOME_ERROR);
     }
 
     return buff;

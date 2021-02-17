@@ -3,7 +3,7 @@
 
 list(APPEND shared_tests_names "test_file_op")
 if(NOT ${TARGET} STREQUAL "winagent")
-    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,abspath,--wrap,stat,--wrap,chmod,--wrap,getpid \
+    set(FILE_OP_BASE_FLAGS "-Wl,--wrap,getenv,--wrap,stat,--wrap,chmod,--wrap,getpid \
                             -Wl,--wrap,unlink,--wrap,_merror,--wrap,_minfo,--wrap,_mwarn \
                             -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose \
                             -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove \
@@ -11,7 +11,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1,--wrap,lstat \
                             -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose \
                             -Wl,--wrap,gzeof,--wrap,gzerror,--wrap,gzwrite -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
-                            -Wl,--wrap,realpath -Wl,--wrap,atexit -Wl,--wrap,_mdebug1 -Wl,--wrap,proc_pidpath")
+                            -Wl,--wrap,realpath -Wl,--wrap,atexit -Wl,--wrap,_mdebug1 -Wl,--wrap,proc_pidpath \
+                            -Wl,--wrap,_merror_exit")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()
     list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,_mferror")
