@@ -193,7 +193,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
     static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal { "unknown" };
         const auto value { fields.at(RHInterfaceConfig::Value) };
 
         const auto it { DHCP_STATUS.find(value) };
