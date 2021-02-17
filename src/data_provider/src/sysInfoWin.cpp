@@ -421,7 +421,10 @@ static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann
                         value = value.substr(start);
                         const auto end{value.find("-")};
                         value = value.substr(0, end);
-                        hotfixes.insert(value);
+                        if (value > "KB")
+                        {
+                            hotfixes.insert(value);
+                        }
                     }
                 }
             }
