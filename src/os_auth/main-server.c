@@ -82,12 +82,12 @@ static void help_authd(char * home_path)
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chroot into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
-    print_out("    -P          Enable shared password authentication, at %s/%s or random.", home_path, AUTHD_PASS);
+    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
-    print_out("    -x <path>   Full path to server certificate. Default: %s/%s.", home_path, CERTFILE);
-    print_out("    -k <path>   Full path to server key. Default: %s/%s.", home_path, KEYFILE);
+    print_out("    -x <path>   Full path to server certificate. Default: %s.", CERTFILE);
+    print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
     print_out(" ");
@@ -303,9 +303,7 @@ int main(int argc, char **argv)
 
         // Return -1 if not configured
         if (authd_read_config(OSSECCONF) < 0) {
-            char buffer[PATH_MAX] = {'\0'};
-            abspath(OSSECCONF, buffer, PATH_MAX);
-            merror_exit(CONFIG_ERROR, buffer);
+            merror_exit(CONFIG_ERROR, OSSECCONF);
         }
 
         // Overwrite arguments
@@ -447,9 +445,7 @@ int main(int argc, char **argv)
 
     fp = fopen(KEYS_FILE, "a");
     if (!fp) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(KEYS_FILE, buffer, PATH_MAX);
-        merror("Unable to open %s (key file)", buffer);
+        merror("Unable to open %s (key file)", KEYS_FILE);
         exit(1);
     }
     fclose(fp);

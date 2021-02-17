@@ -316,9 +316,7 @@ void InstallAuthKeys(char *msg)
         fp = fopen(KEYS_FILE, "w");
 
         if (!fp) {
-            char buffer[PATH_MAX] = {'\0'};
-            abspath(KEYS_FILE, buffer, PATH_MAX);
-            merror_exit("Unable to open key file: %s", buffer);
+            merror_exit("Unable to open key file: %s", KEYS_FILE);
         }
             
 
@@ -463,9 +461,7 @@ int main(int argc, char **argv)
 
             fclose(fp);
 
-            char buffer[PATH_MAX] = {'\0'};
-            abspath(AUTHD_PASS, buffer, PATH_MAX);
-            printf("INFO: Using password specified on file: %s\n", buffer);
+            printf("INFO: Using password specified on file: %s\n", AUTHD_PASS);
         }
     }
     if (!authpass) {

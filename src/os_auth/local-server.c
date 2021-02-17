@@ -88,9 +88,7 @@ void* run_local_server(__attribute__((unused)) void *arg) {
     mdebug1("Local server thread ready.");
 
     if (sock = OS_BindUnixDomain(AUTH_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(OSSECCONF, buffer, PATH_MAX);
-        merror("Unable to bind to socket '%s': '%s'. Closing local server.", buffer, strerror(errno));
+        merror("Unable to bind to socket '%s': '%s'. Closing local server.", OSSECCONF, strerror(errno));
         return NULL;
     }
 

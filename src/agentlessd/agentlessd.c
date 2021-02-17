@@ -61,9 +61,7 @@ static int send_intcheck_msg(const char *script, const char *host, const char *m
         merror(QUEUE_SEND);
 
         if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            char buffer[PATH_MAX] = {'\0'};
-            abspath(DEFAULTQUEUE, buffer, PATH_MAX);
-            merror_exit(QUEUE_FATAL, buffer);
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         /* If we reach here, we can try to send it again */
@@ -84,9 +82,7 @@ static int send_log_msg(const char *script, const char *host, const char *msg)
     if (SendMSG(lessdc.queue, msg, sys_location, LOCALFILE_MQ) < 0) {
         merror(QUEUE_SEND);
         if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            char buffer[PATH_MAX] = {'\0'};
-            abspath(DEFAULTQUEUE, buffer, PATH_MAX);
-            merror_exit(QUEUE_FATAL, buffer);
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         /* If we reach here, we can try to send it again */
@@ -142,9 +138,7 @@ static int gen_diff_alert(const char *host, const char *script, time_t alert_dif
         merror(QUEUE_SEND);
 
         if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            char buffer[PATH_MAX] = {'\0'};
-            abspath(DEFAULTQUEUE, buffer, PATH_MAX);
-            merror_exit(QUEUE_FATAL, buffer);
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         /* If we reach here, we can try to send it again */
@@ -459,9 +453,7 @@ void Agentlessd()
 
     /* Connect to the message queue. Exit if it fails. */
     if ((lessdc.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(DEFAULTQUEUE, buffer, PATH_MAX);
-        merror_exit(QUEUE_FATAL, buffer);
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     // Start com request thread

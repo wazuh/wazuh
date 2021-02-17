@@ -111,8 +111,6 @@ int set_auditd_config(void) {
 
     FILE *fp;
     char audit_path[50] = {0};
-    char buffer[PATH_MAX] = {'\0'};
-    char abs_path_socket[PATH_MAX] = {'\0'};
 
     // Check audisp version
     if (IsDir(PLUGINS_DIR_AUDIT_3) == 0) {
@@ -135,25 +133,19 @@ int set_auditd_config(void) {
         }
 
         if (syscheck.restart_audit) {
-            abspath(AUDIT_SOCKET, buffer, PATH_MAX);
             minfo(FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
             return audit_restart();
         } else {
-            abspath(AUDIT_SOCKET, buffer, PATH_MAX);
             mwarn(FIM_WARN_AUDIT_SOCKET_NOEXIST, AUDIT_SOCKET);
             return 1;
         }
     }
 
-    abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
-    minfo(FIM_AUDIT_SOCKET, buffer);
-
-    abspath(AUDIT_SOCKET, abs_path_socket, PATH_MAX);
+    minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
-        abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
-        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
+        merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
@@ -161,7 +153,7 @@ int set_auditd_config(void) {
     fprintf(fp, "direction = out\n");
     fprintf(fp, "path = builtin_af_unix\n");
     fprintf(fp, "type = builtin\n");
-    fprintf(fp, "args = 0640 %s\n", abs_path_socket);
+    fprintf(fp, "args = 0640 %s\n", AUDIT_SOCKET);
     fprintf(fp, "format = string\n");
 
     if (fclose(fp)) {
@@ -203,9 +195,7 @@ int init_auditd_socket(void) {
     int sfd;
 
     if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(AUDIT_SOCKET, buffer, PATH_MAX);
-        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, buffer);
+        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
         return (-1);
     }
 

@@ -239,9 +239,7 @@ void os_logging_config(){
     flags.log_plain = 1;
     flags.log_json = 0;
     OS_ClearXML(&xml);
-    char buffer[PATH_MAX] = {'\0'};
-    abspath(OSSECCONF, buffer, PATH_MAX);
-    merror_exit(XML_ERROR, buffer, xml.err, xml.err_line);
+    merror_exit(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
   }
 
   logformat = OS_GetOneContentforElement(&xml, xmlf);

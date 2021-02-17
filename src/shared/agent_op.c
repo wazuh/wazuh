@@ -85,9 +85,7 @@ char *os_read_agent_name()
     }
 
     if (!fp) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(AGENT_INFO_FILE, buffer, PATH_MAX);
-        mdebug1(FOPEN_ERROR, buffer, errno, strerror(errno));
+        mdebug1(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -196,9 +194,7 @@ char *os_read_agent_profile()
     fp = fopen(AGENT_INFO_FILE, "r");
 
     if (!fp) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(AGENT_INFO_FILE, buffer, PATH_MAX);
-        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
+        merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
     }
 
@@ -975,9 +971,7 @@ char * get_agent_id_from_name(const char *agent_name) {
     fp = fopen(path, "r");
 
     if(!fp) {
-        char keys_path[PATH_MAX] = {'\0'};
-        abspath(KEYS_FILE, keys_path, PATH_MAX);
-        mdebug1("Couldnt open file '%s'", keys_path);
+        mdebug1("Couldnt open file '%s'", KEYS_FILE);
         os_free(path);
         os_free(buffer);
         return NULL;

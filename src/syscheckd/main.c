@@ -31,7 +31,7 @@ __attribute__((noreturn)) static void help_syscheckd(char *home_path)
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
     os_free(home_path);
     exit(1);

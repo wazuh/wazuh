@@ -145,9 +145,7 @@ int OS_CheckKeys()
     FILE *fp;
 
     if (File_DateofChange(KEYS_FILE) < 0) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(KEYS_FILE, buffer, PATH_MAX);
-        merror(NO_AUTHFILE, buffer);
+        merror(NO_AUTHFILE, KEYS_FILE);
         merror(NO_CLIENT_KEYS);
         return (0);
     }
@@ -155,10 +153,8 @@ int OS_CheckKeys()
     fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         /* We can leave from here */
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(KEYS_FILE, buffer, PATH_MAX);
-        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
-        merror(NO_AUTHFILE, buffer);
+        merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
+        merror(NO_AUTHFILE, KEYS_FILE);
         merror(NO_CLIENT_KEYS);
         return (0);
     }

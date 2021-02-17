@@ -54,9 +54,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Open shared ar file */
     fp = fopen(DEFAULTAR, "a");
     if (!fp) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(DEFAULTAR, buffer, PATH_MAX);
-        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
+        merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (-1);
     }
 

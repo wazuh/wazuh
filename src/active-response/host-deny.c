@@ -162,8 +162,8 @@ int main (int argc, char **argv) {
         char temp_hosts_deny_path[PATH_MAX];
 
         memset(temp_hosts_deny_path, '\0', PATH_MAX);
-        abspath("active-response/bin/temp-hosts-deny", temp_hosts_deny_path, PATH_MAX);
-
+        snprintf(temp_hosts_deny_path, PATH_MAX - 1, "%s", "active-response/bin/temp-hosts-deny");
+        
         // Taking lock
         if (lock(lock_path, lock_pid_path, argv[0], basename(argv[0])) == OS_INVALID) {
             memset(log_msg, '\0', LOGSIZE);

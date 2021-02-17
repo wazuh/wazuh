@@ -43,7 +43,7 @@ static void help_maild(char *home_path)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s/%s)", home_path, OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
     os_free(home_path);
@@ -127,9 +127,7 @@ int main(int argc, char **argv)
 
     /* Read configuration */
     if (MailConf(test_config, cfg, &mail) < 0) {
-        char absPath[PATH_MAX] = {'\0'};
-        abspath(OSSECCONF, absPath, PATH_MAX);
-        merror_exit(CONFIG_ERROR, absPath);
+        merror_exit(CONFIG_ERROR, OSSECCONF);
     }
 
     /* Read internal options */

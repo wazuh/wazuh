@@ -182,9 +182,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
         // Child code
 
         if (flags & W_CHECK_WRITE && !access(path, W_OK)) {
-            char buffer[PATH_MAX] = {'\0'};
-            abspath(path, buffer, PATH_MAX);
-            merror("At wpopenv(): file '%s' has write permissions.", buffer);
+            merror("At wpopenv(): file '%s' has write permissions.", path);
             _exit(127);
         }
 

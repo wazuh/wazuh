@@ -376,9 +376,7 @@ static int w_enrollment_store_key_entry(const char* keys) {
     fp = fopen(KEYS_FILE, "w");
 
     if (!fp) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(KEYS_FILE, buffer, PATH_MAX);
-        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
+        merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
         return -1;
     }
     fprintf(fp, "%s\n", keys);
@@ -388,9 +386,7 @@ static int w_enrollment_store_key_entry(const char* keys) {
     File file;
 
     if (TempFile(&file, KEYS_FILE, 0) < 0) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(KEYS_FILE, buffer, PATH_MAX);
-        merror(FOPEN_ERROR, buffer, errno, strerror(errno));
+        merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
         return -1;
     }
 

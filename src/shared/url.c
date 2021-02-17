@@ -148,9 +148,7 @@ int wurl_request(const char * url, const char * dest, const char *header, const 
     // Connect to downlod module
 
     if (sock = OS_ConnectUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        char buffer[PATH_MAX] = {'\0'};
-        abspath(WM_DOWNLOAD_SOCK, buffer, PATH_MAX);
-        mwarn("Couldn't connect to download module socket '%s'", buffer);
+        mwarn("Couldn't connect to download module socket '%s'", WM_DOWNLOAD_SOCK);
         goto end;
     }
 
