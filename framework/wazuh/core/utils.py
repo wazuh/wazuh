@@ -930,7 +930,7 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
                 match_candidates = list()
                 if field_subnames and field_name in elem and \
                         get_match_candidates(deepcopy(elem[field_name]), field_subnames.split('.'), match_candidates):
-                    if any([check_clause(candidate, op, value) for candidate in match_candidates]):
+                    if any([check_clause(candidate, op, value) for candidate in match_candidates if candidate]):
                         continue
                 else:
                     if field_name in elem and check_clause(elem[field_name], op, value):
