@@ -87,32 +87,17 @@ add_library(sysinfo SHARED
     ${SYSINFO_SRC}
     ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    target_link_libraries(sysinfo -fprofile-arcs)
-    target_link_libraries(sysinfo sqlite3 cjson)
-  else()
-    target_link_libraries(sysinfo sqlite3 cjson gcov)
-  endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  
-  target_link_libraries(sysinfo sqlite3 cjson)
-  if(UNIT_TEST)
-    include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
-    include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
-    link_directories(${SRC_FOLDER}/external/googletest/lib/)
-  endif(UNIT_TEST)
-else()
-    target_link_libraries(sysinfo cjson)
-endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+target_link_libraries(sysinfo cjson)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
+
   set_target_properties(sysinfo PROPERTIES
-        PREFIX ""
-        SUFFIX ".dll"
-        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
-        POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
-        # MinGW generates position-independent-code for DLL by default
+      PREFIX ""
+      SUFFIX ".dll"
+      LINK_FLAGS "-Wl,--add-stdcall-alias -static-libgcc -static-libstdc++"
+      POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
+      # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
@@ -123,7 +108,7 @@ elseif(UNIX AND NOT APPLE)
           LINK_FLAGS "-static-libgcc -static-libstdc++")
 
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-rpath=$ORIGIN")
+    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   else()
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
@@ -140,8 +125,14 @@ if(APPLE)
     $<TARGET_FILE:sysinfo>)
 endif(APPLE)
 
-add_subdirectory(testtool)
-
 if(UNIT_TEST)
-add_subdirectory(tests)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(sysinfo -fprofile-arcs)
+  else()
+    target_link_libraries(sysinfo gcov)
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+  add_subdirectory(tests)
+else()
+  add_subdirectory(testtool)
 endif(UNIT_TEST)

@@ -172,7 +172,7 @@ public:
 
     std::string gateway() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal;
         constexpr auto GATEWAY_SEPARATOR { "," };
         if (Utils::isVistaOrLater())
         {
@@ -222,7 +222,11 @@ public:
                 currentAdapterInfo = currentAdapterInfo->Next;
             }
         }
-        if (retVal != "unknown")
+        if (retVal.empty())
+        {
+            retVal = "unknown";
+        }
+        else
         {
             // Remove last GATEWAY_SEPARATOR (,)
             retVal = retVal.substr(0, retVal.size()-1);

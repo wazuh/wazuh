@@ -1652,7 +1652,7 @@ void test_realtime_adddir_success(void **state) {
 }
 
 void test_RTCallBack_error_on_callback(void **state) {
-    OVERLAPPED ov;
+    OVERLAPPED ov = {.hEvent = "C:\\a\\path"};
 
     will_return(wrap_FormatMessage, "Path not found.");
     expect_string(__wrap__merror, formatted_msg, "(6613): Real time Windows callback process: 'Path not found.' (3).");
@@ -1661,7 +1661,7 @@ void test_RTCallBack_error_on_callback(void **state) {
 }
 
 void test_RTCallBack_empty_hash_table(void **state) {
-    OVERLAPPED ov;
+    OVERLAPPED ov = {.hEvent = "C:\\a\\path"};
 
     expect_value(__wrap_OSHash_Get, self, syscheck.realtime->dirtb);
     expect_any(__wrap_OSHash_Get, key);
@@ -1674,7 +1674,7 @@ void test_RTCallBack_empty_hash_table(void **state) {
 
 void test_RTCallBack_no_bytes_returned(void **state) {
     win32rtfim *rt = *state;
-    OVERLAPPED ov;
+    OVERLAPPED ov = {.hEvent = "C:\\a\\path"};
 
     rt->watch_status = 1;
 

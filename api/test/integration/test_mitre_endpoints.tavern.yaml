@@ -17,7 +17,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &full_items_array
             - phase_name: !anylist
@@ -35,7 +35,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *full_items_array
@@ -63,14 +63,14 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *full_items_array
             - <<: *full_items_array
           failed_items: []
           total_affected_items: !anyint
-          total_failed_items: !anyint
+          total_failed_items: 0
       # Save second item to check offset in next stage
       save:
         json:
@@ -87,7 +87,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
               # Check offset matches with previous request
@@ -97,7 +97,7 @@ stages:
               platform_name: !force_format_include "{offset_item.platform_name}"
           failed_items: []
           total_affected_items: !anyint
-          total_failed_items: !anyint
+          total_failed_items: 0
 
 
   # GET /mitre?id=ID
@@ -111,7 +111,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: "{returned_id}"
@@ -120,7 +120,7 @@ stages:
               platform_name: !force_format_include "{returned_platform}"
           failed_items: []
           total_affected_items: !anyint
-          total_failed_items: !anyint
+          total_failed_items: 0
 
   # GET /mitre?search=ID
   - name: Try to get MITRE attacks using search parameter
@@ -132,7 +132,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: "{returned_id}"
@@ -141,7 +141,7 @@ stages:
               platform_name: !force_format_include "{returned_platform}"
           failed_items: []
           total_affected_items: !anyint
-          total_failed_items: !anyint
+          total_failed_items: 0
 
   # GET /mitre?search=random_search
   - name: Try to get MITRE attacks searching something that does not exist.
@@ -153,12 +153,12 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
           total_affected_items: 0
-          total_failed_items: !anyint
+          total_failed_items: 0
 
     # GET /mitre?phase_name=phase
   - name: Try to get MITRE attacks using phase_name parameter
@@ -234,9 +234,6 @@ stages:
         - function: tavern_utils:test_select_key_affected_items
           extra_kwargs:
             select_key: "id"
-      save:
-        json:
-          select_id_items: data.affected_items
 
   # GET /mitre?select=json
   - name: Try to get MITRE attacks using select parameter
@@ -291,7 +288,7 @@ stages:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            affected_items: "{select_id_items}"
+            key: "id"
 
   # GET /mitre?limit=50
   - name: Verify no more than 10 elements are shown when json is included
@@ -347,12 +344,12 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
           total_affected_items: 0
-          total_failed_items: !anyint
+          total_failed_items: 0
 
   # GET /mitre?q=phase_name=Privilege%20Escalation,phase_name=Persistence;platform_name=Windows
   - name: Verify that query parameter work as expected when using multiple values

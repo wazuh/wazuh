@@ -61,6 +61,7 @@ void test_jqueue_parse_json_valid(void ** state) {
 
     snprintf(buffer, OS_MAXSTR, "%s\n", "{\"test\":\"valid_json\"}");
 
+    expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 1);
 
     expect_value(__wrap_fgets, __stream, queue->fp);
@@ -86,6 +87,7 @@ void test_jqueue_parse_json_invalid(void ** state) {
     snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
     snprintf(buffer, OS_MAXSTR, "%s\n", "{\"test\":\"invalid_value");
 
+    expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 1);
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer);
@@ -111,6 +113,7 @@ void test_jqueue_parse_json_max_attempts(void ** state) {
     snprintf(queue->file_name, MAX_FQUEUE, "%s", "/home/test");
     snprintf(buffer, OS_MAXSTR, "%s\n", "{\"test\":\"invalid_value");
 
+    expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 1);
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, buffer);
@@ -130,6 +133,7 @@ void test_jqueue_parse_json_fgets_fail(void ** state) {
     int64_t current_pos = 0;
     cJSON * object = NULL;
 
+    expect_any(__wrap_w_ftell, x);
     will_return(__wrap_w_ftell, 1);
     expect_value(__wrap_fgets, __stream, queue->fp);
     will_return(__wrap_fgets, NULL);
