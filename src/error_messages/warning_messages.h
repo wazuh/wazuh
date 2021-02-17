@@ -89,9 +89,9 @@
                                                 " 'age' will be ignored."
 
 /* Remoted */
-#define REMOTED_PROTO_ERROR                     "(9000): Error getting protocol. Default value (%s) will be used."
+#define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."
 #define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
-#define REMOTED_PROTO_ONLY_SECURE               "(9002): Only secure connection supports TCP and UDP at the same time."\
+#define REMOTED_NET_PROTOCOL_ONLY_SECURE        "(9002): Only secure connection supports TCP and UDP at the same time."\
                                                 " Default value (%s) will be used."
 
 #endif /* WARN_MESSAGES_H */

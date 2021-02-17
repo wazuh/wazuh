@@ -69,8 +69,8 @@ void HandleRemote(int uid)
         }
     }
 
-    /// Bind TCP
-    if (logr.proto[position] & REMOTED_PROTO_TCP) {
+    /* If TCP is enabled then bind the TCP socket */
+    if (logr.proto[position] & REMOTED_NET_PROTOCOL_TCP) {
 
         logr.tcp_sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position]);
 
@@ -95,8 +95,8 @@ void HandleRemote(int uid)
             }
         }
     }
-    /// Bind UDP
-    if (logr.proto[position] & REMOTED_PROTO_UDP) {
+    /* If UDP is enabled then bind the UDP socket */
+    if (logr.proto[position] & REMOTED_NET_PROTOCOL_UDP) {
         /* Using UDP. Fast, unreliable... perfect */
         logr.udp_sock = OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position]);
 
@@ -105,12 +105,6 @@ void HandleRemote(int uid)
         }
     }
 
-    /// If it is a syslog connection, a specific remoted member is used to handle the socket
-    if (logr.conn[position] == SYSLOG_CONN) {
-        logr.syslog_sock = (logr.proto[position] == REMOTED_PROTO_TCP ? logr.tcp_sock : logr.udp_sock);
-        logr.tcp_sock = 0;
-        logr.udp_sock = 0;
-    }
 
     /* Revoke privileges */
     if (Privsep_SetUser(uid) < 0) {
@@ -123,16 +117,18 @@ void HandleRemote(int uid)
     }
 
     /* Start up message */
-    if (logr.proto[position] & REMOTED_PROTO_TCP) {
-        wm_strcat(&str_protocol, REMOTED_PROTO_TCP_STR, WM_STRCAT_NO_SEPARATOR);
+    // If TCP is enabled
+    if (logr.proto[position] & REMOTED_NET_PROTOCOL_TCP) {
+        wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_TCP_STR, WM_STRCAT_NO_SEPARATOR);
     }
-    if (logr.proto[position] & REMOTED_PROTO_UDP) {
-        wm_strcat(&str_protocol, REMOTED_PROTO_UDP_STR, (str_protocol == NULL) ? WM_STRCAT_NO_SEPARATOR : ',');
+    // If UDP is enabled
+    if (logr.proto[position] & REMOTED_NET_PROTOCOL_UDP) {
+        wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_UDP_STR, (str_protocol == NULL) ? WM_STRCAT_NO_SEPARATOR : ',');
     }
 
     /* This should never happen */
     if (str_protocol == NULL) {
-        merror_exit(REMOTED_PROTO_NOT_SET);
+        merror_exit(REMOTED_NET_PROTOCOL_NOT_SET);
     }
 
     minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
@@ -146,7 +142,7 @@ void HandleRemote(int uid)
     if (logr.conn[position] == SECURE_CONN) {
         HandleSecure();
     }
-    else if (logr.proto[position] == REMOTED_PROTO_TCP) {
+    else if (logr.proto[position] == REMOTED_NET_PROTOCOL_TCP) {
         HandleSyslogTCP();
     }
     else { /* If not, deal with syslog */

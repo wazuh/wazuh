@@ -133,7 +133,7 @@ void HandleSyslogTCP()
         }
 
         /* Accept new connections */
-        int client_socket = OS_AcceptTCP(logr.syslog_sock, srcip, IPSIZE);
+        int client_socket = OS_AcceptTCP(logr.tcp_sock, srcip, IPSIZE);
         if (client_socket < 0) {
             mwarn("Accepting TCP connection from client failed: %s (%d)", strerror(errno), errno);
             continue;

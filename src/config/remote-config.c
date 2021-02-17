@@ -265,12 +265,12 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Set default protocol */
     if (logr->proto[pl] == 0) {
-        logr->proto[pl] = REMOTED_PROTO_DEFAULT;
+        logr->proto[pl] = REMOTED_NET_PROTOCOL_DEFAULT;
     }
     /* Only secure connections support TCP and UDP at the same time */
-    else if (logr->conn[pl] != SECURE_CONN && (logr->proto[pl] == (REMOTED_PROTO_TCP | REMOTED_PROTO_UDP))) {
-        mwarn(REMOTED_PROTO_ONLY_SECURE, REMOTED_PROTO_DEFAULT_STR);
-        logr->proto[pl] = REMOTED_PROTO_DEFAULT;
+    else if (logr->conn[pl] != SECURE_CONN && (logr->proto[pl] == REMOTED_NET_PROTOCOL_TCP_UDP)) {
+        mwarn(REMOTED_NET_PROTOCOL_ONLY_SECURE, REMOTED_NET_PROTOCOL_DEFAULT_STR);
+        logr->proto[pl] = REMOTED_NET_PROTOCOL_DEFAULT;
     }
 
     /* Queue_size is only for secure connections */
@@ -296,10 +296,10 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
             char * word = &(proto_arr[current])[strspn(proto_arr[current], " ")];
             word[strcspn(word, " ")] = '\0';
 
-            if (strcasecmp(word, REMOTED_PROTO_TCP_STR) == 0) {
-                retval |= REMOTED_PROTO_TCP;
-            } else if(strcasecmp(word, REMOTED_PROTO_UDP_STR) == 0) {
-                retval |= REMOTED_PROTO_UDP;
+            if (strcasecmp(word, REMOTED_NET_PROTOCOL_TCP_STR) == 0) {
+                retval |= REMOTED_NET_PROTOCOL_TCP;
+            } else if(strcasecmp(word, REMOTED_NET_PROTOCOL_UDP_STR) == 0) {
+                retval |= REMOTED_NET_PROTOCOL_UDP;
             } else {
                 mwarn(REMOTED_INV_VALUE_IGNORE, word, XML_REMOTE_PROTOCOL);
             }
@@ -313,8 +313,8 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
     }
 
     if (retval == 0) {
-        mwarn(REMOTED_PROTO_ERROR, REMOTED_PROTO_DEFAULT_STR);
-        retval = REMOTED_PROTO_DEFAULT;
+        mwarn(REMOTED_NET_PROTOCOL_ERROR, REMOTED_NET_PROTOCOL_DEFAULT_STR);
+        retval = REMOTED_NET_PROTOCOL_DEFAULT;
     }
 
     return retval;
