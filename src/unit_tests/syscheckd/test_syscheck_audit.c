@@ -297,8 +297,6 @@ void test_init_auditd_socket_failure(void **state) {
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
 
-    expect_abspath(AUDIT_SOCKET, 1);
-
     expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket 'queue/ossec/audit'.");
 
     ret = init_auditd_socket();
@@ -399,7 +397,6 @@ void test_set_auditd_config_audit_socket_not_created(void **state) {
     expect_string(__wrap_IsSocket, sock, "queue/ossec/audit");
     will_return(__wrap_IsSocket, 1);
 
-    expect_abspath(AUDIT_SOCKET, 1);
     expect_string(__wrap__mwarn, formatted_msg, "(6909): Audit socket (queue/ossec/audit) does not exist. You need to restart Auditd. Who-data will be disabled.");
 
     int ret;
@@ -427,8 +424,6 @@ void test_set_auditd_config_audit_socket_not_created_restart(void **state) {
     expect_string(__wrap_IsFile, file, audit3_socket);
     will_return(__wrap_IsFile, 0);
 
-    expect_abspath(AUDIT_SOCKET, 1);
-
     expect_string(__wrap__minfo, formatted_msg, "(6023): No socket found at 'queue/ossec/audit'. Restarting Auditd service.");
 
     expect_string(__wrap_IsSocket, sock, "queue/ossec/audit");
@@ -453,7 +448,6 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
 
     expect_string(__wrap_IsLink, file, audit3_socket);
@@ -476,7 +470,6 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     expect_string(__wrap_symlink, path2, audit3_socket);
     will_return(__wrap_symlink, 1);
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (etc/af_wazuh.conf) was modified. Restarting Auditd service.");
 
     // Restart
@@ -497,7 +490,6 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
 
     // Plugin not created
@@ -510,7 +502,6 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
 
     int ret;
@@ -523,7 +514,6 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
 void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) {
     (void) state;
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
 
     // Audit 3
@@ -548,7 +538,6 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, -1);
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__merror, formatted_msg, "(1140): Could not close file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
 
     int ret;
@@ -561,7 +550,6 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
 void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **state) {
     (void) state;
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
 
     // Audit 3
@@ -622,7 +610,6 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     // Plugin not created
     const char *audit3_socket = "/etc/audit/plugins.d/af_wazuh.conf";
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
 
     expect_string(__wrap_IsLink, file, audit3_socket);
@@ -654,7 +641,6 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     expect_string(__wrap_symlink, path2, audit3_socket);
     will_return(__wrap_symlink, 0);
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6025): Audit plugin configuration (etc/af_wazuh.conf) was modified. Restarting Auditd service.");
 
     // Restart
@@ -675,7 +661,6 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
 
     // Plugin not created
@@ -710,7 +695,6 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     expect_string(__wrap_symlink, path2, audit3_socket);
     will_return(__wrap_symlink, -1);
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__merror, formatted_msg, "(1134): Unable to link from '/etc/audit/plugins.d/af_wazuh.conf' to 'etc/af_wazuh.conf' due to [(17)-(File exists)].");
 
     int ret;
@@ -727,7 +711,6 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
     expect_string(__wrap_IsDir, file, "/etc/audit/plugins.d");
     will_return(__wrap_IsDir, 0);
 
-    expect_abspath(AUDIT_CONF_FILE, 1);
     expect_string(__wrap__minfo, formatted_msg, "(6024): Generating Auditd socket configuration file: 'etc/af_wazuh.conf'");
 
     // Plugin not created
@@ -2396,7 +2379,6 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
-    expect_abspath(AUDIT_SOCKET, 1);
     expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket 'queue/ossec/audit'.");
 
     while (++counter < max_retries){
@@ -2407,7 +2389,6 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
         expect_any(__wrap_OS_ConnectUnixDomain, type);
         expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
         will_return(__wrap_OS_ConnectUnixDomain, -5);
-        expect_abspath(AUDIT_SOCKET, 1);
         expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket 'queue/ossec/audit'.");
     }
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Connection closed");
@@ -2442,7 +2423,6 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
     expect_any(__wrap_OS_ConnectUnixDomain, type);
     expect_any(__wrap_OS_ConnectUnixDomain, max_msg_size);
     will_return(__wrap_OS_ConnectUnixDomain, -5);
-    expect_abspath(AUDIT_SOCKET, 1);
     expect_string(__wrap__merror, formatted_msg, "(6636): Cannot connect to socket 'queue/ossec/audit'.");
 
     // While (*audit_sock < 0)

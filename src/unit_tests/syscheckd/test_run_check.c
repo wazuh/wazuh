@@ -295,7 +295,6 @@ void test_fim_send_msg_retry_error(void **state) {
 
     expect_StartMQ_call(DEFAULTQUEUE, WRITE, -1);
 
-    expect_abspath(DEFAULTQUEUE, 1);
     expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/ossec/queue'. Giving up.");
 
     // This code shouldn't run

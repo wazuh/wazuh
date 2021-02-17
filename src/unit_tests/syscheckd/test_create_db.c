@@ -1973,7 +1973,6 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_abspath(DIFF_DIR, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     int it = 0;
@@ -2089,7 +2088,6 @@ static void test_fim_scan_no_realtime(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_abspath(DIFF_DIR, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     it = 0;
@@ -2139,7 +2137,6 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_abspath(DIFF_DIR, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     int it = 0;
@@ -2211,7 +2208,6 @@ static void test_fim_scan_realtime_enabled(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_abspath(DIFF_DIR, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     it = 0;
@@ -2272,7 +2268,6 @@ static void test_fim_scan_db_free(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_abspath(DIFF_DIR, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     int it = 0;
@@ -2329,7 +2324,6 @@ static void test_fim_scan_no_limit(void **state) {
     expect_string(__wrap_DirSize, path, "queue/diff/local");
     will_return(__wrap_DirSize, 0.0);
 
-    expect_abspath(DIFF_DIR, 1);
     expect_string(__wrap__mdebug2, formatted_msg, "(6348): Size of 'queue/diff' folder: 0.00000 KB.");
 
     int it = 0;

@@ -125,12 +125,12 @@ void test_DeletePID_failure(void **state)
     (void) state;
     int ret;
 
+    expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
+    will_return(__wrap_unlink, 1);
+
     expect_string(__wrap_stat, __file, "var/run/test-2345.pid");
     will_return(__wrap_stat, 0);
     will_return(__wrap_stat, 0);
-
-    expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
-    will_return(__wrap_unlink, 1);
 
     expect_string(__wrap__mferror, formatted_msg,
         "(1129): Could not unlink file 'var/run/test-2345.pid' due to [(0)-(Success)].");
