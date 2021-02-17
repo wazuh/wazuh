@@ -15,7 +15,7 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SysInfoNetworkWindowsTest : public ::testing::Test 
+class SysInfoNetworkWindowsTest : public ::testing::Test
 {
 protected:
 

@@ -27,6 +27,8 @@ namespace PackageLinuxHelper
     {
         nlohmann::json ret;
         const auto fields { Utils::split(packageInfo,'\t') };
+        constexpr auto DEFAULT_VALUE { "(none)" };
+
         if (RPMFields::RPM_FIELDS_SIZE <= fields.size())
         {
             std::string name             { fields.at(RPMFields::RPM_FIELDS_NAME) };
@@ -40,15 +42,28 @@ namespace PackageLinuxHelper
                 std::string vendor       { fields.at(RPMFields::RPM_FIELDS_VENDOR) };
                 std::string description  { fields.at(RPMFields::RPM_FIELDS_SUMMARY) };
 
+                std::string release      { fields.at(RPMFields::RPM_FIELDS_RELEASE) };
+                std::string epoch        { fields.at(RPMFields::RPM_FIELDS_EPOCH) };
+
+                if (!epoch.empty() && epoch.compare(DEFAULT_VALUE) != 0)
+                {
+                    version = epoch + ":" + version;
+                }
+
+                if (!release.empty() && release.compare(DEFAULT_VALUE) != 0)
+                {
+                    version += "-" + release;
+                }
+
                 ret["name"]         = name;
-                ret["size"]         = size.empty() ? 0 : stoi(size);
-                ret["install_time"] = install_time.empty() ? UNKNOWN_VALUE : install_time;
-                ret["groups"]       = groups.empty() ? UNKNOWN_VALUE : groups;
-                ret["version"]      = version.empty() ? UNKNOWN_VALUE : version;
-                ret["architecture"] = architecture.empty() ? UNKNOWN_VALUE : architecture;
+                ret["size"]         = size.empty() || size.compare(DEFAULT_VALUE) == 0 ? 0 : stoi(size);
+                ret["install_time"] = install_time.empty() || install_time.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : install_time;
+                ret["groups"]       = groups.empty() || groups.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : groups;
+                ret["version"]      = version.empty() || version.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : version;
+                ret["architecture"] = architecture.empty() || architecture.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : architecture;
                 ret["format"]       = "rpm";
-                ret["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : vendor;
-                ret["description"]  = description.empty() ? UNKNOWN_VALUE : description;
+                ret["vendor"]       = vendor.empty() || vendor.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : vendor;
+                ret["description"]  = description.empty() || description.compare(DEFAULT_VALUE) == 0 ? UNKNOWN_VALUE : description;
             }
         }
         return ret;
