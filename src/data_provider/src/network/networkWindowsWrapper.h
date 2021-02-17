@@ -47,7 +47,7 @@ static const std::map<IF_OPER_STATUS, std::string> NETWORK_OPERATIONAL_STATUS =
 class NetworkWindowsInterface final : public INetworkInterfaceWrapper
 {
 public:
-    explicit NetworkWindowsInterface(Utils::NetworkWindowsHelper::NetworkFamilyTypes family, 
+    explicit NetworkWindowsInterface(Utils::NetworkWindowsHelper::NetworkFamilyTypes family,
                                      const PIP_ADAPTER_ADDRESSES& addrs,
                                      const PIP_ADAPTER_UNICAST_ADDRESS& unicastAddress,
                                      const PIP_ADAPTER_INFO& adapterInfo)
@@ -68,17 +68,17 @@ public:
 
     std::string name() const override
     {
-        return Utils::NetworkWindowsHelper::getAdapterNameStr(m_interfaceAddress->FriendlyName);
+        return getAdapterEncodedUTF8(m_interfaceAddress->FriendlyName);
     }
 
     std::string adapter() const override
     {
-        return Utils::NetworkWindowsHelper::getAdapterNameStr(m_interfaceAddress->Description);
+        return getAdapterEncodedUTF8(m_interfaceAddress->Description);
     }
 
     int family() const override
     {
-        return m_interfaceFamily;                              
+        return m_interfaceFamily;
     }
 
     std::string address() const override
@@ -86,7 +86,7 @@ public:
         std::string retVal { "unknown" };
         if (m_currentUnicastAddress)
         {
-            retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(), 
+            retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(),
                                                                    (reinterpret_cast<sockaddr_in*>(m_currentUnicastAddress->Address.lpSockaddr))->sin_addr);
         }
         return retVal;
@@ -99,7 +99,7 @@ public:
         {
             if (Utils::isVistaOrLater())
             {
-                retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(), 
+                retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(),
                                                                         (reinterpret_cast<sockaddr_in6*>(m_currentUnicastAddress->Address.lpSockaddr))->sin6_addr);
             }
             else
@@ -109,7 +109,7 @@ public:
                 retVal = Utils::NetworkWindowsHelper::getIpV6Address(ipv6Address->sin6_addr.u.Byte);
             }
         }
-        return retVal;    
+        return retVal;
     }
 
     std::string netmask() const override
@@ -137,7 +137,7 @@ public:
                 retVal = interfaceAddress->IpMask.String;
             }
         }
-        
+
         return retVal;
     }
 
@@ -157,12 +157,12 @@ public:
     {
         std::string retVal { "unknown" };
         const auto address { this->address() };
-        const auto netmask { this->netmask() };        
+        const auto netmask { this->netmask() };
         if (address.size() && netmask.size())
         {
             retVal = Utils::NetworkWindowsHelper::broadcastAddress(address, netmask);
         }
-        return retVal;        
+        return retVal;
     }
 
     std::string broadcastV6() const override
@@ -210,7 +210,7 @@ public:
                     {
                         // Found an interface match.
                         currentGWAddress = &(currentAdapterInfo->GatewayList);
-                        while(currentGWAddress) 
+                        while(currentGWAddress)
                         {
                             retVal += currentGWAddress->IpAddress.String;
                             retVal += GATEWAY_SEPARATOR;
@@ -262,19 +262,19 @@ public:
         const auto family { this->adapterFamily() };
         if (AF_INET == family)
         {
-            const bool ipv4DHCPEnabled 
-            { 
-                (m_interfaceAddress->Flags & IP_ADAPTER_DHCP_ENABLED) && (m_interfaceAddress->Flags & IP_ADAPTER_IPV4_ENABLED) 
+            const bool ipv4DHCPEnabled
+            {
+                (m_interfaceAddress->Flags & IP_ADAPTER_DHCP_ENABLED) && (m_interfaceAddress->Flags & IP_ADAPTER_IPV4_ENABLED)
             };
             retVal = ipv4DHCPEnabled ? "enabled" : "disabled";
         }
         else if (AF_INET6 == family)
         {
-            const bool ipv6DHCPEnabled 
-            { 
-                (m_interfaceAddress->Flags & IP_ADAPTER_DHCP_ENABLED) && (m_interfaceAddress->Flags & IP_ADAPTER_IPV6_ENABLED) 
+            const bool ipv6DHCPEnabled
+            {
+                (m_interfaceAddress->Flags & IP_ADAPTER_DHCP_ENABLED) && (m_interfaceAddress->Flags & IP_ADAPTER_IPV6_ENABLED)
             };
-            retVal = ipv6DHCPEnabled ? "enabled" : "disabled";            
+            retVal = ipv6DHCPEnabled ? "enabled" : "disabled";
         }
         return retVal;
     }
@@ -295,7 +295,7 @@ public:
         return Utils::isVistaOrLater() ? statsVistaOrLater()
                                        : statsXP();
     }
-    
+
     std::string type() const override
     {
         std::string retVal { "unknown" };
@@ -333,7 +333,7 @@ public:
                 if (MAC_ADDRESS_MAX_LENGHT-1 != idx)
                 {
                     ss << ":";
-                }            
+                }
             }
             retVal = ss.str();
         }
@@ -341,6 +341,12 @@ public:
     }
 
 private:
+
+    std::string getAdapterEncodedUTF8(const std::wstring& name) const
+    {
+        const std::string utf8AdapterName { Utils::NetworkWindowsHelper::getAdapterNameStr(name) };
+        return utf8AdapterName.empty() ? UNKNOWN_VALUE : utf8AdapterName;
+    }
 
     int adapterFamily() const
     {
@@ -361,7 +367,7 @@ private:
                 {
                     // Found an interface match. Now we need an IPv4 match.
                     currentInterfaceAddr = &(currentAdapterInfo->IpAddressList);
-                    while(currentInterfaceAddr) 
+                    while(currentInterfaceAddr)
                     {
                         if (strncmp(address.c_str(), currentInterfaceAddr->IpAddress.String, address.length()) == 0)
                         {
@@ -391,8 +397,8 @@ private:
                 "Unable to allocate memory for MIB_IF_ROW2 struct."
             };
         }
-        
-        ifRow->InterfaceIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex 
+
+        ifRow->InterfaceIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex
                                                                    : m_interfaceAddress->Ipv6IfIndex;
 
         if (0 != ifRow->InterfaceIndex)
@@ -415,7 +421,7 @@ private:
                 }
             }
         }
-        return retVal;        
+        return retVal;
     }
 
     LinkStats statsXP() const
@@ -431,8 +437,8 @@ private:
                 "Unable to allocate memory for MIB_IFROW struct."
             };
         }
-        
-        ifRow->dwIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex 
+
+        ifRow->dwIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex
                                                             : m_interfaceAddress->Ipv6IfIndex;
 
         if (0 != ifRow->dwIndex)
@@ -451,7 +457,7 @@ private:
                 retVal.rxDropped = ifRow->dwInDiscards;
             }
         }
-        return retVal;        
+        return retVal;
     }
 
     Utils::NetworkWindowsHelper::NetworkFamilyTypes m_interfaceFamily;

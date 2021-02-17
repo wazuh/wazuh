@@ -1,7 +1,7 @@
 /*
  * Wazuh shared modules utils
  * Copyright (C) 2015-2020, Wazuh Inc.
- * November 10, 2020.
+ * February 17, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,20 +9,20 @@
  * Foundation.
  */
 
-#ifndef WINDOWS_HELPER_TEST_H
-#define WINDOWS_HELPER_TEST_H
+#ifndef ENCODING_WINDOWS_HELPER_TEST_H
+#define ENCODING_WINDOWS_HELPER_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class WindowsHelperTest : public ::testing::Test
+class EncodingWindowsHelperTest : public ::testing::Test
 {
 protected:
 
-    WindowsHelperTest() = default;
-    virtual ~WindowsHelperTest() = default;
+    EncodingWindowsHelperTest() = default;
+    virtual ~EncodingWindowsHelperTest() = default;
 
     void SetUp() override;
     void TearDown() override;
 };
 
-#endif //WINDOWS_HELPER_TEST_H
+#endif //ENCODING_WINDOWS_HELPER_TEST_H
