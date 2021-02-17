@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.1.1]
 
+### Added
+
+- **External dependencies:**
+  - Added cython (0.29.21) library to Python dependencies. ([#7451](https://github.com/wazuh/wazuh/pull/7451))  
+  - Added xmltodict (0.12.0) library to Python dependencies. ([#7303](https://github.com/wazuh/wazuh/pull/7303))
+  
+### Changed
+
+- **External dependencies:**
+  - Upgraded Python version from 3.8.2 to 3.8.6. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
+  - Upgraded Cryptography python library from 3.2.1 to 3.3.2. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
+  - Upgraded cffi python library from 1.14.0 to 1.14.4. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
+
 ### Fixed
 
 - **API:**
