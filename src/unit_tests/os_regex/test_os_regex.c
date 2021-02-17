@@ -299,6 +299,13 @@ void test_fail_strisnum(void **state)
     }
 }
 
+void test_fail_strisnum_null(void **state)
+{
+    (void) state;
+
+    assert_int_not_equal(OS_StrIsNum(NULL), 1);
+}
+
 void test_success_strhowclosedmatch(void **state)
 {
     (void) state;
@@ -318,6 +325,13 @@ void test_success_strhowclosedmatch(void **state)
     for (int i = 0; tests[i][0] != NULL ; i++) {
         assert_int_equal(OS_StrHowClosedMatch(tests[i][0], tests[i][1]), (unsigned) atoi(tests[i][2]));
     }
+}
+
+void test_fail_strhowclosedmatch_null(void **state)
+{
+    (void) state;
+
+    assert_int_equal(OS_StrHowClosedMatch(NULL, NULL), 0);
 }
 
 void test_success_str_starts_with(void **state)
@@ -399,6 +413,15 @@ void test_strbreak(void **state)
         }
         free(result);
     }
+}
+
+void test_strbreak_null(void **state)
+{
+    (void) state;
+
+    char **result = OS_StrBreak('X', NULL, 0);
+
+    assert_null(result);
 }
 
 void test_regex_extraction(void **state)
@@ -790,10 +813,13 @@ int main(void) {
         cmocka_unit_test(test_fail_wordmatch),
         cmocka_unit_test(test_success_strisnum),
         cmocka_unit_test(test_fail_strisnum),
+        cmocka_unit_test(test_fail_strisnum_null),
         cmocka_unit_test(test_success_strhowclosedmatch),
+        cmocka_unit_test(test_fail_strhowclosedmatch_null),
         cmocka_unit_test(test_success_str_starts_with),
         cmocka_unit_test(test_fail_str_starts_with),
         cmocka_unit_test(test_strbreak),
+        cmocka_unit_test(test_strbreak_null),
         cmocka_unit_test(test_regex_extraction),
         cmocka_unit_test(test_hostname_map),
         cmocka_unit_test(test_case_insensitive_char_map),
