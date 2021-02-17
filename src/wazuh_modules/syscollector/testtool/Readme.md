@@ -19,13 +19,13 @@ In order to run the `syscollector_test_tool` (located in `src/wazuh_modules/sysc
 ./syscollector_test_tool
 ```
 
-The information output will vary based on the Operating System the tool is being executed. 
+The information output will vary based on the Operating System the tool is being executed.
 A brief example could be similar to the following one:
 
 ```
 Syscollector started.
 sync output payload:
-{"component":"syscollector_hwinfo","data":{"begin":"unknown","checksum":"3db55e04fee8f5aa7419d8b9d4d1617a3b8fd2ef","end":"unknown","id":1612989513},"type":"integrity_check_global"}
+{"component":"syscollector_hwinfo","data":{"begin":" ","checksum":"3db55e04fee8f5aa7419d8b9d4d1617a3b8fd2ef","end":" ","id":1612989513},"type":"integrity_check_global"}
 sync output payload:
 {"component":"syscollector_osinfo","data":{"begin":"Ubuntu","checksum":"0c240d543ff8a7b79b5c2d0c4e2e29ca373ed307","end":"Ubuntu","id":1612989513},"type":"integrity_check_global"}
 sync output payload:

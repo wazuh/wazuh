@@ -125,7 +125,7 @@ static const std::map<std::string, std::string> DHCP_STATUS =
 
 namespace GatewayFileFields
 {
-    enum 
+    enum
     {
         Iface,
         Destination,
@@ -179,7 +179,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                 socketLen,
                 retVal.get(), NI_MAXHOST,
                 NULL, 0, NI_NUMERICHOST) };
-            
+
             if (result != 0)
             {
                 throw std::runtime_error
@@ -190,7 +190,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
         }
         return retVal.get();
     }
- 
+
     static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
     {
         std::string retVal { UNKNOWN_VALUE };
@@ -228,7 +228,7 @@ public:
     : m_interfaceAddress{ addrs }
     , m_gateway{UNKNOWN_VALUE}
     , m_metrics{UNKNOWN_VALUE}
-    { 
+    {
         if (!addrs)
         {
             throw std::runtime_error { "Nullptr instances of network interface" };
@@ -283,7 +283,7 @@ public:
     {
         return m_interfaceAddress->ifa_addr ? getNameInfo(m_interfaceAddress->ifa_addr, sizeof(struct sockaddr_in)) : "";
     }
-    
+
     std::string netmask() const override
     {
         return m_interfaceAddress->ifa_netmask ? getNameInfo(m_interfaceAddress->ifa_netmask, sizeof(struct sockaddr_in)) : "";
@@ -296,13 +296,14 @@ public:
         {
             retVal = getNameInfo(m_interfaceAddress->ifa_ifu.ifu_broadaddr, sizeof(struct sockaddr_in));
         }
-        else 
+        else
         {
             const auto netmask { this->netmask() };
             const auto address { this->address() };
             if (address.size() && netmask.size())
             {
-                retVal = Utils::NetworkHelper::getBroadcast(address, netmask);
+                const auto broadcast { Utils::NetworkHelper::getBroadcast(address, netmask) };
+                retVal =  broadcast.empty() ? UNKNOWN_VALUE : broadcast;
             }
         }
         return retVal;
@@ -426,7 +427,8 @@ public:
     std::string type() const override
     {
         const auto networkTypeCode { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + this->name() + "/type") };
-        return Utils::NetworkHelper::getNetworkTypeStringCode(std::stoi(networkTypeCode), NETWORK_INTERFACE_TYPE);
+        const auto type { Utils::NetworkHelper::getNetworkTypeStringCode(std::stoi(networkTypeCode), NETWORK_INTERFACE_TYPE) };
+        return type.empty() ? UNKNOWN_VALUE : type;
     }
 
     std::string state() const override
