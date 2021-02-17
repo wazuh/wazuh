@@ -197,6 +197,7 @@ void * req_dispatch(req_node_t * node) {
     char *output = NULL;
     struct timespec timeout;
     struct timeval now = { 0, 0 };
+    int protocol = -1;
 
     mdebug2("Running request dispatcher thread. Counter=%s", node->counter);
 
@@ -240,14 +241,12 @@ void * req_dispatch(req_node_t * node) {
 
         /* The following code is used to get the protocol that the client is using in order to answer accordingly */
         key_lock_read();
-        const int key_id = OS_IsAllowedID(&keys, agentid);
-        if (key_id < 0) {
-            key_unlock();
+        protocol = w_get_agent_net_protocol_from_keystore(&keys, agentid);
+        key_unlock();
+        if (protocol < 0) {
             merror(AR_NOAGENT_ERROR, agentid);
             goto cleanup;
         }
-        const int protocol = keys.keyentries[key_id]->net_protocol;
-        key_unlock();
 
         for (attempts = 0; attempts < max_attempts; attempts++) {
 
@@ -264,7 +263,7 @@ void * req_dispatch(req_node_t * node) {
 
             // Wait for ACK or response, only in UDP mode
 
-            if (protocol == REMOTED_PROTO_UDP) {
+            if (protocol == REMOTED_NET_PROTOCOL_UDP) {
                 gettimeofday(&now, NULL);
                 nsec = now.tv_usec * 1000 + rto_msec * 1000000;
                 timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
@@ -314,7 +313,7 @@ void * req_dispatch(req_node_t * node) {
         }
 
         // Send ACK, only in UDP mode
-        if (protocol == REMOTED_PROTO_UDP) {
+        if (protocol == REMOTED_NET_PROTOCOL_UDP) {
             // Example: #!-req 16 ack
             mdebug2("req_dispatch(): Sending ack (%s).", node->counter);
             snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", node->counter);

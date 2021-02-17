@@ -159,6 +159,17 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock);
 // Delete socket number from keystore
 int OS_DeleteSocket(keystore * keys, int sock);
 
+/**
+ * @brief Get agent's network protocol from keystore given its agent id
+ * 
+ * @param keys Contains information related with the agents
+ * @param agent_id This variable is used to index the keys array
+ * @retval -1 if protocol could not be found
+ * @retval REMOTED_NET_PROTOCOL_TCP if agent protocol is TCP
+ * @retval REMOTED_NET_PROTOCOL_UDP if agent protocol is UDP
+ */
+int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
+
 /* Set the agent crypto method read from the ossec.conf file */
 void os_set_agent_crypto_method(keystore * keys,const int method);
 
