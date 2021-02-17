@@ -16,6 +16,7 @@
 #include "sysOsInfoWin.h"
 #include "stringHelper.h"
 #include "registryHelper.h"
+#include "sharedDefs.h"
 
 static std::string getVersion(const bool isMinor = false)
 {
