@@ -39,7 +39,7 @@ typedef struct test_struct {
 // Setup / Teardown
 static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
-    os_calloc(1,sizeof(test_struct_t),init_data);
+    os_calloc(1,sizeof(test_struct_t), init_data);
     os_calloc(OS_SIZE_6144, sizeof(char), init_data->buffer);
 
     init_data->buffer[0] = '\0';
@@ -86,6 +86,8 @@ static int test_teardown(void **state) {
 
     unlink(data->xml_file_name);
     unlink(data->xml_out_file_name);
+
+    free(data);
 
     return OS_SUCCESS;
 }
@@ -486,16 +488,6 @@ void test_invalid_variable_name(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-/* void test_invalid_variable_content(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    
-    create_xml_file("<var name=\"\"></var>", data->xml_file_name, 256);
-    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    assert_int_not_equal(OS_ApplyVariables(&data->xml), 0);
-    assert_string_equal(data->xml.err, "XMLERR: Invalid variable content.");
-    assert_int_equal(data->xml.err_line, 1);
-} */
-
 void test_invalid_variable_double_max_size(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
@@ -510,6 +502,23 @@ void test_invalid_variable_double_max_size(void **state) {
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_int_not_equal(OS_ApplyVariables(&data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: Invalid variable name size.");
+    assert_int_equal(data->xml.err_line, 1);
+}
+
+void test_invalid_variable_double_max_size2(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    char overflow_string[XML_VARIABLE_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_VARIABLE_MAXSIZE + 9);
+    overflow_string[XML_VARIABLE_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_VARIABLE_MAXSIZE];
+    snprintf(xml_string, 2 * XML_VARIABLE_MAXSIZE - 1, "<var name=\"test\">content</var><root>$%s</root>", overflow_string);
+    create_xml_file(xml_string, data->xml_file_name, 256);
+
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_int_not_equal(OS_ApplyVariables(&data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: Invalid variable name size: '255'.");
     assert_int_equal(data->xml.err_line, 1);
 }
 
@@ -567,15 +576,15 @@ void test_wrong_variable_name(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-/*void test_no_value_set_for_variable(void **state) {
+void test_no_value_set_for_variable(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    create_xml_file("<var name=\"var\"></var><root>$var</root>", data->xml_file_name, 256);
+    create_xml_file("<var>content</var><root>$var</root>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_int_not_equal(OS_ApplyVariables(&data->xml), 0);
     assert_string_equal(data->xml.err, "XMLERR: No value set for variable.");
     assert_int_equal(data->xml.err_line, 1);
-}*/
+}
 
 void test_unknown_variable(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
@@ -630,7 +639,7 @@ void test_no_first_attribute_value(void **state) {
     assert_int_equal(data->xml.err_line, 1);
 }
 
-void test_os_elements_exists(void **state) {
+void test_os_root_elements_exists(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     create_xml_file("<root></root><root1/><root/>", data->xml_file_name, 256);
 
@@ -641,6 +650,17 @@ void test_os_elements_exists(void **state) {
     assert_int_equal(OS_RootElementExist(&data->xml, "root2"), 0);
     char *element = NULL;
     assert_int_equal(OS_RootElementExist(&data->xml, element), 0);
+}
+
+void test_os_elements_exists(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    create_xml_file("<root><root1><root2></root2></root1></root>", data->xml_file_name, 256);
+
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_int_equal(OS_ApplyVariables(&data->xml), 0);
+
+    const char *element1[] = { "root", "root1" };
+    assert_int_equal(OS_ElementExist(&data->xml, element1), 0);
 }
 
 void test_os_get_one_content_for_element(void **state) {
@@ -699,15 +719,27 @@ void test_os_write_xml_success4(void **state) {
     assert_ox_xml_write_eq(data, xml_str_old, xml_str_new, xml_path, NULL, "test");
 }
 
+void test_os_write_xml_success5(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char *xml_path[] = { "root", "child", NULL };
+    const char *xml_str_old = "<!--Comment--><root><child>test</child></root>";
+    const char *xml_str_new = "<root><child>test</child></root>";
+
+    assert_ox_xml_write_eq(data, xml_str_old, xml_str_new, xml_path, "test", "test");
+}
+
 void test_os_write_xml_failures(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     create_xml_file("<root><child>test</child></root>", data->xml_file_name, 256);
 
     create_xml_file("", data->xml_out_file_name, 256);
-    const char *xml_path[] = { "root", "child", NULL };
 
+    const char *xml_path[] = { "root", "child", NULL };
     assert_int_equal(OS_WriteXML("invalid", data->xml_out_file_name, xml_path, "test", "test_new"), XMLW_NOIN);
     assert_int_equal(OS_WriteXML(data->xml_file_name, "??invalid<<!!\"\"//\\\\", xml_path, "test", "test_new"), XMLW_NOOUT);
+
+    create_xml_file("<!--Invalid comment--", data->xml_file_name, 256);
+    assert_int_equal(OS_WriteXML(data->xml_file_name, data->xml_out_file_name, xml_path, "test", "test_new"), XMLW_ERROR);
 }
 
 void test_os_get_attribute_content(void **state) {
@@ -770,19 +802,35 @@ void test_os_get_element_content1(void **state) {
     assert_null(data->content5[1]);
 }
 
-void test_os_get_element_content2(void **state) {
+void test_os_get_element_content_maximum_depth(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     create_xml_file("<root><root1><root2><root3><root4><root5><root6><root7><root8><root9><root10><root11><root12><root13><root14><root15><root16><root17>value</root17></root16></root15></root14></root13></root12></root11></root10></root9></root8></root7></root6></root5></root4></root3></root2></root1></root>", data->xml_file_name, 256);
 
     assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
     assert_int_equal(OS_ApplyVariables(&data->xml), 0);
+    const char *xml_path[] = { "root", "root1", "root2", "root3", "root4", "root5", "root6", "root7", "root8", "root9", "root10",
+                                "root11", "root12", "root13", "root14", "root15", "root16", "root17", NULL };
 
-    const char *xml_path[] = { "root1", NULL };
     data->content5 = OS_GetElementContent(&data->xml, xml_path);
-
-    const char *xml_path1[] = { "root17", NULL };
-    data->content5 = OS_GetElementContent(&data->xml, xml_path1);
     assert_null(data->content5);
+}
+
+void test_get_element_content(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    create_xml_file("<root>value</root>", data->xml_file_name, 256);
+
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_int_equal(OS_ApplyVariables(&data->xml), 0);
+    const char *xml_path[] = { "root", NULL };
+
+    data->xml.fol = 2;
+    data->content5 = OS_GetContents(&data->xml, xml_path);
+    assert_null(data->content5);
+
+    data->xml.fol = 1;
+    data->xml.cur = 1;
+    data->content6 = OS_GetContents(&data->xml, xml_path);
+    assert_null(data->content6);
 }
 
 void test_os_get_elements(void **state) {
@@ -806,6 +854,31 @@ void test_os_get_elements(void **state) {
 
     const char *xml_path2[] = { NULL };
     assert_null(OS_GetElements(&data->xml,  xml_path2));
+}
+
+void test_os_get_elements2(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    create_xml_file("<root><child1/></root><root1><child2/></root1>", data->xml_file_name, 256);
+
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_int_equal(OS_ApplyVariables(&data->xml), 0);
+    const char *xml_path[] = { "root", "root1", NULL };
+
+    data->content5 = OS_GetElements(&data->xml, xml_path);
+    assert_null(data->content5);
+}
+
+void test_os_get_elements3(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+    create_xml_file("<root><root1><root2><root3><root4><root5><root6><root7><root8><root9><root10><root11><root12><root13><root14><root15><root16><root17>value</root17></root16></root15></root14></root13></root12></root11></root10></root9></root8></root7></root6></root5></root4></root3></root2></root1></root>", data->xml_file_name, 256);
+
+    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_int_equal(OS_ApplyVariables(&data->xml), 0);
+    const char *xml_path[] = { "root", "root1", "root2", "root3", "root4", "root5", "root6", "root7", "root8", "root9", "root10",
+                                "root11", "root12", "root13", "root14", "root15", "root16", "root17", NULL };
+
+    data->content5 = OS_GetElements(&data->xml, xml_path);
+    assert_null(data->content5);
 }
 
 void test_os_get_attributes(void **state) {
@@ -1008,6 +1081,7 @@ int main(void) {
 
         // Invalid variable name (2*MAX_SIZE) inside XML test
         cmocka_unit_test_setup_teardown(test_invalid_variable_double_max_size, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_invalid_variable_double_max_size2, test_setup, test_teardown),
 
         // Invalid variable name (3*MAX_SIZE) inside XML test
         cmocka_unit_test_setup_teardown(test_invalid_variable_triple_max_size, test_setup, test_teardown),
@@ -1025,7 +1099,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wrong_variable_name, test_setup, test_teardown),
 
         // Wrong no value set for variable inside XML test
-        //cmocka_unit_test_setup_teardown(test_no_value_set_for_variable, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_no_value_set_for_variable, test_setup, test_teardown),
 
         // Unknown variable inside XML test
         cmocka_unit_test_setup_teardown(test_unknown_variable, test_setup, test_teardown),
@@ -1046,6 +1120,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_no_first_attribute_value, test_setup, test_teardown),
 
         // OS_RootElementExist test
+        cmocka_unit_test_setup_teardown(test_os_root_elements_exists, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_os_elements_exists, test_setup, test_teardown),
 
         // OS_GetOneContentforElement test
@@ -1056,6 +1131,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_os_write_xml_success2, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_os_write_xml_success3, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_os_write_xml_success4, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_write_xml_success5, test_setup, test_teardown),
 
         // OS_WriteXML failures test
         cmocka_unit_test_setup_teardown(test_os_write_xml_failures, test_setup, test_teardown),
@@ -1068,10 +1144,17 @@ int main(void) {
 
         // OS_GetElementContent test
         cmocka_unit_test_setup_teardown(test_os_get_element_content1, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_os_get_element_content2, test_setup, test_teardown),
+
+        // OS_GetElementContent test maximum depth
+        cmocka_unit_test_setup_teardown(test_os_get_element_content_maximum_depth, test_setup, test_teardown),
+
+        // _GetElementContent test
+        cmocka_unit_test_setup_teardown(test_get_element_content, test_setup, test_teardown),
 
         // OS_GetElements test
         cmocka_unit_test_setup_teardown(test_os_get_elements, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_get_elements2, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_os_get_elements3, test_setup, test_teardown),
 
         // OS_GetAttributes test
         cmocka_unit_test_setup_teardown(test_os_get_attributes, test_setup, test_teardown),
