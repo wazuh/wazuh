@@ -700,7 +700,7 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 4027
+                code: 4008
               id:
                 - 1
           total_affected_items: 0
@@ -747,7 +747,7 @@ stages:
             - id: 105
           failed_items:
             - error:
-                code: 4027
+                code: 4008
               id:
                 - 1
                 - 2

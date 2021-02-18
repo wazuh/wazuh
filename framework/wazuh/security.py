@@ -381,7 +381,7 @@ def remove_roles(role_ids, resource_type: ResourceType = ResourceType.USER) -> A
             elif status == SecurityError.PROTECTED_RESOURCES:
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4026))
             elif status == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_=int(r_id), error=WazuhError(4027))
+                result.add_failed_item(id_=int(r_id), error=WazuhError(4008))
             else:
                 result.affected_items.append(role)
                 result.total_affected_items += 1
@@ -480,7 +480,7 @@ def update_role(role_id=None, name=None, resource_type: ResourceType = None) -> 
         elif status == SecurityError.PROTECTED_RESOURCES:
             result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4026))
         elif status == SecurityError.ADMIN_RESOURCES:
-            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4027))
+            result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
         else:
             result.affected_items.append(rm.get_role_id(int(role_id[0])))
             result.total_affected_items += 1
@@ -578,7 +578,7 @@ def remove_policies(policy_ids=None, resource_type: ResourceType = ResourceType.
             elif status == SecurityError.PROTECTED_RESOURCES:
                 result.add_failed_item(id_=int(p_id), error=WazuhError(4026))
             elif status == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_=int(p_id), error=WazuhError(4027))
+                result.add_failed_item(id_=int(p_id), error=WazuhError(4008))
             else:
                 result.affected_items.append(policy)
                 result.total_affected_items += 1
@@ -684,7 +684,7 @@ def update_policy(policy_id=None, name=None, policy=None, resource_type: Resourc
         elif status == SecurityError.PROTECTED_RESOURCES:
             result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4026))
         elif status == SecurityError.ADMIN_RESOURCES:
-            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4027))
+            result.add_failed_item(id_=int(policy_id[0]), error=WazuhError(4008))
         else:
             updated = pm.get_policy_id(int(policy_id[0]))
             result.affected_items.append(updated)
@@ -821,7 +821,7 @@ def remove_rules(rule_ids=None, resource_type: ResourceType = ResourceType.USER)
             elif status == SecurityError.PROTECTED_RESOURCES:
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4026))
             elif status == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_=int(r_id), error=WazuhError(4027))
+                result.add_failed_item(id_=int(r_id), error=WazuhError(4008))
             else:
                 result.affected_items.append(rule)
                 result.total_affected_items += 1
@@ -888,7 +888,7 @@ def update_rule(rule_id=None, name=None, rule=None, resource_type: ResourceType 
         elif status == SecurityError.PROTECTED_RESOURCES:
             result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4026))
         elif status == SecurityError.ADMIN_RESOURCES:
-            result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4027))
+            result.add_failed_item(id_=int(rule_id[0]), error=WazuhError(4008))
         else:
             updated = rum.get_rule(rule_id[0])
             result.affected_items.append(updated)

@@ -220,7 +220,7 @@ update_policy:
     result:
       affected_items: []
       failed_items:
-        "4027":
+        "4008":
           - 1
   - params:
       policy_id:
@@ -236,7 +236,7 @@ update_policy:
     result:
       affected_items: []
       failed_items:
-        "4027":
+        "4008":
           - 1
   - params:
       policy_id:
@@ -251,7 +251,7 @@ update_policy:
     result:
       affected_items: []
       failed_items:
-        "4027":
+        "4008":
           - 110
   - params:
       policy_id:
@@ -267,7 +267,7 @@ update_policy:
     result:
       affected_items: []
       failed_items:
-        "4027":
+        "4008":
           - 110
   - params:
       policy_id:
@@ -283,7 +283,7 @@ update_policy:
     result:
       affected_items: []
       failed_items:
-        "4027":
+        "4008":
           - 110
   - params:
       policy_id:
@@ -401,7 +401,7 @@ remove_policies:
             - 105
           resource_type: user
       failed_items:
-        "4027":
+        "4008":
           - 1
   - params:
       policy_ids:
@@ -499,7 +499,7 @@ remove_policies:
       failed_items:
         "4026":
           - 111
-        "4027":
+        "4008":
           - 001
           - 110
   - params:
@@ -526,7 +526,7 @@ remove_policies:
       failed_items:
         "4026":
           - 111
-        "4027":
+        "4008":
           - 001
           - 110
   - params:
@@ -561,7 +561,7 @@ remove_policies:
           roles: []
           resource_type: protected
       failed_items:
-        "4027":
+        "4008":
           - 001
           - 110
   - params:
@@ -598,5 +598,5 @@ remove_policies:
       failed_items:
         "4026":
           - 111
-        "4027":
+        "4008":
           - 001

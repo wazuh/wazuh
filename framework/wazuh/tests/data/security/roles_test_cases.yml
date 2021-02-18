@@ -178,7 +178,7 @@ update_role:
     result:
       affected_items: []
       failed_items:
-        "4027":
+        "4008":
           - 1
   - params:
       role_id:
@@ -187,7 +187,7 @@ update_role:
     result:
       affected_items: []
       failed_items:
-        "4027":
+        "4008":
           - 106
   - params:
       role_id:
@@ -261,7 +261,7 @@ update_role:
     result:
       affected_items: []
       failed_items:
-        "4027":
+        "4008":
           - 106
   - params:
       role_id:
@@ -306,7 +306,7 @@ remove_roles:
             - 104
           resource_type: user
       failed_items:
-        "4027":
+        "4008":
           - 1
   - params:
       role_ids:
@@ -403,7 +403,7 @@ remove_roles:
       failed_items:
         "4026":
           - 107
-        "4027":
+        "4008":
           - 001
           - 107
   - params:
@@ -436,7 +436,7 @@ remove_roles:
       failed_items:
         "4026":
           - 107
-        "4027":
+        "4008":
           - 001
           - 106
   - params:
@@ -473,7 +473,7 @@ remove_roles:
           users: []
           resource_type: protected
       failed_items:
-        "4027":
+        "4008":
           - 001
           - 106
   - params:
@@ -512,5 +512,5 @@ remove_roles:
       failed_items:
         "4026":
           - 107
-        "4027":
+        "4008":
           - 001

@@ -517,7 +517,6 @@ class WazuhException(Exception):
         4025: {'message': 'The specify relationship could not be removed'},
         4026: {'message': 'The specified resource cannot be removed or updated.',
                'remediation': 'Protected resources must be updated or removed using the CLI.'},
-        4027: {'message': 'Default resources cannot be removed or updated'},
         4500: {'message': 'The specified resources are invalid',
                'remediation': 'Please, make sure permissions are properly defined, '
                               f'for more information on setting up permissions please visit https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/rbac/configuration.html'},
