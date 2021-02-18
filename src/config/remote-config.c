@@ -298,7 +298,7 @@ STATIC int w_remoted_get_net_protocol(const char * content) {
 
             if (strcasecmp(word, REMOTED_NET_PROTOCOL_TCP_STR) == 0) {
                 retval |= REMOTED_NET_PROTOCOL_TCP;
-            } else if(strcasecmp(word, REMOTED_NET_PROTOCOL_UDP_STR) == 0) {
+            } else if (strcasecmp(word, REMOTED_NET_PROTOCOL_UDP_STR) == 0) {
                 retval |= REMOTED_NET_PROTOCOL_UDP;
             } else {
                 mwarn(REMOTED_INV_VALUE_IGNORE, word, XML_REMOTE_PROTOCOL);
