@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
-#include "wazuh_db/wdb_global_helpers.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing

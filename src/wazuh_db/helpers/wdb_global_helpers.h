@@ -12,7 +12,7 @@
 #ifndef WDB_GLOBAL_HELPERS_H
 #define WDB_GLOBAL_HELPERS_H
 
-#include "wdb.h"
+#include "../wdb.h"
 
 typedef enum global_db_access {
     WDB_INSERT_AGENT,

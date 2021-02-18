@@ -12,7 +12,7 @@
 #include "wmodules.h"
 #include "sec.h"
 #include "remoted_op.h"
-#include "wazuh_db/wdb_global_helpers.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
 
