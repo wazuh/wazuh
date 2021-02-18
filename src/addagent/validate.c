@@ -12,7 +12,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
 #ifndef CLIENT
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #endif
 

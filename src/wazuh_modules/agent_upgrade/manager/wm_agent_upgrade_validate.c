@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/wdb_global_helpers.h"
 #include "wazuh_modules/wmodules.h"
 #include "wm_agent_upgrade_validate.h"
 

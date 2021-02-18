@@ -6031,3 +6031,10 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
 
     return result;
 }
+
+// 'agents' DB command parsing
+
+int wdb_parse_global_insert_cve(wdb_t * wdb, char * input, char * output) {
+    cJSON *data = NULL;
+    wdb_agents_insert_cve(wdb, data);
+}
