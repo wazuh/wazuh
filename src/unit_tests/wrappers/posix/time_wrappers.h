@@ -8,11 +8,11 @@
  */
 
 
-#ifndef AGENT_OP_WRAPPERS_H
-#define AGENT_OP_WRAPPERS_H
+#ifndef TIME_WRAPPERS_H
+#define TIME_WRAPPERS_H
 
-int __wrap_auth_connect();
-char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name);
-int __wrap_control_check_connection();
+#include <time.h>
 
-#endif
+time_t __wrap_time(time_t *t);
+
+#endif // TIME_WRAPPERS_H

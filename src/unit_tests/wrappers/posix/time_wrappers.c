@@ -7,12 +7,12 @@
  * Foundation
  */
 
+#include "time_wrappers.h"
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
 
-#ifndef AGENT_OP_WRAPPERS_H
-#define AGENT_OP_WRAPPERS_H
-
-int __wrap_auth_connect();
-char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name);
-int __wrap_control_check_connection();
-
-#endif
+time_t __wrap_time(__attribute__ ((unused)) time_t *t) {
+    return mock_type(time_t);
+}

@@ -49,12 +49,6 @@ static int test_teardown(void **state){
     return 0;
 }
 
-// Wrappers
-
-time_t __wrap_time(time_t *__timer) {
-    return mock();
-}
-
 
 void test_wdb_task_delete_old_entries_ok(void **state)
 {
