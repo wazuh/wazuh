@@ -37,14 +37,20 @@
 // Global variables
 pthread_mutex_t audit_mutex;
 pthread_mutex_t audit_rules_mutex;
+pthread_cond_t audit_db_consistency;
+pthread_cond_t audit_thread_started;
 
 unsigned int count_reload_retries;
 
 //This variable controls if the the modification of the rule is made by syscheck.
-int audit_rule_manipulation = 0;
 
 volatile int audit_db_consistency_flag = 0;
 volatile int audit_thread_active;
+
+typedef struct _audit_data_s {
+    int socket;
+    audit_mode mode;
+} audit_data_t;
 
 #ifdef ENABLE_AUDIT
 
@@ -191,6 +197,8 @@ void audit_no_rules_to_realtime() {
 
 // LCOV_EXCL_START
 int audit_init(void) {
+    audit_data_t audit_data = { .socket = -1, .mode = AUDIT_DISABLED };
+
     w_mutex_init(&audit_mutex, NULL);
 
     // Check if auditd is installed and running.
@@ -226,7 +234,7 @@ int audit_init(void) {
         return -1;
     }
 
-    if (audit_rules_init() != 0) {
+    if (fim_audit_rules_init() != 0) {
         return -1;
     }
 
@@ -240,33 +248,31 @@ int audit_init(void) {
         minfo(FIM_AUDIT_HEALTHCHECK_DISABLE);
     }
 
-    add_audit_rules_syscheck(true);
-
     // Change to realtime directories that don't have any rules when Auditd is in immutable mode
     int auditd_fd = audit_open();
-    int au_mode = audit_is_enabled(auditd_fd);
+    audit_data.mode = audit_is_enabled(auditd_fd);
     audit_close(auditd_fd);
 
-    switch (au_mode) {
+    switch (audit_data.mode) {
     case AUDIT_IMMUTABLE:
         audit_no_rules_to_realtime();
         break;
-    case AUDIT_ERROR:
-        merror(FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
-        return -1;
+    case AUDIT_ENABLED:
+        fim_rules_initial_load();
+        atexit(clean_rules);
+        break;
     case AUDIT_DISABLED:
         mwarn(FIM_AUDIT_DISABLED);
         return -1;
     default:
-        break;
+        merror(FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
+        return -1;
     }
-
-    atexit(clean_rules);
 
     // Start audit thread
     w_cond_init(&audit_thread_started, NULL);
     w_cond_init(&audit_db_consistency, NULL);
-    w_create_thread(audit_main, &audit_socket);
+    w_create_thread(audit_main, &audit_data);
     w_mutex_lock(&audit_mutex);
     while (!audit_thread_active)
         w_cond_wait(&audit_thread_started, &audit_mutex);
@@ -287,7 +293,7 @@ void audit_set_db_consistency(void) {
 // LCOV_EXCL_STOP
 
 // LCOV_EXCL_START
-void * audit_main(int *audit_sock) {
+void *audit_main(audit_data_t *audit_data) {
     char *path = NULL;
     int pos;
     count_reload_retries = 0;
@@ -303,22 +309,23 @@ void * audit_main(int *audit_sock) {
 
     w_mutex_unlock(&audit_mutex);
 
-    // Start rules reloading thread
-    w_create_thread(audit_reload_thread, NULL);
+    if (audit_data->mode == AUDIT_ENABLED) {
+        // Start rules reloading thread
+        w_create_thread(audit_reload_thread, NULL);
+    }
 
     minfo(FIM_WHODATA_STARTED);
 
     // Read events
-    audit_read_events(audit_sock, READING_MODE);
+    audit_read_events(audit_data->socket, READING_MODE);
 
     // Auditd is not runnig or socket closed.
     mdebug1(FIM_AUDIT_THREAD_STOPED);
-    close(*audit_sock);
+    close(audit_data->socket);
 
     // Clean regexes used for parsing events
     clean_regex();
     // Change Audit monitored folders to Inotify.
-    w_mutex_lock(&audit_mutex);
     for (pos = 0; syscheck.dir[pos]; pos++) {
         if ((syscheck.opts[pos] & WHODATA_ACTIVE) == 0) {
             continue;
@@ -335,10 +342,11 @@ void * audit_main(int *audit_sock) {
         realtime_adddir(path, 0, (syscheck.opts[pos] & CHECK_FOLLOW) ? 1 : 0);
         free(path);
     }
-    w_mutex_unlock(&audit_mutex);
 
     // Clean Audit added rules.
-    clean_rules();
+    if (audit_data->mode == AUDIT_ENABLED) {
+        clean_rules();
+    }
 
     return NULL;
 }
@@ -411,7 +419,7 @@ void audit_read_events(int *audit_sock, int mode) {
             if (*audit_sock >= 0) {
                 minfo(FIM_AUDIT_CONNECT);
                 // Reload rules
-                audit_reload_rules();
+                fim_audit_reload_rules();
                 continue;
             }
             // Send alert

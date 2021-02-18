@@ -21,15 +21,16 @@
 #define AUDIT_KEY "wazuh_fim"
 
 // Public rule handlig functions
-int audit_rules_init();
+int fim_manipulated_audit_rules();
+int fim_audit_rules_init();
+int fim_rules_initial_load();
 
-// Public parse parse functions
+// Public parse functions
 void clean_regex();
 
 extern pthread_mutex_t audit_mutex;
 extern volatile int audit_thread_active;
 extern volatile int hc_thread_active;
-extern int audit_rule_manipulation;
 extern unsigned int count_reload_retries;
 extern volatile int audit_health_check_creation;
 #endif // SYSCHECK_AUDIT_H

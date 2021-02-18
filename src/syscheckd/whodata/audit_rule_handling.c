@@ -20,15 +20,31 @@ typedef struct {
 } whodata_directory_t;
 
 static OSList *whodata_directories;
+static pthread_mutex_t rules_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int audit_rule_manipulation = 0;
 
 static void free_whodata_directory(whodata_directory_t *directory) {
     os_free(directory->path);
     os_free(directory);
 }
 
-static void add_whodata_directory(const char *path) {
+static void _add_whodata_directory(const char *path) {
+    OSListNode *node;
     whodata_directory_t *directory;
 
+    // Search for duplicates
+    for (node = OSList_GetFirstNode(whodata_directories); node != NULL;
+         node = OSList_GetNextNode(whodata_directories)) {
+        directory = (whodata_directory_t *)node->data;
+
+        if (strcmp(path, directory->path) == 0) {
+            directory->pending_removal = 0;
+            return;
+        }
+    }
+
+    // If we got here, we need to add a new directory
     os_malloc(sizeof(whodata_directory_t), directory);
 
     os_strdup(path, directory->path);
@@ -39,14 +55,35 @@ static void add_whodata_directory(const char *path) {
     }
 }
 
+void add_whodata_directory(const char *path) {
+    w_mutex_lock(&rules_mutex);
+    _add_whodata_directory(path);
+    w_mutex_unlock(&rules_mutex);
+}
 
-int add_audit_rules_syscheck(bool first_time) {
+void remove_audit_rule_syscheck(const char *path) {
+    OSListNode *node;
+
+    w_mutex_lock(&rules_mutex);
+
+    for (node = OSList_GetFirstNode(whodata_directories); node != NULL;
+         node = OSList_GetNextNode(whodata_directories)) {
+        whodata_directory_t *directory = (whodata_directory_t *)node->data;
+
+        if (strcmp(path, directory->path) == 0) {
+            directory->pending_removal = 1;
+            break;
+        }
+    }
+
+    w_mutex_unlock(&rules_mutex);
+}
+
+int fim_rules_initial_load() {
     unsigned int i = 0;
-    int found;
     int retval;
     char *directory = NULL;
     int rules_added = 0;
-    static bool reported = 0;
     int auditd_fd = audit_open();
     int res = audit_get_rule_list(auditd_fd);
 
@@ -56,6 +93,7 @@ int add_audit_rules_syscheck(bool first_time) {
         merror(FIM_ERROR_WHODATA_READ_RULE);
     }
 
+    w_mutex_lock(&rules_mutex);
     for (i = 0; syscheck.dir[i]; i++) {
         // Check if dir[i] is set in whodata mode
         if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
@@ -67,33 +105,24 @@ int add_audit_rules_syscheck(bool first_time) {
             free(directory);
             continue;
         }
+
         // Add whodata directories until max_audit_entries is reached.
         if (rules_added >= syscheck.max_audit_entries) {
-            if (first_time || !reported) {
-                merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
-            } else {
-                mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
-            }
-            reported = 1;
+            merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory, syscheck.max_audit_entries);
             free(directory);
             break;
         }
 
-        found = search_audit_rule(directory, WHODATA_PERMS, AUDIT_KEY);
+        _add_whodata_directory(directory);
 
-        switch (found) {
+        switch (search_audit_rule(directory, WHODATA_PERMS, AUDIT_KEY)) {
         // The rule is not in audit_rule_list
         case 0:
             if (retval = audit_add_rule(directory, WHODATA_PERMS, AUDIT_KEY), retval > 0) {
                 mdebug1(FIM_AUDIT_NEWRULE, directory);
-                add_whodata_directory(directory);
                 rules_added++;
             } else if (retval != -EEXIST) {
-                if (first_time) {
-                    mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
-                } else {
-                    mdebug1(FIM_WARN_WHODATA_ADD_RULE, directory);
-                }
+                mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
             } else {
                 mdebug1(FIM_AUDIT_ALREADY_ADDED, directory);
             }
@@ -111,76 +140,148 @@ int add_audit_rules_syscheck(bool first_time) {
         free(directory);
     }
 
+    w_mutex_unlock(&rules_mutex);
     return rules_added;
 }
 
+void fim_audit_reload_rules() {
+    int retval;
+    int rules_added = 0;
+    static bool reported = 0;
+    int auditd_fd;
+    int res;
+    OSListNode *node = NULL;
 
-// LCOV_EXCL_START
-void audit_reload_rules(void) {
     mdebug1(FIM_AUDIT_RELOADING_RULES);
-    int rules_added = add_audit_rules_syscheck(false);
+
+    auditd_fd = audit_open();
+    res = audit_get_rule_list(auditd_fd);
+
+    audit_close(auditd_fd);
+
+    if (!res) {
+        merror(FIM_ERROR_WHODATA_READ_RULE);
+    }
+
+    w_mutex_lock(&rules_mutex);
+
+    node = OSList_GetFirstNode(whodata_directories);
+
+    while (node != NULL) {
+        whodata_directory_t *directory = (whodata_directory_t *)node->data;
+
+        switch (search_audit_rule(directory->path, WHODATA_PERMS, AUDIT_KEY)) {
+        // The rule is not in audit_rule_list
+        case 0:
+            // If we had to remove it, we are done
+            if (directory->pending_removal != 0) {
+                free_whodata_directory(directory);
+                OSList_DeleteCurrentlyNode(whodata_directories);
+                node = OSList_GetCurrentlyNode(whodata_directories);
+                continue;
+            }
+
+            if (rules_added >= syscheck.max_audit_entries) {
+                if (!reported) {
+                    merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory->path, syscheck.max_audit_entries);
+                } else {
+                    mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory->path, syscheck.max_audit_entries);
+                }
+                reported = 1;
+                break;
+            }
+
+            if (retval = audit_add_rule(directory->path, WHODATA_PERMS, AUDIT_KEY), retval > 0) {
+                mdebug1(FIM_AUDIT_NEWRULE, directory->path);
+                rules_added++;
+            } else if (retval != -EEXIST) {
+                mdebug1(FIM_WARN_WHODATA_ADD_RULE, directory->path);
+            } else {
+                mdebug1(FIM_AUDIT_ALREADY_ADDED, directory->path);
+            }
+
+            break;
+
+        case 1:
+            if (directory->pending_removal != 0) {
+                audit_rule_manipulation++;
+                audit_delete_rule(directory->path, WHODATA_PERMS, AUDIT_KEY);
+                free_whodata_directory(directory);
+                OSList_DeleteCurrentlyNode(whodata_directories);
+                node = OSList_GetCurrentlyNode(whodata_directories);
+                continue;
+            } else {
+                mdebug1(FIM_AUDIT_RULEDUP, directory->path);
+            }
+            break;
+
+        default:
+            merror(FIM_ERROR_WHODATA_CHECK_RULE);
+            break;
+        }
+
+        node = OSList_GetNextNode(whodata_directories);
+    }
+    w_mutex_unlock(&rules_mutex);
+
     mdebug1(FIM_AUDIT_RELOADED_RULES, rules_added);
 }
 
-void remove_audit_rule_syscheck(const char *path) {
-    w_mutex_lock(&audit_mutex);
-    // audit_rule_pending_removal(path, "wa", AUDIT_KEY);
+int fim_manipulated_audit_rules() {
+    int retval;
 
-    // Add one rule to be removed.
-    audit_rule_manipulation++;
-    w_mutex_unlock(&audit_mutex);
+    w_mutex_lock(&rules_mutex);
+    retval = audit_rule_manipulation;
+
+    if (audit_rule_manipulation != 0) {
+        audit_rule_manipulation--;
+    }
+    w_mutex_unlock(&rules_mutex);
+
+    return retval;
 }
-// LCOV_EXCL_STOP
 
 void clean_rules(void) {
-    char *real_path = NULL;
-    int i;
+    OSListNode *node;
 
-    w_mutex_lock(&audit_mutex);
+    w_mutex_lock(&rules_mutex);
 
     audit_thread_active = 0;
     mdebug2(FIM_AUDIT_DELETE_RULE);
 
-    for (i = 0; syscheck.dir[i]; i++) {
-        if (syscheck.opts[i] & WHODATA_ACTIVE) {
-            real_path = fim_get_real_path(i);
-            audit_delete_rule(real_path, WHODATA_PERMS, AUDIT_KEY);
-            free(real_path);
-        }
+    for (node = OSList_GetFirstNode(whodata_directories); node != NULL;
+         node = OSList_GetNextNode(whodata_directories)) {
+        whodata_directory_t *directory = (whodata_directory_t *)node->data;
+
+        audit_delete_rule(directory->path, WHODATA_PERMS, AUDIT_KEY);
     }
+
     audit_rules_list_free();
-    w_mutex_unlock(&audit_mutex);
+    OSList_CleanNodes(whodata_directories);
+    w_mutex_unlock(&rules_mutex);
 }
 
-int audit_rules_init() {
+int fim_audit_rules_init() {
     whodata_directories = OSList_Create();
     if (whodata_directories == NULL) {
         return -1;
     }
 
     OSList_SetFreeDataPointer(whodata_directories, (void (*)(void *))free_whodata_directory);
+
+    return 0;
 }
 
-// LCOV_EXCL_START
 void *audit_reload_thread() {
     sleep(RELOAD_RULES_INTERVAL);
     while (audit_thread_active) {
-        w_mutex_lock(&audit_mutex);
-
-        // Remove any pending rules
-        // audit_cleanup_rules();
-
-        // Reload rules
-        audit_reload_rules();
-
-        w_mutex_unlock(&audit_mutex);
+        fim_audit_reload_rules();
 
         sleep(RELOAD_RULES_INTERVAL);
     }
 
     return NULL;
 }
-// LCOV_EXCL_STOP
 
 #endif // ENABLE_AUDIT
 #endif // __linux__

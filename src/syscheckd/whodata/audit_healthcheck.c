@@ -16,9 +16,7 @@
 volatile int audit_health_check_creation;
 volatile int hc_thread_active;
 pthread_mutex_t audit_hc_mutex;
-pthread_cond_t audit_thread_started;
 pthread_cond_t audit_hc_started;
-pthread_cond_t audit_db_consistency;
 
 
 // Audit healthcheck before starting the main thread

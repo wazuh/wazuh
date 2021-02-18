@@ -430,12 +430,11 @@ char *audit_get_id(const char * event);
 int init_regex(void);
 
 /**
- * @brief Adds audit rules to configured directories
+ * @brief Adds audit rules to directories
  *
- * @param first_time Indicates if it's the first time the rules are being added
- * @return The number of rules added
+ * @param path Path of the configured rule
  */
-int add_audit_rules_syscheck(bool first_time);
+void add_whodata_directory(const char *path);
 
 /**
  * @brief Function the delete the audit rule for a specfic path
@@ -531,7 +530,7 @@ void get_parent_process_info(char *ppid, char ** const parent_name, char ** cons
  * This is necessary to include audit rules for hot added directories in the configuration
  *
  */
-void audit_reload_rules(void);
+void fim_audit_reload_rules(void);
 
 /**
  * @brief Parses an audit event and sends the corresponding alert message

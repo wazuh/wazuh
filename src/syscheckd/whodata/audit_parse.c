@@ -424,7 +424,7 @@ void audit_parse(char *buffer) {
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
-            } else if (audit_rule_manipulation == false) {
+            } else if (fim_manipulated_audit_rules()) {
                 // If the manipulation wasn't done by syscheck, increase the number of retries
                 mwarn(FIM_WARN_AUDIT_RULES_MODIFIED);
                 // Send alert
@@ -436,7 +436,7 @@ void audit_parse(char *buffer) {
 
                 if (count_reload_retries < AUDIT_LOAD_RETRIES) {
                     // Reload rules
-                    audit_reload_rules();
+                    fim_audit_reload_rules();
                 } else {
                     // Send alert
                     char msg_alert[512 + 1];
@@ -447,7 +447,6 @@ void audit_parse(char *buffer) {
                 }
             }
             os_free(p_dir);
-            audit_rule_manipulation--;
         }
         // Fallthrough
     case 2:

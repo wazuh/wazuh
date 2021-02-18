@@ -94,6 +94,7 @@ int audit_get_rule_list(int fd) {
 int audit_print_reply(struct audit_reply *rep) {
     char *key = NULL;
     char *path = NULL;
+    int perm;
     char perms[5] = {0};
     unsigned int i, offset = 0;
 
@@ -114,7 +115,7 @@ int audit_print_reply(struct audit_reply *rep) {
                     key = strdup("");
                 }
             } else if (field == AUDIT_PERM) {
-                int val = rep->ruledata->values[i];
+                int val = perm = rep->ruledata->values[i];
                 perms[0] = 0;
                 if (val & AUDIT_PERM_READ)
                     strcat(perms, "r");
@@ -133,7 +134,7 @@ int audit_print_reply(struct audit_reply *rep) {
                 os_calloc(1, sizeof(w_audit_rule), rule);
 
                 rule->path = strdup(path);
-                rule->perm = rep->ruledata->values[i] & AUDIT_PERMISSIONS;
+                rule->perm = perm & AUDIT_PERMISSIONS;
                 rule->key = strdup(key);
                 audit_rules_list_append(rule);
             }
