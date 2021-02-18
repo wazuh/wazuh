@@ -193,7 +193,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
 
     static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
     {
-        std::string retVal { "unknown" };
+        std::string retVal { "enabled" };
         const auto value { fields.at(RHInterfaceConfig::Value) };
 
         const auto it { DHCP_STATUS.find(value) };
@@ -342,7 +342,7 @@ public:
     std::string dhcp() const override
     {
         auto fileData { Utils::getFileContent(WM_SYS_IF_FILE) };
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal { "unknown" };
         const auto family { this->family() };
         const auto ifName { this->name() };
         if (!fileData.empty())
