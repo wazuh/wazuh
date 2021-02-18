@@ -97,7 +97,6 @@ static void test_OS_Bindporttcp_success(void **state) {
     const char* test_ip = NULL;
     int test_ipv6 = 1;
     int test_ossock = 1;
-    int test_flag = 1;
     int return_value_socket = 1;
     int return_value_setsockopt = 1;
     int return_value_bind = 1;
@@ -120,7 +119,7 @@ static void test_OS_Bindporttcp_success(void **state) {
     expect_value(wrap_bind, s,test_ossock);
     expect_any(wrap_bind, addr);
     expect_any(wrap_bind, namelen);
-    will_return(wrap_bind, test_ossock);
+    will_return(wrap_bind, return_value_bind);
 
     expect_value(wrap_listen, s, test_ossock);
     expect_value(wrap_listen, backlog, BACKLOG);
@@ -143,7 +142,7 @@ static void test_OS_Bindporttcp_success(void **state) {
     expect_value(__wrap_bind, __fd,test_ossock);
     expect_any(__wrap_bind, __addr);
     expect_any(__wrap_bind, __len);
-    will_return(__wrap_bind, test_ossock);
+    will_return(__wrap_bind, return_value_bind);
 
     expect_value(__wrap_listen, __fd, test_ossock);
     expect_value(__wrap_listen, __n, BACKLOG);
@@ -218,8 +217,6 @@ static void test_OS_Bindporttcp_fail_setsockopt(void **state) {
     u_int16_t test_port = 1;
     const char* test_ip = NULL;
     int test_ipv6 = 1;
-    int test_ossock = 1;
-    int test_flag = 1;
     int return_value_socket = 1;
     int bad_return_value_setsockopt = -1;
     int err = OS_SOCKTERR;
@@ -265,7 +262,6 @@ static void test_OS_Bindporttcp_fail_listen(void **state) {
     const char* test_ip = NULL;
     int test_ipv6 = 1;
     int test_ossock = 1;
-    int test_flag = 1;
     int return_value_socket = 1;
     int return_value_setsockopt = 1;
     int return_value_bind = 1;
@@ -289,7 +285,7 @@ static void test_OS_Bindporttcp_fail_listen(void **state) {
     expect_value(wrap_bind, s,test_ossock);
     expect_any(wrap_bind,addr);
     expect_any(wrap_bind,namelen);
-    will_return(wrap_bind, test_ossock);
+    will_return(wrap_bind, return_value_bind);
 
     expect_value(wrap_listen, s, test_ossock);
     expect_value(wrap_listen, backlog, BACKLOG);
@@ -312,7 +308,7 @@ static void test_OS_Bindporttcp_fail_listen(void **state) {
     expect_value(__wrap_bind, __fd,test_ossock);
     expect_any(__wrap_bind,__addr);
     expect_any(__wrap_bind,__len);
-    will_return(__wrap_bind, test_ossock);
+    will_return(__wrap_bind, return_value_bind);
 
     expect_value(__wrap_listen, __fd, test_ossock);
     expect_value(__wrap_listen, __n, BACKLOG);
@@ -327,15 +323,14 @@ static void test_OS_Bindporttcp_fail_listen(void **state) {
 
 static void test_OS_Bindportudp_ipv6_fail_bind(void **state) {
 
+#ifndef TEST_WINAGENT
+
     u_int16_t test_port = 1;
     const char* test_ip = NULL;
     int test_ipv6 = 1;
     int test_ossock = 1;
     int bad_return_value_bind = -1;
-    int return_value_listen = 1;
     int err = OS_SOCKTERR;
-
-#ifndef TEST_WINAGENT
 
     expect_value(__wrap_socket, __domain, PF_INET6);
     expect_value(__wrap_socket, __type, SOCK_DGRAM);
@@ -365,7 +360,6 @@ static void test_OS_Bindportudp_no_ipv6_fail_bind(void **state){
     int test_ipv6 = 0;
     int test_ossock = 1;
     int bad_return_value_bind = -1;
-    int return_value_listen = 1;
     int err = OS_SOCKTERR;
 
 #ifdef TEST_WINAGENT
@@ -401,17 +395,16 @@ static void test_OS_Bindportudp_no_ipv6_fail_bind(void **state){
 
 static void test_OS_Bindporttcp_ipv6_fail_bind(void **state) {
 
+#ifndef TEST_WINAGENT
+
     u_int16_t test_port = 1;
     const char* test_ip = NULL;
     int test_ipv6 = 1;
     int test_ossock = 1;
-    int test_flag = 1;
     int return_value_socket = 1;
     int return_value_setsockopt = 1;
     int bad_return_value_bind = -1;
     int err = OS_SOCKTERR;
-
-#ifndef TEST_WINAGENT
 
     expect_value(__wrap_socket, __domain, PF_INET6);
     expect_value(__wrap_socket, __type, SOCK_STREAM);
@@ -447,7 +440,6 @@ static void test_OS_Bindporttcp_no_ipv6_fail_bind(void **state){
     const char* test_ip = NULL;
     int test_ipv6 = 0;
     int test_ossock = 1;
-    int test_flag = 1;
     int return_value_socket = 1;
     int return_value_setsockopt = 1;
     int bad_return_value_bind = -1;

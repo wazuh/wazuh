@@ -2,6 +2,9 @@
 file(GLOB os_net_files
     ${SRC_FOLDER}/os_net/*.o)
 
+# Add extra compiling flags
+add_compile_options(-Wall)
+
 add_library(OS_NET_O STATIC ${os_net_files})
 
 set_source_files_properties(
