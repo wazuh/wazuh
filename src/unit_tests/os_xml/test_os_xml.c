@@ -66,7 +66,8 @@ static int test_teardown(void **state) {
     if(data->content5 != NULL) {
         int i = 0;
         while (data->content5[i]) {
-            os_free(data->content5[i++]);
+            os_free(data->content5[i]);
+            i++;
         }
         os_free(data->content5);
     }
@@ -74,7 +75,8 @@ static int test_teardown(void **state) {
     if(data->content6 != NULL) {
         int i = 0;
         while (data->content6[i]) {
-            os_free(data->content6[i++]);
+            os_free(data->content6[i]);
+            i++;
         }
         os_free(data->content6);
     }
