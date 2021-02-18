@@ -52,7 +52,11 @@ if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
   add_subdirectory(os_xml)
   add_subdirectory(os_regex)
   add_subdirectory(os_zlib)
-endif()
+  endif()
+
+  if(${uname} STREQUAL "Linux")
+  add_subdirectory(os_net)
+  endif()
 
 # Config files
 if(${TARGET} STREQUAL "winagent")

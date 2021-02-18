@@ -107,27 +107,27 @@ static int nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
     // write node
     while (node[i]) {
         assert_non_null(node[i]->element);
-        strncat(buffer, "<", 1);
+        strcat(buffer, "<");
         strncat(buffer, node[i]->element, strlen(node[i]->element));
         // write attributes
         if (node[i]->attributes) {
             assert_non_null(node[i]->values);
             int j = 0;
             while (node[i]->attributes[j]) {
-                strncat(buffer, " ", 1);
+                strcat(buffer, " ");
                 assert_non_null(node[i]->values[j]);
                 strncat(buffer, node[i]->attributes[j], strlen(node[i]->attributes[j]));
-                strncat(buffer, "=", 1);
-                strncat(buffer, "\"", 1);
+                strcat(buffer, "=");
+                strcat(buffer, "\"");
                 strncat(buffer, node[i]->values[j], strlen(node[i]->values[j]));
-                strncat(buffer, "\"", 1);
+                strcat(buffer, "\"");
                 j++;
             }
             assert_null(node[i]->values[j]);
         } else {
             assert_null(node[i]->values);
         }
-        strncat(buffer, ">", 1);
+        strcat(buffer, ">");
         assert_non_null(node[i]->content);
         strncat(buffer, node[i]->content, strlen(node[i]->content));
 
@@ -139,9 +139,9 @@ static int nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
         }
 
         // close node
-        strncat(buffer, "</", 2);
+        strcat(buffer, "</");
         strncat(buffer, node[i]->element, strlen(node[i]->element));
-        strncat(buffer, ">", 1);
+        strcat(buffer, ">");
         i++;
     }
 
