@@ -54,7 +54,7 @@ if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
   add_subdirectory(os_zlib)
   endif()
 
-  if(${uname} STREQUAL "Linux")
+if(${uname} STREQUAL "Linux")
   add_subdirectory(os_net)
   endif()
 
