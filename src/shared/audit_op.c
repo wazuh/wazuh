@@ -17,28 +17,23 @@
 #define static
 #endif
 
+#define AUDIT_PERMISSIONS (AUDIT_PERM_EXEC | AUDIT_PERM_WRITE | AUDIT_PERM_READ | AUDIT_PERM_ATTR)
+
 static OSList *audit_rules_list;
 
 // ******* Funtions to operate with list of rules ******* //
 
-/**
- * @brief Function that frees the data memory of a node in the list.
- *
- * @param node_data Data of a node in a list (OSListNode.data)
- */
-static void clear_audit_rule(void *node_data) {
-    w_audit_rule *pointer = (w_audit_rule *) node_data;
-    os_free(pointer->path);
-    os_free(pointer->key);
-    os_free(pointer->perm);
-    os_free(pointer);
+void clear_audit_rule(w_audit_rule *rule) {
+    os_free(rule->path);
+    os_free(rule->key);
+    os_free(rule);
 }
 
 
 void init_audit_rule_list() {
     if (audit_rules_list == NULL) {
         audit_rules_list = OSList_Create();
-        OSList_SetFreeDataPointer(audit_rules_list, clear_audit_rule);
+        OSList_SetFreeDataPointer(audit_rules_list, (void (*)(void *))clear_audit_rule);
     }
 }
 
@@ -52,20 +47,16 @@ void audit_rules_list_append(w_audit_rule *element) {
 }
 
 
-int search_audit_rule(const char *path, const char *perms, const char *key) {
+int search_audit_rule(const char *path, int perms, const char *key) {
     OSListNode *node = NULL;
     w_audit_rule *rule = NULL;
-    if (path == NULL || perms == NULL || key == NULL || audit_rules_list == NULL) {
+    if (path == NULL || key == NULL || audit_rules_list == NULL) {
         return -1;
     }
-    // Check if audit_rules_list is empty.
-    if (OSList_GetFirstNode(audit_rules_list) == NULL) {
-        return 0;
-    }
 
-    while (node = OSList_GetNextNode(audit_rules_list), node != NULL) {
+    for (node = OSList_GetFirstNode(audit_rules_list); node != NULL; node = OSList_GetNextNode(audit_rules_list)) {
         rule = (w_audit_rule *) node->data;
-        if (strcmp(rule->path, path) == 0 && strcmp(rule->perm, perms) == 0 && strcmp(rule->key, key) == 0) {
+        if (rule->perm == perms && strcmp(rule->path, path) == 0 && strcmp(rule->key, key) == 0) {
             return 1;
         }
     }
@@ -142,7 +133,7 @@ int audit_print_reply(struct audit_reply *rep) {
                 os_calloc(1, sizeof(w_audit_rule), rule);
 
                 rule->path = strdup(path);
-                rule->perm = strdup(perms);
+                rule->perm = rep->ruledata->values[i] & AUDIT_PERMISSIONS;
                 rule->key = strdup(key);
                 audit_rules_list_append(rule);
             }
@@ -249,7 +240,7 @@ int audit_restart(void) {
 }
 
 
-int audit_manage_rules(int action, const char *path, const char *key) {
+int audit_manage_rules(int action, const char *path, int permissions, const char *key) {
 
     int retval, output;
     int type;
@@ -282,11 +273,8 @@ int audit_manage_rules(int action, const char *path, const char *key) {
         goto end;
     }
 
-    // Set permisions
-    int permisions = 0;
-    permisions |= AUDIT_PERM_WRITE;
-    permisions |= AUDIT_PERM_ATTR;
-    output = audit_update_watch_perms(myrule, permisions);
+    // Set permissions
+    output = audit_update_watch_perms(myrule, permissions);
     if (output) {
         mdebug2("audit_update_watch_perms = (%d) %s", output, audit_errno_to_name(abs(output)));
         retval = -1;
@@ -342,13 +330,13 @@ end:
 }
 
 
-int audit_add_rule(const char *path, const char *key) {
-    return audit_manage_rules(ADD_RULE, path, key);
+int audit_add_rule(const char *path, int perms, const char *key) {
+    return audit_manage_rules(ADD_RULE, path, perms, key);
 }
 
 
-int audit_delete_rule(const char *path, const char *key) {
-    return audit_manage_rules(DELETE_RULE, path, key);
+int audit_delete_rule(const char *path, int perms, const char *key) {
+    return audit_manage_rules(DELETE_RULE, path, perms, key);
 }
 
 #endif

@@ -24,7 +24,7 @@
  */
 typedef struct {
     char *path; ///< Path of the folder.
-    char *perm; ///< Permission access type.
+    int perm; ///< Permission access type.
     char *key;  ///< Filter key.
 } w_audit_rule;
 
@@ -61,7 +61,7 @@ void audit_rules_list_append(w_audit_rule *element);
  * @retval 0 Rule not loaded.
  * @retval 1 Rule loaded.
  */
-int search_audit_rule(const char *path, const char *perms, const char *key);
+int search_audit_rule(const char *path, int perms, const char *key);
 
 
 /**
@@ -120,33 +120,43 @@ int audit_restart(void);
  *
  * @param action Values `#ADD_RULE` or `#DELETE_RULE`
  * @param path Path of the folder.
+ * @param permissions Permission access type.
  * @param key Filter key.
  * @return The return value is <= 0 on error,
  *         otherwise it is the netlink sequence id number.
  */
-int audit_manage_rules(int action, const char *path, const char *key);
+int audit_manage_rules(int action, const char *path, int permissions, const char *key);
 
 
 /**
  * @brief Adds an Audit rule.
  *
  * @param path Path of the folder.
+ * @param perms Permission access type.
  * @param key Filter key.
  * @return The return value is <= 0 on error,
  *         otherwise it is the netlink sequence id number.
  */
-int audit_add_rule(const char *path, const char *key);
+int audit_add_rule(const char *path, int perms, const char *key);
 
 
 /**
  * @brief Deletes an Audit rule.
  *
  * @param path Path of the folder.
+ * @param perms Permission access type.
  * @param key Filter key.
  * @return The return value is <= 0 on error,
  *         otherwise it is the netlink sequence id number.
  */
-int audit_delete_rule(const char *path, const char *key);
+int audit_delete_rule(const char *path, int perms, const char *key);
+
+/**
+ * @brief Function that frees the data memory of a node in the list.
+ *
+ * @param rule Data of a node in a list (OSListNode.data)
+ */
+void clear_audit_rule(w_audit_rule *rule);
 
 #endif /* ENABLE_AUDIT */
 #endif /* AUDIT_OP_H */
