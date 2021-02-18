@@ -15,6 +15,7 @@
 #include <sys/sysctl.h>
 #include <sys/vmmeter.h>
 #include <sys/utsname.h>
+#include "sharedDefs.h"
 
 void SysInfo::getMemory(nlohmann::json& info) const
 {
@@ -85,7 +86,7 @@ int SysInfo::getCpuMHz() const
 
 std::string SysInfo::getSerialNumber() const
 {
-    return "unknown";
+    return UNKNOWN_VALUE;
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -126,7 +127,7 @@ nlohmann::json SysInfo::getOsInfo() const
     {
         ret["os_name"] = "BSD";
         ret["os_platform"] = "bsd";
-        ret["os_version"] = "unknown";
+        ret["os_version"] = UNKNOWN_VALUE;
     }
     if (uname(&uts) >= 0)
     {

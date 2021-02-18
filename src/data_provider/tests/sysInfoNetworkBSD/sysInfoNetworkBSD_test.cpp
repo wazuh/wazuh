@@ -64,14 +64,14 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return("192.168.0.1"));
     EXPECT_CALL(*mock, netmask()).Times(1).WillOnce(Return("255.255.255.0"));
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return("192.168.0.255"));
-    EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return("unknown"));
-    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("unknown"));
+    EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(" "));
+    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(" "));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
     EXPECT_EQ("192.168.0.1",ifaddr.at("IPv4").at("address").get_ref<const std::string&>());
     EXPECT_EQ("255.255.255.0",ifaddr.at("IPv4").at("netmask").get_ref<const std::string&>());
     EXPECT_EQ("192.168.0.255",ifaddr.at("IPv4").at("broadcast").get_ref<const std::string&>());
-    EXPECT_EQ("unknown",ifaddr.at("IPv4").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ("unknown",ifaddr.at("IPv4").at("metric").get_ref<const std::string&>());
+    EXPECT_EQ(" ",ifaddr.at("IPv4").at("dhcp").get_ref<const std::string&>());
+    EXPECT_EQ(" ",ifaddr.at("IPv4").at("metric").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6_THROW)
@@ -91,14 +91,14 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return("2001:db8:85a3:8d3:1319:8a2e:370:7348"));
     EXPECT_CALL(*mock, netmaskV6()).Times(1).WillOnce(Return("2001:db8:abcd:0012:ffff:ffff:ffff:ffff"));
     EXPECT_CALL(*mock, broadcastV6()).Times(1).WillOnce(Return("2001:db8:85a3:8d3:1319:8a2e:370:0000"));
-    EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return("unknown"));
-    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("unknown"));
+    EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return(" "));
+    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(" "));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
     EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:7348",ifaddr.at("IPv6").at("address").get_ref<const std::string&>());
     EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff",ifaddr.at("IPv6").at("netmask").get_ref<const std::string&>());
     EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000",ifaddr.at("IPv6").at("broadcast").get_ref<const std::string&>());
-    EXPECT_EQ("unknown",ifaddr.at("IPv6").at("dhcp").get_ref<const std::string&>());
-    EXPECT_EQ("unknown",ifaddr.at("IPv6").at("metric").get_ref<const std::string&>());
+    EXPECT_EQ(" ",ifaddr.at("IPv6").at("dhcp").get_ref<const std::string&>());
+    EXPECT_EQ(" ",ifaddr.at("IPv6").at("metric").get_ref<const std::string&>());
 }
 
 

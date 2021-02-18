@@ -25,7 +25,10 @@
 #include <versionhelpers.h>
 #include "mem_op.h"
 #include "stringHelper.h"
+<<<<<<< HEAD
 #include "encodingWindowsHelper.h"
+=======
+>>>>>>> 6527eb00a... Merge pull request #7533 from wazuh/7531-unknown-default-value
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -213,7 +216,23 @@ namespace Utils
 
         static std::string getAdapterNameStr(const std::wstring& adapterName)
         {
+<<<<<<< HEAD
             return Utils::EncodingWindowsHelper::wstringToStringUTF8(adapterName);
+=======
+            std::string retVal;
+            const std::wstring wfriendlyName(adapterName);
+            if (!wfriendlyName.empty())
+            {
+                const auto wSize{static_cast<int>(wfriendlyName.size())};
+                const auto sizeNeeded {WideCharToMultiByte(CP_UTF8, 0, wfriendlyName.data(), wSize, nullptr, 0, nullptr, nullptr)};
+                const auto buffer{std::make_unique<char[]>(sizeNeeded)};
+                if (WideCharToMultiByte(CP_UTF8, 0, wfriendlyName.data(), wSize, buffer.get(), sizeNeeded, nullptr, nullptr) > 0)
+                {
+                    retVal.assign(buffer.get(), sizeNeeded);
+                }
+            }
+            return retVal;
+>>>>>>> 6527eb00a... Merge pull request #7533 from wazuh/7531-unknown-default-value
         }
 
         static void getAdapters(std::unique_ptr<IP_ADAPTER_ADDRESSES, IPAddressSmartDeleter>& interfacesAddress)
@@ -306,7 +325,7 @@ namespace Utils
             struct in_addr mask {};
             struct in_addr broadcast {};
 
-            std::string broadcastAddr { "unknown" };
+            std::string broadcastAddr;
 
             static auto pfnInetPton { getInetPtonFunctionAddress() };
             if (pfnInetPton)
