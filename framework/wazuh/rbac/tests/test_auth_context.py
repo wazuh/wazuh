@@ -82,7 +82,8 @@ def test_load_files(db_setup):
         assert type(role) == Map
 
 
-def test_auth_roles(db_setup):
+@patch('wazuh.rbac.orm.delete_orphans')
+def test_auth_roles(delete_mock, db_setup):
     authorization_contexts, roles, results = values()
     for index, auth in enumerate(authorization_contexts):
         for role in roles:
