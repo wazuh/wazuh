@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "remoted.h"
 #include "remoted_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/wdb_global_helpers.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "shared_download.h"

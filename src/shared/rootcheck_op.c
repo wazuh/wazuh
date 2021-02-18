@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "rootcheck_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/wdb_global_helpers.h"
 
 /* Get rootcheck title from log */
 char* rk_get_title(const char *log) {
