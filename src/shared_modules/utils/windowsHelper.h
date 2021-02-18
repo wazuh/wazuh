@@ -306,7 +306,7 @@ namespace Utils
             struct in_addr mask {};
             struct in_addr broadcast {};
 
-            std::string broadcastAddr { "unknown" };
+            std::string broadcastAddr;
 
             static auto pfnInetPton { getInetPtonFunctionAddress() };
             if (pfnInetPton)

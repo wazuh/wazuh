@@ -74,7 +74,7 @@ TEST_F(SysInfoTest, processes)
     SysInfoWrapper info;
     EXPECT_CALL(info, getProcessesInfo()).WillOnce(Return("processes"));
     const auto result {info.processes()};
-    EXPECT_FALSE(result.empty());    
+    EXPECT_FALSE(result.empty());
 }
 
 TEST_F(SysInfoTest, network)
@@ -82,7 +82,7 @@ TEST_F(SysInfoTest, network)
     SysInfoWrapper info;
     EXPECT_CALL(info, getNetworks()).WillOnce(Return("networks"));
     const auto result {info.networks()};
-    EXPECT_FALSE(result.empty());    
+    EXPECT_FALSE(result.empty());
 }
 
 TEST_F(SysInfoTest, ports)
@@ -102,7 +102,7 @@ TEST_F(SysInfoTest, os)
 }
 
 TEST_F(SysInfoTest, hardware_c_interface)
-{   
+{
     cJSON *object = NULL;
     sysinfo_hardware(&object);
     EXPECT_TRUE(object);
@@ -122,7 +122,7 @@ TEST_F(SysInfoTest, processes_c_interface)
     cJSON *object = NULL;
     sysinfo_processes(&object);
     EXPECT_TRUE(object);
-    EXPECT_NO_THROW(sysinfo_free_result(&object));  
+    EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
 
 TEST_F(SysInfoTest, network_c_interface)

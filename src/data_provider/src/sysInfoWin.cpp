@@ -416,13 +416,16 @@ static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann
                 if (packageReg.string("InstallLocation", value))
                 {
                     value = Utils::toUpperCase(value);
-                    const auto start{value.find("KB")};
+                    const auto start{ value.find("KB") };
                     if (start != std::string::npos)
                     {
                         value = value.substr(start);
                         const auto end{value.find("-")};
                         value = value.substr(0, end);
-                        hotfixes.insert(value);
+                        if (value > "KB")
+                        {
+                            hotfixes.insert(value);
+                        }
                     }
                 }
             }

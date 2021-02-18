@@ -1368,7 +1368,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
         curr = field_values;
         struct column_list const *column = NULL;
         for (column = kv_value->column_list; column ; column=column->next) {
-            if (!column->value.is_old_implementation && NULL != *curr) {
+            if (!column->value.is_old_implementation && curr && NULL != *curr) {
                 if (!column->value.is_pk && strcmp(*curr, "NULL") != 0) {
                     if (first_condition_element) {
                         strcat(query, column->value.name);
@@ -1408,7 +1408,7 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
 
             curr = field_values;
             for (column = kv_value->column_list; column ; column=column->next) {
-                if (!column->value.is_old_implementation && NULL != *curr) {
+                if (!column->value.is_old_implementation && curr && NULL != *curr) {
                     if (!column->value.is_pk && strcmp(*curr, "NULL") != 0) {
                         if (FIELD_TEXT == column->value.type) {
                             if (SQLITE_OK != sqlite3_bind_text(stmt, index, *curr, -1, NULL)) {
@@ -1425,10 +1425,9 @@ bool wdb_modify_dbsync(wdb_t * wdb, struct kv const *kv_value, char *data)
                 }
             }
 
-            column = kv_value->column_list;
             curr = field_values;
             for (column = kv_value->column_list; column ; column=column->next) {
-                if (!column->value.is_old_implementation && NULL != *curr) {
+                if (!column->value.is_old_implementation && curr && NULL != *curr) {
                     if (column->value.is_pk && strcmp(*curr, "NULL") != 0) {
                         if (FIELD_TEXT == column->value.type) {
                             if (SQLITE_OK != sqlite3_bind_text(stmt, index, *curr, -1, NULL)) {

@@ -83,7 +83,7 @@ public:
 
     std::string address() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         if (m_currentUnicastAddress)
         {
             retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(),
@@ -94,7 +94,7 @@ public:
 
     std::string addressV6() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         if (m_currentUnicastAddress)
         {
             if (Utils::isVistaOrLater())
@@ -114,7 +114,7 @@ public:
 
     std::string netmask() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         if (Utils::isVistaOrLater())
         {
             ULONG mask { 0 };
@@ -143,7 +143,7 @@ public:
 
     std::string netmaskV6() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         if (m_currentUnicastAddress && Utils::isVistaOrLater())
         {
             // Get ipv6Netmask based on current OnLinkPrefixLength value
@@ -155,19 +155,20 @@ public:
 
     std::string broadcast() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         const auto address { this->address() };
         const auto netmask { this->netmask() };
         if (address.size() && netmask.size())
         {
-            retVal = Utils::NetworkWindowsHelper::broadcastAddress(address, netmask);
+            const auto broadcast { Utils::NetworkWindowsHelper::broadcastAddress(address, netmask) };
+            retVal = broadcast.empty() ? UNKNOWN_VALUE : broadcast;
         }
         return retVal;
     }
 
     std::string broadcastV6() const override
     {
-        return "unknown";
+        return UNKNOWN_VALUE;
     }
 
     std::string gateway() const override
@@ -224,7 +225,7 @@ public:
         }
         if (retVal.empty())
         {
-            retVal = "unknown";
+            retVal = UNKNOWN_VALUE;
         }
         else
         {
@@ -236,7 +237,7 @@ public:
 
     std::string metrics() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         if (Utils::isVistaOrLater())
         {
             retVal = std::to_string(m_interfaceAddress->Ipv4Metric);
@@ -247,7 +248,7 @@ public:
 
     std::string metricsV6() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         if (Utils::isVistaOrLater())
         {
             retVal = std::to_string(m_interfaceAddress->Ipv6Metric);
@@ -258,7 +259,7 @@ public:
 
     std::string dhcp() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         const auto family { this->adapterFamily() };
         if (AF_INET == family)
         {
@@ -281,7 +282,7 @@ public:
 
     std::string mtu() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         const auto mtu { m_interfaceAddress->Mtu };
         if (mtu)
         {
@@ -298,7 +299,7 @@ public:
 
     std::string type() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         const auto interfaceType { NETWORK_INTERFACE_TYPES.find(m_interfaceAddress->IfType) };
         if (NETWORK_INTERFACE_TYPES.end() != interfaceType)
         {
@@ -309,7 +310,7 @@ public:
 
     std::string state() const override
     {
-        std::string retVal { "unknown" };
+        std::string retVal { UNKNOWN_VALUE };
         const auto opStatus { NETWORK_OPERATIONAL_STATUS.find(m_interfaceAddress->OperStatus) };
         if (NETWORK_OPERATIONAL_STATUS.end() != opStatus)
         {
