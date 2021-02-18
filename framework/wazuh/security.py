@@ -1118,11 +1118,11 @@ def set_role_policy(role_id, policy_ids, position=None):
             policy_id = int(policy_id)
             role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id, position=position)
             if role_policy == SecurityError.ALREADY_EXIST:
-                result.add_failed_item(id_=int(policy_id), error=WazuhError(4011))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4011))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                result.add_failed_item(id_=int(policy_id), error=WazuhError(4007))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
             else:
@@ -1158,11 +1158,11 @@ def remove_role_policy(role_id, policy_ids):
             policy_id = int(policy_id)
             role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.INVALID:
-                result.add_failed_item(id_=int(policy_id), error=WazuhError(4010))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4010))
             elif role_policy == SecurityError.ROLE_NOT_EXIST:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                result.add_failed_item(id_=int(policy_id), error=WazuhError(4007))
+                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
                 result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
             else:
