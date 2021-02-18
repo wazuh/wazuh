@@ -667,7 +667,7 @@ constexpr auto NETIFACE_SQL_STATEMENT
        adapter TEXT,
        type TEXT,
        state TEXT,
-       mtu TEXT,
+       mtu INTEGER,
        mac TEXT,
        tx_packets INTEGER,
        rx_packets INTEGER,
