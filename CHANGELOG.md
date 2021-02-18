@@ -36,7 +36,8 @@ All notable changes to this project will be documented in this file.
 - **Core:**
   - Fixed a bug in Windows agent that did not honor the buffer's EPS limit. ([#7333](https://github.com/wazuh/wazuh/pull/7333))
   - Fixed a bug in Integratord that might lose alerts from Analysisd due to a race condition. ([#7338](https://github.com/wazuh/wazuh/pull/7338))
-  
+  - Silence the error message when the Syslog forwarder reads an alert with no rule object. ([#7539](https://github.com/wazuh/wazuh/pull/7539))
+
 ### Removed
 
 - **API:**
