@@ -72,9 +72,6 @@ list(APPEND shared_tests_flags " ")
 list(APPEND shared_tests_names "test_utf8_op")
 list(APPEND shared_tests_flags " ")
 
-list(APPEND shared_tests_names "test_fs_op")
-list(APPEND shared_tests_flags " ")
-
 list(APPEND shared_tests_names "test_log_builder")
 list(APPEND shared_tests_flags " ")
 
@@ -96,6 +93,12 @@ list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_t
 
 list(APPEND shared_tests_names "test_rootcheck_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror,--wrap=close,--wrap=getpid")
+
+list(APPEND shared_tests_names "test_fs_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_wazuhdb_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
 endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")
