@@ -253,6 +253,10 @@ typedef enum global_db_access {
     WDB_DISCONNECT_AGENTS
 } global_db_access;
 
+typedef enum agent_db_access {
+    WDB_VU_HOTFIXES_REQUEST
+} agent_db_access;
+
 struct stmt_cache {
     sqlite3_stmt *stmt;
     char *query;
@@ -2103,6 +2107,8 @@ int wdb_task_cancel_upgrade_tasks(wdb_t* wdb, const char *node);
  * @return task_id when succeed, < 0 otherwise.
  * */
 int wdb_task_get_upgrade_task_by_agent_id(wdb_t* wdb, int agent_id, char **node, char **module, char **command, char **status, char **error, int *create_time, int *last_update_time);
+
+cJSON* wdb_get_agent_vu_hotfixes(char *agent_id, char *last_scan_id, int *sock);
 
 // Finalize a statement securely
 #define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
