@@ -31,6 +31,7 @@
 #include "debug_op.h"
 #include "osinfo/sysOsInfoWin.h"
 #include "windowsHelper.h"
+#include "encodingWindowsHelper.h"
 #include "network/networkWindowsWrapper.h"
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portWindowsWrapper.h"
@@ -551,7 +552,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
     }
 }
 
-static void fillProcessesData(std::function<void(PROCESSENTRY32)> func) 
+static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
 {
     PROCESSENTRY32 processEntry{};
     processEntry.dwSize = sizeof(PROCESSENTRY32);
@@ -585,7 +586,7 @@ static void fillProcessesData(std::function<void(PROCESSENTRY32)> func)
             static_cast<int>(GetLastError()),
             std::system_category(),
             "Unable to create process snapshot."
-        };      
+        };
     }
 }
 
@@ -596,7 +597,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
         {
             jsProcessesList.push_back(getProcessInfo(processEntry));
         });
-          
+
     return jsProcessesList;
 }
 
@@ -638,7 +639,7 @@ nlohmann::json SysInfo::getNetworks() const
         Utils::NetworkWindowsHelper::getAdapterInfo(adapterInfo);
     }
 
-    auto rawAdapterAddresses { adaptersAddresses.get() }; 
+    auto rawAdapterAddresses { adaptersAddresses.get() };
 
     while(rawAdapterAddresses)
     {
@@ -663,14 +664,14 @@ nlohmann::json SysInfo::getNetworks() const
                     }
                     else if (AF_INET6 == unicastAddressFamily)
                     {
-                        // IPv6 data                    
+                        // IPv6 data
                         FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::IPV6, rawAdapterAddresses, unicastAddress, adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
                     }
                 }
                 unicastAddress = unicastAddress->Next;
             }
 
-            // Common data                
+            // Common data
             FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(std::make_shared<NetworkWindowsInterface>(Utils::NetworkWindowsHelper::COMMON_DATA, rawAdapterAddresses, unicastAddress, adapterInfo.get()))->buildNetworkData(netInterfaceInfo);
 
             networks["iface"].push_back(netInterfaceInfo);
@@ -687,7 +688,7 @@ void getTablePorts(TableClass ownerId, int32_t tcpipVersion, std::unique_ptr<T [
 {
     TableClass classId { ownerId };
     DWORD size { 0 };
-    
+
     if (ERROR_INSUFFICIENT_BUFFER == GetTable(nullptr, &size, true, tcpipVersion, classId))
     {
         tableList = std::make_unique<T []>(size);
@@ -725,10 +726,10 @@ nlohmann::json SysInfo::getPorts() const
         {
             processDataList[processEntry.th32ProcessID] = processEntry.szExeFile;
         });
-    
+
     getTablePorts<MIB_TCPTABLE_OWNER_PID, TCP_TABLE_CLASS>(
         TCP_TABLE_OWNER_PID_ALL,
-        AF_INET, 
+        AF_INET,
         portTable.tcp,
         [](MIB_TCPTABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
         {
@@ -738,7 +739,7 @@ nlohmann::json SysInfo::getPorts() const
 
     getTablePorts<MIB_TCP6TABLE_OWNER_PID, TCP_TABLE_CLASS>(
         TCP_TABLE_OWNER_PID_ALL,
-        AF_INET6, 
+        AF_INET6,
         portTable.tcp6,
         [](MIB_TCP6TABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, TCP_TABLE_CLASS tableClass)
         {
@@ -748,23 +749,23 @@ nlohmann::json SysInfo::getPorts() const
 
     getTablePorts<MIB_UDPTABLE_OWNER_PID, UDP_TABLE_CLASS>(
         UDP_TABLE_OWNER_PID,
-        AF_INET, 
+        AF_INET,
         portTable.udp,
         [](MIB_UDPTABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
         {
             return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
         } );
     expandPortData(portTable.udp.get(), processDataList, ports);
-   
+
     getTablePorts<MIB_UDP6TABLE_OWNER_PID, UDP_TABLE_CLASS>(
         UDP_TABLE_OWNER_PID,
-        AF_INET6, 
+        AF_INET6,
         portTable.udp6,
         [](MIB_UDP6TABLE_OWNER_PID* table, DWORD* size, bool order, int32_t tcpipVersion, UDP_TABLE_CLASS tableClass)
         {
             return GetExtendedUdpTable(table, size, order, tcpipVersion, tableClass, 0);
         } );
     expandPortData(portTable.udp6.get(), processDataList, ports);
-    
+
     return ports;
 }

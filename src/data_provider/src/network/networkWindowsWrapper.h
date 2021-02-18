@@ -68,12 +68,12 @@ public:
 
     std::string name() const override
     {
-        return Utils::NetworkWindowsHelper::getAdapterNameStr(m_interfaceAddress->FriendlyName);
+        return getAdapterEncodedUTF8(m_interfaceAddress->FriendlyName);
     }
 
     std::string adapter() const override
     {
-        return Utils::NetworkWindowsHelper::getAdapterNameStr(m_interfaceAddress->Description);
+        return getAdapterEncodedUTF8(m_interfaceAddress->Description);
     }
 
     int family() const override
@@ -343,6 +343,12 @@ public:
 
 private:
 
+    std::string getAdapterEncodedUTF8(const std::wstring& name) const
+    {
+        const std::string utf8AdapterName { Utils::NetworkWindowsHelper::getAdapterNameStr(name) };
+        return utf8AdapterName.empty() ? UNKNOWN_VALUE : utf8AdapterName;
+    }
+
     int adapterFamily() const
     {
         return m_currentUnicastAddress ? m_currentUnicastAddress->Address.lpSockaddr->sa_family
@@ -393,7 +399,7 @@ private:
             };
         }
 
-        ifRow->InterfaceIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex 
+        ifRow->InterfaceIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex
                                                                    : m_interfaceAddress->Ipv6IfIndex;
 
         if (0 != ifRow->InterfaceIndex)

@@ -25,6 +25,7 @@
 #include <versionhelpers.h>
 #include "mem_op.h"
 #include "stringHelper.h"
+#include "encodingWindowsHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -210,21 +211,9 @@ namespace Utils
             COMMON_DATA
         };
 
-        static std::string getAdapterNameStr(const PWCHAR& adapterName)
+        static std::string getAdapterNameStr(const std::wstring& adapterName)
         {
-            std::string retVal;
-            const std::wstring wfriendlyName(adapterName);
-            if (!wfriendlyName.empty())
-            {
-                const auto wSize{static_cast<int>(wfriendlyName.size())};
-                const auto sizeNeeded {WideCharToMultiByte(CP_UTF8, 0, wfriendlyName.data(), wSize, nullptr, 0, nullptr, nullptr)};
-                const auto buffer{std::make_unique<char[]>(sizeNeeded)};
-                if (WideCharToMultiByte(CP_UTF8, 0, wfriendlyName.data(), wSize, buffer.get(), sizeNeeded, nullptr, nullptr) > 0)
-                {
-                    retVal.assign(buffer.get(), sizeNeeded);
-                }
-            }
-            return retVal;
+            return Utils::EncodingWindowsHelper::wstringToStringUTF8(adapterName);
         }
 
         static void getAdapters(std::unique_ptr<IP_ADAPTER_ADDRESSES, IPAddressSmartDeleter>& interfacesAddress)
