@@ -25,7 +25,7 @@
 #include <versionhelpers.h>
 #include "mem_op.h"
 #include "stringHelper.h"
-	
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wreturn-type"
@@ -42,7 +42,7 @@ namespace Utils
         {
             win_free(address);
             address = nullptr;
-        }  
+        }
         void operator()(IP_ADAPTER_ADDRESSES* address)
         {
             win_free(address);
@@ -84,7 +84,7 @@ namespace Utils
             ret = reinterpret_cast<GetIfEntry2_t>(GetProcAddress(hIphlpapi, "GetIfEntry2"));
         }
         return ret;
-    }  
+    }
 
     typedef INT (WINAPI *inet_pton_t)(INT, PCSTR, PVOID);
     static inet_pton_t getInetPtonFunctionAddress()
@@ -126,8 +126,8 @@ namespace Utils
             // Set the flags to pass to GetAdaptersAddresses()
             // When the GAA_FLAG_INCLUDE_PREFIX flag is set, IP address prefixes are returned for both IPv6 and IPv4 addresses.
             const auto adapterAddressesFlags
-            { 
-                isVistaOrLater() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS) 
+            {
+                isVistaOrLater() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS)
                                 : 0
             };
 
@@ -147,13 +147,13 @@ namespace Utils
                         "Unable to allocate memory for PIP_ADAPTER_ADDRESSES struct."
                     };
                 }
-                // Two calls of GetAdaptersAddresses are needed. One for getting the size needed (bufferLen variable), 
+                // Two calls of GetAdaptersAddresses are needed. One for getting the size needed (bufferLen variable),
                 // and the second one for getting the actual data we want.
                 dwRetVal = GetAdaptersAddresses(AF_UNSPEC, adapterAddressesFlags, nullptr, ipAdapterAddresses, &bufferLen);
                 if (ERROR_BUFFER_OVERFLOW == dwRetVal)
                 {
                     win_free(ipAdapterAddresses);
-                    ipAdapterAddresses = nullptr;            
+                    ipAdapterAddresses = nullptr;
                 }
                 else
                 {
@@ -161,7 +161,7 @@ namespace Utils
                 }
                 ++attempts;
             } while (!adapterAddressesFound && attempts < MAX_ADAPTERS_INFO_TRIES);
-            return dwRetVal;            
+            return dwRetVal;
         }
 
         static DWORD getAdapterInfoXP(PIP_ADAPTER_INFO& ipAdapterInfo)
@@ -189,7 +189,7 @@ namespace Utils
                 if (ERROR_BUFFER_OVERFLOW == dwRetVal)
                 {
                     win_free(ipAdapterInfo);
-                    ipAdapterInfo = nullptr;            
+                    ipAdapterInfo = nullptr;
                 }
                 else
                 {
@@ -197,7 +197,7 @@ namespace Utils
                 }
                 ++attempts;
             }
-            return dwRetVal;            
+            return dwRetVal;
         }
 
     public:
@@ -212,7 +212,7 @@ namespace Utils
 
         static std::string getAdapterNameStr(const PWCHAR& adapterName)
         {
-            std::string retVal{ "unknown" };
+            std::string retVal;
             const std::wstring wfriendlyName(adapterName);
             if (!wfriendlyName.empty())
             {
@@ -238,7 +238,7 @@ namespace Utils
             else
             {
                 throw std::system_error
-                {   
+                {
                     static_cast<int>(dwRetVal),
                     std::system_category(),
                     "Error reading network adapter addresses"
@@ -257,7 +257,7 @@ namespace Utils
             else
             {
                 throw std::system_error
-                {   
+                {
                     static_cast<int>(dwRetVal),
                     std::system_category(),
                     "Error reading network adapter info"
@@ -309,7 +309,7 @@ namespace Utils
             }
             // inet_ntoa with in6_addr for Windows XP is not supported
             return retVal;
-        }        
+        }
 
         static std::string broadcastAddress(const std::string& ipAddress, const std::string& netmask)
         {
@@ -317,7 +317,7 @@ namespace Utils
             struct in_addr mask {};
             struct in_addr broadcast {};
 
-            std::string broadcastAddr { "unknown" };
+            std::string broadcastAddr;
 
             static auto pfnInetPton { getInetPtonFunctionAddress() };
             if (pfnInetPton)
@@ -437,7 +437,7 @@ namespace Utils
             }
 
             return netmask;
-        }        
+        }
     };
 }
 

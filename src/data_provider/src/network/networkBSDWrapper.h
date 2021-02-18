@@ -42,11 +42,11 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
     ifaddrs* m_interfaceAddress;
     const std::string m_scanTime;
- 
+
     public:
     explicit NetworkBSDInterface(ifaddrs* addrs)
     : m_interfaceAddress{addrs}
-    { 
+    {
         if (!addrs)
         {
             throw std::runtime_error { "Nullptr instances of network interface" };
@@ -70,25 +70,25 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string address() const override
     {
-        return m_interfaceAddress->ifa_addr ? 
+        return m_interfaceAddress->ifa_addr ?
             Utils::NetworkHelper::IAddressToBinary(
-                this->family(), 
+                this->family(),
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_addr))->sin_addr) : "";
     }
 
     std::string netmask() const override
     {
-        return m_interfaceAddress->ifa_netmask ? 
+        return m_interfaceAddress->ifa_netmask ?
             Utils::NetworkHelper::IAddressToBinary(
-                m_interfaceAddress->ifa_netmask->sa_family, 
+                m_interfaceAddress->ifa_netmask->sa_family,
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_netmask))->sin_addr) : "";
     }
 
     std::string broadcast() const override
     {
-        return m_interfaceAddress->ifa_dstaddr ? 
+        return m_interfaceAddress->ifa_dstaddr ?
             Utils::NetworkHelper::IAddressToBinary(
-                m_interfaceAddress->ifa_dstaddr->sa_family, 
+                m_interfaceAddress->ifa_dstaddr->sa_family,
                 &(reinterpret_cast<sockaddr_in *>(m_interfaceAddress->ifa_dstaddr))->sin_addr) : "";
     }
 
@@ -96,7 +96,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     {
         return m_interfaceAddress->ifa_addr ?
             Utils::NetworkHelper::IAddressToBinary(
-                m_interfaceAddress->ifa_addr->sa_family, 
+                m_interfaceAddress->ifa_addr->sa_family,
                 &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_addr))->sin6_addr) : "";
     }
 
@@ -165,7 +165,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string dhcp() const override
     {
-        return UNKNOWN_VALUE;
+        return "unknown";
     }
 
     std::string mtu() const override
@@ -190,14 +190,15 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
         }
         return retVal;
     }
-    
+
     std::string type() const override
     {
         std::string retVal;
         if (m_interfaceAddress->ifa_addr)
         {
             auto sdl { reinterpret_cast<struct sockaddr_dl *>(m_interfaceAddress->ifa_addr) };
-            retVal = Utils::NetworkHelper::getNetworkTypeStringCode(sdl->sdl_type, NETWORK_INTERFACE_TYPE);
+            const auto type { Utils::NetworkHelper::getNetworkTypeStringCode(sdl->sdl_type, NETWORK_INTERFACE_TYPE) };
+            retVal = type.empty() ? UNKNOWN_VALUE : type;
         }
         return retVal;
     }
