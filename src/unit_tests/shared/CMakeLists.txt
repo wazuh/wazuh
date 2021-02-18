@@ -6,7 +6,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot,--wrap,stat,--wrap,chmod,--wrap,getpid \
                             -Wl,--wrap,unlink,--wrap,_merror,--wrap,_minfo,--wrap,_mwarn \
                             -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose \
-                            -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove \
+                            -Wl,--wrap,fread,--wrap,ftell,--wrap,fseek,--wrap,fwrite,--wrap,remove \
                             -Wl,--wrap,fprintf,--wrap,fgets,--wrap,File_DateofChange \
                             -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1,--wrap,lstat \
                             -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose \
@@ -67,6 +67,18 @@ list(APPEND shared_tests_names "test_time_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
 
 list(APPEND shared_tests_names "test_buffer_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_utf8_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_fs_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_log_builder")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_custom_output_search_replace")
 list(APPEND shared_tests_flags " ")
 
 if(${TARGET} STREQUAL "server")
