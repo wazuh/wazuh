@@ -35,10 +35,6 @@ _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
-_edit_files_path = re.compile(r'^etc\/(ossec\.conf|(rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\/]+)$')
-_delete_files_path = re.compile(r'^etc\/((rules|decoders)\/[\w\-\/]+\.xml|lists\/[\w\-\/]+(\.cdb|))$')
-_get_files_path = re.compile(
-    r'(^etc\/ossec\.conf$)|(^(etc|ruleset)\/(decoders|rules)\/[\w\-]+\.{1}xml$)|(^etc\/lists\/[\w\-\/]+)$')
 _get_dirnames_path = re.compile(r'^(((etc|ruleset)\/(decoders|rules)[\w\-\/]*)|(etc\/lists[\w\-\/]*))$')
 _search_param = re.compile(r'^[^;\|&\^*>]+$')
 _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
@@ -131,45 +127,6 @@ def format_alphanumeric_symbols(value):
 @draft4_format_checker.checks("base64")
 def format_base64(value):
     return check_exp(value, _base64)
-
-
-@draft4_format_checker.checks("edit_files_path")
-def format_edit_files_path(relative_path):
-    """
-    Function to check if a relative path file is allowed to be uploaded or edited
-    :param relative_path: file path string to check
-    :return: True if path is OK, False otherwise
-    """
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _edit_files_path)
-
-
-@draft4_format_checker.checks("delete_files_path")
-def format_delete_files_path(relative_path):
-    """
-    Function to check if a relative path file is allowed to be deleted
-    :param relative_path: file path string to check
-    :return: True if path is OK, False otherwise
-    """
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _delete_files_path)
-
-
-@draft4_format_checker.checks("get_files_path")
-def format_get_files_path(relative_path):
-    """
-    Function to check if a relative path file is allowed to be read
-    :param relative_path: file path string to check
-    :return: True if path is OK, False otherwise
-    """
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, _get_files_path)
 
 
 @draft4_format_checker.checks("get_dirnames_path")

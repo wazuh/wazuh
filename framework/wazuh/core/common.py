@@ -64,12 +64,10 @@ local_internal_options = os.path.join(ossec_path, 'etc', 'local_internal_options
 ossec_log = os.path.join(ossec_path, 'logs', 'ossec.log')
 client_keys = os.path.join(ossec_path, 'etc', 'client.keys')
 stats_path = os.path.join(ossec_path, 'stats')
-ruleset_path = os.path.join(ossec_path, 'ruleset')
 groups_path = os.path.join(ossec_path, 'queue', 'agent-groups')
 multi_groups_path = os.path.join(ossec_path, 'var', 'multigroups')
 shared_path = os.path.join(ossec_path, 'etc', 'shared')
 backup_path = os.path.join(ossec_path, 'backup')
-ruleset_rules_path = os.path.join(ruleset_path, 'rules')
 database_path = os.path.join(ossec_path, 'var', 'db')
 database_path_global = os.path.join(database_path, 'global.db')
 wdb_socket_path = os.path.join(ossec_path, 'queue', 'db', 'wdb')
@@ -79,7 +77,21 @@ database_path_agents = os.path.join(database_path, 'agents')
 os_pidfile = os.path.join('var', 'run')
 analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-analysisd.state')
 remoted_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-remoted.state')
-lists_path = os.path.join(ossec_path, 'etc', 'lists')
+
+# Ruleset
+# Ruleset paths
+ruleset_path = os.path.join(ossec_path, 'ruleset')
+ruleset_rules_path = os.path.join(ruleset_path, 'rules')
+ruleset_decoders_path = os.path.join(ruleset_path, 'decoders')
+ruleset_lists_path = os.path.join(ruleset_path, 'lists')
+user_lists_path = os.path.join(ossec_path, 'etc', 'lists')
+user_rules_path = os.path.join(ossec_path, 'etc', 'rules')
+user_decoders_path = os.path.join(ossec_path, 'etc', 'decoders')
+# Ruleset vars
+RULES_EXTENSION = '.xml'
+DECODERS_EXTENSION = '.xml'
+LISTS_EXTENSION = ''
+COMPILED_LISTS_EXTENSION = '.cdb'
 
 # Queues
 ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')

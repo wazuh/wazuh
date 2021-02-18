@@ -16,6 +16,12 @@ All notable changes to this project will be documented in this file.
   - Upgraded Cryptography python library from 3.2.1 to 3.3.2. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
   - Upgraded cffi python library from 1.14.0 to 1.14.4. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
 
+- **API:**
+  - Added new endpoints to manage rules files. ([#7178](https://github.com/wazuh/wazuh/issues/7178))
+  - Added new endpoints to manage CDB lists files. ([#7180](https://github.com/wazuh/wazuh/issues/7180))
+  - Added new endpoints to manage decoder files. ([#7179](https://github.com/wazuh/wazuh/issues/7179))
+  - Added new manager and cluster endpoints to update Wazuh configuration (ossec.conf). ([#7181](https://github.com/wazuh/wazuh/issues/7181))
+  
 ### Fixed
 
 - **API:**
@@ -30,6 +36,11 @@ All notable changes to this project will be documented in this file.
 - **Core:**
   - Fixed a bug in Windows agent that did not honor the buffer's EPS limit. ([#7333](https://github.com/wazuh/wazuh/pull/7333))
   - Fixed a bug in Integratord that might lose alerts from Analysisd due to a race condition. ([#7338](https://github.com/wazuh/wazuh/pull/7338))
+  
+### Removed
+
+- **API:**
+  - Deprecated /manager/files and /cluster/{node_id}/files endpoints. ([#7209](https://github.com/wazuh/wazuh/issues/7209))
 
 
 ## [v4.1.0]

@@ -262,81 +262,6 @@ async def get_log_summary(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_files(request, pretty=False, wait_for_complete=False, path=None):
-    """Get file contents in manager or local_node.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param path: Filepath to return.
-    """
-    f_kwargs = {'path': path}
-
-    dapi = DistributedAPI(f=manager.get_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def put_files(request, body, overwrite=False, pretty=False, wait_for_complete=False, path=None):
-    """Upload file in manager or local_node.
-
-    :param body: Body request with the content of the file to be uploaded
-    :param overwrite: If set to false, an exception will be raised when updating contents of an already existing
-    filename.
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param path: Filepath to return.
-    """
-    # Parse body to utf-8
-    Body.validate_content_type(request, expected_content_type='application/octet-stream')
-    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
-
-    f_kwargs = {'path': path,
-                'overwrite': overwrite,
-                'content': parsed_body}
-
-    dapi = DistributedAPI(f=manager.upload_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
-async def delete_files(request, pretty=False, wait_for_complete=False, path=None):
-    """Delete file in manager or local_node.
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param path: Filepath to return.
-    """
-    f_kwargs = {'path': path}
-
-    dapi = DistributedAPI(f=manager.delete_file,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_any',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
-
-
 async def get_api_config(request, pretty=False, wait_for_complete=False):
     """Get active API configuration in manager or local_node.
 
@@ -412,6 +337,35 @@ async def get_manager_config_ondemand(request, component, pretty=False, wait_for
                 }
 
     dapi = DistributedAPI(f=manager.get_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def update_configuration(request, body, pretty=False, wait_for_complete=False):
+    """Update manager's or local_node's configuration (ossec.conf).
+
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+    wait_for_complete : bool, optional
+        Disable response timeout or not. Default `False`
+    """
+    # Parse body to utf-8
+    Body.validate_content_type(request, expected_content_type='application/octet-stream')
+    parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
+
+    f_kwargs = {'new_conf': parsed_body}
+
+    dapi = DistributedAPI(f=manager.update_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,

@@ -45,6 +45,7 @@ class WazuhException(Exception):
                'remediation': 'Please, ensure you have the required file permissions in Wazuh directories'},
         1017: 'Some Wazuh daemons are not ready yet in node "{node_name}" ({not_ready_daemons})',
         1018: 'Body request is not a valid JSON',
+        1019: 'Error trying to create backup file',
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Requested component does not exist',
@@ -95,6 +96,12 @@ class WazuhException(Exception):
         1123: {'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
         1124: {'message': 'Remote command detected',
                'remediation': f'To solve this issue please enable the remote commands in the API settings or add an exception: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#remote-commands-configuration'},
+        1125: {'message': 'Invalid ossec configuration',
+               'remediation': 'Please, provide a valid ossec configuration'
+               },
+        1126: {'message': 'Error updating ossec configuration',
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
+               },
 
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
@@ -347,7 +354,11 @@ class WazuhException(Exception):
         1804: {'message': 'Error reading lists file',
                'remediation': 'Please, make sure you provide a correct filepath'
                },
-
+        1805: {'message': 'File with the same name already exists in a subdirectory.',
+               'remediation': 'Please, make sure to use a name which is not repeated. '
+               },
+        1806: {'message': 'Error trying to create CDB list file.'
+               },
         1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
                           'The error message will be the output of upgrade module'},
 
