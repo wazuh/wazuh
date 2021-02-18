@@ -80,7 +80,8 @@ char* getPrimaryIP(){
 #if defined __linux__ || defined __MACH__
     cJSON *object;
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
-        if (sysinfo_network_ptr(&object) != -1) {
+        const int error_code = sysinfo_network_ptr(&object);
+        if (error_code == 0) {
             if (object) {
                 const cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 if (iface) {
@@ -109,7 +110,7 @@ char* getPrimaryIP(){
             }
         }
         else {
-            mterror(WM_CONTROL_LOGTAG, "Unable to get system network information (%d) %s.", errno, strerror(errno));
+            mterror(WM_CONTROL_LOGTAG, "Unable to get system network information. Error code: %d.", error_code);
         }
     }
 #elif defined sun

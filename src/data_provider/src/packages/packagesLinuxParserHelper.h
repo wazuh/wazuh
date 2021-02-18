@@ -110,7 +110,7 @@ namespace PackageLinuxHelper
             it = info.find("Installed-Size");
             if (it != info.end())
             {
-                size = stoi(it->second);
+                size = stol(it->second);
             }
             it = info.find("Multi-Arch");
             if (it != info.end())

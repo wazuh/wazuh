@@ -356,7 +356,8 @@ char *get_agent_ip()
 
     cJSON *object;
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
-        if (sysinfo_network_ptr(&object) != -1) {
+        const int error_code = sysinfo_network_ptr(&object);
+        if (error_code == 0) {
             if (object) {
                 const cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 if (iface) {
@@ -385,7 +386,7 @@ char *get_agent_ip()
             }
         }
         else {
-            merror("Unable to get system network information.");
+            merror("Unable to get system network information. Error code: %d.", error_code);
         }
     }
     return agent_ip;

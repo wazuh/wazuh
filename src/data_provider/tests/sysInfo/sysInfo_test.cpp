@@ -148,3 +148,12 @@ TEST_F(SysInfoTest, os_c_interface)
     EXPECT_TRUE(object);
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
+
+TEST_F(SysInfoTest, c_interfaces_bad_params)
+{
+    EXPECT_EQ(-1, sysinfo_hardware(NULL));
+    EXPECT_EQ(-1, sysinfo_packages(NULL));
+    EXPECT_EQ(-1, sysinfo_processes(NULL));
+    EXPECT_EQ(-1, sysinfo_ports(NULL));
+    EXPECT_EQ(-1, sysinfo_os(NULL));
+}
