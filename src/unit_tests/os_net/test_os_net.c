@@ -125,31 +125,6 @@ void test_tcpv4_secure(void **state)
     OS_CloseSocket(server_root_socket);
 }
 
-void test_tcpv4_cluster_secure(void **state)
-{
-    int server_root_socket, server_client_socket, client_socket;
-    char buffer[BUFFERSIZE];
-    char ipbuffer[BUFFERSIZE];
-
-    assert_return_code((server_root_socket = OS_Bindporttcp(PORT, IPV4, 0)), 0);
-
-    assert_return_code((client_socket = OS_ConnectTCP(PORT, IPV4, 0)) , 0);
-
-    assert_return_code((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
-
-    assert_string_equal(ipbuffer, IPV4);
-
-    assert_int_equal(OS_SendSecureTCPCluster(client_socket, "test", SENDSTRING, strlen(SENDSTRING)), 0);
-
-    assert_int_equal(OS_RecvSecureClusterTCP(server_client_socket, buffer, BUFFERSIZE), 13);
-
-    assert_string_equal(buffer, SENDSTRING);
-
-    OS_CloseSocket(client_socket);
-    OS_CloseSocket(server_client_socket);
-    OS_CloseSocket(server_root_socket);
-}
-
 void test_tcpv6(void **state)
 {
     int server_root_socket, server_client_socket, client_socket;
@@ -201,31 +176,6 @@ void test_tcpv6_secure(void **state)
     assert_int_equal(OS_SendSecureTCP(client_socket, strlen(SENDSTRING), SENDSTRING), 0);
 
     assert_int_equal(OS_RecvSecureTCP(server_client_socket, buffer, BUFFERSIZE), 13);
-
-    assert_string_equal(buffer, SENDSTRING);
-
-    OS_CloseSocket(client_socket);
-    OS_CloseSocket(server_client_socket);
-    OS_CloseSocket(server_root_socket);
-}
-
-void test_tcpv6_cluster_secure(void **state)
-{
-    int server_root_socket, server_client_socket, client_socket;
-    char buffer[BUFFERSIZE];
-    char ipbuffer[BUFFERSIZE];
-
-    assert_return_code((server_root_socket = OS_Bindporttcp(PORT, IPV6, 1)), 0);
-
-    assert_return_code((client_socket = OS_ConnectTCP(PORT, IPV6, 1)) , 0);
-
-    assert_return_code((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
-
-    assert_string_equal(ipbuffer, "0.0.0.0");
-
-    assert_int_equal(OS_SendSecureTCPCluster(client_socket, "test", SENDSTRING, strlen(SENDSTRING)), 0);
-
-    assert_int_equal(OS_RecvSecureClusterTCP(server_client_socket, buffer, BUFFERSIZE), 13);
 
     assert_string_equal(buffer, SENDSTRING);
 
@@ -388,10 +338,8 @@ int main(void) {
         cmocka_unit_test(test_tcpv4_local),
         cmocka_unit_test(test_tcpv4_inet),
         cmocka_unit_test(test_tcpv4_secure),
-        cmocka_unit_test(test_tcpv4_cluster_secure),
         cmocka_unit_test(test_tcpv6),
         cmocka_unit_test(test_tcpv6_secure),
-        cmocka_unit_test(test_tcpv6_cluster_secure),
         cmocka_unit_test(test_tcp_invalid_sockets),
         cmocka_unit_test(test_udpv4),
         cmocka_unit_test(test_udpv6),
