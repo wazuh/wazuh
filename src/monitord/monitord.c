@@ -16,7 +16,7 @@
 #include "monitord.h"
 #include "config/config.h"
 #include "string_op.h"
-#include "wazuh_db/wdb_global_helpers.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "time.h"
 
 /* Global variables */
