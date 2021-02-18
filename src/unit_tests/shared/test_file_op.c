@@ -643,38 +643,6 @@ void test_w_homedir_check_argv0(void **state)
     free(val);
 }
 
-#ifdef __MACH__
-void test_w_homedir_macOS(void **state)
-{
-    char *argv0 = "bin/test";
-    char *val = NULL;
-
-    expect_string(__wrap_realpath, path, "/proc/self/exe");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-
-    expect_string(__wrap_realpath, path, "/proc/curproc/file");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-
-    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
-    will_return(__wrap_realpath, NULL);
-    will_return(__wrap_realpath, (char *) 0);
-
-    expect_string(wrap_proc_pidpath, pid, getpid());
-    will_return(wrap_proc_pidpath, "/usr/share/wazuh/bin/test");
-    will_return(wrap_proc_pidpath, 1);
-
-    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
-    will_return(__wrap_stat, S_IFDIR);
-    will_return(__wrap_stat, 0);
-
-    val = w_homedir(argv0);
-    assert_string_equal(val, "/usr/share/wazuh");
-    free(val);
-}
-#endif
-
 void test_w_homedir_env_var(void **state)
 {
     char *val = NULL;
@@ -822,9 +790,6 @@ int main(void) {
         cmocka_unit_test(test_w_homedir_second_attempt),
         cmocka_unit_test(test_w_homedir_third_attempt),
         cmocka_unit_test(test_w_homedir_check_argv0),
-#ifdef __MACH__
-        cmocka_unit_test(test_w_homedir_macOS),
-#endif
         cmocka_unit_test(test_w_homedir_env_var),
         cmocka_unit_test(test_w_homedir_stat_fail)
 #else
