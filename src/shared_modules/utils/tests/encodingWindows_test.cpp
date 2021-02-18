@@ -20,9 +20,26 @@ void EncodingWindowsHelperTest::TearDown() {};
 TEST_F(EncodingWindowsHelperTest, NoExceptConversion)
 {
     nlohmann::json test;
-    test["correct"] = Utils::EncodingWindowsHelper::wstringToStringUTF8(L"������");
-
+    std::wstring wideString = L"Eines de correcció del Microsoft Office 2016: català";
+    std::string multibyteString;
+    multibyteString.assign(wideString.begin(), wideString.end());
+    test["correct"] = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(multibyteString);
     EXPECT_NO_THROW(test.dump());
+}
+
+TEST_F(EncodingWindowsHelperTest, ExceptWithoutConversion)
+{
+    nlohmann::json test;
+    std::wstring wideString = L"Eines de correcció del Microsoft Office 2016: català";
+    std::string multibyteString;
+    multibyteString.assign(wideString.begin(), wideString.end());
+    test["incorrect"] = multibyteString;
+    EXPECT_ANY_THROW(test.dump());
+}
+
+TEST_F(EncodingWindowsHelperTest, ReturnValueEmptyConversion)
+{
+    EXPECT_EQ(Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(""), "");
 }
 
 #endif
