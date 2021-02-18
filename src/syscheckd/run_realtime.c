@@ -11,10 +11,6 @@
 #include "shared.h"
 #include "syscheck.h"
 
-volatile int audit_thread_active;
-volatile int whodata_alerts;
-volatile int audit_db_consistency_flag;
-
 #include "fs_op.h"
 #include "hash_op.h"
 #include "debug_op.h"

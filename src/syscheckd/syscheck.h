@@ -562,13 +562,6 @@ void clean_rules(void);
  */
 
 int filterkey_audit_events(char *buffer);
-extern volatile int audit_thread_active;
-extern volatile int whodata_alerts;
-extern volatile int audit_db_consistency_flag;
-extern pthread_mutex_t audit_mutex;
-extern pthread_cond_t audit_thread_started;
-extern pthread_cond_t audit_hc_started;
-extern pthread_cond_t audit_db_consistency;
 
 #elif WIN32
 /**
