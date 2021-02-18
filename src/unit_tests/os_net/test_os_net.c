@@ -173,7 +173,7 @@ static void test_OS_Bindportudp_fail_socket(void **state) {
 
 #else
 
-    expect_value(__wrap_socket,__domain,PF_INET);
+    expect_value(__wrap_socket,__domain,PF_INET6);
     expect_value(__wrap_socket,__type,SOCK_DGRAM);
     expect_value(__wrap_socket,__protocol,IPPROTO_UDP);
     will_return(__wrap_socket, bad_test_ossock);
