@@ -24,5 +24,6 @@ extern time_t current_time;
 #ifdef WIN32
 long long int __wrap_get_windows_file_time_epoch(FILETIME ft);
 #endif
+void __wrap_gettime(struct timespec *ts);
 
 #endif

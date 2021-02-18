@@ -50,6 +50,8 @@ if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
   add_subdirectory(syscheckd)
   add_subdirectory(shared)
   add_subdirectory(os_xml)
+  add_subdirectory(os_regex)
+  add_subdirectory(os_zlib)
 endif()
 
 # Config files

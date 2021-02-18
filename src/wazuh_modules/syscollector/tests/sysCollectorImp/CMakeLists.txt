@@ -7,6 +7,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
+include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 
 file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
@@ -15,11 +16,20 @@ file(GLOB SYSCOLLECTOR_IMP_SRC
     "${CMAKE_SOURCE_DIR}/src/syscollectorImp.cpp"
     "${CMAKE_SOURCE_DIR}/src/syscollectorNormalizer.cpp")
 
+file(GLOB RSYNC_IMP_SRC
+    "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
+
+file(GLOB DBSYNC_IMP_SRC
+    "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
+    "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/*.cpp")
+
 add_definitions(-DWAZUH_UNIT_TESTING)
 
-add_executable(syscollectorimp_unit_test 
+add_executable(syscollectorimp_unit_test
     ${SYSCOLLECTOR_IMP_UNIT_TEST_SRC}
-    ${SYSCOLLECTOR_IMP_SRC})
+    ${SYSCOLLECTOR_IMP_SRC}
+    ${RSYNC_IMP_SRC}
+    ${DBSYNC_IMP_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(syscollectorimp_unit_test
         debug gtestd
@@ -31,8 +41,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gtest_main
         optimized gmock_main
         pthread
-        rsync
-        dbsync
+        cjson
+        sqlite3
         crypto
         ws2_32
         ssl
@@ -50,8 +60,9 @@ else()
         optimized gtest_main
         optimized gmock_main
         pthread
-        rsync
-        dbsync
+        sqlite3
+        cjson
+        crypto
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

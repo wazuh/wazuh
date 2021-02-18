@@ -32,6 +32,10 @@ char* __wrap_w_get_timestamp(time_t time) {
     return mock_type(char*);
 }
 
+void __wrap_gettime(struct timespec *ts) {
+    ts->tv_sec = mock_type(time_t);
+}
+
 #ifdef WIN32
 long long __wrap_get_windows_file_time_epoch(FILETIME ftime) {
     check_expected(ftime.dwLowDateTime);
