@@ -17,6 +17,12 @@
 #include "os_net.h"
 #include "wazuh_modules/wmodules.h"
 
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "unit_tests/wrappers/windows/winsock_wrappers.h"
+#endif
+#endif
+
 #ifdef __MACH__
 #define TCP_KEEPIDLE TCP_KEEPALIVE
 #endif
