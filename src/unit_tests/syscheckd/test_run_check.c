@@ -94,10 +94,6 @@ static int setup_group(void ** state) {
 
     will_return_always(__wrap_os_random, 12345);
 
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
-
     if(Read_Syscheck_Config("test_syscheck.conf"))
         fail();
 

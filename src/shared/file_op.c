@@ -587,7 +587,7 @@ char *GetRandomNoise()
 
 int DeletePID(const char *name)
 {
-    char file[256];
+    char file[256] = {'\0'};
 
     snprintf(file, 255, "%s/%s-%d.pid", OS_PIDFILE, name, (int)getpid());
 

@@ -168,10 +168,6 @@ static int setup_group(void **state) {
     test_mode = 0;
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
-
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck.conf");
 
@@ -190,10 +186,6 @@ static int setup_root_group(void **state) {
 
     test_mode = 0;
     expect_any_always(__wrap__mdebug1, formatted_msg);
-
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
 
     // Read and setup global values.
     Read_Syscheck_Config("test_syscheck_top_level.conf");

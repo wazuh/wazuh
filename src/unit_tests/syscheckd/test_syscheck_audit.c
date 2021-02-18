@@ -453,6 +453,9 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
+    expect_abspath(AUDIT_CONF_FILE, 1);
+    expect_abspath(AUDIT_SOCKET, 1);
+
     expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -498,6 +501,9 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
+    expect_abspath(AUDIT_CONF_FILE, 1);
+    expect_abspath(AUDIT_SOCKET, 1);
+
     expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
@@ -525,6 +531,9 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
 
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
+
+    expect_abspath(AUDIT_CONF_FILE, 1);
+    expect_abspath(AUDIT_SOCKET, 1);
 
     expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
@@ -561,6 +570,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
 
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
+
+    expect_abspath(AUDIT_CONF_FILE, 1);
+    expect_abspath(AUDIT_SOCKET, 1);
 
     expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
@@ -614,6 +626,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
 
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
+
+    expect_abspath(AUDIT_CONF_FILE, 1);
+    expect_abspath(AUDIT_SOCKET, 1);
 
     expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
@@ -669,6 +684,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
 
+    expect_abspath(AUDIT_CONF_FILE, 1);
+    expect_abspath(AUDIT_SOCKET, 1);
+
     expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -718,6 +736,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
 
     expect_string(__wrap_IsLink, file, audit3_socket);
     will_return(__wrap_IsLink, 1);
+
+    expect_abspath(AUDIT_CONF_FILE, 1);
+    expect_abspath(AUDIT_SOCKET, 1);
 
     expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
     expect_string(__wrap_fopen, mode, "w");
@@ -2156,6 +2177,9 @@ void test_audit_parse_delete_folder_hex5_error(void **state) {
 void test_audit_health_check_fail_to_add_rule(void **state) {
     int ret;
 
+    expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
+    expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
+
     will_return(__wrap_audit_add_rule, -1);
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_AUDIT_HEALTHCHECK_RULE);
@@ -2169,6 +2193,9 @@ void test_audit_health_check_fail_to_add_rule(void **state) {
 void test_audit_health_check_fail_to_create_hc_file(void **state) {
     int ret;
 
+    expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
+    expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
+
     hc_thread_active = 0;
 
     will_return(__wrap_audit_add_rule, -17);
@@ -2180,7 +2207,7 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
     expect_function_call(__wrap_pthread_cond_wait);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string_count(__wrap_fopen, path, "tmp/audit_hc", 10);
+    expect_string_count(__wrap_fopen, path, AUDIT_HEALTHCHECK_FILE, 10);
     expect_string_count(__wrap_fopen, mode, "w", 10);
     will_return_count(__wrap_fopen, 0, 10);
 
@@ -2190,10 +2217,10 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_CREATE_ERROR);
 
-    expect_string(__wrap_unlink, file, "tmp/audit_hc");
+    expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_audit_delete_rule, path, "tmp");
+    expect_string(__wrap_audit_delete_rule, path, AUDIT_HEALTHCHECK_DIR);
     expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
     will_return(__wrap_audit_delete_rule, 1);
 
@@ -2206,6 +2233,9 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
 void test_audit_health_check_no_creation_event_detected(void **state) {
     int ret;
 
+    expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
+    expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
+
     hc_thread_active = 0;
 
     will_return(__wrap_audit_add_rule, -17);
@@ -2217,7 +2247,7 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
     expect_function_call(__wrap_pthread_cond_wait);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string_count(__wrap_fopen, path, "tmp/audit_hc", 10);
+    expect_string_count(__wrap_fopen, path, AUDIT_HEALTHCHECK_FILE, 10);
     expect_string_count(__wrap_fopen, mode, "w", 10);
     will_return_count(__wrap_fopen, 1, 10);
 
@@ -2228,10 +2258,10 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_CREATE_ERROR);
 
-    expect_string(__wrap_unlink, file, "tmp/audit_hc");
+    expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_audit_delete_rule, path, "tmp");
+    expect_string(__wrap_audit_delete_rule, path, AUDIT_HEALTHCHECK_DIR);
     expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
     will_return(__wrap_audit_delete_rule, 1);
 
@@ -2244,6 +2274,9 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
 void test_audit_health_check_success(void **state) {
     int ret;
 
+    expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
+    expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
+
     hc_thread_active = 0;
 
     will_return(__wrap_audit_add_rule, 1);
@@ -2255,7 +2288,7 @@ void test_audit_health_check_success(void **state) {
     expect_function_call(__wrap_pthread_cond_wait);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap_fopen, path, "tmp/audit_hc");
+    expect_string(__wrap_fopen, path, AUDIT_HEALTHCHECK_FILE);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
 
@@ -2266,10 +2299,10 @@ void test_audit_health_check_success(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_SUCCESS);
 
-    expect_string(__wrap_unlink, file, "tmp/audit_hc");
+    expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_audit_delete_rule, path, "tmp");
+    expect_string(__wrap_audit_delete_rule, path, AUDIT_HEALTHCHECK_DIR);
     expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
     will_return(__wrap_audit_delete_rule, 1);
 
