@@ -19,8 +19,6 @@
 #include "../wrappers/common.h"
 #include "../../headers/defs.h"
 
-const char * w_get_attr_val_by_name(xml_node * node, const char * name);
-
 // Struct
 typedef struct test_struct {
     OS_XML xml;
@@ -68,17 +66,17 @@ static int test_teardown(void **state) {
     if(data->content5 != NULL) {
         int i = 0;
         while (data->content5[i]) {
-            free(data->content5[i++]);
+            os_free(data->content5[i++]);
         }
-        free(data->content5);
+        os_free(data->content5);
     }
 
     if(data->content6 != NULL) {
         int i = 0;
         while (data->content6[i]) {
-            free(data->content6[i++]);
+            os_free(data->content6[i++]);
         }
-        free(data->content6);
+        os_free(data->content6);
     }
 
     OS_ClearNode(data->node);
@@ -87,13 +85,12 @@ static int test_teardown(void **state) {
     unlink(data->xml_file_name);
     unlink(data->xml_out_file_name);
 
-    free(data);
+    os_free(data);
 
     return OS_SUCCESS;
 }
 
 // Tests
-
 static void create_xml_file(const char *str, char file_name[], size_t length) {
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", length);
     int fd = mkstemp(file_name);
@@ -652,17 +649,6 @@ void test_os_root_elements_exists(void **state) {
     assert_int_equal(OS_RootElementExist(&data->xml, element), 0);
 }
 
-void test_os_elements_exists(void **state) {
-    test_struct_t *data  = (test_struct_t *)*state;
-    create_xml_file("<root><root1><root2></root2></root1></root>", data->xml_file_name, 256);
-
-    assert_int_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
-    assert_int_equal(OS_ApplyVariables(&data->xml), 0);
-
-    const char *element1[] = { "root", "root1" };
-    assert_int_equal(OS_ElementExist(&data->xml, element1), 0);
-}
-
 void test_os_get_one_content_for_element(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     create_xml_file("<root><child>test</child><child>test2</child><child2>test</child2></root>", data->xml_file_name, 256);
@@ -823,14 +809,9 @@ void test_get_element_content(void **state) {
     assert_int_equal(OS_ApplyVariables(&data->xml), 0);
     const char *xml_path[] = { "root", NULL };
 
-    data->xml.fol = 2;
+    data->xml.fol = 1;
     data->content5 = OS_GetContents(&data->xml, xml_path);
     assert_null(data->content5);
-
-    data->xml.fol = 1;
-    data->xml.cur = 1;
-    data->content6 = OS_GetContents(&data->xml, xml_path);
-    assert_null(data->content6);
 }
 
 void test_os_get_elements(void **state) {
@@ -1076,9 +1057,6 @@ int main(void) {
         // Invalid variable name inside XML test
         cmocka_unit_test_setup_teardown(test_invalid_variable_name, test_setup, test_teardown),
 
-        // Invalid variable content inside XML test
-        //cmocka_unit_test_setup_teardown(test_invalid_variable_content, test_setup, test_teardown),
-
         // Invalid variable name (2*MAX_SIZE) inside XML test
         cmocka_unit_test_setup_teardown(test_invalid_variable_double_max_size, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_invalid_variable_double_max_size2, test_setup, test_teardown),
@@ -1121,7 +1099,6 @@ int main(void) {
 
         // OS_RootElementExist test
         cmocka_unit_test_setup_teardown(test_os_root_elements_exists, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_os_elements_exists, test_setup, test_teardown),
 
         // OS_GetOneContentforElement test
         cmocka_unit_test_setup_teardown(test_os_get_one_content_for_element, test_setup, test_teardown),
