@@ -940,7 +940,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     key_unlock();
     if (protocol < 0) {
         merror(AR_NOAGENT_ERROR, agent_id);
-        return (-1);
+        return -1;
     }
 
     /* Send the file contents */
