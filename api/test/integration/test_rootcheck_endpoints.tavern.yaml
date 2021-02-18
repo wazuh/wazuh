@@ -374,6 +374,7 @@ stages:
       <<: *get_rootcheck_agent
       params:
         select: cis
+        sort: +cis
         distinct: true
     response:
       status_code: 200
@@ -381,11 +382,16 @@ stages:
         error: 0
         data:
           affected_items:
-            - cis: "1.4 Debian Linux"
-            - cis: "5.2 Debian Linux"
+            - cis: !anystr
+            - cis: !anystr
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "cis"
+            reverse: False
 
   # GET /rootcheck/001?select=status,distinct=true
   - name: Filter by select parameter and distinct, selecting status
