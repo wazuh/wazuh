@@ -17,7 +17,7 @@
 #include "os_regex/os_regex.h"
 #include "os_execd/execd.h"
 #include "eventinfo.h"
-#include "wazuh_db/wdb_global_helpers.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "labels.h"
 
 static const char* get_ip(const Eventinfo *lf);

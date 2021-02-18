@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "monitord.h"
 #include "read-agents.h"
-#include "wazuh_db/wdb_global_helpers.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 static int mon_send_agent_msg(char *agent, char *msg);
 int sock = -1;
