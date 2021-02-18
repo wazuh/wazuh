@@ -745,14 +745,9 @@ stages:
             - id: 103
             - id: 104
             - id: 105
-          failed_items:
-            - error:
-                code: 4008
-              id:
-                - 1
-                - 2
+          failed_items: []
           total_affected_items: 5
-          total_failed_items: 2
+          total_failed_items: 0
 
 ---
 test_name: DELETE /security/rules (invalid)
