@@ -11,7 +11,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1,--wrap,lstat \
                             -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose \
                             -Wl,--wrap,gzeof,--wrap,gzerror,--wrap,gzwrite -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
-                            -Wl,--wrap,realpath -Wl,--wrap,atexit -Wl,--wrap,_mdebug1 -Wl,--wrap,proc_pidpath \
+                            -Wl,--wrap,realpath -Wl,--wrap,atexit -Wl,--wrap,_mdebug1 \
                             -Wl,--wrap,_merror_exit")
     list(APPEND shared_tests_flags "${FILE_OP_BASE_FLAGS}")
 else()

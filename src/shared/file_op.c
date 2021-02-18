@@ -3353,8 +3353,10 @@ char *w_homedir(char *arg) {
     os_calloc(PATH_MAX, sizeof(char), buff);
 #ifdef __MACH__
     pid_t pid = getpid();
-#endif
-
+    if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
+        buff = w_strtok_r_str_delim(delim, &buff);
+    }
+#else
     if (realpath("/proc/self/exe", buff) != NULL) {
         dirname(buff);
         buff = w_strtok_r_str_delim(delim, &buff);
@@ -3365,10 +3367,6 @@ char *w_homedir(char *arg) {
     }
     else if (realpath("/proc/self/path/a.out", buff) != NULL) {
         dirname(buff);
-        buff = w_strtok_r_str_delim(delim, &buff);
-    }
-#ifdef __MACH__
-    else if (proc_pidpath(pid, buff, PATH_MAX) > 0) {
         buff = w_strtok_r_str_delim(delim, &buff);
     }
 #endif
