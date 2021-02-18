@@ -10,7 +10,7 @@
  */
 
 #include "wdb.h"
-#include "wdb_global_helpers.h"
+#include "helpers/wdb_global_helpers.h"
 
 static const char *SQL_DELETE_PM = "DELETE FROM pm_event;";
 
