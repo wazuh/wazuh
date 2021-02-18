@@ -184,7 +184,7 @@ void OS_Log(Eventinfo *lf, FILE * fp)
     /* FIM events */
 
     if (strcmp(lf->location, SYSCHECK) == 0) {
-        fprintf(fp, "Attributes:\n");
+        fwrite("Attributes:\n", 13, 1, fp);
 
         if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value != '\0') {
             fprintf(fp, " - Size: %s\n", lf->fields[FIM_SIZE].value);
@@ -267,7 +267,7 @@ void OS_Log(Eventinfo *lf, FILE * fp)
             if (strcmp(lf->fields[FIM_TAG].value, "") != 0) {
                 char * tags;
                 os_strdup(lf->fields[FIM_TAG].value, tags);
-                fprintf(fp, "\nTags:\n");
+                fwrite("\nTags:\n", 8, 1, fp);
                 char * tag;
                 tag = strtok_r(tags, ",", &saveptr);
                 while (tag != NULL) {
@@ -297,7 +297,7 @@ void OS_Log(Eventinfo *lf, FILE * fp)
         }
     }
 
-    fprintf(fp, "\n");
+    fputc('\n', fp);
 
     return;
 }
