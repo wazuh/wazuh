@@ -6,6 +6,7 @@ import datetime
 import logging
 
 from aiohttp import web
+from connexion.lifecycle import ConnexionResponse
 
 import wazuh.manager as manager
 import wazuh.stats as stats
@@ -14,6 +15,7 @@ from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
 from wazuh.core import common
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
@@ -60,16 +62,34 @@ async def get_info(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_configuration(request, pretty=False, wait_for_complete=False, section=None, field=None):
+async def get_configuration(request, pretty=False, wait_for_complete=False, section=None, field=None,
+                            raw: bool = False):
     """Get manager's or local_node's configuration (ossec.conf)
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param section: Indicates the wazuh configuration section
-    :param field: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+    wait_for_complete : bool, optional
+        Disable response timeout or not. Default `False`
+    section : str
+        Indicates the wazuh configuration section
+    field : str
+        Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+    raw : bool, optional
+        Whether to return the file content in raw or JSON format. Default `True`
+
+    Returns
+    -------
+    web.json_response or ConnexionResponse
+        Depending on the `raw` parameter, it will return an object or other:
+            raw=True            -> ConnexionResponse (application/xml)
+            raw=False (default) -> web.json_response (application/json)
+        If any exception was raised, it will return a web.json_response with details.
     """
     f_kwargs = {'section': section,
-                'field': field}
+                'field': field,
+                'raw': raw}
 
     dapi = DistributedAPI(f=manager.read_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -81,7 +101,11 @@ async def get_configuration(request, pretty=False, wait_for_complete=False, sect
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    if isinstance(data, AffectedItemsWazuhResult):
+        response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    else:
+        response = ConnexionResponse(body=data["message"], mimetype='application/xml', content_type='application/xml')
+    return response
 
 
 async def get_stats(request, pretty=False, wait_for_complete=False, date=None):

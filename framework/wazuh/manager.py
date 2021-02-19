@@ -231,7 +231,7 @@ def get_config(component=None, config=None):
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def read_ossec_conf(section=None, field=None):
+def read_ossec_conf(section=None, field=None, raw=False):
     """ Wrapper for get_ossec_conf
 
     :param section: Filters by section (i.e. rules).
@@ -246,6 +246,9 @@ def read_ossec_conf(section=None, field=None):
                                       )
 
     try:
+        if raw:
+            with open(common.ossec_path) as f:
+                return f.read()
         result.affected_items.append(get_ossec_conf(section=section, field=field))
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
