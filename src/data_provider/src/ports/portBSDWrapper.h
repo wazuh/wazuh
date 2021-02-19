@@ -65,7 +65,7 @@ class BSDPortWrapper final : public IPortWrapper
 
     std::string protocol() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         const auto it { PORTS_TYPE.find(m_spSocketInfo->psi.soi_kind) };
         if (it != PORTS_TYPE.end())
         {
@@ -133,7 +133,7 @@ class BSDPortWrapper final : public IPortWrapper
     }
     std::string state() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
 
         const auto itProtocol { PORTS_TYPE.find(m_spSocketInfo->psi.soi_kind) };
 

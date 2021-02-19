@@ -60,13 +60,13 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("curl", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["install_time"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["groups"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
+    EXPECT_EQ("", jsPackageInfo["install_time"]);
+    EXPECT_EQ("", jsPackageInfo["groups"]);
+    EXPECT_EQ("", jsPackageInfo["version"]);
+    EXPECT_EQ("", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["format"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["vendor"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["description"]);
+    EXPECT_EQ("", jsPackageInfo["vendor"]);
+    EXPECT_EQ("", jsPackageInfo["description"]);
 }
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)

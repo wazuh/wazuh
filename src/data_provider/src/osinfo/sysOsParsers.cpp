@@ -392,7 +392,7 @@ bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
     if (ret)
     {
         const auto it{MAC_CODENAME_MAP.find(match)};
-        output["os_codename"] = it != MAC_CODENAME_MAP.end() ? it->second : UNKNOWN_VALUE;
+        output["os_codename"] = it != MAC_CODENAME_MAP.end() ? it->second : "";
     }
     return ret;
 }

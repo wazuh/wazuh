@@ -13,6 +13,7 @@
 #include "timeHelper.h"
 #include "osinfo/sysOsParsers.h"
 #include "stringHelper.h"
+#include "sharedDefs.h"
 #include <sys/sysctl.h>
 #include <sys/utsname.h>
 

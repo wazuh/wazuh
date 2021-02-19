@@ -55,12 +55,12 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string name() const override
     {
-        return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : UNKNOWN_VALUE;
+        return m_interfaceAddress->ifa_name ? m_interfaceAddress->ifa_name : "";
     }
 
     std::string adapter() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     int family() const override
@@ -104,7 +104,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     {
         return m_interfaceAddress->ifa_netmask ?
             Utils::NetworkHelper::IAddressToBinary(
-                    m_interfaceAddress->ifa_netmask->sa_family, 
+                    m_interfaceAddress->ifa_netmask->sa_family,
                     &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_netmask))->sin6_addr) : "";
     }
 
@@ -112,13 +112,13 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
     {
         return m_interfaceAddress->ifa_dstaddr ?
             Utils::NetworkHelper::IAddressToBinary(
-                    m_interfaceAddress->ifa_dstaddr->sa_family, 
+                    m_interfaceAddress->ifa_dstaddr->sa_family,
                     &(reinterpret_cast<sockaddr_in6 *>(m_interfaceAddress->ifa_dstaddr))->sin6_addr) : "";
     }
 
     std::string gateway() const override
     {
-        std::string retVal = UNKNOWN_VALUE;
+        std::string retVal;
         size_t tableSize { 0 };
         int mib[] = { CTL_NET, PF_ROUTE, 0, PF_UNSPEC, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
 
@@ -155,17 +155,17 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string metrics() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     std::string metricsV6() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     std::string dhcp() const override
     {
-        return "unknown";
+        return UNKNOWN_VALUE;
     }
 
     uint32_t mtu() const override
@@ -193,7 +193,7 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
 
     std::string type() const override
     {
-        std::string retVal;
+        std::string retVal { UNKNOWN_VALUE };
         if (m_interfaceAddress->ifa_addr)
         {
             auto sdl { reinterpret_cast<struct sockaddr_dl *>(m_interfaceAddress->ifa_addr) };

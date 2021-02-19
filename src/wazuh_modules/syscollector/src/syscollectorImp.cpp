@@ -902,7 +902,7 @@ static void removeKeysWithEmptyValue(nlohmann::json& input)
         for (auto it = data.begin(); it != data.end(); )
         {
             if (it.value().type() == nlohmann::detail::value_t::string &&
-                it.value().get_ref<const std::string&>() == "unknown")
+                it.value().get_ref<const std::string&>().empty())
             {
                 it = data.erase(it);
             }
