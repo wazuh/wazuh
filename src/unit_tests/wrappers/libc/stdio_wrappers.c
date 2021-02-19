@@ -140,6 +140,10 @@ void expect_fread(char *file, size_t ret) {
     will_return(__wrap_fread, ret);
 }
 
+long int __wrap_ftell(__attribute__ ((__unused__)) FILE *stream) {
+    return mock();
+}
+
 extern int __real_fseek(FILE *stream, long offset, int whence);
 int __wrap_fseek(FILE *stream, long offset, int whence) {
     if (test_mode) {
