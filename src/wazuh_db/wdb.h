@@ -504,6 +504,9 @@ void wdb_free_agent_info_data(agent_info_data *agent_data);
  */
 wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
 
+/* JJP DOxygen */
+sqlite3_stmt* wdb_start_cached_transaction(wdb_t* wdb, wdb_stmt statement_index);
+
 /**
  * @brief Create database for agent from profile.
  *
@@ -720,6 +723,9 @@ int wdb_remove_database(const char * agent_id);
  * @return JSON array with the statement execution results. NULL On error.
  */
 cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status);
+
+/*JJP Doxygen*/
+int wdb_exec_stmt_silent(sqlite3_stmt* stmt); 
 
 /**
  * @brief Function to execute a SQL statement and save the result in a JSON array limited by size.
