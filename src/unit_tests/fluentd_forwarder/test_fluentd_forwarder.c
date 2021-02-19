@@ -16,6 +16,8 @@
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/wm_fluent.h"
 #include "../../wazuh_modules/wm_fluent.c"
+#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 
 typedef struct test_struct {
     wm_fluent_t *fluent;
@@ -61,17 +63,12 @@ void assert_int_ge(int X, int Y) {
     }
 }
 
-// Wrappers
-void __wrap__mterror(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {}
-void __wrap__mtinfo(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {}
-void __wrap__mtwarn(const char *tag, const char * file, int line, const char * func, const char *msg, ...) {}
-int __wrap_OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6) {
-    return 1;
-}
-
 // Tests
 void test_check_config_no_tag(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap__mterror, tag, "fluent-forward");
+    expect_string(__wrap__mterror, formatted_msg, "No tag defined.");
 
     data->fluent->tag = NULL;
     assert_int_lt(wm_fluent_check_config(data->fluent), 0);
@@ -80,12 +77,18 @@ void test_check_config_no_tag(void **state){
 void test_check_config_no_socket(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
 
+    expect_string(__wrap__mterror, tag, "fluent-forward");
+    expect_string(__wrap__mterror, formatted_msg, "No socket_path defined.");
+
     data->fluent->tag = "debug.test";
     assert_int_lt(wm_fluent_check_config(data->fluent), 0);
 }
 
 void test_check_config_no_address(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap__mtinfo, tag, "fluent-forward");
+    expect_string(__wrap__mtinfo, formatted_msg, "No client address defined. Using localhost.");
 
     data->fluent->tag = "debug.test";
     data->fluent->sock_path = "/var/run/socket.s";
@@ -102,6 +105,9 @@ void test_check_config_invalid_timeout(void **state){
     data->fluent->address = "localhost";
     data->fluent->timeout = -1;
 
+    expect_string(__wrap__mterror, tag, "fluent-forward");
+    expect_string(__wrap__mterror, formatted_msg, "Invalid timeout value (negative)");
+
     assert_int_lt(wm_fluent_check_config(data->fluent), 0);
 }
 
@@ -113,6 +119,12 @@ void test_check_config_no_password(void **state){
     data->fluent->address = "localhost";
     data->fluent->timeout = 0;
     data->fluent->user_name = "user";
+
+    expect_string(__wrap__mtwarn, tag, "fluent-forward");
+    expect_string(__wrap__mtwarn, formatted_msg, "No shared_key defined. SSL is disabled and the user_name option won't apply.");
+
+    expect_string(__wrap__mterror, tag, "fluent-forward");
+    expect_string(__wrap__mterror, formatted_msg, "Password required because user_name is defined");
 
     assert_int_lt(wm_fluent_check_config(data->fluent), 0);
 }
@@ -158,6 +170,12 @@ void test_check_default_connection(void **state) {
     data->fluent->address = "localhost";
     data->fluent->port = 24224;
     data->fluent->timeout = 0;
+
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 1);
+
     int simple_configuration_defaut_connection = wm_fluent_connect(data->fluent);
 
     assert_int_equal(simple_configuration_defaut_connection, 0);
@@ -171,8 +189,16 @@ void test_check_default_handshake(void **state) {
     data->fluent->address = "localhost";
     data->fluent->port = 24224;
     data->fluent->timeout = 0;
-    int simple_configuration_defaut_handshake = wm_fluent_handshake(data->fluent);
 
+    expect_string(__wrap__mtinfo, tag, "fluent-forward");
+    expect_string(__wrap__mtinfo, formatted_msg, "Connected to host localhost:24224");
+
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 1);
+
+    int simple_configuration_defaut_handshake = wm_fluent_handshake(data->fluent);
     assert_int_equal(simple_configuration_defaut_handshake, 0);
 }
 
@@ -185,6 +211,14 @@ void test_check_send(void **state) {
     data->fluent->port = 24224;
     data->fluent->timeout = 0;
     data->fluent->object_key = "message";
+
+    expect_string(__wrap__mtinfo, tag, "fluent-forward");
+    expect_string(__wrap__mtinfo, formatted_msg, "Connected to host localhost:24224");
+
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 1);
 
     int simple_configuration_defaut_handshake = wm_fluent_handshake(data->fluent);
     assert_int_equal(simple_configuration_defaut_handshake, 0);
