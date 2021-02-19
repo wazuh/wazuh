@@ -4127,6 +4127,13 @@ components:
       required: False
       schema:
         type: boolean
+    raw_conf:
+      in: query
+      name: raw
+      description: "Format response in plain text"
+      required: False
+      schema:
+        type: boolean
     registry:
       in: query
       name: registry
@@ -7955,7 +7962,7 @@ paths:
       tags:
       - Cluster
       summary: "Get node config"
-      description: "Return wazuh configuration used in node {node_id}"
+      description: "Return wazuh configuration used in node {node_id}. The 'section' and 'field' parameters will be ignored if 'raw' parameter is provided."
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -7963,6 +7970,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/raw_conf'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:
@@ -9384,13 +9392,14 @@ paths:
       tags:
       - Manager
       summary: "Get configuration"
-      description: "Return wazuh configuration used"
+      description: "Return wazuh configuration used. The 'section' and 'field' parameters will be ignored if 'raw' parameter is provided."
       operationId: api.controllers.manager_controller.get_configuration
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/raw_conf'
         - $ref: '#/components/parameters/section'
         - $ref: '#/components/parameters/field'
       responses:

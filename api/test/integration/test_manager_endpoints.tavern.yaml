@@ -116,6 +116,21 @@ stages:
         extra_kwargs:
           select_key: "{section:s}"
 
+  # GET /manager/configuration
+  - name: Request all sections in raw format
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        raw: True
+    response:
+      status_code: 200
+      headers:
+        content-type: "application/xml; charset=utf-8"
+
 ---
 test_name: GET /manager/configuration
 
