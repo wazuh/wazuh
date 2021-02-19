@@ -3135,7 +3135,6 @@ components:
           type: string
           description: "Whether the package has multi architecture support"
           enum:
-            - no-multiarch
             - allowed
             - same
             - foreign
