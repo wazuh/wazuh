@@ -639,6 +639,22 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: PUT /cluster/{node_id}/configuration
+
+stages:
+  - name: Try to update configuration (worker1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /cluster/{node_id}/stats
 
 stages:
@@ -731,57 +747,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/logs/summary"
       method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /cluster/{node_id}/files
-
-stages:
-  - name: Try to get ossec.conf (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
-      method: GET
-      params:
-        path: etc/ossec.conf
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /cluster/{node_id}/files
-
-stages:
-  - name: Try to upload ossec.conf (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
-      method: PUT
-      data: "test"
-      params:
-        overwrite: True
-        path: etc/ossec.conf
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      <<: *permission_denied
-
----
-test_name: DELETE /cluster/{node_id}/files
-
-stages:
-  - name: Try to delete node local_rules.xml file (worker1)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/files"
-      method: DELETE
-      params:
-        path: etc/rules/local_rules.xml
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -916,16 +881,46 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /decoders/files/{file}/download
+test_name: GET /decoders/files/{filename}
 
 stages:
   - name: Try to get decoder file content
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /decoders/files/{filename}
+
+stages:
+  - name: Try to delete decoder file content
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /decoders/files/{filename}
+
+stages:
+  - name: Try to upload decoder file content
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
+      method: PUT
+      data: "{new_decoder:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
     response:
       <<: *permission_denied
 
@@ -1416,6 +1411,50 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /lists/files/{filename}
+
+stages:
+  - name: Try to get CDB list file content
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /lists/files/{filename}
+
+stages:
+  - name: Try to upload CDB list file content
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new-list"
+      method: PUT
+      data: "{new_cdb_list:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /lists/files/{filename}
+
+stages:
+  - name: Try to delete CDB list file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /lists/files
 
 stages:
@@ -1508,13 +1547,29 @@ stages:
 test_name: GET /manager/configuration
 
 stages:
-  - name: Try to get manager info
+  - name: Try to get manager configuration
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /manager/configuration
+
+stages:
+  - name: Try to update manager configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{valid_ossec_conf:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
     response:
       <<: *permission_denied
 
@@ -1611,55 +1666,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/logs/summary"
       method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /manager/files
-
-stages:
-  - name: Try to get file content
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: GET
-      params:
-        path: etc/rules/local_rules.xml
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /manager/files
-
-stages:
-  - name: Try to upload a file
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
-      params:
-        path: 'etc/decoders/test_decoders.xml'
-    response:
-      <<: *permission_denied
-
----
-test_name: DELETE /manager/files
-
-stages:
-  - name: Try to delete a file
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/files"
-      method: DELETE
-      params:
-        path: 'etc/decoders/test_decoders.xml'
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1905,6 +1911,20 @@ stages:
       <<: *empty_response
 
 ---
+test_name: GET /rules/files/{filename}
+
+stages:
+  - name: Try to get rule file content
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /rules/files
 
 stages:
@@ -1932,14 +1952,30 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /rules/files/{filename}/download
+test_name: PUT /rules/files/{filename}
 
 stages:
-  - name: Try to get rule file content
+  - name: Try to upload rule file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/local_rules.xml/download"
-      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: PUT
+      data: "{new_rules:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      <<: *permission_denied
+
+---
+test_name: DELETE /rules/files/{filename}
+
+stages:
+  - name: Try to delete rule file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
