@@ -162,7 +162,7 @@ static struct column_list const TABLE_OS[] = {
 
 static struct column_list const TABLE_HARDWARE[] = {
     { .value = { FIELD_INTEGER, 1, true, false, "scan_id" }, .next = &TABLE_HARDWARE[1] },
-    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HARDWARE[2] }, 
+    { .value = { FIELD_TEXT, 2, false, false, "scan_time" }, .next = &TABLE_HARDWARE[2] },
     { .value = { FIELD_TEXT, 3, false, true, "board_serial" }, .next = &TABLE_HARDWARE[3] },
     { .value = { FIELD_TEXT, 4, false, false, "cpu_name" }, .next = &TABLE_HARDWARE[4] },
     { .value = { FIELD_INTEGER, 5, false, false, "cpu_cores" }, .next = &TABLE_HARDWARE[5] },
@@ -420,7 +420,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 if (wdb_parse_dbsync(wdb, next, output)){
                     mdebug2("Updated based on table deltas for agent '%s'", sagent_id);
-                } 
+                }
             }
         } else if (strcmp(query, "ciscat") == 0) {
             if (!next) {
@@ -444,7 +444,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_rootcheck(wdb, next, output);
             }
-        } 
+        }
         if (strcmp(query, "vuln_cve") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid vuln_cve query syntax.", sagent_id);
@@ -5705,7 +5705,7 @@ bool process_dbsync_data(wdb_t * wdb, const struct kv *kv_value, const char *ope
             }
         }
     }
-   
+
     return ret_val;
 }
 
@@ -5740,7 +5740,7 @@ int wdb_parse_dbsync(wdb_t * wdb, char * input, char * output) {
     }
 
     char *data = curr;
-    
+
     struct kv_list const *head = TABLE_MAP;
     while (NULL != head) {
         if (strncmp(head->current.key, table_key, OS_SIZE_256 - 1) == 0) {
@@ -6061,76 +6061,63 @@ int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
     else if (strcmp(next, "insert") == 0) {
         next = strtok_r(NULL, delim, &savedptr);
         result = wdb_parse_agents_insert_vuln_cve(wdb, next, output);
-    } 
+    }
     else if (strcmp(next, "clear") == 0) {
         result = wdb_parse_agents_clear_vuln_cve(wdb, output);
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve action: %s", next);
     }
-    
+
     return result;
 }
-    
+
 
 int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
-    const char *error = NULL;    
-    cJSON *j_name = NULL;
-    cJSON *j_version = NULL;
-    cJSON *j_architecture = NULL;
-    cJSON *j_cve = NULL;
+    const char *error = NULL;
+    int ret = OS_INVALID;
 
     data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!data) {
         mdebug1("Global DB Invalid JSON syntax when inserting agent.");
         mdebug2("Global DB JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
-        return OS_INVALID;
-    } else {
-        j_name = cJSON_GetObjectItem(data, "name");
-        j_version = cJSON_GetObjectItem(data, "version");
-        j_architecture = cJSON_GetObjectItem(data, "architecture");
-        j_cve = cJSON_GetObjectItem(data, "cve");
-        
-        if (cJSON_IsString(j_name) &&
-            cJSON_IsString(j_version) &&
-            cJSON_IsString(j_architecture) &&
-            cJSON_IsString(j_cve)) {
-            
-            //JJP: Refactor. Specially to messages
-            if (OS_SUCCESS != wdb_agents_insert_vuln_cve(wdb,
-                                                    j_name->valuestring,
-                                                    j_version->valuestring,
-                                                    j_architecture->valuestring,
-                                                    j_cve->valuestring)) {
+    }
+    else {
+        cJSON* j_name = cJSON_GetObjectItem(data, "name");
+        cJSON* j_version = cJSON_GetObjectItem(data, "version");
+        cJSON* j_architecture = cJSON_GetObjectItem(data, "architecture");
+        cJSON* j_cve = cJSON_GetObjectItem(data, "cve");
+        // Required fields
+        if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve)) {
+            mdebug1("Global DB Invalid JSON data when inserting vuln_cve. Not compliant with constraints defined in the database.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+        }
+        else {
+            ret = wdb_agents_insert_vuln_cve(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring);
+            if (OS_SUCCESS != ret) {
                 mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-                cJSON_Delete(data);
-                return OS_INVALID;
             }
-        } else {
-            mdebug1("Global DB Invalid JSON data when inserting agent. Not compliant with constraints defined in the database.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
-            cJSON_Delete(data);
-            return OS_INVALID;
+            else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
         }
     }
 
-    snprintf(output, OS_MAXSTR + 1, "ok");
     cJSON_Delete(data);
-
-    return OS_SUCCESS;
+    return ret;
 }
 
 int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
-    //JJP: Refactor. Specially to messages
-    if (OS_SUCCESS != wdb_agents_clear_vuln_cve(wdb)) {
+    int ret = wdb_agents_clear_vuln_cve(wdb);
+    if (OS_SUCCESS != ret) {
         mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
         snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
     }
-
-    snprintf(output, OS_MAXSTR + 1, "ok");
-    return OS_SUCCESS;
+    else {
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+    return ret;
 }
