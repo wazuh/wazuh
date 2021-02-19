@@ -333,5 +333,4 @@ int wdb_agent_belongs_first_time(int *sock);
  */
 time_t get_agent_date_added(int agent_id);
 
-
 #endif
