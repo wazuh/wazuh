@@ -13,7 +13,8 @@
 #define WDB_AGENTS_H
 
 #include "wdb.h"
-
-bool wdb_agents_insert_cve(wdb_t *wdb, const cJSON * data);
+//JJP: Doxygen
+int wdb_agents_clear_vuln_cve(wdb_t *wdb);
+int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version, const char* architecture, const char* cve);
 
 #endif
