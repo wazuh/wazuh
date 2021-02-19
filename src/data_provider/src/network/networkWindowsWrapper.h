@@ -279,7 +279,7 @@ public:
         return retVal;
     }
 
-    uint32_t const override
+    uint32_t mtu() const override
     {
         return m_interfaceAddress->Mtu;
     }
