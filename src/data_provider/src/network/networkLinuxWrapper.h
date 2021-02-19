@@ -406,7 +406,7 @@ public:
         return retVal;
     }
 
-    std::string mtu() const override
+    uint32_t mtu() const override
     {
         std::string retVal;
         const auto name { this->name() };
@@ -415,7 +415,7 @@ public:
             const auto mtuFileContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + name + "/mtu") };
             retVal = Utils::splitIndex(mtuFileContent, '\n', 0);
         }
-        return retVal;
+        return std::stol(retVal);
     }
 
     LinkStats stats() const override
