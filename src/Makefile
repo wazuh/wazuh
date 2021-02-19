@@ -36,7 +36,6 @@ EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
 # XXX Becareful NO EXTRA Spaces here
-INSTALLDIR?=/var/ossec
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
@@ -1708,6 +1707,10 @@ endif
 wpython: install_dependencies install_framework install_api install_mitre
 
 build_python:
+ifeq (,${INSTALLDIR})
+	$(error INSTALLDIR undefined. Run "${MAKE} TARGET=server INSTALLDIR=/path" to build python from sources)
+endif
+
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif

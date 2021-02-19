@@ -53,7 +53,7 @@ Install()
     echo "4- ${installing}"
 
     echo ""
-    echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
+    echo "DIR=\"${INSTALLDIR}\""
 
     # Changing Config.OS with the new C flags
     # Checking if debug is enabled
@@ -114,7 +114,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} TARGET=${INSTYPE} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
