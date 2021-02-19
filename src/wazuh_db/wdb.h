@@ -222,6 +222,8 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
+    WDB_STMT_VULN_CVE_INSERT,
+    WDB_STMT_VULN_CVE_CLEAR,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -1716,6 +1718,15 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
  *        -1 On error: response contains "err" and an error description.
  */
 int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
+
+/**
+ * *JJP Doxygen
+ */
+ //JJP split parsers too. And they don't need to be in the header as they aren't public...
+ int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output);
+
 
 /**
  * Update old tasks with status in progress to status timeout
