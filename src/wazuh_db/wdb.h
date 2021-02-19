@@ -504,7 +504,13 @@ void wdb_free_agent_info_data(agent_info_data *agent_data);
  */
 wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
 
-/* JJP DOxygen */
+/**
+ * @brief Function to start a new transaction and cache the statement
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] statement_index The index of the statement to be cached.
+ * @return Pointer to the statement already cached. NULL On error.
+ */
 sqlite3_stmt* wdb_start_cached_transaction(wdb_t* wdb, wdb_stmt statement_index);
 
 /**
@@ -724,8 +730,13 @@ int wdb_remove_database(const char * agent_id);
  */
 cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status);
 
-/*JJP Doxygen*/
-int wdb_exec_stmt_silent(sqlite3_stmt* stmt); 
+/**
+ * @brief Function to execute an SQL statement without a response.
+ *
+ * @param [in] stmt The SQL statement to be executed.
+ * @return OS_SUCCESS on success, OS_INVALID on error.
+ */
+int wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 
 /**
  * @brief Function to execute a SQL statement and save the result in a JSON array limited by size.
@@ -1129,10 +1140,6 @@ int wdb_parse_reset_agents_connection(wdb_t * wdb, char* input, char * output);
  * @retval -1 On error: Response contains details of the error.
  */
 int wdb_parse_global_get_agents_by_connection_status(wdb_t* wdb, char* input, char* output);
-/*
- * DOXYGEN here JJP
- */
-int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output);
 
 int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * begin, const char * end, os_sha1 hexdigest);
 
@@ -1726,11 +1733,35 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
 int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * *JJP Doxygen
+ * @brief Function to parse the vuln_cve requests.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the action and the data if needed.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
  */
- //JJP split parsers too. And they don't need to be in the header as they aren't public...
  int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output);
+
+ /**
+ * @brief Function to parse the vuln_cve insert action.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the the data in json format.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
  int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output);
+
+/**
+ * @brief Function to parse the vuln_cve clear action.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
  int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output);
 
 

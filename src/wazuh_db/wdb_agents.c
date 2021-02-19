@@ -1,4 +1,4 @@
-#include "wdb.h"
+#include "wdb_agents.h"
 
 int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version, const char* architecture, const char* cve) {
 
