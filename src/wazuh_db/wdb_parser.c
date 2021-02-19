@@ -444,8 +444,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_rootcheck(wdb, next, output);
             }
-        }
-        if (strcmp(query, "vuln_cve") == 0) {
+        } else if (strcmp(query, "vuln_cve") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid vuln_cve query syntax.", sagent_id);
                 mdebug2("DB(%s) vuln_cve query error near: %s", sagent_id, query);
@@ -454,9 +453,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_vuln_cve(wdb, next, output);
             }
-
-        }
-        else if (strcmp(query, "sql") == 0) {
+        } else if (strcmp(query, "sql") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
                 mdebug2("DB(%s) query error near: %s", sagent_id, query);
