@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import json
 import sys
-from json import JSONDecodeError
+from os.path import join
 
 from tabulate import tabulate
 
@@ -24,7 +24,7 @@ async def validate_resource(resource, r_type):
     try:
         loaded_json = json.loads(resource)
         return await resource_body[r_type].validate_kwargs(loaded_json)
-    except JSONDecodeError:
+    except json.JSONDecodeError:
         raise WazuhError(1018)
 
 
@@ -34,8 +34,7 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
         set_role_rule, remove_user_role, remove_role_policy, remove_role_rule
 
     from wazuh.core.cluster import local_client
-    from wazuh.core.cluster.common import WazuhJSONEncoder
-    from wazuh.core.cluster.common import as_wazuh_object
+    from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
     from wazuh.rbac.orm import ResourceType
 
     func = {
@@ -92,6 +91,51 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
     return response
 
 
+async def restore_default_passwords():
+    import yaml
+    from getpass import getpass
+
+    from wazuh.core.cluster import local_client
+    from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
+    from wazuh.core.common import default_rbac_resources
+    from wazuh.rbac.orm import ResourceType
+    from wazuh.security import update_user
+
+    default_users_file = join(default_rbac_resources, 'users.yaml')
+    with open(default_users_file) as f:
+        users = yaml.safe_load(f)
+
+    results = dict()
+    for user_id, username in enumerate(users['default_users']):
+        new_password = getpass(f"New password for '{username}' (skip): ")
+        if not new_password:
+            continue
+
+        lc = local_client.LocalClient()
+
+        input_json = {
+            'f': update_user,
+            'f_kwargs': {'user_id': str(user_id + 1),
+                         'password': new_password,
+                         'resource_type': ResourceType.DEFAULT},
+            'from_cluster': False,
+            'wait_for_complete': False
+        }
+
+        # Distribute function to master node
+        response = json.loads(await lc.execute(command=b'dapi',
+                                               data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
+                                               wait_for_complete=False),
+                              object_hook=as_wazuh_object)
+
+        results[username] = f'FAILED | {str(response)}' if isinstance(response, Exception) else 'UPDATED'
+
+    print()
+    for user, status in results.items():
+        print(f"\t{user}: {status}")
+    print()
+
+
 if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser(description='Wazuh RBAC protected resources manager',
@@ -120,7 +164,9 @@ if __name__ == "__main__":
                                          'Unlink resources \n\n'
                                          '-unur USER_ID [ROLE_IDs] \n'
                                          '-unrp ROLE_ID [POLICY_IDs] \n'
-                                         '-unrru ROLE_ID [RULE_ID]'
+                                         '-unrru ROLE_ID [RULE_ID]\n\n'
+                                         'Change admin users passwords\n\n'
+                                         '--change-passwords'
                                          )
     arg_parser.add_argument("-au", "--add-user", nargs='+', type=str, action='store', dest='add_user',
                             help="Add reserved security users.")
@@ -160,6 +206,9 @@ if __name__ == "__main__":
                             help="Unlink reserved security role from policies.")
     arg_parser.add_argument("-unrru", "--unlink-role-rules", nargs='+', type=str, action='store', dest='unlink_role-rule',
                             help="Unlink reserved security role from rules.")
+    arg_parser.add_argument("--change-passwords", action='store_true', dest='change_passwords',
+                            help="Change the password for each default user. Empty values will leave the password "
+                                 "unchanged.")
     args = arg_parser.parse_args()
 
     if not len(sys.argv) > 1:
@@ -167,6 +216,10 @@ if __name__ == "__main__":
         sys.exit(0)
 
     try:
+        if args.change_passwords:
+            asyncio.run(restore_default_passwords())
+            sys.exit(0)
+
         result_table = list()
         for key, values in args.__dict__.items():
             method, resource_name = key.split('_')
