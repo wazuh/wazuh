@@ -17,6 +17,7 @@ include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/bzip2)
 include_directories(${SRC_FOLDER}/external/cJSON)
+include_directories(${SRC_FOLDER}/external/msgpack/include)
 include_directories(${SRC_FOLDER})
 add_definitions(-DWAZUH_UNIT_TESTING)
 
@@ -56,6 +57,7 @@ if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
 
 if(${uname} STREQUAL "Linux")
   add_subdirectory(os_net)
+  add_subdirectory(fluentd_forwarder)
   endif()
 
 # Config files
