@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wdb_agents.h"
 #include "external/cJSON/cJSON.h"
 
 const char* SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE = "legacy";
@@ -443,7 +444,19 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_rootcheck(wdb, next, output);
             }
-        } else if (strcmp(query, "sql") == 0) {
+        } 
+        if (strcmp(query, "vuln_cve") == 0) {
+            if (!next) {
+                mdebug1("DB(%s) Invalid vuln_cve query syntax.", sagent_id);
+                mdebug2("DB(%s) vuln_cve query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_vuln_cve(wdb, next, output);
+            }
+
+        }
+        else if (strcmp(query, "sql") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
                 mdebug2("DB(%s) query error near: %s", sagent_id, query);
@@ -6034,7 +6047,99 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
 
 // 'agents' DB command parsing
 
-int wdb_parse_global_insert_cve(wdb_t * wdb, char * input, char * output) {
+int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
+    char * next;
+    //char * payload;
+    int result = 0;
+    const char delim[] = " ";
+    char *savedptr = NULL;
+
+    next = strtok_r(input, delim, &savedptr);
+
+    //JJP simplify this error handling
+    if (strcmp(next, "insert") == 0) {
+        next = strtok_r(NULL, delim, &savedptr);
+        result = wdb_parse_agents_insert_vuln_cve(wdb, next, output);
+        if (result >= 0) {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+            return OS_SUCCESS;
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "err Error inserting vulnerability CVE match");
+            return OS_INVALID;
+        }
+    } else if (strcmp(next, "clear") == 0) {
+        result = wdb_parse_agents_clear_vuln_cve(wdb, output);
+        if (result >= 0) {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+            return OS_SUCCESS;
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "err Error inserting vulnerability CVE match");
+            return OS_INVALID;
+        }
+    }
+    //JJP simplify this
+    return OS_INVALID;
+}
+    
+
+int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
-    wdb_agents_insert_cve(wdb, data);
+    const char *error = NULL;    
+    cJSON *j_name = NULL;
+    cJSON *j_version = NULL;
+    cJSON *j_architecture = NULL;
+    cJSON *j_cve = NULL;
+
+    data = cJSON_ParseWithOpts(input, &error, TRUE);
+    if (!data) {
+        mdebug1("Global DB Invalid JSON syntax when inserting agent.");
+        mdebug2("Global DB JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+        return OS_INVALID;
+    } else {
+        j_name = cJSON_GetObjectItem(data, "name");
+        j_version = cJSON_GetObjectItem(data, "version");
+        j_architecture = cJSON_GetObjectItem(data, "architecture");
+        j_cve = cJSON_GetObjectItem(data, "cve");
+        
+        if (cJSON_IsString(j_name) &&
+            cJSON_IsString(j_version) &&
+            cJSON_IsString(j_architecture) &&
+            cJSON_IsString(j_cve)) {
+            
+            //JJP: Refactor. Specially to messages
+            if (OS_SUCCESS != wdb_agents_insert_vuln_cve(wdb,
+                                                    j_name->valuestring,
+                                                    j_version->valuestring,
+                                                    j_architecture->valuestring,
+                                                    j_cve->valuestring)) {
+                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                cJSON_Delete(data);
+                return OS_INVALID;
+            }
+        } else {
+            mdebug1("Global DB Invalid JSON data when inserting agent. Not compliant with constraints defined in the database.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            cJSON_Delete(data);
+            return OS_INVALID;
+        }
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    cJSON_Delete(data);
+
+    return OS_SUCCESS;
+}
+
+int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
+    //JJP: Refactor. Specially to messages
+    if (OS_SUCCESS != wdb_agents_clear_vuln_cve(wdb)) {
+        mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+    return OS_SUCCESS;
 }
