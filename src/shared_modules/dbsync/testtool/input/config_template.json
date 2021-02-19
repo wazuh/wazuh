@@ -1,0 +1,7 @@
+{
+    "db_name": "<db_name>",
+    "db_type": "<0|1>",
+    "host_type": "<0|1>",
+    "persistance": "",
+    "sql_statement":"<sql>"
+}

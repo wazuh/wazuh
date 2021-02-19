@@ -112,6 +112,7 @@ presskey="続けるには ENTER を押してください"
 
 # Update
 wanttoupdate="既に Wazuh がインストールされています．アップデートしますか?"
+mustuninstall="古いバージョンをアンインストールしないと、インストールを続行できません。 終了します。"
 unabletoupdate="アップデート作業を行えません．新しくインストールする必要があります．"
 updatecompleted="アップデートは完了しました．"
 updatefailed="アップデートは失敗しました．"

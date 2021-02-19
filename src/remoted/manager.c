@@ -95,6 +95,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     const char * agent_ip_label = "#\"_agent_ip\":";
     const char * manager_label = "#\"_manager_hostname\":";
     const char * node_label = "#\"_node_name\":";
+    const char * version_label = "#\"_wazuh_version\":";
     int is_startup = 0;
     int agent_id = 0;
     int result = 0;
@@ -227,6 +228,11 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                 wm_strcat(&agent_data->labels, node_label, agent_data->labels ? '\n' : 0);
                 wm_strcat(&agent_data->labels, node_name, 0);
                 os_strdup(node_name, agent_data->node_name);
+            }
+
+            if (agent_data->version) {
+                wm_strcat(&agent_data->labels, version_label, agent_data->labels ? '\n' : 0);
+                wm_strcat(&agent_data->labels, agent_data->version, 0);
             }
 
             agent_data->id = atoi(key->id);

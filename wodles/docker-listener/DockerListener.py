@@ -7,6 +7,7 @@
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
 
+import os
 import threading
 import json
 import socket
@@ -31,11 +32,11 @@ class DockerListener:
         """
         # socket variables
         if sys.platform == "win32":
-            self.wazuh_path = 'C:\Program Files (x86)\ossec-agent'
             sys.stderr.write("This wodle does not work on Windows.\n")
             sys.exit(1)
         else:
-            self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+            # Get Wazuh installation path, obtained relative to the path of this file
+            self.wazuh_path = os.path.abspath(os.path.join(__file__, "../../.."))
         self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables

@@ -47,18 +47,20 @@ void fim_link_reload_broken_link(char *path, int index);
 void fim_delete_realtime_watches(int pos);
 #endif
 
-/* redefinitons/wrapping */
+extern time_t last_time;
+extern unsigned int files_read;
 
-#ifndef TEST_WINAGENT
-int __wrap_time() {
-    return 1;
-}
-#endif
+/* redefinitons/wrapping */
 
 #ifdef TEST_WINAGENT
 int __wrap_audit_restore(void) {
     return mock();
 }
+#else
+time_t __wrap_time(time_t *timer) {
+    return mock_type(time_t);
+}
+
 #endif
 
 /* Setup/Teardown */
@@ -104,7 +106,9 @@ static int setup_group(void ** state) {
     if(syscheck.realtime == NULL) {
         return -1;
     }
-
+#ifndef TEST_WINAGENT
+    will_return(__wrap_time, 1);
+#endif
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) {
         return -1;
@@ -115,8 +119,6 @@ static int setup_group(void ** state) {
 #ifdef TEST_WINAGENT
     time_mock_value = 1;
 #endif
-
-
     return 0;
 }
 
@@ -208,6 +210,16 @@ static int teardown_group(void **state) {
 */
 static void expect_w_send_sync_msg(const char *msg, const char *locmsg, char location, int ret) {
     expect_SendMSG_call(msg, locmsg, location, ret);
+}
+
+static int setup_max_fps(void **state) {
+    syscheck.max_files_per_second = 1;
+    return 0;
+}
+
+static int teardown_max_fps(void **state) {
+    syscheck.max_files_per_second = 0;
+    return 0;
 }
 
 /* tests */
@@ -565,6 +577,9 @@ void test_send_syscheck_msg_0_eps(void ** state) {
 void test_fim_send_scan_info(void **state) {
     (void) state;
     const char *msg = "{\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}";
+#ifndef TEST_WINAGENT
+    will_return(__wrap_time, 1);
+#endif
     expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {\"type\":\"scan_start\",\"data\":{\"timestamp\":1}}");
     expect_w_send_sync_msg(msg, SYSCHECK, SYSCHECK_MQ, 0);
     fim_send_scan_info(FIM_SCAN_START);
@@ -759,6 +774,19 @@ void test_fim_link_reload_broken_link_reload_broken(void **state) {
 }
 #endif
 
+void test_check_max_fps_no_sleep(void **state) {
+    will_return(__wrap_gettime, last_time + 1);
+    check_max_fps();
+}
+
+void test_check_max_fps_sleep(void **state) {
+    last_time = 10;
+    files_read = syscheck.max_files_per_second;
+
+    will_return(__wrap_gettime, last_time);
+    expect_string(__wrap__mdebug2, formatted_msg, FIM_REACHED_MAX_FPS);
+    check_max_fps();
+}
 
 int main(void) {
 #ifndef WIN_WHODATA
@@ -784,6 +812,8 @@ int main(void) {
         cmocka_unit_test(test_send_syscheck_msg_10_eps),
         cmocka_unit_test(test_send_syscheck_msg_0_eps),
         cmocka_unit_test(test_fim_send_scan_info),
+        cmocka_unit_test_setup_teardown(test_check_max_fps_no_sleep, setup_max_fps, teardown_max_fps),
+        cmocka_unit_test_setup_teardown(test_check_max_fps_sleep, setup_max_fps, teardown_max_fps),
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_link_update, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_update_already_added, setup_symbolic_links, teardown_symbolic_links),

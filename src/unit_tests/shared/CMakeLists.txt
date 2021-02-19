@@ -66,6 +66,9 @@ endif()
 list(APPEND shared_tests_names "test_time_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
 
+list(APPEND shared_tests_names "test_buffer_op")
+list(APPEND shared_tests_flags " ")
+
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
@@ -119,6 +122,13 @@ list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,_merror")
 endif()
 
+if(${TARGET} STREQUAL "server")
+list(APPEND shared_tests_names "test_json-queue")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,fopen -Wl,--wrap,fclose \
+                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
+                                -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
+                                -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
+endif()
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

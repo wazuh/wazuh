@@ -13,7 +13,6 @@
 
 /* Active response commands */
 typedef struct _ar_command {
-    int expect;
     int timeout_allowed;
 
     char *name;

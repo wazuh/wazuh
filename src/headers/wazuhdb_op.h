@@ -13,6 +13,8 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 
+#define FIELD_SEPARATOR_DBSYNC "|"
+
 /// Enumeration of communication with Wazuh DB status.
 typedef enum wdbc_result {
         WDBC_OK,        ///< Command processed successfully

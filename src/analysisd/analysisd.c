@@ -2070,10 +2070,10 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 AddtoIGnore(lf, t_id);
             }
 
+            lf->comment = ParseRuleComment(lf);
+
             /* Log the alert if configured to */
             if (t_currently_rule->alert_opts & DO_LOGALERT) {
-                lf->comment = ParseRuleComment(lf);
-
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf, lf_cpy);
                 if (queue_push_ex_block(writer_queue_log, lf_cpy) < 0) {
@@ -2090,28 +2090,13 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
                 while (*rule_ar) {
                     do_ar = 1;
-                    if ((*rule_ar)->ar_cmd->expect & USERNAME) {
-                        if (!lf->dstuser ||
-                                !OS_PRegex(lf->dstuser, "^[a-zA-Z._0-9@?-]*$")) {
-                            if (lf->dstuser) {
-                                mwarn(CRAFTED_USER, lf->dstuser);
-                            }
-                            do_ar = 0;
-                        }
+                    if (lf->dstuser && !OS_PRegex(lf->dstuser, "^[a-zA-Z._0-9@?-]*$")) {
+                        mwarn(CRAFTED_USER, lf->dstuser);
+                        do_ar = 0;
                     }
-                    if ((*rule_ar)->ar_cmd->expect & SRCIP) {
-                        if (!lf->srcip ||
-                                !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$")) {
-                            if (lf->srcip) {
-                                mwarn(CRAFTED_IP, lf->srcip);
-                            }
-                            do_ar = 0;
-                        }
-                    }
-                    if ((*rule_ar)->ar_cmd->expect & FILENAME) {
-                        if (!lf->filename) {
-                            do_ar = 0;
-                        }
+                    if (lf->srcip && !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$")) {
+                        mwarn(CRAFTED_IP, lf->srcip);
+                        do_ar = 0;
                     }
 
                     if (do_ar && execdq >= 0) {

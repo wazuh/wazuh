@@ -27,19 +27,23 @@ class MultiOrderedDict(OrderedDict):
             super(MultiOrderedDict, self).__setitem__(key, value)
 
 
-def getOssecConfig(initconf, path):
-    if os.path.isfile(path):
-        with open(path) as f:
-            for line in f.readlines():
-                key, value = line.rstrip("\n").split("=")
-                initconf[key] = value.replace("\"", "")
-        if initconf["NAME"] != "Wazuh" or not os.path.exists(initconf["DIRECTORY"]):
-            print "Seems like there is no correct Wazuh installation "
-            sys.exit(1)
-    else:
-        print "Seems like there is no Wazuh installation or ossec-init.conf is missing."
-        sys.exit(1)
+def getWazuhInfo(wazuh_home):   
+    wazuh_control = os.path.join(wazuh_home, "bin", "wazuh-control") 
+    wazuh_env_vars = {}
+    try:
+        proc = subprocess.Popen([wazuh_control, "info"], stdout=subprocess.PIPE)
+        (stdout, stderr) = proc.communicate() 
+    except:
+        print "Seems like there is no Wazuh installation."
+        return None
 
+    env_variables = stdout.rsplit("\n")
+    env_variables.remove("")
+    for env_variable in env_variables:
+        key, value = env_variable.split("=")
+        wazuh_env_vars[key] = value.replace("\"", "")
+    
+    return wazuh_env_vars
 
 def provisionDR():
     base_dir = os.path.dirname(os.path.realpath(__file__))
@@ -49,16 +53,16 @@ def provisionDR():
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?)_rules.xml$',file):
-            shutil.copy2(file_fullpath , ossec_init["DIRECTORY"] + "/etc/rules")
+            shutil.copy2(file_fullpath , args.wazuh_home + "/etc/rules")
 
     for file in os.listdir(decoders_dir):
         file_fullpath = os.path.join(decoders_dir, file)
         if os.path.isfile(file_fullpath) and re.match(r'^test_(.*?)_decoders.xml$',file):
-            shutil.copy2(file_fullpath , ossec_init["DIRECTORY"] + "/etc/decoders")
+            shutil.copy2(file_fullpath , args.wazuh_home + "/etc/decoders")
 
 def cleanDR():
-    rules_dir = ossec_init["DIRECTORY"] + "/etc/rules"
-    decoders_dir = ossec_init["DIRECTORY"] + "/etc/decoders"
+    rules_dir = args.wazuh_home + "/etc/rules"
+    decoders_dir = args.wazuh_home + "/etc/decoders"
 
     for file in os.listdir(rules_dir):
         file_fullpath = os.path.join(rules_dir, file)
@@ -155,6 +159,8 @@ def cleanup(*args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='This script tests Wazuh rules.')
+    parser.add_argument('--path', '-p', default='/var/ossec', dest='wazuh_home',
+                        help='Use -p or --path to specify Wazuh installation path')
     parser.add_argument('--geoip', '-g', action='store_true', dest='geoip',
                         help='Use -g or --geoip to enable geoip tests (default: False)')
     parser.add_argument('--testfile', '-t', action='store', type=str, dest='testfile',
@@ -167,15 +173,17 @@ if __name__ == "__main__":
         selective_test = args.testfile
         if not selective_test.endswith('.ini'):
             selective_test += '.ini'
-    ossec_init = {}
-    initconfigpath = "/etc/ossec-init.conf"
-    getOssecConfig(ossec_init, initconfigpath)
+    
+    wazuh_info = getWazuhInfo(args.wazuh_home)
+    if wazuh_info is None:
+        sys.exit(1)
+
     for sig in (signal.SIGABRT, signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, cleanup)
     if args.custom:
         provisionDR()
         restart_analysisd()
-    OT = OssecTester(ossec_init["DIRECTORY"])
+    OT = OssecTester(args.wazuh_home)
     error = OT.run(selective_test, args.geoip, args.custom)
     if args.custom:
         cleanDR()

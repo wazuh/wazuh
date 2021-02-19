@@ -141,7 +141,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                     /* Run on Windows */
                     if (agt->execdq >= 0) {
-                        //WinExecdRun(tmp_msg);
                         queue_push_ex(winexec_queue, strdup(tmp_msg));
                     }
 
@@ -159,6 +158,12 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 }
                 else if (strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
                     ag_send_syscheck(tmp_msg + strlen(HC_FIM_REGISTRY));
+                    continue;
+                }
+
+                /* syscollector */
+                else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
+                    wmcom_send(tmp_msg);
                     continue;
                 }
 

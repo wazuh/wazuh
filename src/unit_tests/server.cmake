@@ -10,7 +10,7 @@ endif()
 add_compile_options(-ggdb -O0 -g -coverage -DTEST_SERVER -DENABLE_AUDIT -DINOTIFY_ENABLED)
 
 # Set tests dependencies
-set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -lcmocka -fprofile-arcs -ftest-coverage)
+set(TEST_DEPS ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl -lcmocka -fprofile-arcs -ftest-coverage)
 
 add_subdirectory(analysisd)
 add_subdirectory(remoted)
@@ -20,3 +20,4 @@ add_subdirectory(os_crypto)
 add_subdirectory(wazuh_modules)
 add_subdirectory(monitord)
 add_subdirectory(logcollector)
+add_subdirectory(os_execd)
