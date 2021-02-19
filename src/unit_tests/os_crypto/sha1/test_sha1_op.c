@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -124,6 +124,66 @@ void OS_SHA1_Stream_buf_null (void **state)
     OS_SHA1_Stream(&context, output, buf);
 }
 
+void test_sha1_string(void **state)
+{
+    const char *string = "teststring";
+    const char *string_sha1 = "b8473b86d4c2072ca9b08bd28e373e8253e865c4";
+    os_sha1 buffer;
+
+    assert_int_equal(OS_SHA1_Str(string, strlen(string), buffer), 0);
+
+    assert_string_equal(buffer, string_sha1);
+}
+
+void test_sha1_string2(void **state)
+{
+    const char *string = "teststring";
+    const char *string_sha1 = "b8473b86d4c2072ca9b08bd28e373e8253e865c4";
+    os_sha1 buffer;
+
+    assert_int_equal(OS_SHA1_Str2(string, strlen(string), buffer), 0);
+
+    assert_string_equal(buffer, string_sha1);
+}
+
+void test_sha1_file(void **state)
+{
+    const char *string = "teststring";
+    const char *string_sha1 = "da39a3ee5e6b4b0d3255bfef95601890afd80709";
+    os_sha1 buffer;
+
+    char file_name[256];
+    strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
+
+    expect_string(__wrap_fopen, path, file_name);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    will_return(__wrap_fread, string);
+    will_return(__wrap_fread, 0);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 1);
+
+    assert_int_equal(OS_SHA1_File(file_name, buffer, OS_TEXT), 0);
+
+    assert_string_equal(buffer, string_sha1);
+}
+
+void test_sha1_file_fail(void **state)
+{
+    os_sha1 buffer;
+
+    char file_name[256];
+    strncpy(file_name, "not_existing_file", 256);
+
+    expect_string(__wrap_fopen, path, file_name);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    assert_int_equal(OS_SHA1_File(file_name, buffer, OS_TEXT), -1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Tests OS_SHA1_File_Nbytes
@@ -133,6 +193,11 @@ int main(void) {
         // Tests OS_SHA1_Stream
         cmocka_unit_test(OS_SHA1_Stream_ok),
         cmocka_unit_test(OS_SHA1_Stream_buf_null),
+        // Tests OS_SHA1_File
+        cmocka_unit_test(test_sha1_string),
+        cmocka_unit_test(test_sha1_string2),
+        cmocka_unit_test(test_sha1_file),
+        cmocka_unit_test(test_sha1_file_fail),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

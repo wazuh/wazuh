@@ -11,8 +11,6 @@
 #ifndef STAT_H
 #define STAT_H
 
-void LastMsg_Change(const char *log, int t_id);
-int LastMsg_Stats(const char *log, int t_id);
 int Init_Stats_Directories();
 
 extern char __stats_comment[192];

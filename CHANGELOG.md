@@ -61,6 +61,7 @@ All notable changes to this project will be documented in this file.
 
 - **Core:**
   - File /etc/ossec-init.conf does not exist anymore. ([#7175](https://github.com/wazuh/wazuh/pull/7175))
+  - Unused files have been removed from the repository, including TAP tests. ([#7398](https://github.com/wazuh/wazuh/issues/7398))
 
 
 ## [v4.1.1]
