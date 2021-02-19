@@ -153,7 +153,7 @@ default_policies:
   lists_read:
     description: Allow reading all lists paths in the system.
     policies:
-      rules:
+      lists:
         actions:
           - lists:read
         resources:
@@ -163,7 +163,7 @@ default_policies:
   lists_all:
     description: Allow managing all CDB lists files in the system.
     policies:
-      rules:
+      files:
         actions:
           - lists:read
           - lists:delete
