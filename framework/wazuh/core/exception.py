@@ -537,6 +537,8 @@ class WazuhException(Exception):
                               'any other user with the necessary permissions'},
         5009: {'message': 'Insecure user password provided',
                'remediation': 'The password must contain a length between 8 and 64 characters.'},
+        5010: {'message': 'The value of the parameter run_as is invalid',
+               'remediation': 'The value of the run_as parameter must be true (enable authentication through authorization context) or false (disable authentication through authorization context).'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '
