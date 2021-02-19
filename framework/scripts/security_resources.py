@@ -36,6 +36,7 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
     from wazuh.core.cluster import local_client
     from wazuh.core.cluster.common import WazuhJSONEncoder
     from wazuh.core.cluster.common import as_wazuh_object
+    from wazuh.rbac.orm import ResourceType
 
     func = {
         'add': {
@@ -70,7 +71,7 @@ async def manage_reserved_security_resource(method, resource_type, f_arguments):
 
     lc = local_client.LocalClient()
     if method not in ('link', 'unlink'):
-        f_arguments['resource_type'] = 'protected'
+        f_arguments['resource_type'] = ResourceType.PROTECTED
 
     input_json = {
         'f': func[method][resource_type],
