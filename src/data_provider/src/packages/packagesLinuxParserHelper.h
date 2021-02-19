@@ -89,7 +89,7 @@ namespace PackageLinuxHelper
 
             std::string priority     { UNKNOWN_VALUE };
             std::string groups       { UNKNOWN_VALUE };
-            std::string multiarch    { UNKNOWN_VALUE };
+            std::string multiarch;
             std::string architecture { UNKNOWN_VALUE };
             std::string source       { UNKNOWN_VALUE };
             std::string version      { UNKNOWN_VALUE };
