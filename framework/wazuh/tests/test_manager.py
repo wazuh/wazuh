@@ -293,12 +293,16 @@ def test_get_config_ko():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1307
 
 
-def test_read_ossec_conf():
+@pytest.mark.parametrize('raw', [True, False])
+def test_read_ossec_conf(raw):
     """Tests read_ossec_conf() function works as expected"""
-    result = read_ossec_conf()
+    result = read_ossec_conf(raw=raw)
 
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['total_failed_items'] == 0
+    if raw:
+        assert isinstance(result, str), 'No expected result type'
+    else:
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['total_failed_items'] == 0
 
 
 def test_read_ossec_con_ko():

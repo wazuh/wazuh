@@ -247,7 +247,7 @@ def read_ossec_conf(section=None, field=None, raw=False):
 
     try:
         if raw:
-            with open(common.ossec_path) as f:
+            with open(common.ossec_conf) as f:
                 return f.read()
         result.affected_items.append(get_ossec_conf(section=section, field=field))
     except WazuhError as e:
