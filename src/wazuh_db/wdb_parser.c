@@ -6048,37 +6048,28 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
 // 'agents' DB command parsing
 
 int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
+    int result = OS_INVALID;
     char * next;
-    //char * payload;
-    int result = 0;
     const char delim[] = " ";
     char *savedptr = NULL;
 
     next = strtok_r(input, delim, &savedptr);
 
-    //JJP simplify this error handling
-    if (strcmp(next, "insert") == 0) {
+    if (!next){
+        snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cve action");
+    }
+    else if (strcmp(next, "insert") == 0) {
         next = strtok_r(NULL, delim, &savedptr);
         result = wdb_parse_agents_insert_vuln_cve(wdb, next, output);
-        if (result >= 0) {
-            snprintf(output, OS_MAXSTR + 1, "ok");
-            return OS_SUCCESS;
-        } else {
-            snprintf(output, OS_MAXSTR + 1, "err Error inserting vulnerability CVE match");
-            return OS_INVALID;
-        }
-    } else if (strcmp(next, "clear") == 0) {
+    } 
+    else if (strcmp(next, "clear") == 0) {
         result = wdb_parse_agents_clear_vuln_cve(wdb, output);
-        if (result >= 0) {
-            snprintf(output, OS_MAXSTR + 1, "ok");
-            return OS_SUCCESS;
-        } else {
-            snprintf(output, OS_MAXSTR + 1, "err Error inserting vulnerability CVE match");
-            return OS_INVALID;
-        }
     }
-    //JJP simplify this
-    return OS_INVALID;
+    else {
+        snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve action: %s", next);
+    }
+    
+    return result;
 }
     
 
