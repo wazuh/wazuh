@@ -112,7 +112,7 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
     return result
 
 
-@expose_resources(actions=['security:create_user'], resources=['*:*:*'])
+@expose_resources(actions=['security:run_as'], resources=['*:*:*'])
 def enable_run_as(user_id: str = None, allow_run_as: bool = False):
     """Enable/Disable the user's run_as flag
 
