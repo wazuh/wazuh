@@ -382,6 +382,10 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                 {
                     architecture = "x86_64";
                 }
+                else
+                {
+                    architecture = UNKNOWN_VALUE;
+                }
 
                 packageJson["name"]         = name;
                 packageJson["version"]      = version;

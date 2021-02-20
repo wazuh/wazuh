@@ -845,7 +845,7 @@ constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_address (
        iface TEXT,
-       proto TEXT,
+       proto INTEGER,
        address TEXT,
        netmask TEXT,
        broadcast TEXT,
@@ -1292,7 +1292,7 @@ nlohmann::json Syscollector::getNetworkData()
 
                     // "dbsync_network_address" table data to update and notify
                     addressTableData["iface"]     = item.at("name");
-                    addressTableData["proto"]     = "IPv4";
+                    addressTableData["proto"]     = 0;
                     addressTableData["checksum"]  = getItemChecksum(addressTableData);
                     addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                     addressTableDataList.push_back(addressTableData);
@@ -1306,7 +1306,7 @@ nlohmann::json Syscollector::getNetworkData()
 
                     // "dbsync_network_address" table data to update and notify
                     addressTableData["iface"]     = item.at("name");
-                    addressTableData["proto"]     = "IPv6";
+                    addressTableData["proto"]     = 1;
                     addressTableData["checksum"]  = getItemChecksum(addressTableData);
                     addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                     addressTableDataList.push_back(addressTableData);
