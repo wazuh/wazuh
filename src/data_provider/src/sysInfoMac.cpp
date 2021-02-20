@@ -178,7 +178,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             {
                 nlohmann::json jsPackage;
                 FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
-                if(UNKNOWN_VALUE != jsPackage.at("name"))
+                if(!jsPackage.at("name").empty())
                 {
                     // Only return valid content packages
                     result.push_back(jsPackage);
@@ -196,7 +196,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     {
                         nlohmann::json jsPackage;
                         FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
-                        if(UNKNOWN_VALUE != jsPackage.at("name"))
+                        if(!jsPackage.at("name").empty())
                         {
                             // Only return valid content packages
                             result.push_back(jsPackage);
@@ -272,7 +272,7 @@ nlohmann::json SysInfo::getOsInfo() const
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
-        ret["host_name"] = uts.nodename;
+        ret["hostname"] = uts.nodename;
         ret["version"] = uts.version;
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;

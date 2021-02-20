@@ -1,27 +1,28 @@
 /*
- * Wazuh SysInfo
+ * Wazuh shared modules utils
  * Copyright (C) 2015-2020, Wazuh Inc.
- * November 5, 2020.
+ * February 17, 2020.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef _SYSINFO_OS_TEST_H
-#define _SYSINFO_OS_TEST_H
+
+#ifndef ENCODING_WINDOWS_HELPER_TEST_H
+#define ENCODING_WINDOWS_HELPER_TEST_H
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SysOsInfoTest : public ::testing::Test {
-
+class EncodingWindowsHelperTest : public ::testing::Test
+{
 protected:
 
-    SysOsInfoTest() = default;
-    virtual ~SysOsInfoTest() = default;
+    EncodingWindowsHelperTest() = default;
+    virtual ~EncodingWindowsHelperTest() = default;
 
     void SetUp() override;
     void TearDown() override;
 };
 
-#endif //_SYSINFO_OS_TEST_H
+#endif //ENCODING_WINDOWS_HELPER_TEST_H
