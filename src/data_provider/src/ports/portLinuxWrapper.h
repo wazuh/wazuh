@@ -92,7 +92,7 @@ class LinuxPortWrapper final : public IPortWrapper
 
     static std::string IPv6Address(const std::string& hexRawAddress)
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
 
         const auto hexAddressLength { hexRawAddress.length() };
         if (hexAddressLength == IPv6AddressHexSize)
@@ -124,7 +124,7 @@ class LinuxPortWrapper final : public IPortWrapper
     ~LinuxPortWrapper() = default;
     std::string protocol() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
 
         const auto it { PORTS_TYPE.find(m_type) };
         if (PORTS_TYPE.end() != it)
@@ -136,7 +136,7 @@ class LinuxPortWrapper final : public IPortWrapper
 
     std::string localIp() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         if (m_localAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
         {
             if (IPVERSION_TYPE.at(m_type) == IPV4)
@@ -163,7 +163,7 @@ class LinuxPortWrapper final : public IPortWrapper
     }
     std::string remoteIP() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         if (m_remoteAddresses.size() == AddressField::ADDRESS_FIELD_SIZE)
         {
             if (IPVERSION_TYPE.at(m_type) == IPV4)
@@ -216,7 +216,7 @@ class LinuxPortWrapper final : public IPortWrapper
     }
     std::string state() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         const auto it { PROTOCOL_TYPE.find(m_type) };
 
         if (PROTOCOL_TYPE.end() != it && TCP == it->second)

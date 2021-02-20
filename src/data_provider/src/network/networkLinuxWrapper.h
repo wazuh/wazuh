@@ -227,7 +227,6 @@ public:
     explicit NetworkLinuxInterface(ifaddrs* addrs)
     : m_interfaceAddress{ addrs }
     , m_gateway{UNKNOWN_VALUE}
-    , m_metrics{UNKNOWN_VALUE}
     {
         if (!addrs)
         {
@@ -271,7 +270,7 @@ public:
 
     std::string adapter() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     int family() const override
@@ -291,7 +290,7 @@ public:
 
     std::string broadcast() const override
     {
-        std::string retVal;
+        std::string retVal { UNKNOWN_VALUE };
         if (m_interfaceAddress->ifa_ifu.ifu_broadaddr)
         {
             retVal = getNameInfo(m_interfaceAddress->ifa_ifu.ifu_broadaddr, sizeof(struct sockaddr_in));
@@ -336,7 +335,7 @@ public:
 
     std::string metricsV6() const override
     {
-        return UNKNOWN_VALUE;
+        return "";
     }
 
     std::string dhcp() const override
@@ -407,7 +406,7 @@ public:
         return retVal;
     }
 
-    std::string mtu() const override
+    uint32_t mtu() const override
     {
         std::string retVal;
         const auto name { this->name() };
@@ -416,7 +415,7 @@ public:
             const auto mtuFileContent { Utils::getFileContent(std::string(WM_SYS_IFDATA_DIR) + name + "/mtu") };
             retVal = Utils::splitIndex(mtuFileContent, '\n', 0);
         }
-        return retVal;
+        return std::stol(retVal);
     }
 
     LinkStats stats() const override

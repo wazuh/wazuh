@@ -372,7 +372,7 @@ int test_setup_os_valid_msg(void **state)
         \"type\":\"dbsync_osinfo\",\
         \"operation\":\"MODIFIED\",\
         \"data\":{\
-            \"host_name\" : \"93\",\
+            \"hostname\" : \"93\",\
             \"architecture\" : \"94\",\
             \"os_name\" : \"95\",\
             \"os_version\" : \"96\",\

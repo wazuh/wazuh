@@ -240,7 +240,7 @@ SysOsInfoProviderWindows::SysOsInfoProviderWindows()
 , m_name{getName()}
 , m_machine{getMachine()}
 , m_nodeName{getNodeName()}
-{ 
+{
 }
 std::string SysOsInfoProviderWindows::name() const
 {

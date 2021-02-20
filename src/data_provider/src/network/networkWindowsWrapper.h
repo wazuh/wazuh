@@ -83,7 +83,7 @@ public:
 
     std::string address() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         if (m_currentUnicastAddress)
         {
             retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(),
@@ -94,7 +94,7 @@ public:
 
     std::string addressV6() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         if (m_currentUnicastAddress)
         {
             if (Utils::isVistaOrLater())
@@ -114,7 +114,7 @@ public:
 
     std::string netmask() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         if (Utils::isVistaOrLater())
         {
             ULONG mask { 0 };
@@ -143,7 +143,7 @@ public:
 
     std::string netmaskV6() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         if (m_currentUnicastAddress && Utils::isVistaOrLater())
         {
             // Get ipv6Netmask based on current OnLinkPrefixLength value
@@ -237,7 +237,7 @@ public:
 
     std::string metrics() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         if (Utils::isVistaOrLater())
         {
             retVal = std::to_string(m_interfaceAddress->Ipv4Metric);
@@ -248,7 +248,7 @@ public:
 
     std::string metricsV6() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
+        std::string retVal;
         if (Utils::isVistaOrLater())
         {
             retVal = std::to_string(m_interfaceAddress->Ipv6Metric);
@@ -280,15 +280,9 @@ public:
         return retVal;
     }
 
-    std::string mtu() const override
+    uint32_t mtu() const override
     {
-        std::string retVal { UNKNOWN_VALUE };
-        const auto mtu { m_interfaceAddress->Mtu };
-        if (mtu)
-        {
-            retVal = std::to_string(mtu);
-        }
-        return retVal;
+        return m_interfaceAddress->Mtu;
     }
 
     LinkStats stats() const override
@@ -346,7 +340,7 @@ private:
     std::string getAdapterEncodedUTF8(const std::wstring& name) const
     {
         const std::string utf8AdapterName { Utils::NetworkWindowsHelper::getAdapterNameStr(name) };
-        return utf8AdapterName.empty() ? UNKNOWN_VALUE : utf8AdapterName;
+        return utf8AdapterName.empty() ? " " : utf8AdapterName;
     }
 
     int adapterFamily() const

@@ -69,7 +69,7 @@ public:
 
     std::string cmd()
     {
-        std::string ret { UNKNOWN_VALUE };
+        std::string ret;
         const auto spReadBuff { std::make_unique<char[]>(OS_MAXSTR) };
         // Get full Windows kernel path for the process
         if (spReadBuff && GetProcessImageFileName(m_hProcess, spReadBuff.get(), OS_MAXSTR))
@@ -345,12 +345,12 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
             nlohmann::json packageJson;
             Utils::Registry packageReg{key, subKey + "\\" + package, access | KEY_READ};
 
-            std::string name         { UNKNOWN_VALUE };
-            std::string version      { UNKNOWN_VALUE };
-            std::string vendor       { UNKNOWN_VALUE };
-            std::string install_time { UNKNOWN_VALUE };
-            std::string location     { UNKNOWN_VALUE };
-            std::string architecture { UNKNOWN_VALUE };
+            std::string name;
+            std::string version;
+            std::string vendor;
+            std::string install_time;
+            std::string location;
+            std::string architecture;
 
             if (packageReg.string("DisplayName", value))
             {
@@ -372,7 +372,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
             {
                 location = value;
             }
-            if (UNKNOWN_VALUE != name)
+            if (!name.empty())
             {
                 if (access & KEY_WOW64_32KEY)
                 {
