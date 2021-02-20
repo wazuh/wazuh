@@ -162,7 +162,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_Gateway_7546)
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("up"));
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return("00:A0:C9:14:C8:29"));
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0,1,2,3,4,5,6,7}));
-    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return("1500"));
+    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("A12BA8C0")); // Gateway value in hexa: A12BA8C0
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
