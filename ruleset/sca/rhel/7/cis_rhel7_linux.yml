@@ -816,7 +816,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
       - 'c:rpm -q mcstrans -> r:package mcstrans is not installed'
 
@@ -1072,7 +1072,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q xorg-x11-server* -> r:package xorg-x11 is not installed'
+      - 'c:rpm -q xorg-x11-server* -> r:package xorg-x11-server* is not installed'
 
 # 2.2.3 Ensure Avahi Server is not installed (Automated)
   - id: 4557 
