@@ -273,6 +273,12 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         logr->proto[pl] = REMOTED_NET_PROTOCOL_DEFAULT;
     }
 
+    /*  Secure does not support IPv6. */
+    if (logr->conn[pl] == SECURE_CONN && logr->ipv6[pl]) {
+        mwarn(REMOTED_INET6_SECURE_CONNNECTION);
+        logr->ipv6[pl] = 0;
+    }
+
     /* Queue_size is only for secure connections */
     if (logr->conn[pl] == SYSLOG_CONN && defined_queue_size) {
         merror("Invalid option <%s> for Syslog remote connection.", xml_queue_size);
