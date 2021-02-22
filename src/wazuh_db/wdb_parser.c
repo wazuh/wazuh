@@ -6069,7 +6069,6 @@ int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
     return result;
 }
 
-
 int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
     const char *error = NULL;
@@ -6077,8 +6076,8 @@ int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
 
     data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!data) {
-        mdebug1("Global DB Invalid JSON syntax when inserting agent.");
-        mdebug2("Global DB JSON error near: %s", error);
+        mdebug1("Invalid vuln_cve JSON syntax when inserting vulnerable package.");
+        mdebug2("JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
     }
     else {
@@ -6088,14 +6087,15 @@ int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
         cJSON* j_cve = cJSON_GetObjectItem(data, "cve");
         // Required fields
         if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve)) {
-            mdebug1("Global DB Invalid JSON data when inserting vuln_cve. Not compliant with constraints defined in the database.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, near '%.32s'", input);
+            mdebug1("Invalid vuln_cve JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
+
         else {
             ret = wdb_agents_insert_vuln_cve(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring);
             if (OS_SUCCESS != ret) {
-                mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+                mdebug1("DB(%s) Cannot execute vuln_cve insert command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve insert command; SQL err: %s", sqlite3_errmsg(wdb->db));
             }
             else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
@@ -6110,8 +6110,8 @@ int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
 int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
     int ret = wdb_agents_clear_vuln_cve(wdb);
     if (OS_SUCCESS != ret) {
-        mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db: %s", WDB2_DIR, WDB_GLOB_NAME, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute Global database query; %s", sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) Cannot execute vuln_cve clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "ok");
