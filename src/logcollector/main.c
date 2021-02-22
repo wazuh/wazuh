@@ -99,7 +99,7 @@ int main(int argc, char **argv)
         }
 
     }
-    
+
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
     if (gid == (gid_t) - 1) {

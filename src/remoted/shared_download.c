@@ -532,7 +532,7 @@ void w_create_group(char *group){
 
     char group_path[PATH_MAX] = {0};
 
-    if(snprintf(group_path,PATH_MAX, "/etc/shared/%s", group) >= PATH_MAX){
+    if(snprintf(group_path, PATH_MAX, "%s/%s", SHAREDCFG_DIR, group) >= PATH_MAX){
         mwarn(W_PARSER_GROUP_TOO_LARGE,PATH_MAX);
     }
     else{

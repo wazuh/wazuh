@@ -13,7 +13,14 @@ int main (int argc, char **argv) {
     (void)argc;
     char input[BUFFERSIZE];
 	char *action = NULL;
+    char *home_path = w_homedir(argv[0]);
 	cJSON *input_json = NULL;
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
 
     write_debug_file(argv[0], "Starting");
 
