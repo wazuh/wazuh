@@ -485,13 +485,6 @@ int set_auditd_config(void);
 int init_auditd_socket(void);
 
 /**
- * @brief Creates the necessary threads to process audit events
- *
- * @param [out] audit_sock The audit socket to read the events from
- */
-void *audit_main(int *audit_sock);
-
-/**
  * @brief Reloads audit rules every RELOAD_RULES_INTERVAL seconds
  *
  */

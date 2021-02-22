@@ -54,6 +54,13 @@ typedef struct _audit_data_s {
 
 #ifdef ENABLE_AUDIT
 
+/**
+ * @brief Creates the necessary threads to process audit events
+ *
+ * @param [out] audit_data Struct that saves the audit socket to read the events from and the audit mode.
+ */
+static void *audit_main(audit_data_t *audit_data);
+
 int check_auditd_enabled(void) {
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
     proc_t *proc_info;
@@ -197,7 +204,7 @@ void audit_no_rules_to_realtime() {
 
 // LCOV_EXCL_START
 int audit_init(void) {
-    audit_data_t audit_data = { .socket = -1, .mode = AUDIT_DISABLED };
+    static audit_data_t audit_data = { .socket = -1, .mode = AUDIT_DISABLED };
 
     w_mutex_init(&audit_mutex, NULL);
 
@@ -221,9 +228,8 @@ int audit_init(void) {
     }
 
     // Initialize Audit socket
-    static int audit_socket;
-    audit_socket = init_auditd_socket();
-    if (audit_socket < 0) {
+    audit_data.socket = init_auditd_socket();
+    if (audit_data.socket < 0) {
         merror("Can't init auditd socket in 'init_auditd_socket()'");
         return -1;
     }
@@ -240,7 +246,7 @@ int audit_init(void) {
 
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
-        if(audit_health_check(audit_socket)) {
+        if(audit_health_check(audit_data.socket)) {
             merror(FIM_ERROR_WHODATA_HEALTHCHECK_START);
             return -1;
         }
@@ -317,7 +323,7 @@ void *audit_main(audit_data_t *audit_data) {
     minfo(FIM_WHODATA_STARTED);
 
     // Read events
-    audit_read_events(audit_data->socket, READING_MODE);
+    audit_read_events(&audit_data->socket, READING_MODE);
 
     // Auditd is not runnig or socket closed.
     mdebug1(FIM_AUDIT_THREAD_STOPED);
