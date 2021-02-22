@@ -11,16 +11,17 @@ sock.connect(ADDR)
 
 
 def send_msg(msg):
-    '''Send message to wazuh-db socket
+    """Send message to wazuh-db socket
 
     Parameters
     ----------
     msg : str
         Message to be formatted and sent
-    '''
-    msg = struct.pack('<I', len(msg)) + msg.encode()
+    """
+    encoded_msg = msg.encode(encoding='utf-8')
+    packed_msg = struct.pack('<I', len(encoded_msg)) + encoded_msg
     # Send msg
-    sock.send(msg)
+    sock.send(packed_msg)
     # Receive response
     data = sock.recv(4)
     data_size = struct.unpack('<I', data[0:4])[0]

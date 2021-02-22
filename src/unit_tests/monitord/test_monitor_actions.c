@@ -34,11 +34,6 @@
 #include "config/config.h"
 
 /* redefinitons/wrapping */
-
-time_t __wrap_time(__attribute__((unused)) time_t *t) {
-    return mock_type(time_t);
-}
-
 extern monitor_time_control mond_time_control;
 
 /* setup/teardown */

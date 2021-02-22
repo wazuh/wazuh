@@ -18,10 +18,10 @@ relationships:
         - security_all
         - cluster_all
         - ciscat_read
-        - decoders_read
-        - lists_read
+        - decoders_all
+        - lists_all
         - rootcheck_all
-        - rules_read
+        - rules_all
         - mitre_read
         - sca_read
         - syscheck_all

@@ -261,7 +261,6 @@ void *Extra_Data_FP(Eventinfo *lf, char *field, const char *order);
 void *Status_FP(Eventinfo *lf, char *field, const char *order);
 void *SystemName_FP(Eventinfo *lf, char *field, const char *order);
 void *DynamicField_FP(Eventinfo *lf, char *field, const char *order);
-void *None_FP(Eventinfo *lf, char *field, const char *order);
 
 /* Copy Eventinfo for writing log */
 void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
