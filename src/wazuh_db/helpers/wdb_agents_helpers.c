@@ -10,11 +10,7 @@
  */
 
 #include "wdb_agents_helpers.h"
-//#include "defs.h"
 #include "wazuhdb_op.h"
-
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *agents_db_commands[] = {
     [WDB_AGENTS_VULN_CVE_INSERT] = "agent %d vuln_cve insert %s",
@@ -30,8 +26,8 @@ int wdb_agents_vuln_cve_insert(int id,
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
     char *payload = NULL;
     int aux_sock = -1;
 
@@ -48,15 +44,11 @@ int wdb_agents_vuln_cve_insert(int id,
     cJSON_AddStringToObject(data_in, "cve", cve);
 
     data_in_str = cJSON_PrintUnformatted(data_in);
-    cJSON_Delete(data_in);
-    snprintf(wdbquery, sizeof(wdbquery), agents_db_commands[WDB_AGENTS_VULN_CVE_INSERT], id, data_in_str);
-    os_free(data_in_str);
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVE_INSERT], id, data_in_str);
 
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
     switch (result) {
         case OS_SUCCESS:
@@ -68,12 +60,22 @@ int wdb_agents_vuln_cve_insert(int id,
         case OS_INVALID:
             mdebug1("Agents DB (%d) Error in the response from socket", id);
             mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
-            return OS_INVALID;
+            result = OS_INVALID;
+            break;
         default:
             mdebug1("Agents DB (%d) Cannot execute SQL query", id);
             mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
-            return OS_INVALID;
+            result = OS_INVALID;
     }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
+    os_free(wdbquery);
+    os_free(wdboutput);
 
     return result;
 }
@@ -81,18 +83,16 @@ int wdb_agents_vuln_cve_insert(int id,
 int wdb_agents_vuln_cve_clear(int id,
                               int *sock) {
     int result = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
     char *payload = NULL;
     int aux_sock = -1;
 
-    snprintf(wdbquery, sizeof(wdbquery), agents_db_commands[WDB_AGENTS_VULN_CVE_CLEAR], id);
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVE_CLEAR], id);
 
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
     switch (result) {
         case OS_SUCCESS:
@@ -104,12 +104,20 @@ int wdb_agents_vuln_cve_clear(int id,
         case OS_INVALID:
             mdebug1("Agents DB (%d) Error in the response from socket", id);
             mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
-            return OS_INVALID;
+            result = OS_INVALID;
+            break;
         default:
             mdebug1("Agents DB (%d) Cannot execute SQL query", id);
             mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
-            return OS_INVALID;
+            result = OS_INVALID;
     }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    os_free(wdbquery);
+    os_free(wdboutput);
 
     return result;
 }
