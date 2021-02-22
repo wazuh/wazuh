@@ -436,13 +436,15 @@ int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 char *OS_RecvUDP(int socket, int sizet)
 {
     char *ret;
+    int recv_b;
 
     ret = (char *) calloc((sizet), sizeof(char));
     if (ret == NULL) {
         return (NULL);
     }
 
-    if ((recv(socket, ret, sizet - 1, 0)) < 0) {
+    recv_b = recv(socket, ret, sizet - 1, 0);
+    if (recv_b < 0) {
         free(ret);
         return (NULL);
     }
@@ -454,6 +456,8 @@ char *OS_RecvUDP(int socket, int sizet)
 int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 {
     int recv_b;
+
+    buffer[buffer_size] = '\0';
 
     recv_b = recv(socket, buffer, buffer_size, 0);
     if (recv_b < 0) {
