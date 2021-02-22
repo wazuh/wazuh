@@ -42,7 +42,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,
                             -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,wdb_exec_stmt_sized -Wl,--wrap,wdb_step -Wl,--wrap,sqlite3_bind_text \
                             -Wl,--wrap,sqlite3_bind_parameter_index -Wl,--wrap,cJSON_Delete -Wl,--wrap,sqlite3_step -Wl,--wrap,sqlite3_column_int")
 
-list(APPEND wdb_tests_names "test_wdb_agent")
+list(APPEND wdb_tests_names "test_wdb_global_helpers")
 list(APPEND wdb_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,strerror \
                              -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_Parse \
                              -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddNumberToObject \
