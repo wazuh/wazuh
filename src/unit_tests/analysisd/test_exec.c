@@ -15,7 +15,7 @@
 
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/labels_op_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_agent_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 #include "../../analysisd/eventinfo.h"
 #include "../../analysisd/config.h"
 #include "../../analysisd/alerts/exec.h"

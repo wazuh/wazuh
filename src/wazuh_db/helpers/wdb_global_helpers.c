@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "wdb.h"
+#include "wdb_global_helpers.h"
 #include "defs.h"
 #include "wazuhdb_op.h"
 
