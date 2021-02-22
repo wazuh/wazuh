@@ -38,7 +38,7 @@ async def delete_agents(request, pretty=False, wait_for_complete=False, agents_l
     purge : bool
         Delete an agent from the key store.
     status : str
-        Filters by agent status. Use commas to enter multiple statuses.
+        Filter by agent status. Use commas to enter multiple statuses.
     q : str
         Query to filter agents by.
     older_than : str
