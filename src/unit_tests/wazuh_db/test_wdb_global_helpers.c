@@ -28,9 +28,6 @@
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
-
 extern int test_mode;
 int set_payload = 0;
 
