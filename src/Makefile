@@ -79,7 +79,7 @@ WIN_CMAKE_RULES+=win32/syscollector
 endif
 else
 ifeq (${uname_S},AIX)
-WIN_CMAKE_OPTS=-DINSTALL_PREFIX=${PREFIX}
+WIN_CMAKE_OPTS=-DINSTALL_PREFIX=${INSTALLDIR}
 endif
 endif
 
@@ -150,7 +150,7 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX -D__unix
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread -L${PREFIX}/lib/
+		OSSEC_LDFLAGS+=-pthread -L${INSTALLDIR}/lib/
 		AR_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/vac/bin
 		CC=gcc
