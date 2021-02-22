@@ -102,8 +102,8 @@ int __wrap_chmod(const char *__file, __mode_t __mode) {
     return mock();//1;
 }
 
-extern int __real_fcntl(int __fd, int __cmd, ...);
-int __wrap_fcntl(int __fd, int __cmd, ...) {
+extern int __real_fcntl(int __fd, int __cmd);
+int __wrap_fcntl(int __fd, int __cmd) {
     if(!test_mode) {
         return __real_fcntl(__fd, __cmd);
     }
@@ -393,13 +393,12 @@ void test_recv_conn_UDP(void **state) {
     data->server_client_socket = 4;
     will_return(__wrap_recv, 13);
 
-    assert_int_equal(OS_RecvConnUDP(data->server_socket, buffer, BUFFERSIZE), strlen(SENDSTRING));
+    assert_int_equal(OS_RecvConnUDP(data->server_socket, buffer, BUFFERSIZE - 1), strlen(SENDSTRING));
     assert_string_equal(buffer, SENDSTRING);
 }
 
 void test_recv_UDP(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
-    char buffer[BUFFERSIZE];
 
     data->server_client_socket = 4;
     will_return(__wrap_recv, 1);
@@ -563,7 +562,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_recv_conn_UDP, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_UDP, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_udp_recv_conn_invalid_sockets, test_setup, test_teardown),
-        //cmocka_unit_test_setup_teardown(test_udp_recv_invalid_sockets, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_udp_recv_invalid_sockets, test_setup, test_teardown),
 
         /* Bind a unix domain */
         cmocka_unit_test_setup_teardown(test_bind_unix_domain, test_setup, test_teardown),
