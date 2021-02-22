@@ -318,7 +318,6 @@ void InstallAuthKeys(char *msg)
         if (!fp) {
             merror_exit("Unable to open key file: %s", KEYS_FILE);
         }
-            
 
         fprintf(fp, "%s\n", key);
         fclose(fp);
