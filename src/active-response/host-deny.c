@@ -30,6 +30,9 @@ int main (int argc, char **argv) {
     FILE *host_deny_fp = NULL;
     char *home_path = w_homedir(argv[0]);
 
+    /* Trim absolute path to get Wazuh's installation directory */
+    home_path = w_strtok_r_str_delim("/active-response", &home_path);
+
     /* Change working directory */
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
