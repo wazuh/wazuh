@@ -14,13 +14,6 @@
 #include "os_xml/os_xml.h"
 #include "config.h"
 
-/* Prototypes */
-static int read_main_elements(const OS_XML *xml, int modules,
-                              XML_NODE node,
-                              void *d1,
-                              void *d2);
-
-
 /* Read the main elements of the configuration */
 static int read_main_elements(const OS_XML *xml, int modules,
                               XML_NODE node,

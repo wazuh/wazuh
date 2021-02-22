@@ -265,10 +265,6 @@ OSHashNode *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i) {
     return mock_type(OSHashNode *);
 }
 
-time_t __wrap_time(time_t *t) {
-    return mock_type(time_t);
-}
-
 double __wrap_difftime (time_t __time1, time_t __time0) {
     return mock();
 }

@@ -143,7 +143,7 @@ int fim_db_get_not_scanned(fdb_t * fim_sql, fim_tmp_file **file, int storage) {
 
 // LCOV_EXCL_START
 int fim_db_delete_not_scanned(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage,
                                     (void *) true, (void *) FIM_SCHEDULED, NULL);
 }
 
@@ -154,7 +154,7 @@ int fim_db_delete_range(fdb_t * fim_sql, fim_tmp_file *file, pthread_mutex_t *mu
 
 int fim_db_process_missing_entry(fdb_t *fim_sql, fim_tmp_file *file, pthread_mutex_t *mutex, int storage,
                                  fim_event_mode mode, whodata_evt * w_evt) {
-    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_db_remove_path, storage,
+    return fim_db_process_read_file(fim_sql, file, FIM_TYPE_FILE, mutex, fim_delete_file_event, storage,
                                     (void *) true, (void *) (fim_event_mode) mode, (void *) w_evt);
 }
 // LCOV_EXCL_STOP
@@ -456,55 +456,14 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
     return res_data || res_path;
 }
 
-void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
-     __attribute__((unused))void *alert,
-     __attribute__((unused))void *fim_ev_mode,
-     __attribute__((unused))void *w_evt) {
-
-    int *send_alert = (int *) alert;
-    fim_event_mode mode = (fim_event_mode) fim_ev_mode;
+int fim_db_remove_path(fdb_t *fim_sql, const char *path) {
+    int state = FIMDB_ERR;
     int rows = 0;
-    int conf;
-
-    if(entry->type == FIM_TYPE_FILE) {
-
-        conf = fim_configuration_directory(entry->file_entry.path, "file");
-
-        if(conf > -1) {
-            switch (mode) {
-            /* Don't send alert if received mode and mode in configuration aren't the same */
-            case FIM_REALTIME:
-                if (!(syscheck.opts[conf] & REALTIME_ACTIVE)) {
-                    return;     // LCOV_EXCL_LINE
-                }
-                break;
-
-            case FIM_WHODATA:
-                if (!(syscheck.opts[conf] & WHODATA_ACTIVE)) {
-                    return;     // LCOV_EXCL_LINE
-                }
-                break;
-
-            case FIM_SCHEDULED:
-                if (!(syscheck.opts[conf] & SCHEDULED_ACTIVE)) {
-                    return;     // LCOV_EXCL_LINE
-                }
-                break;
-
-            }
-        } else {
-            mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
-            return;
-        }
-    }
-
-    w_mutex_lock(mutex);
-
     // Clean and bind statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_DATA);
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_DELETE_PATH);
-    fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_COUNT, entry->file_entry.path);
+    fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_COUNT, path);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT]) == SQLITE_ROW) {
         rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATH_COUNT], 0);
@@ -518,62 +477,25 @@ void fim_db_remove_path(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex
             // The inode has only one entry, delete the entry data.
             fim_db_bind_delete_data_id(fim_sql, rowid);
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_DATA]) != SQLITE_DONE) {
-                w_mutex_unlock(mutex);
                 goto end;
             }
             //Fallthrough
         default:
             // The inode has more entries, delete only this path.
-            fim_db_bind_path(fim_sql, FIMDB_STMT_DELETE_PATH, entry->file_entry.path);
+            fim_db_bind_path(fim_sql, FIMDB_STMT_DELETE_PATH, path);
             if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_PATH]) != SQLITE_DONE) {
-                w_mutex_unlock(mutex);
                 goto end;
             }
 
             fim_sql->full = false;
             break;
         }
-    }
-
-    w_mutex_unlock(mutex);
-
-
-    if (send_alert && rows >= 1) {
-        whodata_evt *whodata_event = (whodata_evt *) w_evt;
-        cJSON * json_event      = NULL;
-        char * json_formatted    = NULL;
-        int pos = 0;
-        const char *FIM_ENTRY_TYPE[] = {"file", "registry"};
-
-        // Obtaining the position of the directory, in @syscheck.dir, where @entry belongs
-        if (pos = fim_configuration_directory(entry->file_entry.path,
-            FIM_ENTRY_TYPE[entry->type]), pos < 0) {
-            goto end;
-        }
-
-        w_mutex_lock(mutex);
-        json_event = fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, pos, FIM_DELETE, mode,
-                                    whodata_event, NULL);
-        w_mutex_unlock(mutex);
-
-        if (!strcmp(FIM_ENTRY_TYPE[entry->type], "file") && syscheck.opts[pos] & CHECK_SEECHANGES) {
-            fim_diff_process_delete_file(entry->file_entry.path);
-        }
-
-        if (json_event) {
-            mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
-            json_formatted = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formatted);
-
-            os_free(json_formatted);
-            cJSON_Delete(json_event);
-        }
+        state = FIMDB_OK;
     }
 
 end:
-    w_mutex_lock(mutex);
     fim_db_check_transaction(fim_sql);
-    w_mutex_unlock(mutex);
+    return state;
 }
 
 void fim_db_remove_validated_path(fdb_t *fim_sql,
@@ -586,7 +508,7 @@ void fim_db_remove_validated_path(fdb_t *fim_sql,
     int validated_configuration = fim_configuration_directory(entry->file_entry.path, "file");
 
     if (validated_configuration == *original_configuration) {
-        fim_db_remove_path(fim_sql, entry, mutex, alert, fim_ev_mode, NULL);
+        fim_delete_file_event(fim_sql, entry, mutex, alert, fim_ev_mode, NULL);
     }
 }
 

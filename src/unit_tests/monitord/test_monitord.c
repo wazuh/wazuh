@@ -31,10 +31,6 @@
 
 /* redefinitons/wrapping */
 
-time_t __wrap_time(__attribute__((unused)) time_t *t) {
-    return mock_type(time_t);
-}
-
 int __wrap_ReadConfig(int modules, const char *cfgfile, __attribute__((unused)) void *d1, __attribute__((unused)) void *d2) {
     check_expected(modules);
     check_expected(cfgfile);

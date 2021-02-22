@@ -30,9 +30,8 @@ for sh_file in /configuration_files/*.sh; do
   . $sh_file
 done
 
+echo "" > /var/ossec/logs/api.log
 /var/ossec/bin/wazuh-control restart
-
-sleep 1
 
 # Master-only configuration
 if [ "$3" == "master" ]; then
@@ -43,13 +42,19 @@ if [ "$3" == "master" ]; then
   for sh_file in /configuration_files/master_only/*.sh; do
     . $sh_file
   done
+
+  # Wait until Wazuh API is ready
+  elapsed_time=0
+  while [[ $(grep 'Listening on' /var/ossec/logs/api.log | wc -l)  -eq 0 ]] && [[ $elapsed_time -lt 120 ]]
+  do
+    sleep 1
+    elapsed_time=$((elapsed_time+1))
+  done
+
+  # RBAC configuration
+  for sql_file in /configuration_files/*.sql; do
+    sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
+  done
 fi
-
-sqlite3 /var/ossec/api/configuration/security/rbac.db < /configuration_files/base_security_test.sql
-
-# RBAC configuration
-for sql_file in /configuration_files/*.sql; do
-  sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
-done
 
 /usr/bin/supervisord

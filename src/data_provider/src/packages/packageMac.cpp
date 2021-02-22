@@ -33,7 +33,7 @@ std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageConte
     return ret;
 }
 
-BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper) 
+BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper)
 : m_packageWrapper(packageWrapper)
 { }
 

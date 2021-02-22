@@ -4,3 +4,16 @@
   resources:
   - rule:file:0010-rules_config.xml
   effect: allow
+
+- actions:
+  - rules:update
+  resources:
+  - "*:*:*"
+  - rule:file:dummy
+  effect: allow
+
+- actions:
+  - rules:delete
+  resources:
+  - rule:file:local_rules.xml
+  effect: allow

@@ -1120,7 +1120,7 @@ int wdb_syscollector_package_save2(wdb_t * wdb, const cJSON * attributes)
     const char * format = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "format"));
     const char * name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "name"));
     const char * priority = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "priority"));
-    const char * section = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "section"));
+    const char * section = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "groups"));
     const int size = cJSON_GetObjectItem(attributes, "size") ? cJSON_GetObjectItem(attributes, "size")->valueint : 0;
     const char * vendor = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "vendor"));
     const char * install_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "install_time"));
