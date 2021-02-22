@@ -135,7 +135,7 @@ def enable_run_as(user_id: str = None, allow_run_as: bool = False):
         query = auth.enable_run_as(user_id, allow_run_as)
         if query is False:
             result.add_failed_item(id_=user_id, error=WazuhError(5001))
-        elif query is SecurityError.INVALID:
+        elif query == SecurityError.INVALID:
             result.add_failed_item(id_=user_id, error=WazuhError(5010))
         else:
             result.affected_items.append(auth.get_user_id(user_id))
