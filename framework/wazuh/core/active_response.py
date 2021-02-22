@@ -1,6 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+import json
 
 from wazuh.core import common
 from wazuh.core.agent import Agent
@@ -50,7 +51,7 @@ def create_message(command: str = '', custom: bool = False, arguments: list = No
     return msg_queue
 
 
-def create_json_message(command: str = '', arguments: list = None, alert: dict = None) -> dict:
+def create_json_message(command: str = '', arguments: list = None, alert: dict = None) -> str:
     """Create the JSON message that will be sent. Function used when Wazuh agent version is >= 4.2.0.
 
     Parameters
@@ -70,8 +71,8 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
 
     Returns
     -------
-    dict
-        Dict with the message that will be sent to the socket.
+    str
+        Message that will be sent to the socket.
     """
     if not command:
         raise WazuhError(1650)
@@ -79,9 +80,10 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
     cluster_enabled = not read_cluster_config()['disabled']
     node_name = get_node().get('node') if cluster_enabled else None
 
-    msg_queue = create_wazuh_socket_message(origin={'name': node_name, 'module': 'api/framework'}, command=command,
-                                            parameters={'extra_args': arguments if arguments else [],
-                                                        'alert': alert if alert else {}})
+    msg_queue = json.dumps(
+        create_wazuh_socket_message(origin={'name': node_name, 'module': 'api/framework'}, command=command,
+                                    parameters={'extra_args': arguments if arguments else [],
+                                                'alert': alert if alert else {}}))
 
     return msg_queue
 

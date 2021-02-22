@@ -247,6 +247,8 @@ int main(int argc, char **argv)
                 minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
 #else
                 mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
+                syscheck.opts[r] &= ~ REALTIME_ACTIVE;
+                syscheck.opts[r] |= SCHEDULED_ACTIVE;
 #endif
             }
 

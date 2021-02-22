@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -739,6 +739,35 @@ void test_w_homedir_argv_realpath_fail(void **state)
     assert_string_equal(val, FALLBACKDIR);
 }
 
+void test_get_file_content(void **state)
+{
+    int max_size = 300;
+    char * content;
+    const char * expected = "test string";
+    const char * file_name = "test_file.txt";
+
+    expect_string(__wrap_fopen, path, file_name);
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 1);
+
+    will_return(__wrap_ftell, 0);
+    will_return(__wrap_fseek, 0);
+    will_return(__wrap_ftell, 11); // Content size
+    will_return(__wrap_fseek, 0);
+
+    will_return(__wrap_fread, expected);
+    will_return(__wrap_fread, strlen(expected));
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
+
+    content = w_get_file_content(file_name, max_size);
+
+    assert_string_equal(content, expected);
+
+    free(content);
+}
+
 #ifdef TEST_WINAGENT
 void test_get_UTC_modification_time_success(void **state) {
     HANDLE hdle = (HANDLE)1234;
@@ -831,7 +860,6 @@ int main(void) {
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_fail),
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_success),
         cmocka_unit_test(test_w_uncompress_gzfile_success),
-        // w_homedir
         cmocka_unit_test(test_w_homedir_unix1),
         cmocka_unit_test(test_w_homedir_unix2),
         cmocka_unit_test(test_w_homedir_macOS),
@@ -841,14 +869,12 @@ int main(void) {
         cmocka_unit_test(test_w_homedir_argv_full_path_success),
         cmocka_unit_test(test_w_homedir_argv_symlink_success),
         cmocka_unit_test(test_w_homedir_arg_fail),
-        cmocka_unit_test_setup_teardown(test_w_homedir_argv_realpath_fail, setup_errno, teardown_errno)
-#else
+        cmocka_unit_test_setup_teardown(test_w_homedir_argv_realpath_fail, setup_errno, teardown_errno),
+        cmocka_unit_test(test_get_file_content),
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
-        cmocka_unit_test(test_get_UTC_modification_time_fail_get_filetime)
+        cmocka_unit_test(test_get_UTC_modification_time_fail_get_filetime),
 #endif
-
-
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }

@@ -1,3 +1,5 @@
+pip==20.3.3
+wheel==0.34.2
 aiohttp-cache==2.0.2
 aiohttp-cors==0.7.0
 aiohttp-jinja2==1.2.0
@@ -11,12 +13,13 @@ boto3==1.13.1
 botocore==1.16.1
 cachetools==4.1.0
 certifi==2020.4.5.1
-cffi==1.14.0
+cffi==1.14.4
 chardet==3.0.4
 Click==7.0
 clickclick==1.2.2
 connexion==2.6.0
-cryptography==3.2.1
+cryptography==3.3.2
+cython==0.29.21
 defusedxml==0.6.0
 docker-pycreds==0.4.0
 docker==4.2.0
@@ -59,4 +62,4 @@ urllib3==1.25.9
 uvloop==0.14.0
 websocket-client==0.57.0
 Werkzeug==1.0.1
-wheel==0.34.2
+xmltodict==0.12.0

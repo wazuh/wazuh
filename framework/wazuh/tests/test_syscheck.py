@@ -245,7 +245,8 @@ def test_syscheck_last_scan_internal_error(glob_mock, version):
     (['007'], ['file', 'arch', 'value.name', 'value.type'], None, True),
     (['008'], ['file', 'value.name'], None, True),
     (['009'], ['value.name'], None, True),
-    (['000'], ['attributes'], None, True)
+    (['000'], ['attributes'], None, True),
+    (['000'], None, {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True)
 ])
 @patch('socket.socket.connect')
 @patch('wazuh.core.common.wdb_path', new=test_data_path)

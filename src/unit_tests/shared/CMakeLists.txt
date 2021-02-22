@@ -6,7 +6,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     set(FILE_OP_BASE_FLAGS "-Wl,--wrap,isChroot,--wrap,stat,--wrap,chmod,--wrap,getpid \
                             -Wl,--wrap,unlink,--wrap,_merror,--wrap,_minfo,--wrap,_mwarn \
                             -Wl,--wrap,fopen,--wrap,_mferror,--wrap,fflush,--wrap,fclose \
-                            -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove \
+                            -Wl,--wrap,fread,--wrap,ftell,--wrap,fseek,--wrap,fwrite,--wrap,remove \
                             -Wl,--wrap,fprintf,--wrap,fgets,--wrap,File_DateofChange \
                             -Wl,--wrap,bzip2_uncompress,--wrap,mdebug1,--wrap,lstat \
                             -Wl,--wrap,gzopen,--wrap,gzread,--wrap,gzclose \
@@ -67,6 +67,18 @@ endif()
 list(APPEND shared_tests_names "test_time_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,getpid")
 
+list(APPEND shared_tests_names "test_buffer_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_utf8_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_log_builder")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_custom_output_search_replace")
+list(APPEND shared_tests_flags " ")
+
 if(${TARGET} STREQUAL "server")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
@@ -82,6 +94,12 @@ list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_t
 
 list(APPEND shared_tests_names "test_rootcheck_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror,--wrap=close,--wrap=getpid")
+
+list(APPEND shared_tests_names "test_fs_op")
+list(APPEND shared_tests_flags " ")
+
+list(APPEND shared_tests_names "test_wazuhdb_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
 endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")
@@ -120,6 +138,13 @@ list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,_merror")
 endif()
 
+if(${TARGET} STREQUAL "server")
+list(APPEND shared_tests_names "test_json-queue")
+list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wrap,fopen -Wl,--wrap,fclose \
+                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
+                                -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
+                                -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
+endif()
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

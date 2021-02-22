@@ -326,7 +326,7 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
     mdebug2("OS_Alert_SendSyslog_JSON()");
 
     if (rule = cJSON_GetObjectItem(json_data, "rule"), !rule) {
-        merror("Alert with no rule field.");
+        mdebug2("Alert with no rule field.");
         return 0;
     }
 

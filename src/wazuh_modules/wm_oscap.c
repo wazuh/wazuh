@@ -21,7 +21,8 @@ const wm_context WM_OSCAP_CONTEXT = {
     "open-scap",
     (wm_routine)wm_oscap_main,
     (wm_routine)(void *)wm_oscap_destroy,
-    (cJSON * (*)(const void *))wm_oscap_dump
+    (cJSON * (*)(const void *))wm_oscap_dump,
+    NULL
 };
 
 #ifndef WIN32

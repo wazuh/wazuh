@@ -322,7 +322,7 @@ getPreinstalledName()
     if [ -f "${OSSEC_INIT}" ]; then
         . ${OSSEC_INIT}
     else
-        NAME="wazuh"
+        NAME="Wazuh"
     fi
 
     echo $NAME

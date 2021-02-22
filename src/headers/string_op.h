@@ -234,6 +234,15 @@ char * w_remove_substr(char *str, const char *sub);
 char * w_strndup(const char *str, size_t n);
 
 /**
+ * @brief Split a string into an array of strings separated by given delimiters.
+ * @param string_to_split String to split.
+ * @param delim String with the delimiters used to split.
+ * @param max_array_size Maximum number of strings returned in the array, if it is 0 no limit will be applied.
+ * @return char** Returns an array of string.
+ */
+char ** w_string_split(const char *string_to_split, const char *delim, int max_array_size);
+
+/**
  * @brief Append two strings
  *
  * This function produces a string with length #a + n, and joins the content

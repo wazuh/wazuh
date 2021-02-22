@@ -5,3 +5,16 @@
   - rule:file:0010-rules_config.xml
   - rule:file:0015-ossec_rules.xml
   effect: allow
+
+- actions:
+  - rules:update
+  resources:
+  - "*:*:*"
+  - rule:file:dummy
+  effect: allow
+
+- actions:
+  - rules:delete
+  resources:
+  - rule:file:local_rules.xml
+  effect: allow
