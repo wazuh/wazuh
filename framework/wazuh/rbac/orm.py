@@ -1337,7 +1337,16 @@ class PoliciesManager:
                         for resource in policy['resources']:
                             if not re.match(regex, resource):
                                 return SecurityError.INVALID
+
                         policy_id = None
+                        policies = sorted([p.id for p in self.get_policies()])
+                        for p_id in policies or [0]:
+                            if policy_id and p_id - policy_id > 1:
+                                break
+                            else:
+                                policy_id = p_id
+                        policy_id += 1
+
                         try:
                             if check_default and \
                                     self.session.query(Policies).order_by(desc(Policies.id)
@@ -1439,6 +1448,8 @@ class PoliciesManager:
             New name for the Policy
         policy : dict
             New policy for the Policy
+        check_default : bool, optional
+            Flag that indicates if the policy ID can be less than `max_id_reserved`.
 
         Returns
         -------
@@ -2454,9 +2465,14 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
             for name, policy in payload['policies'].items():
                 policy_name = f'{d_policy_name}_{name}'
                 policy_result = pm.add_policy(name=policy_name, policy=policy, check_default=False)
+                # Update policy if it exists
                 if policy_result == SecurityError.ALREADY_EXIST:
                     policy_id = pm.get_policy(policy_name)['id']
-                    pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy, check_default=False)
+                    if policy_id < max_id_reserved:
+                        pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy, check_default=False)
+                    else:
+                        pm.delete_policy(policy_id=policy_id)
+                        pm.add_policy(name=policy_name, policy=policy, check_default=False)
 
 # Create the relationships
 with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
