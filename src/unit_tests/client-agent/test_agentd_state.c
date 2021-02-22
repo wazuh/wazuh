@@ -16,7 +16,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
-#include "../wrappers/client-agent/buffer_wrappers.h"
+#include "../wrappers/wazuh/client-agent/buffer_wrappers.h"
 #include "../wrappers/libc/time_wrappers.h"
 
 #include "../../client-agent/state.h"
