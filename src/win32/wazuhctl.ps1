@@ -75,6 +75,31 @@ if (${enroll}) {
 
         # Set new server configuration
         $client = ${xml_conf}.ossec_config.SelectSingleNode("client")
+
+        if (${reconnection-time}) { 
+            if ($client."time-reconnect") {
+                $client."time-reconnect" = ${reconnection-time} 
+            }
+            else 
+            {
+                $reconnect_element = ${xml_conf}.CreateElement("time-reconnect")
+                [void]$client.AppendChild($reconnect_element)
+                $client."time-reconnect" = ${reconnection-time} 
+            }
+        }
+
+        if (${keep-alive}) { 
+            if ($client.notify_time) {
+                $client.notify_time = ${keep-alive}
+            }
+            else 
+            {
+                $notify_element = ${xml_conf}.CreateElement("notify_time")
+                [void]$client.AppendChild($notify_element)
+                $client.notify_time = ${keep-alive}
+            }
+        }
+
         ${address} | ForEach-Object {
             $server_element = ${xml_conf}.CreateElement("server")
             $client.AppendChild($server_element)
@@ -86,15 +111,11 @@ if (${enroll}) {
         $address_element = ${xml_conf}.CreateElement("address")
         $port_element = ${xml_conf}.CreateElement("port")
         $protocol_element = ${xml_conf}.CreateElement("protocol")
-        $keep_alive_element = ${xml_conf}.CreateElement("notify_time")
-        $time_reconnect_element = ${xml_conf}.CreateElement("time-reconnect")
         
         if (${address}) { 
             [void]$_.AppendChild($address_element)
             [void]$_.AppendChild($port_element)
             [void]$_.AppendChild($protocol_element)
-            [void]$_.AppendChild($keep_alive_element)
-            [void]$_.AppendChild($time_reconnect_element)
             $_.address = ${address}[$i] 
         }
 
@@ -106,12 +127,6 @@ if (${enroll}) {
 
         if (${protocol}) { $_.protocol = ${protocol} }
         elseif (${address}) { $_.protocol = "tcp" }
-
-        if (${reconnection-time}) { $_."time-reconnect" = ${reconnection-time} }
-        elseif (${address}) { $_."time-reconnect" = "60" }
-
-        if (${keep-alive}) { $_.notify_time = ${keep-alive} }
-        elseif (${address}) { $_.notify_time = "10" }
         
         $i=$i+1
     }
