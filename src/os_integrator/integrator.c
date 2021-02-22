@@ -125,16 +125,19 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         /* Get JSON message if available (timeout of 5 seconds) */
         mdebug2("jqueue_next()");
         al_json = jqueue_next(&jfileq);
-        if(!al_json)
+        if(!al_json) {
+            sleep(1);
             continue;
+        }
 
         mdebug1("sending new alert.");
         temp_file_created = 0;
 
-        /* If JSON does not contain rule block, continue*/
+        /* If JSON does not contain rule block, continue */
         if (rule = cJSON_GetObjectItem(al_json, "rule"), !rule){
                 s++;
-                mdebug2("skipping: Alert does not contain a rule block");
+                mdebug2("skipping: Alert does not contain a rule block.");
+                cJSON_Delete(al_json);
                 continue;
         }
 
@@ -206,7 +209,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 }
 
                 if (!found) {
-                    mdebug2("skipping: group doesn't match");
+                    mdebug2("skipping: group doesn't match.");
                     s++; continue;
                 }
             }
@@ -238,7 +241,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 /* skip integration if none are matched */
                 if(rule_match == -1)
                 {
-                    mdebug2("skipping: rule doesn't match");
+                    mdebug2("skipping: rule doesn't match.");
                     s++; continue;
                 }
             }
@@ -410,7 +413,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                                 merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, INTEGRATORDIR, buffer);
                                 merror("Exit status was: %d", wstatus);
                             } else {
-                                mdebug1("Command ran successfully");
+                                mdebug1("Command ran successfully.");
                             }
                         } else {
                             merror("Command (%s) execution exited abnormally.", exec_full_cmd);

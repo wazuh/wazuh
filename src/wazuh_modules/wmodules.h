@@ -12,13 +12,10 @@
 #ifndef W_MODULES
 #define W_MODULES
 
-#ifndef ARGV0
-#define ARGV0 "wazuh-modulesd"
-#endif // ARGV0
-
 #include "shared.h"
 #include <pthread.h>
 #include "config/config.h"
+#include "wmodules_def.h"
 
 #define WM_DEFAULT_DIR  "wodles"                   // Default modules directory.
 #define WM_STATE_DIR    "var/wodles"               // Default directory for states.
@@ -48,28 +45,10 @@
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
 
+#define RANDOM_LENGTH  512
+#define MAX_VALUE_NAME 16383
+
 #define EXECVE_ERROR 0x7F
-
-typedef void* (*wm_routine)(void*);     // Standard routine pointer
-
-// Module context: this should be defined for every module
-
-typedef struct wm_context {
-    const char *name;                   // Name for module
-    wm_routine start;                   // Main function
-    wm_routine destroy;                 // Destructor
-    cJSON *(* dump)(const void *);
-} wm_context;
-
-// Main module structure
-
-typedef struct wmodule {
-    pthread_t thread;                   // Thread ID
-    const wm_context *context;          // Context (common structure)
-    char *tag;                          // Module tag
-    void *data;                         // Data (module-dependent structure)
-    struct wmodule *next;               // Pointer to next module
-} wmodule;
 
 // Verification type
 typedef enum crypto_type {
@@ -82,7 +61,7 @@ typedef enum crypto_type {
 
 #include "wm_oscap.h"
 #include "wm_database.h"
-#include "syscollector/syscollector.h"
+#include "wm_syscollector.h"
 #include "wm_command.h"
 #include "wm_ciscat.h"
 #include "wm_aws.h"
@@ -111,6 +90,7 @@ extern int wm_debug_level;
 int wm_config();
 cJSON *getModulesConfig(void);
 cJSON *getModulesInternalOptions(void);
+int modulesSync(char* args);
 
 // Add module to the global list
 void wm_add(wmodule *module);
@@ -189,12 +169,15 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 #ifndef WIN32
 // Com request thread dispatcher
 void * wmcom_main(void * arg);
+/**
+ * @brief Send a one-way message to wmodules
+ *
+ * @param message Payload.
+ */
 #endif
+void wmcom_send(char * message);
 size_t wmcom_dispatch(char * command, char ** output);
 size_t wmcom_getconfig(const char * section, char ** output);
-
-#ifdef __MACH__
-void freegate(gateway *gate);
-#endif
+int wmcom_sync(char * buffer);
 
 #endif // W_MODULES

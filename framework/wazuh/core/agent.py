@@ -223,7 +223,7 @@ class WazuhDBQueryGroup(WazuhDBQuery):
         else:
             rbac_value = None
 
-        if rbac_value:
+        if rbac_value is not None:
             self.query_filters += [{'value': rbac_value,
                                     'field': 'rbac_name',
                                     'operator': operator,
@@ -1179,9 +1179,11 @@ def send_restart_command(agent_id: str = '', agent_version: str = '') -> str:
 def get_agents_info():
     """Get all agent IDs in the system."""
     with open(common.client_keys, 'r') as f:
-        result = {line.split(' ')[0] for line in f}
+        file_content = f.readlines()
 
+    result = {line.split(' ')[0] for line in file_content}
     result.add('000')
+
     return result
 
 
@@ -1208,16 +1210,21 @@ def expand_group(group_name):
     agents_ids = set()
     if group_name == '*':
         for file in listdir(common.groups_path):
-            if path.getsize(path.join(common.groups_path, file)) > 0:
-                agents_ids.add(file)
+            try:
+                if path.getsize(path.join(common.groups_path, file)) > 0:
+                    agents_ids.add(file)
+            except FileNotFoundError:
+                # Agent group removed while running through listed dir
+                pass
     else:
         for file in listdir(common.groups_path):
-            with open(path.join(common.groups_path, file), 'r') as f:
-                try:
-                    if group_name in f.readlines()[0]:
-                        agents_ids.add(file)
-                except IndexError:
-                    pass
+            try:
+                with open(path.join(common.groups_path, file), 'r') as f:
+                    file_content = f.readlines()
+                len(file_content) == 1 and group_name in file_content[0] and agents_ids.add(file)
+            except FileNotFoundError:
+                # Agent group removed while running through listed dir
+                pass
 
     return agents_ids & get_agents_info()
 

@@ -265,10 +265,6 @@ OSHashNode *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i) {
     return mock_type(OSHashNode *);
 }
 
-time_t __wrap_time(time_t *t) {
-    return mock_type(time_t);
-}
-
 double __wrap_difftime (time_t __time1, time_t __time0) {
     return mock();
 }
@@ -1190,7 +1186,7 @@ void test_w_logtest_register_session_remove_old(void ** state) {
     expect_value(__wrap_OSHash_Add, key, session.token);
     expect_value(__wrap_OSHash_Add, data, &session);
     will_return(__wrap_OSHash_Add, 0);
-    
+
 
     w_logtest_register_session(&connection, &session);
     assert_int_equal(connection.active_client, active_session);
@@ -2778,7 +2774,7 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
     will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
-    
+
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *) 1);
     will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 1);
     will_return(__wrap_cJSON_IsObject, (cJSON *) 1);

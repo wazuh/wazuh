@@ -46,10 +46,6 @@ static int group_teardown(void ** state) {
 }
 
 /* wraps */
-time_t __wrap_time(time_t * t) {
-    return mock_type(time_t);
-}
-
 int __wrap_can_read() {
     return mock_type(int);
 }
@@ -69,7 +65,7 @@ void __wrap_w_get_hash_context(const char * path, SHA_CTX * context, int64_t pos
     return;
 }
 
-int __wrap_w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) { 
+int __wrap_w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) {
     return mock_type(int);
 }
 

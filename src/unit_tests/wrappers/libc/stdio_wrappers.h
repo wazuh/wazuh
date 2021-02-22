@@ -31,6 +31,8 @@ void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret);
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream);
 void expect_fread(char *file, int ret);
 
+long int __wrap_ftell(FILE *__stream);
+
 int __wrap_fseek(FILE *stream, long offset, int whence);
 
 size_t __wrap_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);

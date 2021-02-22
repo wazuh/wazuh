@@ -14,6 +14,7 @@
 #define CRALERT_MAIL_SET    0x001
 #define CRALERT_EXEC_SET    0x002
 #define CRALERT_READ_ALL    0x004
+#define CRALERT_READ_FAILED 0x008
 #define CRALERT_FP_SET      0x010
 
 /* File queue */

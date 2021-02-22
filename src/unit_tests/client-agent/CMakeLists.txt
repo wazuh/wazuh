@@ -21,7 +21,7 @@ set_target_properties(
 
 target_link_libraries(CLIENT-AGENT ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
-# Generate Analysisd tests
+# Generate agentd tests
 list(APPEND client-agent_names "test_start_agent")
 set(START_AGENT_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_minfo -Wl,--wrap,_mdebug1 \
                             -Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,OS_ConnectUDP \
@@ -34,6 +34,11 @@ if(${TARGET} STREQUAL "winagent")
 else()
     list(APPEND client-agent_flags "${START_AGENT_BASE_FLAGS} -Wl,--wrap=close")
 endif()
+
+list(APPEND client-agent_names "test_notify")
+list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_SendUnix,--wrap,OS_RecvUnix,--wrap,close \
+                                -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time,--wrap,_mdebug1 \
+                                -Wl,--wrap,_mdebug2")
 
 list(LENGTH client-agent_names count)
 math(EXPR count "${count} - 1")

@@ -35,7 +35,14 @@
 #define REQUEST_SIZE 4096
 
 #define expect_type(obj, t, str) if (obj.type != t) { mdebug2("Expecting %s", str); goto error; }
-#define expect_string(obj, s) if (strncmp(obj.via.str.ptr, s, obj.via.str.size)) { mdebug2("Expecting string '%s'", s); goto error; }
+
+// expect_string() is redefined in cmocka.h
+#ifdef WAZUH_UNIT_TESTING
+    #define test_expect_string(obj, s) if (strncmp(obj.via.str.ptr, s, obj.via.str.size)) { mdebug2("Expecting string '%s'", s); goto error; }
+#else
+    #define expect_string(obj, s) if (strncmp(obj.via.str.ptr, s, obj.via.str.size)) { mdebug2("Expecting string '%s'", s); goto error; }
+#endif
+
 #define filled_string(s) (s && *s)
 
 static void * wm_fluent_main(wm_fluent_t * data);   // Module main function. It won't return
@@ -64,7 +71,8 @@ const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
     (wm_routine)wm_fluent_main,
     (wm_routine)(void *)wm_fluent_destroy,
-    (cJSON * (*)(const void *))wm_fluent_dump
+    (cJSON * (*)(const void *))wm_fluent_dump,
+    NULL
 };
 
 // Module main function. It won't return
@@ -388,7 +396,14 @@ static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent) {
 
     array = result.data.via.array.ptr;
     expect_type(array[0], MSGPACK_OBJECT_STR, "string");
-    expect_string(array[0], "HELO");
+
+    // expect_string() is redefined in cmocka.h
+    #ifdef WAZUH_UNIT_TESTING
+        test_expect_string(array[0], "HELO");
+    #else
+        expect_string(array[0], "HELO");
+    #endif
+
     expect_type(array[1], MSGPACK_OBJECT_MAP, "map");
 
     map = array[1].via.map.ptr;
@@ -586,7 +601,13 @@ static wm_fluent_pong_t * wm_fluent_recv_pong(wm_fluent_t * fluent) {
 
     array = result.data.via.array.ptr;
     expect_type(array[0], MSGPACK_OBJECT_STR, "string");
-    expect_string(array[0], "PONG");
+
+    // expect_string() is redefined in cmocka.h
+    #ifdef WAZUH_UNIT_TESTING
+        test_expect_string(array[0], "PONG");
+    #else
+        expect_string(array[0], "PONG");
+    #endif
 
     expect_type(array[1], MSGPACK_OBJECT_BOOLEAN, "boolean");
     pong->auth_result = array[1].via.boolean;

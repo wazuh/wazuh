@@ -72,13 +72,6 @@ void w_remove_multigroup(const char *group);
 
 #endif
 
-/*
- * Parse manager hostname from agent-info file.
- * If no such file, returns NULL.
- */
-
-char* hostname_parse(const char *path);
-
 /* Validates the group name
  * @params response must be a 2048 buffer or NULL
  * Returns 0 on success or  -x on failure

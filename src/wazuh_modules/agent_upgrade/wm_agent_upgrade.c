@@ -37,7 +37,8 @@ const wm_context WM_AGENT_UPGRADE_CONTEXT = {
     AGENT_UPGRADE_WM_NAME,
     (wm_routine)wm_agent_upgrade_main,
     (wm_routine)(void *)wm_agent_upgrade_destroy,
-    (cJSON * (*)(const void *))wm_agent_upgrade_dump
+    (cJSON * (*)(const void *))wm_agent_upgrade_dump,
+    NULL
 };
 
 STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {

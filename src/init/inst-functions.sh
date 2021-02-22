@@ -731,20 +731,91 @@ InstallCommon()
         fi
     fi
 
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f shared_modules/dbsync/build/lib/libdbsync.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/dbsync/build/lib/libdbsync.dylib ${PREFIX}/lib
+            install_name_tool -id @rpath/../lib/libdbsync.dylib ${PREFIX}/lib/libdbsync.dylib
+        fi
+    elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} shared_modules/dbsync/build/lib/libdbsync.so ${PREFIX}/lib
 
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/queue
-  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/alerts
-  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/ossec
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/diff
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/fim
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/fim/db
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/logcollector
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libdbsync.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f shared_modules/rsync/build/lib/librsync.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/rsync/build/lib/librsync.dylib ${PREFIX}/lib
+            install_name_tool -id @rpath/../lib/librsync.dylib ${PREFIX}/lib/librsync.dylib
+            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${PREFIX}/lib/librsync.dylib
+        fi
+    elif [ -f shared_modules/rsync/build/lib/librsync.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} shared_modules/rsync/build/lib/librsync.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/librsync.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f data_provider/build/lib/libsysinfo.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 data_provider/build/lib/libsysinfo.dylib ${PREFIX}/lib
+            install_name_tool -id @rpath/../lib/libsysinfo.dylib ${PREFIX}/lib/libsysinfo.dylib
+        fi
+    elif [ -f data_provider/build/lib/libsysinfo.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} data_provider/build/lib/libsysinfo.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libsysinfo.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f wazuh_modules/syscollector/build/lib/libsyscollector.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/syscollector/build/lib/libsyscollector.dylib ${PREFIX}/lib
+            install_name_tool -id @rpath/../lib/libsyscollector.dylib ${PREFIX}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/data_provider/build/lib/libsysinfo.dylib @rpath/../lib/libsysinfo.dylib ${PREFIX}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/shared_modules/rsync/build/lib/librsync.dylib @rpath/../lib/librsync.dylib ${PREFIX}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${PREFIX}/lib/libsyscollector.dylib
+        fi
+    elif [ -f wazuh_modules/syscollector/build/lib/libsyscollector.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} wazuh_modules/syscollector/build/lib/libsyscollector.so ${PREFIX}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${PREFIX}/lib/libsyscollector.so
+        fi
+    fi
+
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
+  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/wazuh-control
+  ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/
+
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
+  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
+  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fim
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fim/db
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscollector
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscollector/db
+
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/logcollector
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/ruleset
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/ruleset/sca
@@ -773,7 +844,8 @@ InstallCommon()
         find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
     fi
 
-    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
+    ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} wazuh_modules/syscollector/norm_config.json ${PREFIX}/queue/syscollector
 
     if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
         ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
