@@ -1660,20 +1660,261 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: GET /rules/files/{filename}/download
+test_name: GET /rules/files/{filename}
 
 stages:
 
-  - name: Download rule
+  - name: Download rule (JSON format)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
+      json:
+        data:
+          affected_items:
+            - !anything
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
+        error: 0
+
+  - name: Download rule (raw format)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0350-amazon_rules.xml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        raw: True
+    response:
+      status_code: 200
       headers:
         content-type: "application/xml; charset=utf-8"
+
+  - name: Download rule (it does not exist)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/no_exists.xml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1415
+              id:
+                - "no_exists.xml"
+          total_failed_items: 1
+        error: 1
+
+  - name: Download rule (invalid file 1)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/rulexml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        detail: !anystr
+        title: !anystr
+
+  - name: Download rule (invalid file 2)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/..%2F..%2Fetc%local_rules.xml"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        detail: !anystr
+        title: !anystr
+
+---
+test_name: PUT /rule/files/{filename}
+
+stages:
+
+  - name: Upload new valid rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: PUT
+      data: "{new_rules:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response: &upload_valid_rule
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'etc/rules/new_rule.xml'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Upload same rule (overwrite=False)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: PUT
+      data: "{new_rules:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1905
+              id:
+                - "etc/rules/new_rule.xml"
+          total_affected_items: 0
+          total_failed_items: 1
+        error: 1
+
+  - name: Upload same rule (overwrite=True)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: PUT
+      data: "{new_rules:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+    response:
+      <<: *upload_valid_rule
+
+  - name: Upload rule with invalid name
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule"
+      method: PUT
+      data: "{new_rules:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 400
+      json:
+        title: !anystr
+        detail: !anystr
+
+  - name: Upload invalid rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/invalid_rule.xml"
+      method: PUT
+      data: "{new_rules_with_syntax_error:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - "etc/rules/invalid_rule.xml"
+          total_affected_items: 0
+          total_failed_items: 1
+        error: 1
+
+---
+test_name: DELETE /rules/files/{filename}
+
+stages:
+
+  - name: Delete user rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "etc/rules/new_rule.xml"
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
+        error: 0
+
+  - name: Delete same user rule (it does not exist now)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new_rule.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response: &delete_no_exists
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1906
+              id:
+                - "etc/rules/new_rule.xml"
+          total_failed_items: 1
+        error: 1
+
+  - name: Delete ruleset rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/0010-rules_config.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 1906
+              id:
+                - "etc/rules/0010-rules_config.xml"
+          total_failed_items: 1
+        error: 1
+
+  - name: Delete invalid rule
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/ossec.conf"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        title: !anystr
+        detail: !anystr
 
 ---
 test_name: GET /rules?rule_ids
