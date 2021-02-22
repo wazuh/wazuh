@@ -19,7 +19,6 @@
 #include "../../headers/shared.h"
 #include "../../os_net/os_net.h"
 #include "../wrappers/common.h"
-#include "../wrappers/linux/socket_wrappers.h"
 
 #define IPV4 "127.0.0.1"
 #define IPV6 "::1"
@@ -122,10 +121,6 @@ typedef struct test_struct {
     char *msg;
     char socket_path[256];
 } test_struct_t;
-
-typedef struct test_struct_gethost {
-    char *ret;
-} test_struct_t_gethost;
 
 // Setup / Teardown
 
@@ -445,7 +440,7 @@ void test_send_unix_invalid_sockets(void **state) {
 }
 
 void test_gethost_success(void **state) {
-    test_struct_t_gethost *data  = (test_struct_t_gethost *)*state;
+    test_struct_t *data  = (test_struct_t *)*state;
     data->ret = OS_GetHost("google-public-dns-a.google.com", 2);
 
     assert_non_null(data->ret);
