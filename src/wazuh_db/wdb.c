@@ -1270,7 +1270,7 @@ void wdb_free_agent_info_data(agent_info_data *agent_data) {
     }
 }
 
-sqlite3_stmt* wdb_start_cached_transaction(wdb_t* wdb, wdb_stmt statement_index){
+sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index){
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         mdebug1("Cannot begin transaction");
         return NULL;

@@ -2,7 +2,7 @@
 
 int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version, const char* architecture, const char* cve) {
 
-    sqlite3_stmt* stmt = wdb_start_cached_transaction(wdb, WDB_STMT_VULN_CVE_INSERT);
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_INSERT);
     if (stmt == NULL) {
         return OS_INVALID;
     }
@@ -17,7 +17,7 @@ int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version
 
 int wdb_agents_clear_vuln_cve(wdb_t *wdb) {
 
-    sqlite3_stmt* stmt = wdb_start_cached_transaction(wdb, WDB_STMT_VULN_CVE_CLEAR);
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_CLEAR);
     if (stmt == NULL) {
         return OS_INVALID;
     }
