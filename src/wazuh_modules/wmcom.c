@@ -94,7 +94,7 @@ void wmcom_send(char * message)
 void wmcom_send(char * message)
 {
     int sock;
-    if (sock = OS_ConnectUnixDomain(DEFAULTDIR WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         switch (errno) {
             case ECONNREFUSED:
                 mwarn("At wmcom_send(): Target wmodules refused connection. The component might be disabled");
