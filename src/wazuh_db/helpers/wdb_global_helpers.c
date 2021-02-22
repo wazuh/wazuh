@@ -17,9 +17,6 @@
 #define chown(x, y, z) 0
 #endif
 
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
-
 static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
     [WDB_INSERT_AGENT_GROUP] = "global insert-agent-group %s",
