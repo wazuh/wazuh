@@ -1428,7 +1428,7 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    def update_policy(self, policy_id: int, name: str, policy: dict):
+    def update_policy(self, policy_id: int, name: str, policy: dict, check_default: bool = True):
         """Update an existent policy in the system
 
         Parameters
@@ -1447,7 +1447,7 @@ class PoliciesManager:
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
             if policy_to_update and policy_to_update is not None:
-                if policy_to_update.id > max_id_reserved:
+                if policy_to_update.id > max_id_reserved or not check_default:
                     # Policy is not a valid json
                     if policy is not None and not json_validator(policy):
                         return SecurityError.INVALID
@@ -2452,7 +2452,11 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
     with PoliciesManager() as pm:
         for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
             for name, policy in payload['policies'].items():
-                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy, check_default=False)
+                policy_name = f'{d_policy_name}_{name}'
+                policy_result = pm.add_policy(name=policy_name, policy=policy, check_default=False)
+                if policy_result == SecurityError.ALREADY_EXIST:
+                    policy_id = pm.get_policy(policy_name)['id']
+                    pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy, check_default=False)
 
 # Create the relationships
 with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
