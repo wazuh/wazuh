@@ -1339,19 +1339,22 @@ class PoliciesManager:
                                 return SecurityError.INVALID
 
                         policy_id = None
-                        policies = sorted([p.id for p in self.get_policies()])
-                        for p_id in policies or [0]:
-                            if policy_id and p_id - policy_id > 1:
-                                break
-                            else:
-                                policy_id = p_id
-                        policy_id += 1
 
                         try:
-                            if check_default and \
+                            if not check_default:
+                                policies = sorted([p.id for p in self.get_policies()])
+                                for p_id in policies or [0]:
+                                    if policy_id and p_id - policy_id > 1:
+                                        break
+                                    else:
+                                        policy_id = p_id
+                                policy_id += 1
+
+                            elif check_default and \
                                     self.session.query(Policies).order_by(desc(Policies.id)
                                                                           ).limit(1).scalar().id < max_id_reserved:
                                 policy_id = max_id_reserved + 1
+
                         except (TypeError, AttributeError):
                             pass
                         self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id))
@@ -2467,12 +2470,27 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
                 policy_result = pm.add_policy(name=policy_name, policy=policy, check_default=False)
                 # Update policy if it exists
                 if policy_result == SecurityError.ALREADY_EXIST:
-                    policy_id = pm.get_policy(policy_name)['id']
-                    if policy_id < max_id_reserved:
-                        pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy, check_default=False)
-                    else:
-                        pm.delete_policy(policy_id=policy_id)
-                        pm.add_policy(name=policy_name, policy=policy, check_default=False)
+                    try:
+                        policy_id = pm.get_policy(policy_name)['id']
+                        if policy_id < max_id_reserved:
+                            pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy, check_default=False)
+                        else:
+                            with RolesPoliciesManager() as rpm:
+                                linked_roles = [role.id for role in rpm.get_all_roles_from_policy(policy_id=policy_id)]
+                                new_positions = dict()
+                                for role in linked_roles:
+                                    new_positions[role] = [p.id for p in rpm.get_all_policies_from_role(role_id=role)]\
+                                        .index(policy_id)
+
+                                pm.delete_policy(policy_id=policy_id)
+                                pm.add_policy(name=policy_name, policy=policy, check_default=False)
+                                policy_id = pm.get_policy(policy_name)['id']
+                                for role, position in new_positions.items():
+                                    rpm.add_role_to_policy(policy_id=policy_id, role_id=role, position=position,
+                                                           force_admin=True)
+
+                    except (KeyError, TypeError):
+                        pass
 
 # Create the relationships
 with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
