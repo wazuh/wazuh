@@ -1145,7 +1145,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Try to delete a list of agents (Allowed)
+  - name: Try to delete agents from group2, group3 and id<6 (Partially allowed, user aware)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents"
@@ -1153,21 +1153,27 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '003,005'
+        agents_list: all
         older_than: '0s'
-        status: 'all'
+        status: all
+        q: '(group=group1,group=default);id<6'
     response:
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - '003'
             - '005'
-          failed_items: []
-          older_than: 0s
+          failed_items:
+            - error:
+                code: 1731
+              id:
+                - '007'
+                - '009'
+                - '011'
           total_affected_items: 2
-          total_failed_items: 0
+          total_failed_items: 3
     delay_after: !float "{global_db_delay}"
 
   - name: Try to delete a list of agents (Partially allowed, user aware)
@@ -1194,7 +1200,6 @@ stages:
               id:
                 - '000'
                 - '999'
-          older_than: 0s
           total_affected_items: 1
           total_failed_items: 2
     delay_after: !float "{global_db_delay}"
@@ -1218,7 +1223,6 @@ stages:
           affected_items:
             - '009'
             - '011'
-          older_than: 0s
           total_affected_items: 2
           total_failed_items: 0
     delay_after: !float "{global_db_delay}"

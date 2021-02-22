@@ -5394,8 +5394,7 @@ paths:
       tags:
       - Agents
       summary: "Delete agents"
-      description: "Delete agents with optional criteria based on the status or time of the last
-      connection"
+      description: "Delete all agents or a list of them based on optional criteria"
       operationId: api.controllers.agent_controller.delete_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:delete'
@@ -5406,6 +5405,17 @@ paths:
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Delete agents"
@@ -5419,13 +5429,6 @@ paths:
                     data:
                       allOf:
                         - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-                        - type: object
-                          properties:
-                            older_than:
-                              type: string
-                              format: timeframe
-                              description: "Return older than parameter used. It can be the default value or the
-                              parameter sent by the user"
               example:
                 data:
                   affected_items:

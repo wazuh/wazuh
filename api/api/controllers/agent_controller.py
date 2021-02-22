@@ -23,26 +23,68 @@ logger = logging.getLogger('wazuh-api')
 
 
 async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status=None,
-                        older_than="7d"):
-    """Delete all agents or a list of them with optional criteria based on the status or time of the last connection.
+                        q=None, older_than=None, manager=None, version=None, group=None, node_name=None, name=None,
+                        ip=None):
+    """Delete all agents or a list of them based on optional criteria.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param purge: Delete an agent from the key store
-    :param status: Filters by agent status. Use commas to enter multiple statuses.
-    :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-    ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
-    :return: AllItemsResponseAgentIDs
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent's IDs.
+    purge : bool
+        Delete an agent from the key store.
+    status : str
+        Filters by agent status. Use commas to enter multiple statuses.
+    q : str
+        Query to filter agents by.
+    older_than : str
+        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’.
+    manager : str
+        Filter by manager hostname to which agents are connected.
+    version : str
+        Filter by agents version.
+    group : str
+        Filter by group of agents.
+    node_name : str
+        Filter by node name.
+    name : str
+        Filter by agent name.
+    ip : str
+        Filter by agent IP.
+
+    Returns
+    -------
+    ApiResponse
+        Agents which have been deleted.
     """
     if 'all' in agents_list:
         agents_list = None
     f_kwargs = {'agent_list': agents_list,
                 'purge': purge,
-                'status': status,
-                'older_than': older_than,
-                'use_only_authd': configuration.api_conf['use_only_authd']
+                'use_only_authd': configuration.api_conf['use_only_authd'],
+                'filters': {
+                    'status': status,
+                    'older_than': older_than,
+                    'manager': manager,
+                    'version': version,
+                    'group': group,
+                    'node_name': node_name,
+                    'name': name,
+                    'ip': ip,
+                    'registerIP': request.query.get('registerIP', None)
+                },
+                'q': q
                 }
+
+    # Add nested fields to kwargs filters
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        f_kwargs['filters'][field] = request.query.get(field, None)
+
     dapi = DistributedAPI(f=agent.delete_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',

@@ -10,7 +10,7 @@ from shutil import copyfile
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, \
+from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, expand_group, \
     Agent, WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
@@ -261,18 +261,28 @@ def get_agents_keys(agent_list=None):
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703]})
-def delete_agents(agent_list=None, backup=False, purge=False, status=None, older_than="7d", use_only_authd=False):
-    """Deletes a list of agents.
+def delete_agents(agent_list=None, backup=False, purge=False, use_only_authd=False, filters=None, q=None):
+    """Delete a list of agents.
 
-    :param agent_list: List of agents ID's.
-    :param backup: Create backup before removing the agent.
-    :param purge: Delete definitely from key store.
-    :param older_than:  Filters out disconnected agents for longer than specified. Time in seconds | "[n_days]d" |
-    "[n_hours]h" | "[n_minutes]m" | "[n_seconds]s". For never_connected agents, uses the register date.
-    :param status: Filters by agent status: active, disconnected or never_connected. Multiples statuses separated
-    by commas.
-    :param use_only_authd: Force the use of authd when adding and removing agents.
-    :return: AffectedItemsWazuhResult.
+    Parameters
+    ----------
+    agent_list : list
+        List of agents ID's to be deleted.
+    backup : bool
+        Create backup before removing the agent.
+    purge : bool
+        Delete definitely from key store.
+    use_only_authd : bool
+        Force the use of authd when adding and removing agents.
+    filters : dict
+        Define required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    q : str
+        Define query to filter in DB.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Result with affected agents.
     """
     result = AffectedItemsWazuhResult(all_msg='All selected agents were deleted',
                                       some_msg='Some agents were not deleted',
@@ -280,11 +290,10 @@ def delete_agents(agent_list=None, backup=False, purge=False, status=None, older
                                       )
     if agent_list:
         system_agents = get_agents_info()
-        filters = {'older_than': older_than, 'status': status}
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
                                         filters=filters)
 
-        db_query = WazuhDBQueryAgents(limit=None, select=["id"], **rbac_filters)
+        db_query = WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters)
         data = db_query.run()
         can_purge_agents = list(map(operator.itemgetter('id'), data['items']))
         for agent_id in agent_list:
@@ -293,22 +302,23 @@ def delete_agents(agent_list=None, backup=False, purge=False, status=None, older
                     raise WazuhError(1703)
                 elif agent_id not in system_agents:
                     raise WazuhResourceNotFound(1701)
+                elif agent_id not in can_purge_agents:
+                    raise WazuhError(
+                        1731,
+                        extra_message="some of the requirements are not met -> {}".format(
+                            ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
+                            (f', q: {q}' if q else '')
+                        )
+                    )
                 else:
                     my_agent = Agent(agent_id)
                     my_agent.load_info_from_db()
-                    if agent_id not in can_purge_agents:
-                        raise WazuhError(
-                            1731,
-                            extra_message="The agent has a status different to '{0}' or the specified time "
-                                          "frame 'older_than {1}' does not apply".format(status, older_than)
-                        )
                     my_agent.remove(backup=backup, purge=purge, use_only_authd=use_only_authd)
                     result.affected_items.append(agent_id)
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
-        result['older_than'] = older_than
 
     return result
 
