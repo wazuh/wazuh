@@ -1,6 +1,6 @@
 /*
  * Wazuh DB helper module for agents database
- * Copyright (C) 2015-202, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * February 10, 2021.
  *
  * This program is free software; you can redistribute it
@@ -17,7 +17,7 @@
 /**
  * @brief Function to clear whole data from agent vuln_cve table.
  *
- * @param [in] wdb The Global struct database.
+ * @param [in] wdb The 'agents' struct database.
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_agents_clear_vuln_cve(wdb_t *wdb);
@@ -25,7 +25,7 @@ int wdb_agents_clear_vuln_cve(wdb_t *wdb);
 /**
  * @brief Function to insert a new entry into the agent vuln_cve table.
  *
- * @param [in] wdb The Global struct database.
+ * @param [in] wdb The 'agents' struct database.
  * @param [in] name The vulnerable package name.
  * @param [in] version The vulnerable package version.
  * @param [in] architecture The vulnerable package architecture.

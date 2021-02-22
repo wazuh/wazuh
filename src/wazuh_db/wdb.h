@@ -505,13 +505,13 @@ void wdb_free_agent_info_data(agent_info_data *agent_data);
 wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, int* last_item, int* last_size);
 
 /**
- * @brief Function to start a new transaction and cache the statement
+ * @brief Function to initialize a new transaction and cache the statement.
  *
  * @param [in] wdb The global struct database.
  * @param [in] statement_index The index of the statement to be cached.
  * @return Pointer to the statement already cached. NULL On error.
  */
-sqlite3_stmt* wdb_start_cached_transaction(wdb_t* wdb, wdb_stmt statement_index);
+sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
 
 /**
  * @brief Create database for agent from profile.
