@@ -652,18 +652,20 @@ STATIC void fim_link_update(int pos, char *new_path) {
     for (i = 0; syscheck.dir[i] != NULL; i++) {
         if (strcmp(new_path, syscheck.symbolic_links[i] ? syscheck.symbolic_links[i] : syscheck.dir[i]) == 0) {
             mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
-            goto end;
+            w_mutex_lock(&syscheck.fim_symlink_mutex);
+            os_free(syscheck.symbolic_links[pos]);
+            w_mutex_unlock(&syscheck.fim_symlink_mutex);
+            return;
         }
     }
 
-    // Add new entries without alert.
-    fim_link_silent_scan(new_path, pos);
-
-end:
     w_mutex_lock(&syscheck.fim_symlink_mutex);
     os_free(syscheck.symbolic_links[pos]);
     os_strdup(new_path, syscheck.symbolic_links[pos]);
     w_mutex_unlock(&syscheck.fim_symlink_mutex);
+
+    // Add new entries without alert.
+    fim_link_silent_scan(new_path, pos);
 }
 
 STATIC void fim_link_check_delete(int pos) {
