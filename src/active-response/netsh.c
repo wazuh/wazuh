@@ -17,6 +17,8 @@ int main (int argc, char **argv) {
     char *action;
     char input[BUFFERSIZE];
     cJSON *input_json = NULL;
+
+#ifndef WIN32
     char *home_path = w_homedir(argv[0]);
 
     /* Trim absolute path to get Wazuh's installation directory */
@@ -27,6 +29,7 @@ int main (int argc, char **argv) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
     os_free(home_path);
+#endif
 
     write_debug_file(argv[0], "Starting");
 
