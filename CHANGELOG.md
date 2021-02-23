@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Added new endpoint to get agent stats from different components. ([#7128](https://github.com/wazuh/wazuh/issues/7128))
+  - Added new endpoint to modify users' allow_run_as flag. ([#7588](https://github.com/wazuh/wazuh/pull/7588))
 
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
@@ -67,7 +68,9 @@ All notable changes to this project will be documented in this file.
   - Unused files have been removed from the repository, including TAP tests. ([#7398](https://github.com/wazuh/wazuh/issues/7398))
 
 - **API:**
+  - Removed the `allow_run_as` parameter from endpoints `POST /security/users` and `PUT /security/users/{user_id}`. ([#7588](https://github.com/wazuh/wazuh/pull/7588))
   - Removed `behind_proxy_server` option from configuration. ([#7006](https://github.com/wazuh/wazuh/issues/7006))
+
 
 ## [v4.1.1]
 
