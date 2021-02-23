@@ -137,13 +137,20 @@
   -  24,3/10/2009,0:00:46,Database Cleanup Begin,,,,
   -  0,3/10/2009,0:00:46,DNS Update Request,201.10.168.192,OPS03W034.,,
 -->
-
+<decoder name="ms-dhcp-ipv4">
+  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
+  <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
+  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\.+),(\S*),(\.*),(\w*),</regex>
+  <order>id,action,srcip,devname,mac</order>
+</decoder>
+<!--
 <decoder name="ms-dhcp-ipv4">
   <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
   <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
   <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\S+)</regex>
   <order>id,extra_data,srcip</order>
 </decoder>
+-->
 
 <!--
   -  Server 2008 DHCP IPv6 Decoder (must go second)
