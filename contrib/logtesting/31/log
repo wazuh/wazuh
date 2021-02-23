@@ -1,1 +1,0 @@
-May 26 19:40:41 enigma sudo: dcid : TTY=ttyp0 ; PWD=/var/www/htdocs ; USER=root ; COMMAND=/usr/bin/tail /var/log/secure

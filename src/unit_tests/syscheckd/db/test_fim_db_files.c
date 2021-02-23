@@ -446,7 +446,7 @@ void test_fim_db_remove_path_no_entry(void **state) {
 
     expect_fim_db_check_transaction();
 
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+    fim_db_remove_path(&fim_sql, entry.file_entry.path);
 
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 192837465);
@@ -489,7 +489,7 @@ void test_fim_db_remove_path_one_entry(void **state) {
 
     expect_fim_db_check_transaction();
 
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *)FIM_WHODATA, NULL);
+    fim_db_remove_path(&fim_sql, entry.file_entry.path);
 
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 192837465);
@@ -527,133 +527,8 @@ void test_fim_db_remove_path_one_entry_step_fail(void **state) {
 
     expect_fim_db_check_transaction();
 
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *)FIM_WHODATA, NULL);
+    fim_db_remove_path(&fim_sql, entry.file_entry.path);
 
-    // Last commit time should change
-    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
-}
-
-void test_fim_db_remove_path_one_entry_alert_success(void **state) {
-    fim_file_data data = DEFAULT_FILE_DATA;
-#ifndef TEST_WINAGENT
-    char *entry_path = "/etc/some/path";
-#else
-    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
-#endif
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
-    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
-    int alert = 1;
-
-    syscheck.database = &fim_sql;
-
-    for (int i = 0; i < 3; i++) {
-        expect_fim_db_clean_stmt();
-    }
-
-    expect_fim_db_bind_path(entry_path);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-
-    expect_fim_db_bind_delete_data_id(1);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_fim_db_bind_path(entry_path);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-#ifndef TEST_WINAGENT
-    expect_fim_db_get_paths_from_inode(NULL);
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/etc/some/path'");
-#else
-    expect_string(__wrap__mdebug2, formatted_msg,
-                  "(6220): Sending delete message for file: 'c:\\windows\\system32\\windowspowershell\\v1.0'");
-
-    expect_fim_db_check_transaction();
-#endif
-
-    expect_send_syscheck_msg(NULL);
-
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &alert, (void *)FIM_WHODATA, NULL);
-
-    // Last commit time should change
-    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
-}
-
-void test_fim_db_remove_path_one_entry_alert_success_with_seechanges(void **state) {
-    fim_file_data data = DEFAULT_FILE_DATA;
-#ifndef TEST_WINAGENT
-    char *entry_path = "/etc/some/path";
-#else
-    char *entry_path = "c:\\windows\\system32\\windowspowershell\\v1.0";
-#endif
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
-    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
-    int alert = 1;
-    struct dirent dir = { .d_name = "mock_name" };
-    int config_directory = fim_configuration_directory(entry_path, "file");
-
-    if (config_directory < 0) {
-        fail();
-    }
-
-    syscheck.database = &fim_sql;
-
-    for (int i = 0; i < 3; i++) {
-        expect_fim_db_clean_stmt();
-    }
-
-    expect_fim_db_bind_path(entry_path);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 1);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-
-    expect_fim_db_bind_delete_data_id(1);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-    expect_fim_db_bind_path(entry_path);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_DONE);
-
-#ifndef TEST_WINAGENT
-    expect_fim_db_get_paths_from_inode(NULL);
-#else
-    expect_fim_db_check_transaction();
-#endif
-
-    syscheck.opts[config_directory] |= CHECK_SEECHANGES;
-
-    expect_fim_diff_delete_compress_folder(&dir);
-
-#ifndef TEST_WINAGENT
-    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Sending delete message for file: '/etc/some/path'");
-#else
-    expect_string(__wrap__mdebug2, formatted_msg,
-                  "(6220): Sending delete message for file: 'c:\\windows\\system32\\windowspowershell\\v1.0'");
-#endif
-
-    expect_send_syscheck_msg(NULL);
-
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, &alert, (void *)FIM_WHODATA, NULL);
-
-    syscheck.opts[config_directory] &= ~CHECK_SEECHANGES;
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
@@ -689,7 +564,7 @@ void test_fim_db_remove_path_multiple_entry(void **state) {
 
     expect_fim_db_check_transaction();
 
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+    fim_db_remove_path(&fim_sql, entry.file_entry.path);
 
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 192837465);
@@ -726,7 +601,7 @@ void test_fim_db_remove_path_multiple_entry_step_fail(void **state) {
 
     expect_fim_db_check_transaction();
 
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+    fim_db_remove_path(&fim_sql, entry.file_entry.path);
 
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 192837465);
@@ -753,89 +628,11 @@ void test_fim_db_remove_path_failed_path(void **state) {
 
     expect_fim_db_check_transaction();
 
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
+    fim_db_remove_path(&fim_sql, entry.file_entry.path);
 
     // Last commit time should change
     assert_int_equal(fim_sql.transaction.last_commit, 192837465);
 }
-
-void test_fim_db_remove_path_no_configuration_file(void **state) {
-    fim_file_data data = DEFAULT_FILE_DATA;
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = "/non/configured/path", .file_entry.data = &data };
-    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/non/configured/path'");
-
-    expect_string(__wrap__mdebug2, formatted_msg, "(6339): Delete event from path without configuration: '/non/configured/path'");
-
-
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_WHODATA, NULL);
-}
-
-void test_fim_db_remove_path_no_entry_realtime_file(void **state) {
-    fim_file_data data = DEFAULT_FILE_DATA;
-#ifndef TEST_WINAGENT
-    char *entry_path = "/media/some/path";
-#else
-    char *entry_path = "c:\\windows\\system32\\wbem\\some\\path";
-#endif
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
-    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
-
-    for (int i = 0; i < 3; i++) {
-        expect_fim_db_clean_stmt();
-    }
-
-    expect_fim_db_bind_path(entry_path);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-
-    expect_fim_db_check_transaction();
-
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_REALTIME, NULL);
-
-    // Last commit time should change
-    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
-}
-
-void test_fim_db_remove_path_no_entry_scheduled_file(void **state) {
-    fim_file_data data = DEFAULT_FILE_DATA;
-#ifndef TEST_WINAGENT
-    char *entry_path = "/root/some/path";
-#else
-    char *entry_path = "c:\\windows\\sysnative\\drivers\\etc\\some\\path";
-#endif
-    fim_entry entry = { .type = FIM_TYPE_FILE, .file_entry.path = entry_path, .file_entry.data = &data };
-    fdb_t fim_sql = { .transaction.last_commit = 1, .transaction.interval = 1 };
-
-    for (int i = 0; i < 3; i++) {
-        expect_fim_db_clean_stmt();
-    }
-
-    expect_fim_db_bind_path(entry_path);
-
-    will_return(__wrap_sqlite3_step, 0);
-    will_return(__wrap_sqlite3_step, SQLITE_ROW);
-
-    expect_value(__wrap_sqlite3_column_int, iCol, 0);
-    will_return(__wrap_sqlite3_column_int, 0);
-    expect_value(__wrap_sqlite3_column_int, iCol, 1);
-    will_return(__wrap_sqlite3_column_int, 1);
-
-    expect_fim_db_check_transaction();
-
-    fim_db_remove_path(&fim_sql, &entry, &syscheck.fim_entry_mutex, NULL, (void *) FIM_SCHEDULED, NULL);
-
-    // Last commit time should change
-    assert_int_equal(fim_sql.transaction.last_commit, 192837465);
-}
-
 
 /*----------fim_db_get_path()------------------*/
 void test_fim_db_get_path_inexistent(void **state) {
@@ -1400,14 +1197,9 @@ int main(void) {
         cmocka_unit_test(test_fim_db_remove_path_no_entry),
         cmocka_unit_test(test_fim_db_remove_path_one_entry),
         cmocka_unit_test(test_fim_db_remove_path_one_entry_step_fail),
-        cmocka_unit_test(test_fim_db_remove_path_one_entry_alert_success),
-        cmocka_unit_test(test_fim_db_remove_path_one_entry_alert_success_with_seechanges),
         cmocka_unit_test(test_fim_db_remove_path_multiple_entry),
         cmocka_unit_test(test_fim_db_remove_path_multiple_entry_step_fail),
         cmocka_unit_test(test_fim_db_remove_path_failed_path),
-        cmocka_unit_test(test_fim_db_remove_path_no_configuration_file),
-        cmocka_unit_test(test_fim_db_remove_path_no_entry_realtime_file),
-        cmocka_unit_test(test_fim_db_remove_path_no_entry_scheduled_file),
         // fim_db_get_path
         cmocka_unit_test_setup_teardown(test_fim_db_get_path_inexistent, test_fim_db_setup, teardown_fim_db_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_get_path_existent, test_fim_db_setup, teardown_fim_db_entry),

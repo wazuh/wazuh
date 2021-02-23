@@ -1,8 +1,0 @@
-"\w+\s+\w+\d+\s\$" "a aa11  "
-"^\s+\s     l" "     lala"
-"test123test\d+" "test123test"
-"test123test\d+\$" "test123test"
-"(lalala" "lalala"
-"test123(\d)" "test123a"
-"\(test)" "test"
-"(\w+)(\d+)" "1 1"

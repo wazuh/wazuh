@@ -203,7 +203,8 @@ class WazuhSocket:
         try:
             wlogtest_conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             wlogtest_conn.connect(self.file)
-            wlogtest_conn.send(struct.pack("<I", len(msg)) + msg.encode())
+            encoded_msg = msg.encode('utf-8')
+            wlogtest_conn.send(struct.pack("<I", len(encoded_msg)) + encoded_msg)
             size = struct.unpack("<I", wlogtest_conn.recv(4, socket.MSG_WAITALL))[0]
             recv_msg = wlogtest_conn.recv(size, socket.MSG_WAITALL)
             wlogtest_conn.close()

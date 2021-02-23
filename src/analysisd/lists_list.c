@@ -25,11 +25,6 @@ void OS_CreateListsList() {
     os_analysisd_cdbrules = NULL;
 }
 
-/* Get first listnode  */
-ListNode *OS_GetFirstList() {
-    return os_analysisd_cdblists;
-}
-
 void OS_ListLoadRules(ListNode **l_node, ListRule **lrule) {
 
     while (*lrule != NULL) {

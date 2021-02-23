@@ -837,10 +837,10 @@ void LogCollectorStart()
             w_save_file_status();
 
             f_check = 0;
-        }
 
-        if (mq_log_builder_update() == -1) {
-            mdebug1("Output log pattern data could not be updated.");
+            if (mq_log_builder_update() == -1) {
+                mdebug1("Output log pattern data could not be updated.");
+            }
         }
 
         sleep(1);
@@ -1846,23 +1846,6 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
     }
 
     return 0;
-}
-
-w_message_t * w_msg_hash_queues_pop(const char *key){
-    w_msg_queue_t *msg;
-
-    msg = OSHash_Get(msg_queues_table,key);
-
-    if(msg)
-    {
-        w_message_t *message;
-        message = w_msg_queue_pop(msg);
-
-        if(message){
-            return message;
-        }
-    }
-    return NULL;
 }
 
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq) {

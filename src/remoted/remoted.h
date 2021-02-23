@@ -98,9 +98,6 @@ void *wait_for_msgs(void *none);
 /* Update shared files */
 void *update_shared_files(void *none);
 
-/* Parse control messages */
-void parse_agent_controlmsg(const keyentry * key, char *msg, size_t msg_length);
-
 /* Save control messages */
 void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock);
 

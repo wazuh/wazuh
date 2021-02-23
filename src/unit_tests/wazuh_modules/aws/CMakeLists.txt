@@ -57,6 +57,7 @@ foreach(counter RANGE ${count})
         ${WAZUHEXT}
         AWS_O
         -lcmocka
+        -ldl
         -fprofile-arcs
         -ftest-coverage
     )

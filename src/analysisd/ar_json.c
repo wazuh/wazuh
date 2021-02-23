@@ -16,6 +16,22 @@
 #endif
 
 /**
+ * @return Node name, remember to free memory after return.
+ */
+char *get_node_name()
+{
+    char* node_name = NULL;
+    OS_XML xml;
+
+    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+    if (OS_ReadXML(OSSECCONF, &xml) >= 0) {
+        node_name = OS_GetOneContentforElement(&xml, xml_node);
+    }
+    OS_ClearXML(&xml);
+    return node_name;
+}
+
+/**
  * @brief Build the JSON message
  *
  * @param[in] lf Event information.
@@ -77,20 +93,4 @@ void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, cha
 
     // Clean up Memory
     cJSON_Delete(message);
-}
-
-/**
- * @return char*, remember to free memory after return.
- */
-char *get_node_name()
-{
-    char* node_name = NULL;
-    OS_XML xml;
-
-    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
-    if (OS_ReadXML(OSSECCONF, &xml) >= 0) {
-        node_name = OS_GetOneContentforElement(&xml, xml_node);
-    }
-    OS_ClearXML(&xml);
-    return node_name;
 }

@@ -50,7 +50,8 @@ const wm_context WM_OSQUERYMONITOR_CONTEXT = {
     "osquery",
     (wm_routine)wm_osquery_monitor_main,
     (wm_routine)(void *)wm_osquery_monitor_destroy,
-    (cJSON * (*)(const void *))wm_osquery_dump
+    (cJSON * (*)(const void *))wm_osquery_dump,
+    NULL
 };
 
 void *Read_Log(wm_osquery_monitor_t * osquery)

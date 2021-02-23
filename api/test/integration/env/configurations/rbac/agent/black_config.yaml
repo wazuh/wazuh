@@ -36,6 +36,7 @@
   - agent:restart
   resources:
   - agent:group:group2
+  - agent:group:group3
   effect: allow
 
 - actions:

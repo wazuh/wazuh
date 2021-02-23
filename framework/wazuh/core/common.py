@@ -6,10 +6,11 @@ import json
 import os
 import subprocess
 from contextvars import ContextVar
+from copy import deepcopy
 from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
-from typing import Dict
+from typing import Dict, Any
 from copy import deepcopy
 from functools import lru_cache
 
@@ -110,12 +111,10 @@ local_internal_options = os.path.join(ossec_path, 'etc', 'local_internal_options
 ossec_log = os.path.join(ossec_path, 'logs', 'ossec.log')
 client_keys = os.path.join(ossec_path, 'etc', 'client.keys')
 stats_path = os.path.join(ossec_path, 'stats')
-ruleset_path = os.path.join(ossec_path, 'ruleset')
 groups_path = os.path.join(ossec_path, 'queue', 'agent-groups')
 multi_groups_path = os.path.join(ossec_path, 'var', 'multigroups')
 shared_path = os.path.join(ossec_path, 'etc', 'shared')
 backup_path = os.path.join(ossec_path, 'backup')
-ruleset_rules_path = os.path.join(ruleset_path, 'rules')
 database_path = os.path.join(ossec_path, 'var', 'db')
 database_path_global = os.path.join(database_path, 'global.db')
 wdb_socket_path = os.path.join(ossec_path, 'queue', 'db', 'wdb')
@@ -123,10 +122,24 @@ wdb_path = os.path.join(ossec_path, 'queue', 'db')
 api_config_path = os.path.join(ossec_path, 'api', 'configuration', 'api.yaml')
 database_path_agents = os.path.join(database_path, 'agents')
 os_pidfile = os.path.join('var', 'run')
-analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-analysisd.state')
-remoted_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-remoted.state')
-lists_path = os.path.join(ossec_path, 'etc', 'lists')
+analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-analysisd.state')
+remoted_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-remoted.state')
 ar_conf_path = os.path.join(ossec_path, 'etc', 'shared', 'ar.conf')
+
+# Ruleset
+# Ruleset paths
+ruleset_path = os.path.join(ossec_path, 'ruleset')
+ruleset_rules_path = os.path.join(ruleset_path, 'rules')
+ruleset_decoders_path = os.path.join(ruleset_path, 'decoders')
+ruleset_lists_path = os.path.join(ruleset_path, 'lists')
+user_lists_path = os.path.join(ossec_path, 'etc', 'lists')
+user_rules_path = os.path.join(ossec_path, 'etc', 'rules')
+user_decoders_path = os.path.join(ossec_path, 'etc', 'decoders')
+# Ruleset vars
+RULES_EXTENSION = '.xml'
+DECODERS_EXTENSION = '.xml'
+LISTS_EXTENSION = ''
+COMPILED_LISTS_EXTENSION = '.cdb'
 
 # Queues
 ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')
@@ -196,33 +209,54 @@ cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
 _context_cache = dict()
 
 
-def context_cached(key):
-    """Saves the result of the decorated function in a cache, so next calls
-    to it just returns the previous result saving time and resources. The cache gets
+def context_cached(key: str = '') -> Any:
+    """Save the result of the decorated function in a cache.
+
+    Next calls to the decorated function returns the saved result saving time and resources. The cache gets
     invalidated at the end of the request.
 
-    :param key: unique identifier for the cache entry
-    :return: The result of the first call to the decorated function
-    """
-    if key not in _context_cache:
-        _context_cache[key] = ContextVar(key, default=None)
+    Parameters
+    ----------
+    key : str
+        Part of the cache entry identifier. The identifier will be the key + args + kwargs.
 
-    def decorator(func):
+    Returns
+    -------
+    Any
+        The result of the first call to the decorated function.
+    """
+
+    def decorator(func) -> Any:
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            if _context_cache[key].get() is None:
+        def wrapper(*args, **kwargs) -> Any:
+            cached_key = json.dumps({'key': key, 'args': args, 'kwargs': kwargs})
+            if cached_key not in _context_cache:
+                _context_cache[cached_key] = ContextVar(cached_key, default=None)
+            if _context_cache[cached_key].get() is None:
                 result = func(*args, **kwargs)
-                _context_cache[key].set(result)
-            return deepcopy(_context_cache[key].get())
+                _context_cache[cached_key].set(result)
+            return deepcopy(_context_cache[cached_key].get())
 
         return wrapper
 
     return decorator
 
 
-def reset_context_cache():
-    """Reset context cache
+def reset_context_cache() -> None:
+    """Reset context cache.
     """
 
     for context_var in _context_cache.values():
         context_var.set(None)
+
+
+def get_context_cache() -> dict:
+    """Get the context cache.
+
+    Returns
+    -------
+    dict
+        Dictionary with the context variables representing the cache.
+    """
+
+    return _context_cache

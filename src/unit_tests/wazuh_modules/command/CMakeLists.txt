@@ -55,6 +55,7 @@ foreach(counter RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         COMMAND_O
+        -ldl
         -lcmocka
         -fprofile-arcs
         -ftest-coverage

@@ -31,7 +31,8 @@ const wm_context WM_GCP_CONTEXT = {
     GCP_WM_NAME,
     (wm_routine)wm_gcp_main,
     (wm_routine)(void *)wm_gcp_destroy,
-    (cJSON * (*)(const void *))wm_gcp_dump
+    (cJSON * (*)(const void *))wm_gcp_dump,
+    NULL
 };
 
 #ifdef WAZUH_UNIT_TESTING

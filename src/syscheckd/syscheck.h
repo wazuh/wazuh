@@ -153,6 +153,11 @@ void read_internal(int debug_level);
  */
 void fim_scan();
 
+/**
+ * @brief Stop scanning files for one second if the max number of files scanned has been reached.
+ *
+ */
+void check_max_fps();
 
 /**
  * @brief
@@ -925,4 +930,19 @@ void fim_diff_folder_size();
  */
 const char *fim_get_real_path(int position);
 
+/**
+ * @brief Create a delete event and removes the entry from the database.
+ *
+ * @param fim_sql FIM database struct.
+ * @param entry Entry data to be removed.
+ * @param mutex FIM database's mutex for thread synchronization.
+ * @param alert False don't send alert, True send delete alert.
+ * @param fim_ev_mode FIM Mode (scheduled/realtime/whodata)
+ * @param w_evt Whodata information.
+ *
+ */
+void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
+                           __attribute__((unused))void *alert,
+                           __attribute__((unused))void *fim_ev_mode,
+                           __attribute__((unused))void *w_evt);
 #endif /* SYSCHECK_H */

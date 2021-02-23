@@ -260,6 +260,24 @@ cJSON *getModulesConfig(void) {
     return root;
 }
 
+// sync data
+int modulesSync(char* args) {
+    int ret = -1;
+    wmodule *cur_module = NULL;
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (strstr(args, cur_module->context->name)) {
+            ret = 0;
+            if (strstr(args, "dbsync") && cur_module->context->sync != NULL) {
+                ret = cur_module->context->sync(args);
+            }
+            break;
+        }
+    }
+    if (ret) {
+        merror("At modulesSync(): Unable to sync module: (%d)", ret);
+    }
+    return ret;
+}
 
 cJSON *getModulesInternalOptions(void) {
 
@@ -275,7 +293,6 @@ cJSON *getModulesInternalOptions(void) {
 
     return root;
 }
-
 
 // Send message to a queue waiting for a specific delay
 int wm_sendmsg(int usec, int queue, const char *message, const char *locmsg, char loc) {
@@ -439,16 +456,6 @@ int wm_validate_command(const char *command, const char *digest, crypto_type cty
 
     return match;
 }
-
-#ifdef __MACH__
-void freegate(gateway *gate){
-    if(!gate){
-        return;
-    }
-    os_free(gate->addr);
-    os_free(gate);
-}
-#endif
 
 static int wm_initialize_default_modules(wmodule **wmodules) {
     wmodule *cur_wmodule = *wmodules;

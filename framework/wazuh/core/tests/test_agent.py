@@ -1015,7 +1015,8 @@ def test_agent_get_agents_overview_select(socket_mock, send_mock, select, status
     ({'value': 'any', 'negation': 1}, 6),
     ({'value': '202', 'negation': 0}, 1),
     ({'value': '202', 'negation': 1}, 8),
-    ({'value': 'master', 'negation': 1}, 2)
+    ({'value': 'master', 'negation': 1}, 2),
+    ({'value': '停', 'negation': 0}, 0)
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
