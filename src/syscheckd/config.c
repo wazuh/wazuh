@@ -169,6 +169,7 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->effective_name) free(w_evt->effective_name);
     if (w_evt->effective_uid) free(w_evt->effective_uid);
     if (w_evt->group_id) free(w_evt->group_id);
+    if (w_evt->group_name) free(w_evt->group_name);
     if (w_evt->parent_name) free(w_evt->parent_name);
     if (w_evt->parent_cwd) free(w_evt->parent_cwd);
     if (w_evt->inode) free(w_evt->inode);
