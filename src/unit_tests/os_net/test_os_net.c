@@ -31,15 +31,15 @@ extern sysinfo_free_result_func sysinfo_free_result_ptr;
 void *test_sysinfo_module = NULL;
 
 int __wrap_socket(int __domain, int __type, int __protocol) {
-    return mock();//1;
+    return mock();
 }
 
 int __wrap_bind(int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len) {
-    return mock(); //1
+    return mock();
 }
 
 int __wrap_setsockopt(int __fd, int __level, int __optname, const void *__optval, socklen_t __optlen) {
-    return mock(); //0
+    return mock();
 }
 
 int __wrap_getsockopt(int __fd, int __level, int __optname, void *__restrict __optval, socklen_t *__restrict __optlen) {
@@ -48,23 +48,23 @@ int __wrap_getsockopt(int __fd, int __level, int __optname, void *__restrict __o
     void *len = &number;
     memcpy((int*)__optval, (int*)len, sizeof(int));
 
-    return mock(); //0
+    return mock();
 }
 
 int __wrap_listen(int __fd, int __n) {
-    return mock(); //0
+    return mock();
 }
 
 int __wrap_connect(int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len) {
-    return mock();//0;
+    return mock();
 }
 
 int __wrap_accept(int __fd, __SOCKADDR_ARG __addr, socklen_t *__restrict __addr_len) {
-    return mock();//0;
+    return mock();
 }
 
 ssize_t __wrap_send(int __fd, const void *__buf, size_t __n, int __flags) {
-    return mock();//1;
+    return mock();
 }
 
 int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
@@ -83,7 +83,7 @@ int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
         void *buffer = &number;
         memcpy((uint32_t*)__buf, (uint32_t*)buffer, sizeof(uint32_t));
     }
-    return mock();//1;
+    return mock();
 }
 
 int __wrap_recvfrom(int __fd, void *__restrict __buf, size_t __n, int __flags, __SOCKADDR_ARG __addr, socklen_t *__restrict __addr_len) {
@@ -95,11 +95,11 @@ int __wrap_recvfrom(int __fd, void *__restrict __buf, size_t __n, int __flags, _
         memcpy((char*)__buf, (char*)buffer, sizeof(SENDSTRING));
     }
 
-    return mock();//1;
+    return mock();
 }
 
 int __wrap_chmod(const char *__file, __mode_t __mode) {
-    return mock();//1;
+    return mock();
 }
 
 extern int __real_fcntl(int __fd, int __cmd, unsigned long);
@@ -115,6 +115,11 @@ int __wrap_fcntl(int __fd, int __cmd, ...) {
     }
     return mock();
 }
+
+struct hostent *__wrap_gethostbyname(const char *__name) {
+    return mock_type(struct hostent *);
+}
+
 // Structs
 
 typedef struct test_struct {
@@ -125,6 +130,7 @@ typedef struct test_struct {
     char *ret;
     char *msg;
     char socket_path[256];
+    struct hostent *h;
 } test_struct_t;
 
 // Setup / Teardown
@@ -132,6 +138,9 @@ typedef struct test_struct {
 static int test_setup(void **state) {
     test_struct_t *init_data = NULL;
     os_calloc(1,sizeof(test_struct_t),init_data);
+
+    os_calloc(1, sizeof(struct hostent), init_data->h);
+    os_calloc(1, sizeof(char*), init_data->h->h_addr_list);
 
     strncpy(init_data->socket_path, "/tmp/tmp_file-XXXXXX", 256);
 
@@ -151,6 +160,9 @@ static int test_teardown(void **state) {
     OS_CloseSocket(data->server_root_socket);
 
     unlink(data->socket_path);
+
+    os_free(data->h->h_addr_list)
+    os_free(data->h)
 
     os_free(data->msg);
     os_free(data->ret);
@@ -444,6 +456,11 @@ void test_send_unix_invalid_sockets(void **state) {
 
 void test_gethost_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
+
+    data->h->h_addr_list[0] = "\b\b\b\b";
+
+    will_return(__wrap_gethostbyname, data->h);
+
     data->ret = OS_GetHost("google-public-dns-a.google.com", 2);
 
     assert_non_null(data->ret);
@@ -455,6 +472,10 @@ void test_gethost_null(void **state) {
 }
 
 void test_gethost_not_exists(void **state) {
+    will_return(__wrap_gethostbyname, NULL);
+    will_return(__wrap_gethostbyname, NULL);
+    will_return(__wrap_gethostbyname, NULL);
+
     assert_null(OS_GetHost("this.should.not.exist", 2));
 }
 
