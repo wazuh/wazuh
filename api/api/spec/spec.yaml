@@ -413,12 +413,12 @@ x-rbac-catalog:
         actions: ['security:read']
         resources: ['policy:id:*', 'role:id:2', 'user:id:5', 'rule:id:3']
         effect: "allow"
-    'security:run_as':
-      description: "Change the value of the run_as flag for a user"
+    'security:edit_run_as':
+      description: "Change the value of the allow_run_as flag for a user"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: [ 'security:run_as' ]
+        actions: [ 'security:edit_run_as' ]
         resources: [ '*:*:*' ]
         effect: "allow"
     'security:update':
@@ -4426,7 +4426,7 @@ components:
     allow_run_as:
       in: query
       name: allow_run_as
-      description: "Value for the run_as flag"
+      description: "Value for the allow_run_as flag"
       schema:
         type: boolean
         default: false
@@ -14088,10 +14088,10 @@ paths:
       tags:
         - Security
       summary: "Enable/Disable run_as"
-      description: "Modify a user's run_as flag by specifying their ID"
-      operationId: api.controllers.security_controller.enable_run_as
+      description: "Modify a user's allow_run_as flag by specifying their ID"
+      operationId: api.controllers.security_controller.edit_run_as
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/security:run_as'
+        - $ref: '#/x-rbac-catalog/actions/security:edit_run_as'
       parameters:
         - $ref: '#/components/parameters/user_id_required'
         - $ref: '#/components/parameters/allow_run_as'
@@ -14120,7 +14120,7 @@ paths:
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: [ ]
-                  message: Parameter run_as has been enabled for the user
+                  message: Parameter allow_run_as has been enabled for the user
                   error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

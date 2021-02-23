@@ -425,11 +425,11 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: UPDATE USER'S RUN_AS FLAG
+test_name: UPDATE USER'S ALLOW_RUN_AS FLAG
 
 stages:
 
-  - name: Update one specified user's run_as flag (Allowed)
+  - name: Update one specified user's allow_run_as flag (Allowed)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/users/103/run_as"

@@ -675,15 +675,15 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def enable_run_as(self, user_id: int, allow_run_as: bool):
-        """Change the specified user's run_as flag.
+    def edit_run_as(self, user_id: int, allow_run_as: bool):
+        """Change the specified user's allow_run_as flag.
 
         Parameters
         ----------
         user_id : int
             Unique user id
         allow_run_as : bool
-            Flag that indicates if the user can log into the API throw an authorization context
+            Flag that indicates if the user can log into the API through an authorization context
 
         Returns
         -------
@@ -2457,7 +2457,7 @@ with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
     with AuthenticationManager() as auth:
         for d_username, payload in default_users[next(iter(default_users))].items():
             auth.add_user(username=d_username, password=payload['password'], check_default=False)
-            auth.enable_run_as(user_id=auth.get_user(username=d_username)['id'], allow_run_as=payload['allow_run_as'])
+            auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'], allow_run_as=payload['allow_run_as'])
 
 # Create default roles if they don't exist yet
 with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:

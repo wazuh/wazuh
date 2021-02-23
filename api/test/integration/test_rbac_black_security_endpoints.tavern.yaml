@@ -424,11 +424,11 @@ stages:
           total_failed_items: 0
 
 ---
-test_name: UPDATE USER'S RUN_AS FLAG
+test_name: UPDATE USER'S ALLOW_RUN_AS FLAG
 
 stages:
 
-  - name: Update one specified user's run_as flag (Denied)
+  - name: Update one specified user's allow_run_as flag (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/users/104/run_as"

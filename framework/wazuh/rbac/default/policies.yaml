@@ -69,7 +69,7 @@ default_policies:
           - security:read_config
           - security:update_config
           - security:revoke
-          - security:run_as
+          - security:edit_run_as
         resources:
           - '*:*:*'
         effect: allow
@@ -92,7 +92,7 @@ default_policies:
         actions:
           - security:create_user
           - security:revoke
-          - security:run_as
+          - security:edit_run_as
         resources:
           - '*:*:*'
         effect: allow
@@ -106,11 +106,11 @@ default_policies:
         effect: allow
 
   users_modify_run_as:
-    description: Allow change the run_as value of the users.
+    description: Allow changing the allow_run_as value of the users.
     policies:
       flag:
         actions:
-          - security:run_as
+          - security:edit_run_as
         resources:
           - '*:*:*'
         effect: allow

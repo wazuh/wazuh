@@ -306,13 +306,13 @@ def test_delete_all_policies(db_setup):
         assert len_policies == len(pm.get_policies()) + 2
 
 
-def test_enable_run_as(db_setup):
-    """Check update a user's run_as flag in the database"""
+def test_edit_run_as(db_setup):
+    """Check update a user's allow_run_as flag in the database"""
     with db_setup.AuthenticationManager() as am:
         am.add_user(username='runas', password='testingA6!')
-        assert am.enable_run_as(user_id='106', allow_run_as=True)
-        assert am.enable_run_as(user_id='106', allow_run_as="INVALID") == db_setup.SecurityError.INVALID
-        assert not am.enable_run_as(user_id='999', allow_run_as=False)
+        assert am.edit_run_as(user_id='106', allow_run_as=True)
+        assert am.edit_run_as(user_id='106', allow_run_as="INVALID") == db_setup.SecurityError.INVALID
+        assert not am.edit_run_as(user_id='999', allow_run_as=False)
 
 
 def test_update_user(db_setup):

@@ -195,8 +195,8 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def enable_run_as(request, user_id: str, allow_run_as: bool, pretty=False, wait_for_complete=False):
-    """Modify the specified user' run_as flag.
+async def edit_run_as(request, user_id: str, allow_run_as: bool, pretty=False, wait_for_complete=False):
+    """Modify the specified user' allow_run_as flag.
 
     Parameters
     ----------
@@ -204,7 +204,7 @@ async def enable_run_as(request, user_id: str, allow_run_as: bool, pretty=False,
     user_id : str
         User ID of the user to be updated
     allow_run_as : bool
-        Enable authorization context login method for the new user
+        Enable or disable authorization context login method for the specified user
     pretty : bool, optional
         Show results in human-readable format
     wait_for_complete : bool, optional
@@ -216,7 +216,7 @@ async def enable_run_as(request, user_id: str, allow_run_as: bool, pretty=False,
     """
     f_kwargs = {'user_id': user_id, 'allow_run_as': allow_run_as}
 
-    dapi = DistributedAPI(f=security.enable_run_as,
+    dapi = DistributedAPI(f=security.edit_run_as,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

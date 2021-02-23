@@ -112,27 +112,29 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
     return result
 
 
-@expose_resources(actions=['security:run_as'], resources=['*:*:*'])
-def enable_run_as(user_id: str = None, allow_run_as: bool = False):
-    """Enable/Disable the user's run_as flag
+@expose_resources(actions=['security:edit_run_as'], resources=['*:*:*'])
+def edit_run_as(user_id: str = None, allow_run_as: bool = False):
+    """Enable/Disable the user's allow_run_as flag
 
     Parameters
     ----------
     user_id : str
         User ID
     allow_run_as : bool
-        Enable authorization context login method for the new user
+        Enable or disable authorization context login method for the specified user
 
     Returns
     -------
     result : AffectedItemsWazuhResult
         Status message
     """
-    result = AffectedItemsWazuhResult(none_msg='The parameter run_as could not be enabled for the user',
-                                      all_msg='Parameter run_as has been enabled for the user')
+    result = AffectedItemsWazuhResult(none_msg=f"The parameter allow_run_as could not be "
+                                               f"{'enabled' if allow_run_as else 'disabled'} for the user",
+                                      all_msg=f"Parameter allow_run_as has been "
+                                              f"{'enabled' if allow_run_as else 'disabled'} for the user")
     with AuthenticationManager() as auth:
         user_id = int(user_id)
-        query = auth.enable_run_as(user_id, allow_run_as)
+        query = auth.edit_run_as(user_id, allow_run_as)
         if query is False:
             result.add_failed_item(id_=user_id, error=WazuhError(5001))
         elif query == SecurityError.INVALID:

@@ -1,5 +1,5 @@
 ---
-enable_run_as:
+edit_run_as:
   - params:
       user_id: 1
       allow_run_as: False
