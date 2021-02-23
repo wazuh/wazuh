@@ -98,6 +98,9 @@ elseif(UNIX AND NOT APPLE)
     target_link_libraries(sysinfo wazuhext)
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 
+  set_target_properties(sysinfo PROPERTIES
+          LINK_FLAGS "-static-libgcc -static-libstdc++")
+
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   else()
