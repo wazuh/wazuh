@@ -58,8 +58,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   )
   target_link_libraries(rsync crypto ssl ws2_32 crypt32)
 elseif(UNIX AND NOT APPLE)
-  set_target_properties(rsync PROPERTIES
-        LINK_FLAGS "-static-libgcc -static-libstdc++")
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
