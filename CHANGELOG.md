@@ -36,6 +36,7 @@ All notable changes to this project will be documented in this file.
   - Fixed a bug that caused an error when attempting to use an IAM Role with **CloudWatchLogs** service. ([#7330](https://github.com/wazuh/wazuh/pull/7330))
 - **Framework:**
   - Fixed a race condition bug when using RBAC expand_group function. ([#7353](https://github.com/wazuh/wazuh/pull/7353))
+  - Fix migration process to overwrite default RBAC policies. ([#7594](https://github.com/wazuh/wazuh/pull/7594))  
 - **Core:**
   - Fixed a bug in Windows agent that did not honor the buffer's EPS limit. ([#7333](https://github.com/wazuh/wazuh/pull/7333))
   - Fixed a bug in Integratord that might lose alerts from Analysisd due to a race condition. ([#7338](https://github.com/wazuh/wazuh/pull/7338))
