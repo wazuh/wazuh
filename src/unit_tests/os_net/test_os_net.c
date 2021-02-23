@@ -26,10 +26,6 @@
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
 
-extern sysinfo_networks_func sysinfo_network_ptr;
-extern sysinfo_free_result_func sysinfo_free_result_ptr;
-void *test_sysinfo_module = NULL;
-
 int __wrap_socket(int __domain, int __type, int __protocol) {
     return mock();
 }
@@ -600,6 +596,7 @@ int main(void) {
 
         /* Send a message using a Unix socket */
         cmocka_unit_test_setup_teardown(test_send_unix, test_setup, test_teardown),
+        cmocka_unit_test(test_send_unix_invalid_sockets),
 
         /* Receive a message using a Unix socket */
         cmocka_unit_test_setup_teardown(test_recv_unix, test_setup, test_teardown),
