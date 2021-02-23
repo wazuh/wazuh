@@ -207,6 +207,8 @@ def _read_option(section_name, opt):
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
         opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
+    elif section_name == 'remote' and opt_name == 'protocol':
+        opt_value = opt.text.split(',')
     else:
         if opt.attrib:
             opt_value = {}
@@ -248,7 +250,7 @@ def _conf2json(src_xml, dst_json):
 
         for option in list(section):
             option_name, option_value = _read_option(section_name, option)
-            if type(option_value) is list:
+            if type(option_value) is list and not (section_name == 'remote' and option_name == 'protocol'):
                 for ov in option_value:
                     _insert(section_json, section_name, option_name, ov)
             else:
