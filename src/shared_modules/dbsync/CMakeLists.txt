@@ -36,14 +36,13 @@ include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 
-link_directories(${SRC_FOLDER}/external/sqlite/)
-link_directories(${SRC_FOLDER}/external/cJSON/)
+link_directories(${SRC_FOLDER})
 
 file(GLOB DBSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
 
-add_library(dbsync SHARED 
+add_library(dbsync SHARED
     ${DBSYNC_SRC} )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -56,12 +55,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
+
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(dbsync sqlite3 cjson)
+target_link_libraries(dbsync wazuhext)
 
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")

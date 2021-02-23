@@ -38,9 +38,8 @@ include_directories(${SHARED_MODULES}/dbsync/include/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 
-link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SHARED_MODULES}/dbsync/build/lib/)
-link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER})
 
 file(GLOB RSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
@@ -59,18 +58,20 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   )
   target_link_libraries(rsync crypto ssl ws2_32 crypt32)
 elseif(UNIX AND NOT APPLE)
+  set_target_properties(rsync PROPERTIES
+        LINK_FLAGS "-static-libgcc -static-libstdc++")
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    
-target_link_libraries(rsync cjson dbsync crypto pthread)
+
+target_link_libraries(rsync dbsync wazuhext)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-    target_link_libraries(rsync dbsync cjson crypto pthread -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
+    target_link_libraries(rsync dbsync -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_BUILD_TYPE STREQUAL "Release")
 

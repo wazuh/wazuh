@@ -38,11 +38,7 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 
-link_directories(${SRC_FOLDER}/external/sqlite/)
-link_directories(${SRC_FOLDER}/external/cJSON/)
-link_directories(${SRC_FOLDER}/external/procps/)
-link_directories(${SRC_FOLDER}/external/bzip2/)
-
+link_directories(${SRC_FOLDER})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSINFO_SRC
@@ -83,11 +79,9 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 
-add_library(sysinfo SHARED 
+add_library(sysinfo SHARED
     ${SYSINFO_SRC}
     ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
-
-target_link_libraries(sysinfo cjson)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
@@ -101,7 +95,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   )
 elseif(UNIX AND NOT APPLE)
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    target_link_libraries(sysinfo proc)
+    target_link_libraries(sysinfo wazuhext)
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
@@ -111,13 +105,11 @@ elseif(UNIX AND NOT APPLE)
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
     target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-elseif(APPLE)
-  target_link_libraries(sysinfo ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(APPLE)
-  add_custom_command(TARGET sysinfo 
-    POST_BUILD COMMAND 
+  add_custom_command(TARGET sysinfo
+    POST_BUILD COMMAND
     ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"
     $<TARGET_FILE:sysinfo>)
 endif(APPLE)

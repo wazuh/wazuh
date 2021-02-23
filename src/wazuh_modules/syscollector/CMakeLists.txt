@@ -63,7 +63,7 @@ file(GLOB SYSCOLLECTOR_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
     )
 
-add_library(syscollector SHARED 
+add_library(syscollector SHARED
     ${SYSCOLLECTOR_SRC}
     )
 
@@ -82,7 +82,7 @@ elseif(UNIX AND NOT APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-  target_link_libraries(syscollector crypto dbsync rsync sysinfo cjson pthread)
+  target_link_libraries(syscollector dbsync rsync sysinfo)
 else()
   string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
   string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")

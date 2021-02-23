@@ -756,7 +756,7 @@ winagent: external ${WIN_CMAKE_RULES} win32/libwinpthread-1.dll
 	cd win32/ && makensis wazuh-installer.nsi
 
 
-win32/shared_modules: external
+win32/shared_modules: external $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -767,7 +767,7 @@ endif
 
 #### Sysinfo ##
 
-win32/sysinfo: external
+win32/sysinfo: external $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Syscollector ##
@@ -1300,7 +1300,7 @@ config_o := $(config_c:.c=.o)
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-build_shared_modules:
+build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -1310,7 +1310,7 @@ endif
 endif
 
 #### Sysinfo ##
-build_sysinfo:
+build_sysinfo: $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Syscollector ##
