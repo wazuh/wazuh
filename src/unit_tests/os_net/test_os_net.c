@@ -21,6 +21,7 @@
 
 #include "../wrappers/common.h"
 #include "../wrappers/linux/socket_wrappers.h"
+#include "../wrappers/posix/stat_wrappers.h"
 
 #define IPV4 "127.0.0.1"
 #define IPV6 "::1"
@@ -389,8 +390,10 @@ void test_bind_unix_domain(void **state) {
     will_return(__wrap_socket, 3);
     will_return(__wrap_bind, 1);
     will_return(__wrap_getsockopt, 0);
-    will_return(__wrap_chmod, 1);
     will_return(__wrap_fcntl, 0);
+
+    expect_string(__wrap_chmod, path, data->socket_path);
+    will_return(__wrap_chmod, 1);
 
     data->server_socket = OS_BindUnixDomain(data->socket_path, SOCK_DGRAM, msg_size);
     assert_return_code(data->server_socket, 0);
@@ -493,7 +496,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_udp_recv_invalid_sockets, test_setup, test_teardown),
 
         /* Bind a unix domain */
-        //cmocka_unit_test_setup_teardown(test_bind_unix_domain, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_bind_unix_domain, test_setup, test_teardown),
 
         /* Get current maximum size */
         cmocka_unit_test_setup_teardown(test_getsocketsize, test_setup, test_teardown),
