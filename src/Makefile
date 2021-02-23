@@ -563,7 +563,7 @@ help: failtarget
 	@echo "   make V=yes                   Display full compiler messages. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUG=yes               Build with symbols and without optimization. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DEBUGAD=yes             Enables extra debugging logging in wazuh-analysisd. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make INSTALLDIR=/path        Install Wazuh in '/path'. Defaults to /var/ossec"
+	@echo "   make INSTALLDIR=/path        Wazuh's installation path. Mandatory when compiling the python interpreter from sources using PYTHON_SOURCE.
 	@echo "   make ONEWAY=yes              Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make CLEANFULL=yes           Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
@@ -578,7 +578,8 @@ help: failtarget
 	@echo "   make DISABLE_SHARED=yes      Not to build the Wazuh shared library (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_SYSC=yes        Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make DISABLE_CISCAT=yes      Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make OPTIMIZE_CPYTHON=yes    When INSTALLDIR points to other directory than default, the python interpreter is rebuilt, enable this flag to optimize the process. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make OPTIMIZE_CPYTHON=yes    Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
+	@echo "   make PYTHON_SOURCE=yes       Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
