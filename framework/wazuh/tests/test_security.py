@@ -86,6 +86,9 @@ def db_setup():
 
 @pytest.fixture(scope='function')
 def new_default_resources():
+    global default_orm_engine
+    default_orm_engine = create_engine("sqlite:///:memory:")
+
     security, orm = reload_default_rbac_resources()
 
     with open(os.path.join(test_data_path, 'default', 'default_cases.yml')) as f:
