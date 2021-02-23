@@ -207,11 +207,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH    "./norm_config.json"
 #endif // WIN32
 #else
-#ifdef WIN32
 #define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH "queue/syscollector/norm_config.json"
-#else
-#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH DEFAULTDIR "/queue/syscollector/norm_config.json"
-#endif // WIN32
 #endif // WAZUH_UNIT_TESTING
 
 #if defined(__MACH__)
@@ -225,11 +221,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Syscollector db directory */
 #ifndef WAZUH_UNIT_TESTING
-#ifndef WIN32
-#define SYSCOLLECTOR_DB_DISK_PATH DEFAULTDIR "/queue/syscollector/db/local.db"
-#else
 #define SYSCOLLECTOR_DB_DISK_PATH "queue/syscollector/db/local.db"
-#endif // WIN32
 #else
 #ifndef WIN32
 #define SYSCOLLECTOR_DB_DISK_PATH    "./local.db"
