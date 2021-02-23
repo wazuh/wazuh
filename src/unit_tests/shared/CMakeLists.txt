@@ -100,7 +100,7 @@ list(APPEND shared_tests_names "test_fs_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
-list(APPEND shared_tests_flags "-Wl,--wrap,isChroot -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
+list(APPEND shared_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
 endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")

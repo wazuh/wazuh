@@ -18,7 +18,6 @@
 #include "../../headers/wazuhdb_op.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
-#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 
 // Tests
 
