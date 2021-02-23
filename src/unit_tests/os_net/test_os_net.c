@@ -102,14 +102,19 @@ int __wrap_chmod(const char *__file, __mode_t __mode) {
     return mock();//1;
 }
 
-extern int __real_fcntl(int __fd, int __cmd);
-int __wrap_fcntl(int __fd, int __cmd) {
+extern int __real_fcntl(int __fd, int __cmd, unsigned long);
+int __wrap_fcntl(int __fd, int __cmd, ...) {
+
+    va_list ap;
+    va_start(ap, __cmd);
+    unsigned long arg = va_arg(ap, unsigned long);
+    va_end(ap);
+
     if(!test_mode) {
-        return __real_fcntl(__fd, __cmd);
+        return __real_fcntl(__fd, __cmd, arg);
     }
     return mock();
 }
-
 // Structs
 
 typedef struct test_struct {
@@ -393,8 +398,7 @@ void test_recv_conn_UDP(void **state) {
     data->server_client_socket = 4;
     will_return(__wrap_recv, 13);
 
-    assert_int_equal(OS_RecvConnUDP(data->server_socket, buffer, BUFFERSIZE - 1), strlen(SENDSTRING));
-    assert_string_equal(buffer, SENDSTRING);
+    assert_int_equal(OS_RecvConnUDP(data->server_socket, buffer, BUFFERSIZE), strlen(SENDSTRING));
 }
 
 void test_recv_UDP(void **state) {
