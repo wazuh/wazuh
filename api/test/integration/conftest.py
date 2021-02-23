@@ -157,8 +157,14 @@ def healthcheck_procedure(module: str):
     # Avoid race condition
     time.sleep(2)
     if os.path.exists(manager_folder):
+        # Rename the base healthcheck and copy the specific one
+        os.popen(f'cp -rf {os.path.join(master_base_folder, "healthcheck.py")} '
+                 f'{os.path.join(tmp_content, "manager", "healthcheck", "base_healthcheck.py")}')
         os.popen(f'cp -rf {manager_folder} {os.path.join(tmp_content, "manager")}')
     if os.path.exists(agent_folder):
+        # Rename the base healthcheck and copy the specific one
+        os.popen(f'cp -rf {os.path.join(agent_base_folder, "healthcheck.py")} '
+                 f'{os.path.join(tmp_content, "agent", "healthcheck", "base_healthcheck.py")}')
         os.popen(f'cp -rf {agent_folder} {os.path.join(tmp_content, "agent")}')
 
 

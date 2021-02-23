@@ -14,7 +14,7 @@ def get_timestamp(log):
     return t
 
 
-def get_health():
+def get_agent_health_base():
     # Get agent health. The agent will be healthy if it has been connected to the manager after been
     # restarted due to shared configuration changes.
     # Using agentd when using grep as the module name can vary between ossec-agentd and wazuh-agentd,
@@ -42,4 +42,4 @@ def get_health():
 
 
 if __name__ == "__main__":
-    exit(get_health())
+    exit(get_agent_health_base())

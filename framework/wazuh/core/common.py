@@ -122,8 +122,8 @@ wdb_path = os.path.join(ossec_path, 'queue', 'db')
 api_config_path = os.path.join(ossec_path, 'api', 'configuration', 'api.yaml')
 database_path_agents = os.path.join(database_path, 'agents')
 os_pidfile = os.path.join('var', 'run')
-analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-analysisd.state')
-remoted_stats = os.path.join(ossec_path, 'var', 'run', 'ossec-remoted.state')
+analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-analysisd.state')
+remoted_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-remoted.state')
 ar_conf_path = os.path.join(ossec_path, 'etc', 'shared', 'ar.conf')
 
 # Ruleset
