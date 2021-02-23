@@ -2,8 +2,9 @@
 .Description
 Tool for setting the configuration of your Wazuh agent.
 
-.PARAMETER enroll
- Configure enrollment and server connection settings
+.PARAMETER config_group
+ Select the group of settings to modify:
+    enroll: Configure enrollment and server connection settings
 .PARAMETER address
  Wazuh manager address
 .PARAMETER port
@@ -45,7 +46,7 @@ Tool for setting the configuration of your Wazuh agent.
 #> 
 
 param (
-    [switch]${enroll},
+    [parameter (Mandatory=$true, Position=0)] [ValidateSet("enroll")] [string] ${config_group},
     [string[]]${address},
     [string]${port},
     [string]${protocol},
@@ -66,7 +67,7 @@ param (
 
 ${xml_conf} = [xml](Get-Content -Path ${ossecconf})
 
-if (${enroll}) { 
+if ($config_group -eq "enroll") { 
     if (${address}) {    
         # Remove old server configuration
         (${xml_conf}.ossec_config.client.SelectNodes("server")) | ForEach-Object {
