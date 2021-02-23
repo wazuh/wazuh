@@ -84,7 +84,7 @@ if ($config_group -eq "enroll") {
             else 
             {
                 $reconnect_element = ${xml_conf}.CreateElement("time-reconnect")
-                [void]$client.AppendChild($reconnect_element)
+                [void]$client.AppendChild($reconnect_element) | Out-Null
                 $client."time-reconnect" = ${reconnection-time} 
             }
         }
@@ -96,14 +96,14 @@ if ($config_group -eq "enroll") {
             else 
             {
                 $notify_element = ${xml_conf}.CreateElement("notify_time")
-                [void]$client.AppendChild($notify_element)
+                [void]$client.AppendChild($notify_element) | Out-Null
                 $client.notify_time = ${keep-alive}
             }
         }
 
         ${address} | ForEach-Object {
             $server_element = ${xml_conf}.CreateElement("server")
-            $client.AppendChild($server_element)
+            $client.AppendChild($server_element) | Out-Null
         }
     }
 
@@ -151,42 +151,42 @@ if ($config_group -eq "enroll") {
         
         if (${registration-address}){
             $element = ${xml_conf}.CreateElement("manager_address")
-            $enrollment.AppendChild($element)
+            $enrollment.AppendChild($element) | Out-Null
             $enrollment.manager_address = ${registration-address}
         }
         if (${registration-port}){
             $element = ${xml_conf}.CreateElement("port")
-            $enrollment.AppendChild($element)
+            $enrollment.AppendChild($element) | Out-Null
             $enrollment.port = ${registration-port}
         }
         if (${token}){
             $element = ${xml_conf}.CreateElement("authorization_pass")
-            $enrollment.AppendChild($element)
+            $enrollment.AppendChild($element) | Out-Null
             $enrollment.authorization_pass = ${token}
         }
         if (${registration-ca}){
             $element = ${xml_conf}.CreateElement("server_ca_path")
-            $enrollment.AppendChild($element)
+            $enrollment.AppendChild($element) | Out-Null
             $enrollment.server_ca_path = ${registration-ca}
         }
         if (${registration-certificate}){
             $element = ${xml_conf}.CreateElement("agent_certificate_path")
-            $enrollment.AppendChild($element)
+            $enrollment.AppendChild($element) | Out-Null
             $enrollment.agent_certificate_path = ${registration-certificate}
         }
         if (${registration-key}){
             $element = ${xml_conf}.CreateElement("agent_key_path")
-            $enrollment.AppendChild($element)
+            $enrollment.AppendChild($element) | Out-Null
             $enrollment.agent_key_path = ${registration-key}
         }
         if (${name}){
             $element = ${xml_conf}.CreateElement("agent_name")
-            $enrollment.AppendChild($element)
+            $enrollment.AppendChild($element) | Out-Null
             $enrollment.agent_name = ${name}
         }
         if (${group}){
             $element = ${xml_conf}.CreateElement("groups")
-            $enrollment.AppendChild($element)
+            $enrollment.AppendChild($element) | Out-Null
             $enrollment.groups = ${group}
         }
     }
