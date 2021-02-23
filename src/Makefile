@@ -1040,7 +1040,7 @@ endif
 endif
 
 # Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 libpcre2 libplist
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
