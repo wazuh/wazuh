@@ -667,7 +667,7 @@ constexpr auto NETIFACE_SQL_STATEMENT
        adapter TEXT,
        type TEXT,
        state TEXT,
-       mtu TEXT,
+       mtu INTEGER,
        mac TEXT,
        tx_packets INTEGER,
        rx_packets INTEGER,
@@ -895,6 +895,25 @@ static std::string getItemChecksum(const nlohmann::json& item)
     return Utils::asciiToHex(hash.hash());
 }
 
+static void removeKeysWithEmptyValue(nlohmann::json& input)
+{
+    for (auto &data : input)
+    {
+        for (auto it = data.begin(); it != data.end(); )
+        {
+            if (it.value().type() == nlohmann::detail::value_t::string &&
+                it.value().get_ref<const std::string&>().empty())
+            {
+                it = data.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+}
+
 void Syscollector::updateAndNotifyChanges(const std::string& table,
                                           const nlohmann::json& values)
 {
@@ -929,6 +948,7 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
                         msg["operation"] = operationsMap.at(result);
                         msg["data"] = item;
                         msg["data"]["scan_time"] = m_scanTime;
+                        removeKeysWithEmptyValue(msg["data"]);
                         const auto msgToSend{msg.dump()};
                         m_reportDiffFunction(msgToSend);
                         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
@@ -942,6 +962,7 @@ void Syscollector::updateAndNotifyChanges(const std::string& table,
                     msg["operation"] = operationsMap.at(result);
                     msg["data"] = data;
                     msg["data"]["scan_time"] = m_scanTime;
+                    removeKeysWithEmptyValue(msg["data"]);
                     const auto msgToSend{msg.dump()};
                     m_reportDiffFunction(msgToSend);
                     m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
@@ -1034,7 +1055,9 @@ void Syscollector::registerWithRsync()
                     it = data.find("attributes");
                     if(it != data.end())
                     {
-                        (*it)["scan_time"] = Utils::getCurrentTimestamp();
+                        auto &fieldData { *it };
+                        removeKeysWithEmptyValue(fieldData);
+                        fieldData["scan_time"] = Utils::getCurrentTimestamp();
                         const auto msgToSend{jsonData.dump()};
                         m_reportSyncFunction(msgToSend);
                         m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + msgToSend);
@@ -1072,7 +1095,7 @@ void Syscollector::registerWithRsync()
     }
     if (m_processes)
     {
-        m_spRsync->registerSyncID("syscollector_processes", 
+        m_spRsync->registerSyncID("syscollector_processes",
                                   m_spDBSync->handle(),
                                   nlohmann::json::parse(PROCESSES_SYNC_CONFIG_STATEMENT),
                                   reportSyncWrapper);
@@ -1247,6 +1270,8 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["rx_packets"] = item.at("rx_packets");
                 ifaceTableData["tx_errors"]  = item.at("tx_errors");
                 ifaceTableData["rx_errors"]  = item.at("rx_errors");
+                ifaceTableData["tx_bytes"]   = item.at("tx_bytes");
+                ifaceTableData["rx_bytes"]   = item.at("rx_bytes");
                 ifaceTableData["tx_dropped"] = item.at("tx_dropped");
                 ifaceTableData["rx_dropped"] = item.at("rx_dropped");
                 ifaceTableData["checksum"]   = getItemChecksum(ifaceTableData);

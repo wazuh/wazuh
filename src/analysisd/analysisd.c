@@ -98,9 +98,6 @@ static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
 
-/* Output threads */
-void * w_main_output_thread(__attribute__((unused)) void * args);
-
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
 

@@ -334,7 +334,7 @@ nlohmann::json SysInfo::getOsInfo() const
     if (uname(&uts) >= 0)
     {
         ret["sysname"] = uts.sysname;
-        ret["host_name"] = uts.nodename;
+        ret["hostname"] = uts.nodename;
         ret["version"] = uts.version;
         ret["architecture"] = uts.machine;
         ret["release"] = uts.release;
@@ -348,7 +348,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 
     const SysInfoProcessesTable spProcTable
     {
-        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV) 
+        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV)
     };
 
     SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
@@ -364,7 +364,7 @@ nlohmann::json SysInfo::getProcessesInfo() const
 nlohmann::json SysInfo::getNetworks() const
 {
     nlohmann::json networks;
-    
+
     std::unique_ptr<ifaddrs, Utils::IfAddressSmartDeleter> interfacesAddress;
     std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
@@ -379,7 +379,7 @@ nlohmann::json SysInfo::getNetworks() const
         }
         networks["iface"].push_back(ifaddr);
     }
-    
+
     return networks;
 }
 

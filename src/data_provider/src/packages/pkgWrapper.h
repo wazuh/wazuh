@@ -26,13 +26,7 @@ class PKGWrapper final : public IPackageWrapper
 {
 public:
     explicit PKGWrapper(const PackageContext& ctx)
-      : m_name{UNKNOWN_VALUE}
-      , m_version{UNKNOWN_VALUE}
-      , m_groups{UNKNOWN_VALUE}
-      , m_description{UNKNOWN_VALUE}
-      , m_architecture{UNKNOWN_VALUE}
-      , m_format{"pkg"}
-      , m_osPatch{UNKNOWN_VALUE}
+      : m_format{"pkg"}
     {
         getPkgData(ctx.filePath+ "/" + ctx.package + "/" + APP_INFO_PATH);
     }
