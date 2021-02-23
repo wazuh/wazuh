@@ -712,7 +712,7 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
         snprintf(aux, OS_SIZE_64, "%u", item->statbuf.st_gid);
         os_strdup(aux, data->gid);
 
-        os_strdup((char*)get_group(item->statbuf.st_gid), data->group_name);
+        data->group_name = get_group(item->statbuf.st_gid);
     }
 #endif
 
@@ -1129,24 +1129,13 @@ void free_file_data(fim_file_data * data) {
     if (!data) {
         return;
     }
-    if (data->perm) {
-        os_free(data->perm);
-    }
-    if (data->attributes) {
-        os_free(data->attributes);
-    }
-    if (data->uid) {
-        os_free(data->uid);
-    }
-    if (data->gid) {
-        os_free(data->gid);
-    }
-    if (data->user_name) {
-        os_free(data->user_name);
-    }
-    if (data->group_name) {
-        os_free(data->group_name);
-    }
+
+    os_free(data->perm);
+    os_free(data->attributes);
+    os_free(data->uid);
+    os_free(data->gid);
+    os_free(data->user_name);
+    os_free(data->group_name);
 
     os_free(data);
 }
