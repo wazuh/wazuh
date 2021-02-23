@@ -30,8 +30,6 @@ void test_ok_query(void **state)
     char response[OS_SIZE_6144];
     char *message;
 
-    will_return(__wrap_isChroot, 1);
-
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
@@ -58,8 +56,6 @@ void test_ok2_query(void **state)
     char *query = "agent 000 syscheck delete /tmp/test.file";
     char response[OS_SIZE_6144];
     char *message;
-
-    will_return(__wrap_isChroot, 1);
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
@@ -88,8 +84,6 @@ void test_okmsg_query(void **state)
     char response[OS_SIZE_6144];
     char *message;
 
-    will_return(__wrap_isChroot, 1);
-
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_SIZE_6144);
@@ -116,8 +110,6 @@ void test_err_query(void **state)
     char *query = "agent 000";
     char response[OS_SIZE_6144];
     char *message;
-
-    will_return(__wrap_isChroot, 1);
 
     expect_string(__wrap_OS_ConnectUnixDomain, path, WDB_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
