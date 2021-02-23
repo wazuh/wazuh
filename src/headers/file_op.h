@@ -27,7 +27,7 @@
 #include <libproc.h>
 #endif
 
-#define OS_PIDFILE  "/var/run"
+#define OS_PIDFILE  "var/run"
 #define UCS2_LE 1
 #define UCS2_BE 2
 
@@ -631,11 +631,12 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 #endif /* CLIENT */
 
 /**
- * @brief Gets the installation path of a binary file at runtime
+ * @brief Get the Wazuh installation directory
  *
- * @param arg Argv[0] - Command running a binary
- * @retval NULL Can't get the path
- * @retval Pointer to the installation path 
+ * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ * 
+ * @param arg ARGV0 - Program name
+ * @return Pointer to the Wazuh installation path on success
  */
 char *w_homedir(char *arg);
 #endif /* FILE_OP_H */

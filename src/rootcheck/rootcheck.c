@@ -32,7 +32,7 @@ char total_ports_tcp[65535 + 1];
 
 
 /* Print help statement */
-void help_rootcheck()
+void help_rootcheck(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtsr] [-c config] [-D dir]", ARGV0);
@@ -45,8 +45,9 @@ void help_rootcheck()
     print_out("    -s          Scan the whole system");
     print_out("    -r          Read all the files for kernel-based detection");
     print_out("    -c <config> Configuration file to use");
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -54,17 +55,23 @@ int main(int argc, char **argv)
 {
     int test_config = 0;
     const char *cfg = "./rootcheck.conf";
-    home_path = w_homedir(argv[0]);
+    char * home_path = w_homedir(argv[0]);
 
 #else
 
 int rootcheck_init(int test_config)
 {
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
 #endif /* OSSECHIDS */
 
     int c;
+
+#ifndef OSSECHIDS
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+#endif /* OSSECHIDS */
 
     /* Zero the structure, initialize default values */
     rootcheck.workdir = NULL;
@@ -117,7 +124,7 @@ int rootcheck_init(int test_config)
                 print_version();
                 break;
             case 'h':
-                help_rootcheck();
+                help_rootcheck(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -144,7 +151,7 @@ int rootcheck_init(int test_config)
                 rootcheck.readall = 1;
                 break;
             default:
-                help_rootcheck();
+                help_rootcheck(home_path);
                 break;
         }
     }
@@ -196,7 +203,6 @@ int rootcheck_init(int test_config)
         mtinfo(ARGV0, "Rootcheck disabled.");
         return (1);
     }
-    mtdebug1(ARGV0, STARTED_MSG);
 
 #ifndef WIN32
     /* Check if Unix audit file is configured */
@@ -206,9 +212,10 @@ int rootcheck_init(int test_config)
 #endif
 
     /* Set default values */
-#ifndef WIN32
+#ifndef OSSECHIDS
+    mdebug1(WAZUH_HOMEDIR, home_path);
     if (rootcheck.workdir == NULL) {
-        rootcheck.workdir = HOMEDIR;
+        rootcheck.workdir = home_path;
     }
 #endif
 
@@ -251,8 +258,8 @@ void rootcheck_connect() {
         mtdebug1(ARGV0, "Starting queue ...");
 
         /* Start the queue */
-        if ((rootcheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        if ((rootcheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
     }
 #endif

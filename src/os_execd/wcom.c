@@ -117,11 +117,7 @@ size_t wcom_unmerge(const char *file_path, char ** output){
         return strlen(*output);
     }
 
-#ifndef WIN32
-    if (UnmergeFiles(final_path, isChroot() ? INCOMING_DIR : BUILDDIR(HOMEDIR,INCOMING_DIR), OS_BINARY) == 0) {
-#else
     if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY) == 0) {
-#endif
         merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
         os_strdup("err Cannot unmerge file", *output);
         return strlen(*output);
@@ -193,10 +189,7 @@ size_t wcom_restart(char ** output) {
     if (lock <= 0) {
 #ifndef WIN32
 
-        char *exec_cmd[3] = { BUILDDIR(HOMEDIR,"/bin/wazuh-control"), "restart", NULL};
-        if (isChroot()) {
-            strcpy(exec_cmd[0], "/bin/wazuh-control");
-        }
+        char *exec_cmd[3] = { "bin/wazuh-control", "restart", NULL};
 
         switch (fork()) {
             case -1:
@@ -216,7 +209,7 @@ size_t wcom_restart(char ** output) {
         }
 #else
         static char command[OS_FLSIZE];
-        snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, "restart-wazuh.exe");
+        snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, "restart-wazuh.exe");
         char *cmd[2] = { command, NULL };
         char *cmd_parameters = "{\"version\":1,\"origin\":{\"name\":\"\",\"module\":\"wazuh-execd\"},\"command\":\"add\",\"parameters\":{\"extra_args\":[],\"alert\":{},\"program\":\"restart-wazuh.exe\"}}";
         wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
@@ -281,11 +274,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         int sock = -1;
         char sockname[PATH_MAX + 1] = {0};
 
-        if (isChroot()) {
-            strcpy(sockname, CLUSTER_SOCK);
-        } else {
-            strcpy(sockname, BUILDDIR(HOMEDIR,CLUSTER_SOCK));
-        }
+        strcpy(sockname, CLUSTER_SOCK);
 
         if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
             os_strdup("err Unable to connect with socket. The component might be disabled", *output);
@@ -326,7 +315,7 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(BUILDDIR(HOMEDIR,COM_LOCAL_SOCK), SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", COM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
@@ -401,7 +390,7 @@ int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * f
     }
 
 #ifndef WIN32
-    return snprintf(finalpath, PATH_MAX + 1, "%s/%s/%s", isChroot() ? "" : HOMEDIR, basedir, filename) > PATH_MAX ? -1 : 0;
+    return snprintf(finalpath, PATH_MAX + 1, "%s/%s", basedir, filename) > PATH_MAX ? -1 : 0;
 #else
     return snprintf(finalpath, PATH_MAX + 1, "%s\\%s", basedir, filename) > PATH_MAX ? -1 : 0;
 #endif

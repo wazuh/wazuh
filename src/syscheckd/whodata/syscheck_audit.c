@@ -19,20 +19,14 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#define AUDIT_CONF_FILE BUILDDIR(HOMEDIR,"/etc/af_wazuh.conf")
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
-#define AUDIT_SOCKET BUILDDIR(HOMEDIR,"/queue/ossec/audit")
 #define BUF_SIZE OS_MAXSTR
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 #define RELOAD_RULES_INTERVAL 30 // Seconds to re-add Audit rules
-
-#define AUDIT_HEALTHCHECK_DIR BUILDDIR(HOMEDIR,"/tmp")
-#define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
-#define AUDIT_HEALTHCHECK_FILE BUILDDIR(HOMEDIR,"/tmp/audit_hc")
 
 #ifndef WAZUH_UNIT_TESTING
 #define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
@@ -117,6 +111,8 @@ int set_auditd_config(void) {
 
     FILE *fp;
     char audit_path[50] = {0};
+    char buffer[PATH_MAX] = {'\0'};
+    char abs_path_socket[PATH_MAX] = {'\0'};
 
     // Check audisp version
     if (IsDir(PLUGINS_DIR_AUDIT_3) == 0) {
@@ -149,6 +145,9 @@ int set_auditd_config(void) {
 
     minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
+    abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+    abspath(AUDIT_SOCKET, abs_path_socket, PATH_MAX);
+
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
         merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
@@ -159,7 +158,7 @@ int set_auditd_config(void) {
     fprintf(fp, "direction = out\n");
     fprintf(fp, "path = builtin_af_unix\n");
     fprintf(fp, "type = builtin\n");
-    fprintf(fp, "args = 0640 %s\n", AUDIT_SOCKET);
+    fprintf(fp, "args = 0640 %s\n", abs_path_socket);
     fprintf(fp, "format = string\n");
 
     if (fclose(fp)) {
@@ -167,7 +166,7 @@ int set_auditd_config(void) {
         return -1;
     }
 
-    if (symlink(AUDIT_CONF_FILE, audit_path) < 0) {
+    if (symlink(buffer, audit_path) < 0) {
         switch (errno) {
         case EEXIST:
             if (unlink(audit_path) < 0) {
@@ -175,7 +174,7 @@ int set_auditd_config(void) {
                 return -1;
             }
 
-            if (symlink(AUDIT_CONF_FILE, audit_path) == 0) {
+            if (symlink(buffer, audit_path) == 0) {
                 break;
             }
 
@@ -1490,8 +1489,13 @@ int audit_health_check(int audit_socket) {
     FILE *fp;
     audit_health_check_creation = 0;
     unsigned int timer = 10;
+    char abs_path_healthcheck[PATH_MAX] = {'\0'};
+    char abs_path_healthcheck_file[PATH_MAX] = {'\0'};
 
-    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) { // -17 Means audit rule exist EEXIST
+    abspath(AUDIT_HEALTHCHECK_DIR, abs_path_healthcheck, PATH_MAX);
+    abspath(AUDIT_HEALTHCHECK_FILE, abs_path_healthcheck_file, PATH_MAX);
+
+    if(retval = audit_add_rule(abs_path_healthcheck, AUDIT_HEALTHCHECK_KEY), retval <= 0 && retval != -17) { // -17 Means audit rule exist EEXIST
         mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
         return -1;
     }
@@ -1510,7 +1514,7 @@ int audit_health_check(int audit_socket) {
 
     // Generate open events until they get picked up
     do {
-        fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
+        fp = fopen(abs_path_healthcheck_file, "w");
 
         if(!fp) {
             mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
@@ -1530,9 +1534,9 @@ int audit_health_check(int audit_socket) {
     }
 
     // Delete that file
-    unlink(AUDIT_HEALTHCHECK_FILE);
+    unlink(abs_path_healthcheck_file);
 
-    if(audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY) <= 0){
+    if(audit_delete_rule(abs_path_healthcheck, AUDIT_HEALTHCHECK_KEY) <= 0){
         mdebug1(FIM_HEALTHCHECK_CHECK_RULE);    // LCOV_EXCL_LINE
     }
     hc_thread_active = 0;

@@ -20,7 +20,7 @@
 // LCOV_EXCL_START
 
 /* Print help statement */
-__attribute__((noreturn)) static void help_syscheckd()
+__attribute__((noreturn)) static void help_syscheckd(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -31,8 +31,9 @@ __attribute__((noreturn)) static void help_syscheckd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -42,8 +43,7 @@ int main(int argc, char **argv)
     int c, r;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    home_path = w_homedir(argv[0]);
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
     gid_t gid;
     const char *group = GROUPGLOBAL;
 #ifdef ENABLE_AUDIT
@@ -54,13 +54,18 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
     while ((c = getopt(argc, argv, "Vtdhfc:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help_syscheckd();
+                help_syscheckd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -79,7 +84,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_syscheckd();
+                help_syscheckd(home_path);
                 break;
         }
     }
@@ -98,7 +103,6 @@ int main(int argc, char **argv)
     /* Read internal options */
     read_internal(debug_level);
 
-    mdebug1(STARTED_MSG);
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the configuration is present */
@@ -142,6 +146,8 @@ int main(int argc, char **argv)
         syscheck.rootcheck = 0;
     }
 
+    os_free(home_path);
+
     /* Exit if testing config */
     if (test_config) {
         exit(0);
@@ -155,10 +161,6 @@ int main(int argc, char **argv)
     if (!run_foreground) {
         nowDaemon();
         goDaemon();
-    } else {
-        if (chdir(HOMEDIR) == -1) {
-            merror_exit(CHDIR_ERROR, HOMEDIR, errno, strerror(errno));
-        }
     }
 
     /* Start signal handling */
@@ -178,8 +180,8 @@ int main(int argc, char **argv)
 
     /* Connect to the queue */
 
-    if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+    if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     if (!syscheck.disabled) {
@@ -281,7 +283,6 @@ int main(int argc, char **argv)
 
     /* Start the daemon */
     start_daemon();
-    os_free(home_path);
 
     // We shouldn't reach this point unless syscheck is disabled
     while(1) {

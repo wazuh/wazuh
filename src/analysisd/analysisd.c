@@ -245,7 +245,7 @@ static int cpu_cores;
 
 /* Print help statement */
 __attribute__((noreturn))
-static void help_analysisd(void)
+static void help_analysisd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -258,9 +258,10 @@ static void help_analysisd(void)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -271,17 +272,18 @@ int main(int argc, char **argv)
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int debug_level = 0;
-    home_path = w_homedir(argv[0]);
-    const char *dir = HOMEDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
 
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
 
     thishour = 0;
     today = 0;
@@ -291,7 +293,6 @@ int main(int argc, char **argv)
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
-    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
 #ifdef LIBGEOIP_ENABLED
     geoipdb = NULL;
@@ -304,7 +305,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -329,7 +330,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                snprintf(home_path, PATH_MAX, "%s", optarg);
                 break;
             case 'c':
                 if (!optarg) {
@@ -341,11 +342,18 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
         }
 
     }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -359,9 +367,9 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
     mdebug1(WAZUH_HOMEDIR, home_path);
+
+    /* Start daemon */
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
     srandom_init();
@@ -480,8 +488,8 @@ int main(int argc, char **argv)
     }
 
     /* Chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
 
@@ -512,7 +520,7 @@ int main(int argc, char **argv)
             OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
             OSListNode * node_log_msg;
             int error_exit = 0;
-            
+
 
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
@@ -532,9 +540,9 @@ int main(int argc, char **argv)
                     if (!test_config) {
                         mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
-                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn, 
+                    if (!ReadDecodeXML(*decodersfiles, &os_analysisd_decoderlist_pn,
                                         &os_analysisd_decoderlist_nopn, &os_analysisd_decoder_store, list_msg)) {
-                        error_exit = 1; 
+                        error_exit = 1;
                     }
                     node_log_msg = OSList_GetFirstNode(list_msg);
 
@@ -734,7 +742,8 @@ int main(int argc, char **argv)
     }
 
     /* Verbose message */
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -806,7 +815,6 @@ int main(int argc, char **argv)
     /* Going to main loop */
     OS_ReadMSG(m_queue);
 
-    os_free(home_path);
     exit(0);
 }
 
@@ -1361,7 +1369,7 @@ void * ad_input_main(void * args) {
                         reported_dbsync = TRUE;
                     }
                 }
-            } else if (msg[0] == UPGRADE_MQ) { 
+            } else if (msg[0] == UPGRADE_MQ) {
                 result = -1;
 
                 if (!queue_full(upgrade_module_input)) {
@@ -1382,7 +1390,7 @@ void * ad_input_main(void * args) {
                         reported_upgrade_module = TRUE;
                     }
                 }
-                
+
             } else {
 
                 os_strdup(buffer, copy);

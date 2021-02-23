@@ -106,7 +106,7 @@ void* wm_database_main(wm_database *data) {
 
     // Reset template. Basically, remove queue/db/.template.db
     char path_template[PATH_MAX + 1];
-    snprintf(path_template, sizeof(path_template), "%s/%s/%s", HOMEDIR, WDB_DIR, WDB_PROF_NAME);
+    snprintf(path_template, sizeof(path_template), "%s/%s", WDB_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template db file removed: %s", path_template);
 
@@ -130,7 +130,7 @@ void* wm_database_main(wm_database *data) {
             path = wm_inotify_pop();
 
 #ifndef LOCAL
-            if (!strcmp(path, KEYSFILE_PATH)) {
+            if (!strcmp(path, KEYS_FILE)) {
                 wm_sync_agents();
             } else
 #endif // !LOCAL
@@ -164,8 +164,8 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_scan_directory(BUILDDIR(HOMEDIR,GROUPS_DIR));
-                wm_sync_multi_groups(BUILDDIR(HOMEDIR,SHAREDCFG_DIR));
+                wm_scan_directory(GROUPS_DIR);
+                wm_sync_multi_groups(SHAREDCFG_DIR);
             }
 #endif
             gettime(&spec1);
@@ -204,8 +204,8 @@ void wm_sync_manager() {
 
     OS_XML xml;
 
-    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
-        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
+    if (OS_ReadXML(OSSECCONF, &xml) < 0){
+        merror_exit(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
     }
 
     manager_data->node_name = OS_GetOneContentforElement(&xml, xml_node);
@@ -241,7 +241,7 @@ void wm_check_agents() {
     static ino_t inode = 0;
     struct stat buffer;
 
-    if (stat(KEYSFILE_PATH, &buffer) < 0) {
+    if (stat(KEYS_FILE, &buffer) < 0) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't get client.keys stat: %s.", strerror(errno));
     } else {
         if (buffer.st_mtime != timestamp || buffer.st_ino != inode) {
@@ -332,7 +332,7 @@ void wm_clean_dangling_db() {
     struct dirent * dirent = NULL;
     DIR * dir;
 
-    snprintf(dirname, sizeof(dirname), "%s%s/agents", isChroot() ? "/" : "", WDB_DIR);
+    snprintf(dirname, sizeof(dirname), "%s/agents", WDB_DIR);
     mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", dirname);
 
     if (!(dir = opendir(dirname))) {
@@ -400,7 +400,7 @@ int wm_sync_shared_group(const char *fname) {
     DIR *dp;
     clock_t clock0 = clock();
 
-    snprintf(path,PATH_MAX, "%s/%s",BUILDDIR(HOMEDIR,SHAREDCFG_DIR), fname);
+    snprintf(path,PATH_MAX, "%s/%s",SHAREDCFG_DIR, fname);
 
     dp = opendir(path);
 
@@ -451,9 +451,9 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     }
 
-    if (!strcmp(dirname, BUILDDIR(HOMEDIR,GROUPS_DIR))) {
+    if (!strcmp(dirname, GROUPS_DIR)) {
         type = WDB_GROUPS;
-    } else if (!strcmp(dirname, BUILDDIR(HOMEDIR,SHAREDCFG_DIR))) {
+    } else if (!strcmp(dirname, SHAREDCFG_DIR)) {
         type = WDB_SHARED_GROUPS;
     } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
@@ -617,7 +617,7 @@ void wm_inotify_setup(wm_database * data) {
 
 #ifndef LOCAL
 
-    char * keysfile_path = KEYSFILE_PATH;
+    char keysfile_path[PATH_MAX] = KEYS_FILE;
     char * keysfile_dir = dirname(keysfile_path);
 
     if (data->sync_agents) {
@@ -626,18 +626,18 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
 
-        if ((wd_groups = inotify_add_watch(inotify_fd, BUILDDIR(HOMEDIR,GROUPS_DIR), IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
+        if ((wd_groups = inotify_add_watch(inotify_fd, GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
 
-        if ((wd_shared_groups = inotify_add_watch(inotify_fd, BUILDDIR(HOMEDIR,SHAREDCFG_DIR), IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
+        if ((wd_shared_groups = inotify_add_watch(inotify_fd, SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
         wm_sync_agents();
-        wm_sync_multi_groups(BUILDDIR(HOMEDIR,SHAREDCFG_DIR));
+        wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
     }
 
@@ -647,7 +647,7 @@ void wm_inotify_setup(wm_database * data) {
 // Real time inotify reader thread
 static void * wm_inotify_start(__attribute__((unused)) void * args) {
     char buffer[IN_BUFFER_SIZE];
-    char * keysfile_dir = KEYSFILE_PATH;
+    char keysfile_dir[PATH_MAX] = KEYS_FILE;
     char * keysfile;
     struct inotify_event *event;
     char * dirname = NULL;
@@ -696,9 +696,9 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                         continue;
                     }
                 } else if (event->wd == wd_groups) {
-                    dirname = BUILDDIR(HOMEDIR,GROUPS_DIR);
+                    dirname = GROUPS_DIR;
                 } else if (event->wd == wd_shared_groups) {
-                    dirname = BUILDDIR(HOMEDIR,SHAREDCFG_DIR);
+                    dirname = SHAREDCFG_DIR;
                 } else
 #endif
                 if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {

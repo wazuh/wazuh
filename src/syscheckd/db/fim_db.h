@@ -23,8 +23,8 @@
 
 #ifndef WAZUH_UNIT_TESTING
 #ifndef WIN32
-#define FIM_DB_DISK_PATH    BUILDDIR(HOMEDIR,"/queue/fim/db/fim.db")
-#define FIM_DB_TMPDIR       BUILDDIR(HOMEDIR,"/tmp/")
+#define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"
+#define FIM_DB_TMPDIR       "tmp/"
 #else
 #define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"
 #define FIM_DB_TMPDIR       "tmp/"

@@ -274,11 +274,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
     for (i = 0; decoder_dirs[i]; i++) {
         mdebug1("Reading decoders folder: %s", decoder_dirs[i]);
-        if(isChroot()) {
-            snprintf(path, PATH_MAX + 1, "%s", decoder_dirs[i]);
-        } else {
-            snprintf(path, PATH_MAX + 1, "%s/%s", HOMEDIR, decoder_dirs[i]);
-        }
+        snprintf(path, PATH_MAX + 1, "%s", decoder_dirs[i]);
 
         OSRegex_FreePattern(&regex);
         if (!OSRegex_Compile(decoder_dirs_pattern[i], &regex, 0)) {
@@ -331,11 +327,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
     for (i = 0; rules_dirs[i]; i++) {
         mdebug1("Reading rules folder: %s", rules_dirs[i]);
-        if(isChroot()) {
-            snprintf(path, PATH_MAX + 1, "%s", rules_dirs[i]);
-        } else {
-            snprintf(path, PATH_MAX + 1, "%s/%s", HOMEDIR, rules_dirs[i]);
-        }
+        snprintf(path, PATH_MAX + 1, "%s", rules_dirs[i]);
 
         OSRegex_FreePattern(&regex);
         if (!OSRegex_Compile(rules_dirs_pattern[i], &regex, 0)) {

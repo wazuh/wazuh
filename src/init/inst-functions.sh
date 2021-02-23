@@ -88,8 +88,8 @@ DisableAuthd()
     echo "    <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>" >> $NEWCONFIG
     echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
     echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
-    echo "    <ssl_manager_cert>${INSTALLDIR}/etc/sslmanager.cert</ssl_manager_cert>" >> $NEWCONFIG
-    echo "    <ssl_manager_key>${INSTALLDIR}/etc/sslmanager.key</ssl_manager_key>" >> $NEWCONFIG
+    echo "    <ssl_manager_cert>etc/sslmanager.cert</ssl_manager_cert>" >> $NEWCONFIG
+    echo "    <ssl_manager_key>etc/sslmanager.key</ssl_manager_key>" >> $NEWCONFIG
     echo "    <ssl_auto_negotiate>no</ssl_auto_negotiate>" >> $NEWCONFIG
     echo "  </auth>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -411,7 +411,7 @@ WriteAgent()
     else
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     fi
-    echo "    <ca_store>${INSTALLDIR}/etc/wpk_root.pem</ca_store>" >> $NEWCONFIG
+    echo "    <ca_store>etc/wpk_root.pem</ca_store>" >> $NEWCONFIG
 
     if [ -n "$CA_STORE" ]
     then

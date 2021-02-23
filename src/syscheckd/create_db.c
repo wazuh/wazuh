@@ -131,7 +131,7 @@ void fim_scan() {
     fim_diff_folder_size();
     syscheck.disk_quota_full_msg = true;
 
-    mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR_PATH, syscheck.diff_folder_size);
+    mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR, syscheck.diff_folder_size);
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
@@ -1255,9 +1255,9 @@ void free_inode_data(fim_inode_data **data) {
 void fim_diff_folder_size(){
     char *diff_local;
 
-    os_malloc(strlen(DIFF_DIR_PATH) + strlen("/local") + 1, diff_local);
+    os_malloc(strlen(DIFF_DIR) + strlen("/local") + 1, diff_local);
 
-    snprintf(diff_local, strlen(DIFF_DIR_PATH) + strlen("/local") + 1, "%s/local", DIFF_DIR_PATH);
+    snprintf(diff_local, strlen(DIFF_DIR) + strlen("/local") + 1, "%s/local", DIFF_DIR);
 
     if (IsDir(diff_local) == 0) {
         syscheck.diff_folder_size = DirSize(diff_local) / 1024;

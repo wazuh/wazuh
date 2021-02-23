@@ -43,9 +43,3 @@ struct dirent * wrap_readdir(DIR *dirp) {
     }
     return readdir(dirp);
 }
-
-int wrap_proc_pidpath(pid_t pid, char *buf) {
-    check_expected(pid);
-    snprintf(buf, PATH_MAX, "%s", mock_type(char*));
-    return mock_type(int);
-}

@@ -18,6 +18,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
@@ -94,10 +95,6 @@ static int setup_group(void ** state) {
 #endif
 
     will_return_always(__wrap_os_random, 12345);
-
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
 
     if(Read_Syscheck_Config("test_syscheck.conf"))
         fail();
@@ -291,7 +288,7 @@ void test_fim_send_msg_retry(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_StartMQ_call(DEFAULTQPATH, WRITE, 0);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
 
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
 
@@ -304,9 +301,9 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_StartMQ_call(DEFAULTQPATH, WRITE, -1);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, -1);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: '/var/ossec/queue/ossec/queue'. Giving up.");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/ossec/queue'. Giving up.");
 
     // This code shouldn't run
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);

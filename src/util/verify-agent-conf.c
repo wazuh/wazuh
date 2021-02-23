@@ -37,8 +37,7 @@ static void helpmsg()
 
 int main(int argc, char **argv)
 {
-    home_path = w_homedir(argv[0]);
-    const char *ar = BUILDDIR(HOMEDIR,SHAREDCFG_DIR);
+    const char *ar = SHAREDCFG_DIR;
     char path[PATH_MAX + 1];
     char path_f[PATH_MAX + 1];
     DIR *gdir, *subdir;
@@ -48,6 +47,12 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    /* Define current working directory */
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 
     /* User arguments */
     if (argc > 1) {
@@ -140,7 +145,9 @@ int main(int argc, char **argv)
     }
     printf("\n");
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
     os_free(home_path);
+
     return (error);
 }
 

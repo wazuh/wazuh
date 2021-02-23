@@ -112,142 +112,92 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define GROUPGLOBAL     "ossec"
 #endif
 
-#ifndef FALLBACKDIR
-#define FALLBACKDIR     "/var/ossec"
-#endif
-
-/* Default directory - Checked at runtime */
-#ifndef WIN32
-#ifndef HOMEDIR
-#ifdef WAZUH_UNIT_TESTING
-#define HOMEDIR FALLBACKDIR
-#else
-#define HOMEDIR ({ \
-    struct stat wazuh_homedir_test; \
-    char * wazuh_homedir = home_path; \
-    if (wazuh_homedir != NULL) { \
-        if (stat(wazuh_homedir, &wazuh_homedir_test) < 0 || !S_ISDIR(wazuh_homedir_test.st_mode)) wazuh_homedir = FALLBACKDIR; \
-    } else { \
-        wazuh_homedir = FALLBACKDIR; \
-    } \
-    wazuh_homedir; \
-})
-#endif
-#endif
-#endif
-
-#ifndef BUILDDIR
-#ifndef WAZUH_UNIT_TESTING
-#define BUILDDIR(x,y) ({ \
-    static char wazuh_fulldir[MAXPATHLEN + 1] = {'\0'}; \
-    char *wazuh_str1 = (x); \
-    char *wazuh_str2 = (y); \
-    if (wazuh_str1 && *wazuh_str1 && wazuh_str2 && *wazuh_str2) snprintf(wazuh_fulldir, MAXPATHLEN, "%s%s", wazuh_str1, wazuh_str2); \
-    wazuh_fulldir; \
-})
-#else
-#define BUILDDIR(x,y)   x y
-#endif
-#endif
+// Wazuh home environment variable
+#define WAZUH_HOME_ENV  "WAZUH_HOME"
 
 /* Default queue */
-#define DEFAULTQUEUE    "/queue/ossec/queue"
+#define DEFAULTQUEUE    "queue/ossec/queue"
 
 // Authd local socket
-#define AUTH_LOCAL_SOCK "/queue/ossec/auth"
-#define AUTH_LOCAL_SOCK_PATH BUILDDIR(HOMEDIR,AUTH_LOCAL_SOCK)
+#define AUTH_LOCAL_SOCK "queue/ossec/auth"
 
 // Remote requests socket
-#define REMOTE_REQ_SOCK "/queue/ossec/request"
+#define REMOTE_REQ_SOCK "queue/ossec/request"
 
 // Local requests socket
-#define COM_LOCAL_SOCK  "/queue/ossec/com"
-#define LC_LOCAL_SOCK  "/queue/ossec/logcollector"
-#define SYS_LOCAL_SOCK  "/queue/ossec/syscheck"
-#define WM_LOCAL_SOCK  "/queue/ossec/wmodules"
-#define ANLSYS_LOCAL_SOCK  "/queue/ossec/analysis"
-#define MAIL_LOCAL_SOCK "/queue/ossec/mail"
-#define LESSD_LOCAL_SOCK "/queue/ossec/agentless"
-#define INTG_LOCAL_SOCK "/queue/ossec/integrator"
-#define CSYS_LOCAL_SOCK  "/queue/ossec/csyslog"
-#define MON_LOCAL_SOCK  "/queue/ossec/monitor"
-#define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
-#define CONTROL_SOCK "/queue/ossec/control"
-#define LOGTEST_SOCK "/queue/ossec/logtest"
-#define AGENT_UPGRADE_SOCK "/queue/ossec/upgrade"
+#define COM_LOCAL_SOCK  "queue/ossec/com"
+#define LC_LOCAL_SOCK  "queue/ossec/logcollector"
+#define SYS_LOCAL_SOCK  "queue/ossec/syscheck"
+#define WM_LOCAL_SOCK  "queue/ossec/wmodules"
+#define ANLSYS_LOCAL_SOCK  "queue/ossec/analysis"
+#define MAIL_LOCAL_SOCK "queue/ossec/mail"
+#define LESSD_LOCAL_SOCK "queue/ossec/agentless"
+#define INTG_LOCAL_SOCK "queue/ossec/integrator"
+#define CSYS_LOCAL_SOCK  "queue/ossec/csyslog"
+#define MON_LOCAL_SOCK  "queue/ossec/monitor"
+#define CLUSTER_SOCK "queue/cluster/c-internal.sock"
+#define CONTROL_SOCK "queue/ossec/control"
+#define LOGTEST_SOCK "queue/ossec/logtest"
+#define AGENT_UPGRADE_SOCK "queue/ossec/upgrade"
 
 
 // Tasks socket
-#define TASK_QUEUE "/queue/tasks/task"
-
-// Absolute path local requests socket
-#define CONTROL_SOCK_PATH BUILDDIR(HOMEDIR,CONTROL_SOCK)
+#define TASK_QUEUE "queue/tasks/task"
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS   10
 
 // Database socket
-#define WDB_LOCAL_SOCK "/queue/db/wdb"
-#ifndef WIN32
-#define WDB_LOCAL_SOCK_PATH BUILDDIR(HOMEDIR,WDB_LOCAL_SOCK)
-#endif
+#define WDB_LOCAL_SOCK "queue/db/wdb"
 
-#define WM_DOWNLOAD_SOCK "/queue/ossec/download"
-#define WM_DOWNLOAD_SOCK_PATH BUILDDIR(HOMEDIR,WM_DOWNLOAD_SOCK)
+#define WM_DOWNLOAD_SOCK "queue/ossec/download"
 
-#define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
-#define WM_KEY_REQUEST_SOCK_PATH BUILDDIR(HOMEDIR,WM_KEY_REQUEST_SOCK)
+#define WM_KEY_REQUEST_SOCK "queue/ossec/krequest"
 
 // Tasks socket
-#define WM_UPGRADE_SOCK "/queue/tasks/upgrade"
-#define WM_UPGRADE_SOCK_PATH BUILDDIR(HOMEDIR,WM_UPGRADE_SOCK)
+#define WM_UPGRADE_SOCK "queue/tasks/upgrade"
 
-#define WM_TASK_MODULE_SOCK "/queue/tasks/task"
-#define WM_TASK_MODULE_SOCK_PATH BUILDDIR(HOMEDIR,WM_TASK_MODULE_SOCK)
+#define WM_TASK_MODULE_SOCK "queue/tasks/task"
 
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
-
+#define AR_BINDIR       "active-response/bin"
 #ifndef WIN32
-#define DEFAULTAR       "/etc/shared/" DEFAULTAR_FILE
-#define AR_BINDIR       "/active-response/bin"
-#define AGENTCONFIGINT  "/etc/shared/agent.conf"
-#define AGENTCONFIG     BUILDDIR(HOMEDIR,"/etc/shared/agent.conf")
-#define DEF_CA_STORE    BUILDDIR(HOMEDIR,"/etc/wpk_root.pem")
+#define DEFAULTAR       "etc/shared/" DEFAULTAR_FILE
+#define AGENTCONFIG     "etc/shared/agent.conf"
+#define DEF_CA_STORE    "etc/wpk_root.pem"
 #else
 #define DEFAULTAR       "shared/" DEFAULTAR_FILE
-#define AR_BINDIR       "active-response/bin"
 #define AGENTCONFIG     "shared/agent.conf"
-#define AGENTCONFIGINT  "shared/agent.conf"
 #define DEF_CA_STORE    "wpk_root.pem"
 #endif
 
 /* Exec queue */
-#define EXECQUEUE       "/queue/alerts/execq"
+#define EXECQUEUE       "queue/alerts/execq"
 
 /* Security configuration assessment module queue */
-#define CFGAQUEUE       "/queue/alerts/cfgaq"
+#define CFGAQUEUE       "queue/alerts/cfgaq"
 
 /* Security configuration assessment remoted queue */
-#define CFGARQUEUE       "/queue/alerts/cfgarq"
+#define CFGARQUEUE       "queue/alerts/cfgarq"
 
 /* Exec queue api*/
-#define EXECQUEUEA      "/queue/alerts/execa"
+#define EXECQUEUEA      "queue/alerts/execa"
 
 /* Active Response queue */
-#define ARQUEUE         "/queue/alerts/ar"
+#define ARQUEUE         "queue/alerts/ar"
 
 /* Decoder file */
 #define XML_LDECODER    "etc/decoders/local_decoder.xml"
 
 /* Agent groups location */
-#define GROUPS_DIR    "/queue/agent-groups"
+#define GROUPS_DIR    "queue/agent-groups"
 
 /* Default group name */
 #define DEFAULT_GROUP "default"
 
 /* Syscheck directory */
-#define SYSCHECK_DIR    "/queue/syscheck"
+#define SYSCHECK_DIR    "queue/syscheck"
 
 /* Syscollector normalization configs */
 #ifdef WAZUH_UNIT_TESTING
@@ -257,11 +207,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH    "./norm_config.json"
 #endif // WIN32
 #else
-#ifdef WIN32
 #define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH "queue/syscollector/norm_config.json"
-#else
-#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH DEFAULTDIR "/queue/syscollector/norm_config.json"
-#endif // WIN32
 #endif // WAZUH_UNIT_TESTING
 
 #if defined(__MACH__)
@@ -275,11 +221,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Syscollector db directory */
 #ifndef WAZUH_UNIT_TESTING
-#ifndef WIN32
-#define SYSCOLLECTOR_DB_DISK_PATH DEFAULTDIR "/queue/syscollector/db/local.db"
-#else
 #define SYSCOLLECTOR_DB_DISK_PATH "queue/syscollector/db/local.db"
-#endif // WIN32
 #else
 #ifndef WIN32
 #define SYSCOLLECTOR_DB_DISK_PATH    "./local.db"
@@ -289,7 +231,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif // WAZUH_UNIT_TESTING
 
 /* Rootcheck directory */
-#define ROOTCHECK_DIR    "/queue/rootcheck"
+#define ROOTCHECK_DIR    "queue/rootcheck"
 
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
@@ -301,13 +243,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_TASK_NAME   "tasks"
 
 /* Diff queue */
-#ifndef WIN32
-#define DIFF_DIR        "/queue/diff"
-#define DIFF_DIR_PATH   BUILDDIR(HOMEDIR,DIFF_DIR)
-#else
 #define DIFF_DIR        "queue/diff"
-#define DIFF_DIR_PATH   DIFF_DIR
-#endif
 #define DIFF_NEW_FILE   "new-entry"
 #define DIFF_LAST_FILE  "last-entry"
 #define DIFF_GZ_FILE    "last-entry.gz"
@@ -318,172 +254,110 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define SYSCHECK_REG    "syscheck-registry"
 
 /* Rule path */
-#define RULEPATH        "/rules"
+#define RULEPATH        "rules"
 
 /* Wait file */
 #ifndef WIN32
-#define WAIT_FILE       "/queue/ossec/.wait"
+#define WAIT_FILE       "queue/ossec/.wait"
 #else
 #define WAIT_FILE       ".wait"
 #endif
 
 /* Agent information file */
 #ifndef WIN32
-#define AGENT_INFO_FILE "/queue/ossec/.agent_info"
-#define AGENT_INFO_FILEP BUILDDIR(HOMEDIR,AGENT_INFO_FILE)
+#define AGENT_INFO_FILE "queue/ossec/.agent_info"
 #else
 #define AGENT_INFO_FILE ".agent_info"
-#define AGENT_INFO_FILEP AGENT_INFO_FILE
-#endif
-
-/* Syscheck restart */
-#ifndef WIN32
-#define SYSCHECK_RESTART        "/var/run/.syscheck_run"
-#define SYSCHECK_RESTART_PATH   BUILDDIR(HOMEDIR,SYSCHECK_RESTART)
-#else
-#define SYSCHECK_RESTART        "syscheck/.syscheck_run"
-#define SYSCHECK_RESTART_PATH   "syscheck/.syscheck_run"
 #endif
 
 /* Agentless directories */
-#define AGENTLESSDIR        "/agentless"
-#define AGENTLESSPASS       "/agentless/.passlist"
-#define AGENTLESS_ENTRYDIR  "/queue/agentless"
+#define AGENTLESSDIR        "agentless"
+#define AGENTLESS_ENTRYDIR  "queue/agentless"
 
 /* Integration directory. */
-#define INTEGRATORDIR "/integrations"
-#define INTEGRATORDIRPATH    BUILDDIR(HOMEDIR,INTEGRATORDIR)
+#define INTEGRATORDIR "integrations"
 
 
 /* Internal definitions files */
 #ifndef WIN32
-#define OSSEC_DEFINES   "/etc/internal_options.conf"
-#define OSSEC_LDEFINES   "/etc/local_internal_options.conf"
-#define OSSEC_DEFINES_PATH BUILDDIR(HOMEDIR,OSSEC_DEFINES)
+#define OSSEC_DEFINES   "etc/internal_options.conf"
+#define OSSEC_LDEFINES   "etc/local_internal_options.conf"
 #else
 #define OSSEC_DEFINES   "internal_options.conf"
 #define OSSEC_LDEFINES   "local_internal_options.conf"
 #endif
 
 /* Log directories */
-#define EVENTS            "/logs/archives"
-#define EVENTS_DAILY      "/logs/archives/archives.log"
-#define ALERTS            "/logs/alerts"
-#define ALERTS_PATH       BUILDDIR(HOMEDIR,ALERTS)
-#define ALERTS_DAILY      "/logs/alerts/alerts.log"
-#define ALERTSJSON_DAILY  "/logs/alerts/alerts.json"
-#define FWLOGS            "/logs/firewall"
-#define FWLOGS_DAILY      "/logs/firewall/firewall.log"
-#define EVENTSJSON_DAILY  "/logs/archives/archives.json"
+#define EVENTS            "logs/archives"
+#define EVENTS_DAILY      "logs/archives/archives.log"
+#define ALERTS            "logs/alerts"
+#define ALERTS_DAILY      "logs/alerts/alerts.log"
+#define ALERTSJSON_DAILY  "logs/alerts/alerts.json"
+#define FWLOGS            "logs/firewall"
+#define FWLOGS_DAILY      "logs/firewall/firewall.log"
+#define EVENTSJSON_DAILY  "logs/archives/archives.json"
 
 /* Stats directories */
-#define STATWQUEUE  "/stats/weekly-average"
-#define STATQUEUE   "/stats/hourly-average"
-#define STATSAVED   "/stats/totals"
+#define STATWQUEUE  "stats/weekly-average"
+#define STATQUEUE   "stats/hourly-average"
+#define STATSAVED   "stats/totals"
 
 /* Authentication keys file */
 #ifndef WIN32
-#define KEYS_FILE       "/etc/client.keys"
-#define AUTHD_PASS      "/etc/authd.pass"
-#define KEYSFILE_PATH   BUILDDIR(HOMEDIR,KEYS_FILE)
-#define AUTHDPASS_PATH  BUILDDIR(HOMEDIR,AUTHD_PASS)
+#define KEYS_FILE       "etc/client.keys"
+#define AUTHD_PASS      "etc/authd.pass"
 #else
 #define KEYS_FILE       "client.keys"
-#define KEYSFILE_PATH   KEYS_FILE
 #define AUTHD_PASS      "authd.pass"
-#define AUTHDPASS_PATH  AUTHD_PASS
-#endif
-
-#ifndef AUTH_FILE
-#define AUTH_FILE       KEYS_FILE
 #endif
 
 /* Timestamp file */
-#define TIMESTAMP_FILE  "/queue/agents-timestamp"
+#define TIMESTAMP_FILE  "queue/agents-timestamp"
 
 /* Shared config directory */
 #ifndef WIN32
-#define SHAREDCFG_DIR   "/etc/shared"
+#define SHAREDCFG_DIR   "etc/shared"
 #else
 #define SHAREDCFG_DIR   "shared"
 #endif
 
 /* Multi-groups directory */
-#define MULTIGROUPS_DIR   "/var/multigroups"
+#define MULTIGROUPS_DIR   "var/multigroups"
 #define MAX_GROUP_NAME 255
 #define MULTIGROUP_SEPARATOR ','
 #define MAX_GROUPS_PER_MULTIGROUP 256
 
 // Incoming directory
 #ifndef WIN32
-#define INCOMING_DIR   "/var/incoming"
+#define INCOMING_DIR   "var/incoming"
 #else
 #define INCOMING_DIR   "incoming"
 #endif
 
 // Upgrade directory
 #ifndef WIN32
-#define UPGRADE_DIR   "/var/upgrade"
+#define UPGRADE_DIR   "var/upgrade"
 #else
 #define UPGRADE_DIR   "upgrade"
 #endif
 
 // Download directory
-#define DOWNLOAD_DIR  "/var/download"
+#define DOWNLOAD_DIR  "var/download"
 
 /* Built-in defines */
-#ifdef WIN32
-#define DEFAULTQPATH    DEFAULTQUEUE
-#else
-#define DEFAULTQPATH    BUILDDIR(HOMEDIR,DEFAULTQUEUE)
-#endif
 
 #ifndef WIN32
-#define OSSECCONF       "/etc/ossec.conf"
-#define DEFAULTCPATH    BUILDDIR(HOMEDIR,OSSECCONF)
+#define OSSECCONF       "etc/ossec.conf"
 #else
 #define OSSECCONF       "ossec.conf"
-#define DEFAULTCPATH    "ossec.conf"
-#endif
-
-#ifndef WIN32
-#define DEFAULTARPATH           BUILDDIR(HOMEDIR,DEFAULTAR)
-#define AR_BINDIRPATH           BUILDDIR(HOMEDIR,AR_BINDIR)
-#define AGENTLESSDIRPATH        BUILDDIR(HOMEDIR,AGENTLESSDIR)
-#define AGENTLESSPASSPATH       BUILDDIR(HOMEDIR,AGENTLESSPASS)
-#define AGENTLESS_ENTRYDIRPATH  BUILDDIR(HOMEDIR,AGENTLESS_ENTRYDIR)
-#else
-#define DEFAULTARPATH           "shared/ar.conf"
-#define AR_BINDIRPATH           "active-response/bin"
-#define AGENTLESSDIRPATH        AGENTLESSDIR
-#define AGENTLESSPASSPATH       AGENTLESSPASS
-#define AGENTLESS_ENTRYDIRPATH  AGENTLESS_ENTRYDIR
-#endif
-#define EXECQUEUEPATH           BUILDDIR(HOMEDIR,EXECQUEUE)
-#define CFGASSESSMENTQUEUEPATH  BUILDDIR(HOMEDIR,CFGAQUEUE)
-
-#define EXECQUEUEPATHAPI        BUILDDIR(HOMEDIR,EXECQUEUEA)
-
-#ifdef WIN32
-#define SHAREDCFG_DIRPATH   SHAREDCFG_DIR
-#else
-#define SHAREDCFG_DIRPATH   BUILDDIR(HOMEDIR,SHAREDCFG_DIR)
 #endif
 
 #define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"
-#ifdef WIN32
-#define SHAREDCFG_FILEPATH  SHAREDCFG_DIRPATH "/merged.mg"
-#else
-#define SHAREDCFG_FILEPATH  BUILDDIR(HOMEDIR,SHAREDCFG_DIR "/merged.mg")
-#endif
 #define SHAREDCFG_FILENAME  "merged.mg"
-
-#define WAIT_FILE_PATH  BUILDDIR(HOMEDIR,WAIT_FILE)
 
 #define MAX_QUEUED_EVENTS_PATH "/proc/sys/fs/inotify/max_queued_events"
 
 #define TMP_DIR "tmp"
-#define TMP_PATH BUILDDIR(HOMEDIR,TMP_DIR)
 
 /* Windows COMSPEC */
 #define COMSPEC "C:\\Windows\\System32\\cmd.exe"
@@ -548,7 +422,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define CLOCK_LENGTH 256
 
-#define SECURITY_CONFIGURATION_ASSESSMENT_DIR   "/ruleset/sca"
+#define SECURITY_CONFIGURATION_ASSESSMENT_DIR       "ruleset/sca"
 
 #define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset\\sca"
 

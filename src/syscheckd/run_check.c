@@ -68,8 +68,8 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+        if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         // Try to send it again
@@ -215,7 +215,7 @@ void start_daemon()
     // Deleting content local/diff directory
     char diff_dir[PATH_MAX];
 
-    snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
+    snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR);
 
     if (cldir_ex(diff_dir) == -1 && errno != ENOENT) {
         merror("Unable to clear directory '%s': %s (%d)", diff_dir, strerror(errno), errno);

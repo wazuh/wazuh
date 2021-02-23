@@ -13,11 +13,11 @@
 #include "config/config.h"
 
 /* Prototypes */
-static void help_agentlessd(void) __attribute__((noreturn));
+static void help_agentlessd(char * home_path) __attribute__((noreturn));
 
 
 /* Print help statement */
-static void help_agentlessd()
+static void help_agentlessd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -30,9 +30,10 @@ static void help_agentlessd()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", HOMEDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chdir and chroot into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -41,11 +42,11 @@ int main(int argc, char **argv)
     int c, test_config = 0, run_foreground = 0;
     uid_t uid;
     gid_t gid;
-    home_path = w_homedir(argv[0]);
-    const char *dir = HOMEDIR;
+
+    char * home_path = w_homedir(argv[0]);
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -56,7 +57,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_agentlessd();
+                help_agentlessd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -80,7 +81,8 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument.");
                 }
-                dir = optarg;
+                os_free(home_path);
+                os_strdup(optarg, home_path);
                 break;
             case 'c':
                 if (!optarg) {
@@ -92,13 +94,15 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_agentlessd();
+                help_agentlessd(home_path);
                 break;
         }
     }
 
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
+    /* chdir to working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
     mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the user/group given are valid */
@@ -129,10 +133,6 @@ int main(int argc, char **argv)
         goDaemonLight();
     }
 
-    if (chdir(dir) == -1) {
-        merror_exit(CHDIR_ERROR, dir, errno, strerror(errno));
-    }
-
     /* Exit if not configured */
     if (!lessdc.entries) {
         minfo("Not configured. Exiting.");
@@ -149,7 +149,9 @@ int main(int argc, char **argv)
         merror_exit(SETUID_ERROR, user, errno, strerror(errno));
     }
 
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -165,6 +167,5 @@ int main(int argc, char **argv)
     /* The real daemon now */
     Agentlessd();
 
-	os_free(home_path);
-	return (0);
+    return (0);
 }

@@ -546,7 +546,7 @@ void test_w_logtest_init_conection_fail(void **state)
 
     will_return(__wrap_OS_BindUnixDomain, OS_SOCKTERR);
 
-    expect_string(__wrap__merror, formatted_msg, "(7300): Unable to bind to socket '/queue/ossec/logtest'. Errno: (0) Success");
+    expect_string(__wrap__merror, formatted_msg, "(7300): Unable to bind to socket 'queue/ossec/logtest'. Errno: (0) Success");
 
     w_logtest_init();
 

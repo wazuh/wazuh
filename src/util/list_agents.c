@@ -31,8 +31,6 @@ static void helpmsg()
 
 int main(int argc, char **argv)
 {
-    home_path = w_homedir(argv[0]);
-    const char *dir = HOMEDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
 
@@ -44,6 +42,9 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    char * home_path = w_homedir(argv[0]);
+    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* User arguments */
     if (argc < 2) {
@@ -63,9 +64,11 @@ int main(int argc, char **argv)
     }
 
     /* Chroot to the default directory */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
+
+    os_free(home_path);
 
     /* Inside chroot now */
     nowChroot();
@@ -106,6 +109,5 @@ int main(int argc, char **argv)
         printf("** No agent available.\n");
     }
 
-    os_free(home_path);
     return (0);
 }
