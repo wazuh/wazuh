@@ -26,6 +26,7 @@ from api.constants import SECURITY_PATH
 
 # Max reserved ID value
 max_id_reserved = 99
+cloud_reserved_range = 89
 
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
@@ -1342,13 +1343,8 @@ class PoliciesManager:
 
                         try:
                             if not check_default:
-                                policies = sorted([p.id for p in self.get_policies()])
-                                for p_id in policies or [0]:
-                                    if policy_id and p_id - policy_id > 1:
-                                        break
-                                    else:
-                                        policy_id = p_id
-                                policy_id += 1
+                                policies = sorted([p.id for p in self.get_policies()]) or [0]
+                                policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
 
                             elif check_default and \
                                     self.session.query(Policies).order_by(desc(Policies.id)
@@ -1366,7 +1362,6 @@ class PoliciesManager:
                     return SecurityError.INVALID
             else:
                 return SecurityError.INVALID
-            return False
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
