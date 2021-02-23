@@ -424,7 +424,7 @@ void audit_parse(char *buffer) {
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
-            } else if (fim_manipulated_audit_rules()) {
+            } else if (fim_manipulated_audit_rules() == 0) {
                 // If the manipulation wasn't done by syscheck, increase the number of retries
                 mwarn(FIM_WARN_AUDIT_RULES_MODIFIED);
                 // Send alert

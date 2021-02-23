@@ -753,7 +753,7 @@ STATIC void fim_link_delete_range(int pos) {
     char pattern[PATH_MAX] = {0};
 
     // Create the sqlite LIKE pattern.
-    snprintf(pattern, PATH_MAX, "%s%c%%", syscheck.dir[pos], PATH_SEP);
+    snprintf(pattern, PATH_MAX, "%s%c%%", syscheck.symbolic_links[pos], PATH_SEP);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 

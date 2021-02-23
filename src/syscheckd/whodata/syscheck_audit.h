@@ -20,7 +20,13 @@
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
 #define AUDIT_KEY "wazuh_fim"
 
-// Public rule handlig functions
+/**
+ * @brief Checks if the manipulation of the audit rule was done by FIM or by an user
+
+ * @return The remaining audit events:
+ * @retval 0: The modification wasn't done by FIM.
+ * @retval Positive integer: Number of remaining CONFIG_CHANGE events done by FIM.
+ */
 int fim_manipulated_audit_rules();
 int fim_audit_rules_init();
 int fim_rules_initial_load();
