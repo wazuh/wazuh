@@ -191,7 +191,7 @@ def generate_rbac_pair(index: int, permission: dict):
     """
     role_policy_pair = [
         f'INSERT INTO policies VALUES({1000 + index},\'testing{index}\',\'{json.dumps(permission)}\','
-        f'\'1970-01-01 00:00:00\');\n',
+        f'\'1970-01-01 00:00:00\', \'user\');\n',
         f'INSERT INTO roles_policies VALUES({1000 + index},99,{1000 + index},{index},\'1970-01-01 00:00:00\');\n'
     ]
 
