@@ -7,7 +7,6 @@ import os
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import create_engine
 
 from wazuh.rbac.tests.utils import init_db
 
@@ -18,10 +17,9 @@ test_data_path = os.path.join(test_path, 'data/')
 @pytest.fixture(scope='function')
 def db_setup():
     with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
-        with patch('sqlalchemy.create_engine', return_value=create_engine("sqlite://")):
-            with patch('shutil.chown'), patch('os.chmod'):
-                with patch('api.constants.SECURITY_PATH', new=test_data_path):
-                    from wazuh.rbac.auth_context import RBAChecker
+        with patch('shutil.chown'), patch('os.chmod'):
+            with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                from wazuh.rbac.auth_context import RBAChecker
     init_db('schema_security_test.sql', test_data_path)
 
     yield RBAChecker
@@ -84,7 +82,8 @@ def test_load_files(db_setup):
         assert type(role) == Map
 
 
-def test_auth_roles(db_setup):
+@patch('wazuh.rbac.orm.delete_orphans')
+def test_auth_roles(delete_mock, db_setup):
     authorization_contexts, roles, results = values()
     for index, auth in enumerate(authorization_contexts):
         for role in roles:

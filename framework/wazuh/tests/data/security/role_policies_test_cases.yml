@@ -46,6 +46,7 @@ set_role_policy:
             - 103
           users:
             - 104
+          resource_type: user
       failed_items:
         "4011":
           - 101
@@ -77,6 +78,7 @@ set_role_policy:
             - 104
           users:
             - 104
+          resource_type: user
       failed_items: {}
   - params:
       role_id:
@@ -98,6 +100,7 @@ set_role_policy:
           users:
             - 101
             - 104
+          resource_type: user
       failed_items:
         "4007":
           - 999
@@ -147,6 +150,7 @@ remove_role_policy:
             - 107
           users:
             - 104
+          resource_type: user
       failed_items:
         "4010":
           - 103
@@ -175,6 +179,7 @@ remove_role_policy:
             - 105
           users:
             - 101
+          resource_type: user
       failed_items:
         "4007":
           - 999
