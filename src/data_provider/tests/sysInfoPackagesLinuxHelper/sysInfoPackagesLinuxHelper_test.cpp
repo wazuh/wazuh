@@ -31,7 +31,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformation)
     EXPECT_EQ(15432, jsPackageInfo["size"]);
     EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
     EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
-    EXPECT_EQ("1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["format"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
@@ -60,13 +60,133 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("curl", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["install_time"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["groups"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
+    EXPECT_EQ("", jsPackageInfo["install_time"]);
+    EXPECT_EQ("", jsPackageInfo["groups"]);
+    EXPECT_EQ("", jsPackageInfo["version"]);
+    EXPECT_EQ("", jsPackageInfo["architecture"]);
     EXPECT_EQ("rpm", jsPackageInfo["format"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["vendor"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["description"]);
+    EXPECT_EQ("", jsPackageInfo["vendor"]);
+    EXPECT_EQ("", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)
+{
+    constexpr auto RPM_PACKAGE_CENTOS
+    {
+        "mktemp\tx86_64\tA small utility for safely making /tmp files.\t15432\t\t24.el5\t1.5\tCentOS\t1425472738\tSystem Environment/Base\t"
+    };
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochNonRelease)
+{
+    constexpr auto RPM_PACKAGE_CENTOS
+    {
+        "mktemp\tx86_64\tA small utility for safely making /tmp files.\t15432\t\t\t1.5\tCentOS\t1425472738\tSystem Environment/Base\t"
+    };
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonRelease)
+{
+    constexpr auto RPM_PACKAGE_CENTOS
+    {
+        "mktemp\tx86_64\tA small utility for safely making /tmp files.\t15432\t3\t\t1.5\tCentOS\t1425472738\tSystem Environment/Base\t"
+    };
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("3:1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochWithNone)
+{
+    constexpr auto RPM_PACKAGE_CENTOS
+    {
+        "mktemp\tx86_64\tA small utility for safely making /tmp files.\t15432\t(none)\t24.el5\t1.5\tCentOS\t1425472738\tSystem Environment/Base\t"
+    };
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1.5-24.el5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonReleaseWithNone)
+{
+    constexpr auto RPM_PACKAGE_CENTOS
+    {
+        "mktemp\tx86_64\tA small utility for safely making /tmp files.\t15432\t3\t(none)\t1.5\tCentOS\t1425472738\tSystem Environment/Base\t"
+    };
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("3:1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
+}
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochNonReleaseWithNone)
+{
+    constexpr auto RPM_PACKAGE_CENTOS
+    {
+        "mktemp\tx86_64\tA small utility for safely making /tmp files.\t15432\t(none)\t(none)\t1.5\tCentOS\t1425472738\tSystem Environment/Base\t"
+    };
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(RPM_PACKAGE_CENTOS) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("mktemp", jsPackageInfo["name"]);
+    EXPECT_EQ(15432, jsPackageInfo["size"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1.5", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
+    EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)

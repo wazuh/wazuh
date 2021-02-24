@@ -9,6 +9,7 @@ import random
 import re
 import subprocess
 import time
+import xml.etree.ElementTree as ET
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
@@ -805,3 +806,19 @@ def get_active_configuration(agent_id, component, configuration):
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,
                          extra_message='{0}:{1}'.format(component, configuration))
+
+
+def write_ossec_conf(new_conf: str):
+    """
+    Replace the current wazuh configuration (ossec.conf) with the provided configuration.
+
+    Parameters
+    ----------
+    new_conf: str
+        The new configuration to be applied.
+    """
+    try:
+        with open(common.ossec_conf, 'w') as f:
+            f.writelines(new_conf)
+    except Exception:
+        raise WazuhError(1126)

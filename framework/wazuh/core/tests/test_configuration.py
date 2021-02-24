@@ -10,6 +10,8 @@ from unittest.mock import mock_open
 from unittest.mock import patch, MagicMock
 from xml.etree.ElementTree import fromstring
 
+from wazuh.core.common import ossec_conf
+
 import pytest
 
 with patch('wazuh.core.common.ossec_uid'):
@@ -390,3 +392,17 @@ def test_get_active_configuration_fourth_exception(agent_id, component, config, 
             with patch('wazuh.core.configuration.OssecSocket.receive', return_value=b'ok {"a": "2"}'):
                 with patch('wazuh.core.configuration.OssecSocket.close', side_effect=None):
                     assert {"a": "2"} == configuration.get_active_configuration(agent_id, component, config)
+
+
+def test_write_ossec_conf():
+    content = "New config"
+    with patch('wazuh.core.configuration.open', mock_open()) as mocked_file:
+        configuration.write_ossec_conf(new_conf=content)
+        mocked_file.assert_called_once_with(ossec_conf, 'w')
+        mocked_file().writelines.assert_called_once_with(content)
+
+
+def test_write_ossec_conf_exceptions():
+    with patch('wazuh.core.configuration.open', return_value=Exception):
+        with pytest.raises(WazuhError, match=".* 1126 .*"):
+            configuration.write_ossec_conf(new_conf="placeholder")

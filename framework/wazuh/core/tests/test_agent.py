@@ -846,15 +846,13 @@ def test_agent_add_manual(socket_mock, mock_send, mock_lockf, mock_stat, mock_os
                                                permissions=ANY)
 
 
-@patch('wazuh.core.agent.copyfile')
 @patch('wazuh.core.common.ossec_uid')
 @patch('wazuh.core.common.ossec_gid')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.fcntl.lockf')
-def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock_ossec_gid, mosck_ossec_uid,
-                             mock_copyfile):
+def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock_ossec_gid, mosck_ossec_uid):
     """Tests if method _add_manual() raises expected exceptions"""
     key = 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5' \
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'
@@ -1015,7 +1013,8 @@ def test_agent_get_agents_overview_select(socket_mock, send_mock, select, status
     ({'value': 'any', 'negation': 1}, 6),
     ({'value': '202', 'negation': 0}, 1),
     ({'value': '202', 'negation': 1}, 8),
-    ({'value': 'master', 'negation': 1}, 2)
+    ({'value': 'master', 'negation': 1}, 2),
+    ({'value': '停', 'negation': 0}, 0)
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')

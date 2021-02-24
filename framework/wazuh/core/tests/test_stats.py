@@ -23,6 +23,7 @@ with patch('wazuh.core.common.ossec_uid'):
 
 @pytest.mark.parametrize("agent_id, daemon, response", [
     ('000', 'logcollector', '{"error":0, "data":{"test":0}}'),
+    ('002', 'agent', '{"error":0, "data":{"test":0}}'),
     (3, 'test', '{"error":0, "data":{"test":0}}'),
 ])
 def test_get_daemons_stats_from_socket(agent_id, daemon, response):
@@ -55,6 +56,9 @@ def test_get_daemons_stats_from_socket_ko():
     """Check if get_daemons_stats_from_socket raises expected exceptions."""
     with pytest.raises(WazuhError, match=r'\b1307\b'):
         stats.get_daemons_stats_from_socket(None, None)
+
+    with pytest.raises(WazuhError, match=r'\b1310\b'):
+        stats.get_daemons_stats_from_socket('000', 'agent')
 
     with pytest.raises(WazuhInternalError, match=r'\b1121\b'):
         stats.get_daemons_stats_from_socket('000', 'logcollector')

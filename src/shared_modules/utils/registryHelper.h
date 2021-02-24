@@ -19,7 +19,8 @@
 #include <winreg.h>
 #include <cstdio>
 #include <memory>
-	
+#include "encodingWindowsHelper.h"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
@@ -153,7 +154,7 @@ namespace Utils
             bool ret{true};
             try
             {
-                value = this->string(valueName);
+                value = EncodingWindowsHelper::stringAnsiToStringUTF8(this->string(valueName));
             }
             catch(...)
             {

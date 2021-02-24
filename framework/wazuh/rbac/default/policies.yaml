@@ -114,13 +114,30 @@ default_policies:
         effect: allow
 
   decoders_read:
-    description: Allow read all decoder files in the system.
+    description: Allow reading all decoder files in the system.
     policies:
       decoders:
         actions:
           - decoders:read
         resources:
           - decoder:file:*
+        effect: allow
+
+  decoders_all:
+    description: Allow managing all decoder files in the system.
+    policies:
+      files:
+        actions:
+          - decoders:read
+          - decoders:delete
+        resources:
+          - decoder:file:*
+        effect: allow
+      resourceless:
+        actions:
+          - decoders:update
+        resources:
+          - '*:*:*'
         effect: allow
 
   mitre_read:
@@ -134,13 +151,30 @@ default_policies:
         effect: allow
 
   lists_read:
-    description: Allow read all lists paths in the system.
+    description: Allow reading all lists paths in the system.
     policies:
       rules:
         actions:
           - lists:read
         resources:
-          - list:path:*
+          - list:file:*
+        effect: allow
+
+  lists_all:
+    description: Allow managing all CDB lists files in the system.
+    policies:
+      rules:
+        actions:
+          - lists:read
+          - lists:delete
+        resources:
+          - list:file:*
+        effect: allow
+      resourceless:
+        actions:
+          - lists:update
+        resources:
+          - '*:*:*'
         effect: allow
 
   rootcheck_read:
@@ -166,13 +200,30 @@ default_policies:
         effect: allow
 
   rules_read:
-    description: Allow read all rule files in the system.
+    description: Allow reading all rule files in the system.
     policies:
       rules:
         actions:
           - rules:read
         resources:
           - rule:file:*
+        effect: allow
+
+  rules_all:
+    description: Allow managing all rule files in the system.
+    policies:
+      files:
+        actions:
+          - rules:read
+          - rules:delete
+        resources:
+          - rule:file:*
+        effect: allow
+      resourceless:
+        actions:
+          - rules:update
+        resources:
+          - '*:*:*'
         effect: allow
 
   sca_read:
@@ -225,35 +276,19 @@ default_policies:
           - cluster:status
           - manager:read
           - manager:read_api_config
-          - manager:upload_file
+          - manager:update_config
           - manager:restart
-          - manager:delete_file
         resources:
           - '*:*:*'
         effect: allow
-      files:
-        actions:
-          - manager:delete_file
-          - manager:read_file
-        resources:
-          - file:path:*
-        effect: allow
       nodes:
         actions:
-          - cluster:delete_file
           - cluster:read_api_config
           - cluster:read
           - cluster:restart
-          - cluster:upload_file
+          - cluster:update_config
         resources:
           - node:id:*
-        effect: allow
-      combination:
-        actions:
-          - cluster:read_file
-          - cluster:delete_file
-        resources:
-          - node:id:*&file:path:*
         effect: allow
 
   cluster_read:
@@ -267,13 +302,6 @@ default_policies:
         resources:
           - '*:*:*'
         effect: allow
-      files:
-        actions:
-          - manager:read
-          - manager:read_api_config
-        resources:
-          - file:path:*
-        effect: allow
       nodes:
         actions:
           - cluster:read_api_config
@@ -281,12 +309,6 @@ default_policies:
           - cluster:read_api_config
         resources:
           - node:id:*
-        effect: allow
-      combination:
-        actions:
-          - cluster:read_file
-        resources:
-          - node:id:*&file:path:*
         effect: allow
 
   logtest_all:

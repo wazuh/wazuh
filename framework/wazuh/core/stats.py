@@ -31,6 +31,9 @@ def get_daemons_stats_from_socket(agent_id, daemon):
     sockets_path = os.path.join(common.ossec_path, "queue", "ossec")
 
     if str(agent_id).zfill(3) == '000':
+        # Some daemons do not exist in agent 000
+        if daemon in {'agent'}:
+            raise WazuhError(1310)
         dest_socket = os.path.join(sockets_path, daemon)
         command = "getstate"
     else:
@@ -58,5 +61,5 @@ def get_daemons_stats_from_socket(agent_id, daemon):
     try:
         return json.loads(rec_msg)['data']
     except Exception:
-        rec_msg = rec_msg.split(" ", 1)
+        rec_msg = rec_msg.split(" ", 1)[1]
         raise WazuhError(1117, extra_message=rec_msg)

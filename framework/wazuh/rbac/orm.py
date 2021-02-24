@@ -26,6 +26,7 @@ from api.constants import SECURITY_PATH
 
 # Max reserved ID value
 max_id_reserved = 99
+cloud_reserved_range = 89
 
 # Start a session and set the default security elements
 _auth_db_file = os.path.join(SECURITY_PATH, 'rbac.db')
@@ -1337,12 +1338,19 @@ class PoliciesManager:
                         for resource in policy['resources']:
                             if not re.match(regex, resource):
                                 return SecurityError.INVALID
+
                         policy_id = None
+
                         try:
-                            if check_default and \
+                            if not check_default:
+                                policies = sorted([p.id for p in self.get_policies()]) or [0]
+                                policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
+
+                            elif check_default and \
                                     self.session.query(Policies).order_by(desc(Policies.id)
                                                                           ).limit(1).scalar().id < max_id_reserved:
                                 policy_id = max_id_reserved + 1
+
                         except (TypeError, AttributeError):
                             pass
                         self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id))
@@ -1354,7 +1362,6 @@ class PoliciesManager:
                     return SecurityError.INVALID
             else:
                 return SecurityError.INVALID
-            return False
         except IntegrityError:
             self.session.rollback()
             return SecurityError.ALREADY_EXIST
@@ -1428,7 +1435,7 @@ class PoliciesManager:
             self.session.rollback()
             return False
 
-    def update_policy(self, policy_id: int, name: str, policy: dict):
+    def update_policy(self, policy_id: int, name: str, policy: dict, check_default: bool = True):
         """Update an existent policy in the system
 
         Parameters
@@ -1439,6 +1446,8 @@ class PoliciesManager:
             New name for the Policy
         policy : dict
             New policy for the Policy
+        check_default : bool, optional
+            Flag that indicates if the policy ID can be less than `max_id_reserved`.
 
         Returns
         -------
@@ -1447,7 +1456,7 @@ class PoliciesManager:
         try:
             policy_to_update = self.session.query(Policies).filter_by(id=policy_id).first()
             if policy_to_update and policy_to_update is not None:
-                if policy_to_update.id > max_id_reserved:
+                if policy_to_update.id > max_id_reserved or not check_default:
                     # Policy is not a valid json
                     if policy is not None and not json_validator(policy):
                         return SecurityError.INVALID
@@ -2452,7 +2461,31 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
     with PoliciesManager() as pm:
         for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
             for name, policy in payload['policies'].items():
-                pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy, check_default=False)
+                policy_name = f'{d_policy_name}_{name}'
+                policy_result = pm.add_policy(name=policy_name, policy=policy, check_default=False)
+                # Update policy if it exists
+                if policy_result == SecurityError.ALREADY_EXIST:
+                    try:
+                        policy_id = pm.get_policy(policy_name)['id']
+                        if policy_id < max_id_reserved:
+                            pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy, check_default=False)
+                        else:
+                            with RolesPoliciesManager() as rpm:
+                                linked_roles = [role.id for role in rpm.get_all_roles_from_policy(policy_id=policy_id)]
+                                new_positions = dict()
+                                for role in linked_roles:
+                                    new_positions[role] = [p.id for p in rpm.get_all_policies_from_role(role_id=role)]\
+                                        .index(policy_id)
+
+                                pm.delete_policy(policy_id=policy_id)
+                                pm.add_policy(name=policy_name, policy=policy, check_default=False)
+                                policy_id = pm.get_policy(policy_name)['id']
+                                for role, position in new_positions.items():
+                                    rpm.add_role_to_policy(policy_id=policy_id, role_id=role, position=position,
+                                                           force_admin=True)
+
+                    except (KeyError, TypeError):
+                        pass
 
 # Create the relationships
 with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:

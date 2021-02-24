@@ -22,3 +22,7 @@ int __wrap_auth_connect() {
 char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name) {
     return mock_type(char*);
 }
+
+int __wrap_control_check_connection() {
+    return mock();
+}

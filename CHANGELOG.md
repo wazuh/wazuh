@@ -57,6 +57,9 @@ All notable changes to this project will be documented in this file.
   - Fixed Windows agent compilation with GCC 10. ([#7359](https://github.com/wazuh/wazuh/pull/7359))
   - Fixed a bug in FIM that caused to wrogly expand environment variables. ([#7332](https://github.com/wazuh/wazuh/pull/7332))
 
+- **API:**
+  - Fixed wrong API messages returned when getting agents' upgrade results. ([#7587](https://github.com/wazuh/wazuh/pull/7587))
+
 ### Removed
 
 - **Core:**
@@ -66,19 +69,51 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.1.1]
 
+### Added
+
+- **External dependencies:**
+  - Added cython (0.29.21) library to Python dependencies. ([#7451](https://github.com/wazuh/wazuh/pull/7451))  
+  - Added xmltodict (0.12.0) library to Python dependencies. ([#7303](https://github.com/wazuh/wazuh/pull/7303))
+ 
+- **API:**
+  - Added new endpoints to manage rules files. ([#7178](https://github.com/wazuh/wazuh/issues/7178))
+  - Added new endpoints to manage CDB lists files. ([#7180](https://github.com/wazuh/wazuh/issues/7180))
+  - Added new endpoints to manage decoder files. ([#7179](https://github.com/wazuh/wazuh/issues/7179))
+  - Added new manager and cluster endpoints to update Wazuh configuration (ossec.conf). ([#7181](https://github.com/wazuh/wazuh/issues/7181))
+  
+### Changed
+
+- **External dependencies:**
+  - Upgraded Python version from 3.8.2 to 3.8.6. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
+  - Upgraded Cryptography python library from 3.2.1 to 3.3.2. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
+  - Upgraded cffi python library from 1.14.0 to 1.14.4. ([#7451](https://github.com/wazuh/wazuh/pull/7451))
+  
+- **API:**
+  - Added raw parameter to GET /manager/configuration and GET cluster/{node_id}/configuration to load ossec.conf in xml format. ([#7565](https://github.com/wazuh/wazuh/issues/7565))
+
 ### Fixed
 
 - **API:**
   - Fixed an error with the RBAC permissions in the `GET /groups` endpoint. ([#7328](https://github.com/wazuh/wazuh/issues/7328))
   - Fixed a bug with Windows registries when parsing backslashes. ([#7309](https://github.com/wazuh/wazuh/pull/7309))
   - Fixed an error with the RBAC permissions when assigning multiple `agent:group` resources to a policy. ([#7393](https://github.com/wazuh/wazuh/pull/7393))
+  - Fixed an error with search parameter when using special characters. ([#7301](https://github.com/wazuh/wazuh/pull/7301))  
 - **AWS Module:**
   - Fixed a bug that caused an error when attempting to use an IAM Role with **CloudWatchLogs** service. ([#7330](https://github.com/wazuh/wazuh/pull/7330))
 - **Framework:**
   - Fixed a race condition bug when using RBAC expand_group function. ([#7353](https://github.com/wazuh/wazuh/pull/7353))
+  - Fix migration process to overwrite default RBAC policies. ([#7594](https://github.com/wazuh/wazuh/pull/7594))  
 - **Core:**
   - Fixed a bug in Windows agent that did not honor the buffer's EPS limit. ([#7333](https://github.com/wazuh/wazuh/pull/7333))
   - Fixed a bug in Integratord that might lose alerts from Analysisd due to a race condition. ([#7338](https://github.com/wazuh/wazuh/pull/7338))
+  - Silence the error message when the Syslog forwarder reads an alert with no rule object. ([#7539](https://github.com/wazuh/wazuh/pull/7539))
+  - Fixed a memory leak in Vulnerability Detector when updating NVD feeds. ([#7559](https://github.com/wazuh/wazuh/pull/7559))
+  - Prevent FIM from raising false positives about group name changes due to a thread unsafe function. ([#7589](https://github.com/wazuh/wazuh/pull/7589))
+
+### Removed
+
+- **API:**
+  - Deprecated /manager/files and /cluster/{node_id}/files endpoints. ([#7209](https://github.com/wazuh/wazuh/issues/7209))
 
 
 ## [v4.1.0]

@@ -1023,8 +1023,8 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-VERSION = $(subst $() $(),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
-RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
+DEPS_VERSION = 10
+RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 ifeq (${PREFIX},/var/ossec)
 	# Download the Python sources if we are building for any other OS.
@@ -1052,8 +1052,15 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist
-EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
+# Agent dependencies
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist
+ifneq (${TARGET},agent)
+ifneq (${TARGET},winagent)
+	# Manager extra dependency
+	EXTERNAL_RES += $(CPYTHON)
+endif
+endif
+EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
@@ -1246,9 +1253,9 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_auth_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 
 	ifeq (${TARGET},winagent)
-		UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
