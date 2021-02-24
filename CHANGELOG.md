@@ -57,6 +57,9 @@ All notable changes to this project will be documented in this file.
   - Fixed Windows agent compilation with GCC 10. ([#7359](https://github.com/wazuh/wazuh/pull/7359))
   - Fixed a bug in FIM that caused to wrogly expand environment variables. ([#7332](https://github.com/wazuh/wazuh/pull/7332))
 
+- **API:**
+  - Fixed wrong API messages returned when getting agents' upgrade results. ([#7587](https://github.com/wazuh/wazuh/pull/7587))
+
 ### Removed
 
 - **Core:**
