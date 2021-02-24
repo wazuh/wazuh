@@ -6,6 +6,7 @@ import json
 import os
 from time import time
 from unittest.mock import patch
+from yaml import safe_load
 
 import pytest
 from sqlalchemy import create_engine
@@ -14,6 +15,8 @@ from wazuh.rbac.tests.utils import init_db, execute_sql_file
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
+
+default_path = os.path.join(test_path, '../', 'default')
 
 
 @pytest.fixture(scope='function')
