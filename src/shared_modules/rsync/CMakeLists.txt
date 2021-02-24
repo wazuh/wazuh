@@ -40,6 +40,8 @@ include_directories(${SHARED_MODULES}/common/)
 
 link_directories(${SHARED_MODULES}/dbsync/build/lib/)
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/external/cJSON/)
+link_directories(${SRC_FOLDER}/external/openssl/)
 
 file(GLOB RSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
@@ -56,7 +58,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
-  target_link_libraries(rsync crypto ssl ws2_32 crypt32)
 elseif(UNIX AND NOT APPLE)
   set_target_properties(rsync PROPERTIES
         LINK_FLAGS "-static-libgcc -static-libstdc++")

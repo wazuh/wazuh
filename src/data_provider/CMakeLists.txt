@@ -39,6 +39,10 @@ include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/external/sqlite/)
+link_directories(${SRC_FOLDER}/external/cJSON/)
+link_directories(${SRC_FOLDER}/external/procps/)
+link_directories(${SRC_FOLDER}/external/bzip2/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSINFO_SRC
@@ -85,7 +89,6 @@ add_library(sysinfo SHARED
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
-
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
@@ -94,10 +97,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    target_link_libraries(sysinfo wazuhext)
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-
   set_target_properties(sysinfo PROPERTIES
           LINK_FLAGS "-static-libgcc -static-libstdc++")
 
@@ -109,6 +108,8 @@ elseif(UNIX AND NOT APPLE)
     target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+target_link_libraries(sysinfo wazuhext)
 
 if(APPLE)
   add_custom_command(TARGET sysinfo

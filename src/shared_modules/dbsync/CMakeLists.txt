@@ -37,6 +37,8 @@ include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 
 link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/external/sqlite/)
+link_directories(${SRC_FOLDER}/external/cJSON/)
 
 file(GLOB DBSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
@@ -63,7 +65,6 @@ elseif(UNIX AND NOT APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(dbsync wazuhext)
-
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
