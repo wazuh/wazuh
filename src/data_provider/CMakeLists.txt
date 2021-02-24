@@ -17,7 +17,11 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -43,6 +47,8 @@ link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
+link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
+
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB SYSINFO_SRC
@@ -107,6 +113,8 @@ elseif(UNIX AND NOT APPLE)
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
     target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+elseif(APPLE)
+  target_link_libraries(sysinfo cjson plist-2.0.3)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(sysinfo wazuhext)
