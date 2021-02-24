@@ -27,6 +27,9 @@ All notable changes to this project will be documented in this file.
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
 
+- **Framework:**
+  - Added RBAC database upgrade and integrity checks. ([#6963](https://github.com/wazuh/wazuh/pull/6963))
+
 ### Changed
 
 - **Core:**
@@ -47,8 +50,7 @@ All notable changes to this project will be documented in this file.
   - Wazuh building is now independent from the installation directory. ([#7327](https://github.com/wazuh/wazuh/pull/7327))
   - The embedded python interpreter is provided in a preinstalled, portable package. ([#7327](https://github.com/wazuh/wazuh/pull/7327))
   - Wazuh resources are now accessed by a relative path to the installation directory. ([#7327](https://github.com/wazuh/wazuh/pull/7327))
-
-
+  
 - **API:**
   - Removed ruleset version from `GET /cluster/{node_id}/info` and `GET /manager/info` as it was deprecated. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
   - Changed the `POST /groups` endpoint to specify the group name in a JSON body instead of in a query parameter. ([#6909](https://github.com/wazuh/wazuh/pull/6909))
@@ -58,10 +60,14 @@ All notable changes to this project will be documented in this file.
   - Changed the PUT /agents/group/{group_id}/restart response format when there are no agents assigned to the group. ([#8123](https://github.com/wazuh/wazuh/pull/8123))
   - Agent keys used when adding agents are now obscured in the API log. ([#8149](https://github.com/wazuh/wazuh/pull/8149))
   
+- **Framework:**
+  - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
+  - Changed the structure for several tables in `rbac.db` database to add the new `resource_type` column. ([#6963](https://github.com/wazuh/wazuh/pull/6963))
+  
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
   - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
-
+  
 ### Fixed
 
 - **Cluster:**
@@ -213,7 +219,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Deprecated /manager/files and /cluster/{node_id}/files endpoints. ([#7209](https://github.com/wazuh/wazuh/issues/7209))
-
+  
 
 ## [v4.1.0] - 2021-02-15
 
