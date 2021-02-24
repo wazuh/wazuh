@@ -208,7 +208,7 @@ def _read_option(section_name, opt):
         # Remove new lines, empty spaces and backslashes
         opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
     elif section_name == 'remote' and opt_name == 'protocol':
-        opt_value = opt.text.split(',')
+        opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:
         if opt.attrib:
             opt_value = {}
