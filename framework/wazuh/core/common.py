@@ -2,9 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from functools import lru_cache
 import json
 import os
 import subprocess
+import yaml
 from contextvars import ContextVar
 from copy import deepcopy
 from functools import lru_cache
@@ -13,9 +15,9 @@ from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict, Any
 
-import yaml
-
 from api import __path__ as api_path
+from functools import lru_cache
+
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))

@@ -1504,7 +1504,7 @@ class PoliciesManager:
                     try:
                         if not check_default and not policy_id:
                             policies = sorted([p.id for p in self.get_policies()]) or [0]
-                            policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
+                            policy_id = max(filter(lambda x: not (x > cloud_reserved_range), policies)) + 1
 
                         elif check_default and \
                                 self.session.query(Policies).order_by(desc(Policies.id)
@@ -2803,7 +2803,8 @@ class DatabaseManager:
                     # Look for the ID of a default resource from the old database in the new database using its name
                     # This allows us to keep the relationship if the related default resource now has a different id
                     if int(user_id) <= max_id_reserved:
-                        user_name = AuthenticationManager(self.sessions[source]).get_user_id(user_id=user_id)['username']
+                        user_name = AuthenticationManager(self.sessions[source]).get_user_id(user_id=user_id)[
+                            'username']
                         user_id = AuthenticationManager(self.sessions[target]).get_user(username=user_name)['id']
 
                     if int(role_id) <= max_id_reserved:
