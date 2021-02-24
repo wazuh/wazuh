@@ -1504,7 +1504,7 @@ class PoliciesManager:
                     try:
                         if not check_default and not policy_id:
                             policies = sorted([p.id for p in self.get_policies()]) or [0]
-                            policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
+                            policy_id = max(filter(lambda x: not (x > cloud_reserved_range), policies)) + 1
 
                         elif check_default and \
                                 self.session.query(Policies).order_by(desc(Policies.id)
@@ -2704,7 +2704,8 @@ class DatabaseManager:
             with RolesPoliciesManager(self.sessions[database]) as rpm:
                 for d_role_name, payload in default_relationships[next(iter(default_relationships))]['roles'].items():
                     for d_policy_name in payload['policy_ids']:
-                        for sub_name in default_policies[next(iter(default_policies))][d_policy_name]['policies'].keys():
+                        for sub_name in default_policies[next(iter(default_policies))][d_policy_name][
+                            'policies'].keys():
                             rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
                                                    policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')['id'],
                                                    force_admin=True)
@@ -2896,7 +2897,7 @@ def check_database_integrity():
             set_permission(DATABASE_FULL_PATH)
             db_manager.connect(DATABASE_FULL_PATH)
             current_version = db_manager.get_database_version(DATABASE_FULL_PATH)
-            expected_version = db_manager.get_api_revision()
+            expected_version = common.get_wazuh_revision()
 
             # Check if an upgrade is required
             if int(current_version) < int(expected_version):
@@ -2920,7 +2921,7 @@ def check_database_integrity():
                                         resource_type=ResourceType.USER)
 
                 # Apply changes and replace database
-                db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
+                db_manager.set_database_version(_tmp_db_file, common.get_wazuh_revision())
                 db_manager.close_sessions()
                 safe_move(_tmp_db_file, DATABASE_FULL_PATH,
                           ownership=(common.ossec_uid(), common.ossec_gid()),
@@ -2934,9 +2935,13 @@ def check_database_integrity():
             db_manager.create_database(DATABASE_FULL_PATH)
             set_permission(DATABASE_FULL_PATH)
             db_manager.insert_data_from_yaml(DATABASE_FULL_PATH)
-            db_manager.set_database_version(DATABASE_FULL_PATH, db_manager.get_api_revision())
+            db_manager.set_database_version(DATABASE_FULL_PATH, common.get_wazuh_revision())
             db_manager.close_sessions()
             logger.info(f'{DATABASE_FULL_PATH} database created successfully')
+
+    except ValueError:
+        logger.error('Error retrieving the current Wazuh revision. Aborting database integrity check.')
+        db_manager.close_sessions()
 
     except Exception as e:
         logger.error('Error during the database migration. Restoring the previous database file.')
