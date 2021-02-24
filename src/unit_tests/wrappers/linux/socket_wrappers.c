@@ -17,19 +17,19 @@
 #define BUFFERSIZE 1024
 #define SENDSTRING "Hello World!\n"
 
-int __wrap_socket(int __domain, int __type, int __protocol) {
+int __wrap_socket(__attribute__((unused))int __domain, __attribute__((unused))int __type, __attribute__((unused))int __protocol) {
     return mock();
 }
 
-int __wrap_bind(int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len) {
+int __wrap_bind(__attribute__((unused))int __fd, __attribute__((unused))__CONST_SOCKADDR_ARG __addr, __attribute__((unused))socklen_t __len) {
     return mock();
 }
 
-int __wrap_setsockopt(int __fd, int __level, int __optname, const void *__optval, socklen_t __optlen) {
+int __wrap_setsockopt(__attribute__((unused))int __fd, __attribute__((unused))int __level, __attribute__((unused))int __optname, __attribute__((unused))const void *__optval, __attribute__((unused))socklen_t __optlen) {
     return mock();
 }
 
-int __wrap_getsockopt(int __fd, int __level, int __optname, void *__restrict __optval, socklen_t *__restrict __optlen) {
+int __wrap_getsockopt(__attribute__((unused))int __fd, __attribute__((unused))int __level, __attribute__((unused))int __optname, __attribute__((unused))void *__restrict __optval, __attribute__((unused))socklen_t *__restrict __optlen) {
 
     int number = 100000;
     void *len = &number;
@@ -38,23 +38,23 @@ int __wrap_getsockopt(int __fd, int __level, int __optname, void *__restrict __o
     return mock();
 }
 
-int __wrap_listen(int __fd, int __n) {
+int __wrap_listen(__attribute__((unused))int __fd, __attribute__((unused))int __n) {
     return mock();
 }
 
-int __wrap_connect(int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len) {
+int __wrap_connect(__attribute__((unused))int __fd, __attribute__((unused))__CONST_SOCKADDR_ARG __addr, __attribute__((unused))socklen_t __len) {
     return mock();
 }
 
-int __wrap_accept(int __fd, __SOCKADDR_ARG __addr, socklen_t *__restrict __addr_len) {
+int __wrap_accept(__attribute__((unused))int __fd, __attribute__((unused))__SOCKADDR_ARG __addr, __attribute__((unused))socklen_t *__restrict __addr_len) {
     return mock();
 }
 
-ssize_t __wrap_send(int __fd, const void *__buf, size_t __n, int __flags) {
+ssize_t __wrap_send(__attribute__((unused))int __fd, __attribute__((unused))const void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags) {
     return mock();
 }
 
-int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
+int __wrap_recv(__attribute__((unused))int __fd, __attribute__((unused))void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags) {
 
     if(__fd == -1) {
         return mock();
@@ -73,7 +73,7 @@ int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
     return mock();
 }
 
-int __wrap_recvfrom(int __fd, void *__restrict __buf, size_t __n, int __flags, __SOCKADDR_ARG __addr, socklen_t *__restrict __addr_len) {
+int __wrap_recvfrom(__attribute__((unused))int __fd, __attribute__((unused))void *__restrict __buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags, __attribute__((unused))__SOCKADDR_ARG __addr, __attribute__((unused))socklen_t *__restrict __addr_len) {
 
     if(__fd != -1) {
         char text[BUFFERSIZE];
@@ -85,7 +85,7 @@ int __wrap_recvfrom(int __fd, void *__restrict __buf, size_t __n, int __flags, _
     return mock();
 }
 
-extern int __real_fcntl(int __fd, int __cmd, unsigned long);
+extern int __real_fcntl(__attribute__((unused))int __fd, __attribute__((unused))int __cmd, __attribute__((unused))unsigned long);
 int __wrap_fcntl(int __fd, int __cmd, ...) {
 
     va_list ap;
@@ -99,6 +99,6 @@ int __wrap_fcntl(int __fd, int __cmd, ...) {
     return mock();
 }
 
-struct hostent *__wrap_gethostbyname(const char *__name) {
+struct hostent *__wrap_gethostbyname(__attribute__((unused))const char *__name) {
     return mock_type(struct hostent *);
 }
