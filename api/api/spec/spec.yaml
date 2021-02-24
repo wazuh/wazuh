@@ -5283,8 +5283,8 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.2.0"
-                revision: '40100'
+                api_version: "v5.0.0"
+                revision: '50000'
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/4.2/LICENSE"
                 hostname: "wazuh"
@@ -8109,7 +8109,7 @@ paths:
                         logall_json: no
                         email_notification: no
                         smtp_server: smtp.example.wazuh.com
-                        email_from: ossecm@example.wazuh.com
+                        email_from: wazuh@example.wazuh.com
                         email_to: recipient@example.wazuh.com
                         email_maxperhour: 12
                         email_log_source: alerts.log
@@ -9537,7 +9537,7 @@ paths:
                         logall_json: no
                         email_notification: no
                         smtp_server: smtp.example.wazuh.com
-                        email_from: ossecm@example.wazuh.com
+                        email_from: wazuh@example.wazuh.com
                         email_to: recipient@example.wazuh.com
                         email_maxperhour: 12
                         email_log_source: alerts.log

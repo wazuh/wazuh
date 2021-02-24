@@ -301,9 +301,9 @@ int get_ossec_server()
     int success = 0;
 
     /* Definitions */
-    const char *(xml_serverip[]) = {"ossec_config", "client", "server-ip", NULL};
-    const char *(xml_serverhost[]) = {"ossec_config", "client", "server-hostname", NULL};
-    const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
+    const char *(xml_serverip[]) = {"wazuh_config", "client", "server-ip", NULL};
+    const char *(xml_serverhost[]) = {"wazuh_config", "client", "server-hostname", NULL};
+    const char *(xml_serveraddr[]) = {"wazuh_config", "client", "server", "address", NULL};
 
     /* Read XML */
     if (OS_ReadXML(CONFIG, &xml) < 0) {
@@ -407,7 +407,7 @@ int run_cmd(char *cmd, HWND hwnd)
 int set_ossec_server(char *ip, HWND hwnd)
 {
     const char **xml_pt = NULL;
-    const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
+    const char *(xml_serveraddr[]) = {"wazuh_config", "client", "server", "address", NULL};
     char config_tmp[] = CONFIG;
     char *conf_file = basename_ex(config_tmp);
 

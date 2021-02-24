@@ -410,7 +410,7 @@ cJSON* wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJ
     char* node_name = NULL;
     OS_XML xml;
 
-    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+    const char *(xml_node[]) = {"wazuh_config", "cluster", "node_name", NULL};
 
     if (OS_ReadXML(DEFAULTCPATH, &xml) >= 0) {
         node_name = OS_GetOneContentforElement(&xml, xml_node);

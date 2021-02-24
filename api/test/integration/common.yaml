@@ -153,8 +153,8 @@ variables:
     </localfile>
     </agent_config>
 
-  valid_ossec_conf:
-    <ossec_config>
+  valid_wazuh_conf:
+    <wazuh_config>
       <global>
         <jsonout_output>yes</jsonout_output>
         <alerts_log>yes</alerts_log>
@@ -183,10 +183,10 @@ variables:
       <syscheck>
         <disabled>yes</disabled>
       </syscheck>
-    </ossec_config>
+    </wazuh_config>
 
-  invalid_ossec_conf:
-    <ossec_config>
+  invalid_wazuh_conf:
+    <wazuh_config>
       <global>
         <jsonout_output>yes</jsonout_output>
         <alerts_log>yes</alerts_log>
@@ -200,4 +200,4 @@ variables:
       </alerts>
 
       <remote>
-    </ossec_config>
+    </wazuh_config>
