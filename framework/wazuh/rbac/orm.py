@@ -1631,7 +1631,7 @@ class UserRolesManager:
     """
     def __init__(self, session=None):
         self.session = session if session else sessionmaker(
-            bind=create_engine('sqlite:///' + DATABASE_FULL_PATH, echo=False))()
+            bind=create_engine(f'sqlite:///{DATABASE_FULL_PATH}', echo=False))()
 
     def add_role_to_user(self, user_id: int, role_id: int, position: int = None, created_at: DateTime = None,
                          force_admin: bool = False, atomic: bool = True):
