@@ -1078,14 +1078,18 @@ endif
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 
+ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
+else
+external/%.tar.gz:
+endif
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
 
-external-precompiled/%.tar.gz:
 ifneq (,$(PRECOMPILED_RES))
+external-precompiled/%.tar.gz:
 	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
 	-cd external && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 	-cd external && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
