@@ -136,6 +136,33 @@ async def restore_default_passwords():
     print()
 
 
+async def reset_rbac_database():
+    if input('This action will completely wipe your RBAC configuration and restart it to default values. Type '
+             'RESET to proceed: ') != 'RESET':
+        sys.exit(0)
+
+    from wazuh.core.cluster import local_client
+    from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
+    from wazuh.core.security import rbac_db_factory_reset
+
+    lc = local_client.LocalClient()
+
+    input_json = {
+        'f': rbac_db_factory_reset,
+        'from_cluster': False,
+        'wait_for_complete': False
+    }
+
+    # Distribute function to master node
+    response = json.loads(await lc.execute(command=b'dapi',
+                                           data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
+                                           wait_for_complete=False),
+                          object_hook=as_wazuh_object)
+
+    print(f'\tRBAC database reset failed | {str(response)}' if isinstance(response, Exception)
+          else '\tSuccessfully resetted RBAC database')
+
+
 if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser(description='Wazuh RBAC protected resources manager',
@@ -209,6 +236,9 @@ if __name__ == "__main__":
     arg_parser.add_argument("--change-passwords", action='store_true', dest='change_passwords',
                             help="Change the password for each default user. Empty values will leave the password "
                                  "unchanged.")
+    arg_parser.add_argument("--factory-reset", action='store_true', dest='factory_reset',
+                            help="Restart the RBAC database to its default state. This will completely wipe your custom"
+                                 "RBAC information.")
     args = arg_parser.parse_args()
 
     if not len(sys.argv) > 1:
@@ -218,6 +248,9 @@ if __name__ == "__main__":
     try:
         if args.change_passwords:
             asyncio.run(restore_default_passwords())
+            sys.exit(0)
+        elif args.factory_reset:
+            asyncio.run(reset_rbac_database())
             sys.exit(0)
 
         result_table = list()
