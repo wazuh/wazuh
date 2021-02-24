@@ -28,6 +28,8 @@
 #include "../headers/exec_op.h"
 #include "../headers/list_op.h"
 
+#define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
+
 extern OSList *audit_rules_list;
 
 /* auxiliary structs */
@@ -220,7 +222,7 @@ static void test_audit_print_reply(void **state) {
     assert_non_null(audit_rules_list->first_node);
     assert_string_equal(rule->path, "");
     assert_string_equal(rule->key, "");
-    assert_string_equal(rule->perm, "rwxa");
+    assert_int_equal(rule->perm, (AUDIT_PERM_EXEC | AUDIT_PERM_WRITE | AUDIT_PERM_READ | AUDIT_PERM_ATTR));
     assert_int_equal(audit_rules_list->currently_size, 1);
 }
 
@@ -320,7 +322,7 @@ static void test_audit_rules_list_append(void **state) {
         w_audit_rule *rule = calloc(1, sizeof(w_audit_rule));
         rule->path = strdup("/test/file");
         rule->key = strdup("key");
-        rule->perm = strdup("rw");
+        rule->perm = PERMS;
         OSList_AddData(audit_rules_list, rule);
     }
 
@@ -330,7 +332,7 @@ static void test_audit_rules_list_append(void **state) {
 static void test_search_audit_rule(void **state) {
     (void) state;
 
-    int ret = search_audit_rule("/test/file", "rw", "key");
+    int ret = search_audit_rule("/test/file", PERMS, "key");
 
     assert_int_equal(ret, 1);
 }
@@ -338,7 +340,7 @@ static void test_search_audit_rule(void **state) {
 static void test_search_audit_rule_null(void **state) {
     (void) state;
 
-    int ret = search_audit_rule(NULL, NULL, NULL);
+    int ret = search_audit_rule(NULL, PERMS, NULL);
 
     assert_int_equal(ret, -1);
 }
@@ -346,7 +348,7 @@ static void test_search_audit_rule_null(void **state) {
 static void test_search_audit_rule_not_found(void **state) {
     (void) state;
 
-    int ret = search_audit_rule("/test/search2", "rwx", "search2");
+    int ret = search_audit_rule("/test/search2", (PERMS | AUDIT_PERM_EXEC)  , "search2");
 
     assert_int_equal(ret, 0);
 }
@@ -371,7 +373,7 @@ static void test_audit_add_rule(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_add_rule("/usr/bin", "bin-folder");
+    int ret = audit_add_rule("/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, 1);
 }
@@ -400,7 +402,7 @@ static void test_audit_delete_rule(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_delete_rule("/usr/bin", "bin-folder");
+    int ret = audit_delete_rule("/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
@@ -410,7 +412,7 @@ static void test_audit_manage_rules_open_error(void **state) {
 
     will_return(__wrap_audit_open, -1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/folder/path", "key-test");
+    int ret = audit_manage_rules(ADD_RULE, "/folder/path", PERMS, "key-test");
 
     assert_int_equal(ret, -1);
 }
@@ -424,7 +426,7 @@ static void test_audit_manage_rules_stat_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/folder/path", "key-test");
+    int ret = audit_manage_rules(ADD_RULE, "/folder/path", PERMS, "key-test");
 
     errno = 0;
 
@@ -446,7 +448,7 @@ static void test_audit_manage_rules_add_dir_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
@@ -469,7 +471,7 @@ static void test_audit_manage_rules_update_perms_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
@@ -494,7 +496,7 @@ static void test_audit_manage_rules_key_length_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", key);
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", PERMS, key);
 
     assert_int_equal(ret, -1);
 }
@@ -521,7 +523,7 @@ static void test_audit_manage_rules_fieldpair_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
@@ -544,7 +546,7 @@ static void test_audit_manage_rules_action_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(-1, "/usr/bin", "bin-folder");
+    int ret = audit_manage_rules(-1, "/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
