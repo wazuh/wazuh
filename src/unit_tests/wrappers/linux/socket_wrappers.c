@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <string.h>
 #include "../common.h"
 
 #define BUFFERSIZE 1024
