@@ -20,6 +20,9 @@ All notable changes to this project will be documented in this file.
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
 
+- **Framework:**
+  - Added RBAC database upgrade and integrity checks. ([#6963](https://github.com/wazuh/wazuh/pull/6963))
+
 ### Changed
 
 - **Core:**
@@ -36,9 +39,11 @@ All notable changes to this project will be documented in this file.
 
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
-
+  - Changed the structure for several tables in `rbac.db` database to add the new `resource_type` column. ([#6963](https://github.com/wazuh/wazuh/pull/6963))
+  
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
+
 
 ### Fixed
 
@@ -159,7 +164,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Deprecated /manager/files and /cluster/{node_id}/files endpoints. ([#7209](https://github.com/wazuh/wazuh/issues/7209))
-
+  
 
 ## [v4.1.0] - 2021-02-15
 
