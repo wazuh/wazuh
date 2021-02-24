@@ -94,6 +94,7 @@ All notable changes to this project will be documented in this file.
   - Fixed the `equals` comparator for OVAL feeds in Vulnerability Detector. ([#7862](https://github.com/wazuh/wazuh/pull/7862))
 
 - **API:**
+  - Fixed a bug when using `sort` parameter with dictionaries type fields. ([#6761](https://github.com/wazuh/wazuh/pull/6761))
   - Fixed wrong API messages returned when getting agents' upgrade results. ([#7587](https://github.com/wazuh/wazuh/pull/7587))
   - Fixed wrong `user` string in API logs when receiving responses with status codes 308 or 404. ([#7709](https://github.com/wazuh/wazuh/pull/7709))
   - Fixed API errors when cluster is disabled and node_type is worker. ([#7867](https://github.com/wazuh/wazuh/pull/7867))
@@ -213,12 +214,6 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Deprecated /manager/files and /cluster/{node_id}/files endpoints. ([#7209](https://github.com/wazuh/wazuh/issues/7209))
-
-- **API:**
-  - Fixed a bug when using `sort` parameter with dictionaries type fields. ([#6761](https://github.com/wazuh/wazuh/pull/6761))
-
-- **Framework:**
-  - Improved memory usage when creating cluster messages. ([#6736](https://github.com/wazuh/wazuh/pull/6736))
 
 
 ## [v4.1.0] - 2021-02-15
