@@ -12,7 +12,6 @@ from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict, Any
-from copy import deepcopy
 from functools import lru_cache
 
 import yaml
