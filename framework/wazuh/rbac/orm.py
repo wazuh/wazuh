@@ -1596,7 +1596,7 @@ class PoliciesManager:
                         return SecurityError.INVALID
                     if name is not None:
                         policy_to_update.name = name
-                    if policy is not None and 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
+                    if policy is not None and 'actions' in policy and 'resources' in policy and 'effect' in policy:
                         # Regular expression that prevents the creation of invalid policies
                         regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
                         for action in policy['actions']:
