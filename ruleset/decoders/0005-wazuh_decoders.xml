@@ -55,6 +55,7 @@
 
 <decoder name="agent-buffer">
   <parent>wazuh</parent>
+  <type>wazuh</type>
   <prematch offset="after_parent">^Agent buffer:</prematch>
   <regex offset="after_prematch">^ '(\S+)'.</regex>
   <order>level</order>
@@ -62,6 +63,7 @@
 
 <decoder name="agent-upgrade">
   <parent>wazuh</parent>
+  <type>wazuh</type>
   <prematch offset="after_parent">^Upgrade procedure |^Custom installation </prematch>
   <regex offset="after_prematch">on agent (\d\d\d)\s\((\S+)\):\s(\w+)</regex>
   <order>agent.id, agent.name, status</order>
@@ -69,24 +71,28 @@
 
 <decoder name="agent-upgrade">
   <parent>wazuh</parent>
+  <type>wazuh</type>
   <regex>aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$</regex>
   <order>error</order>
 </decoder>
 
 <decoder name="agent-upgrade">
   <parent>wazuh</parent>
+  <type>wazuh</type>
   <regex>started.\sCurrent\sversion:\sWazuh\s(\.+)$</regex>
   <order>agent.cur_version</order>
 </decoder>
 
 <decoder name="agent-upgrade">
   <parent>wazuh</parent>
+  <type>wazuh</type>
   <regex>succeeded.\sNew\sversion:\sWazuh\s(\.+)$</regex>
   <order>agent.new_version</order>
 </decoder>
 
 <decoder name="agent-restart">
   <parent>wazuh</parent>
+  <type>wazuh</type>
   <prematch offset="after_parent">^Invalid remote configuration:</prematch>
   <regex offset="after_prematch">^ '(\S+)'.</regex>
   <order>module</order>
@@ -94,6 +100,7 @@
 
 <decoder name="fim-state">
   <parent>wazuh</parent>
+  <type>wazuh</type>
   <prematch offset="after_parent">^FIM DB: </prematch>
   <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
 </decoder>
