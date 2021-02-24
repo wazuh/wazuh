@@ -846,15 +846,13 @@ def test_agent_add_manual(socket_mock, mock_send, mock_lockf, mock_stat, mock_os
                                                permissions=ANY)
 
 
-@patch('wazuh.core.agent.copyfile')
 @patch('wazuh.core.common.ossec_uid')
 @patch('wazuh.core.common.ossec_gid')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.fcntl.lockf')
-def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock_ossec_gid, mosck_ossec_uid,
-                             mock_copyfile):
+def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock_ossec_gid, mosck_ossec_uid):
     """Tests if method _add_manual() raises expected exceptions"""
     key = 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5' \
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'

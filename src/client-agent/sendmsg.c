@@ -49,7 +49,7 @@ int send_msg(const char *msg, ssize_t msg_length)
     }
 
     if (!retval) {
-        agent_state.msg_sent++;
+        w_agentd_state_update(INCREMENT_MSG_SEND, NULL);
     } else {
 #ifdef WIN32
         error = WSAGetLastError();

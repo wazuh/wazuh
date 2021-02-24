@@ -122,7 +122,7 @@ STATIC void w_logcollector_state_dump() {
 
 void w_logcollector_state_init(w_lc_state_type_t state_type, bool state_file_enabled) {
 
-    pthread_mutex_init(&g_lc_raw_stats_mutex, NULL);
+    w_mutex_init(&g_lc_raw_stats_mutex, NULL);
 
     if (state_type & LC_STATE_GLOBAL) {
 
@@ -139,7 +139,7 @@ void w_logcollector_state_init(w_lc_state_type_t state_type, bool state_file_ena
     }
 
     if (state_type & LC_STATE_INTERVAL) {
-        pthread_mutex_init(&g_lc_json_stats_mutex, NULL);
+        w_mutex_init(&g_lc_json_stats_mutex, NULL);
 
         os_calloc(1, sizeof(w_lc_state_storage_t), g_lc_states_interval);
 

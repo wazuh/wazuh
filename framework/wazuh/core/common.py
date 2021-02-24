@@ -161,6 +161,10 @@ MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFE
 wpk_repo_url_4_x = "packages.wazuh.com/4.x/wpk/"
 wpk_repo_url_3_x = "packages.wazuh.com/wpk/"
 
+# Agent component stats required version
+AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0',
+                                          'agent': 'v4.2.0'}
+
 wpk_chunk_size = 512
 
 open_retries = 10  # Retries until get open ok message
