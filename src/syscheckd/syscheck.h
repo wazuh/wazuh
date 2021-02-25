@@ -27,6 +27,8 @@
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
 #define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
 #define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
+#define AUDIT_RULES_FILE            "/etc/audit_rules_wazuh.conf"
+#define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.conf"
 
 #ifdef WIN32
 #define FIM_REGULAR _S_IFREG
