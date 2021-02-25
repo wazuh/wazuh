@@ -22,6 +22,7 @@
 #include "../wrappers/wazuh/shared/string_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../wrappers/wazuh/shared/privsep_op_wrappers.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/wazuh/syscheckd/syscom_wrappers.h"
@@ -2046,23 +2047,39 @@ struct group {
 #ifndef TEST_WINAGENT
 static void test_get_group_success(void **state) {
     struct group group = { .gr_name = "group" };
-    const char *output;
+    char *output;
 
-    will_return(__wrap_getgrgid, &group);
+    will_return(__wrap_sysconf, -1);
 
-    output = get_group(0);
+    expect_value(__wrap_w_getgrgid, gid, 1000);
+    will_return(__wrap_w_getgrgid, &group);
+    will_return(__wrap_w_getgrgid, NULL); // We don't care about member buffers
+    will_return(__wrap_w_getgrgid, 1); // Success
 
-    assert_ptr_equal(output, group.gr_name);
+    output = get_group(1000);
+
+    assert_string_equal(output, group.gr_name);
+
+    free(output);
 }
 
-static void test_get_group_failure(void **state) {
+static void test_get_group_no_group(void **state) {
     const char *output;
 
-    will_return(__wrap_getgrgid, NULL);
+    errno = 0;
 
-    output = get_group(0);
+    will_return(__wrap_sysconf, 8);
 
-    assert_string_equal(output, "");
+    expect_value(__wrap_w_getgrgid, gid, 1000);
+    will_return(__wrap_w_getgrgid, NULL);
+    will_return(__wrap_w_getgrgid, NULL); // We don't care about member buffers
+    will_return(__wrap_w_getgrgid, 0); // Fail
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Group with gid '1000' not found.\n");
+
+    output = get_group(1000);
+
+    assert_null(output);
 }
 #else
 static void test_get_group(void **state) {
@@ -3825,7 +3842,7 @@ int main(int argc, char *argv[]) {
 
         /* get_group tests */
         cmocka_unit_test(test_get_group_success),
-        cmocka_unit_test(test_get_group_failure),
+        cmocka_unit_test(test_get_group_no_group),
 
         /* ag_send_syscheck tests */
         cmocka_unit_test(test_ag_send_syscheck_success),

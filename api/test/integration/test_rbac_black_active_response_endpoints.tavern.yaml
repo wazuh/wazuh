@@ -33,8 +33,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-wazuh0"
-        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+        command: "custom"
+        custom: True
       params:
         agents_list: '002'
     response:
@@ -47,7 +47,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-    delay_after: !float "{restart_delay}"
 
   - name: Send a message to a list of agents
     request:
@@ -58,8 +57,8 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
       json:
-        command: "restart-wazuh0"
-        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+        command: "custom"
+        custom: True
       params:
         agents_list: 002,004,005,007,010,011
     response:
@@ -83,8 +82,7 @@ stages:
                 - '011'
           total_affected_items: 2
           total_failed_items: 4
-    delay_after: !float "{restart_delay}"
-    
+
   - name: Try to send a message to an agent (status=disconnected/never_connected) (Allow)
     request:
       verify: False
