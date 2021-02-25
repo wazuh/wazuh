@@ -764,7 +764,7 @@ def get_active_configuration(agent_id, component, configuration):
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    sockets_path = os_path.join(common.ossec_path, "queue", "ossec")
+    sockets_path = os_path.join(common.ossec_path, "queue", "sockets")
 
     if agent_id == '000':
         dest_socket = os_path.join(sockets_path, component)
