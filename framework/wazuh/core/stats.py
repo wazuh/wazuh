@@ -28,7 +28,7 @@ def get_daemons_stats_from_socket(agent_id, daemon):
     if not agent_id or not daemon:
         raise WazuhError(1307)
 
-    sockets_path = os.path.join(common.ossec_path, "queue", "ossec")
+    sockets_path = os.path.join(common.ossec_path, "queue", "sockets")
 
     if str(agent_id).zfill(3) == '000':
         dest_socket = os.path.join(sockets_path, daemon)
