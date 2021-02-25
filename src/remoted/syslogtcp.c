@@ -12,13 +12,20 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 /**
  * @brief Get the offset of the syslog message, discarding the PRI header.
  * 
  * @param syslog_msg RAW syslog message
  * @return Length of the PRI header, 0 if not present
  */
-static size_t w_get_header_pri_len(char * syslog_msg);
+STATIC size_t w_get_header_pri_len(const char * syslog_msg);
 
 /* Checks if an IP is not allowed */
 static int OS_IPNotAllowed(char *srcip)
@@ -174,7 +181,7 @@ void HandleSyslogTCP()
     }
 }
 
-static size_t w_get_header_pri_len(char * syslog_msg) {
+STATIC size_t w_get_header_pri_len(const char * syslog_msg) {
 
     size_t retval = 0;          // Offset
     char * pri_head_end = NULL; // end of <PRI> head
