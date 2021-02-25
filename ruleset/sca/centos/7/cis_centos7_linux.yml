@@ -1070,7 +1070,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q xorg-x11-server* -> r:package xorg-x11 is not installed'
+      - 'c:rpm -qa xorg-x11-server* -> r:^xorg-x11-server'
 
 # 2.2.3 Ensure Avahi Server is not installed (Automated)
   - id: 6056
