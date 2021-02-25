@@ -67,7 +67,7 @@ int __wrap_pthread_cond_init(pthread_cond_t *__cond, const pthread_condattr_t *_
     return 0;
 }
 
-int __wrap_pthread_cond_wait (pthread_cond_t *__cond, pthread_mutex_t *__mutex) {
+int __wrap_pthread_cond_wait(pthread_cond_t *__cond, pthread_mutex_t *__mutex) {
     function_called();
 
     hc_thread_active = 1;

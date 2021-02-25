@@ -77,4 +77,23 @@ if(NOT ${TARGET} STREQUAL "winagent")
 
     target_link_libraries(test_audit_parse "${AUDIT_PARSE_FLAGS}")
     add_test(NAME test_audit_parse COMMAND test_audit_parse)
+else()
+    add_executable(test_win_whodata test_win_whodata.c)
+    target_compile_options(test_win_whodata PRIVATE "-Wall")
+    set(WIN_WHODATA_FLAGS "-Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn \
+                           -Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG -Wl,--wrap,OSHash_Add_ex \
+                           -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
+                           -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \
+                           -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,_mterror -Wl,--wrap,check_path_type \
+                           -Wl,--wrap,_minfo -Wl,--wrap,OSHash_Create -Wl,--wrap,pthread_rwlock_unlock \
+                           -Wl,--wrap,OSHash_SetFreeDataPointer -Wl,--wrap,fim_whodata_event \
+                           -Wl,--wrap,fim_checker -Wl,--wrap,OSHash_Get -Wl,--wrap,os_random \
+                           -Wl,--wrap,convert_windows_string -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,FOREVER \
+                           -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,fprintf \
+                           -Wl,--wrap,fgets -Wl,--wrap,wstr_split -Wl,--wrap,pthread_rwlock_wrlock \
+                           -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,getDefine_Int")
+    target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS})
+
+    target_link_libraries(test_win_whodata "${WIN_WHODATA_FLAGS}")
+    add_test(NAME test_win_whodata COMMAND test_win_whodata)
 endif()
