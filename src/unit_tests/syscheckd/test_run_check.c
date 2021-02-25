@@ -590,7 +590,7 @@ void test_fim_link_update(void **state) {
     int pos = 1;
     char *new_path = "/new_path";
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
     expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
 
     expect_realtime_adddir_call(new_path, 0, 0);
@@ -606,19 +606,19 @@ void test_fim_link_update_already_added(void **state) {
     (void) state;
 
     int pos = 1;
-    char *link_path = "/link";
+    char *link_path = "/home";
     char error_msg[OS_SIZE_128];
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
+    free(syscheck.symbolic_links[pos]);
+    syscheck.symbolic_links[pos] = strdup("/home");
+
     snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
 
     expect_string(__wrap__mdebug1, formatted_msg, error_msg);
-    if (syscheck.opts[pos] & WHODATA_ACTIVE) {
-        expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
-    }
+
     fim_link_update(pos, link_path);
 
-    assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.dir[pos], "/link");
     assert_null(syscheck.symbolic_links[pos]);
 }
 
@@ -633,7 +633,7 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
 
     expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
 
@@ -711,7 +711,7 @@ void test_fim_link_delete_range(void **state) {
     int pos = 1;
     fim_tmp_file *tmp_file = *state;
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
     expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
     fim_link_delete_range(pos);
 }
@@ -721,8 +721,8 @@ void test_fim_link_delete_range_error(void **state) {
     char error_msg[OS_SIZE_128];
     fim_tmp_file *tmp_file = *state;
 
-    snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/link/%");
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
+    snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/folder/%");
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
 
     expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_ERR);
     expect_string(__wrap__merror, formatted_msg, error_msg);
