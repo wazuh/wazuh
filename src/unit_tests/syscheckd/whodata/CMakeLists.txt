@@ -66,7 +66,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,audit_delete_rule -Wl,--wrap,realpath -Wl,--wrap,atexit -Wl,--wrap,audit_open\
                            -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,readlink -Wl,--wrap,audit_get_rule_list \
                            -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event -Wl,--wrap,search_audit_rule \
-                           -Wl,--wrap,audit_close")
+                           -Wl,--wrap,audit_close -Wl,--wrap,fim_manipulated_audit_rules \
+                           -Wl,--wrap,fim_audit_reload_rules -Wl,--wrap,remove_audit_rule_syscheck")
 
     target_link_libraries(test_audit_parse SYSCHECK_O ${TEST_DEPS})
 
