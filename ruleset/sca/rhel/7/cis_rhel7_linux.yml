@@ -2023,7 +2023,7 @@ checks:
     rules:
       - 'c:systemctl is-enabled nftables -> r:enabled'
       - 'c:nft list ruleset -> r:type filter hook forward priority 0; policy drop;'
-      - 'c:nft list ruleset -> r:type filter hook output priority 0; policy drop;'   
+      - 'c:nft list ruleset -> r:type filter hook output priority 0; policy drop;'
 
 # 3.5.2.11 Ensure nftables rules are permanent (Automated)
   - id: 4606
@@ -2921,9 +2921,8 @@ checks:
       - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d444/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
       - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
       - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      
-   
-    
+
+
 # 5.2.4 Ensure SSH access is limited (Scored)
   - id: 4655
     title: "Ensure SSH access is limited"
