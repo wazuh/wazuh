@@ -98,10 +98,11 @@ def revoke_tokens():
 
 
 def rbac_db_factory_reset():
+    """Reset the RBAC database to default values."""
     try:
         remove(DATABASE_FULL_PATH)
     except IOError:
         pass
 
     check_database_integrity()
-    return {}
+    return {'result': 'True'}
