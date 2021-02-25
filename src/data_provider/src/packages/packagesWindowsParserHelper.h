@@ -21,6 +21,7 @@
 namespace PackageWindowsHelper
 {
     constexpr auto WIN_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"};
+    constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
 
     static std::string extractHFValue(std::string input)
     {
@@ -64,6 +65,35 @@ namespace PackageWindowsHelper
                 nlohmann::json hotfixValue;
                 hotfixValue["hotfix"] = hotfix;
                 data.push_back(hotfixValue);
+            }
+        }
+        catch(...)
+        {
+        }
+    }
+
+    static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohmann::json& data)
+    {
+        static const std::string KB_PREFIX{"KB"};
+        static const auto KB_PREFIX_SIZE{KB_PREFIX.size()};
+        try
+        {
+            std::set<std::string> hotfixes;
+            Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
+            const auto packages{root.enumerate()};
+            for (const auto& package : packages)
+            {
+                auto value{Utils::toUpperCase(package)};
+                if (Utils::startsWith(value, KB_PREFIX))
+                {
+                    value = value.substr(KB_PREFIX_SIZE);
+                    value = Utils::trim(value.substr(0, value.find_first_not_of("1234567890")));
+                    hotfixes.insert(KB_PREFIX + value);
+                }
+            }
+            for (const auto& hotfix : hotfixes)
+            {
+                data.push_back({{"hotfix", hotfix}});
             }
         }
         catch(...)

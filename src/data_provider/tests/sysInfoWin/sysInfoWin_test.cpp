@@ -48,3 +48,21 @@ TEST_F(SysInfoWinTest, testHF_Valids_Format)
         EXPECT_FALSE(std::regex_match(hfValue, std::regex(KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX)));
     }
 }
+
+TEST_F(SysInfoWinTest, testHF_NT_Valids_Format)
+{
+    nlohmann::json ret;
+    constexpr auto KB_FORMAT_REGEX_OK { "(KB+[0-9]{6,})"};
+    constexpr auto KB_ONLY_FORMAT_REGEX { "(KB)"};
+    constexpr auto KB_NO_NUMBERS_FORMAT_REGEX { "(KB+[a-z])"};
+    constexpr auto KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX { "(KB+[0-9]{6,}+[aA-zZ])"};
+    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
+    for (const auto& hf : ret)
+    {
+        auto hfValue { hf.at("hotfix").get_ref<const std::string&>() };
+        EXPECT_TRUE(std::regex_match(hfValue, std::regex(KB_FORMAT_REGEX_OK)));
+        EXPECT_FALSE(std::regex_match(hfValue, std::regex(KB_ONLY_FORMAT_REGEX)));
+        EXPECT_FALSE(std::regex_match(hfValue, std::regex(KB_NO_NUMBERS_FORMAT_REGEX)));
+        EXPECT_FALSE(std::regex_match(hfValue, std::regex(KB_WITH_NUMBERS_AND_LETTERS_FORMAT_REGEX)));
+    }
+}
