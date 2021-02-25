@@ -83,7 +83,7 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 
-add_library(sysinfo SHARED 
+add_library(sysinfo SHARED
     ${SYSINFO_SRC}
     ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
 
@@ -119,8 +119,8 @@ elseif(APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(APPLE)
-  add_custom_command(TARGET sysinfo 
-    POST_BUILD COMMAND 
+  add_custom_command(TARGET sysinfo
+    POST_BUILD COMMAND
     ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"
     $<TARGET_FILE:sysinfo>)
 endif(APPLE)
