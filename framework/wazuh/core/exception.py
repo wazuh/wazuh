@@ -146,6 +146,8 @@ class WazuhException(Exception):
         1308: {'message': 'Stats file does not exist',
                'remediation': 'Stats files are usually generated at 12 PM on a daily basis'},
         1309: 'Statistics file damaged',
+        1310: {'message': 'Invalid agent ID',
+               'remediation': 'This component only exists in real agents'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',

@@ -910,7 +910,7 @@ long long w_validate_bytes(const char *content) {
     char * end;
     long read_value = strtol(content, &end, 10);
 
-    if (read_value < 0 || read_value > LONG_MAX || content == end) {
+    if (read_value < 0 || read_value == LONG_MAX || content == end) {
         return -1;
     }
 

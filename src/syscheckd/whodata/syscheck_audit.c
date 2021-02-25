@@ -23,7 +23,7 @@
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
-#define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
+#define AUDIT_SOCKET DEFAULTDIR "/queue/sockets/audit"
 #define BUF_SIZE OS_MAXSTR
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
@@ -785,7 +785,7 @@ void audit_parse(char *buffer) {
                 match_size = match[1].rm_eo - match[1].rm_so;
                 os_malloc(match_size + 1, w_evt->group_id);
                 snprintf (w_evt->group_id, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-                w_evt->group_name = (char*)get_group(atoi(w_evt->group_id));
+                w_evt->group_name = get_group(atoi(w_evt->group_id));
             }
             // process_id
             if(regexec(&regexCompiled_pid, buffer, 2, match, 0) == 0) {
