@@ -146,9 +146,9 @@ ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')
 EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
 
 # Socket
-AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'auth')
-REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'request')
-LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'ossec', 'logtest')
+AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'auth')
+REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'request')
+LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'logtest')
 UPGRADE_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'upgrade')
 
 TASKS_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'task')
@@ -160,6 +160,10 @@ MAX_QUERY_FILTERS_RESERVED_SIZE = MAX_SOCKET_BUFFER_SIZE - 4 * 1024  # MAX_BUFFE
 # Agent upgrading variables
 wpk_repo_url_4_x = "packages.wazuh.com/4.x/wpk/"
 wpk_repo_url_3_x = "packages.wazuh.com/wpk/"
+
+# Agent component stats required version
+AGENT_COMPONENT_STATS_REQUIRED_VERSION = {'logcollector': 'v4.2.0',
+                                          'agent': 'v4.2.0'}
 
 wpk_chunk_size = 512
 

@@ -943,7 +943,7 @@ checks:
     condition: none
     rules:
       - 'c:chkconfig --list chargen-dgram -> r:^\s*\t*chargen-dgram:\s*\t*on'
-      - 'c:chkconfig --list chargen-stream-> r:^\s*\t*chargen-stream:\s*\t*on'
+      - 'c:chkconfig --list chargen-stream -> r:^\s*\t*chargen-stream:\s*\t*on'
 
 # 2.1.2 Disable daytime services (Scored)
   - id: 4053

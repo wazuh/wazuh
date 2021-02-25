@@ -105,14 +105,14 @@ void run_notify()
         /* If response is not available, set lock and wait for it */
         mwarn(SERVER_UNAV);
         os_setwait();
-        update_status(GA_STATUS_NACTIVE);
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
 
         /* Send sync message */
         start_agent(0);
 
         minfo(SERVER_UP);
         os_delwait();
-        update_status(GA_STATUS_ACTIVE);
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
     }
 #endif
 
@@ -182,6 +182,6 @@ void run_notify()
     send_msg(tmp_msg, -1);
 
     free(shared_files);
-    update_keepalive(curr_time);
+    w_agentd_state_update(UPDATE_KEEPALIVE, (void *) &curr_time);
     return;
 }
