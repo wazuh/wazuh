@@ -25,6 +25,7 @@
 #include "wrappers/wazuh/shared/audit_op_wrappers.h"
 #include "wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "wrappers/wazuh/shared/file_op_wrappers.h"
+#include "wrappers/wazuh/syscheckd/audit_rule_handling_wrappers.h"
 
 
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
@@ -34,7 +35,6 @@ static int setup_group(void **state) {
     (void) state;
     test_mode = 1;
     init_regex();
-    fim_audit_rules_init();
 
     return 0;
 }
@@ -68,6 +68,8 @@ static int setup_add_audit_rules(void **state) {
 }
 
 static int teardown_add_audit_rules(void **state) {
+    extern unsigned int count_reload_retries;
+
     if (syscheck.symbolic_links[0] != NULL) {
         free(syscheck.symbolic_links[0]);
         syscheck.symbolic_links[0] = NULL;
@@ -78,50 +80,8 @@ static int teardown_add_audit_rules(void **state) {
         syscheck.symbolic_links = NULL;
     }
 
-    return 0;
-}
+    count_reload_retries = 0;
 
-static int setup_rules(void **state) {
-    char *entry = "/var/test";
-    syscheck.dir = calloc (2, sizeof(char *));
-    if (syscheck.dir == NULL) {
-        return 1;
-    }
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    syscheck.opts = calloc (2, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
-    syscheck.max_audit_entries = 100;
-    char buffer[OS_SIZE_128] = {0};
-
-    //fim_rules_initial_load
-    will_return(__wrap_audit_open, 0);
-    will_return(__wrap_audit_get_rule_list, 1);
-    will_return(__wrap_audit_close, 0);
-    // rules mutex
-    expect_function_call(__wrap_pthread_mutex_lock);
-    // symlink mutex
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    will_return(__wrap_search_audit_rule, 0);
-    will_return(__wrap_audit_add_rule, 0);
-    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_NEWRULE, entry);
-    expect_string(__wrap__mdebug1, formatted_msg, buffer);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    fim_rules_initial_load();
-    return 0;
-}
-
-static int teardown_rules(void **state) {
-    clean_rules();
-    free(syscheck.opts);
-    syscheck.opts = NULL;
-    free(syscheck.dir[0]);
-    syscheck.dir[0] = NULL;
-    free(syscheck.dir);
-    syscheck.dir = NULL;
     return 0;
 }
 
@@ -585,46 +545,16 @@ void test_audit_parse_delete(void **state) {
 
     char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=\"remove_rule\" key=\"wazuh_fim\" list=4 res=1";
 
-    // In audit_reload_rules()
-    char *entry = "/var/test";
-    char dbg_msg1[OS_SIZE_128] = {0};
-    char dbg_msg2[OS_SIZE_128] = {0};
-
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
 
+    will_return(__wrap_fim_manipulated_audit_rules, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
-
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
-    // Read loaded rules in Audit
-    will_return(__wrap_audit_get_rule_list, 5);
-
-    // Mutex inside get_real_path
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
-
-    // Rule already not added
-    will_return(__wrap_search_audit_rule, 1);
-
-    // inside audit_manipulation rule
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);
-
-    snprintf(dbg_msg1, OS_SIZE_128, FIM_AUDIT_RULEDUP, entry);
-    expect_string(__wrap__mdebug1, formatted_msg, dbg_msg1);
-
-    snprintf(dbg_msg2, OS_SIZE_128, FIM_AUDIT_RELOADED_RULES, 0);
-    expect_string(__wrap__mdebug1, formatted_msg, dbg_msg2);
+    expect_function_call(__wrap_fim_audit_reload_rules);
 
     audit_parse(buffer);
 }
@@ -633,7 +563,8 @@ void test_audit_parse_delete(void **state) {
 void test_audit_parse_delete_recursive(void **state) {
     (void) state;
     char * buffer = "type=CONFIG_CHANGE msg=audit(1571920603.069:3004276): auid=0 ses=5 op=remove_rule key=\"wazuh_fim\" list=4 res=1";
-
+    extern unsigned int count_reload_retries;
+    count_reload_retries = 0;
     // In audit_reload_rules()
     char *entry = "/var/test";
     syscheck.dir = calloc (2, sizeof(char *));
@@ -643,43 +574,21 @@ void test_audit_parse_delete_recursive(void **state) {
     syscheck.opts[0] |= WHODATA_ACTIVE;
     syscheck.max_audit_entries = 100;
 
-    expect_string_count(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'", 4);
+    expect_string_count(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'", 5);
 
-    // Audit open
-    will_return_always(__wrap_audit_open, 5);
+    will_return_count(__wrap_fim_manipulated_audit_rules, 0, 5);
+    expect_string_count(__wrap__mwarn, formatted_msg, FIM_WARN_AUDIT_RULES_MODIFIED, 5);
+    expect_function_calls(__wrap_fim_audit_reload_rules, 4);
 
-    // Read loaded rules in Audit
-    will_return_always(__wrap_audit_get_rule_list, 5);
 
-    // Audit close
-    will_return_always(__wrap_audit_close, 5);
-
-    // Mutex inside get_real_path
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-
-    expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 4);
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
-    expect_string_count(__wrap_SendMSG, locmsg, SYSCHECK, 5);
-    expect_value_count(__wrap_SendMSG, loc, LOCALFILE_MQ, 5);
+    expect_string_count(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed", 5);
+    expect_string_count(__wrap_SendMSG, locmsg, SYSCHECK, 6);
+    expect_value_count(__wrap_SendMSG, loc, LOCALFILE_MQ, 6);
     will_return_always(__wrap_SendMSG, 1);
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 0");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 0");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 0");
-
-    expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
-
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
     int i;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 5; i++) {
         audit_parse(buffer);
     }
 
@@ -1032,7 +941,6 @@ void test_audit_parse_delete_folder_hex(void **state) {
 
 void test_audit_parse_delete_folder_hex3_error(void **state) {
     (void) state;
-
     char * buffer = " \
         type=CONFIG_CHANGE msg=audit(1572878838.610:220): op=remove_rule dir=0 key=\"wazuh_fim\" list=4 res=1 \
         type=SYSCALL msg=audit(1572878838.610:220): arch=c000003e syscall=263 success=yes exit=0 a0=ffffff9c a1=55c2b7d7f490 a2=200 a3=7f2b8055bca0 items=3 ppid=4340 pid=62845 auid=0 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=7 comm=\"rm\" exe=1 key=(null) \
@@ -1044,9 +952,16 @@ void test_audit_parse_delete_folder_hex3_error(void **state) {
     ";
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '0'");
+
+    will_return(__wrap_fim_manipulated_audit_rules, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
+    expect_function_call(__wrap_fim_audit_reload_rules);
+
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
@@ -1067,20 +982,6 @@ void test_audit_parse_delete_folder_hex3_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '4'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '5'");
 
-    // inside audit_manipulation rule
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
-    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
-
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
-    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
-
     audit_parse(buffer);
 }
 
@@ -1100,9 +1001,16 @@ void test_audit_parse_delete_folder_hex4_error(void **state) {
     ";
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '0'");
+
+    will_return(__wrap_fim_manipulated_audit_rules, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
+    expect_function_call(__wrap_fim_audit_reload_rules);
+
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
@@ -1124,19 +1032,6 @@ void test_audit_parse_delete_folder_hex4_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '5'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '6'");
 
-    // inside audit_manipulation rule
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
-    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
-
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
-    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
-
     audit_parse(buffer);
 }
 
@@ -1156,10 +1051,17 @@ void test_audit_parse_delete_folder_hex5_error(void **state) {
         type=PROCTITLE msg=audit(1572878838.610:220): proctitle=726D002D72660074657374 \
     ";
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-
+   expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '0'");
+
+    will_return(__wrap_fim_manipulated_audit_rules, 0);
     expect_string(__wrap__mwarn, formatted_msg, "(6911): Detected Audit rules manipulation: Audit rules removed.");
+    expect_function_call(__wrap_fim_audit_reload_rules);
+
+    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
+    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
+    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
+    will_return(__wrap_SendMSG, 1);
 
     expect_value(__wrap_get_user, uid, 0);
     will_return(__wrap_get_user, strdup("root"));
@@ -1179,20 +1081,6 @@ void test_audit_parse_delete_folder_hex5_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '3'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '4'");
     expect_string(__wrap__merror, formatted_msg, "Error found while decoding HEX bufer: '7'");
-
-    // inside audit_manipulation rule
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Audit rules removed");
-    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
-
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Detected rules manipulation: Max rules reload retries");
-    expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
-    expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
-    will_return(__wrap_SendMSG, 1);
 
     audit_parse(buffer);
 }
