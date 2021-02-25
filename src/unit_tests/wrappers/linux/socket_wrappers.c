@@ -67,9 +67,9 @@ int __wrap_recv(__attribute__((unused))int __fd, __attribute__((unused))void *__
         void *buffer = &text;
         memcpy((char*)__buf, (char*)buffer, sizeof(SENDSTRING));
     } else if(__fd == 5 && __n != 13) {
-        uint32_t number = 13;
+        u_int32_t number = 13;
         void *buffer = &number;
-        memcpy((uint32_t*)__buf, (uint32_t*)buffer, sizeof(uint32_t));
+        memcpy((u_int32_t*)__buf, (u_int32_t*)buffer, sizeof(u_int32_t));
     }
     return mock();
 }
