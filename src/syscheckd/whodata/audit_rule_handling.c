@@ -14,6 +14,10 @@
 
 #ifdef ENABLE_AUDIT
 
+#ifdef WAZUH_UNIT_TESTING
+#define static
+#endif
+
 typedef struct {
     char *path;
     int pending_removal;

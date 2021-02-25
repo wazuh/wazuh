@@ -53,4 +53,23 @@ if(NOT ${TARGET} STREQUAL "winagent")
     # target_link_libraries(test_syscheck_audit "${SYSCHECK_AUDIT_FLAGS}")
     # add_test(NAME test_syscheck_audit COMMAND test_syscheck_audit)
 
+
+    # test_syscheck_audit tests
+    add_executable(test_audit_parse test_audit_parse.c)
+    target_compile_options(test_audit_parse PRIVATE "-Wall")
+
+    set(AUDIT_PARSE_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap=_mwarn -Wl,--wrap=_minfo -Wl,--wrap,_merror \
+                           -Wl,--wrap,audit_add_rule -Wl,--wrap,pthread_mutex_lock \
+                           -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush \
+                           -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite\
+                           -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink \
+                           -Wl,--wrap,audit_delete_rule -Wl,--wrap,realpath -Wl,--wrap,atexit -Wl,--wrap,audit_open\
+                           -Wl,--wrap,get_user -Wl,--wrap,get_group -Wl,--wrap,readlink -Wl,--wrap,audit_get_rule_list \
+                           -Wl,--wrap,SendMSG -Wl,--wrap,fim_whodata_event -Wl,--wrap,search_audit_rule \
+                           -Wl,--wrap,audit_close")
+
+    target_link_libraries(test_audit_parse SYSCHECK_O ${TEST_DEPS})
+
+    target_link_libraries(test_audit_parse "${AUDIT_PARSE_FLAGS}")
+    add_test(NAME test_audit_parse COMMAND test_audit_parse)
 endif()
