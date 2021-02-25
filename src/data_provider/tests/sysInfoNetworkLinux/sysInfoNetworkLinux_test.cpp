@@ -181,7 +181,6 @@ TEST_F(SysInfoNetworkLinuxTest, Test_Gateway_7546)
     EXPECT_EQ(4,ifaddr.at("rx_errors").get<int32_t>());
     EXPECT_EQ(7,ifaddr.at("tx_dropped").get<int32_t>());
     EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
-
-    EXPECT_EQ("1500",ifaddr.at("mtu").get_ref<const std::string&>());
+    EXPECT_EQ(1500,ifaddr.at("mtu").get<int32_t>());
     EXPECT_EQ("A12BA8C0",ifaddr.at("gateway").get_ref<const std::string&>());
 }
