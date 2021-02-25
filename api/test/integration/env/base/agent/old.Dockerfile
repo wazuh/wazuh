@@ -1,4 +1,4 @@
-FROM base_integration_test_agent_old
+FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-agent_old
 
 # Configuration
 COPY scripts/xml_parser.py /scripts/

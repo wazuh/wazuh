@@ -1,4 +1,4 @@
-FROM base_integration_test:latest
+FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-generic
 
 # INSTALL MANAGER
 ARG WAZUH_BRANCH

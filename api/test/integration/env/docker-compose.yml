@@ -1,11 +1,6 @@
 version: '3.7'
 
 services:
-  wazuh-base:
-    image: integration_test_wazuh-base
-    build:
-      context: .
-      dockerfile: base/base.Dockerfile
   wazuh-master:
     build:
       context: .
@@ -51,7 +46,7 @@ services:
   wazuh-agent1:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
+      dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent1
     entrypoint:
@@ -67,7 +62,7 @@ services:
   wazuh-agent2:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
+      dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent2
     entrypoint:
@@ -84,7 +79,7 @@ services:
   wazuh-agent3:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
+      dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent3
     entrypoint:
@@ -101,7 +96,7 @@ services:
   wazuh-agent4:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
+      dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent4
     entrypoint:
@@ -118,9 +113,7 @@ services:
   wazuh-agent5:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${AGENT_BRANCH_OLD}
+      dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent5
     entrypoint:
@@ -136,9 +129,7 @@ services:
   wazuh-agent6:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${AGENT_BRANCH_OLD}
+      dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent6
     entrypoint:
@@ -154,9 +145,7 @@ services:
   wazuh-agent7:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${AGENT_BRANCH_OLD}
+      dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent7
     entrypoint:
@@ -172,9 +161,7 @@ services:
   wazuh-agent8:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${AGENT_BRANCH_OLD}
+      dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent8
     entrypoint:
