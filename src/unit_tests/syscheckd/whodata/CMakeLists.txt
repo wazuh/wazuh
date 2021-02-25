@@ -21,21 +21,22 @@ if(NOT ${TARGET} STREQUAL "winagent")
     add_test(NAME test_audit_healthcheck COMMAND test_audit_healthcheck)
 
     # test_syscheck_audit tests
-    # add_executable(test_audit_rule_handling test_audit_rule_handling.c)
-    # target_compile_options(test_audit_rule_handling PRIVATE "-Wall")
+    add_executable(test_audit_rule_handling test_audit_rule_handling.c)
+    target_compile_options(test_audit_rule_handling PRIVATE "-Wall")
 
-    # set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap,_merror-Wl,--wrap,audit_add_rule\
-    #                           -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
-    #                           -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
-    #                           -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
-    #                           -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink -Wl,--wrap,audit_delete_rule \
-    #                           -Wl,--wrap,select -Wl,--wrap,audit_parse -Wl,--wrap,audit_get_rule_list \
-    #                           -Wl,--wrap,search_audit_rule -Wl,--wrap,audit_open -Wl,--wrap,getDefine_Int")
+    set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2,--wrap=_merror,--wrap=_mwarn,--wrap=audit_add_rule\
+                              -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock \
+                              -Wl,--wrap=pthread_rwlock_rdlock,--wrap=pthread_rwlock_wrlock,--wrap=pthread_rwlock_unlock \
+                              -Wl,--wrap=fopen,--wrap=fclose,--wrap=fflush,--wrap=fgets,--wrap=fgetpos \
+                              -Wl,--wrap=fread,--wrap=fseek,--wrap=fwrite,--wrap=remove,--wrap=fgetc \
+                              -Wl,--wrap=getpid,--wrap=sleep,--wrap=unlink,--wrap=audit_delete_rule \
+                              -Wl,--wrap=select,--wrap=audit_parse,--wrap=audit_get_rule_list,--wrap=audit_close \
+                              -Wl,--wrap=search_audit_rule,--wrap=audit_open")
 
-    # target_link_libraries(test_audit_rule_handling SYSCHECK_O ${TEST_DEPS})
+    target_link_libraries(test_audit_rule_handling SYSCHECK_O ${TEST_DEPS})
 
-    # target_link_libraries(test_audit_rule_handling "${SYSCHECK_AUDIT_FLAGS}")
-    # add_test(NAME test_audit_rule_handling COMMAND test_audit_rule_handling)
+    target_link_libraries(test_audit_rule_handling "${SYSCHECK_AUDIT_FLAGS}")
+    add_test(NAME test_audit_rule_handling COMMAND test_audit_rule_handling)
 
     # test_syscheck_audit tests
     add_executable(test_syscheck_audit test_syscheck_audit.c)

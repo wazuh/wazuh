@@ -55,7 +55,7 @@ static void _add_whodata_directory(const char *path) {
     directory->pending_removal = 0;
 
     if (OSList_AddData(whodata_directories, directory) == NULL) {
-        free_whodata_directory(directory);
+        free_whodata_directory(directory); // LCOV_EXCL_LINE
     }
 }
 
@@ -94,20 +94,20 @@ int fim_rules_initial_load() {
     audit_close(auditd_fd);
 
     if (!res) {
-        merror(FIM_ERROR_WHODATA_READ_RULE);
+        merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
     }
 
     w_mutex_lock(&rules_mutex);
     for (i = 0; syscheck.dir[i]; i++) {
         // Check if dir[i] is set in whodata mode
         if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
-            continue;
+            continue; // LCOV_EXCL_LINE
         }
 
         directory = fim_get_real_path(i);
         if (*directory == '\0') {
-            free(directory);
-            continue;
+            free(directory); // LCOV_EXCL_LINE
+            continue; // LCOV_EXCL_LINE
         }
 
         // Add whodata directories until max_audit_entries is reached.
@@ -164,7 +164,7 @@ void fim_audit_reload_rules() {
     audit_close(auditd_fd);
 
     if (!res) {
-        merror(FIM_ERROR_WHODATA_READ_RULE);
+        merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
     }
 
     w_mutex_lock(&rules_mutex);
@@ -265,6 +265,7 @@ void clean_rules(void) {
     w_mutex_unlock(&rules_mutex);
 }
 
+// LCOV_EXCL_START
 int fim_audit_rules_init() {
     whodata_directories = OSList_Create();
     if (whodata_directories == NULL) {
@@ -286,6 +287,7 @@ void *audit_reload_thread() {
 
     return NULL;
 }
+// LCOV_EXCL_STOP
 
 #endif // ENABLE_AUDIT
 #endif // __linux__
