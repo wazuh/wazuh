@@ -1,14 +1,16 @@
 version: '3.7'
 
 services:
+  wazuh-base:
+    image: integration_test_wazuh-base
+    build:
+      context: .
+      dockerfile: base/base.Dockerfile
   wazuh-master:
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
-      args:
-        manager_branch: ${MANAGER_BRANCH}
-        manager_type: master
-    image: integration_test_wazuh-master
+    image: integration_test_wazuh-manager
     hostname: wazuh-master
     ports:
       - "55000:55000"
@@ -22,10 +24,7 @@ services:
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
-      args:
-        manager_branch: ${MANAGER_BRANCH}
-        manager_type: worker
-    image: integration_test_wazuh-worker
+    image: integration_test_wazuh-manager
     hostname: wazuh-worker1
     ports:
       - "55001:55000"
@@ -39,10 +38,7 @@ services:
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
-      args:
-        manager_branch: ${MANAGER_BRANCH}
-        manager_type: worker
-    image: integration_test_wazuh-worker
+    image: integration_test_wazuh-manager
     hostname: wazuh-worker2
     ports:
       - "55002:55000"
@@ -56,8 +52,6 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${MANAGER_BRANCH}
     image: integration_test_wazuh-agent
     hostname: wazuh-agent1
     entrypoint:
@@ -74,8 +68,6 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${MANAGER_BRANCH}
     image: integration_test_wazuh-agent
     hostname: wazuh-agent2
     entrypoint:
@@ -93,8 +85,6 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${MANAGER_BRANCH}
     image: integration_test_wazuh-agent
     hostname: wazuh-agent3
     entrypoint:
@@ -112,8 +102,6 @@ services:
     build:
       context: .
       dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${MANAGER_BRANCH}
     image: integration_test_wazuh-agent
     hostname: wazuh-agent4
     entrypoint:

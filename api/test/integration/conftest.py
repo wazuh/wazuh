@@ -64,7 +64,9 @@ def build_and_up(interval: int = 10):
         'max_retries': 30,
         'retries': 0
     }
-    current_process = subprocess.Popen(["docker-compose", "build"])
+    # Get current branch
+    current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
+    current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",  f"WAZUH_BRANCH={current_branch}"])
     current_process.wait()
     current_process = subprocess.Popen(["docker-compose", "up", "-d"])
     current_process.wait()

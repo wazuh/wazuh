@@ -11,6 +11,7 @@ sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scr
 if [ "$3" != "master" ]; then
     sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/ossec/etc/ossec.conf
 else
+    cp -rf /configuration_files/master_only/config/* /var/ossec/
     chown root:ossec /var/ossec/etc/client.keys
     chown -R ossec:ossec /var/ossec/queue/agent-groups
     chown -R ossec:ossec /var/ossec/etc/shared
