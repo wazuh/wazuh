@@ -96,7 +96,7 @@ int receive_msg()
             undefined_msg_logged = 0;
 
             available_server = (int)time(NULL);
-            update_ack(available_server);
+            w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
 
 #ifdef WIN32
             /* Run timeout commands */
@@ -311,7 +311,7 @@ int receive_msg()
 
         else if (fp) {
             available_server = (int)time(NULL);
-            update_ack(available_server);
+            w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
             fprintf(fp, "%s", tmp_msg);
         }
 
