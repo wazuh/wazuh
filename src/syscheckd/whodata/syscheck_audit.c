@@ -23,7 +23,7 @@
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
-#define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
+#define AUDIT_SOCKET DEFAULTDIR "/queue/sockets/audit"
 #define BUF_SIZE OS_MAXSTR
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules

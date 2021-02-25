@@ -45,10 +45,10 @@ def test_get_daemons_stats_from_socket(agent_id, daemon, response):
                     result = stats.get_daemons_stats_from_socket(agent_id, daemon)
 
         if agent_id == '000':
-            mock_socket.assert_called_once_with(os.path.join(common.ossec_path, "queue", "ossec", "logcollector"))
+            mock_socket.assert_called_once_with(os.path.join(common.ossec_path, "queue", "sockets", "logcollector"))
             mock_send.assert_called_once_with(b'getstate')
         else:
-            mock_socket.assert_called_once_with(os.path.join(common.ossec_path, "queue", "ossec", "request"))
+            mock_socket.assert_called_once_with(os.path.join(common.ossec_path, "queue", "sockets", "request"))
             mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
 
 

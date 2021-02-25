@@ -15,7 +15,7 @@ import calendar
 class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
     """
     Wazuh log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
-    Also, rotated logs are stored in /logs/ossec
+    Also, rotated logs are stored in /logs/wazuh
     """
 
     def doRollover(self):
@@ -29,7 +29,7 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         #os.chown(self.baseFilename, common.ossec_uid(), common.ossec_gid())
         #os.chmod(self.baseFilename, 0o660)
 
-        # Save rotated file in /logs/ossec directory
+        # Save rotated file in /logs/wazuh directory
         rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
 
         new_rotated_file = self.computeArchivesDirectory(rotated_file)
