@@ -16,20 +16,16 @@
 #include "wrappers/common.h"
 #include "syscheckd/syscheck.h"
 
-#include "wrappers/externals/audit/libaudit_wrappers.h"
 #include "wrappers/externals/procpc/readproc_wrappers.h"
 #include "wrappers/libc/stdio_wrappers.h"
 #include "wrappers/libc/stdlib_wrappers.h"
 #include "wrappers/posix/unistd_wrappers.h"
-#include "wrappers/wazuh/shared/audit_op_wrappers.h"
 #include "wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "wrappers/wazuh/shared/file_op_wrappers.h"
-#include "wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "wrappers/wazuh/shared/mq_op_wrappers.h"
-#include "wrappers/wazuh/shared/syscheck_op_wrappers.h"
-#include "wrappers/wazuh/shared/vector_op_wrappers.h"
-#include "wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "wrappers/wazuh/os_net/os_net_wrappers.h"
+#include "wrappers/wazuh/syscheckd/audit_parse_wrappers.h"
+#include "wrappers/wazuh/syscheckd/audit_rule_handling_wrappers.h"
 
 #include "external/procps/readproc.h"
 
@@ -37,6 +33,22 @@ extern volatile int audit_health_check_creation;
 extern volatile int hc_thread_active;
 extern volatile int audit_thread_active;
 int hc_success = 0;
+
+int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
+    int ret;
+    int n;
+    check_expected(__fd);
+    n = mock();
+    if(n < __n)
+        ret = n;
+    else
+        ret = __n;
+    if(ret > 0)
+        memcpy(__buf, mock_type(void*), ret);
+
+    return ret;
+}
+
 
 /* setup/teardown */
 static int setup_group(void **state) {
@@ -734,185 +746,185 @@ void test_init_regex(void **state) {
 }
 
 
-void test_add_audit_rules_syscheck_not_added(void **state) {
-    (void) state;
+// void test_add_audit_rules_syscheck_not_added(void **state) {
+//     (void) state;
 
-    char *entry = "/var/test";
-    char buffer[OS_SIZE_128] = {0};
+//     char *entry = "/var/test";
+//     char buffer[OS_SIZE_128] = {0};
 
-    syscheck.dir = calloc (2, sizeof(char *));
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    syscheck.opts = calloc (2, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
-    syscheck.max_audit_entries = 100;
+//     syscheck.dir = calloc (2, sizeof(char *));
+//     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+//     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+//     syscheck.opts = calloc (2, sizeof(int *));
+//     syscheck.opts[0] |= WHODATA_ACTIVE;
+//     syscheck.max_audit_entries = 100;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
+//     // Audit open
+//     will_return(__wrap_audit_open, 1);
 
-    // Read loaded rules in Audit
-    will_return(__wrap_audit_get_rule_list, 0);
+//     // Read loaded rules in Audit
+//     will_return(__wrap_audit_get_rule_list, 0);
 
-    // Audit close
-    will_return(__wrap_audit_close, 1);
+//     // Audit close
+//     will_return(__wrap_audit_close, 1);
 
-    // Mutex inside get_real_path
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+//     // Mutex inside get_real_path
+//     expect_function_call(__wrap_pthread_mutex_lock);
+//     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
+//     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
-    // Rule already not added
-    will_return(__wrap_search_audit_rule, 0);
+//     // Rule already not added
+//     will_return(__wrap_search_audit_rule, 0);
 
-    will_return(__wrap_audit_add_rule, -EEXIST);
-    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_ALREADY_ADDED, syscheck.dir[0]);
-    expect_string(__wrap__mdebug1, formatted_msg, buffer);
+//     will_return(__wrap_audit_add_rule, -EEXIST);
+//     snprintf(buffer, OS_SIZE_128, FIM_AUDIT_ALREADY_ADDED, syscheck.dir[0]);
+//     expect_string(__wrap__mdebug1, formatted_msg, buffer);
 
-    int ret;
-    ret = add_audit_rules_syscheck(0);
+//     int ret;
+//     ret = add_audit_rules_syscheck(0);
 
-    free(syscheck.opts);
-    free(syscheck.dir[0]);
-    free(syscheck.dir);
+//     free(syscheck.opts);
+//     free(syscheck.dir[0]);
+//     free(syscheck.dir);
 
-    assert_int_equal(ret, 0);
-}
-
-
-void test_add_audit_rules_syscheck_not_added_new(void **state) {
-    (void) state;
-
-    char *entry = "/var/test";
-    char dbg_msg[OS_SIZE_128] = {0};
-
-    syscheck.dir = calloc (2, sizeof(char *));
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    syscheck.opts = calloc (2, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
-    syscheck.max_audit_entries = 100;
-
-    // Audit open
-    will_return(__wrap_audit_open, 1);
-
-    // Read loaded rules in Audit
-    will_return(__wrap_audit_get_rule_list, 0);
-
-    // Audit close
-    will_return(__wrap_audit_close, 1);
-
-    // Mutex inside get_real_path
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-
-    expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
-
-    // Rule already not added
-    will_return(__wrap_search_audit_rule, 0);
-
-    // Add rule
-    will_return(__wrap_audit_add_rule, 1);
-    snprintf(dbg_msg, OS_SIZE_128, FIM_AUDIT_NEWRULE, entry);
-    expect_string(__wrap__mdebug1, formatted_msg, dbg_msg);
-    int ret;
-    ret = add_audit_rules_syscheck(0);
-
-    free(syscheck.opts);
-    free(syscheck.dir[0]);
-    free(syscheck.dir);
-
-    assert_int_equal(ret, 1);
-}
+//     assert_int_equal(ret, 0);
+// }
 
 
-void test_add_audit_rules_syscheck_not_added_error(void **state) {
-    (void) state;
+// void test_add_audit_rules_syscheck_not_added_new(void **state) {
+//     (void) state;
 
-    char *entry = "/var/test";
-    syscheck.dir = calloc (2, sizeof(char *));
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    syscheck.opts = calloc (2, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
-    syscheck.max_audit_entries = 100;
+//     char *entry = "/var/test";
+//     char dbg_msg[OS_SIZE_128] = {0};
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
+//     syscheck.dir = calloc (2, sizeof(char *));
+//     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+//     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+//     syscheck.opts = calloc (2, sizeof(int *));
+//     syscheck.opts[0] |= WHODATA_ACTIVE;
+//     syscheck.max_audit_entries = 100;
 
-    // Read loaded rules in Audit
-    will_return(__wrap_audit_get_rule_list, 0);
+//     // Audit open
+//     will_return(__wrap_audit_open, 1);
 
-    // Audit close
-    will_return(__wrap_audit_close, 1);
+//     // Read loaded rules in Audit
+//     will_return(__wrap_audit_get_rule_list, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
+//     // Audit close
+//     will_return(__wrap_audit_close, 1);
 
-    // Mutex inside get_real_path
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
-    // Rule already not added
-    will_return(__wrap_search_audit_rule, 0);
+//     // Mutex inside get_real_path
+//     expect_function_call(__wrap_pthread_mutex_lock);
+//     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    // Add rule
-    will_return(__wrap_audit_add_rule, -1);
+//     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6926): Unable to add audit rule for '/var/test'");
+//     // Rule already not added
+//     will_return(__wrap_search_audit_rule, 0);
 
-    int ret;
-    ret = add_audit_rules_syscheck(0);
+//     // Add rule
+//     will_return(__wrap_audit_add_rule, 1);
+//     snprintf(dbg_msg, OS_SIZE_128, FIM_AUDIT_NEWRULE, entry);
+//     expect_string(__wrap__mdebug1, formatted_msg, dbg_msg);
+//     int ret;
+//     ret = add_audit_rules_syscheck(0);
 
-    free(syscheck.opts);
-    free(syscheck.dir[0]);
-    free(syscheck.dir);
+//     free(syscheck.opts);
+//     free(syscheck.dir[0]);
+//     free(syscheck.dir);
 
-    assert_int_equal(ret, 0);
-}
+//     assert_int_equal(ret, 1);
+// }
 
 
-void test_add_audit_rules_syscheck_not_added_first_error(void **state) {
-    (void) state;
+// void test_add_audit_rules_syscheck_not_added_error(void **state) {
+//     (void) state;
 
-    char *entry = "/var/test";
-    syscheck.dir = calloc (2, sizeof(char *));
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    syscheck.opts = calloc (2, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
-    syscheck.max_audit_entries = 100;
+//     char *entry = "/var/test";
+//     syscheck.dir = calloc (2, sizeof(char *));
+//     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+//     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+//     syscheck.opts = calloc (2, sizeof(int *));
+//     syscheck.opts[0] |= WHODATA_ACTIVE;
+//     syscheck.max_audit_entries = 100;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
+//     // Audit open
+//     will_return(__wrap_audit_open, 1);
 
-    // Read loaded rules in Audit
-    will_return(__wrap_audit_get_rule_list, 0);
+//     // Read loaded rules in Audit
+//     will_return(__wrap_audit_get_rule_list, 0);
 
-    // Audit close
-    will_return(__wrap_audit_close, 1);
+//     // Audit close
+//     will_return(__wrap_audit_close, 1);
 
-    // Mutex inside get_real_path
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
+//     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
 
-    expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
+//     // Mutex inside get_real_path
+//     expect_function_call(__wrap_pthread_mutex_lock);
+//     expect_function_call(__wrap_pthread_mutex_unlock);
+//     // Rule already not added
+//     will_return(__wrap_search_audit_rule, 0);
 
-    // Rule already not added
-    will_return(__wrap_search_audit_rule, 0);
+//     // Add rule
+//     will_return(__wrap_audit_add_rule, -1);
 
-    // Add rule
-    will_return(__wrap_audit_add_rule, -1);
+//     expect_string(__wrap__mdebug1, formatted_msg, "(6926): Unable to add audit rule for '/var/test'");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(6926): Unable to add audit rule for '/var/test'");
+//     int ret;
+//     ret = add_audit_rules_syscheck(0);
 
-    int ret;
-    ret = add_audit_rules_syscheck(1);
+//     free(syscheck.opts);
+//     free(syscheck.dir[0]);
+//     free(syscheck.dir);
 
-    free(syscheck.opts);
-    free(syscheck.dir[0]);
-    free(syscheck.dir);
+//     assert_int_equal(ret, 0);
+// }
 
-    assert_int_equal(ret, 0);
-}
+
+// void test_add_audit_rules_syscheck_not_added_first_error(void **state) {
+//     (void) state;
+
+//     char *entry = "/var/test";
+//     syscheck.dir = calloc (2, sizeof(char *));
+//     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+//     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+//     syscheck.opts = calloc (2, sizeof(int *));
+//     syscheck.opts[0] |= WHODATA_ACTIVE;
+//     syscheck.max_audit_entries = 100;
+
+//     // Audit open
+//     will_return(__wrap_audit_open, 1);
+
+//     // Read loaded rules in Audit
+//     will_return(__wrap_audit_get_rule_list, 0);
+
+//     // Audit close
+//     will_return(__wrap_audit_close, 1);
+
+//     // Mutex inside get_real_path
+//     expect_function_call_any(__wrap_pthread_mutex_lock);
+//     expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+//     expect_string(__wrap__merror, formatted_msg, "(6637): Could not read audit loaded rules.");
+
+//     // Rule already not added
+//     will_return(__wrap_search_audit_rule, 0);
+
+//     // Add rule
+//     will_return(__wrap_audit_add_rule, -1);
+
+//     expect_string(__wrap__mwarn, formatted_msg, "(6926): Unable to add audit rule for '/var/test'");
+
+//     int ret;
+//     ret = add_audit_rules_syscheck(1);
+
+//     free(syscheck.opts);
+//     free(syscheck.dir[0]);
+//     free(syscheck.dir);
+
+//     assert_int_equal(ret, 0);
+// }
 
 void test_audit_read_events_select_error(void **state) {
     (void) state;
@@ -955,35 +967,7 @@ void test_audit_read_events_select_case_0(void **state) {
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    // In audit_parse()
-    expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-
-    expect_value(__wrap_get_user, uid, 0);
-    will_return(__wrap_get_user, strdup("root"));
-    expect_value(__wrap_get_user, uid, 0);
-    will_return(__wrap_get_user, strdup("root"));
-
-    expect_value(__wrap_get_group, gid, 0);
-    will_return(__wrap_get_group, "root");
-
-    will_return(__wrap_readlink, 0);
-    will_return(__wrap_readlink, 0);
-
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
-
-    expect_string(__wrap_realpath, path, "/root/test/test");
-    will_return(__wrap_realpath, strdup("/root/test/test"));
-
-    expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
-    expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
-    expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
-    expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
-    expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-    expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
-    expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
-    expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
-
+    expect_function_call(__wrap_audit_parse);
     audit_read_events(audit_sock, READING_MODE);
 }
 
@@ -1068,17 +1052,9 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
     will_return(__wrap_OS_ConnectUnixDomain, 124);
 
     expect_string(__wrap__minfo, formatted_msg, "(6030): Audit: connected.");
-    will_return(__wrap_audit_open, 1);
-    will_return(__wrap_audit_close, 1);
 
     // In audit_reload_rules()
-    syscheck.dir = calloc (2, sizeof(char *));
-    syscheck.dir[0] = NULL;
-    expect_string(__wrap__mdebug1, formatted_msg, "(6275): Reloading Audit rules.");
-    // In add_audit_rules_syscheck()
-    will_return(__wrap_audit_get_rule_list, 1);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6276): Audit rules reloaded. Rules loaded: 0");
-
+    expect_function_call(__wrap_fim_audit_reload_rules);
     audit_read_events(audit_sock, READING_MODE);
 
     free(syscheck.dir);
@@ -1114,36 +1090,7 @@ void test_audit_read_events_select_success_recv_success(void **state) {
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    for (int i = 0; i<2; i++){
-        // In audit_parse()
-        expect_string(__wrap__mdebug2, formatted_msg, "(6251): Match audit_key: 'key=\"wazuh_fim\"'");
-
-        expect_value(__wrap_get_user, uid, 0);
-        will_return(__wrap_get_user, strdup("root"));
-        expect_value(__wrap_get_user, uid, 0);
-        will_return(__wrap_get_user, strdup("root"));
-
-        expect_value(__wrap_get_group, gid, 0);
-        will_return(__wrap_get_group, "root");
-
-        will_return(__wrap_readlink, 0);
-        will_return(__wrap_readlink, 0);
-
-        expect_string(__wrap__mdebug2, formatted_msg,
-            "(6247): audit_event: uid=root, auid=, euid=root, gid=root, pid=44082, ppid=3211, inode=19, path=/root/test/test, pname=74657374C3B1");
-
-        expect_string(__wrap_realpath, path, "/root/test/test");
-        will_return(__wrap_realpath, strdup("/root/test/test"));
-
-        expect_value(__wrap_fim_whodata_event, w_evt->process_id, 44082);
-        expect_string(__wrap_fim_whodata_event, w_evt->user_id, "0");
-        expect_string(__wrap_fim_whodata_event, w_evt->group_id, "0");
-        expect_string(__wrap_fim_whodata_event, w_evt->process_name, "74657374C3B1");
-        expect_string(__wrap_fim_whodata_event, w_evt->path, "/root/test/test");
-        expect_string(__wrap_fim_whodata_event, w_evt->effective_uid, "0");
-        expect_string(__wrap_fim_whodata_event, w_evt->inode, "19");
-        expect_value(__wrap_fim_whodata_event, w_evt->ppid, 3211);
-    }
+    expect_function_calls(__wrap_audit_parse, 2);
 
     audit_read_events(audit_sock, READING_MODE);
 }
@@ -1266,100 +1213,100 @@ void test_audit_no_rules_to_realtime(void **state) {
     }
 }
 
-void test_add_audit_rules_syscheck_duplicate_entry(void **state) {
-    (void) state;
+// void test_add_audit_rules_syscheck_duplicate_entry(void **state) {
+//     (void) state;
 
-    char *entry = "/var/test";
-    char buffer [OS_SIZE_128] = {0};
+//     char *entry = "/var/test";
+//     char buffer [OS_SIZE_128] = {0};
 
-    syscheck.dir = calloc(2, sizeof(char *));
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    syscheck.opts = calloc(2, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
-    syscheck.max_audit_entries = 100;
+//     syscheck.dir = calloc(2, sizeof(char *));
+//     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+//     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+//     syscheck.opts = calloc(2, sizeof(int *));
+//     syscheck.opts[0] |= WHODATA_ACTIVE;
+//     syscheck.max_audit_entries = 100;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
+//     // Audit open
+//     will_return(__wrap_audit_open, 1);
 
-    // Read loaded rules in Audit
-    will_return(__wrap_audit_get_rule_list, 5);
+//     // Read loaded rules in Audit
+//     will_return(__wrap_audit_get_rule_list, 5);
 
-    // Audit close
-    will_return(__wrap_audit_close, 1);
+//     // Audit close
+//     will_return(__wrap_audit_close, 1);
 
-    // Mutex inside get_real_path
-    expect_function_call(__wrap_pthread_mutex_lock);
-    expect_function_call(__wrap_pthread_mutex_unlock);
+//     // Mutex inside get_real_path
+//     expect_function_call(__wrap_pthread_mutex_lock);
+//     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    // Rule already added
-    will_return(__wrap_search_audit_rule, 1);
-    snprintf(buffer, OS_SIZE_128, FIM_AUDIT_RULEDUP, entry);
-    expect_string(__wrap__mdebug1, formatted_msg, buffer);
+//     // Rule already added
+//     will_return(__wrap_search_audit_rule, 1);
+//     snprintf(buffer, OS_SIZE_128, FIM_AUDIT_RULEDUP, entry);
+//     expect_string(__wrap__mdebug1, formatted_msg, buffer);
 
-    int ret;
-    ret = add_audit_rules_syscheck(0);
+//     int ret;
+//     ret = add_audit_rules_syscheck(0);
 
-    free(syscheck.dir[0]);
-    free(syscheck.dir);
-    free(syscheck.opts);
+//     free(syscheck.dir[0]);
+//     free(syscheck.dir);
+//     free(syscheck.opts);
 
-    assert_int_equal(ret, 0);
-}
+//     assert_int_equal(ret, 0);
+// }
 
 
-void test_add_audit_rules_syscheck_max(void **state) {
-    (void) state;
+// void test_add_audit_rules_syscheck_max(void **state) {
+//     (void) state;
 
-    char *entry = "/var/test";
-    char *entry2 = "/var/test2";
-    char dbg1[OS_SIZE_128] = {0};
-    char dbg2[OS_SIZE_128] = {0};
+//     char *entry = "/var/test";
+//     char *entry2 = "/var/test2";
+//     char dbg1[OS_SIZE_128] = {0};
+//     char dbg2[OS_SIZE_128] = {0};
 
-    syscheck.dir = calloc(3, sizeof(char *));
-    syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
-    syscheck.dir[1] = calloc(strlen(entry2) + 2, sizeof(char));
-    snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
-    snprintf(syscheck.dir[1], strlen(entry2) + 1, "%s", entry2);
-    syscheck.opts = calloc(3, sizeof(int *));
-    syscheck.opts[0] |= WHODATA_ACTIVE;
-    syscheck.opts[1] |= WHODATA_ACTIVE;
-    syscheck.max_audit_entries = 1;
+//     syscheck.dir = calloc(3, sizeof(char *));
+//     syscheck.dir[0] = calloc(strlen(entry) + 2, sizeof(char));
+//     syscheck.dir[1] = calloc(strlen(entry2) + 2, sizeof(char));
+//     snprintf(syscheck.dir[0], strlen(entry) + 1, "%s", entry);
+//     snprintf(syscheck.dir[1], strlen(entry2) + 1, "%s", entry2);
+//     syscheck.opts = calloc(3, sizeof(int *));
+//     syscheck.opts[0] |= WHODATA_ACTIVE;
+//     syscheck.opts[1] |= WHODATA_ACTIVE;
+//     syscheck.max_audit_entries = 1;
 
-    // Audit open
-    will_return(__wrap_audit_open, 1);
+//     // Audit open
+//     will_return(__wrap_audit_open, 1);
 
-    // Read loaded rules in Audit
-    will_return(__wrap_audit_get_rule_list, 5);
+//     // Read loaded rules in Audit
+//     will_return(__wrap_audit_get_rule_list, 5);
 
-    // Audit close
-    will_return(__wrap_audit_close, 1);
+//     // Audit close
+//     will_return(__wrap_audit_close, 1);
 
-    // Mutex inside get_real_path
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
+//     // Mutex inside get_real_path
+//     expect_function_call_any(__wrap_pthread_mutex_lock);
+//     expect_function_call_any(__wrap_pthread_mutex_unlock);
 
-    // Audit search_audit_rule will be called 2 times.
-    will_return_always(__wrap_search_audit_rule, 0);
+//     // Audit search_audit_rule will be called 2 times.
+//     will_return_always(__wrap_search_audit_rule, 0);
 
-    // audit_add_rule_data
-    will_return_always(__wrap_audit_add_rule, 1);
+//     // audit_add_rule_data
+//     will_return_always(__wrap_audit_add_rule, 1);
 
-    snprintf(dbg1, OS_SIZE_128, FIM_AUDIT_NEWRULE, entry);
-    snprintf(dbg2, OS_SIZE_128, FIM_ERROR_WHODATA_MAXNUM_WATCHES, entry2, syscheck.max_audit_entries);
-    expect_string(__wrap__mdebug1, formatted_msg, dbg1);
-    expect_string(__wrap__merror, formatted_msg, dbg2);
+//     snprintf(dbg1, OS_SIZE_128, FIM_AUDIT_NEWRULE, entry);
+//     snprintf(dbg2, OS_SIZE_128, FIM_ERROR_WHODATA_MAXNUM_WATCHES, entry2, syscheck.max_audit_entries);
+//     expect_string(__wrap__mdebug1, formatted_msg, dbg1);
+//     expect_string(__wrap__merror, formatted_msg, dbg2);
 
-    int ret;
-    ret = add_audit_rules_syscheck(0);
+//     int ret;
+//     ret = add_audit_rules_syscheck(0);
 
-    free(syscheck.dir[0]);
-    free(syscheck.dir[1]);
-    free(syscheck.dir);
-    free(syscheck.opts);
+//     free(syscheck.dir[0]);
+//     free(syscheck.dir[1]);
+//     free(syscheck.dir);
+//     free(syscheck.opts);
 
-    assert_int_equal(ret, 1);
-}
+//     assert_int_equal(ret, 1);
+// }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -1384,12 +1331,6 @@ int main(void) {
         cmocka_unit_test(test_audit_get_id_begin_error),
         cmocka_unit_test(test_audit_get_id_end_error),
         cmocka_unit_test(test_init_regex),
-        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_duplicate_entry, setup_add_audit_rules, teardown_add_audit_rules),
-        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added, setup_add_audit_rules, teardown_add_audit_rules),
-        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_new, setup_add_audit_rules, teardown_add_audit_rules),
-        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_error, setup_add_audit_rules, teardown_add_audit_rules),
-        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_not_added_first_error, setup_add_audit_rules, teardown_add_audit_rules),
-        cmocka_unit_test_setup_teardown(test_add_audit_rules_syscheck_max, setup_add_audit_rules, teardown_add_audit_rules),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_error, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_case_0, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_error_audit_connection_closed, test_audit_read_events_setup, test_audit_read_events_teardown),
@@ -1399,7 +1340,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_no_rules_to_realtime, setup_syscheck_dir_links, teardown_syscheck_dir_links),
-
         };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);

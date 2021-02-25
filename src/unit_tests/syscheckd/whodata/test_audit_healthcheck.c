@@ -85,24 +85,11 @@ int __wrap_pthread_mutex_unlock (pthread_mutex_t *__mutex) {
     return 0;
 }
 
-int __wrap_pthread_mutex_init() {
-    return mock();
-}
-
-
-int __wrap_recv(int __fd, void *__buf, size_t __n, int __flags) {
-    int ret;
-    int n;
-    check_expected(__fd);
-    n = mock();
-    if(n < __n)
-        ret = n;
-    else
-        ret = __n;
-    if(ret > 0)
-        memcpy(__buf, mock_type(void*), ret);
-
-    return ret;
+int __wrap_CreateThread(void * (*function_pointer)(void *), void *data) {
+    if(hc_success) {
+        audit_health_check_creation = 1;
+    }
+    return 1;
 }
 
 /* audit_health_check() tests */
