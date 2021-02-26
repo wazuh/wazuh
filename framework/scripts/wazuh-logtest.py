@@ -39,9 +39,14 @@ def init_argparse():
     )
     parser.add_argument(
         "-U", help='Unit test. Refer to ruleset/testing/runtests.py',
-        nargs=1,
         metavar='rule:alert:decoder',
         dest='ut'
+    )
+    parser.add_argument(
+        "-l", help='Use custom location. Default "stdin"',
+        default='stdin',
+        metavar='location',
+        dest='location'
     )
     parser.add_argument(
         "-q", help='Quiet execution',
@@ -67,13 +72,13 @@ def main():
 
     # Handle unit test request
     if args.ut:
-        ut = args.ut[0].split(":")
+        ut = args.ut.split(":")
         if len(ut) != 3:
-            logging.error('Unit test configuration wrong syntax: %s', args.ut[0])
+            logging.error('Unit test configuration wrong syntax: %s', args.ut)
             sys.exit(1)
 
     # Initialize wazuh-logtest component
-    w_logtest = WazuhLogtest()
+    w_logtest = WazuhLogtest(location=args.location)
     logging.info('Starting wazuh-logtest %s', Wazuh.get_version_str())
     logging.info('Type one log per line')
 
