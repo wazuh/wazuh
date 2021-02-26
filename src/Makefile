@@ -84,6 +84,10 @@ WIN_CMAKE_OPTS=-DINSTALL_PREFIX=${PREFIX}
 endif
 endif
 
+ifneq (,$(filter ${DISABLE_SHARED},YES yes y Y 1))
+WIN_CMAKE_OPTS+=-DDISABLE_SHARED=1
+endif
+
 
 ifeq (${uname_S},Darwin)
 SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin

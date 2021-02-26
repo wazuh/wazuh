@@ -68,7 +68,11 @@ elseif(UNIX AND NOT APPLE)
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(dbsync wazuhext)
+if(DISABLE_SHARED)
+  target_link_libraries(dbsync cjson sqlite3)
+else()
+  target_link_libraries(dbsync wazuhext)
+endif(DISABLE_SHARED)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
