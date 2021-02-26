@@ -66,7 +66,7 @@ constexpr auto OS_SYNC_CONFIG_STATEMENT
         "index":"os_name",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -152,7 +152,7 @@ constexpr auto HW_SYNC_CONFIG_STATEMENT
         "index":"board_serial",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -233,7 +233,7 @@ constexpr auto HOTFIXES_SYNC_CONFIG_STATEMENT
         "index":"hotfix",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE hotfix BETWEEN '?' and '?' ORDER BY hotfix",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -327,7 +327,7 @@ constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -433,7 +433,7 @@ constexpr auto PROCESSES_SYNC_CONFIG_STATEMENT
         "index":"pid",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE pid BETWEEN '?' and '?' ORDER BY pid",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -540,7 +540,7 @@ constexpr auto PORTS_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -632,7 +632,7 @@ constexpr auto NETIFACE_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -727,7 +727,7 @@ constexpr auto NETPROTO_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -813,7 +813,7 @@ constexpr auto NETADDRESS_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
