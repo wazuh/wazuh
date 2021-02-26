@@ -65,10 +65,13 @@ void expect_mkdir(const char *__path, int ret) {
 
 extern int __real_stat(const char * __file, struct stat * __buf);
 int __wrap_stat(const char * __file, struct stat * __buf) {
+    struct stat * mock_buf;
     if (test_mode) {
         check_expected(__file);
-        __buf->st_mode = mock();
-        __buf->st_size = __buf->st_mode;
+        mock_buf = mock_type(struct stat *);
+        if (mock_buf != NULL) {
+            memcpy(__buf, mock_buf, sizeof(struct stat));
+        }
         return mock_type(int);
     }
     return __real_stat(__file, __buf);
