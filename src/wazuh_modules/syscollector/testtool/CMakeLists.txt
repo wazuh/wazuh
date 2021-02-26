@@ -25,7 +25,7 @@ set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-v
 file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/testtool/*.cpp"
         )
-    
+
 add_executable(syscollector_test_tool
                ${SYSCOLLECTOR_TESTTOOL_SRC}
                )
