@@ -76,10 +76,6 @@ WIN_CMAKE_RULES+=win32/shared_modules
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 WIN_CMAKE_RULES+=win32/syscollector
 endif
-else
-ifeq (${uname_S},AIX)
-WIN_CMAKE_OPTS=-DINSTALL_PREFIX=${INSTALLDIR}
-endif
 endif
 
 
@@ -149,7 +145,7 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX -D__unix
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread -L${INSTALLDIR}/lib/
+		OSSEC_LDFLAGS+=-pthread -L./lib
 		AR_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/vac/bin
 		CC=gcc
@@ -289,10 +285,10 @@ DBSYNC_LIB+=-ldbsync
 RSYNC_LIB+=-lrsync
 
 ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin 
+	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
 	OSSEC_LDFLAGS+=-L${RSYNC}build/bin
 else
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib 
+	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
 	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
 endif
 
@@ -436,7 +432,7 @@ ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
 else
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib 
+	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
 endif
 
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
