@@ -63,7 +63,7 @@ wpk_versions = [['v3.10.0', '251b1af81d45d291540d8589b124302613f0a4e0'],
 
 class InitAgent:
 
-    def __init__(self, data_path=test_data_path):
+    def __init__(self, data_path=test_data_path, db_name='schema_global_test.sql'):
         """
         Sets up necessary test environment for agents:
             * One active agent.
@@ -76,7 +76,7 @@ class InitAgent:
         self.global_db = sqlite3.connect(':memory:')
         self.global_db.row_factory = sqlite3.Row
         self.cur = self.global_db.cursor()
-        with open(os.path.join(data_path, 'schema_global_test.sql')) as f:
+        with open(os.path.join(data_path, db_name)) as f:
             self.cur.executescript(f.read())
 
         self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id'}
@@ -391,6 +391,23 @@ def test_WazuhDBQueryMultigroups_get_total_items(mock_socket_conn, send_mock):
     query_multigroups._get_total_items()
 
     assert 'GROUP BY a.id' in query_multigroups.query, 'Query returned does not match the expected one'
+
+
+@patch("wazuh.core.agent.WazuhDBBackend")
+@patch("wazuh.core.agent.WazuhDBQuery.__init__")
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('wazuh.core.agent.Agent.get_basic_information')
+@patch('socket.socket.connect')
+def test_WazuhDBQueryCVE__init__(mock_conn, mock_info, mock_send, mock_wazuhDBQuery, mock_backend):
+    """Test if method __init__ of WazuhDBQueryCVE calls WazuhDBQuery with expected params"""
+    WazuhDBQueryCVE(agent_id='001', offset=500, limit=500, query='version>3.9.81')
+    mock_backend.assert_called_once_with('001')
+    mock_wazuhDBQuery.assert_called_once_with(
+        ANY, offset=500, limit=500, table='vuln_cves', sort=None, search=None, select=None,
+        fields={'name': 'name', 'version': 'version', 'architecture': 'architecture', 'cve': 'cve'},
+        default_sort_field='name', default_sort_order='ASC', filters={}, query='version>3.9.81', backend=ANY,
+        min_select_fields=set(), count=True, get_data=True, distinct=False
+    )
 
 
 @pytest.mark.parametrize('id, ip, name, key', [

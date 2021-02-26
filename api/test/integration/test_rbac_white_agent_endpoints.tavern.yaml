@@ -170,6 +170,46 @@ stages:
             time-reconnect: !anyint
 
 ---
+test_name: GET /agents/{agent_id}/cve
+
+stages:
+
+  - name: Try to get CVE information for agent 001
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/cve"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      <<: *permission_denied
+
+  - name: Get CVE information for manager (000)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/cve"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - cve: !anystr
+              version: !anystr
+              architecture: !anystr
+              name: !anystr
+          failed_items: [ ]
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+---
 test_name: GET /agents/{agent_id}/group/is_sync
 
 stages:

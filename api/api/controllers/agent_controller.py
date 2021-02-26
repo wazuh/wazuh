@@ -235,6 +235,73 @@ async def get_agent_config(request, pretty=False, wait_for_complete=False, agent
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def get_agent_cve(request, pretty=False, wait_for_complete=False, agent_id=None, offset=0, limit=None, sort=None,
+                        search=None, select=None, q='', architecture=None, cve=None, name=None, version=None):
+    """Get agents' vulnerabilities.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agent_id : str
+        ID of the agent to retrieve CVE info.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : list
+        Fields to return.
+    q : str
+        Query to filter results by.
+    architecture : str
+        Filter by architecture.
+    cve : str
+        Filter by CVE ID.
+    name : str
+        Filter by package ID.
+    version : str
+        Filter by version.
+
+    Returns
+    -------
+    web.json_response
+    """
+    f_kwargs = {
+        'agent_list': [agent_id],
+        'offset': offset,
+        'limit': limit,
+        'sort': parse_api_param(sort, 'sort'),
+        'search': parse_api_param(search, 'search'),
+        'select': select,
+        'q': q,
+        'filters': {
+            'architecture': architecture,
+            'cve': cve,
+            'name': name,
+            'version': version
+        }
+    }
+
+    dapi = DistributedAPI(f=agent.get_agent_cve,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def delete_single_agent_multiple_groups(request, agent_id, groups_list=None, pretty=False,
                                               wait_for_complete=False):
     """'Remove the agent from all groups or a list of them.

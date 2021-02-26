@@ -11,7 +11,8 @@ from shutil import copyfile
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, \
-    Agent, WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding
+    Agent, WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding, \
+    WazuhDBQueryCVE
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -942,3 +943,47 @@ def get_full_overview() -> WazuhResult:
               'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
 
     return WazuhResult({'data': result})
+
+
+@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
+def get_agent_cve(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, q='',
+                  filters=None):
+    """Get agents' vulnerabilities.
+
+    Parameters
+    ----------
+    agent_list : list
+        List of agents ID's.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort : str
+        Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : list
+        Fields to return.
+    q : str
+        Query to filter results by.
+    filters : dict
+        Fields to filter by.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        JSON containing the vulnerabilities.
+    """
+    result = AffectedItemsWazuhResult(all_msg='All selected vulnerabilities were returned',
+                                      some_msg='Some vulnerabilities were not returned',
+                                      none_msg='No vulnerabilities were returned'
+                                      )
+
+    db_query = WazuhDBQueryCVE(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
+                               select=select, query=q, filters=filters, count=True, get_data=True, distinct=False)
+    data = db_query.run()
+    result.affected_items.extend(data['items'])
+    result.total_affected_items = data['totalItems']
+
+    return result

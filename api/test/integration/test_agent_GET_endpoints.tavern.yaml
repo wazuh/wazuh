@@ -1742,6 +1742,199 @@ stages:
         <<: *error_spec
 
 ---
+test_name: GET /agents/{agent_id}/cve
+
+stages:
+
+  # GET /agents/000/cve
+  - name: Get agent's CVE (limit and offset)
+    request: &cve_request_000
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/cve"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        offset: 5
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - cve: !anystr
+              version: !anystr
+              architecture: !anystr
+              name: !anystr
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+      save:
+        json:
+          expected_cve: data.affected_items[0].cve
+          expected_version: data.affected_items[0].version
+          expected_architecture: data.affected_items[0].architecture
+          expected_name: data.affected_items[0].name
+
+  - name: Get agent's CVE (filter by CVE)
+    request:
+      <<: *cve_request_000
+      params:
+        cve: "{expected_cve}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "cve"
+            expected_values: "{expected_cve}"
+
+  - name: Get agent's CVE (filter by version)
+    request:
+      <<: *cve_request_000
+      params:
+        version: "{expected_version}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "version"
+            expected_values: "{expected_version}"
+
+  - name: Get agent's CVE (filter by architecture)
+    request:
+      <<: *cve_request_000
+      params:
+        architecture: "{expected_architecture}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "architecture"
+            expected_values: "{expected_architecture}"
+
+  - name: Get agent's CVE (filter by name)
+    request:
+      <<: *cve_request_000
+      params:
+        name: "{expected_name}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "name"
+            expected_values: "{expected_name}"
+
+  - name: Sort agent's CVE (version)
+    request:
+      <<: *cve_request_000
+      params:
+        sort: "-version"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "version"
+            reverse: True
+
+  - name: Sort agent's CVE (CVE)
+    request:
+      <<: *cve_request_000
+      params:
+        sort: "+cve"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "cve"
+            reverse: False
+
+  - name: Search agent's CVE
+    request:
+      <<: *cve_request_000
+      params:
+        search: "{expected_cve}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "cve"
+            expected_values: "{expected_cve}"
+
+  - name: Search agent's CVE
+    request:
+      <<: *cve_request_000
+      params:
+        search: "{expected_version}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "version"
+            expected_values: "{expected_version}"
+
+  - name: Select agent's CVE fields
+    request:
+      <<: *cve_request_000
+      params:
+        select: "cve,name"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "cve,name"
+
+  - name: q agent's CVE
+    request:
+      <<: *cve_request_000
+      params:
+        q: "name!={expected_name};architecture={expected_architecture}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_response_is_different
+          extra_kwargs:
+            response_value: data.affected_items[0].name
+            unexpected_value: "{expected_name}"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "architecture"
+            expected_values: "{expected_architecture}"
+
+  # GET /agents/001/cve
+  - name: Get 001 agent's CVE (limit)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/cve"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - cve: !anystr
+              version: !anystr
+              architecture: !anystr
+              name: !anystr
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+---
 test_name: GET /agents/{agent_id}/group/is_sync
 
 stages:

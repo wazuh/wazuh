@@ -94,6 +94,7 @@ get_rbac_actions:
         related_endpoints:
           - GET /agents
           - GET /agents/{agent_id}/config/{component}/{configuration}
+          - GET /agents/{agent_id}/cve
           - GET /agents/{agent_id}/group/is_sync
           - GET /agents/{agent_id}/key
           - GET /agents/{agent_id}/stats/{component}
