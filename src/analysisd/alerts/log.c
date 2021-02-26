@@ -183,8 +183,8 @@ void OS_Log(Eventinfo *lf, FILE * fp)
 
     /* FIM events */
 
-    if (strcmp(lf->location, SYSCHECK) == 0) {
-        fwrite("Attributes:\n", 13, 1, fp);
+    if (strcmp(extract_module_from_location(lf->location), SYSCHECK) == 0) {
+        fwrite("Attributes:\n", sizeof(char), 12, fp);
 
         if (lf->fields[FIM_SIZE].value && *lf->fields[FIM_SIZE].value != '\0') {
             fprintf(fp, " - Size: %s\n", lf->fields[FIM_SIZE].value);
@@ -197,7 +197,7 @@ void OS_Log(Eventinfo *lf, FILE * fp)
         if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value != '\0') {
             long aux_time = atol(lf->fields[FIM_MTIME].value);
             char buf_ptr[26];
-            fprintf(fp, " - Date: %s", ctime_r(&aux_time, buf_ptr));
+            fprintf(fp, " - Date: %s", ctime_r(&aux_time, buf_ptr) != NULL ? buf_ptr : lf->fields[FIM_MTIME].value);
         }
 
         if (lf->fields[FIM_INODE].value && *lf->fields[FIM_INODE].value != '\0') {
@@ -259,28 +259,27 @@ void OS_Log(Eventinfo *lf, FILE * fp)
             fprintf(fp, " - (Audit) %s: %s\n", "Parent process cwd", lf->fields[FIM_AUDIT_PCWD].value);
         }
 
-        if (lf->fields[FIM_DIFF].value && *lf->fields[FIM_DIFF].value != '\0') {
+        if (lf->fields[FIM_DIFF].value) {
             fprintf(fp, "\nWhat changed:\n%s\n", lf->fields[FIM_DIFF].value);
         }
 
-        if (lf->fields[FIM_TAG].value && *lf->fields[FIM_TAG].value != '\0') {
-            if (strcmp(lf->fields[FIM_TAG].value, "") != 0) {
-                char * tags;
-                os_strdup(lf->fields[FIM_TAG].value, tags);
-                fwrite("\nTags:\n", 8, 1, fp);
-                char * tag;
-                tag = strtok_r(tags, ",", &saveptr);
-                while (tag != NULL) {
-                    fprintf(fp, " - %s\n", tag);
-                    tag = strtok_r(NULL, ",", &saveptr);
-                }
-                free(tags);
+        if (lf->fields[FIM_TAG].value && strcmp(lf->fields[FIM_TAG].value, "") != 0) {
+            char * tags;
+            os_strdup(lf->fields[FIM_TAG].value, tags);
+            fwrite("\nTags:\n", 8, 1, fp);
+            char * tag;
+            tag = strtok_r(tags, ",", &saveptr);
+            while (tag != NULL) {
+                fprintf(fp, " - %s\n", tag);
+                tag = strtok_r(NULL, ",", &saveptr);
             }
+            free(tags);
         }
     }
 
     // Dynamic fields, except for syscheck events
-    if (strcmp(lf->location, SYSCHECK) != 0) {
+
+    if (strcmp(extract_module_from_location(lf->location), SYSCHECK) != 0) {
         for (i = 0; i < lf->nfields; i++) {
             if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
                 fprintf(fp, "%s: %s\n", lf->fields[i].key, lf->fields[i].value);

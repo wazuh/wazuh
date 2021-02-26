@@ -1182,3 +1182,14 @@ void w_free_event_info(Eventinfo *lf) {
         Free_Eventinfo(lf);
     }
 }
+
+char *extract_module_from_location(const char *location){
+    char *module_name = strstr(location, "->");
+    if (module_name == NULL) {
+        module_name = location;
+    } else {
+        module_name += 2;
+    }
+
+    return module_name;
+}

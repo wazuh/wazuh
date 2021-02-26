@@ -36,7 +36,7 @@ extern void mock_assert(const int result, const char* const expression,
 static int fim_db_search (char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *sdb);
 
 // Build FIM alert
-static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb);
+static int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb, syscheck_event_t event_type);
 
 // Build fileds whodata alert
 static void InsertWhodata (const sk_sum_t * sum, _sdb *localsdb);
@@ -77,7 +77,7 @@ static int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
  *
  * @returns 0 on success, -1 on failure
 */
-static int fim_generate_alert(Eventinfo *lf, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
+static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
 
 // Send save query to Wazuh DB
 static void fim_send_db_save(_sdb * sdb, const char * agent_id, cJSON * data);
@@ -215,7 +215,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[FIM_REGISTRY_VALUE_NAME] = "value_name";
     fim_decoder->fields[FIM_REGISTRY_VALUE_TYPE] = "value_type";
     fim_decoder->fields[FIM_ENTRY_TYPE] = "entry_type";
-    fim_decoder->fields[FIM_EVENT_TYPE_STR] = "event_type";
+    fim_decoder->fields[FIM_EVENT_TYPE] = "event_type";
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -328,6 +328,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     sk_sum_t newsum = { .size = NULL };
     time_t *end_first_scan = NULL;
     time_t end_scan = 0;
+    syscheck_event_t event_type;
 
     memset(&oldsum, 0, sizeof(sk_sum_t));
     memset(&newsum, 0, sizeof(sk_sum_t));
@@ -381,7 +382,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     wazuhdb_query[0] = '\0';
     switch (decode_newsum) {
         case 1: // File deleted
-            os_strdup(SYSCHECK_EVENT_STRINGS[FIM_DELETED], lf->fields[FIM_EVENT_TYPE_STR].value);
+            os_strdup(SYSCHECK_EVENT_STRINGS[FIM_DELETED], lf->fields[FIM_EVENT_TYPE].value);
+            event_type = FIM_DELETED;
 
             if(!*old_check_sum){
                 mdebug2("Agent '%s' Alert already reported (double delete alert)", lf->agent_id);
@@ -409,7 +411,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         case 0:
             if (*old_check_sum) {
                 // File modified
-                os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], lf->fields[FIM_EVENT_TYPE_STR].value);
+                os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], lf->fields[FIM_EVENT_TYPE].value);
+                event_type = FIM_MODIFIED;
                 changes = fim_check_changes(oldsum.changes, oldsum.date_alert, lf);
                 sk_decode_sum(&oldsum, old_check_sum, NULL);
 
@@ -420,7 +423,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 }
             } else {
                 // File added
-                os_strdup(SYSCHECK_EVENT_STRINGS[FIM_ADDED], lf->fields[FIM_EVENT_TYPE_STR].value);
+                os_strdup(SYSCHECK_EVENT_STRINGS[FIM_ADDED], lf->fields[FIM_EVENT_TYPE].value);
+                event_type = FIM_ADDED;
             }
 
             if (strstr(lf->location, "syscheck-registry")) {
@@ -474,7 +478,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 end_scan = *end_first_scan;
             }
 
-            if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]) == 0) {
+            if (event_type == FIM_ADDED) {
                 if (end_scan == 0) {
                     mdebug2("Agent '%s' Alert discarded, first scan. File '%s'", lf->agent_id, f_name);
                     goto exit_ok;
@@ -505,7 +509,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             os_strdup(lf->decoder_info->fields[i], lf->fields[i].key);
         }
 
-        if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
+        if(fim_alert(f_name, &oldsum, &newsum, lf, sdb, event_type) == -1) {
             //No changes in checksum
             goto exit_ok;
         }
@@ -540,24 +544,24 @@ exit_fail:
     return (-1);
 }
 
-int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb) {
+int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, _sdb *localsdb, syscheck_event_t event_type) {
     int changes = 0;
     char msg_type[OS_FLSIZE];
     char buf_ptr[26];
 
-    if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]) == 0) {
+    if (event_type == FIM_DELETED) {
         snprintf(msg_type, sizeof(msg_type), "was deleted.");
         lf->decoder_info->id = fim_decoders[FILE_DECODER]->delete_id;
         lf->decoder_syscheck_id = lf->decoder_info->id;
         lf->decoder_info->name = fim_decoders[FILE_DECODER]->delete_name;
         changes=1;
-    } else if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]) == 0) {
+    } else if (event_type == FIM_ADDED) {
         snprintf(msg_type, sizeof(msg_type), "was added.");
         lf->decoder_info->id = fim_decoders[FILE_DECODER]->add_id;
         lf->decoder_syscheck_id = lf->decoder_info->id;
         lf->decoder_info->name = fim_decoders[FILE_DECODER]->add_name;
         changes=1;
-    } else if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]) == 0) {
+    } else if (event_type == FIM_MODIFIED) {
         snprintf(msg_type, sizeof(msg_type), "checksum changed.");
         lf->decoder_info->id = fim_decoders[FILE_DECODER]->modify_id;
         lf->decoder_syscheck_id = lf->decoder_info->id;
@@ -585,8 +589,8 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 wm_strcat(&lf->fields[FIM_CHFIELDS].value, "perm", ',');
                 char opstr[10];
                 char npstr[10];
-                lf->fields[FIM_PERM_BEFORE].value =  agent_file_perm(oldsum->perm);
-                char *new_perm =  agent_file_perm(newsum->perm);
+                lf->fields[FIM_PERM_BEFORE].value = agent_file_perm(oldsum->perm);
+                char *new_perm = agent_file_perm(newsum->perm);
 
                 strncpy(opstr, lf->fields[FIM_PERM_BEFORE].value, sizeof(opstr) - 1);
                 strncpy(npstr, new_perm, sizeof(npstr) - 1);
@@ -698,7 +702,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             new_ctime[strlen(new_ctime) - 1] = '\0';
 
             snprintf(localsdb->mtime, OS_FLSIZE, "Old modification time was: '%s', now it is '%s'\n", old_ctime, new_ctime);
-            lf->fields[FIM_MTIME].value = w_long_str(oldsum->mtime);
+            lf->fields[FIM_MTIME_BEFORE].value = w_long_str(oldsum->mtime);
             os_free(old_ctime);
             os_free(new_ctime);
         } else {
@@ -1246,6 +1250,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *object = NULL;
     char *entry_type = NULL;
     fim_decoders_t *decoder = NULL;
+    syscheck_event_t event_type;
 
     cJSON_ArrayForEach(object, event) {
         if (object->string == NULL) {
@@ -1260,7 +1265,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
             } else if (strcmp(object->string, "mode") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_MODE].value);
             } else if (strcmp(object->string, "type") == 0) {
-                os_strdup(object->valuestring, lf->fields[FIM_EVENT_TYPE_STR].value);
+                os_strdup(object->valuestring, lf->fields[FIM_EVENT_TYPE].value);
             } else if (strcmp(object->string, "tags") == 0) {
                 os_strdup(object->valuestring, lf->fields[FIM_TAG].value);
             } else if (strcmp(object->string, "content_changes") == 0) {
@@ -1301,7 +1306,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         }
     }
 
-    if (lf->fields[FIM_EVENT_TYPE_STR].value == NULL) {
+    if (lf->fields[FIM_EVENT_TYPE].value == NULL) {
         mdebug1("No member 'type' in Syscheck JSON payload");
         return -1;
     }
@@ -1329,28 +1334,30 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     }
     os_strdup(entry_type, lf->fields[FIM_ENTRY_TYPE].value);
 
-    if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_ADDED], lf->fields[FIM_EVENT_TYPE_STR].value) == 0) {
+    if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_ADDED], lf->fields[FIM_EVENT_TYPE].value) == 0) {
+        event_type = FIM_ADDED;
         lf->decoder_info->name = decoder->add_name;
         lf->decoder_info->id = decoder->add_id;
-    } else if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], lf->fields[FIM_EVENT_TYPE_STR].value) == 0) {
+    } else if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], lf->fields[FIM_EVENT_TYPE].value) == 0) {
+        event_type = FIM_MODIFIED;
         lf->decoder_info->name = decoder->modify_name;
         lf->decoder_info->id = decoder->modify_id;
-    } else if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_DELETED], lf->fields[FIM_EVENT_TYPE_STR].value) == 0) {
+    } else if (strcmp(SYSCHECK_EVENT_STRINGS[FIM_DELETED], lf->fields[FIM_EVENT_TYPE].value) == 0) {
+        event_type = FIM_DELETED;
         lf->decoder_info->name = decoder->delete_name;
         lf->decoder_info->id =  decoder->delete_id;
     } else {
-        mdebug1("Invalid 'type' value '%s' in JSON payload.", lf->fields[FIM_EVENT_TYPE_STR].value);
+        mdebug1("Invalid 'type' value '%s' in JSON payload.", lf->fields[FIM_EVENT_TYPE].value);
         return -1;
     }
 
     lf->decoder_syscheck_id = lf->decoder_info->id;
 
-    fim_generate_alert(lf, attributes, old_attributes, audit);
+    fim_generate_alert(lf, event_type, attributes, old_attributes, audit);
 
-    if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]) == 0 ||
-        strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]) == 0) {
+    if (event_type == FIM_ADDED || event_type == FIM_MODIFIED) {
         fim_send_db_save(sdb, lf->agent_id, event);
-    } else if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]) == 0) {
+    } else if (event_type == FIM_DELETED) {
         fim_send_db_delete(sdb, lf->agent_id, lf->fields[FIM_FILE].value);
     }
 
@@ -1425,7 +1432,7 @@ end:
 }
 
 
-static int fim_generate_alert(Eventinfo *lf, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
+static int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit) {
     static const char *ENTRY_TYPE_FILE = "File";
     static const char *ENTRY_TYPE_REGISTRY_KEY = "Registry Key";
     static const char *ENTRY_TYPE_REGISTRY_VALUE = "Registry Value";
@@ -1507,7 +1514,7 @@ static int fim_generate_alert(Eventinfo *lf, cJSON *attributes, cJSON *old_attri
     }
 
     // Format comment
-    if (strcmp(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]) == 0) {
+    if (event_type == FIM_MODIFIED) {
         fim_generate_comment(change_size, sizeof(change_size), "Size changed from '%s' to '%s'\n", lf->fields[FIM_SIZE_BEFORE].value, lf->fields[FIM_SIZE].value);
         size_t size = fim_generate_comment(change_perm, sizeof(change_perm), "Permissions changed from '%s' to '%s'\n", lf->fields[FIM_PERM_BEFORE].value, lf->fields[FIM_PERM].value);
         if (size >= sizeof(change_perm)) {
@@ -1585,7 +1592,7 @@ static int fim_generate_alert(Eventinfo *lf, cJSON *attributes, cJSON *old_attri
             "Mode: %s\n"
             "%s"
             "%s%s%s%s%s%s%s%s%s%s%s%s",
-            entry_type, path, lf->fields[FIM_EVENT_TYPE_STR].value,
+            entry_type, path, lf->fields[FIM_EVENT_TYPE].value,
             lf->fields[FIM_HARD_LINKS].value ? hard_links : "",
             lf->fields[FIM_MODE].value,
             lf->fields[FIM_CHFIELDS].value ? changed_attributes : "",

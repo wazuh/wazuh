@@ -300,7 +300,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         cJSON_AddStringToObject(agent, "id", lf->agent_id);
     }
 
-    if(strcmp(lf->location, SYSCHECK) == 0) {
+    if(strcmp(extract_module_from_location(lf->location), SYSCHECK) == 0) {
         char mtime[25];
         struct tm tm_result = { .tm_sec = 0 };
         long aux_time;
@@ -313,7 +313,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddItemToObject(file_diff, "hard_links", cJSON_Parse(lf->fields[FIM_HARD_LINKS].value));
         }
 
-        if (lf->fields[FIM_MODE].value && *lf->fields[FIM_MODE].value) {
+        if (lf->fields[FIM_MODE].value) {
             cJSON_AddStringToObject(file_diff, "mode", lf->fields[FIM_MODE].value);
         }
 
@@ -321,15 +321,15 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             cJSON_AddStringToObject(file_diff, "symbolic_path", lf->fields[FIM_SYM_PATH].value);
         }
 
-        if (lf->fields[FIM_REGISTRY_ARCH].value && *lf->fields[FIM_REGISTRY_ARCH].value) {
+        if (lf->fields[FIM_REGISTRY_ARCH].value) {
             cJSON_AddStringToObject(file_diff, "arch", lf->fields[FIM_REGISTRY_ARCH].value);
         }
 
-        if (lf->fields[FIM_REGISTRY_VALUE_NAME].value && *lf->fields[FIM_REGISTRY_VALUE_NAME].value) {
+        if (lf->fields[FIM_REGISTRY_VALUE_NAME].value) {
             cJSON_AddStringToObject(file_diff, "value_name", lf->fields[FIM_REGISTRY_VALUE_NAME].value);
         }
 
-        if (lf->fields[FIM_REGISTRY_VALUE_TYPE].value && *lf->fields[FIM_REGISTRY_VALUE_TYPE].value) {
+        if (lf->fields[FIM_REGISTRY_VALUE_TYPE].value) {
             cJSON_AddStringToObject(file_diff, "value_type", lf->fields[FIM_REGISTRY_VALUE_TYPE].value);
         }
 
@@ -403,7 +403,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         if (print_before_field(lf->fields[FIM_ATTRS_BEFORE].value, lf->fields[FIM_ATTRS].value)) {
             add_json_attrs(lf->fields[FIM_ATTRS_BEFORE].value, file_diff, 0);
         }
-        if (lf->fields[FIM_ATTRS].value && *lf->fields[FIM_ATTRS].value) {
+        if (lf->fields[FIM_ATTRS].value) {
             add_json_attrs(lf->fields[FIM_ATTRS].value, file_diff, 1);
         }
 
@@ -429,34 +429,32 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         if (lf->fields[FIM_MTIME].value && *lf->fields[FIM_MTIME].value) {
             aux_time = atol(lf->fields[FIM_MTIME].value);
             strftime(mtime, 20, "%FT%T%z", localtime_r(&aux_time, &tm_result));
-            cJSON_AddStringToObject(file_diff, "mtime_before", mtime);
+            cJSON_AddStringToObject(file_diff, "mtime_after", mtime);
         }
 
         if (print_before_field(lf->fields[FIM_INODE_BEFORE].value, lf->fields[FIM_INODE].value)) {
-            cJSON_AddStringToObject(file_diff, "inode_before", lf->fields[FIM_INODE_BEFORE].value);
+            cJSON_AddNumberToObject(file_diff, "inode_before", atoi(lf->fields[FIM_INODE_BEFORE].value));
         }
-        if (lf->fields[FIM_INODE].value && *lf->fields[FIM_INODE].value) {
-            cJSON_AddStringToObject(file_diff, "inode_after", lf->fields[FIM_INODE].value);
+        if (lf->fields[FIM_INODE].value && atoi(lf->fields[FIM_INODE].value)) {
+            cJSON_AddNumberToObject(file_diff, "inode_after", atoi(lf->fields[FIM_INODE].value));
         }
 
         if(Config.decoder_order_size > FIM_DIFF && lf->fields[FIM_DIFF].value && strcmp(lf->fields[FIM_DIFF].value, "0")) {
             cJSON_AddStringToObject(file_diff, "diff", lf->fields[FIM_DIFF].value);
         }
 
-        if(lf->fields[FIM_TAG].value) {
-            if (strcmp(lf->fields[FIM_TAG].value, "") != 0) {
-                cJSON *tags = cJSON_CreateArray();
-                cJSON_AddItemToObject(file_diff, "tags", tags);
-                char * tag;
-                char * aux_tags;
-                os_strdup(lf->fields[FIM_TAG].value, aux_tags);
-                tag = strtok_r(aux_tags, ",", &saveptr);
-                while (tag != NULL) {
-                    cJSON_AddItemToArray(tags, cJSON_CreateString(tag));
-                    tag = strtok_r(NULL, ",", &saveptr);
-                }
-                free(aux_tags);
+        if(lf->fields[FIM_TAG].value && *lf->fields[FIM_TAG].value != '\0') {
+            cJSON *tags = cJSON_CreateArray();
+            cJSON_AddItemToObject(file_diff, "tags", tags);
+            char * tag;
+            char * aux_tags;
+            os_strdup(lf->fields[FIM_TAG].value, aux_tags);
+            tag = strtok_r(aux_tags, ",", &saveptr);
+            while (tag != NULL) {
+                cJSON_AddItemToArray(tags, cJSON_CreateString(tag));
+                tag = strtok_r(NULL, ",", &saveptr);
             }
+            free(aux_tags);
         }
 
         if (lf->fields[FIM_CHFIELDS].value && strcmp(lf->fields[FIM_CHFIELDS].value, "") != 0) {
@@ -474,7 +472,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             free(aux_cha);
         }
 
-        cJSON_AddStringToObject(file_diff, "event", lf->fields[FIM_EVENT_TYPE_STR].value);
+        cJSON_AddStringToObject(file_diff, "event", lf->fields[FIM_EVENT_TYPE].value);
     }
 
     if (lf->program_name || lf->dec_timestamp) {
@@ -567,7 +565,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
         cJSON* decoder;
 
         // Dynamic fields, except for syscheck events
-        if (strcmp(lf->location, SYSCHECK) != 0) {
+        if (strcmp(extract_module_from_location(lf->location), SYSCHECK) != 0) {
             for (i = 0; i < lf->nfields; i++) {
                 if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);

@@ -39,7 +39,7 @@ void fim_process_scan_info(_sdb * sdb, const char * agent_id, fim_scan_event eve
 int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state);
 int fim_fetch_attributes(cJSON *new_attrs, cJSON *old_attrs, Eventinfo *lf);
 size_t fim_generate_comment(char * str, long size, const char * format, const char * a1, const char * a2);
-int fim_generate_alert(Eventinfo *lf, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
+int fim_generate_alert(Eventinfo *lf, syscheck_event_t event_type, cJSON *attributes, cJSON *old_attributes, cJSON *audit);
 int fim_process_alert(_sdb *sdb, Eventinfo *lf, cJSON *event);
 int decode_fim_event(_sdb *sdb, Eventinfo *lf);
 void fim_adjust_checksum(sk_sum_t *newsum, char **checksum);
@@ -235,7 +235,7 @@ static int setup_event_info(void **state) {
         return -1;
     if(lf->decoder_info->fields[FIM_ENTRY_TYPE] = strdup("entry_type"), lf->decoder_info->fields[FIM_ENTRY_TYPE] == NULL)
         return -1;
-    if(lf->decoder_info->fields[FIM_EVENT_TYPE_STR] = strdup("event_type"), lf->decoder_info->fields[FIM_EVENT_TYPE_STR] == NULL)
+    if(lf->decoder_info->fields[FIM_EVENT_TYPE] = strdup("event_type"), lf->decoder_info->fields[FIM_EVENT_TYPE] == NULL)
         return -1;
 
     *state = lf;
@@ -1316,6 +1316,7 @@ static void test_fim_generate_comment_invalid_format(void **state) {
 static void test_fim_generate_alert_full_alert(void **state) {
     fim_data_t *input = *state;
     int ret;
+    syscheck_event_t event_type = FIM_MODIFIED;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
@@ -1324,7 +1325,7 @@ static void test_fim_generate_alert_full_alert(void **state) {
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
     cJSON *array_it;
 
-    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE_STR].value);
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE].value);
 
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
@@ -1345,7 +1346,7 @@ static void test_fim_generate_alert_full_alert(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1415,6 +1416,7 @@ static void test_fim_generate_alert_full_alert(void **state) {
 static void test_fim_generate_alert_registry_key_alert(void **state) {
     fim_data_t *input = *state;
     int ret;
+    syscheck_event_t event_type = FIM_MODIFIED;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
@@ -1422,7 +1424,7 @@ static void test_fim_generate_alert_registry_key_alert(void **state) {
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
     cJSON *array_it;
 
-    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE_STR].value);
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE].value);
 
     input->lf->fields[FIM_FILE].value = strdup("HKEY_LOCAL_MACHINE\\software\\test");
     if (input->lf->fields[FIM_FILE].value == NULL)
@@ -1443,7 +1445,7 @@ static void test_fim_generate_alert_registry_key_alert(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, attributes, old_attributes, NULL);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, NULL);
 
     assert_int_equal(ret, 0);
 
@@ -1480,6 +1482,7 @@ static void test_fim_generate_alert_registry_key_alert(void **state) {
 static void test_fim_generate_alert_registry_value_alert(void **state) {
     fim_data_t *input = *state;
     int ret;
+    syscheck_event_t event_type = FIM_MODIFIED;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
@@ -1487,7 +1490,7 @@ static void test_fim_generate_alert_registry_value_alert(void **state) {
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
     cJSON *array_it;
 
-    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE_STR].value);
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE].value);
 
     if(input->lf->fields[FIM_FILE].value = strdup("HKEY_LOCAL_MACHINE\\software\\test"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
@@ -1515,7 +1518,7 @@ static void test_fim_generate_alert_registry_value_alert(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, attributes, old_attributes, NULL);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, NULL);
 
     assert_int_equal(ret, 0);
 
@@ -1549,6 +1552,7 @@ static void test_fim_generate_alert_registry_value_alert(void **state) {
 static void test_fim_generate_alert_type_not_modified(void **state) {
     fim_data_t *input = *state;
     int ret;
+    syscheck_event_t event_type = FIM_ADDED;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
@@ -1557,7 +1561,7 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
     cJSON *array_it;
 
-    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_ADDED], input->lf->fields[FIM_EVENT_TYPE_STR].value);
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_ADDED], input->lf->fields[FIM_EVENT_TYPE].value);
 
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
@@ -1572,7 +1576,7 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1627,6 +1631,7 @@ static void test_fim_generate_alert_type_not_modified(void **state) {
 static void test_fim_generate_alert_invalid_element_in_attributes(void **state) {
     fim_data_t *input = *state;
     int ret;
+    syscheck_event_t event_type = FIM_ADDED;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
@@ -1639,7 +1644,7 @@ static void test_fim_generate_alert_invalid_element_in_attributes(void **state) 
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM attribute set contains an item with no key.");
 
-    ret = fim_generate_alert(input->lf, attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, -1);
 }
@@ -1647,6 +1652,7 @@ static void test_fim_generate_alert_invalid_element_in_attributes(void **state) 
 static void test_fim_generate_alert_invalid_element_in_audit(void **state) {
     fim_data_t *input = *state;
     int ret;
+    syscheck_event_t event_type = FIM_ADDED;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
@@ -1659,7 +1665,7 @@ static void test_fim_generate_alert_invalid_element_in_audit(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "FIM audit set contains an item with no key.");
 
-    ret = fim_generate_alert(input->lf, attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, -1);
 }
@@ -1667,6 +1673,7 @@ static void test_fim_generate_alert_invalid_element_in_audit(void **state) {
 static void test_fim_generate_alert_null_mode(void **state) {
     fim_data_t *input = *state;
     int ret;
+    syscheck_event_t event_type = FIM_ADDED;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
@@ -1675,7 +1682,7 @@ static void test_fim_generate_alert_null_mode(void **state) {
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
     cJSON *array_it;
 
-    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_ADDED], input->lf->fields[FIM_EVENT_TYPE_STR].value);
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_ADDED], input->lf->fields[FIM_EVENT_TYPE].value);
 
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
@@ -1689,7 +1696,7 @@ static void test_fim_generate_alert_null_mode(void **state) {
 
     input->lf->fields[FIM_MODE].value = NULL;
 
-    ret = fim_generate_alert(input->lf, attributes, old_attributes, audit);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, audit);
 
     assert_int_equal(ret, 0);
 
@@ -1744,6 +1751,7 @@ static void test_fim_generate_alert_null_mode(void **state) {
 static void test_fim_generate_alert_null_audit(void **state) {
     fim_data_t *input = *state;
     int ret;
+    syscheck_event_t event_type = FIM_MODIFIED;
 
     cJSON *data = cJSON_GetObjectItem(input->event, "data");
     cJSON *attributes = cJSON_GetObjectItem(data, "attributes");
@@ -1751,7 +1759,7 @@ static void test_fim_generate_alert_null_audit(void **state) {
     cJSON *changed_attributes = cJSON_GetObjectItem(data, "changed_attributes");
     cJSON *array_it;
 
-    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE_STR].value);
+    os_strdup(SYSCHECK_EVENT_STRINGS[FIM_MODIFIED], input->lf->fields[FIM_EVENT_TYPE].value);
 
     if(input->lf->fields[FIM_FILE].value = strdup("/a/file"), input->lf->fields[FIM_FILE].value == NULL)
         fail();
@@ -1766,7 +1774,7 @@ static void test_fim_generate_alert_null_audit(void **state) {
         wm_strcat(&input->lf->fields[FIM_CHFIELDS].value, cJSON_GetStringValue(array_it), ',');
     }
 
-    ret = fim_generate_alert(input->lf, attributes, old_attributes, NULL);
+    ret = fim_generate_alert(input->lf, event_type, attributes, old_attributes, NULL);
 
     assert_int_equal(ret, 0);
 
@@ -1924,7 +1932,7 @@ static void test_fim_process_alert_added_success(void **state) {
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
@@ -2037,7 +2045,7 @@ static void test_fim_process_alert_modified_success(void **state) {
         "New sha256sum is : 'hash_sha256'\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_MOD);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
@@ -2118,7 +2126,7 @@ static void test_fim_process_alert_deleted_success(void **state) {
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_DELETED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_DEL);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
@@ -2317,7 +2325,7 @@ static void test_fim_process_alert_no_hard_links(void **state) {
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
@@ -2416,7 +2424,7 @@ static void test_fim_process_alert_no_mode(void **state) {
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
@@ -2513,7 +2521,7 @@ static void test_fim_process_alert_no_tags(void **state) {
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
     assert_null(input->lf->fields[FIM_TAG].value);
@@ -2611,7 +2619,7 @@ static void test_fim_process_alert_no_content_changes(void **state) {
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
     assert_null(input->lf->fields[FIM_DIFF].value);
@@ -2708,7 +2716,7 @@ static void test_fim_process_alert_no_changed_attributes(void **state) {
         "Mode: whodata\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
     assert_null(input->lf->fields[FIM_CHFIELDS].value);
@@ -2843,7 +2851,7 @@ static void test_fim_process_alert_no_old_attributes(void **state) {
         "New sha256sum is : 'hash_sha256'\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_MODIFIED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_MOD);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
@@ -2940,7 +2948,7 @@ static void test_fim_process_alert_no_audit(void **state) {
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
     /* Assert actual output */
-    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
+    assert_string_equal(input->lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
     assert_string_equal(input->lf->decoder_info->name, FIM_NEW);
     assert_int_equal(input->lf->decoder_info->id, 0);
 }
@@ -3050,7 +3058,7 @@ static void test_decode_fim_event_type_event(void **state) {
         "Mode: whodata\n"
         "Changed attributes: size,permission,uid,user_name,gid,group_name,mtime,inode,md5,sha1,sha256\n");
 
-    assert_string_equal(lf->fields[FIM_EVENT_TYPE_STR].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
+    assert_string_equal(lf->fields[FIM_EVENT_TYPE].value, SYSCHECK_EVENT_STRINGS[FIM_ADDED]);
     assert_string_equal(lf->decoder_info->name, FIM_NEW);
     assert_int_equal(lf->decoder_info->id, 0);
 

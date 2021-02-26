@@ -71,7 +71,7 @@ DynamicField df[] = {
     [FIM_REGISTRY_VALUE_NAME] = {.key = "fim_registry_value_name", .value = "value_name"},
     [FIM_REGISTRY_VALUE_TYPE] = {.key = "fim_registry_value_type", .value = "binary"},
     [FIM_ENTRY_TYPE] = {.key = "fim_entry_type", .value = "registry"},
-    [FIM_EVENT_TYPE_STR] = {.key = "fim_event_type", .value = "modified"}
+    [FIM_EVENT_TYPE] = {.key = "fim_event_type", .value = "modified"}
 };
 
 
@@ -81,7 +81,6 @@ DynamicField df[] = {
 static int test_setup(void **state) {
     Eventinfo *lf = NULL;
     os_calloc(1, sizeof(Eventinfo), lf);
-    os_calloc(FIM_NFIELDS, sizeof(DynamicField), lf->fields);
     os_calloc(2, sizeof(wlabel_t), lf->labels);
     os_calloc(3, sizeof(char *), lf->last_events);
     os_calloc(1, sizeof(RuleInfo), lf->generated_rule);
@@ -107,29 +106,25 @@ static int test_setup(void **state) {
     lf->full_log = "full_log";
     lf->comment = "comment";
     lf->hostname = "hostname";
-
-    char aux1[12];
-
-    for (int i = 0; i < lf->nfields; i++) {
-        lf->fields[i].value = df[i].value;
-        lf->fields[i].key = df[i].key;
-    }
+    lf->fields = df;
 
     test_mode = 1;
     *state = lf;
-    return OS_SUCCESS;
+
+    return 0;
 }
 
 static int test_teardown(void **state) {
     Eventinfo *lf = *state;
 
-    os_free(lf->fields);
     os_free(lf->labels);
     os_free(lf->last_events);
     os_free(lf->generated_rule);
     os_free(lf);
 
-    return OS_SUCCESS;
+    test_mode = 0;
+
+    return 0;
 }
 
 // Tests

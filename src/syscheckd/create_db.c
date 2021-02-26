@@ -35,7 +35,7 @@ static int _base_line = 0;
 
 static fim_state_db _db_state = FIM_STATE_DB_EMPTY;
 
-static const char *FIM_EVENT_TYPE[] = {
+static const char *FIM_EVENT_TYPE_ARRAY[] = {
     "added",
     "deleted",
     "modified"
@@ -1354,7 +1354,7 @@ cJSON *fim_json_event(const fim_entry *new_data,
     cJSON_AddNumberToObject(data, "version", 2.0);
 
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[evt_data->mode]);
-    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[evt_data->type]);
+    cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE_ARRAY[evt_data->type]);
     cJSON_AddNumberToObject(data, "timestamp", new_data->file_entry.data->last_event);
 
 #ifndef WIN32

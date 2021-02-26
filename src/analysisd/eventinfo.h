@@ -240,4 +240,13 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
 #define add_lastevt(x, y, z) os_realloc(x, sizeof(char *) * (y + 2), x); \
                              os_strdup(z, x[y]); \
                              x[y + 1] = NULL;
+
+/**
+ * @brief Function to extract the module name from eventinfo location field
+ *
+ * @param location location field from eventinfo structure
+ * @return returns the name of the module from which the event is coming from
+ */
+char *extract_module_from_location(const char *location);
+
 #endif /* EVTINFO_H */
