@@ -6048,16 +6048,15 @@ int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
     int result = OS_INVALID;
     char * next;
     const char delim[] = " ";
-    char *savedptr = NULL;
+    char *tail = NULL;
 
-    next = strtok_r(input, delim, &savedptr);
+    next = strtok_r(input, delim, &tail);
 
     if (!next){
         snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cve action");
     }
     else if (strcmp(next, "insert") == 0) {
-        next = strtok_r(NULL, delim, &savedptr);
-        result = wdb_parse_agents_insert_vuln_cve(wdb, next, output);
+        result = wdb_parse_agents_insert_vuln_cve(wdb, tail, output);
     }
     else if (strcmp(next, "clear") == 0) {
         result = wdb_parse_agents_clear_vuln_cve(wdb, output);
