@@ -33,10 +33,6 @@
     (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
      CHECK_MTIME | CHECK_INODE)
 
-typedef struct {
-    char *path;
-    int pending_removal;
-} whodata_directory_t;
 
 static char *directories[] = { "/testdir0", "/testdir1", "/testdir2", "/testdir3", "/etc", NULL };
 static char *symbolic_links[] = { NULL, NULL, NULL, NULL, NULL, NULL };

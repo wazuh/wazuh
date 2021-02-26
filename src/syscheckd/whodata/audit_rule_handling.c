@@ -18,11 +18,6 @@
 #define static
 #endif
 
-typedef struct {
-    char *path;
-    int pending_removal;
-} whodata_directory_t;
-
 static OSList *whodata_directories;
 static pthread_mutex_t rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 

@@ -22,7 +22,6 @@
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
-#define AUDIT_SOCKET DEFAULTDIR "/queue/sockets/audit"
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 
@@ -47,12 +46,11 @@ unsigned int count_reload_retries;
 volatile int audit_db_consistency_flag = 0;
 volatile int audit_thread_active;
 
+#ifdef ENABLE_AUDIT
 typedef struct _audit_data_s {
     int socket;
     audit_mode mode;
 } audit_data_t;
-
-#ifdef ENABLE_AUDIT
 
 /**
  * @brief Creates the necessary threads to process audit events

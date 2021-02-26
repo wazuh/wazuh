@@ -94,7 +94,7 @@ int audit_get_rule_list(int fd) {
 int audit_print_reply(struct audit_reply *rep) {
     char *key = NULL;
     char *path = NULL;
-    int perm;
+    int perm = 0;
     char perms[5] = {0};
     unsigned int i, offset = 0;
 
