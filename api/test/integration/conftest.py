@@ -117,12 +117,6 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
         return True
 
 
-def create_tmp_folders():
-    """Create basic temporal structure for integration tests."""
-    os.makedirs(os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager'), exist_ok=True)
-    os.makedirs(os.path.join(current_path, 'env', 'configurations', 'tmp', 'agent'), exist_ok=True)
-
-
 def general_procedure(module: str):
     """Copy the configurations files of the specified module to temporal folder.
     The temporal folder will be processed in the environments's entrypoints
@@ -198,7 +192,8 @@ def enable_white_mode():
 def clean_tmp_folder():
     """Remove temporal folder used te configure the environment and set RBAC mode to Black.
     """
-    shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp'), ignore_errors=True)
+    shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager'), ignore_errors=True)
+    shutil.rmtree(os.path.join(current_path, 'env', 'configurations', 'tmp', 'agent'), ignore_errors=True)
 
 
 def generate_rbac_pair(index: int, permission: dict):
@@ -298,7 +293,7 @@ def api_test(request):
     else:
         rbac_mode = None
         module = test_filename[1]
-    create_tmp_folders()
+    clean_tmp_folder()
     general_procedure(module)
 
     if rbac_mode:
