@@ -1026,31 +1026,36 @@ CURL := curl -so
 DEPS_VERSION = 10
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
-ifeq (${PREFIX},/var/ossec)
-	# Download the Python sources if we are building for any other OS.
-ifeq (${uname_S},Linux)
+ifeq (${TARGET}, winagent)
+PRECOMPILED_OS:= windows
+else
+PRECOMPILED_OS:= $(shell echo ${uname_S} | tr A-Z a-z)
 cpu_arch := ${uname_P}
 ifneq (,$(filter ${cpu_arch},unknown Unknown))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
 endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
-PRECOMPILED_RES := linux/amd64
+PRECOMPILED_ARCH := /amd64
 else
 ifneq (,$(filter ${cpu_arch},i386 i686))
-PRECOMPILED_RES := linux/i386
+PRECOMPILED_ARCH := /i386
 else
 ifneq (,$(filter ${cpu_arch},aarch64 arm64))
-PRECOMPILED_RES := linux/aarch64
+PRECOMPILED_ARCH := /aarch64
 else
 ifneq (,$(filter ${cpu_arch},armv8l armv7l arm32 armhf))
-PRECOMPILED_RES := linux/arm32
-endif
+PRECOMPILED_ARCH := /arm32
+else
+PRECOMPILED_ARCH := /${cpu_arch}
 endif
 endif
 endif
 endif
 endif
 
+ifeq (${PREFIX},/var/ossec)
+PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
+endif
 
 # Agent dependencies
 EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist
@@ -1094,9 +1099,9 @@ endif
 ifneq (,$(PRECOMPILED_RES))
 external-precompiled/%.tar.gz:
 	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
-	-cd external && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
-	-cd external && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
-	-rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
+	-cd external && $(GUNZIP) $(patsubst external-precompiled/%,%,$@)
+	-cd external && $(TAR) $(patsubst external-precompiled/%.gz,%,$@)
+	-rm external/$(patsubst external-precompiled/%.gz,%,$@)
 endif
 
 
