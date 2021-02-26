@@ -117,7 +117,7 @@ elseif(UNIX AND NOT APPLE)
     target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 elseif(APPLE)
-  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/libplist-2.0.a)
+  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(DISABLE_SHARED)
