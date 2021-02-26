@@ -249,7 +249,7 @@ public:
                     if (GatewayFileFields::Size == fields.size() &&
                         fields.at(GatewayFileFields::Iface).compare(ifName) == 0)
                     {
-                        const auto address { static_cast<uint32_t>(std::stoi(fields.at(GatewayFileFields::Gateway), 0, 16)) };
+                        const auto address { static_cast<uint32_t>(std::stol(fields.at(GatewayFileFields::Gateway), 0, 16)) };
                         m_metrics = fields.at(GatewayFileFields::Metric);
 
                         if (address)

@@ -103,7 +103,7 @@ endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")
 set(SYSCHECK_OP_BASE_FLAGS "-Wl,--wrap,rmdir_ex -Wl,--wrap,wreaddir -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
-                            -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,getgrgid \
+                            -Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,getpwuid_r -Wl,--wrap,w_getgrgid \
                             -Wl,--wrap,wstr_split -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,sysconf -Wl,--wrap,getpid")
 if(${TARGET} STREQUAL "winagent")
@@ -144,6 +144,10 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wra
                                 -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
                                 -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
 endif()
+
+list(APPEND shared_tests_names "test_keys")
+list(APPEND shared_tests_flags "-Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Create \
+                                -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

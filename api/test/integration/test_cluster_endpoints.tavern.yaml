@@ -1228,7 +1228,7 @@ stages:
               - connection: !anystr
                 ipv6: !anystr
                 port: !anystr
-                protocol: !anystr
+                protocol: !anylist
                 queue_size: !anystr
           failed_items: []
           total_affected_items: 1
@@ -1404,7 +1404,6 @@ stages:
               type: !anystr
               max_agents: !anystr
               openssl_support: !anystr
-              ruleset_version: !anystr
               tz_offset: !anystr
               tz_name: !anystr
           failed_items: []
@@ -1560,12 +1559,12 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters -> tag=ossec-analysisd, limit=1 {node_id}
+  - name: Read logs with filters -> tag=wazuh-analysisd, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        tag: ossec-analysisd
+        tag: wazuh-analysisd
         limit: 1
     response:
       status_code: 200
@@ -1578,12 +1577,12 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters -> tag=ossec-syscheckd, limit=2 {node_id}
+  - name: Read logs with filters -> tag=wazuh-syscheckd, limit=2 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        tag: ossec-syscheckd
+        tag: wazuh-syscheckd
         limit: 2
     response:
       status_code: 200
@@ -1592,9 +1591,9 @@ stages:
         data:
           affected_items:
             - <<: *cluster_log
-              tag: ossec-syscheckd
+              tag: wazuh-syscheckd
             - <<: *cluster_log
-              tag: ossec-syscheckd
+              tag: wazuh-syscheckd
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -1618,19 +1617,19 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters by query (tag=ossec-syscheckd, level=info) {node_id}
+  - name: Read logs with filters by query (tag=wazuh-syscheckd, level=info) {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
-        q: tag=ossec-syscheckd;level=info
+        q: tag=wazuh-syscheckd;level=info
     response:
       status_code: 200
       verify_response_with:
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "tag"
-            expected_values: "ossec-syscheckd"
+            expected_values: "wazuh-syscheckd"
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "level"
@@ -1726,7 +1725,7 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response: &unexisting_node
+    response:
       status_code: 200
       json:
         error: 1

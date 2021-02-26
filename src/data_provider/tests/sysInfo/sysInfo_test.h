@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 19, 2020.
  *
  * This program is free software; you can redistribute it
@@ -10,10 +10,12 @@
  */
 #ifndef _SYSINFO_TEST_H
 #define _SYSINFO_TEST_H
+
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SysInfoTest : public ::testing::Test {
+class SysInfoTest : public ::testing::Test
+{
 
 protected:
 
