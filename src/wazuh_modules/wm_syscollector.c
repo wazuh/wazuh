@@ -107,11 +107,7 @@ void* wm_sys_main(wm_sys_t *sys) {
 #ifdef __hpux
         mtinfo(WM_SYS_LOGTAG, "Not supported in HP-UX.");
 #else
-#ifdef __sun
-        mterror(WM_SYS_LOGTAG, "Can't load syscollector. %s", dlerror());
-#else
         mterror(WM_SYS_LOGTAG, "Can't load syscollector.");
-#endif
 #endif
         pthread_exit(NULL);
     }
