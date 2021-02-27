@@ -61,7 +61,6 @@ int main(int /*argc*/, const char** /*argv[]*/)
         }
     };
 
-    const std::chrono::milliseconds timeout{5000};
     const auto spInfo{ std::make_shared<SysInfo>() };
     RemoteSync::initialize(logErrorFunction);
     DBSync::initialize(logErrorFunction);
