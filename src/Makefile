@@ -130,6 +130,7 @@ DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 ifneq (${TARGET},winagent)
 		DEFINES+=-D${uname_S}
 ifeq (${uname_S},Linux)
+		PRECOMPILED_OS:=linux
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
@@ -156,9 +157,11 @@ ifeq (${uname_S},AIX)
 		AR_LDFLAGS+=-pthread
 		PATH:=${PATH}:/usr/vac/bin
 		CC=gcc
+		PRECOMPILED_OS:=aix
 else
 ifeq (${uname_S},SunOS)
 SOLARIS_CMAKE_OPTS=-DSOLARIS=ON
+PRECOMPILED_OS:=solaris
 ifneq ($(uname_R),5.10)
 		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
 		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
@@ -196,6 +199,7 @@ ifeq (${uname_S},Darwin)
 		AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
 		SHARED=dylib
 		OSSEC_LIBS+=-framework Security
+		PRECOMPILED_OS:=darwin
 else
 ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
@@ -206,6 +210,7 @@ ifeq (${uname_S},FreeBSD)
 		AR_LDFLAGS+=-pthread
 		AR_LDFLAGS+=-L/usr/local/lib
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+		PRECOMPILED_OS:=freebsd
 else
 ifeq (${uname_S},NetBSD)
 		DEFINES+=-DNetBSD
@@ -214,6 +219,7 @@ ifeq (${uname_S},NetBSD)
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+=-pthread
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
+		PRECOMPILED_OS:=netbsd
 else
 ifeq (${uname_S},OpenBSD)
 		DEFINES+=-DOpenBSD
@@ -224,6 +230,7 @@ ifeq (${uname_S},OpenBSD)
 		AR_LDFLAGS+=-pthread
 		AR_LDFLAGS+=-L/usr/local/lib
 		AR_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../../lib'
+		PRECOMPILED_OS:=openbsd
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -243,6 +250,7 @@ endif
 		PATH:=${PATH}:/usr/local/bin
 		CC=gcc
 		INSTALL=/usr/local/coreutils/bin/install
+		PRECOMPILED_OS:=hpux
 else
 	    # Unknow platform
 endif # HPUX
@@ -259,6 +267,7 @@ else
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
 		AR_LDFLAGS+=-pthread
+		PRECOMPILED_OS:=windows
 endif # winagent
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -1026,10 +1035,7 @@ CURL := curl -so
 DEPS_VERSION = 10
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
-ifeq (${TARGET}, winagent)
-PRECOMPILED_OS:= windows
-else
-PRECOMPILED_OS:= $(shell echo ${uname_S} | tr A-Z a-z)
+ifneq (${TARGET}, winagent)
 cpu_arch := ${uname_P}
 ifneq (,$(filter ${cpu_arch},unknown Unknown))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
