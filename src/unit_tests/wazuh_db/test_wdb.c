@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
- * September, 2020.
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * March, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -405,10 +405,20 @@ void test_wdb_exec_stmt_error(void **state) {
 
 /* Tests wdb_exec_stmt_silent */
 
-void test_wdb_exec_stmt_silent_success(void **state) {
+void test_wdb_exec_stmt_silent_success_sqlite_done(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_sqlite3_step_call(SQLITE_DONE);
+
+    int result = wdb_exec_stmt_silent(*data->wdb->stmt);
+
+    assert_int_equal(result, OS_SUCCESS);
+}
+
+void test_wdb_exec_stmt_silent_success_sqlite_row(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_sqlite3_step_call(SQLITE_ROW);
 
     int result = wdb_exec_stmt_silent(*data->wdb->stmt);
 
@@ -502,7 +512,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_invalid_statement, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_sized_error, setup_wdb, teardown_wdb),
         //wdb_exec_stmt_silent
-        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_success, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_success_sqlite_done, setup_wdb, teardown_wdb),
+        cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_success_sqlite_row, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_exec_stmt_silent_invalid, setup_wdb, teardown_wdb),
         //wdb_init_stmt_in_cache
         cmocka_unit_test_setup_teardown(test_wdb_init_stmt_in_cache_success, setup_wdb, teardown_wdb),
