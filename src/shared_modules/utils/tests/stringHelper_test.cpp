@@ -196,3 +196,12 @@ TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectFirstText)
 {
     EXPECT_EQ(Utils::substrOnFirstOccurrence("hello         world", "hello"), "");
 }
+
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacter)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("hello\nworld", "\n"), "hello");
+}
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacterEmptyResult)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("\n", "\n"), "");
+}
