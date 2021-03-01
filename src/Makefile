@@ -1079,16 +1079,6 @@ VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
 .PHONY: deps
 deps: $(EXTERNAL_TAR)
 
-external/$(CPYTHON).tar.gz:
-ifneq (,$(PRECOMPILED_RES))
-	$(CURL) $@ $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external/%,%,$@)
-else
-	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
-endif
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
-
 ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
 	test -d $(patsubst %.tar.gz,%,$@) ||\
