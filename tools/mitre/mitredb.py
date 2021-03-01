@@ -37,21 +37,49 @@ class Metadata(Base):
     name = Column('name', String, nullable=False)
     description = Column('description', String)
 
-    def __init__(self, version, name, description) :
+    def __init__(self, version="", name="", description="") :
         self.version = version
         self.name = name
         self.description = description
 
 
-def parse_json(pathfile, session):
+def parse_json(pathfile, session, database):
     """
     Parse enterprise-attack.json and fill mitre.db's tables.
 
     :param pathfile: Path directory where enterprise-attack.json file is
     :param session: SQLAlchemy session
+    :param database: path to mitre.db
     :return:
     """
-    pass
+    try:
+        metadata = Metadata()
+        with open(pathfile) as json_file:
+            datajson = json.load(json_file)
+            metadata.version = datajson['spec_version']
+            for data_object in datajson['objects']:
+                if data_object['type'] == 'identity':
+                    metadata.name = data_object['name']
+                elif data_object['type'] == 'marking-definition':
+                    metadata.description = data_object['definition']['statement']
+        session.add(metadata)
+        session.commit()
+
+    except TypeError as t_e:
+        print(t_e)
+        print("Deleting " + database)
+        os.remove(database)
+        sys.exit(1)
+    except KeyError as k_e:
+        print(k_e)
+        print("Deleting " + database)
+        os.remove(database)
+        sys.exit(1)
+    except NameError as n_e:
+        print(n_e)
+        print("Deleting " + database)
+        os.remove(database)
+        sys.exit(1)
 
 
 def find(name, path):
@@ -86,7 +114,7 @@ def main(database=None):
     Base.metadata.create_all(engine)
 
     # Parse enterprise-attack.json file:
-    parse_json(pathfile, session)
+    parse_json(pathfile, session, database)
 
     # User and group permissions
     os.chmod(database, 0o660)
