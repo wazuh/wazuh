@@ -457,6 +457,9 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
             }
 
             else if (strcasecmp(elements[j]->element, xml_nullfield) == 0) {
+
+                /* clear default value */
+                pi->flags = (pi->flags) & (~JSON_NULL_MASK);
                 if (strcmp(elements[j]->content, "discard") == 0) {
                     pi->flags |= DISCARD;
                 } else if (strcmp(elements[j]->content, "empty") == 0) {
@@ -464,8 +467,8 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                 } else if (strcmp(elements[j]->content, "string") == 0) {
                     pi->flags |= SHOW_STRING;
                 } else {
-                    smerror(log_msg, INVALID_ELEMENT, elements[j]->element, elements[j]->content);
-                    goto cleanup;
+                    smwarn(log_msg, ANALYSISD_INV_OPT_VALUE_DEFAULT, elements[j]->content, xml_nullfield, pi->name);
+                    pi->flags |= JSON_NULL_DEFAULT;
                 }
             }
 
