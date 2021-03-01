@@ -180,9 +180,9 @@ class WazuhDeamonProtocol:
         json_msg = json.loads(msg)
         # Get only the payload
         if json_msg['error']:
-            error_msg = ['\n\t{0}'.format(i) for i in json_msg['message']]
+            error_msg = json_msg['message']
             error_n = json_msg['error']
-            raise ValueError(str(error_n) + ''.join(error_msg))
+            raise ValueError(f'{error_n}: {error_msg}')
         data = json_msg['data']
         return data
 
@@ -259,13 +259,13 @@ class WazuhLogtest:
         recv_packet = self.socket.send(request)
 
         # Get logtest reply
+        logging.debug(f'Reply: %s\n', str(recv_packet,'utf-8'))
         reply = self.protocol.unwrap(recv_packet)
-        logging.debug('Reply: %s\n', reply)
 
         if reply['codemsg'] < 0:
             error_msg = ['\n\t{0}'.format(i) for i in reply['messages']]
             error_n = reply['codemsg']
-            raise ValueError(str(error_n) + ''.join(error_msg))
+            raise ValueError(f'{error_n}: {"".join(error_msg)}')
 
         # Save the token
         self.last_token = reply['token']
