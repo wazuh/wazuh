@@ -1095,9 +1095,9 @@ endif
 ifneq (,$(PRECOMPILED_RES))
 external-precompiled/%.tar.gz:
 	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
-	-cd external && $(GUNZIP) $(patsubst external-precompiled/%,%,$@)
-	-cd external && $(TAR) $(patsubst external-precompiled/%.gz,%,$@)
-	-rm external/$(patsubst external-precompiled/%.gz,%,$@)
+	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
+	-cd external && test -e $(patsubst external-precompiled/%.gz,%,$@) && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
+	-test -e external/$(patsubst external-precompiled/%.gz,%,$@) && rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
 endif
 
 
