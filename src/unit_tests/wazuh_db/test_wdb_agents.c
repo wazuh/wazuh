@@ -1,3 +1,12 @@
+/*
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * March, 2021.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -42,7 +51,7 @@ static int test_teardown(void **state){
 
 /* Tests wdb_agents_insert_vuln_cve */
 
-void test_wdb_agents_insert_vuln_cve_fail(void **state)
+void test_wdb_agents_insert_vuln_cve_statement_init_fail(void **state)
 {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -90,7 +99,7 @@ void test_wdb_agents_insert_vuln_cve_success(void **state)
 
 /* Tests wdb_agents_clear_vuln_cve */
 
-void test_wdb_agents_clear_vuln_cve_fail(void **state)
+void test_wdb_agents_clear_vuln_cve_statement_init_fail(void **state)
 {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -123,10 +132,10 @@ int main()
 {
     const struct CMUnitTest tests[] = {
         /* Tests wdb_agents_insert_vuln_cve */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cve_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cve_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cve_success, test_setup, test_teardown),
         /* Tests wdb_agents_clear_vuln_cve */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cve_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cve_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cve_success, test_setup, test_teardown)
       };
 
