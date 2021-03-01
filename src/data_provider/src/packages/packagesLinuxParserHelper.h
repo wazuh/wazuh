@@ -140,7 +140,7 @@ namespace PackageLinuxHelper
             it = info.find("Description");
             if (it != info.end())
             {
-                description = it->second;
+                description = Utils::substrOnFirstOccurrence(it->second, "\n");
             }
 
             ret["priority"]     = priority;
