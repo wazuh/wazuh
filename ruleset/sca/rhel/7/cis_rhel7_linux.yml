@@ -833,7 +833,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
       - 'c:rpm -q mcstrans -> r:package mcstrans is not installed'
 
@@ -1087,9 +1087,9 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: none
     rules:
-      - 'c:rpm -q xorg-x11-server* -> r:package xorg-x11 is not installed'
+      - 'c:rpm -qa xorg-x11-server* -> r:^xorg-x11-server'
 
 # 2.2.3 Ensure Avahi Server is not installed (Automated)
   - id: 4557
@@ -2405,7 +2405,6 @@ checks:
     description: "Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp file tracks all currently logged in users. All audit records will be tagged with the identifier \"session.\" The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier \"logins.\"."
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules. Example: vi /etc/audit/rules.d/logins.rules and add the following lines:   -w /var/run/utmp -p wa -k session   -w /var/log/wtmp -p wa -k logins   -w /var/log/btmp -p wa -k logins . Notes: The last command can be used to read /var/log/wtmp ( last with no parameters) and /var/run/utmp ( last -f /var/run/utmp ) Reloading the auditd config to set active settings may require a system reboot."
-    compliance:
     compliance:
       - cis: ["4.1.8"]
       - cis_csc: ["4.9","16.11","16.13"]
