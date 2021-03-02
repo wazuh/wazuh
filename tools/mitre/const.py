@@ -8,13 +8,6 @@
 
 ### Table
 
-# Groups
-GROUPS = 'Groups'
-# Mitigations
-MITIGATION = 'Mitigations'
-# Software
-SOFTWARE = 'Software'
-
 ID_t= 'id'
 VERSION_t= 'version'
 NAME_t= 'name'
@@ -49,7 +42,6 @@ DESCRIPTION_j= 'description'
 CREATED_j= 'created'
 MODIFIED_j= 'modified'
 MITRE_VERSION_j= 'x_mitre_version'
-REVOKED_j= 'revoked'
 SOURCE_REF_j='source_ref'
 RELATIONSHIP_j= 'relationship'
 RELATIONSHIP_TYPE_j= 'relationship_type'

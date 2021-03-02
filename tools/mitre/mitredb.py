@@ -37,7 +37,7 @@ class Metadata(Base):
 
     version = Column(const.VERSION_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
-    description = Column(const.DESCRIPTION_t, String)
+    description = Column(const.DESCRIPTION_t, String, default=None)
 
     def __init__(self, version="", name="", description="") :
         self.version = version
@@ -150,17 +150,21 @@ def parse_table_(function, data_object):
     table = function()
     table.Id = data_object[const.ID_j]
     table.name = data_object[const.NAME_j]
+
     if const.DESCRIPTION_j in data_object:
         table.description = data_object[const.DESCRIPTION_j]
 
-    table.created_time = datetime.strptime(data_object[const.CREATED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
-    table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+    if const.CREATED_j in data_object:
+        table.created_time = datetime.strptime(data_object[const.CREATED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+
+    if const.MODIFIED_j in data_object:
+        table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
 
     if const.MITRE_VERSION_j in data_object:
         table.mitre_version = data_object[const.MITRE_VERSION_j]
 
     if const.DEPRECATED_j in data_object:
-        table.deprecated = True
+        table.deprecated = data_object[const.DEPRECATED_j]
 
     return table
 
@@ -214,7 +218,11 @@ def parse_json(pathfile, session, database):
                     software = parse_table_(Software, data_object)
                     session.add(software)
                     session.commit()
-                elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
+
+        with open(pathfile) as json_file:
+            datajson = json.load(json_file)
+            for data_object in datajson[const.OBJECT_j]:
+                if data_object[const.TYPE_j] == const.RELATIONSHIP_j:
                     parse_json_relationships(data_object, session)
 
         session.add(metadata)
