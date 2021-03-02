@@ -42,10 +42,8 @@ PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
-OSSEC_GROUP?=ossec
-OSSEC_USER?=ossec
-OSSEC_USER_MAIL?=ossecm
-OSSEC_USER_REM?=ossecr
+OSSEC_GROUP?=wazuh
+OSSEC_USER?=wazuh
 SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
@@ -123,9 +121,7 @@ CLEANFULL?=no
 DEFINES=-DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
 DEFINES+=-DUSER=\"${OSSEC_USER}\"
-DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
-DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 
 ifneq (${TARGET},winagent)
 		DEFINES+=-D${uname_S}
@@ -594,10 +590,8 @@ help: failtarget
 	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "User options: "
-	@echo "   make OSSEC_GROUP=ossec       Set ossec group"
-	@echo "   make OSSEC_USER=ossec        Set ossec user"
-	@echo "   make OSSEC_USER_MAIL=ossecm  Set ossec user mail"
-	@echo "   make OSSEC_USER_REM=ossecr   Set ossec user rem"
+	@echo "   make OSSEC_GROUP=wazuh       Set wazuh group"
+	@echo "   make OSSEC_USER=wazuh        Set wazuh user"
 	@echo
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=yes"
@@ -619,8 +613,6 @@ settings:
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:         ${OSSEC_USER}"
-	@echo "    OSSEC_USER_MAIL:    ${OSSEC_USER_MAIL}"
-	@echo "    OSSEC_USER_REM:     ${OSSEC_USER_REM}"
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:          ${USE_GEOIP}"

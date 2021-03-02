@@ -675,10 +675,8 @@ InstallCommon()
 {
 
     PREFIX='/var/ossec'
-    OSSEC_GROUP='ossec'
-    OSSEC_USER='ossec'
-    OSSEC_USER_MAIL='ossecm'
-    OSSEC_USER_REM='ossecr'
+    OSSEC_GROUP='wazuh'
+    OSSEC_USER='wazuh'
     INSTALL="install"
 
     if [ ${INSTYPE} = 'server' ]; then
@@ -704,7 +702,7 @@ InstallCommon()
         INSTALL="/opt/freeware/bin/install"
     fi
 
-    ./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX} ${INSTYPE}
+    ./init/adduser.sh ${OSSEC_USER} ${OSSEC_GROUP} ${PREFIX} ${INSTYPE}
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
@@ -990,7 +988,7 @@ InstallLocal()
     ${INSTALL} -m 750 -o root -g ${OSSEC_GROUP} ../integrations/virustotal ${PREFIX}/integrations/virustotal.py
     touch ${PREFIX}/logs/integrations.log
     chmod 640 ${PREFIX}/logs/integrations.log
-    chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
+    chown ${OSSEC_USER}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
@@ -1047,7 +1045,7 @@ InstallServer()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-remoted ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-authd ${PREFIX}/bin
 
-    ${INSTALL} -d -m 0770 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-groups
 
     if [ ! -f ${PREFIX}/queue/agents-timestamp ]; then
