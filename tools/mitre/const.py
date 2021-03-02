@@ -8,8 +8,6 @@
 
 ### Table
 
-# Global
-OBJECT_j= 'objects'
 # Groups
 GROUPS = 'Groups'
 # Mitigations
@@ -31,8 +29,9 @@ DEPRECATED_t='deprecated'
 
 # Global
 TYPE_j= 'type'
+OBJECT_j= 'objects'
 # Groups
-INSTRUSION_SET_j= 'intrusion-set'
+INTRUSION_SET_j= 'intrusion-set'
 # Mitigations
 COURSE_OF_ACTION_j= 'course-of-action'
 # Software
@@ -40,6 +39,11 @@ MALWARE_j= 'malware'
 TOOL_j= 'tool'
 
 ID_j= 'id'
+VERSION_j= 'spec_version'
+IDENTITY_j= 'identity'
+MARKING_DEFINITION_j= 'marking-definition'
+DEFINITION_j= 'definition'
+STATEMENT_j= 'statement'
 NAME_j= 'name'
 DESCRIPTION_j= 'description'
 CREATED_j= 'created'
@@ -47,6 +51,7 @@ MODIFIED_j= 'modified'
 MITRE_VERSION_j= 'x_mitre_version'
 REVOKED_j= 'revoked'
 SORUCE_REF_j='source_ref'
+RELATIONSHIP_j= 'relationship'
 RELATIONSHIP_TYPE_j= 'relationship_type'
 REVOKED_BY_j= "revoked-by"
 TARGET_REF_j= 'target_ref'

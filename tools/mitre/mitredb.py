@@ -61,14 +61,14 @@ class Groups(Base):
 
     Id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
-    description = Column(const.DESCRIPTION_t, String)
-    created_time = Column(const.CREATED_t, DateTime)
-    modified_time = Column(const.MODIFIED_t, DateTime)
-    mitre_version = Column(const.MITRE_VERSION_t, String)
-    revoked_by = Column(const.REVOKED_BY_t, String)
-    deprecated = Column(const.DEPRECATED_t, Boolean)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+    mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
+    revoked_by = Column(const.REVOKED_BY_t, String, default=None)
+    deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
-    def __init__(self, Id="", name="", description="", created_time="", modified_time="", mitre_version="", revoked_by="", deprecated="") :
+    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
         self.Id = Id
         self.name = name
         self.description = description
@@ -95,14 +95,14 @@ class Software(Base):
 
     Id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
-    description = Column(const.DESCRIPTION_t, String)
-    created_time = Column(const.CREATED_t, DateTime)
-    modified_time = Column(const.MODIFIED_t, DateTime)
-    mitre_version = Column(const.MITRE_VERSION_t, String)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+    mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
     revoked_by = Column(const.REVOKED_BY_t, String)
-    deprecated = Column(const.DEPRECATED_t, Boolean)
+    deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
-    def __init__(self, Id="", name="", description="", created_time="", modified_time="", mitre_version="", revoked_by="", deprecated="") :
+    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
         self.Id = Id
         self.name = name
         self.description = description
@@ -129,14 +129,14 @@ class Mitigations(Base):
 
     Id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
-    description = Column(const.DESCRIPTION_t, String)
-    created_time = Column(const.CREATED_t, DateTime)
-    modified_time = Column(const.MODIFIED_t, DateTime)
-    mitre_version = Column(const.MITRE_VERSION_t, String)
-    revoked_by = Column(const.REVOKED_BY_t, String)
-    deprecated = Column(const.DEPRECATED_t, Boolean)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+    mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
+    revoked_by = Column(const.REVOKED_BY_t, String, default=None)
+    deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
-    def __init__(self, Id="", name="", description="", created_time="", modified_time="", mitre_version="", revoked_by="", deprecated="") :
+    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
         self.Id = Id
         self.name = name
         self.description = description
@@ -146,51 +146,41 @@ class Mitigations(Base):
         self.revoked_by = revoked_by
         self.deprecated = deprecated
 
-def parse_table_(function, pathfile, session):
-    with open(pathfile) as json_file:
-        datajson = json.load(json_file)
-        for data_object in datajson[const.OBJECT_j]:
-            if function.__name__ == const.GROUPS:
-                if data_object[const.TYPE_j] != const.INSTRUSION_SET_j:
-                    continue
-            elif function.__name__ == const.MITIGATION:
-                if data_object[const.TYPE_j] != const.COURSE_OF_ACTION_j:
-                    continue
-            elif function.__name__ == const.SOFTWARE:
-                if data_object[const.TYPE_j] != const.MALWARE_j and data_object[const.TYPE_j] != const.TOOL_j:
-                    continue
-            else:
-                continue
+def parse_table_(function, data_object):
+    table = function()
+    table.Id = data_object[const.ID_j]
+    table.name = data_object[const.NAME_j]
+    if const.DESCRIPTION_j in data_object:
+        table.description = data_object[const.DESCRIPTION_j]
 
-            table = function()
-            table.Id = data_object[const.ID_j]
-            table.name = data_object[const.NAME_j]
-            if const.DESCRIPTION_j in data_object:
-                table.description = data_object[const.DESCRIPTION_j]
-            else:
-                table.description = None
+    table.created_time = datetime.strptime(data_object[const.CREATED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+    table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
 
-            table.created_time = datetime.strptime(data_object[const.CREATED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
-            table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+    if const.MITRE_VERSION_j in data_object:
+        table.mitre_version = data_object[const.MITRE_VERSION_j]
 
-            if const.MITRE_VERSION_j in data_object:
-                table.mitre_version = data_object[const.MITRE_VERSION_j]
-            else:
-                table.mitre_version = None
+    if const.DEPRECATED_j in data_object:
+        table.deprecated = True
 
-            if const.REVOKED_j in data_object:
-                for data_object_1 in datajson[const.OBJECT_j]:
-                    if const.SORUCE_REF_j in data_object_1:
-                        if data_object_1[const.SORUCE_REF_j] == table.Id and data_object_1[const.RELATIONSHIP_TYPE_j] == const.REVOKED_BY_j:
-                            table.revoked_by = data_object_1[const.TARGET_REF_j]
-            else:
-                table.revoked_by = None
+    return table
 
-            if const.DEPRECATED_j in data_object:
-                table.deprecated = True
-            else:
-                table.deprecated = False
-            session.add(table)
+def parse_json_relationships(relationships_json, session):
+    if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
+        if relationships_json[const.SORUCE_REF_j].startswith(const.INTRUSION_SET_j):
+            groups = session.query(Groups).get(relationships_json[const.SORUCE_REF_j])
+            groups.revoked_by = relationships_json[const.TARGET_REF_j]
+
+        elif relationships_json[const.SORUCE_REF_j].startswith(const.COURSE_OF_ACTION_j):
+            mitigations = session.query(Mitigations).get(relationships_json[const.SORUCE_REF_j])
+            mitigations.revoked_by = relationships_json[const.TARGET_REF_j]
+
+        elif relationships_json[const.SORUCE_REF_j].startswith(const.MALWARE_j) or \
+                relationships_json[const.SORUCE_REF_j].startswith(const.TOOL_j):
+            software = session.query(Software).get(relationships_json[const.SORUCE_REF_j])
+            software.revoked_by = relationships_json[const.TARGET_REF_j]
+
+        session.commit()
+
 
 def parse_json(pathfile, session, database):
     """
@@ -205,18 +195,28 @@ def parse_json(pathfile, session, database):
         metadata = Metadata()
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
-            metadata.version = datajson['spec_version']
-            for data_object in datajson['objects']:
-                if data_object['type'] == 'identity':
-                    metadata.name = data_object['name']
-                elif data_object['type'] == 'marking-definition':
-                    metadata.description = data_object['definition']['statement']
+            metadata.version = datajson[const.VERSION_j]
+            for data_object in datajson[const.OBJECT_j]:
+                if data_object[const.TYPE_j] == const.IDENTITY_j:
+                    metadata.name = data_object[const.NAME_j]
+                elif data_object[const.TYPE_j] == const.MARKING_DEFINITION_j:
+                    metadata.description = data_object[const.DEFINITION_j][const.STATEMENT_j]
+                elif data_object[const.TYPE_j] == const.INTRUSION_SET_j:
+                    groups = parse_table_(Groups, data_object)
+                    session.add(groups)
+                    session.commit()
+                elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
+                    mitigations = parse_table_(Mitigations, data_object)
+                    session.add(mitigations)
+                    session.commit()
+                elif data_object[const.TYPE_j] == const.MALWARE_j or data_object[const.TYPE_j] == const.TOOL_j:
+                    software = parse_table_(Software, data_object)
+                    session.add(software)
+                    session.commit()
+                elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
+                    parse_json_relationships(data_object, session)
+
         session.add(metadata)
-
-        parse_table_(Groups, pathfile, session)
-        parse_table_(Software, pathfile, session)
-        parse_table_(Mitigations, pathfile, session)
-
         session.commit()
 
     except TypeError as t_e:
