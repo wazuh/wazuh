@@ -255,7 +255,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_Array:
-                if (lf->decoder_info->flags & CSV_STRING) {
+                if (lf->decoder_info->flags & JSON_TREAT_ARRAY_AS_CSV_STRING) {
                     os_malloc(OS_MAXSTR, value);
                     *value = '\0';
                     size_t n = 0;
@@ -329,7 +329,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                             break;
                         }
                     }
-                } else if (lf->decoder_info->flags & JSON_ARRAY) {
+                } else if (lf->decoder_info->flags & JSON_TREAT_ARRAY_AS_ARRAY) {
                     value = cJSON_Print(logJSON);
                 }
 
@@ -341,9 +341,9 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_NULL:
-                if (lf->decoder_info->flags & EMPTY) {
+                if (lf->decoder_info->flags & JSON_TREAT_NULL_AS_EMPTY) {
                     fillData(lf, key, VALUE_EMPTY);
-                } else if (lf->decoder_info->flags & SHOW_STRING) {
+                } else if (lf->decoder_info->flags & JSON_TREAT_NULL_AS_STRING) {
                     fillData(lf, key, VALUE_NULL);
                 }
                 break;
