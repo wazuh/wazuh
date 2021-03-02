@@ -27,7 +27,13 @@ with patch('wazuh.core.common.ossec_uid'):
 ])
 @patch('api.alogging.json.dumps')
 def test_accesslogger_log(mock_dumps, side_effect, user):
-    """Test expected methods are called when using log()."""
+    """Test expected methods are called when using log().
+
+    Parameters
+    ----------
+    response : StreamResponse
+        Response used to log a mocked request.
+    """
 
     class MockedRequest(MagicMock):
         def get(self, *args, **kwargs):
