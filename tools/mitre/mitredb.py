@@ -99,7 +99,7 @@ class Software(Base):
     created_time = Column(const.CREATED_t, DateTime, default=None)
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
     mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
-    revoked_by = Column(const.REVOKED_BY_t, String)
+    revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
     def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
@@ -209,7 +209,8 @@ def parse_json(pathfile, session, database):
                     mitigations = parse_table_(Mitigations, data_object)
                     session.add(mitigations)
                     session.commit()
-                elif data_object[const.TYPE_j] == const.MALWARE_j or data_object[const.TYPE_j] == const.TOOL_j:
+                elif data_object[const.TYPE_j] == const.MALWARE_j or \
+                        data_object[const.TYPE_j] == const.TOOL_j:
                     software = parse_table_(Software, data_object)
                     session.add(software)
                     session.commit()
