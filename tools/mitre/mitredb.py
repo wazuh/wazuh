@@ -16,6 +16,8 @@ import pwd
 import grp
 import argparse
 import sys
+import copy
+import const
 from datetime import datetime
 from sqlalchemy import create_engine, Column, DateTime, String, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import sessionmaker
@@ -33,15 +35,162 @@ class Metadata(Base):
     """
     __tablename__ = "metadata"
 
-    version = Column('version', String, primary_key=True)
-    name = Column('name', String, nullable=False)
-    description = Column('description', String)
+    version = Column(const.VERSION_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String)
 
     def __init__(self, version="", name="", description="") :
         self.version = version
         self.name = name
         self.description = description
 
+class Groups(Base):
+    """
+    In this table are stored the groups of json file
+    The information stored:
+        id: Used to identify the group (PK)
+        name: Name of the group
+        description: Detailed description of the group
+        created_time: Publish date
+        modified_time: Last modification date
+        mitre_version: Version of MITRE when created
+        revoked_by: ID of the group that revokes this one, NULL otherwise
+        deprecated: Boolean indicating if this group is deprecated
+    """
+    __tablename__ = "groups"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String)
+    created_time = Column(const.CREATED_t, DateTime)
+    modified_time = Column(const.MODIFIED_t, DateTime)
+    mitre_version = Column(const.MITRE_VERSION_t, String)
+    revoked_by = Column(const.REVOKED_BY_t, String)
+    deprecated = Column(const.DEPRECATED_t, Boolean)
+
+    def __init__(self, Id="", name="", description="", created_time="", modified_time="", mitre_version="", revoked_by="", deprecated="") :
+        self.Id = Id
+        self.name = name
+        self.description = description
+        self.created_time = created_time
+        self.modified_time = modified_time
+        self.mitre_version = mitre_version
+        self.revoked_by = revoked_by
+        self.deprecated = deprecated
+
+class Software(Base):
+    """
+    In this table are stored the software of json file
+    The information stored:
+        id: Used to identify the software (PK)
+        name: Name of the software
+        description: Detailed description of the software
+        created_time: Publish date
+        modified_time: Last modification date
+        mitre_version: Version of MITRE when created
+        revoked_by: ID of the software that revokes this one, NULL otherwise
+        deprecated: Boolean indicating if this software is deprecated
+    """
+    __tablename__ = "software"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String)
+    created_time = Column(const.CREATED_t, DateTime)
+    modified_time = Column(const.MODIFIED_t, DateTime)
+    mitre_version = Column(const.MITRE_VERSION_t, String)
+    revoked_by = Column(const.REVOKED_BY_t, String)
+    deprecated = Column(const.DEPRECATED_t, Boolean)
+
+    def __init__(self, Id="", name="", description="", created_time="", modified_time="", mitre_version="", revoked_by="", deprecated="") :
+        self.Id = Id
+        self.name = name
+        self.description = description
+        self.created_time = created_time
+        self.modified_time = modified_time
+        self.mitre_version = mitre_version
+        self.revoked_by = revoked_by
+        self.deprecated = deprecated
+
+class Mitigations(Base):
+    """
+    In this table are stored the mitigations of json file
+    The information stored:
+        id: Used to identify the mitigation (PK)
+        name: Name of the mitigation
+        description: Detailed description of the mitigation
+        created_time: Publish date
+        modified_time: Last modification date
+        mitre_version: Version of MITRE when created
+        revoked_by: ID of the mitigation that revokes this one, NULL otherwise
+        deprecated: Boolean indicating if this mitigation is deprecated
+    """
+    __tablename__ = "mitigations"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String)
+    created_time = Column(const.CREATED_t, DateTime)
+    modified_time = Column(const.MODIFIED_t, DateTime)
+    mitre_version = Column(const.MITRE_VERSION_t, String)
+    revoked_by = Column(const.REVOKED_BY_t, String)
+    deprecated = Column(const.DEPRECATED_t, Boolean)
+
+    def __init__(self, Id="", name="", description="", created_time="", modified_time="", mitre_version="", revoked_by="", deprecated="") :
+        self.Id = Id
+        self.name = name
+        self.description = description
+        self.created_time = created_time
+        self.modified_time = modified_time
+        self.mitre_version = mitre_version
+        self.revoked_by = revoked_by
+        self.deprecated = deprecated
+
+def parse_table_(function, pathfile, session):
+    with open(pathfile) as json_file:
+        datajson = json.load(json_file)
+        for data_object in datajson[const.OBJECT_j]:
+            if function.__name__ == const.GROUPS:
+                if data_object[const.TYPE_j] != const.INSTRUSION_SET_j:
+                    continue
+            elif function.__name__ == const.MITIGATION:
+                if data_object[const.TYPE_j] != const.COURSE_OF_ACTION_j:
+                    continue
+            elif function.__name__ == const.SOFTWARE:
+                if data_object[const.TYPE_j] != const.MALWARE_j and data_object[const.TYPE_j] != const.TOOL_j:
+                    continue
+            else:
+                continue
+
+            table = function()
+            table.Id = data_object[const.ID_j]
+            table.name = data_object[const.NAME_j]
+            if const.DESCRIPTION_j in data_object:
+                table.description = data_object[const.DESCRIPTION_j]
+            else:
+                table.description = None
+
+            table.created_time = datetime.strptime(data_object[const.CREATED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+            table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+
+            if const.MITRE_VERSION_j in data_object:
+                table.mitre_version = data_object[const.MITRE_VERSION_j]
+            else:
+                table.mitre_version = None
+
+            if const.REVOKED_j in data_object:
+                for data_object_1 in datajson[const.OBJECT_j]:
+                    if const.SORUCE_REF_j in data_object_1:
+                        if data_object_1[const.SORUCE_REF_j] == table.Id and data_object_1[const.RELATIONSHIP_TYPE_j] == const.REVOKED_BY_j:
+                            table.revoked_by = data_object_1[const.TARGET_REF_j]
+            else:
+                table.revoked_by = None
+
+            if const.DEPRECATED_j in data_object:
+                table.deprecated = True
+            else:
+                table.deprecated = False
+            session.add(table)
 
 def parse_json(pathfile, session, database):
     """
@@ -63,6 +212,11 @@ def parse_json(pathfile, session, database):
                 elif data_object['type'] == 'marking-definition':
                     metadata.description = data_object['definition']['statement']
         session.add(metadata)
+
+        parse_table_(Groups, pathfile, session)
+        parse_table_(Software, pathfile, session)
+        parse_table_(Mitigations, pathfile, session)
+
         session.commit()
 
     except TypeError as t_e:
