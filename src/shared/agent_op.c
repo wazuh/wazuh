@@ -403,7 +403,7 @@ int create_multigroup_dir(const char * multigroup) {
 }
 #endif
 
-int w_validate_group_name(const char *group, char *response){
+int w_validate_group_name(const char *group, char *response) {
 
     unsigned int i = 0;
     char valid_chars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.:;_-=+!@(),";

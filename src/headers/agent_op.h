@@ -76,6 +76,7 @@ void w_remove_multigroup(const char *group);
  * @params response must be a 2048 buffer or NULL
  * Returns 0 on success or  -x on failure
  */
+int w_validate_group_name(const char *group, char *response);
 
 // Connect to Agentd. Returns socket or -1 on error.
 int auth_connect();
