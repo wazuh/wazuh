@@ -5,27 +5,38 @@
 
 import logging
 import os
+import sys
 from unittest.mock import patch, MagicMock, call
 
 import pytest
+from werkzeug.exceptions import Unauthorized
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
+        sys.modules['api.authentication'] = MagicMock()
         from api import alogging
 
+        del sys.modules['api.authentication']
 
-@patch('api.alogging.logging.Logger')
+
+@pytest.mark.parametrize('side_effect, user', [
+    (Unauthorized, ''),
+    ([{"sub": "test"}], '')
+    # (Unauthorized, 'wazuh'),
+    # ({"sub": "wazuh"}, 'wazuh')
+])
 @patch('api.alogging.json.dumps')
-def test_accesslogger_log(mock_dumps, mock_logger_info):
-    """Tests expected methods are called when using log()"""
-    request = MagicMock()
-    alogging.AccessLogger.log(MagicMock(), request=request, response=MagicMock(), time=0.0)
+def test_accesslogger_log(mock_dumps, side_effect, user):
+    """Test expected methods are called when using log()."""
 
-    assert request.method_calls[0] == call.query.keys()
-    assert request.method_calls[1] == call.get('body', dict())
-    assert request.method_calls[2] == call.get('user', 'unknown_user')
+    class MockedRequest(MagicMock):
+        def get(self, *args, **kwargs):
+            return user
 
-
+    if not user:
+        with patch('api.alogging.decode_token', side_effect=side_effect) as mocked_decode_token:
+            alogging.AccessLogger.log(MagicMock(), request=MockedRequest(), response=MagicMock(), time=0.0)
+            mocked_decode_token.assert_called_once()
 
 
 @patch('wazuh.core.wlogging.WazuhLogger.__init__')
