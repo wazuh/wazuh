@@ -652,7 +652,12 @@ STATIC void fim_link_update(int pos, char *new_path) {
     for (i = 0; syscheck.dir[i] != NULL; i++) {
         if (i == pos) {
             if (strcmp(new_path, syscheck.dir[i]) == 0) {
-                mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
+                // We were monitoring a link, now we are monitoring the actual directory
+#ifdef ENABLE_AUDIT
+                if (syscheck.opts[i] & WHODATA_ACTIVE) {
+                    add_whodata_directory(syscheck.dir[i]);
+                }
+#endif
                 is_new_link = false;
                 break;
             }

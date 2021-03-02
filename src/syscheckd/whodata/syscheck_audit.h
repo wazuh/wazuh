@@ -34,7 +34,19 @@ typedef struct {
  * @retval Positive integer: Number of remaining CONFIG_CHANGE events done by FIM.
  */
 int fim_manipulated_audit_rules();
+
+/**
+ * @brief Initialize the list responsible for holding the configured audit rules.
+ *
+ * @return 0 if all goes well, -1 in case of an error.
+ */
 int fim_audit_rules_init();
+
+/**
+ * @brief Sweeps the configured directories and loads the required rules into audit.
+ *
+ * @return The amount of rules loaded.
+ */
 int fim_rules_initial_load();
 
 // Public parse functions
