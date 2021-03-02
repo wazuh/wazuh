@@ -441,6 +441,89 @@ void test_recv_unix(void **state) {
     assert_string_equal(buffer, SENDSTRING);
 }
 
+void test_send_secure_TCP_cluster_success(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    char req[] = "command";
+    data->client_socket = 3;
+
+    will_return(__wrap_send, 5);
+    assert_int_equal(OS_SendSecureTCPCluster(data->client_socket, req , SENDSTRING, strlen(SENDSTRING)) , OS_SOCKTERR);
+}
+
+void test_send_secure_TCP_cluster_command_null(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    data->client_socket = 3;
+
+    expect_string(__wrap__merror, formatted_msg, "Empty command, not sending message to cluster");
+    assert_int_equal(OS_SendSecureTCPCluster(data->client_socket, NULL , SENDSTRING, strlen(SENDSTRING)), -1);
+}
+
+void test_send_secure_TCP_cluster_max_payload_exceeded(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    const unsigned MAX_PAYLOAD_SIZE = 1000001;
+
+    char req[] = "command";
+    data->client_socket = 3;
+
+    expect_string(__wrap__merror, formatted_msg, "Data of length 1000001 exceeds maximum allowed 1000000");
+    assert_int_equal(OS_SendSecureTCPCluster(data->client_socket, req, SENDSTRING, MAX_PAYLOAD_SIZE), -1);
+}
+
+void test_send_secure_TCP_cluster_command_size_exceeded(void **state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    const unsigned COMMAND_SIZE = 12;
+
+    char req[] = "command size exceeded";
+    data->client_socket = 3;
+
+    expect_string(__wrap__merror, formatted_msg, "Command of length 21 exceeds maximum allowed 12");
+    assert_int_equal(OS_SendSecureTCPCluster(data->client_socket, req, SENDSTRING, strlen(SENDSTRING)), -1);
+}
+
+void test_recv_secure_cluster_TCP_socket_error(void **state) {
+	test_struct_t *data  = (test_struct_t *)*state;
+	char ret [BUFFERSIZE];
+
+	will_return(__wrap_recv, -1);
+	data->client_socket = -1;
+
+	assert_int_equal(OS_RecvSecureClusterTCP(data->client_socket, ret, sizeof(ret)), -1);
+}
+
+void test_recv_secure_cluster_TCP_socket_disconected_or_timeout(void **state) {
+	test_struct_t *data  = (test_struct_t *)*state;
+	char ret [BUFFERSIZE];
+
+	will_return(__wrap_recv, 0);
+	data->client_socket = -1;
+
+	assert_int_equal(OS_RecvSecureClusterTCP(data->client_socket, ret, sizeof(ret)), 0);
+}
+
+void test_recv_secure_cluster_TCP_wrong_header(void **state) {
+	test_struct_t *data  = (test_struct_t *)*state;
+	char ret [BUFFERSIZE];
+
+	will_return_always(__wrap_recv, 7);
+	data->client_socket = -1;
+
+	assert_int_equal(OS_RecvSecureClusterTCP(data->client_socket, ret, sizeof(ret)), -1);
+}
+
+void test_recv_secure_cluster_TCP_cmd_error(void **state) {
+	test_struct_t *data  = (test_struct_t *)*state;
+	char ret [BUFFERSIZE];
+
+	will_return_always(__wrap_recv, 20);
+	data->client_socket = 7;
+
+	assert_int_equal(OS_RecvSecureClusterTCP(data->client_socket, ret, sizeof(ret)), -2);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* Bind a TCP port */
@@ -515,6 +598,19 @@ int main(void) {
         cmocka_unit_test(test_gethost_null),
         cmocka_unit_test(test_gethost_not_exists),
         cmocka_unit_test_setup_teardown(test_gethost_success, test_setup, test_teardown),
+
+        /* Send secure TCP Cluster message */
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_cluster_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_cluster_command_null, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_cluster_max_payload_exceeded, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_secure_TCP_cluster_command_size_exceeded, test_setup, test_teardown),
+
+        /* Receive secure TCP Cluster message */
+        cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_socket_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_socket_disconected_or_timeout, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_wrong_header, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_cmd_error, test_setup, test_teardown),
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

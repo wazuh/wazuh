@@ -70,7 +70,13 @@ int __wrap_recv(__attribute__((unused))int __fd, __attribute__((unused))void *__
         u_int32_t number = 13;
         void *buffer = &number;
         memcpy((u_int32_t*)__buf, (u_int32_t*)buffer, sizeof(u_int32_t));
+    } else if(__fd == 7) {
+        char text[BUFFERSIZE];
+        strcpy(text, "err --------");
+        void *buffertext = &text;
+        memcpy((char*)__buf+8, (char*)buffertext, 12);
     }
+
     return mock();
 }
 
