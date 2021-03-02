@@ -959,23 +959,23 @@ InstallLocal()
     fi
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
+        ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
     if [ ! -f ${PREFIX}/etc/rules/local_rules.xml ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
+        ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} -b ../etc/local_rules.xml ${PREFIX}/etc/rules/local_rules.xml
     fi
     if [ ! -f ${PREFIX}/etc/lists ]; then
         ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/lists
     fi
     if [ ! -f ${PREFIX}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../ruleset/lists/amazon/* ${PREFIX}/etc/lists/amazon/
+        ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc/lists/amazon
+        ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} -b ../ruleset/lists/amazon/* ${PREFIX}/etc/lists/amazon/
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../ruleset/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
+        ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} -b ../ruleset/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
     fi
     if [ ! -f ${PREFIX}/etc/lists/security-eventchannel ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} -b ../ruleset/lists/security-eventchannel ${PREFIX}/etc/lists/security-eventchannel
+        ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} -b ../ruleset/lists/security-eventchannel ${PREFIX}/etc/lists/security-eventchannel
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -1037,7 +1037,7 @@ InstallServer()
     ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/cluster
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/cluster
 
-    ${INSTALL} -d -m 0770 -o ossec -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
+    ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc/shared/default
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup/shared
 
     TransferShared
@@ -1055,14 +1055,14 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/agents
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/backup/groups
 
-    ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../ruleset/rootcheck/db/*.txt ${PREFIX}/etc/shared/default
+    ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ../ruleset/rootcheck/db/*.txt ${PREFIX}/etc/shared/default
 
     if [ ! -f ${PREFIX}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
+        ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/default
     fi
 
     if [ ! -f ${PREFIX}/etc/shared/agent-template.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/agent-template.conf
+        ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/agent-template.conf
     fi
 
     # Install the plugins files
