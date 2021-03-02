@@ -166,17 +166,17 @@ def parse_table_(function, data_object):
 
 def parse_json_relationships(relationships_json, session):
     if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
-        if relationships_json[const.SORUCE_REF_j].startswith(const.INTRUSION_SET_j):
-            groups = session.query(Groups).get(relationships_json[const.SORUCE_REF_j])
+        if relationships_json[const.SOURCE_REF_j].startswith(const.INTRUSION_SET_j):
+            groups = session.query(Groups).get(relationships_json[const.SOURCE_REF_j])
             groups.revoked_by = relationships_json[const.TARGET_REF_j]
 
-        elif relationships_json[const.SORUCE_REF_j].startswith(const.COURSE_OF_ACTION_j):
-            mitigations = session.query(Mitigations).get(relationships_json[const.SORUCE_REF_j])
+        elif relationships_json[const.SOURCE_REF_j].startswith(const.COURSE_OF_ACTION_j):
+            mitigations = session.query(Mitigations).get(relationships_json[const.SOURCE_REF_j])
             mitigations.revoked_by = relationships_json[const.TARGET_REF_j]
 
-        elif relationships_json[const.SORUCE_REF_j].startswith(const.MALWARE_j) or \
-                relationships_json[const.SORUCE_REF_j].startswith(const.TOOL_j):
-            software = session.query(Software).get(relationships_json[const.SORUCE_REF_j])
+        elif relationships_json[const.SOURCE_REF_j].startswith(const.MALWARE_j) or \
+                relationships_json[const.SOURCE_REF_j].startswith(const.TOOL_j):
+            software = session.query(Software).get(relationships_json[const.SOURCE_REF_j])
             software.revoked_by = relationships_json[const.TARGET_REF_j]
 
         session.commit()
