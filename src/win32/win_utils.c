@@ -183,7 +183,21 @@ int local_start()
     // Initialize children pool
     wm_children_pool_init();
 
+    /* Start buffer thread */
+    if (agt->buffer){
+        buffer_init();
+        w_create_thread(NULL,
+                         0,
+                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
+                         NULL,
+                         0,
+                         (LPDWORD)&threadID);
+    }else{
+        minfo(DISABLED_BUFFER);
+    }
+
     /* state_main thread */
+    w_agentd_state_init();
     w_create_thread(NULL,
                      0,
                      (LPTHREAD_START_ROUTINE)state_main,
@@ -199,18 +213,6 @@ int local_start()
     hMutex = CreateMutex(NULL, FALSE, NULL);
     if (hMutex == NULL) {
         merror_exit("Error creating mutex.");
-    }
-    /* Start buffer thread */
-    if (agt->buffer){
-        buffer_init();
-        w_create_thread(NULL,
-                         0,
-                         (LPTHREAD_START_ROUTINE)dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
-    }else{
-        minfo(DISABLED_BUFFER);
     }
     /* Start syscheck thread */
     w_create_thread(NULL,
@@ -235,7 +237,7 @@ int local_start()
     os_setwait();
     start_agent(1);
     os_delwait();
-    update_status(GA_STATUS_ACTIVE);
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
 
     req_init();
 
@@ -330,7 +332,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
 
     /* Send events to the manager across the buffer */
     if (!agt->buffer){
-        agent_state.msg_count++;
+        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
         if (send_msg(tmpstr, -1) >= 0) {
             retval = 0;
         }

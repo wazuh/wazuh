@@ -721,9 +721,9 @@ def upgrade_agents(agent_list=None, wpk_repo=None, version=None, force=False, us
     -------
     ID of created tasks
     """
-    result = AffectedItemsWazuhResult(all_msg='All upgrade tasks have been created',
-                                      some_msg='Some upgrade tasks have been created',
-                                      none_msg='No upgrade task has been created',
+    result = AffectedItemsWazuhResult(all_msg='All upgrade tasks were created',
+                                      some_msg='Some upgrade tasks were not created',
+                                      none_msg='No upgrade task was created',
                                       sort_fields=['agent'], sort_ascending='True')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
@@ -771,9 +771,9 @@ def get_upgrade_result(agent_list=None):
     -------
     Upgrade result.
     """
-    result = AffectedItemsWazuhResult(all_msg='All agents have been updated',
-                                      some_msg='Some agents have not been updated',
-                                      none_msg='No agent has been updated')
+    result = AffectedItemsWazuhResult(all_msg='All upgrade tasks were returned',
+                                      some_msg='Some upgrade tasks were not returned',
+                                      none_msg='No upgrade task was returned')
 
     agent_list = list(map(int, agents_padding(result=result, agent_list=agent_list)))
     agents_result_chunks = [agent_list[x:x + 100] for x in range(0, len(agent_list), 100)]

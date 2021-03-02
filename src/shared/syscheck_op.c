@@ -595,9 +595,35 @@ char *get_user(int uid) {
     return user_name;
 }
 
-const char *get_group(int gid) {
-    struct group *group = getgrgid(gid);
-    return group ? group->gr_name : "";
+char *get_group(int gid) {
+    struct group grp;
+    struct group *result;
+    char *group_name = NULL;
+    char *buf;
+    int bufsize;
+
+    bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+    if (bufsize == -1) {
+        bufsize = 16384;
+    }
+
+    os_calloc(bufsize, sizeof(char), buf);
+
+    result = w_getgrgid(gid, &grp, buf, bufsize);
+
+    if (result == NULL) {
+        if (errno == 0) {
+            mdebug2("Group with gid '%d' not found.\n", gid);
+        } else {
+            mdebug2("Failed getting group_name (%d): '%s'\n", errno, strerror(errno));
+        }
+    } else {
+        os_strdup(grp.gr_name, group_name);
+    }
+
+    os_free(buf);
+
+    return group_name;
 }
 
 /* Send a one-way message to Syscheck */
@@ -923,8 +949,11 @@ unsigned int w_get_file_attrs(const char *file_path) {
     return attrs;
 }
 
-const char *get_group(__attribute__((unused)) int gid) {
-    return "";
+char *get_group(__attribute__((unused)) int gid) {
+    char *result;
+
+    os_strdup("", result);
+    return result;
 }
 
 char *get_registry_group(char **sid, HANDLE hndl) {

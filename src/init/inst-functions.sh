@@ -703,7 +703,7 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs
-  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs/ossec
+  ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/logs/wazuh
   ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.log
   ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.json
   ${INSTALL} -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${INSTALLDIR}/logs/active-responses.log
@@ -808,7 +808,7 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${INSTALLDIR}/queue
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/alerts
-  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/ossec
+  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/sockets
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/diff
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/fim
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${INSTALLDIR}/queue/fim/db

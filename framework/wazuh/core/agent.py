@@ -12,12 +12,13 @@ from json import dumps, loads
 from os import chown, chmod, makedirs, urandom, stat, remove
 from os import listdir, path
 from platform import platform
-from shutil import copyfile, rmtree
+from shutil import rmtree
 from time import time
 
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
+from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.ossec_queue import OssecQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
@@ -1109,15 +1110,12 @@ class Agent:
         Dict
             Object with component's stats.
         """
-        # Available daemons and the minimum required agent's version.
-        stats_min_ver = {'logcollector': 'v4.2.0'}
-
         # Check if agent version is compatible with this feature
         self.load_info_from_db()
         if self.version is None:
             raise WazuhInternalError(1015)
         agent_version = WazuhVersion(self.version.split(" ")[1])
-        required_version = WazuhVersion(stats_min_ver.get(component))
+        required_version = WazuhVersion(AGENT_COMPONENT_STATS_REQUIRED_VERSION.get(component))
         if agent_version < required_version:
             raise WazuhInternalError(1735, extra_message="Minimum required version is " + str(required_version))
 

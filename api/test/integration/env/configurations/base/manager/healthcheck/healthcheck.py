@@ -25,5 +25,9 @@ def get_worker_health():
     return check0 or check1
 
 
+def get_manager_health_base():
+    return get_master_health() if socket.gethostname() == 'wazuh-master' else get_worker_health()
+
+
 if __name__ == "__main__":
-    exit(get_master_health()) if socket.gethostname() == 'wazuh-master' else exit(get_worker_health())
+    exit(get_manager_health_base())
