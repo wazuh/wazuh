@@ -44,6 +44,22 @@ class Metadata(Base):
         self.description = description
 
 class Technique(Base):
+    """
+    In this table are stored the techniques of json file
+    The information stored:
+        id: Used to identify the technique
+        name: Name of the technique
+        description: Detailed description of the technique
+        created_time: Publish date
+        modified_time: Last modification date
+        mitre_version: Version of MITRE when created
+        mitre_detection: Detection information
+        network_requirements:Boolean indicationg network requirements
+        remote_support: Boolean indicationg remote support
+        revoked_by: ID of the technique that revokes this one, NULL otherwise. 
+        deprecated: Boolean indicating if this technique is deprecated
+        subtechnique_of: ID of the parent technique, NULL otherwise
+    """
     __tablename__ = "techniques"
 
     id = Column('id', String, primary_key=True)
@@ -61,18 +77,94 @@ class Technique(Base):
 
     data_sources = relationship("DataSource", backref="techniques")
     defenses_bypassed = relationship("DefenseByPasses", backref="techniques")
+    effective_permissions = relationship("EffectivePermission", backref="techniques")
+    impacts = relationship("Impact", backref="techniques")
+    permissions = relationship("Permission", backref="techniques")
+    requirements = relationship("SystemRequirement", backref="techniques")
+
 
 class DataSource(Base):
+    """
+    In this table are stored the Sources for each technique identified
+    with key x_mitre_data_sources on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        source: Data source for this technique
+    """
     __tablename__ = "data_source"
 
     id = Column('id', String, ForeignKey("techniques.id", ondelete='CASCADE'), primary_key=True)
     source = Column('source', String, primary_key=True)
 
+
 class DefenseByPasses(Base):
+    """
+    In this table are stored the Defenses bypassed for each technique identified
+    with key x_mitre_defense_bypassed on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        defense: Defense bypassed for this technique
+    """
     __tablename__ = "defense_bypassed"
 
     id = Column('id', String, ForeignKey("techniques.id", ondelete='CASCADE'), primary_key=True)
     defense = Column('defense', String, primary_key=True)
+
+
+class EffectivePermission(Base):
+    """
+    In this table are stored the Effective permissions for each technique identified
+    with key x_mitre_effective_permissions on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        permission: Effective permission for this technique
+    """
+    __tablename__ = "effective_permission"
+
+    id = Column('id', String, ForeignKey("techniques.id", ondelete='CASCADE'), primary_key=True)
+    permission = Column('permission', String, primary_key=True)
+
+
+class Impact(Base):
+    """
+    In this table are stored the Impacts of each technique identified with
+    key x_mitre_impact_type on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        impact: Impact of this technique
+    """
+    __tablename__ = "impact"
+
+    id = Column('id', String, ForeignKey("techniques.id", ondelete='CASCADE'), primary_key=True)
+    impact = Column('impact', String, primary_key=True)
+
+
+class Permission(Base):
+    """
+    In this table are stored the Permissions for each technique identified
+    with key x_mitre_permissions_required on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        permission: Permission for this technique
+    """
+    __tablename__ = "permission"
+
+    id = Column('id', String, ForeignKey("techniques.id", ondelete='CASCADE'), primary_key=True)
+    permission = Column('permission', String, primary_key=True)
+
+
+class SystemRequirement(Base):
+    """
+    In this table are stored the Requirements for each technique identified
+    with key x_mitre_system_requirements on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        requirements: System requirement for this technique
+    """
+    __tablename__ = "system_requirement"
+
+    id = Column('id', String, ForeignKey("techniques.id", ondelete='CASCADE'), primary_key=True)
+    requirement = Column('requirement', String, primary_key=True)
 
 
 def parse_json_techniques(technique_json):
@@ -108,6 +200,18 @@ def parse_json_techniques(technique_json):
     if technique_json.get('x_mitre_defense_bypassed'):
         for defense in list(set(technique_json['x_mitre_defense_bypassed'])):
             technique.defenses_bypassed.append(DefenseByPasses(techniques=technique, defense=defense))
+    if technique_json.get('x_mitre_effective_permissions'):
+        for permission in list(set(technique_json['x_mitre_effective_permissions'])):
+            technique.effective_permissions.append(EffectivePermission(techniques=technique, permission=permission))
+    if technique_json.get('x_mitre_impact_type'):
+        for impact in list(set(technique_json['x_mitre_impact_type'])):
+            technique.impacts.append(Impact(techniques=technique, impact=impact))
+    if technique_json.get('x_mitre_permissions_required'):
+        for permission in list(set(technique_json['x_mitre_permissions_required'])):
+            technique.permissions.append(Permission(techniques=technique, permission=permission))
+    if technique_json.get('x_mitre_system_requirements'):
+        for requirement in list(set(technique_json['x_mitre_system_requirements'])):
+            technique.requirements.append(SystemRequirement(techniques=technique, requirement=requirement))
     return technique
 
 
