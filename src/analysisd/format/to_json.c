@@ -492,13 +492,10 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
 
         cJSON* decoder;
 
-         bool not_discart_null_json_field = (void *) lf->decoder_info->plugindecoder == JSON_Decoder_Exec
-                                        && (lf->decoder_info->flags & JSON_TREAT_NULL_AS_EMPTY);
-
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
-                if (lf->fields[i].value != NULL && (*lf->fields[i].value != '\0' || not_discart_null_json_field)) {
+                if (lf->fields[i].value != NULL && *lf->fields[i].value != '\0') {
                     W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);
                 }
             }

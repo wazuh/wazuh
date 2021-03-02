@@ -78,5 +78,7 @@
                                                 "(decoder `%s`). Default value will be taken"
 #define ANALYSISD_INV_OPT_VALUE_DEFAULT         "(7602): Invalid value '%s' in '%s' option " \
                                                 "(decoder `%s`). Default value will be taken"
+#define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
+                                                "(decoder `%s`). Default value will be taken"
 
 #endif /* WARN_MESSAGES_H */

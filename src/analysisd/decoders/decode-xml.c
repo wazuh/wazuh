@@ -463,7 +463,8 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
                 if (strcasecmp(elements[j]->content, "discard") == 0) {
                     pi->flags |= JSON_TREAT_NULL_AS_DISCARD;
                 } else if (strcasecmp(elements[j]->content, "empty") == 0) {
-                    pi->flags |= JSON_TREAT_NULL_AS_EMPTY;
+                    smwarn(log_msg, ANALYSISD_DEC_DEPRECATED_OPT_VALUE, elements[j]->content, xml_nullfield, pi->name);
+                    pi->flags |= JSON_TREAT_NULL_DEFAULT;
                 } else if (strcasecmp(elements[j]->content, "string") == 0) {
                     pi->flags |= JSON_TREAT_NULL_AS_STRING;
                 } else {
