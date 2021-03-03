@@ -442,10 +442,9 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
  * @param dir_file_path Directory of the file.
  * @param file Dirent structure for the file.
  */
-void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path, struct dirent *file) {
+void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path, struct dirent *file, struct stat *directory_stat, struct stat *file_stat) {
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-    struct stat stat_scan = { .st_mode = S_IFDIR };
 
     // check_deleted_files
     expect_value(__wrap_fim_db_get_not_scanned, fim_sql, syscheck.database);
@@ -454,17 +453,15 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     expect_string(__wrap_stat, __file, dir_file_path);
-    will_return(__wrap_stat, &stat_scan);
+    will_return(__wrap_stat, directory_stat);
     will_return(__wrap_stat, 0);
     expect_string(__wrap_HasFilesystem, path, dir_file_path);
     will_return(__wrap_HasFilesystem, 0);
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, file);
 
-    stat_scan.st_mode = S_IFREG;
-
     expect_string(__wrap_stat, __file, test_file_path);
-    will_return(__wrap_stat, &stat_scan);
+    will_return(__wrap_stat, file_stat);
     will_return(__wrap_stat, 0);
     expect_string(__wrap_HasFilesystem, path, test_file_path);
     will_return(__wrap_HasFilesystem, 0);
@@ -1896,7 +1893,6 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6347): Directory '/media/test' is already on the max recursion_level (0), it will not be scanned.");
-
     fim_checker(path, fim_data->item, NULL, 1);
 
     syscheck.recursion_level[3] = 50;
@@ -2708,6 +2704,7 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
 
+
     snprintf(skip_directory_message, OS_MAXSTR,
         "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
     expect_string(__wrap__mdebug2, formatted_msg, skip_directory_message);
@@ -2779,7 +2776,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     struct dirent *file = *state;
     char test_file_path[OS_SIZE_256];
 
-    struct stat buf = { .st_mode = S_IFDIR };
+    struct stat directory_stat = { .st_mode = S_IFDIR };
+    struct stat file_stat = { .st_mode = S_IFREG };
+
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
         "%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
@@ -2816,7 +2815,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         str_lowercase(expanded_dirs[i]);
 
         expect_string(__wrap_stat, __file, expanded_dirs[i]);
-        will_return(__wrap_stat, &buf);
+        will_return(__wrap_stat, &directory_stat);
         will_return(__wrap_stat, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
@@ -2827,7 +2826,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     snprintf(test_file_path, 160, "%s\\test_file", expanded_dirs[0]);
 
-    prepare_win_double_scan_success(test_file_path, expanded_dirs[0], file);
+    prepare_win_double_scan_success(test_file_path, expanded_dirs[0], file, &directory_stat,&file_stat);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of entries to be monitored: '50000'");
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
