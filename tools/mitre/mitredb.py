@@ -16,6 +16,8 @@ import pwd
 import grp
 import argparse
 import sys
+import copy
+import const
 from datetime import datetime
 from sqlalchemy import create_engine, Column, DateTime, String, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import sessionmaker, relationship
@@ -34,9 +36,9 @@ class Metadata(Base):
     """
     __tablename__ = "metadata"
 
-    version = Column('version', String, primary_key=True)
-    name = Column('name', String, nullable=False)
-    description = Column('description', String)
+    version = Column(const.VERSION_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
 
     def __init__(self, version="", name="", description="") :
         self.version = version
@@ -215,16 +217,154 @@ def parse_json_techniques(technique_json):
     return technique
 
 
+class Groups(Base):
+    """
+    In this table are stored the groups of json file
+    The information stored:
+        id: Used to identify the group (PK)
+        name: Name of the group
+        description: Detailed description of the group
+        created_time: Publish date
+        modified_time: Last modification date
+        mitre_version: Version of MITRE when created
+        revoked_by: ID of the group that revokes this one, NULL otherwise
+        deprecated: Boolean indicating if this group is deprecated
+    """
+    __tablename__ = "groups"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+    mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
+    revoked_by = Column(const.REVOKED_BY_t, String, default=None)
+    deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
+
+    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
+        self.Id = Id
+        self.name = name
+        self.description = description
+        self.created_time = created_time
+        self.modified_time = modified_time
+        self.mitre_version = mitre_version
+        self.revoked_by = revoked_by
+        self.deprecated = deprecated
+
+class Software(Base):
+    """
+    In this table are stored the software of json file
+    The information stored:
+        id: Used to identify the software (PK)
+        name: Name of the software
+        description: Detailed description of the software
+        created_time: Publish date
+        modified_time: Last modification date
+        mitre_version: Version of MITRE when created
+        revoked_by: ID of the software that revokes this one, NULL otherwise
+        deprecated: Boolean indicating if this software is deprecated
+    """
+    __tablename__ = "software"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+    mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
+    revoked_by = Column(const.REVOKED_BY_t, String, default=None)
+    deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
+
+    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
+        self.Id = Id
+        self.name = name
+        self.description = description
+        self.created_time = created_time
+        self.modified_time = modified_time
+        self.mitre_version = mitre_version
+        self.revoked_by = revoked_by
+        self.deprecated = deprecated
+
+class Mitigations(Base):
+    """
+    In this table are stored the mitigations of json file
+    The information stored:
+        id: Used to identify the mitigation (PK)
+        name: Name of the mitigation
+        description: Detailed description of the mitigation
+        created_time: Publish date
+        modified_time: Last modification date
+        mitre_version: Version of MITRE when created
+        revoked_by: ID of the mitigation that revokes this one, NULL otherwise
+        deprecated: Boolean indicating if this mitigation is deprecated
+    """
+    __tablename__ = "mitigations"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+    mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
+    revoked_by = Column(const.REVOKED_BY_t, String, default=None)
+    deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
+
+    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
+        self.Id = Id
+        self.name = name
+        self.description = description
+        self.created_time = created_time
+        self.modified_time = modified_time
+        self.mitre_version = mitre_version
+        self.revoked_by = revoked_by
+        self.deprecated = deprecated
+
+def parse_table_(function, data_object):
+    table = function()
+    table.Id = data_object[const.ID_j]
+    table.name = data_object[const.NAME_j]
+
+    if const.DESCRIPTION_j in data_object:
+        table.description = data_object[const.DESCRIPTION_j]
+
+    if const.CREATED_j in data_object:
+        table.created_time = datetime.strptime(data_object[const.CREATED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+
+    if const.MODIFIED_j in data_object:
+        table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+
+    if const.MITRE_VERSION_j in data_object:
+        table.mitre_version = data_object[const.MITRE_VERSION_j]
+
+    if const.DEPRECATED_j in data_object:
+        table.deprecated = data_object[const.DEPRECATED_j]
+
+    return table
+
+
 def parse_json_relationships(relationships_json, session):
-    if relationships_json.get('relationship_type') == 'subtechnique-of':
+    if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
+        if relationships_json[const.SOURCE_REF_j].startswith(const.INTRUSION_SET_j):
+            groups = session.query(Groups).get(relationships_json[const.SOURCE_REF_j])
+            groups.revoked_by = relationships_json[const.TARGET_REF_j]
+
+        elif relationships_json[const.SOURCE_REF_j].startswith(const.COURSE_OF_ACTION_j):
+            mitigations = session.query(Mitigations).get(relationships_json[const.SOURCE_REF_j])
+            mitigations.revoked_by = relationships_json[const.TARGET_REF_j]
+
+        elif relationships_json[const.SOURCE_REF_j].startswith(const.MALWARE_j) or \
+                relationships_json[const.SOURCE_REF_j].startswith(const.TOOL_j):
+            software = session.query(Software).get(relationships_json[const.SOURCE_REF_j])
+            software.revoked_by = relationships_json[const.TARGET_REF_j]
+
+        elif relationships_json['source_ref'].startswith("attack-pattern"):
+            technique = session.query(Technique).get(relationships_json['source_ref'])
+            technique.revoked_by = relationships_json['target_ref']
+    elif relationships_json.get('relationship_type') == 'subtechnique-of':
         technique = session.query(Technique).get(relationships_json['source_ref'])
         technique.subtechnique_of = relationships_json['target_ref']
-        session.commit()
-    elif relationships_json.get('relationship_type') == 'revoked-by' and \
-            relationships_json['source_ref'].startswith("attack-pattern"):
-        technique = session.query(Technique).get(relationships_json['source_ref'])
-        technique.revoked_by = relationships_json['target_ref']
-        session.commit()
+
+    session.commit()
 
 
 def parse_json(pathfile, session, database):
@@ -240,18 +380,36 @@ def parse_json(pathfile, session, database):
         metadata = Metadata()
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
-            metadata.version = datajson['spec_version']
-            for data_object in datajson['objects']:
-                if data_object['type'] == 'identity':
-                    metadata.name = data_object['name']
-                elif data_object['type'] == 'marking-definition':
-                    metadata.description = data_object['definition']['statement']
-                elif data_object['type'] == 'attack-pattern':
+            metadata.version = datajson[const.VERSION_j]
+            for data_object in datajson[const.OBJECT_j]:
+                if data_object[const.TYPE_j] == const.IDENTITY_j:
+                    metadata.name = data_object[const.NAME_j]
+                elif data_object[const.TYPE_j] == const.MARKING_DEFINITION_j:
+                    metadata.description = data_object[const.DEFINITION_j][const.STATEMENT_j]
+                elif data_object[const.TYPE_j] == const.INTRUSION_SET_j:
+                    groups = parse_table_(Groups, data_object)
+                    session.add(groups)
+                    session.commit()
+                elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
+                    mitigations = parse_table_(Mitigations, data_object)
+                    session.add(mitigations)
+                    session.commit()
+                elif data_object[const.TYPE_j] == const.MALWARE_j or \
+                        data_object[const.TYPE_j] == const.TOOL_j:
+                    software = parse_table_(Software, data_object)
+                    session.add(software)
+                    session.commit()
+                elif data_object[const.TYPE_j] == 'attack-pattern':
                     technique = parse_json_techniques(data_object)
                     session.add(technique)
                     session.commit()
-                elif data_object['type'] == 'relationship':
+
+        with open(pathfile) as json_file:
+            datajson = json.load(json_file)
+            for data_object in datajson[const.OBJECT_j]:
+                if data_object[const.TYPE_j] == const.RELATIONSHIP_j:
                     parse_json_relationships(data_object, session)
+
         session.add(metadata)
         session.commit()
 
