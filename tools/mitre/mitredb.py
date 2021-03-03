@@ -146,6 +146,34 @@ class Mitigations(Base):
         self.revoked_by = revoked_by
         self.deprecated = deprecated
 
+class Tactics(Base):
+    """
+    In this table are stored the tactics of json file
+    The information stored:
+        id: Used to identify the tactic (PK)
+        name: Name of the tactic
+        description: Detailed description of the tactic
+        created_time: Publish date
+        modified_time: Last modification date
+        short_name: Short name of the tactic
+    """
+    __tablename__ = "tactics"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+    short_name = Column(const.SHORT_NAME_t, String, default=None)
+
+    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, short_name=None) :
+        self.Id = Id
+        self.name = name
+        self.description = description
+        self.created_time = created_time
+        self.modified_time = modified_time
+        self.short_name = short_name
+
 def parse_table_(function, data_object):
     table = function()
     table.Id = data_object[const.ID_j]
@@ -160,11 +188,16 @@ def parse_table_(function, data_object):
     if const.MODIFIED_j in data_object:
         table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
 
-    if const.MITRE_VERSION_j in data_object:
-        table.mitre_version = data_object[const.MITRE_VERSION_j]
-
-    if const.DEPRECATED_j in data_object:
-        table.deprecated = data_object[const.DEPRECATED_j]
+    if function.__name__ == 'Tactics':
+        if const.SHORT_NAME_j in data_object:
+            table.short_name = data_object[const.SHORT_NAME_j]
+    elif function.__name__ == 'Groups' or \
+            function.__name__ == 'Software' or \
+            function.__name__ == 'Mitigations':
+        if const.MITRE_VERSION_j in data_object:
+            table.mitre_version = data_object[const.MITRE_VERSION_j]
+        if const.DEPRECATED_j in data_object:
+            table.deprecated = data_object[const.DEPRECATED_j]
 
     return table
 
@@ -208,16 +241,19 @@ def parse_json(pathfile, session, database):
                 elif data_object[const.TYPE_j] == const.INTRUSION_SET_j:
                     groups = parse_table_(Groups, data_object)
                     session.add(groups)
-                    session.commit()
                 elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
                     mitigations = parse_table_(Mitigations, data_object)
                     session.add(mitigations)
-                    session.commit()
                 elif data_object[const.TYPE_j] == const.MALWARE_j or \
                         data_object[const.TYPE_j] == const.TOOL_j:
                     software = parse_table_(Software, data_object)
                     session.add(software)
-                    session.commit()
+                elif data_object[const.TYPE_j] == const.TACTIC_j:
+                    tactics = parse_table_(Tactics, data_object)
+                    session.add(tactics)
+                else:
+                    continue
+                session.commit()
 
         with open(pathfile) as json_file:
             datajson = json.load(json_file)

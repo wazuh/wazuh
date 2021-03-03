@@ -17,6 +17,7 @@ MODIFIED_t= 'modified_time'
 MITRE_VERSION_t= 'mitre_version'
 REVOKED_BY_t= "revoked_by"
 DEPRECATED_t='deprecated'
+SHORT_NAME_t='short_name'
 
 ### Json index
 
@@ -30,6 +31,8 @@ COURSE_OF_ACTION_j= 'course-of-action'
 # Software
 MALWARE_j= 'malware'
 TOOL_j= 'tool'
+# Tactics
+TACTIC_j= 'x-mitre-tactic'
 
 ID_j= 'id'
 VERSION_j= 'spec_version'
@@ -48,3 +51,5 @@ RELATIONSHIP_TYPE_j= 'relationship_type'
 REVOKED_BY_j= "revoked-by"
 TARGET_REF_j= 'target_ref'
 DEPRECATED_j='x_mitre_deprecated'
+SHORT_NAME_j='x_mitre_shortname'
+
