@@ -6,6 +6,8 @@
 
 ####### Constants #######
 
+TIME_FORMAT= '%Y-%m-%dT%H:%M:%S.%fZ'
+
 ### Table
 
 ID_t= 'id'
@@ -18,6 +20,26 @@ MITRE_VERSION_t= 'mitre_version'
 REVOKED_BY_t= "revoked_by"
 DEPRECATED_t='deprecated'
 SHORT_NAME_t='short_name'
+MITRE_DETECTION_t= 'mitre_detection'
+NETWORK_REQ_t= 'network_requirements'
+REMOTE_SUPPORT_t= 'remote_support'
+SUBTECHNIQUE_OF_t= 'subtechnique_of'
+SOURCE_t= 'source'
+DEFENSE_t= 'defense'
+PERMISSION_t= 'permission'
+IMPACT_t= 'impact'
+REQUIREMENT_t= 'requirement'
+
+### Relationships
+DATASOURCE_r= 'DataSource'
+DEFENSEBYPASSES_r='DefenseByPasses'
+EFFECTIVEPERMISSON_r= 'EffectivePermission'
+IMPACT_r= 'Impact'
+PERMISSION_r= 'Permission'
+SYSTEMREQ_r= 'SystemRequirement'
+TECHNIQUES_r= 'techniques'
+
+TECHNIQUE_ID_fk= 'techniques.id'
 
 ### Json index
 
@@ -33,6 +55,8 @@ MALWARE_j= 'malware'
 TOOL_j= 'tool'
 # Tactics
 TACTIC_j= 'x-mitre-tactic'
+# Techniques
+ATTACK_PATTERN_j= 'attack-pattern'
 
 ID_j= 'id'
 VERSION_j= 'spec_version'
@@ -45,11 +69,23 @@ DESCRIPTION_j= 'description'
 CREATED_j= 'created'
 MODIFIED_j= 'modified'
 MITRE_VERSION_j= 'x_mitre_version'
-SOURCE_REF_j='source_ref'
+DEPRECATED_j='x_mitre_deprecated'
+MITRE_DETECTION_j= 'x_mitre_detection'
+MITRE_NETWOR_REQ_j= 'x_mitre_network_requirements'
+MITRE_REMOTE_SUPP_j= 'x_mitre_remote_support'
+DATASOURCE_j= 'x_mitre_data_sources'
+DEFENSE_BYPASSED_j= 'x_mitre_defense_bypassed'
+EFFECTIVE_PERMISSION_j= 'x_mitre_effective_permissions'
+IMPACT_TYPE_j= 'x_mitre_impact_type'
+PERMISSIONS_REQ_j= 'x_mitre_permissions_required'
+SYSTEM_REQ_j= 'x_mitre_system_requirements'
+
+# Relationship type
 RELATIONSHIP_j= 'relationship'
 RELATIONSHIP_TYPE_j= 'relationship_type'
-REVOKED_BY_j= "revoked-by"
+REVOKED_BY_j= 'revoked-by'
+SOURCE_REF_j='source_ref'
 TARGET_REF_j= 'target_ref'
 DEPRECATED_j='x_mitre_deprecated'
 SHORT_NAME_j='x_mitre_shortname'
-
+SUBTECHNIQUE_OF_j= 'subtechnique-of'

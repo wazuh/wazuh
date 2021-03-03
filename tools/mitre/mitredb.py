@@ -20,10 +20,12 @@ import copy
 import const
 from datetime import datetime
 from sqlalchemy import create_engine, Column, DateTime, String, Integer, ForeignKey, Boolean
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 
+
 Base = declarative_base()
+
 
 class Metadata(Base):
     """
@@ -39,10 +41,130 @@ class Metadata(Base):
     name = Column(const.NAME_t, String, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
 
-    def __init__(self, version="", name="", description="") :
-        self.version = version
-        self.name = name
-        self.description = description
+
+class Technique(Base):
+    """
+    In this table are stored the techniques of json file
+    The information stored:
+        id: Used to identify the technique
+        name: Name of the technique
+        description: Detailed description of the technique
+        created_time: Publish date
+        modified_time: Last modification date
+        mitre_version: Version of MITRE when created
+        mitre_detection: Detection information
+        network_requirements:Boolean indicationg network requirements
+        remote_support: Boolean indicationg remote support
+        revoked_by: ID of the technique that revokes this one, NULL otherwise.
+        deprecated: Boolean indicating if this technique is deprecated
+        subtechnique_of: ID of the parent technique, NULL otherwise
+    """
+    __tablename__ = "techniques"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t ,DateTime, default=None)
+    mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
+    mitre_detection = Column(const.MITRE_DETECTION_t, String, default=None)
+    network_requirements = Column(const.NETWORK_REQ_t, Boolean, default=False)
+    remote_support = Column(const.REMOTE_SUPPORT_t, Boolean, default=False)
+    revoked_by = Column(const.REVOKED_BY_t, String, default=None)
+    deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
+    subtechnique_of = Column(const.SUBTECHNIQUE_OF_t, String, default=None)
+
+    data_sources = relationship(const.DATASOURCE_r, backref=const.TECHNIQUES_r)
+    defenses_bypassed = relationship(const.DEFENSEBYPASSES_r, backref=const.TECHNIQUES_r)
+    effective_permissions = relationship(const.EFFECTIVEPERMISSON_r, backref=const.TECHNIQUES_r)
+    impacts = relationship(const.IMPACT_r, backref=const.TECHNIQUES_r)
+    permissions = relationship(const.PERMISSION_r, backref=const.TECHNIQUES_r)
+    requirements = relationship(const.SYSTEMREQ_r, backref=const.TECHNIQUES_r)
+
+
+class DataSource(Base):
+    """
+    In this table are stored the Sources for each technique identified
+    with key x_mitre_data_sources on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        source: Data source for this technique
+    """
+    __tablename__ = "data_source"
+
+    id = Column(const.ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
+    source = Column(const.SOURCE_t, String, primary_key=True)
+
+
+class DefenseByPasses(Base):
+    """
+    In this table are stored the Defenses bypassed for each technique identified
+    with key x_mitre_defense_bypassed on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        defense: Defense bypassed for this technique
+    """
+    __tablename__ = "defense_bypassed"
+
+    id = Column(const.ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
+    defense = Column(const.DEFENSE_t, String, primary_key=True)
+
+
+class EffectivePermission(Base):
+    """
+    In this table are stored the Effective permissions for each technique identified
+    with key x_mitre_effective_permissions on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        permission: Effective permission for this technique
+    """
+    __tablename__ = "effective_permission"
+
+    id = Column(const.ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
+    permission = Column(const.PERMISSION_t, String, primary_key=True)
+
+
+class Impact(Base):
+    """
+    In this table are stored the Impacts of each technique identified with
+    key x_mitre_impact_type on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        impact: Impact of this technique
+    """
+    __tablename__ = "impact"
+
+    id = Column(const.ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
+    impact = Column(const.IMPACT_t, String, primary_key=True)
+
+
+class Permission(Base):
+    """
+    In this table are stored the Permissions for each technique identified
+    with key x_mitre_permissions_required on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        permission: Permission for this technique
+    """
+    __tablename__ = "permission"
+
+    id = Column(const.ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
+    permission = Column(const.PERMISSION_t, String, primary_key=True)
+
+
+class SystemRequirement(Base):
+    """
+    In this table are stored the Requirements for each technique identified
+    with key x_mitre_system_requirements on json file
+    The information stored:
+        id: Used to identify the technique (FK)
+        requirements: System requirement for this technique
+    """
+    __tablename__ = "system_requirement"
+
+    id = Column(const.ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
+    requirement = Column(const.REQUIREMENT_t, String, primary_key=True)
+
 
 class Groups(Base):
     """
@@ -68,15 +190,6 @@ class Groups(Base):
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
-    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
-        self.Id = Id
-        self.name = name
-        self.description = description
-        self.created_time = created_time
-        self.modified_time = modified_time
-        self.mitre_version = mitre_version
-        self.revoked_by = revoked_by
-        self.deprecated = deprecated
 
 class Software(Base):
     """
@@ -102,15 +215,6 @@ class Software(Base):
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
-    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
-        self.Id = Id
-        self.name = name
-        self.description = description
-        self.created_time = created_time
-        self.modified_time = modified_time
-        self.mitre_version = mitre_version
-        self.revoked_by = revoked_by
-        self.deprecated = deprecated
 
 class Mitigations(Base):
     """
@@ -136,15 +240,6 @@ class Mitigations(Base):
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
-    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
-        self.Id = Id
-        self.name = name
-        self.description = description
-        self.created_time = created_time
-        self.modified_time = modified_time
-        self.mitre_version = mitre_version
-        self.revoked_by = revoked_by
-        self.deprecated = deprecated
 
 class Tactics(Base):
     """
@@ -166,14 +261,6 @@ class Tactics(Base):
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
     short_name = Column(const.SHORT_NAME_t, String, default=None)
 
-    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, short_name=None) :
-        self.Id = Id
-        self.name = name
-        self.description = description
-        self.created_time = created_time
-        self.modified_time = modified_time
-        self.short_name = short_name
-
 def parse_table_(function, data_object):
     table = function()
     table.Id = data_object[const.ID_j]
@@ -183,10 +270,10 @@ def parse_table_(function, data_object):
         table.description = data_object[const.DESCRIPTION_j]
 
     if const.CREATED_j in data_object:
-        table.created_time = datetime.strptime(data_object[const.CREATED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+        table.created_time = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
 
     if const.MODIFIED_j in data_object:
-        table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], '%Y-%m-%dT%H:%M:%S.%fZ')
+        table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
 
     if function.__name__ == 'Tactics':
         if const.SHORT_NAME_j in data_object:
@@ -200,6 +287,50 @@ def parse_table_(function, data_object):
             table.deprecated = data_object[const.DEPRECATED_j]
 
     return table
+
+
+def parse_json_techniques(technique_json):
+
+    technique = Technique()
+    technique.id = technique_json[const.ID_t]
+    technique.name = technique_json[const.NAME_t]
+
+    if technique_json.get(const.DESCRIPTION_t):
+        technique.description = technique_json[const.DESCRIPTION_t]
+    if technique_json.get(const.CREATED_j):
+        technique.created_time = datetime.strptime(technique_json[const.CREATED_j], const.TIME_FORMAT)
+    if technique_json.get(const.MODIFIED_j):
+        technique.modified_time = datetime.strptime(technique_json[const.MODIFIED_j], const.TIME_FORMAT)
+    if technique_json.get(const.MITRE_VERSION_j):
+        technique.mitre_version = technique_json[const.MITRE_VERSION_j]
+    if technique_json.get(const.MITRE_DETECTION_j):
+        technique.mitre_detection = technique_json[const.MITRE_DETECTION_j]
+    if technique_json.get(const.MITRE_NETWOR_REQ_j):
+        technique.network_requirements = technique_json[const.MITRE_NETWOR_REQ_j]
+    if technique_json.get(const.MITRE_REMOTE_SUPP_j):
+        technique.remote_support = technique_json[const.MITRE_REMOTE_SUPP_j]
+    if technique_json.get(const.DEPRECATED_j):
+        technique.deprecated = technique_json[const.DEPRECATED_j]
+    if technique_json.get(const.DATASOURCE_j):
+        for data_source in list(set(technique_json[const.DATASOURCE_j])):
+            technique.data_sources.append(DataSource(techniques=technique, source=data_source))
+    if technique_json.get(const.DEFENSE_BYPASSED_j):
+        for defense in list(set(technique_json[const.DEFENSE_BYPASSED_j])):
+            technique.defenses_bypassed.append(DefenseByPasses(techniques=technique, defense=defense))
+    if technique_json.get(const.EFFECTIVE_PERMISSION_j):
+        for permission in list(set(technique_json[const.EFFECTIVE_PERMISSION_j])):
+            technique.effective_permissions.append(EffectivePermission(techniques=technique, permission=permission))
+    if technique_json.get(const.IMPACT_TYPE_j):
+        for impact in list(set(technique_json[const.IMPACT_TYPE_j])):
+            technique.impacts.append(Impact(techniques=technique, impact=impact))
+    if technique_json.get(const.PERMISSIONS_REQ_j):
+        for permission in list(set(technique_json[const.PERMISSIONS_REQ_j])):
+            technique.permissions.append(Permission(techniques=technique, permission=permission))
+    if technique_json.get(const.SYSTEM_REQ_j):
+        for requirement in list(set(technique_json[const.SYSTEM_REQ_j])):
+            technique.requirements.append(SystemRequirement(techniques=technique, requirement=requirement))
+    return technique
+
 
 def parse_json_relationships(relationships_json, session):
     if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
@@ -216,7 +347,15 @@ def parse_json_relationships(relationships_json, session):
             software = session.query(Software).get(relationships_json[const.SOURCE_REF_j])
             software.revoked_by = relationships_json[const.TARGET_REF_j]
 
-        session.commit()
+        elif relationships_json[const.SOURCE_REF_j].startswith(const.ATTACK_PATTERN_j):
+            technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
+            technique.revoked_by = relationships_json[const.TARGET_REF_j]
+
+    elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.SUBTECHNIQUE_OF_j:
+        technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
+        technique.subtechnique_of = relationships_json[const.TARGET_REF_j]
+
+    session.commit()
 
 
 def parse_json(pathfile, session, database):
@@ -251,6 +390,10 @@ def parse_json(pathfile, session, database):
                 elif data_object[const.TYPE_j] == const.TACTIC_j:
                     tactics = parse_table_(Tactics, data_object)
                     session.add(tactics)
+                    session.commit()
+                elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
+                    technique = parse_json_techniques(data_object)
+                    session.add(technique)
                 else:
                     continue
                 session.commit()
