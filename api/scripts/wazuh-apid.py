@@ -58,7 +58,7 @@ def start(foreground, root, config_file):
 
     # Set correct permissions on api.log file
     if os.path.exists(os.path.join(common.wazuh_path, log_path)):
-        os.chown(os.path.join(common.wazuh_path, log_path), common.ossec_uid(), common.ossec_gid())
+        os.chown(os.path.join(common.wazuh_path, log_path), common.wazuh_uid(), common.wazuh_gid())
         os.chmod(os.path.join(common.wazuh_path, log_path), 0o660)
 
     # Configure https
@@ -111,8 +111,8 @@ def start(foreground, root, config_file):
     # Drop privileges to ossec
     if not root:
         if api_conf['drop_privileges']:
-            os.setgid(common.ossec_gid())
-            os.setuid(common.ossec_uid())
+            os.setgid(common.wazuh_gid())
+            os.setuid(common.wazuh_uid())
     else:
         print(f"Starting API as root")
 

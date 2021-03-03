@@ -115,7 +115,7 @@ if __name__ == '__main__':
 
     # set correct permissions on cluster.log file
     if os.path.exists('{0}/logs/cluster.log'.format(common.wazuh_path)):
-        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.ossec_uid(), common.ossec_gid())
+        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.wazuh_uid(), common.wazuh_gid())
         os.chmod('{0}/logs/cluster.log'.format(common.wazuh_path), 0o660)
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
@@ -144,10 +144,10 @@ if __name__ == '__main__':
     if not args.foreground:
         pyDaemonModule.pyDaemon()
 
-    # Drop privileges to ossec
+    # Drop privileges to wazuh
     if not args.root:
-        os.setgid(common.ossec_gid())
-        os.setuid(common.ossec_uid())
+        os.setgid(common.wazuh_gid())
+        os.setuid(common.wazuh_uid())
 
     pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
 

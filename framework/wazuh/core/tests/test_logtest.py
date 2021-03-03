@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         from wazuh.core.logtest import send_logtest_msg
         from wazuh.core.common import LOGTEST_SOCKET
 

@@ -13,8 +13,8 @@ from xml.etree import ElementTree
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh import WazuhException
         from wazuh.core.utils import *
         from wazuh.core import exception
