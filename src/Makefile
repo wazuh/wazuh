@@ -42,8 +42,8 @@ PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
-OSSEC_GROUP?=wazuh
-OSSEC_USER?=wazuh
+WAZUH_GROUP?=wazuh
+WAZUH_USER?=wazuh
 SHARED=so
 SELINUX_MODULE=selinux/wazuh.mod
 SELINUX_ENFORCEMENT=selinux/wazuh.te
@@ -120,8 +120,8 @@ CLEANFULL?=no
 
 DEFINES=-DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
-DEFINES+=-DUSER=\"${OSSEC_USER}\"
-DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
+DEFINES+=-DUSER=\"${WAZUH_USER}\"
+DEFINES+=-DGROUPGLOBAL=\"${WAZUH_GROUP}\"
 
 ifneq (${TARGET},winagent)
 		DEFINES+=-D${uname_S}
@@ -590,8 +590,8 @@ help: failtarget
 	@echo "   make USE_GEOIP=yes           Build with GeoIP support. Allowed values are auto 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo
 	@echo "User options: "
-	@echo "   make OSSEC_GROUP=wazuh       Set wazuh group"
-	@echo "   make OSSEC_USER=wazuh        Set wazuh user"
+	@echo "   make WAZUH_GROUP=wazuh       Set wazuh group"
+	@echo "   make WAZUH_USER=wazuh        Set wazuh user"
 	@echo
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=yes"
@@ -611,8 +611,8 @@ settings:
 	@echo "    RESOURCES_URL:      ${RESOURCES_URL}"
 	@echo "    DISABLE_SHARED:     ${DISABLE_SHARED}"
 	@echo "User settings:"
-	@echo "    OSSEC_GROUP:        ${OSSEC_GROUP}"
-	@echo "    OSSEC_USER:         ${OSSEC_USER}"
+	@echo "    WAZUH_GROUP:        ${WAZUH_GROUP}"
+	@echo "    WAZUH_USER:         ${WAZUH_USER}"
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:         ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:          ${USE_GEOIP}"
@@ -1896,7 +1896,7 @@ install_dependencies: install_python
 
 install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py clean --all install --prefix=${WPYTHON_DIR} --wazuh-version=$(shell cat VERSION) --install-type=${TARGET}
-	chown -R root:${OSSEC_GROUP} ${WPYTHON_DIR}
+	chown -R root:${WAZUH_GROUP} ${WPYTHON_DIR}
 	chmod -R o=- ${WPYTHON_DIR}
 
 install_api: install_python
