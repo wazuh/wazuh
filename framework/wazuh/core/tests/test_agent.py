@@ -393,23 +393,6 @@ def test_WazuhDBQueryMultigroups_get_total_items(mock_socket_conn, send_mock):
     assert 'GROUP BY a.id' in query_multigroups.query, 'Query returned does not match the expected one'
 
 
-@patch("wazuh.core.agent.WazuhDBBackend")
-@patch("wazuh.core.agent.WazuhDBQuery.__init__")
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('wazuh.core.agent.Agent.get_basic_information')
-@patch('socket.socket.connect')
-def test_WazuhDBQueryCVE__init__(mock_conn, mock_info, mock_send, mock_wazuhDBQuery, mock_backend):
-    """Test if method __init__ of WazuhDBQueryCVE calls WazuhDBQuery with expected params"""
-    WazuhDBQueryCVE(agent_id='001', offset=500, limit=500, query='version>3.9.81')
-    mock_backend.assert_called_once_with('001')
-    mock_wazuhDBQuery.assert_called_once_with(
-        ANY, offset=500, limit=500, table='vuln_cves', sort=None, search=None, select=None,
-        fields={'name': 'name', 'version': 'version', 'architecture': 'architecture', 'cve': 'cve'},
-        default_sort_field='name', default_sort_order='ASC', filters={}, query='version>3.9.81', backend=ANY,
-        min_select_fields=set(), count=True, get_data=True, distinct=False
-    )
-
-
 @pytest.mark.parametrize('id, ip, name, key', [
     ('1', '127.0.0.1', 'test_agent', 'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747D'),
 ])

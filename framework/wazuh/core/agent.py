@@ -320,25 +320,6 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
         self.query += ' GROUP BY a.id '
 
 
-class WazuhDBQueryCVE(WazuhDBQuery):
-    """"""
-    fields = {
-        'name': 'name', 'version': 'version', 'architecture': 'architecture', 'cve': 'cve'
-    }
-
-    def __init__(self, agent_id, offset=0, limit=common.database_limit, sort=None, search=None, select=None, query='',
-                 count=True, get_data=True, distinct=False, default_sort_field='name', filters=None, fields=fields):
-        if filters is None:
-            filters = {}
-        # Check if the agent exists
-        Agent(agent_id).get_basic_information()
-        backend = WazuhDBBackend(agent_id)
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='vuln_cves', sort=sort, search=search,
-                              select=select, fields=fields, default_sort_field=default_sort_field,
-                              default_sort_order='ASC', filters=filters, query=query, backend=backend,
-                              min_select_fields=set(), count=count, get_data=get_data, distinct=distinct)
-
-
 class Agent:
     """OSSEC Agent object.
     """

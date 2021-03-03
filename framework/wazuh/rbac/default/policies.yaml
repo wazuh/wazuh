@@ -330,3 +330,13 @@ default_policies:
         resources:
           - '*:*:*'
         effect: allow
+
+  vulnerability_read:
+    description: Allow read agents' vulnerabilities information.
+    policies:
+      vulnerability:
+        actions:
+          - vulnerability:read
+        resources:
+          - agent:id:*
+        effect: allow
