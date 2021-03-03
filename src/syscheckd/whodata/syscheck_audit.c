@@ -203,7 +203,7 @@ int init_auditd_socket(void) {
     return sfd;
 }
 
-void audit_immutable_init() {
+void audit_create_rules_file() {
     char *real_path = NULL;
     directory_t *dir_it = NULL;
     OSListNode *node_it;
@@ -223,10 +223,9 @@ void audit_immutable_init() {
             continue;
         }
         real_path = fim_get_real_path(dir_it);
+
         mdebug2(FIM_ADDED_RULE_TO_FILE, real_path);
         fprintf(fp, "-w %s -p wa -k %s\n", real_path, AUDIT_KEY);
-
-        audit_no_rules_to_realtime(dir_it, real_path);
 
         free(real_path);
     }
@@ -259,17 +258,34 @@ void audit_immutable_init() {
             return;
         }
     }
+
+    mdebug2(FIM_AUDIT_CREATED_RULE_FILE);
 }
 
-void audit_no_rules_to_realtime(int pos, const char *path) {
-    int found;
+void audit_rules_to_realtime() {
+    char *real_path = NULL;
 
-    found = search_audit_rule(path, "wa", AUDIT_KEY);
+    for (int i = 0; syscheck.dir[i] != NULL; i++) {
+        if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
+            continue;
+        }
 
-    if (found == 0) {   // No rule found
-        mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, path);
-        syscheck.opts[pos] &= ~WHODATA_ACTIVE;
-        syscheck.opts[pos] |= REALTIME_ACTIVE;
+        real_path = fim_get_real_path(i);
+
+        if (search_audit_rule(real_path, "wa", AUDIT_KEY) == 1) {
+            return;
+        }
+
+        for (int j = 0; syscheck.audit_key[j]; j++) {
+            if (search_audit_rule(real_path, "wa", syscheck.audit_key[j]) == 1) {
+                return;
+            }
+        }
+        mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
+        syscheck.opts[i] &= ~WHODATA_ACTIVE;
+        syscheck.opts[i] |= REALTIME_ACTIVE;
+
+        free(real_path);
     }
 }
 
@@ -332,7 +348,8 @@ int audit_init(void) {
 
     switch (audit_data.mode) {
     case AUDIT_IMMUTABLE:
-        audit_immutable_init();
+        audit_create_rules_file();
+        audit_rules_to_realtime();
         break;
     case AUDIT_ENABLED:
         fim_rules_initial_load();
