@@ -22,6 +22,9 @@ basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 
+def pytest_addoption(parser):
+  parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
+
 
 def get_token_login_api():
     """Get the API token for the test
@@ -44,7 +47,7 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(interval: int = 10):
+def build_and_up(interval: int = 10, build: bool = True):
     """Build all Docker environments needed for the current test.
 
     Parameters
@@ -66,8 +69,9 @@ def build_and_up(interval: int = 10):
     }
     # Get current branch
     current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
-    current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",  f"WAZUH_BRANCH={current_branch}"])
-    current_process.wait()
+    if build:
+      current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",  f"WAZUH_BRANCH={current_branch}"])
+      current_process.wait()
     current_process = subprocess.Popen(["docker-compose", "up", "-d"])
     current_process.wait()
 
@@ -302,7 +306,7 @@ def api_test(request):
     else:
         enable_white_mode()
 
-    values = build_and_up(interval=10)
+    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'))
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'])
         agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
