@@ -41,11 +41,6 @@ class Metadata(Base):
     name = Column(const.NAME_t, String, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
 
-    def __init__(self, version="", name="", description="") :
-        self.version = version
-        self.name = name
-        self.description = description
-
 
 class Technique(Base):
     """
@@ -68,16 +63,16 @@ class Technique(Base):
 
     id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
-    description = Column(const.DESCRIPTION_t, String)
-    created_time = Column(const.CREATED_t, DateTime)
-    modified_time = Column(const.MODIFIED_t ,DateTime)
-    mitre_version = Column(const.MITRE_VERSION_t, String)
-    mitre_detection = Column(const.MITRE_DETECTION_t, String)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t ,DateTime, default=None)
+    mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
+    mitre_detection = Column(const.MITRE_DETECTION_t, String, default=None)
     network_requirements = Column(const.NETWORK_REQ_t, Boolean, default=False)
     remote_support = Column(const.REMOTE_SUPPORT_t, Boolean, default=False)
-    revoked_by = Column(const.REVOKED_BY_t, String)
+    revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
-    subtechnique_of = Column(const.SUBTECHNIQUE_OF_t, String)
+    subtechnique_of = Column(const.SUBTECHNIQUE_OF_t, String, default=None)
 
     data_sources = relationship(const.DATASOURCE_r, backref=const.TECHNIQUES_r)
     defenses_bypassed = relationship(const.DEFENSEBYPASSES_r, backref=const.TECHNIQUES_r)
@@ -195,16 +190,6 @@ class Groups(Base):
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
-    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
-        self.Id = Id
-        self.name = name
-        self.description = description
-        self.created_time = created_time
-        self.modified_time = modified_time
-        self.mitre_version = mitre_version
-        self.revoked_by = revoked_by
-        self.deprecated = deprecated
-
 
 class Software(Base):
     """
@@ -229,16 +214,6 @@ class Software(Base):
     mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
-
-    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
-        self.Id = Id
-        self.name = name
-        self.description = description
-        self.created_time = created_time
-        self.modified_time = modified_time
-        self.mitre_version = mitre_version
-        self.revoked_by = revoked_by
-        self.deprecated = deprecated
 
 
 class Mitigations(Base):
@@ -265,16 +240,6 @@ class Mitigations(Base):
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
-    def __init__(self, Id="", name="", description=None, created_time=None, modified_time=None, mitre_version=None, revoked_by=None, deprecated=False) :
-        self.Id = Id
-        self.name = name
-        self.description = description
-        self.created_time = created_time
-        self.modified_time = modified_time
-        self.mitre_version = mitre_version
-        self.revoked_by = revoked_by
-        self.deprecated = deprecated
-
 
 def parse_table_(function, data_object):
     table = function()
@@ -300,12 +265,11 @@ def parse_table_(function, data_object):
 
 
 def parse_json_techniques(technique_json):
-    technique = Technique()
 
-    if technique_json.get(const.ID_t):
-        technique.id = technique_json[const.ID_t]
-    if technique_json.get(const.NAME_t):
-        technique.name = technique_json[const.NAME_t]
+    technique = Technique()
+    technique.id = technique_json[const.ID_t]
+    technique.name = technique_json[const.NAME_t]
+
     if technique_json.get(const.DESCRIPTION_t):
         technique.description = technique_json[const.DESCRIPTION_t]
     if technique_json.get(const.CREATED_j):
@@ -320,12 +284,8 @@ def parse_json_techniques(technique_json):
         technique.network_requirements = technique_json[const.MITRE_NETWOR_REQ_j]
     if technique_json.get(const.MITRE_REMOTE_SUPP_j):
         technique.remote_support = technique_json[const.MITRE_REMOTE_SUPP_j]
-    if technique_json.get(const.REVOKED_BY_j):
-        technique.revoked_by = technique_json[const.REVOKED_BY_j]
     if technique_json.get(const.DEPRECATED_j):
         technique.deprecated = technique_json[const.DEPRECATED_j]
-    if technique_json.get(const.SUBTECHNIQUEOF_j):
-        technique.subtechnique_of = technique_json[const.SUBTECHNIQUEOF_j]
     if technique_json.get(const.DATASOURCE_j):
         for data_source in list(set(technique_json[const.DATASOURCE_j])):
             technique.data_sources.append(DataSource(techniques=technique, source=data_source))
