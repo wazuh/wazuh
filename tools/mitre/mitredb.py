@@ -22,7 +22,6 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, DateTime, String, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.exc import IntegrityError
 
 
 Base = declarative_base()
