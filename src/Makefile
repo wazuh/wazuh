@@ -16,6 +16,8 @@ uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
+CHECK_CENTOS5 := $(shell sh -c 'grep "CentOS release 5." /etc/redhat-release > /dev/null && echo YES || echo not')
+
 ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
@@ -1057,6 +1059,10 @@ endif
 endif
 endif
 endif
+endif
+
+ifeq ($(CHECK_CENTOS5),YES)
+PRECOMPILED_OS := el5
 endif
 
 ifeq (${PREFIX},/var/ossec)
