@@ -12,8 +12,8 @@ if [ "$3" != "master" ]; then
     sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/ossec/etc/ossec.conf
 else
     chown root:ossec /var/ossec/etc/client.keys
-    chown -R ossec:ossec /var/ossec/queue/agent-groups
-    chown -R ossec:ossec /var/ossec/etc/shared
+    chown -R wazuh:wazuh /var/ossec/queue/agent-groups
+    chown -R wazuh:wazuh /var/ossec/etc/shared
     chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
     cd /var/ossec/etc/shared && find -name merged.mg -exec chown ossecr:ossec {} \; && cd /
     chown root:ossec /var/ossec/etc/shared/ar.conf

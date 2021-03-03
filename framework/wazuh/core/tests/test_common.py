@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from wazuh.core.common import find_wazuh_path, ossec_uid, ossec_gid, context_cached, reset_context_cache, \
+from wazuh.core.common import find_wazuh_path, wazuh_uid, wazuh_gid, context_cached, reset_context_cache, \
     get_context_cache
 
 
@@ -25,14 +25,14 @@ def test_find_wazuh_path_relative_path():
         assert(find_wazuh_path.__wrapped__() == '~')
 
 
-def test_ossec_uid():
+def test_wazuh_uid():
     with patch('wazuh.core.common.getpwnam', return_value=getpwnam("root")):
-        ossec_uid()
+        wazuh_uid()
 
 
-def test_ossec_gid():
+def test_wazuh_gid():
     with patch('wazuh.core.common.getgrnam', return_value=getgrnam("root")):
-        ossec_gid()
+        wazuh_gid()
 
 
 def test_context_cached():

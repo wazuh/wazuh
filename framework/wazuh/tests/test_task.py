@@ -9,8 +9,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         import wazuh.rbac.decorators
 
         from wazuh.tests.util import get_fake_database_data, RBAC_bypasser, InitWDBSocketMock

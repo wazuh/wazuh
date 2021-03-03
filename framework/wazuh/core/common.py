@@ -181,8 +181,8 @@ database_limit = 500
 maximum_database_limit = 1000
 limit_seconds = 1800  # 600*3
 
-_ossec_uid = None
-_ossec_gid = None
+_wazuh_uid = None
+_wazuh_gid = None
 
 # Version variables (legacy, required, etc)
 AR_LEGACY_VERSION = 'Wazuh v4.2.0'
@@ -193,12 +193,12 @@ CHECK_CONFIG_COMMAND = 'check-manager-configuration'
 RESTART_WAZUH_COMMAND = 'restart-wazuh'
 
 
-def ossec_uid():
-    return getpwnam("ossec").pw_uid if globals()['_ossec_uid'] is None else globals()['_ossec_uid']
+def wazuh_uid():
+    return getpwnam("wazuh").pw_uid if globals()['_wazuh_uid'] is None else globals()['_wazuh_uid']
 
 
-def ossec_gid():
-    return getgrnam("ossec").gr_gid if globals()['_ossec_gid'] is None else globals()['_ossec_gid']
+def wazuh_gid():
+    return getgrnam("wazuh").gr_gid if globals()['_wazuh_gid'] is None else globals()['_wazuh_gid']
 
 
 # Multigroup variables

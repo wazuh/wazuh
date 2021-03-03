@@ -19,7 +19,7 @@ RUN /wazuh/install.sh
 
 # SET CONFIGURATION FILES
 COPY scripts/ /scripts/
-COPY --chown=ossec:ossec configurations/base/manager/config/ /var/ossec/
+COPY --chown=wazuh:wazuh configurations/base/manager/config/ /var/ossec/
 COPY configurations/base/manager/configuration_files/ /configuration_files/
 COPY configurations/tmp/manager/ /configuration_files/
 COPY base/manager/entrypoint.sh /scripts/entrypoint.sh

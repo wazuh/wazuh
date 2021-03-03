@@ -8,7 +8,7 @@ fi
 
 sed -i "s:<address>MANAGER_IP</address>:<address>$1</address>:g" /var/ossec/etc/ossec.conf
 sed -n "/$2 /p" /var/ossec/etc/test.keys > /var/ossec/etc/client.keys
-chown root:ossec /var/ossec/etc/client.keys
+chown root:wazuh /var/ossec/etc/client.keys
 rm /var/ossec/etc/test.keys
 
 # Agent configuration
