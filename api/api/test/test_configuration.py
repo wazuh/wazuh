@@ -74,7 +74,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         m.return_value = copy.deepcopy(read_config)
         config = configuration.read_yaml_config()
         for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
-            config[section][subsection] = config[section][subsection].replace(common.ossec_path+'/', '')
+            config[section][subsection] = config[section][subsection].replace(common.wazuh_path+'/', '')
 
         check_config_values(config, {}, read_config)
 

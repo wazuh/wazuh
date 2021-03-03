@@ -235,7 +235,7 @@ def get_rule_file(filename=None, raw=False):
     if len(files) > 0:
         rules_path = files[0]['relative_dirname']
         try:
-            full_path = join(common.ossec_path, rules_path, filename)
+            full_path = join(common.wazuh_path, rules_path, filename)
             with open(full_path) as f:
                 content = f.read()
             if raw:

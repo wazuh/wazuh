@@ -38,17 +38,17 @@ def test_get_daemons_stats_from_socket(agent_id, daemon, response):
     response : string
         Response to be returned by the socket.
     """
-    with patch('wazuh.core.stats.OssecSocket.__init__', return_value=None) as mock_socket:
-        with patch('wazuh.core.stats.OssecSocket.send', side_effect=None) as mock_send:
-            with patch('wazuh.core.stats.OssecSocket.receive', return_value=response.encode()):
-                with patch('wazuh.core.stats.OssecSocket.close', side_effect=None):
+    with patch('wazuh.core.stats.WazuhSocket.__init__', return_value=None) as mock_socket:
+        with patch('wazuh.core.stats.WazuhSocket.send', side_effect=None) as mock_send:
+            with patch('wazuh.core.stats.WazuhSocket.receive', return_value=response.encode()):
+                with patch('wazuh.core.stats.WazuhSocket.close', side_effect=None):
                     result = stats.get_daemons_stats_from_socket(agent_id, daemon)
 
         if agent_id == '000':
-            mock_socket.assert_called_once_with(os.path.join(common.ossec_path, "queue", "sockets", "logcollector"))
+            mock_socket.assert_called_once_with(os.path.join(common.wazuh_path, "queue", "sockets", "logcollector"))
             mock_send.assert_called_once_with(b'getstate')
         else:
-            mock_socket.assert_called_once_with(os.path.join(common.ossec_path, "queue", "sockets", "request"))
+            mock_socket.assert_called_once_with(os.path.join(common.wazuh_path, "queue", "sockets", "request"))
             mock_send.assert_called_once_with(f"{str(agent_id).zfill(3)} {daemon} getstate".encode())
 
 
@@ -63,13 +63,13 @@ def test_get_daemons_stats_from_socket_ko():
     with pytest.raises(WazuhInternalError, match=r'\b1121\b'):
         stats.get_daemons_stats_from_socket('000', 'logcollector')
 
-    with patch('wazuh.core.stats.OssecSocket.__init__', return_value=None):
-        with patch('wazuh.core.stats.OssecSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.OssecSocket.receive', side_effect=ValueError):
+    with patch('wazuh.core.stats.WazuhSocket.__init__', return_value=None):
+        with patch('wazuh.core.stats.WazuhSocket.send', side_effect=None):
+            with patch('wazuh.core.configuration.WazuhSocket.receive', side_effect=ValueError):
                 with pytest.raises(WazuhInternalError, match=r'\b1118\b'):
                     stats.get_daemons_stats_from_socket('000', 'logcollector')
 
-            with patch('wazuh.core.configuration.OssecSocket.receive', return_value="err Error message test".encode()):
-                with patch('wazuh.core.stats.OssecSocket.close', side_effect=None):
+            with patch('wazuh.core.configuration.WazuhSocket.receive', return_value="err Error message test".encode()):
+                with patch('wazuh.core.stats.WazuhSocket.close', side_effect=None):
                     with pytest.raises(WazuhError, match=r'\b1117\b'):
                         stats.get_daemons_stats_from_socket('000', 'logcollector')

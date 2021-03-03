@@ -1024,10 +1024,10 @@ def test_agent_upgrade_agents_custom(agent_list):
 @pytest.mark.parametrize('agent_list, component, configuration', [
     (['001'], 'logcollector', 'internal')
 ])
-@patch('wazuh.core.configuration.OssecSocket')
+@patch('wazuh.core.configuration.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agent_config(socket_mock, send_mock, ossec_socket_mock, agent_list, component, configuration):
+def test_agent_get_agent_config(socket_mock, send_mock, wazuh_socket_mock, agent_list, component, configuration):
     """Test `get_agent_config` function from agent module.
 
     Parameters
@@ -1039,7 +1039,7 @@ def test_agent_get_agent_config(socket_mock, send_mock, ossec_socket_mock, agent
     configuration : str
         Name of the configuration file.
     """
-    ossec_socket_mock.return_value.receive.return_value = b'ok {"test": "conf"}'
+    wazuh_socket_mock.return_value.receive.return_value = b'ok {"test": "conf"}'
 
     result = get_agent_config(agent_list=agent_list, component=component, config=configuration)
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'

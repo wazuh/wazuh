@@ -34,7 +34,7 @@ def test_pyDaemon(mock_chdir, mock_dup, mock_fileno, mock_write, mock_setsid, mo
     mock_chdir.assert_called_once_with('/')
 
 
-@patch('wazuh.core.pyDaemonModule.common.ossec_path', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.common.wazuh_path', new='/tmp')
 def test_create_pid():
     """Tests create_pid function works"""
 
@@ -44,7 +44,7 @@ def test_create_pid():
             create_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
 
 
-@patch('wazuh.core.pyDaemonModule.common.ossec_path', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.common.wazuh_path', new='/tmp')
 @patch('wazuh.core.pyDaemonModule.os.chmod', side_effect=OSError)
 def test_create_pid_ko(mock_chmod):
     """Tests create_pid function exception works"""
@@ -56,7 +56,7 @@ def test_create_pid_ko(mock_chmod):
                 create_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
 
 
-@patch('wazuh.core.pyDaemonModule.common.ossec_path', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.common.wazuh_path', new='/tmp')
 def test_delete_pid():
     """Tests delete_pid function works"""
 
@@ -66,7 +66,7 @@ def test_delete_pid():
             delete_pid(tmpfile.name.split('/')[3].split('-')[0],'255')
 
 
-@patch('wazuh.core.pyDaemonModule.common.ossec_path', new='/tmp')
+@patch('wazuh.core.pyDaemonModule.common.wazuh_path', new='/tmp')
 @patch('wazuh.core.pyDaemonModule.os.path.exists', side_effect=OSError)
 def test_delete_pid_ko(mock_exists):
     """Tests delete_pid function exception works"""

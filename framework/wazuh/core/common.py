@@ -100,41 +100,41 @@ def get_wazuh_type() -> str:
     return get_wazuh_info("WAZUH_TYPE")
 
 
-ossec_path = find_wazuh_path()
+wazuh_path = find_wazuh_path()
 
 install_type = metadata['install_type']
 wazuh_version = metadata['wazuh_version']
 installation_date = metadata['installation_date']
-ossec_conf = os.path.join(ossec_path, 'etc', 'ossec.conf')
-internal_options = os.path.join(ossec_path, 'etc', 'internal_options.conf')
-local_internal_options = os.path.join(ossec_path, 'etc', 'local_internal_options.conf')
-ossec_log = os.path.join(ossec_path, 'logs', 'ossec.log')
-client_keys = os.path.join(ossec_path, 'etc', 'client.keys')
-stats_path = os.path.join(ossec_path, 'stats')
-groups_path = os.path.join(ossec_path, 'queue', 'agent-groups')
-multi_groups_path = os.path.join(ossec_path, 'var', 'multigroups')
-shared_path = os.path.join(ossec_path, 'etc', 'shared')
-backup_path = os.path.join(ossec_path, 'backup')
-database_path = os.path.join(ossec_path, 'var', 'db')
+ossec_conf = os.path.join(wazuh_path, 'etc', 'ossec.conf')
+internal_options = os.path.join(wazuh_path, 'etc', 'internal_options.conf')
+local_internal_options = os.path.join(wazuh_path, 'etc', 'local_internal_options.conf')
+ossec_log = os.path.join(wazuh_path, 'logs', 'ossec.log')
+client_keys = os.path.join(wazuh_path, 'etc', 'client.keys')
+stats_path = os.path.join(wazuh_path, 'stats')
+groups_path = os.path.join(wazuh_path, 'queue', 'agent-groups')
+multi_groups_path = os.path.join(wazuh_path, 'var', 'multigroups')
+shared_path = os.path.join(wazuh_path, 'etc', 'shared')
+backup_path = os.path.join(wazuh_path, 'backup')
+database_path = os.path.join(wazuh_path, 'var', 'db')
 database_path_global = os.path.join(database_path, 'global.db')
-wdb_socket_path = os.path.join(ossec_path, 'queue', 'db', 'wdb')
-wdb_path = os.path.join(ossec_path, 'queue', 'db')
-api_config_path = os.path.join(ossec_path, 'api', 'configuration', 'api.yaml')
+wdb_socket_path = os.path.join(wazuh_path, 'queue', 'db', 'wdb')
+wdb_path = os.path.join(wazuh_path, 'queue', 'db')
+api_config_path = os.path.join(wazuh_path, 'api', 'configuration', 'api.yaml')
 database_path_agents = os.path.join(database_path, 'agents')
 os_pidfile = os.path.join('var', 'run')
-analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-analysisd.state')
-remoted_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-remoted.state')
-ar_conf_path = os.path.join(ossec_path, 'etc', 'shared', 'ar.conf')
+analysisd_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-analysisd.state')
+remoted_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-remoted.state')
+ar_conf_path = os.path.join(wazuh_path, 'etc', 'shared', 'ar.conf')
 
 # Ruleset
 # Ruleset paths
-ruleset_path = os.path.join(ossec_path, 'ruleset')
+ruleset_path = os.path.join(wazuh_path, 'ruleset')
 ruleset_rules_path = os.path.join(ruleset_path, 'rules')
 ruleset_decoders_path = os.path.join(ruleset_path, 'decoders')
 ruleset_lists_path = os.path.join(ruleset_path, 'lists')
-user_lists_path = os.path.join(ossec_path, 'etc', 'lists')
-user_rules_path = os.path.join(ossec_path, 'etc', 'rules')
-user_decoders_path = os.path.join(ossec_path, 'etc', 'decoders')
+user_lists_path = os.path.join(wazuh_path, 'etc', 'lists')
+user_rules_path = os.path.join(wazuh_path, 'etc', 'rules')
+user_decoders_path = os.path.join(wazuh_path, 'etc', 'decoders')
 # Ruleset vars
 RULES_EXTENSION = '.xml'
 DECODERS_EXTENSION = '.xml'
@@ -142,16 +142,16 @@ LISTS_EXTENSION = ''
 COMPILED_LISTS_EXTENSION = '.cdb'
 
 # Queues
-ARQUEUE = os.path.join(ossec_path, 'queue', 'alerts', 'ar')
-EXECQ = os.path.join(ossec_path, 'queue', 'alerts', 'execq')
+ARQUEUE = os.path.join(wazuh_path, 'queue', 'alerts', 'ar')
+EXECQ = os.path.join(wazuh_path, 'queue', 'alerts', 'execq')
 
 # Socket
-AUTHD_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'auth')
-REQUEST_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'request')
-LOGTEST_SOCKET = os.path.join(ossec_path, 'queue', 'sockets', 'logtest')
-UPGRADE_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'upgrade')
+AUTHD_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'auth')
+REQUEST_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'request')
+LOGTEST_SOCKET = os.path.join(wazuh_path, 'queue', 'sockets', 'logtest')
+UPGRADE_SOCKET = os.path.join(wazuh_path, 'queue', 'tasks', 'upgrade')
 
-TASKS_SOCKET = os.path.join(ossec_path, 'queue', 'tasks', 'task')
+TASKS_SOCKET = os.path.join(wazuh_path, 'queue', 'tasks', 'task')
 
 # Wdb
 MAX_SOCKET_BUFFER_SIZE = 64 * 1024  # 64KB

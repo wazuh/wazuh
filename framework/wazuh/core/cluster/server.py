@@ -386,8 +386,8 @@ class AbstractServer:
 
         if self.enable_ssl:
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile=os.path.join(common.ossec_path, 'etc', 'sslmanager.cert'),
-                                        keyfile=os.path.join(common.ossec_path, 'etc', 'sslmanager.key'))
+            ssl_context.load_cert_chain(certfile=os.path.join(common.wazuh_path, 'etc', 'sslmanager.cert'),
+                                        keyfile=os.path.join(common.wazuh_path, 'etc', 'sslmanager.key'))
         else:
             ssl_context = None
 

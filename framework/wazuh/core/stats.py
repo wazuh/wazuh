@@ -7,7 +7,7 @@ import os
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.wazuh_socket import OssecSocket
+from wazuh.core.wazuh_socket import WazuhSocket
 
 
 def get_daemons_stats_from_socket(agent_id, daemon):
@@ -28,7 +28,7 @@ def get_daemons_stats_from_socket(agent_id, daemon):
     if not agent_id or not daemon:
         raise WazuhError(1307)
 
-    sockets_path = os.path.join(common.ossec_path, "queue", "sockets")
+    sockets_path = os.path.join(common.wazuh_path, "queue", "sockets")
 
     if str(agent_id).zfill(3) == '000':
         # Some daemons do not exist in agent 000
@@ -42,7 +42,7 @@ def get_daemons_stats_from_socket(agent_id, daemon):
 
     # Socket connection
     try:
-        s = OssecSocket(dest_socket)
+        s = WazuhSocket(dest_socket)
     except Exception:
         raise WazuhInternalError(1121)
 
