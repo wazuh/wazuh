@@ -22,7 +22,7 @@ UNAME=$(uname);
 if [ "$UNAME" = "Darwin" ]; then
     if ! id -u "${USER}" > /dev/null 2>&1; then
         chmod +x ./init/darwin-addusers.sh
-        ./init/darwin-addusers.sh $USER $GROUP $INSTYPE
+        ./init/darwin-addusers.sh $USER $GROUP $DIR $INSTYPE
     fi
 
 else
@@ -79,7 +79,7 @@ else
         elif [ "$UNAME" = "AIX" ]; then
             GID=$(cat /etc/group | grep wazuh| cut -d':' -f 3)
             uid=$(( $GID + 1 ))
-            echo "wazuh:x:$uid:$GID::/var/ossec:/bin/false" >> /etc/passwd
+            echo "${USER}:x:$uid:$GID::${DIR}:/bin/false" >> /etc/passwd
         else
             ${USERADD} "${USER}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
         fi

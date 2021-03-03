@@ -20,11 +20,12 @@ function check_errm
 
 USER=$1
 GROUP=$2
-INSTYPE=$3
+DIR=$3
+INSTYPE=$4
 
-if ! [ $# -eq 3 ]; then
+if ! [ $# -eq 4 ]; then
     echo $#
-    echo "Usage: ${0} USERNAME_DEFAULT GROUPNAME INSTYPE.";
+    echo "Usage: ${0} USERNAME_DEFAULT GROUPNAME DIRECTORY INSTYPE.";
     exit 1;
 fi
 
@@ -88,7 +89,7 @@ else
    check_errm "Error creating user ${USER}" "87"
    sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} RecordName ${USER}
    sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} RealName "${USER}acct"
-   sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} NFSHomeDirectory /var/ossec
+   sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} NFSHomeDirectory ${DIR}
    sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} UniqueID ${i}
    sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} PrimaryGroupID ${new_gid}
    sudo ${DSCL} localhost -append /Local/Default/Groups/${GROUP} GroupMembership ${USER}
