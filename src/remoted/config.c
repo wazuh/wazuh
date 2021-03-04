@@ -40,8 +40,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
 
     /* Setting default values for global parameters */
-    cfg->global.agents_disconnection_time = 20;
-    cfg->global.agents_disconnection_alert_time = 100;
+    cfg->global.agents_disconnection_time = 600;
+    cfg->global.agents_disconnection_alert_time = 0;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
         ReadConfig(CGLOBAL, cfgfile, &cfg->global, NULL) < 0 ) {
