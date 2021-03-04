@@ -46,7 +46,7 @@ class Technique(Base):
     """
     In this table are stored the techniques of json file
     The information stored:
-        id: Used to identify the technique
+        id: Used to identify the technique (PK)
         name: Name of the technique
         description: Detailed description of the technique
         created_time: Publish date
@@ -261,6 +261,19 @@ class Tactics(Base):
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
     short_name = Column(const.SHORT_NAME_t, String, default=None)
 
+
+class Phases(Base):
+    """
+    This table stores the relationship between techniques and the tactics table.
+    The information stored:
+        tactic_id: Used to identify the tactic (FK) (PK)
+        tech_id: Used to identify the technique (FK) (PK)
+    """
+    __tablename__ = "phases"
+
+    tactic_id = Column(const.TACTIC_ID_t, String, ForeignKey(const.TACTICS_ID_fk, ondelete='CASCADE'), primary_key=True)
+    tech_id = Column(const.TECH_ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
+
 def parse_table_(function, data_object):
     table = function()
     table.Id = data_object[const.ID_j]
@@ -289,7 +302,7 @@ def parse_table_(function, data_object):
     return table
 
 
-def parse_json_techniques(technique_json):
+def parse_json_techniques(technique_json, phases_table):
 
     technique = Technique()
     technique.id = technique_json[const.ID_t]
@@ -329,6 +342,9 @@ def parse_json_techniques(technique_json):
     if technique_json.get(const.SYSTEM_REQ_j):
         for requirement in list(set(technique_json[const.SYSTEM_REQ_j])):
             technique.requirements.append(SystemRequirement(techniques=technique, requirement=requirement))
+    if technique_json.get(const.SYSTEM_REQ_j):
+        for phase in technique_json[const.PHASES_j]:
+             phases_table.append([technique.id, phase[const.PHASE_NAME_j]])
     return technique
 
 
@@ -358,6 +374,15 @@ def parse_json_relationships(relationships_json, session):
     session.commit()
 
 
+def parse_list_phases(session, phase_list):
+    phase = Phases()
+
+    phase.tech_id = phase_list[0]
+    account = session.query(Tactics).filter_by(short_name=phase_list[1]).first()
+    phase.tactic_id = account.Id
+
+    return phase
+
 def parse_json(pathfile, session, database):
     """
     Parse enterprise-attack.json and fill mitre.db's tables.
@@ -368,6 +393,7 @@ def parse_json(pathfile, session, database):
     :return:
     """
     try:
+        phases_table = []
         metadata = Metadata()
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
@@ -392,11 +418,17 @@ def parse_json(pathfile, session, database):
                     session.add(tactics)
                     session.commit()
                 elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
-                    technique = parse_json_techniques(data_object)
+                    technique = parse_json_techniques(data_object, phases_table)
                     session.add(technique)
                 else:
                     continue
                 session.commit()
+
+        for table in phases_table:
+            phases = parse_list_phases(session, table)
+            session.add(phases)
+
+        session.commit()
 
         with open(pathfile) as json_file:
             datajson = json.load(json_file)

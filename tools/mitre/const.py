@@ -29,6 +29,8 @@ DEFENSE_t= 'defense'
 PERMISSION_t= 'permission'
 IMPACT_t= 'impact'
 REQUIREMENT_t= 'requirement'
+TACTIC_ID_t= 'tactic_id'
+TECH_ID_t= 'tech_id'
 
 ### Relationships
 DATASOURCE_r= 'DataSource'
@@ -40,6 +42,7 @@ SYSTEMREQ_r= 'SystemRequirement'
 TECHNIQUES_r= 'techniques'
 
 TECHNIQUE_ID_fk= 'techniques.id'
+TACTICS_ID_fk= 'tactics.id'
 
 ### Json index
 
@@ -79,6 +82,7 @@ EFFECTIVE_PERMISSION_j= 'x_mitre_effective_permissions'
 IMPACT_TYPE_j= 'x_mitre_impact_type'
 PERMISSIONS_REQ_j= 'x_mitre_permissions_required'
 SYSTEM_REQ_j= 'x_mitre_system_requirements'
+PHASES_j= 'kill_chain_phases'
 
 # Relationship type
 RELATIONSHIP_j= 'relationship'
@@ -89,3 +93,4 @@ TARGET_REF_j= 'target_ref'
 DEPRECATED_j='x_mitre_deprecated'
 SHORT_NAME_j='x_mitre_shortname'
 SUBTECHNIQUE_OF_j= 'subtechnique-of'
+PHASE_NAME_j= 'phase_name'
