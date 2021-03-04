@@ -342,7 +342,7 @@ def parse_json_techniques(technique_json, phases_table):
     if technique_json.get(const.SYSTEM_REQ_j):
         for requirement in list(set(technique_json[const.SYSTEM_REQ_j])):
             technique.requirements.append(SystemRequirement(techniques=technique, requirement=requirement))
-    if technique_json.get(const.SYSTEM_REQ_j):
+    if technique_json.get(const.PHASES_j):
         for phase in technique_json[const.PHASES_j]:
              phases_table.append([technique.id, phase[const.PHASE_NAME_j]])
     return technique
@@ -383,6 +383,7 @@ def parse_list_phases(session, phase_list):
 
     return phase
 
+
 def parse_json(pathfile, session, database):
     """
     Parse enterprise-attack.json and fill mitre.db's tables.
@@ -416,7 +417,6 @@ def parse_json(pathfile, session, database):
                 elif data_object[const.TYPE_j] == const.TACTIC_j:
                     tactics = parse_table_(Tactics, data_object)
                     session.add(tactics)
-                    session.commit()
                 elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
                     technique = parse_json_techniques(data_object, phases_table)
                     session.add(technique)
