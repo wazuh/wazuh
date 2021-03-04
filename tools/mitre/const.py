@@ -8,18 +8,22 @@
 
 TIME_FORMAT= '%Y-%m-%dT%H:%M:%S.%fZ'
 
-### Table
+####### Columns #######
 
+### Common
 ID_t= 'id'
-VERSION_t= 'version'
 NAME_t= 'name'
 DESCRIPTION_t= 'description'
 CREATED_t= 'created_time'
 MODIFIED_t= 'modified_time'
 MITRE_VERSION_t= 'mitre_version'
 REVOKED_BY_t= 'revoked_by'
-DEPRECATED_t='deprecated'
-SHORT_NAME_t='short_name'
+DEPRECATED_t= 'deprecated'
+
+### Metadata
+VERSION_t= 'version'
+
+### Technique
 MITRE_DETECTION_t= 'mitre_detection'
 NETWORK_REQ_t= 'network_requirements'
 REMOTE_SUPPORT_t= 'remote_support'
@@ -29,54 +33,64 @@ DEFENSE_t= 'defense'
 PERMISSION_t= 'permission'
 IMPACT_t= 'impact'
 REQUIREMENT_t= 'requirement'
+
+### Tactic
+SHORT_NAME_t= 'short_name'
+
+### Relationship
 SOURCE_ID_t= 'source_id'
 TARGET_ID_t= 'target_id'
 TACTIC_ID_t= 'tactic_id'
 TECH_ID_t= 'tech_id'
 
-### Relationships
+####### Relationships #######
+
+### Names
 DATASOURCE_r= 'DataSource'
-DEFENSEBYPASSES_r='DefenseByPasses'
+DEFENSEBYPASSES_r= 'DefenseByPasses'
 EFFECTIVEPERMISSON_r= 'EffectivePermission'
 IMPACT_r= 'Impact'
 PERMISSION_r= 'Permission'
 SYSTEMREQ_r= 'SystemRequirement'
-TECHNIQUES_r= 'techniques'
+TECHNIQUES_r= 'technique'
 MITIGATE_r= 'Mitigate'
 
-TECHNIQUE_ID_fk= 'techniques.id'
-MITIGATION_ID_fk= 'mitigations.id'
-TACTICS_ID_fk= 'tactics.id'
+### ForeignKey
+TECHNIQUE_ID_fk= 'technique.id'
+MITIGATION_ID_fk= 'mitigation.id'
+TACTIC_ID_fk= 'tactic.id'
 
-### Json index
+####### JSON indexes #######
 
-# Global
+### Global
 TYPE_j= 'type'
 OBJECT_j= 'objects'
-# Groups
-INTRUSION_SET_j= 'intrusion-set'
-# Mitigations
-COURSE_OF_ACTION_j= 'course-of-action'
-# Software
-MALWARE_j= 'malware'
-TOOL_j= 'tool'
-# Tactics
-TACTIC_j= 'x-mitre-tactic'
-# Techniques
-ATTACK_PATTERN_j= 'attack-pattern'
 
-ID_j= 'id'
-VERSION_j= 'spec_version'
+### Types
 IDENTITY_j= 'identity'
 MARKING_DEFINITION_j= 'marking-definition'
-DEFINITION_j= 'definition'
-STATEMENT_j= 'statement'
+ATTACK_PATTERN_j= 'attack-pattern'
+TACTIC_j= 'x-mitre-tactic'
+COURSE_OF_ACTION_j= 'course-of-action'
+INTRUSION_SET_j= 'intrusion-set'
+MALWARE_j= 'malware'
+TOOL_j= 'tool'
+
+### Common
+ID_j= 'id'
 NAME_j= 'name'
 DESCRIPTION_j= 'description'
 CREATED_j= 'created'
 MODIFIED_j= 'modified'
 MITRE_VERSION_j= 'x_mitre_version'
-DEPRECATED_j='x_mitre_deprecated'
+DEPRECATED_j= 'x_mitre_deprecated'
+
+### Metadata
+VERSION_j= 'spec_version'
+DEFINITION_j= 'definition'
+STATEMENT_j= 'statement'
+
+### Technique
 MITRE_DETECTION_j= 'x_mitre_detection'
 MITRE_NETWOR_REQ_j= 'x_mitre_network_requirements'
 MITRE_REMOTE_SUPP_j= 'x_mitre_remote_support'
@@ -86,16 +100,18 @@ EFFECTIVE_PERMISSION_j= 'x_mitre_effective_permissions'
 IMPACT_TYPE_j= 'x_mitre_impact_type'
 PERMISSIONS_REQ_j= 'x_mitre_permissions_required'
 SYSTEM_REQ_j= 'x_mitre_system_requirements'
+
+### Tactic
+SHORT_NAME_j= 'x_mitre_shortname'
+
+### Relationship
 PHASES_j= 'kill_chain_phases'
 PHASE_NAME_j= 'phase_name'
-SHORT_NAME_j='x_mitre_shortname'
-
-# Relationship type
 RELATIONSHIP_j= 'relationship'
-RELATIONSHIP_TYPE_j= 'relationship_type'
-REVOKED_BY_j= 'revoked-by'
-SOURCE_REF_j='source_ref'
+SOURCE_REF_j= 'source_ref'
 TARGET_REF_j= 'target_ref'
-SUBTECHNIQUE_OF_j= 'subtechnique-of'
+RELATIONSHIP_TYPE_j= 'relationship_type'
 MITIGATES_j= 'mitigates'
 USES_j= 'uses'
+REVOKED_BY_j= 'revoked-by'
+SUBTECHNIQUE_OF_j= 'subtechnique-of'

@@ -1,17 +1,17 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 3) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
  */
 
 #include "mitre.h"
 
-#define SQL_GET_ALL_TECHNIQUES "mitre sql SELECT techniques.id, techniques.name, references.external_id FROM techniques LEFT JOIN references ON techniques.id = references.id WHERE references.external_id LIKE \"T%%\";"
-#define SQL_GET_ALL_TECHNIQUE_PHASES "mitre sql SELECT tactic_id FROM phases WHERE tech_id = '%s';"
-#define SQL_GET_TACTIC_INFORMATION "mitre sql SELECT tactics.name, references.external_id FROM tactics LEFT JOIN references ON tactics.id = references.id WHERE references.external_id LIKE \"TA%%\" AND tactics.id = '%s';"
+#define SQL_GET_ALL_TECHNIQUES "mitre sql SELECT technique.id, technique.name, reference.external_id FROM technique LEFT JOIN reference ON technique.id = reference.id WHERE reference.external_id LIKE \"T%%\";"
+#define SQL_GET_ALL_TECHNIQUE_PHASES "mitre sql SELECT tactic_id FROM phase WHERE tech_id = '%s';"
+#define SQL_GET_TACTIC_INFORMATION "mitre sql SELECT tactic.name, reference.external_id FROM tactic LEFT JOIN reference ON tactic.id = reference.id WHERE reference.external_id LIKE \"TA%%\" AND tactic.id = '%s';"
 
 static OSHash *techniques_table;
 
