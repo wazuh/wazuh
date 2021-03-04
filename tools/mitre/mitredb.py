@@ -264,13 +264,10 @@ class Aliases(Base):
         id: Used to identify the group or software (PK).
         alias: Alias related to this item (PK).
     """
-    __tablename__ = "aliase"
+    __tablename__ = "alias"
 
     Id = Column(const.ID_t, String, primary_key=True)
     alias = Column(const.ALIAS_t, String, nullable=False)
-
-    def __init__(self, Id="", alias="") :
-        self.alias = alias
 
 
 class Contributors(Base):
@@ -285,9 +282,6 @@ class Contributors(Base):
     Id = Column(const.ID_t, String, primary_key=True)
     contributor = Column(const.CONTRIBUTOR_t, String, nullable=False)
 
-    def __init__(self, Id="", contributor="") :
-        self.contributor = contributor
-
 
 class Platforms(Base):
     """
@@ -300,9 +294,6 @@ class Platforms(Base):
 
     Id = Column(const.ID_t, String, primary_key=True)
     platform = Column(const.PLATFORM_t, String, nullable=False)
-
-    def __init__(self, Id="", platform="") :
-        self.platform = platform
 
 
 class References(Base):
@@ -322,12 +313,6 @@ class References(Base):
     external_id = Column(const.EXTERNAL_ID_t, String, default=None)
     url = Column(const.URL_t, String, default=None)
     description = Column(const.DESCRIPTION_t, String, default=None)
-
-    def __init__(self, Id="", source="", external_id=None, url=None, description=None) :
-        self.source = source
-        self.external_id = external_id
-        self.url = url
-        self.description = description
 
 
 class Mitigate(Base):
@@ -433,30 +418,7 @@ def parse_table_(function, data_object):
         if const.DEPRECATED_j in data_object:
             table.deprecated = data_object[const.DEPRECATED_j]
 
-    # Alias
-    if data_object.get(const.ALIAS_j):
-        for alias in list(set(data_object[const.ALIAS_j])):
-            o_alias = Aliases(techniques=technique, alias=alias)
-            o_alias.Id = data_object[const.ID_j]
-            table.aliases.append(o_alias)
-    # Contributor
-    if data_object.get(const.CONTRIBUTOR_j):
-        for contributor in list(set(data_object[const.CONTRIBUTOR_j])):
-            o_contributor = Contributors(techniques=technique, contributor=contributor)
-            o_contributor.Id = data_object[const.ID_j]
-            table.contributors.append(o_contributor)
-    # Platform
-    if data_object.get(const.PLATFORM_j):
-        for platform in list(set(data_object[const.PLATFORM_j])):
-            o_platform = Platforms(techniques=technique, platform=platform)
-            o_platform.Id = data_object[const.ID_j]
-            table.platforms.append(o_platform)
-    # External References
-    if data_object.get(const.EXTERNAL_REFERENCES_j):
-        for ext_reference in list(set(data_object[const.EXTERNAL_REFERENCES_j])):
-            o_reference = References(techniques=technique, references=references)
-            o_reference.Id = data_object[const.ID_j]
-            table.references.append(o_reference)
+    parse_common_tables(table, data_object)
 
     return table
 
@@ -504,24 +466,8 @@ def parse_json_techniques(technique_json, phases_table):
     if technique_json.get(const.PHASES_j):
         for phase in technique_json[const.PHASES_j]:
              phases_table.append([technique.id, phase[const.PHASE_NAME_j]])
-    # Contributor
-    if technique_json.get(const.CONTRIBUTOR_j):
-        for contributor in list(set(technique_json[const.CONTRIBUTOR_j])):
-            o_contributor = Contributors(techniques=technique, contributor=contributor)
-            o_contributor.id = technique_json[const.ID_t]
-            technique.contributors.append(o_contributor)
-    # Platform
-    if technique_json.get(const.PLATFORM_j):
-        for platform in list(set(technique_json[const.PLATFORM_j])):
-            o_platform = Platforms(techniques=technique, platform=platform)
-            o_platform.id = technique_json[const.ID_t]
-            technique.platforms.append(o_platform)
-    # External References
-    if technique_json.get(const.EXTERNAL_REFERENCES_j):
-        for ext_reference in list(set(technique_json[const.EXTERNAL_REFERENCES_j])):
-            o_reference = References(techniques=technique, references=references)
-            o_reference.id = technique_json[const.ID_t]
-            technique.references.append(o_reference)
+
+    parse_common_tables(technique, technique_json)
 
     return technique
 
@@ -540,6 +486,34 @@ def parse_json_mitigate_use(function, data_object):
         table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
 
     return table
+
+
+def parse_common_tables(table, data_object):
+    # Alias
+    if data_object.get(const.ALIAS_j):
+        for alias in list(set(data_object[const.ALIAS_j])):
+            o_alias = Aliases(table=table, alias=alias)
+            o_alias.Id = data_object[const.ID_j]
+            table.aliases.append(o_alias)
+    # Contributor
+    if data_object.get(const.CONTRIBUTOR_j):
+        for contributor in list(set(data_object[const.CONTRIBUTOR_j])):
+            o_contributor = Contributors(table=table, contributor=contributor)
+            o_contributor.Id = data_object[const.ID_j]
+            table.contributors.append(o_contributor)
+    # Platform
+    if data_object.get(const.PLATFORM_j):
+        for platform in list(set(data_object[const.PLATFORM_j])):
+            o_platform = Platforms(table=table, platform=platform)
+            o_platform.Id = data_object[const.ID_j]
+            table.platforms.append(o_platform)
+    # External References
+    if data_object.get(const.EXTERNAL_REFERENCES_j):
+        for ext_reference in list(set(data_object[const.EXTERNAL_REFERENCES_j])):
+            o_reference = References(table=table, references=references)
+            o_reference.Id = data_object[const.ID_j]
+            table.references.append(o_reference)
+
 
 
 def parse_json_relationships(relationships_json, session):
