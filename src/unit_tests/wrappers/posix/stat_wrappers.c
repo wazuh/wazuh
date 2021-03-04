@@ -14,6 +14,8 @@
 #include <cmocka.h>
 #include "../common.h"
 
+#include <string.h>
+
 
 int __wrap_chmod(const char *path) {
     check_expected_ptr(path);
