@@ -1,10 +1,13 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-from wazuh.core.wlogging import WazuhLogger
 import logging
 import re
+from json import JSONDecodeError
+
 from aiohttp.abc import AbstractAccessLogger
+
+from wazuh.core.wlogging import WazuhLogger
 
 # compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+\]|\s+\*\s+')
@@ -16,6 +19,7 @@ class AccessLogger(AbstractAccessLogger):
         self.logger.info(f'{request.get("user", "unknown_user")} '
                          f'{request.remote} '
                          f'"{request.method} {request.path}" '
+                         f'with parameters {dict(request.query)} and body {request.get("body","{}")} '
                          f'done in {time:.3f}s: {response.status}')
 
 
