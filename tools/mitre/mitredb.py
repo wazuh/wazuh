@@ -80,6 +80,7 @@ class Technique(Base):
     impacts = relationship(const.IMPACT_r, backref=const.TECHNIQUES_r)
     permissions = relationship(const.PERMISSION_r, backref=const.TECHNIQUES_r)
     requirements = relationship(const.SYSTEMREQ_r, backref=const.TECHNIQUES_r)
+    mitigate = relationship(const.MITIGATE_r)
 
 
 class DataSource(Base):
@@ -240,6 +241,50 @@ class Mitigations(Base):
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
+    mitigate = relationship(const.MITIGATE_r)
+
+
+class Mitigate(Base):
+    """
+    In this table are stored the mitigate information
+    The information stored:
+        id: Used to identify the mitigate
+        source_id: Used to identify the mitigation (FK)
+        target_id: Used to identify the technique (FK)
+        description: Detailed description of the mitigate
+        created_time: Publish date
+        modified_time: Last modification date
+    """
+    __tablename__ = "mitigate"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    source_id = Column(const.SOURCE_ID_t, String, ForeignKey(const.MITIGATION_ID_fk), nullable=False)
+    target_id = Column(const.TARGET_ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk), nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+
+
+class Use(Base):
+    """
+    In this table are stored the Use information
+    The information stored:
+        id: Used to identify the use
+        source_id: Used to identify the group or software
+        target_id: Used to identify the technique or software
+        description: Detailed description of the relationship
+        created_time: Publish date
+        modified_time: Last modification date
+    """
+    __tablename__ = "use"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    source_id = Column(const.SOURCE_ID_t, String, default=None, nullable=False)
+    target_id = Column(const.TARGET_ID_t, String, default=None, nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+
 
 class Tactics(Base):
     """
@@ -346,6 +391,22 @@ def parse_json_techniques(technique_json, phases_table):
         for phase in technique_json[const.PHASES_j]:
              phases_table.append([technique.id, phase[const.PHASE_NAME_j]])
     return technique
+
+
+def parse_json_mitigate_use(function, data_object):
+    table = function()
+    table.id = data_object[const.ID_t]
+    table.source_id = data_object[const.SOURCE_REF_j]
+    table.target_id = data_object[const.TARGET_REF_j]
+
+    if data_object.get(const.DESCRIPTION_t):
+        table.description = data_object[const.DESCRIPTION_t]
+    if data_object.get(const.CREATED_j):
+        table.created_time = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
+    if data_object.get(const.MODIFIED_j):
+        table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
+
+    return table
 
 
 def parse_json_relationships(relationships_json, relationship_table_revoked_by, relationship_table_subtechique_of):
