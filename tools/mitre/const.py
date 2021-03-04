@@ -28,6 +28,8 @@ DEFENSE_t= 'defense'
 PERMISSION_t= 'permission'
 IMPACT_t= 'impact'
 REQUIREMENT_t= 'requirement'
+SOURCE_ID_t= 'source_id'
+TARGET_ID_t= 'target_id'
 
 ### Relationships
 DATASOURCE_r= 'DataSource'
@@ -37,8 +39,10 @@ IMPACT_r= 'Impact'
 PERMISSION_r= 'Permission'
 SYSTEMREQ_r= 'SystemRequirement'
 TECHNIQUES_r= 'techniques'
+MITIGATE_r= 'Mitigate'
 
 TECHNIQUE_ID_fk= 'techniques.id'
+MITIGATION_ID_fk= 'mitigations.id'
 
 ### Json index
 
@@ -84,3 +88,5 @@ REVOKED_BY_j= 'revoked-by'
 SOURCE_REF_j='source_ref'
 TARGET_REF_j= 'target_ref'
 SUBTECHNIQUE_OF_j= 'subtechnique-of'
+MITIGATES_j= 'mitigates'
+USES_j= 'uses'
