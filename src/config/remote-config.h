@@ -14,6 +14,8 @@
 #define SYSLOG_CONN 1
 #define SECURE_CONN 2
 
+#define REMOTED_RIDS_CLOSING_TIME_DEFAULT   (5 * 60) ///< Default rids_closing_time value (5 minutes)
+
 #include "shared.h"
 #include "global-config.h"
 

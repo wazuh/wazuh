@@ -84,4 +84,7 @@
 /* Remoted */
 #define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
 
+/* Remoted */
+#define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
+                                                "Default value will be used."
 #endif /* WARN_MESSAGES_H */
