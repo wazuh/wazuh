@@ -246,7 +246,7 @@ class Mitigations(Base):
 
 class Mitigate(Base):
     """
-    In this table are stored the mitigates information
+    In this table are stored the mitigate information
     The information stored:
         id: Used to identify the mitigate
         source_id: Used to identify the mitigation (FK)
@@ -255,11 +255,11 @@ class Mitigate(Base):
         created_time: Publish date
         modified_time: Last modification date
     """
-    __tablename__ = "mitigates"
+    __tablename__ = "mitigate"
 
     id = Column(const.ID_t, String, primary_key=True)
-    source_id = Column(const.SOURCE_ID_t, String, ForeignKey(const.MITIGATION_ID_fk))
-    target_id = Column(const.TARGET_ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk))
+    source_id = Column(const.SOURCE_ID_t, String, ForeignKey(const.MITIGATION_ID_fk), nullable=False)
+    target_id = Column(const.TARGET_ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk), nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
     created_time = Column(const.CREATED_t, DateTime, default=None)
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
@@ -267,7 +267,7 @@ class Mitigate(Base):
 
 class Use(Base):
     """
-    In this table are stored the Uses information
+    In this table are stored the Use information
     The information stored:
         id: Used to identify the use
         source_id: Used to identify the group or software
@@ -276,11 +276,11 @@ class Use(Base):
         created_time: Publish date
         modified_time: Last modification date
     """
-    __tablename__ = "uses"
+    __tablename__ = "use"
 
     id = Column(const.ID_t, String, primary_key=True)
-    source_id = Column(const.SOURCE_ID_t, String, default=None)
-    target_id = Column(const.TARGET_ID_t, String, default=None)
+    source_id = Column(const.SOURCE_ID_t, String, default=None, nullable=False)
+    target_id = Column(const.TARGET_ID_t, String, default=None, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
     created_time = Column(const.CREATED_t, DateTime, default=None)
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
@@ -393,15 +393,18 @@ def parse_json_techniques(technique_json, phases_table):
     return technique
 
 
-def parse_json_mitigate_uses(function, data_object):
+def parse_json_mitigate_use(function, data_object):
     table = function()
     table.id = data_object[const.ID_t]
     table.source_id = data_object[const.SOURCE_REF_j]
     table.target_id = data_object[const.TARGET_REF_j]
-    table.created_time = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
-    table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
+
     if data_object.get(const.DESCRIPTION_t):
         table.description = data_object[const.DESCRIPTION_t]
+    if data_object.get(const.CREATED_j):
+        table.created_time = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
+    if data_object.get(const.MODIFIED_j):
+        table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
 
     return table
 
@@ -429,10 +432,10 @@ def parse_json_relationships(relationships_json, session):
         technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
         technique.subtechnique_of = relationships_json[const.TARGET_REF_j]
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.MITIGATES_j:
-        mitigate = parse_json_mitigate_uses(Mitigate, relationships_json)
+        mitigate = parse_json_mitigate_use(Mitigate, relationships_json)
         session.add(mitigate)
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.USES_j:
-        use = parse_json_mitigate_uses(Use, relationships_json)
+        use = parse_json_mitigate_use(Use, relationships_json)
         session.add(use)
 
     session.commit()
