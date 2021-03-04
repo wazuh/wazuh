@@ -702,7 +702,7 @@ InstallCommon()
         INSTALL="/opt/freeware/bin/install"
     fi
 
-    ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${PREFIX} ${INSTYPE}
+    ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${PREFIX}
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${PREFIX}/
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${PREFIX}/logs

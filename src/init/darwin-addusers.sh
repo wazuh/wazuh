@@ -19,14 +19,12 @@ function check_errm
 }
 
 USER=$1
-USER_MAIL=$2
-USER_REM=$3
-GROUP=$4
-INSTYPE=$5
+GROUP=$2
+DIR=$3
 
-if ! [ $# -eq 5 ]; then
+if ! [ $# -eq 3 ]; then
     echo $#
-    echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME INSTYPE.";
+    echo "Usage: ${0} USERNAME_DEFAULT GROUPNAME DIRECTORY.";
     exit 1;
 fi
 
@@ -82,34 +80,19 @@ sudo ${DSCL} localhost -createprop /Local/Default/Groups/${GROUP} Password "*"
 
 
 # Creating the users.
-
-if [ "X$INSTYPE" = "Xserver" ]; then
-    NEWUSERS="${USER} ${USER_MAIL} ${USER_REM}"
-elif [ "X$INSTYPE" = "Xlocal" ]; then
-    NEWUSERS="${USER} ${USER_MAIL}"
+if [[ $(dscl . -read /Users/${USER} 2>/dev/null) ]]
+   then
+   echo "${USER} already exists";
 else
-    NEWUSERS=${USER}
+   sudo ${DSCL} localhost -create /Local/Default/Users/${USER}
+   check_errm "Error creating user ${USER}" "87"
+   sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} RecordName ${USER}
+   sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} RealName "${USER}acct"
+   sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} NFSHomeDirectory ${DIR}
+   sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} UniqueID ${i}
+   sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} PrimaryGroupID ${new_gid}
+   sudo ${DSCL} localhost -append /Local/Default/Groups/${GROUP} GroupMembership ${USER}
+   sudo ${DSCL} localhost -createprop /Local/Default/Users/${USER} Password "*"
 fi
 
-for U in ${NEWUSERS}; do
-    if [[ $(dscl . -read /Users/${U} 2>/dev/null) ]]
-       then
-       echo "${U} already exists";
-    else
-       sudo ${DSCL} localhost -create /Local/Default/Users/${U}
-       check_errm "Error creating user ${U}" "87"
-       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RecordName ${U}
-       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} RealName "${U}acct"
-       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} NFSHomeDirectory /var/ossec
-       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} UniqueID ${i}
-       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} PrimaryGroupID ${new_gid}
-       sudo ${DSCL} localhost -append /Local/Default/Groups/${GROUP} GroupMembership ${U}
-       sudo ${DSCL} localhost -createprop /Local/Default/Users/${U} Password "*"
-    fi
-
-    i=$[i+1]
-done
-
-sudo ${DSCL} . create /Users/ossec IsHidden 1
-sudo ${DSCL} . create /Users/ossecm IsHidden 1
-sudo ${DSCL} . create /Users/ossecr IsHidden 1
+sudo ${DSCL} . create /Users/wazuh IsHidden 1
