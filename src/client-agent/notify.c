@@ -42,21 +42,30 @@ char *getsharedfiles()
 #ifndef WIN32
 char *get_agent_ip()
 {
-    char *agent_ip = NULL;
+    static char agent_ip[IPSIZE + 1] = { '\0' };
 #if defined (__linux__) || defined (__MACH__) || defined (sun)
+    static time_t last_update = 0;
+    time_t now = time(NULL);
     int sock;
     int i;
-    os_calloc(IPSIZE + 1,sizeof(char),agent_ip);
+
+    if ((now - last_update) < agt->main_ip_update_interval) {
+        return strdup(agent_ip);
+    }
+
+    last_update = now;
+    *agent_ip = '\0';
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
             if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
                 mdebug1("Error sending msg to control socket (%d) %s", errno, strerror(errno));
+                last_update = 0;
             }
             else{
                 if (OS_RecvUnix(sock, IPSIZE, agent_ip) <= 0) {
                     mdebug1("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
-                    *agent_ip = '\0';
+                    last_update = 0;
                 }
             }
 
@@ -70,9 +79,10 @@ char *get_agent_ip()
 
     if(sock < 0) {
         mdebug1("Cannot get the agent host's IP because the control module is not available: (%d) %s.", errno, strerror(errno));
+        last_update = 0;
     }
 #endif
-    return agent_ip;
+    return strdup(agent_ip);
 }
 #endif /* !WIN32 */
 
@@ -95,14 +105,14 @@ void run_notify()
         /* If response is not available, set lock and wait for it */
         mwarn(SERVER_UNAV);
         os_setwait();
-        update_status(GA_STATUS_NACTIVE);
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
 
         /* Send sync message */
         start_agent(0);
 
         minfo(SERVER_UP);
         os_delwait();
-        update_status(GA_STATUS_ACTIVE);
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
     }
 #endif
 
@@ -165,13 +175,13 @@ void run_notify()
                     getuname(), tmp_labels, shared_files);
         }
     }
-    free(agent_ip);
+    os_free(agent_ip);
 
     /* Send status message */
     mdebug2("Sending keep alive: %s", tmp_msg);
     send_msg(tmp_msg, -1);
 
     free(shared_files);
-    update_keepalive(curr_time);
+    w_agentd_state_update(UPDATE_KEEPALIVE, (void *) &curr_time);
     return;
 }

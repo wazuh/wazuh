@@ -148,7 +148,7 @@ void test_wm_upgrade_agent_send_ack_message_error(void **state)
     will_return(__wrap_wm_sendmsg, result);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/ossec/queue' not accessible: 'Success'");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/sockets/queue' not accessible: 'Success'");
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
@@ -185,14 +185,14 @@ void test_wm_upgrade_agent_send_ack_message_error_exit(void **state)
     will_return(__wrap_wm_sendmsg, result);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/ossec/queue' not accessible: 'Success'");
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue '/queue/sockets/queue' not accessible: 'Success'");
 
     expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, -1);
 
     expect_string(__wrap__mterror_exit, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror_exit, formatted_msg, "(1211): Unable to access queue: '/queue/ossec/queue'. Giving up.");
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1211): Unable to access queue: '/queue/sockets/queue'. Giving up.");
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8163): Sending upgrade ACK event: "
@@ -946,7 +946,7 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/queue/ossec/upgrade': 'Operation not permitted'");
+    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/queue/sockets/upgrade': 'Operation not permitted'");
 
     wm_agent_upgrade_listen_messages(NULL);
 }

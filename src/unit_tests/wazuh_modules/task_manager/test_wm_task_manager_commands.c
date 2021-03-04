@@ -129,12 +129,6 @@ static int teardown_json_upgrade_cancel_tasks_task(void **state) {
     return 0;
 }
 
-// Wrappers
-
-time_t __wrap_time(time_t *__timer) {
-    return mock();
-}
-
 // Tests
 
 void test_wm_task_manager_send_message_to_wdb_ok(void **state)

@@ -75,11 +75,11 @@ std::string SysInfo::getCpuName() const
 nlohmann::json SysInfo::getNetworks() const
 {
     nlohmann::json networks;
-    
+
     std::unique_ptr<ifaddrs, Utils::IfAddressSmartDeleter> interfacesAddress;
     std::map<std::string, std::vector<ifaddrs*>> networkInterfaces;
     Utils::NetworkUnixHelper::getNetworks(interfacesAddress, networkInterfaces);
-    
+
     for(const auto& interface : networkInterfaces)
     {
         nlohmann::json ifaddr {};
@@ -89,7 +89,7 @@ nlohmann::json SysInfo::getNetworks() const
         }
         networks["iface"].push_back(ifaddr);
     }
-    
+
     return networks;
 }
 

@@ -327,9 +327,3 @@ void *DynamicField_FP(Eventinfo *lf, char *field, const char *order)
     lf->fields[lf->nfields++].value = field;
     return (NULL);
 }
-
-void *None_FP(__attribute__((unused)) Eventinfo *lf, char *field, __attribute__((unused)) const char *order)
-{
-    free(field);
-    return (NULL);
-}

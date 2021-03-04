@@ -78,8 +78,10 @@ class WazuhDBConnection:
         """
         Send a message to the wdb socket
         """
-        msg = struct.pack('<I', len(msg)) + msg.encode()
-        self.__conn.send(msg)
+        encoded_msg = msg.encode(encoding='utf-8')
+        packed_msg = struct.pack('<I', len(encoded_msg)) + encoded_msg
+        # Send msg
+        self.__conn.send(packed_msg)
 
         # Get the data size (4 bytes)
         data = self.__conn.recv(4)

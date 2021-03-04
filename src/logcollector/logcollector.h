@@ -207,9 +207,6 @@ int w_msg_hash_queues_add_entry(const char *key);
 /* Push message into the hash queue */
 int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logtarget * targets, char queue_mq);
 
-/* Pop message from the hash queue */
-w_message_t * w_msg_hash_queues_pop(const char *key);
-
 /* Push message into the queue */
 int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsigned long size, logtarget * log_target, char queue_mq);
 

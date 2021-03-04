@@ -1,7 +1,15 @@
 ---
 - actions:
   - lists:read
+  - lists:delete
   resources:
-  - list:path:etc/lists/amazon/aws-eventnames
-  - list:path:etc/lists/audit-keys
+  - list:file:aws-eventnames
+  - list:file:audit-keys
+  effect: allow
+
+- actions:
+  - lists:update
+  resources:
+  - "*:*:*"
+  - list:file:dummy
   effect: allow

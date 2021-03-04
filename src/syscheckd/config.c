@@ -73,6 +73,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.sync_queue_size = 16384;
     syscheck.sync_max_eps = 10;
     syscheck.max_eps        = 100;
+    syscheck.max_files_per_second = 0;
     syscheck.allow_remote_prefilter_cmd  = false;
     syscheck.disk_quota_enabled = true;
     syscheck.disk_quota_limit = 1024 * 1024; // 1 GB
@@ -169,6 +170,7 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->effective_name) free(w_evt->effective_name);
     if (w_evt->effective_uid) free(w_evt->effective_uid);
     if (w_evt->group_id) free(w_evt->group_id);
+    if (w_evt->group_name) free(w_evt->group_name);
     if (w_evt->parent_name) free(w_evt->parent_name);
     if (w_evt->parent_cwd) free(w_evt->parent_cwd);
     if (w_evt->inode) free(w_evt->inode);
@@ -201,6 +203,7 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
+    cJSON_AddNumberToObject(syscfg, "max_files_per_second", syscheck.max_files_per_second);
 
     cJSON * file_limit = cJSON_CreateObject();
     cJSON_AddStringToObject(file_limit, "enabled", syscheck.file_limit_enabled ? "yes" : "no");

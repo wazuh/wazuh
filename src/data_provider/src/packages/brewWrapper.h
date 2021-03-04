@@ -23,11 +23,7 @@ public:
     explicit BrewWrapper(const PackageContext& ctx)
       : m_name{ctx.package}
       , m_version{Utils::splitIndex(ctx.version, '_', 0)}
-      , m_groups{UNKNOWN_VALUE}
-      , m_description{UNKNOWN_VALUE}
-      , m_architecture{UNKNOWN_VALUE}
       , m_format{"pkg"}
-      , m_osPatch{UNKNOWN_VALUE}
     {
         const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
         for (const auto& row : rows)

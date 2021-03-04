@@ -39,7 +39,7 @@ public:
     MOCK_METHOD(std::string, metrics, (), (const override));
     MOCK_METHOD(std::string, metricsV6, (), (const override));
     MOCK_METHOD(std::string, dhcp, (), (const override));
-    MOCK_METHOD(std::string, mtu, (), (const override));
+    MOCK_METHOD(uint32_t, mtu, (), (const override));
     MOCK_METHOD(LinkStats, stats, (), (const override));
     MOCK_METHOD(std::string, type, (), (const override));
     MOCK_METHOD(std::string, state, (), (const override));
@@ -72,7 +72,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET)
     EXPECT_EQ("192.168.0.255",ifaddr.at("IPv4").at("broadcast").get_ref<const std::string&>());
     EXPECT_EQ("8.8.8.8",ifaddr.at("IPv4").at("dhcp").get_ref<const std::string&>());
     EXPECT_EQ("100",ifaddr.at("IPv4").at("metric").get_ref<const std::string&>());
-    
+
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET6_THROW)
@@ -114,7 +114,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("up"));
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return("00:A0:C9:14:C8:29"));
     EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0,1,2,3,4,5,6,7}));
-    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return("1500"));
+    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("10.2.2.50"));
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
@@ -124,7 +124,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_EQ("ethernet",ifaddr.at("type").get_ref<const std::string&>());
     EXPECT_EQ("up",ifaddr.at("state").get_ref<const std::string&>());
     EXPECT_EQ("00:A0:C9:14:C8:29",ifaddr.at("mac").get_ref<const std::string&>());
-    
+
     EXPECT_EQ(1,ifaddr.at("tx_packets").get<int32_t>());
     EXPECT_EQ(0,ifaddr.at("rx_packets").get<int32_t>());
     EXPECT_EQ(3,ifaddr.at("tx_bytes").get<int32_t>());
@@ -134,7 +134,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_EQ(7,ifaddr.at("tx_dropped").get<int32_t>());
     EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
 
-    EXPECT_EQ("1500",ifaddr.at("mtu").get_ref<const std::string&>());
+    EXPECT_EQ(1500u,ifaddr.at("mtu").get<uint32_t>());
     EXPECT_EQ("10.2.2.50",ifaddr.at("gateway").get_ref<const std::string&>());
 }
 

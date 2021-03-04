@@ -47,10 +47,72 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-// static const char *FIM_ENTRY_TYPE[] = {
-//     "file",
-//     "registry"
-// };
+void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
+                           __attribute__((unused))void *alert,
+                           __attribute__((unused))void *fim_ev_mode,
+                           __attribute__((unused))void *w_evt) {
+    int *send_alert = (int *) alert;
+    fim_event_mode mode = (fim_event_mode) fim_ev_mode;
+    int state = 0;
+    int pos = -1;
+
+    pos = fim_configuration_directory(entry->file_entry.path, "file");
+
+    if(pos == -1) {
+        mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
+        return;
+    }
+    /* Don't send alert if received mode and mode in configuration aren't the same.
+       Scheduled mode events must always be processed to preserve the state of the agent's DB.
+    */
+    switch (mode) {
+    case FIM_REALTIME:
+        if (!(syscheck.opts[pos] & REALTIME_ACTIVE)) {
+            return;
+        }
+        break;
+
+    case FIM_WHODATA:
+        if (!(syscheck.opts[pos] & WHODATA_ACTIVE)) {
+            return;
+        }
+        break;
+
+    default:
+        break;
+    }
+
+
+    // Remove path from the DB.
+    w_mutex_lock(mutex);
+    state = fim_db_remove_path(fim_sql, entry->file_entry.path);
+    w_mutex_unlock(mutex);
+
+    if (send_alert && state == FIMDB_OK) {
+        whodata_evt *whodata_event = (whodata_evt *) w_evt;
+        cJSON *json_event = NULL;
+        char *json_formatted = NULL;
+
+        w_mutex_lock(mutex);
+        json_event = fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, pos, FIM_DELETE, mode,
+                                    whodata_event, NULL);
+        w_mutex_unlock(mutex);
+
+        if (syscheck.opts[pos] & CHECK_SEECHANGES) {
+            fim_diff_process_delete_file(entry->file_entry.path);
+        }
+
+        if (json_event) {
+            mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
+            json_formatted = cJSON_PrintUnformatted(json_event);
+            send_syscheck_msg(json_formatted);
+
+            os_free(json_formatted);
+            cJSON_Delete(json_event);
+        }
+    }
+}
+
 
 void fim_scan() {
     int it = 0;
@@ -217,8 +279,8 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (saved_entry) {
-            fim_db_remove_path(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) true,
-                                (void *) (fim_event_mode) item->mode, (void *) w_evt);
+            fim_delete_file_event(syscheck.database, saved_entry, &syscheck.fim_entry_mutex, (void *) (int) true,
+                                 (void *) (fim_event_mode) item->mode, (void *) w_evt);
             free_entry(saved_entry);
             saved_entry = NULL;
         }
@@ -251,6 +313,8 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
         if (fim_check_restrict (path, syscheck.filerestrict[item->index]) == 1) {
             return;
         }
+
+        check_max_fps();
 
         if (fim_file(path, item, w_evt, report) < 0) {
             mwarn(FIM_WARN_SKIP_EVENT, path);
@@ -709,7 +773,7 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
         snprintf(aux, OS_SIZE_64, "%u", item->statbuf.st_gid);
         os_strdup(aux, data->gid);
 
-        os_strdup((char*)get_group(item->statbuf.st_gid), data->group_name);
+        data->group_name = get_group(item->statbuf.st_gid);
     }
 #endif
 
@@ -1132,24 +1196,13 @@ void free_file_data(fim_file_data * data) {
     if (!data) {
         return;
     }
-    if (data->perm) {
-        os_free(data->perm);
-    }
-    if (data->attributes) {
-        os_free(data->attributes);
-    }
-    if (data->uid) {
-        os_free(data->uid);
-    }
-    if (data->gid) {
-        os_free(data->gid);
-    }
-    if (data->user_name) {
-        os_free(data->user_name);
-    }
-    if (data->group_name) {
-        os_free(data->group_name);
-    }
+
+    os_free(data->perm);
+    os_free(data->attributes);
+    os_free(data->uid);
+    os_free(data->gid);
+    os_free(data->user_name);
+    os_free(data->group_name);
 
     os_free(data);
 }

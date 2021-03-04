@@ -174,14 +174,13 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
 
         default:
             length = wmcom_dispatch(buffer, &response);
-            if (length)
-            {
+            if (length) {
                 OS_SendSecureTCP(peer, length, response);
             }
-            free(response);
+            os_free(response);
             close(peer);
         }
-        free(buffer);
+        os_free(buffer);
     }
 
     mdebug1("Local server thread finished.");

@@ -9,6 +9,7 @@ import random
 import re
 import subprocess
 import time
+import xml.etree.ElementTree as ET
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
@@ -206,6 +207,8 @@ def _read_option(section_name, opt):
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
         opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
+    elif section_name == 'remote' and opt_name == 'protocol':
+        opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:
         if opt.attrib:
             opt_value = {}
@@ -247,7 +250,7 @@ def _conf2json(src_xml, dst_json):
 
         for option in list(section):
             option_name, option_value = _read_option(section_name, option)
-            if type(option_value) is list:
+            if type(option_value) is list and not (section_name == 'remote' and option_name == 'protocol'):
                 for ov in option_value:
                     _insert(section_json, section_name, option_name, ov)
             else:
@@ -763,7 +766,7 @@ def get_active_configuration(agent_id, component, configuration):
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    sockets_path = os_path.join(common.ossec_path, "queue", "ossec")
+    sockets_path = os_path.join(common.ossec_path, "queue", "sockets")
 
     if agent_id == '000':
         dest_socket = os_path.join(sockets_path, component)
@@ -805,3 +808,19 @@ def get_active_configuration(agent_id, component, configuration):
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,
                          extra_message='{0}:{1}'.format(component, configuration))
+
+
+def write_ossec_conf(new_conf: str):
+    """
+    Replace the current wazuh configuration (ossec.conf) with the provided configuration.
+
+    Parameters
+    ----------
+    new_conf: str
+        The new configuration to be applied.
+    """
+    try:
+        with open(common.ossec_conf, 'w') as f:
+            f.writelines(new_conf)
+    except Exception:
+        raise WazuhError(1126)

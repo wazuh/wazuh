@@ -15,7 +15,7 @@
 #include <string.h>
 
 #include "../wrappers/common.h"
-#include "../wrappers/client-agent/start_agent.h"
+#include "../wrappers/wazuh/client-agent/start_agent.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"

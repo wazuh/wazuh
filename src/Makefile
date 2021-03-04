@@ -737,9 +737,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = tap_wazuhdb_op tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
-
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
+WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -1025,8 +1023,8 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-VERSION = $(subst $() $(),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
-RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
+DEPS_VERSION = 10
+RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 ifeq (${PREFIX},/var/ossec)
 	# Download the Python sources if we are building for any other OS.
@@ -1054,8 +1052,15 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist
-EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
+# Agent dependencies
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist
+ifneq (${TARGET},agent)
+ifneq (${TARGET},winagent)
+	# Manager extra dependency
+	EXTERNAL_RES += $(CPYTHON)
+endif
+endif
+EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
@@ -1091,7 +1096,7 @@ WAZUHEXT_LIB = libwazuhext.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 endif
 
-$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS) $(test_programs): $(BUILD_LIBS)
+$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS): $(BUILD_LIBS)
 
 #### os_xml ########
 
@@ -1119,9 +1124,6 @@ os_net/%.o: os_net/%.c
 
 #### Shared ##########
 # Unit tests wrappers
-
-wrappers_client_agent_c := $(wildcard unit_tests/wrappers/client-agent/*.c)
-wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
 
 wrappers_common_c := $(wildcard unit_tests/wrappers/*.c)
 wrappers_common_o := $(wrappers_common_c:.c=.o)
@@ -1210,6 +1212,9 @@ wrappers_wazuh_os_auth_o := $(wrappers_wazuh_os_auth_c:.c=.o)
 wrappers_wazuh_addagent_c := $(wildcard unit_tests/wrappers/wazuh/addagent/*.c)
 wrappers_wazuh_addagent_o := $(wrappers_wazuh_addagent_c:.c=.o)
 
+wrappers_client_agent_c := $(wildcard unit_tests/wrappers/wazuh/client-agent/*.c)
+wrappers_client_agent_o := $(wrappers_client_agent_c:.c=.o)
+
 wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
 wrappers_windows_o := $(wrappers_windows_c:.c=.o)
 
@@ -1248,9 +1253,9 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_auth_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 
 	ifeq (${TARGET},winagent)
-		UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
@@ -1997,66 +2002,7 @@ unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
 unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-.PHONY: test run_valgrind_tests run_tests build_tests test_valgrind test_coverage
-
-test: build_tests
-	${MAKE} run_tests
-
-run_valgrind_tests:
-	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
-
-run_tests:
-	@$(foreach bin,${test_programs},./${bin} || exit 1;)
-
-build_tests: external
-	${MAKE} DEBUG=yes TEST=yes ${test_programs}
-
-test_c := $(wildcard tests/*.c)
-test_o := $(test_c:.c=.o)
-
-tests/%.o: tests/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-tap_os_crypto: tests/tap_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_os_net: tests/tap_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_os_regex: tests/tap_os_regex.c ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_shared: tests/tap_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
-	${OSSEC_CCBIN} $(OSSEC_CFLAGS) ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_os_zlib: tests/tap_os_zlib.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_fluentd_forwarder: tests/tap_fluentd_forwarder.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-tap_wazuhdb_op: tests/tap_wazuhdb_op.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_valgrind: build_tests
-	${MAKE} run_valgrind_tests
-
-
-test_coverage: build_tests
-	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
-	@echo "Running tests\n"
-
-	${MAKE} run_valgrind_tests
-
-	@echo "\nTests finished."
-
-	lcov --base-directory . --directory . --capture --quiet --rc lcov_branch_coverage=1 --output-file ossec.test
-
-	rm -rf coverage-report/
-	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
+.PHONY: test
 
 ###################
 #### Rule Tests ###
@@ -2064,7 +2010,6 @@ test_coverage: build_tests
 
 test-rules:
 	( cd ../ruleset/testing && sudo python runtests.py)
-
 
 ####################
 #### windows #######
@@ -2106,9 +2051,6 @@ win32/setup-syscheck.exe: win32/setup-syscheck.o win32/setup-shared.o
 win32/setup-iis.exe: win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/add-localfile.exe: win32/add-localfile.o
-	${OSSEC_CCBIN} -DARGV0=\"add-localfile\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 win32/ui_resource.o: win32/ui/win32ui.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
@@ -2137,7 +2079,6 @@ win32/netsh.exe: win32/win_service_rk.o active-response/netsh.o active-response/
 clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
 
 clean-test:
-	rm -f ${test_o} ${test_programs} ossec.test
 	rm -Rf coverage-report/
 	find . -name "*.gcno" -exec rm {} \;
 	find . -name "*.gcda" -exec rm {} \;

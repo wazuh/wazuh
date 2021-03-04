@@ -11,6 +11,7 @@
 
 #include "osinfo/sysOsParsers.h"
 #include "stringHelper.h"
+#include "sharedDefs.h"
 #include <regex>
 
 static bool parseUnixFile(const std::map<std::string, std::string>& keyMap,
@@ -391,7 +392,7 @@ bool MacOsParser::parseUname(const std::string& in, nlohmann::json& output)
     if (ret)
     {
         const auto it{MAC_CODENAME_MAP.find(match)};
-        output["os_codename"] = it != MAC_CODENAME_MAP.end() ? it->second : "unknown";
+        output["os_codename"] = it != MAC_CODENAME_MAP.end() ? it->second : "";
     }
     return ret;
 }

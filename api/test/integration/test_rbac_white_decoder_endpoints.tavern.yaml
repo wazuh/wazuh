@@ -18,7 +18,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - &full_item_decoders
@@ -48,7 +48,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -67,7 +67,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - <<: *full_item_decoders
@@ -101,7 +101,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - filename: 0005-wazuh_decoders.xml
@@ -126,7 +126,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - filename: 0005-wazuh_decoders.xml
@@ -157,29 +157,90 @@ stages:
             error: !anystr
 
 ---
-test_name: GET DECODERS FILES RBAC (Download)
+test_name: GET DECODERS FILES RBAC (CONTENT)
 
 stages:
 
-  - name: Try to get one decoder file
+  - name: Get one decoder file
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0005-wazuh_decoders.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
     response:
       status_code: 200
-      headers:
-        content-type: "application/xml; charset=utf-8"
 
   - name: Try to get one decoder file (no permissions)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0064-cisco-asa_decoders.xml/download"
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/0064-cisco-asa_decoders.xml"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT DECODERS FILES RBAC
+
+stages:
+
+  - name: Update one decoder file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      data: "{new_decoder:s}"
+    response:
+      status_code: 200
+
+
+  - name: Try to update the same file without delete permissions (overwrite)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/new_decoder.xml"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        overwrite: True
+      data: "{new_decoder:s}"
+    response:
+      json:
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items:
+            - error:
+                code: 4000
+          total_failed_items: 1
+        error: 1
+
+---
+test_name: DELETE DECODERS FILES RBAC
+
+stages:
+
+  - name: Delete one decoder file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/local_decoder.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+  - name: Try to delete one decoder file that does not exist
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/not_exist.xml"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
 
@@ -198,7 +259,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: !anything
           failed_items: []

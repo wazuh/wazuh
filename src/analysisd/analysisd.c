@@ -98,9 +98,6 @@ static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
 
-/* Output threads */
-void * w_main_output_thread(__attribute__((unused)) void * args);
-
 /* Archives writer thread */
 void * w_writer_thread(__attribute__((unused)) void * args );
 
@@ -2070,10 +2067,10 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 AddtoIGnore(lf, t_id);
             }
 
+            lf->comment = ParseRuleComment(lf);
+
             /* Log the alert if configured to */
             if (t_currently_rule->alert_opts & DO_LOGALERT) {
-                lf->comment = ParseRuleComment(lf);
-
                 os_calloc(1, sizeof(Eventinfo), lf_cpy);
                 w_copy_event_for_log(lf, lf_cpy);
                 if (queue_push_ex_block(writer_queue_log, lf_cpy) < 0) {
