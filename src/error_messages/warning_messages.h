@@ -77,4 +77,7 @@
 #define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
                                                 "(decoder `%s`). Default value will be taken"
 
+/* Remoted */
+#define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
+                                                "Default value will be used."
 #endif /* WARN_MESSAGES_H */
