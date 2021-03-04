@@ -18,7 +18,8 @@ CREATED_t= 'created_time'
 MODIFIED_t= 'modified_time'
 MITRE_VERSION_t= 'mitre_version'
 REVOKED_BY_t= 'revoked_by'
-DEPRECATED_t= 'deprecated'
+DEPRECATED_t='deprecated'
+SHORT_NAME_t='short_name'
 MITRE_DETECTION_t= 'mitre_detection'
 NETWORK_REQ_t= 'network_requirements'
 REMOTE_SUPPORT_t= 'remote_support'
@@ -28,6 +29,8 @@ DEFENSE_t= 'defense'
 PERMISSION_t= 'permission'
 IMPACT_t= 'impact'
 REQUIREMENT_t= 'requirement'
+TACTIC_ID_t= 'tactic_id'
+TECH_ID_t= 'tech_id'
 
 ### Relationships
 DATASOURCE_r= 'DataSource'
@@ -39,6 +42,7 @@ SYSTEMREQ_r= 'SystemRequirement'
 TECHNIQUES_r= 'techniques'
 
 TECHNIQUE_ID_fk= 'techniques.id'
+TACTICS_ID_fk= 'tactics.id'
 
 ### Json index
 
@@ -52,6 +56,8 @@ COURSE_OF_ACTION_j= 'course-of-action'
 # Software
 MALWARE_j= 'malware'
 TOOL_j= 'tool'
+# Tactics
+TACTIC_j= 'x-mitre-tactic'
 # Techniques
 ATTACK_PATTERN_j= 'attack-pattern'
 
@@ -76,6 +82,9 @@ EFFECTIVE_PERMISSION_j= 'x_mitre_effective_permissions'
 IMPACT_TYPE_j= 'x_mitre_impact_type'
 PERMISSIONS_REQ_j= 'x_mitre_permissions_required'
 SYSTEM_REQ_j= 'x_mitre_system_requirements'
+PHASES_j= 'kill_chain_phases'
+PHASE_NAME_j= 'phase_name'
+SHORT_NAME_j='x_mitre_shortname'
 
 # Relationship type
 RELATIONSHIP_j= 'relationship'
