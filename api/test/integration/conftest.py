@@ -22,8 +22,9 @@ basic_auth = f"{common['user']}:{common['pass']}".encode()
 login_headers = {'Content-Type': 'application/json',
                  'Authorization': f'Basic {b64encode(basic_auth).decode()}'}
 
+
 def pytest_addoption(parser):
-  parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
+    parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
 
 
 def get_token_login_api():
@@ -54,6 +55,8 @@ def build_and_up(interval: int = 10, build: bool = True):
     ----------
     interval : int
         Time interval between every healthcheck
+    build : bool
+        Flag to indicate if images need to be built
 
     Returns
     -------
@@ -70,8 +73,9 @@ def build_and_up(interval: int = 10, build: bool = True):
     # Get current branch
     current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
     if build:
-      current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",  f"WAZUH_BRANCH={current_branch}"])
-      current_process.wait()
+        current_process = subprocess.Popen(["docker-compose", "build", "--build-arg",
+                                            f"WAZUH_BRANCH={current_branch}"])
+        current_process.wait()
     current_process = subprocess.Popen(["docker-compose", "up", "-d"])
     current_process.wait()
 
@@ -130,42 +134,12 @@ def general_procedure(module: str):
     module : str
         Name of the tested module
     """
-    folder_content = os.path.join(current_path, 'env', 'configurations', module, '*')
+    base_content = os.path.join(current_path, 'env', 'configurations', 'base', '*')
+    module_content = os.path.join(current_path, 'env', 'configurations', module, '*')
     tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
     os.makedirs(tmp_content, exist_ok=True)
-    os.popen(f'cp -rf {folder_content} {tmp_content}')
-    healthcheck_procedure(module)
-
-
-def healthcheck_procedure(module: str):
-    """Copy base healthchecks for managers and agents.
-    If the environment need a specific one, the base healthcheck will be replaced.
-
-    Parameters
-    ----------
-    module : str
-        Name of the tested module
-    """
-    manager_folder = os.path.join(current_path, 'env', 'configurations', module, 'manager', 'healthcheck')
-    agent_folder = os.path.join(current_path, 'env', 'configurations', module, 'agent', 'healthcheck')
-    master_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'manager', 'healthcheck')
-    agent_base_folder = os.path.join(current_path, 'env', 'configurations', 'base', 'agent', 'healthcheck')
-    tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
-
-    os.popen(f'cp -rf {master_base_folder} {os.path.join(tmp_content, "manager")}')
-    os.popen(f'cp -rf {agent_base_folder} {os.path.join(tmp_content, "agent")}')
-    # Avoid race condition
-    time.sleep(2)
-    if os.path.exists(manager_folder):
-        # Rename the base healthcheck and copy the specific one
-        os.popen(f'cp -rf {os.path.join(master_base_folder, "healthcheck.py")} '
-                 f'{os.path.join(tmp_content, "manager", "healthcheck", "base_healthcheck.py")}')
-        os.popen(f'cp -rf {manager_folder} {os.path.join(tmp_content, "manager")}')
-    if os.path.exists(agent_folder):
-        # Rename the base healthcheck and copy the specific one
-        os.popen(f'cp -rf {os.path.join(agent_base_folder, "healthcheck.py")} '
-                 f'{os.path.join(tmp_content, "agent", "healthcheck", "base_healthcheck.py")}')
-        os.popen(f'cp -rf {agent_folder} {os.path.join(tmp_content, "agent")}')
+    os.popen(f'cp -rf {base_content} {tmp_content}')
+    os.popen(f'cp -rf {module_content} {tmp_content}')
 
 
 def change_rbac_mode(rbac_mode: str = 'white'):

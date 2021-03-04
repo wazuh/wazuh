@@ -53,7 +53,6 @@ services:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent1
-      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -69,7 +68,6 @@ services:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent2
-      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -86,7 +84,6 @@ services:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent3
-      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -103,7 +100,6 @@ services:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent4
-      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2

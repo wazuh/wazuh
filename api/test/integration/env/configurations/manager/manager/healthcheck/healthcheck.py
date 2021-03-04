@@ -1,12 +1,9 @@
 import os
 import socket
+import sys
+sys.path.append('/tools')
 
-
-def check(result):
-    if result == 0:
-        return 0
-    else:
-        return 1
+from healthcheck_utils import check
 
 
 def get_master_health():

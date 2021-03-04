@@ -1,6 +1,9 @@
 import os
+import sys
+sys.path.append('/tools')
 
-from base_healthcheck import get_agent_health_base
+from healthcheck_utils import get_agent_health_base
+
 
 if __name__ == "__main__":
     exit(os.system(

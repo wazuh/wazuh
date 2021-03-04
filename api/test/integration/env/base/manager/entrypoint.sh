@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 # Modify ossec.conf
-/var/ossec/framework/python/bin/python3 /scripts/xml_parser.py /var/ossec/etc/ossec.conf /scripts/xml_templates/ossec.conf
+for conf_file in /configuration_files/*.conf; do
+  python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
+done
 
 sed -i "s:<key>key</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:g" /var/ossec/etc/ossec.conf
 sed -i "s:<node>NODE_IP</node>:<node>$1</node>:g" /var/ossec/etc/ossec.conf
