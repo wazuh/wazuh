@@ -150,27 +150,28 @@ int set_winsacl(const char *dir, int position) {
     ZeroMemory(&old_sacl_info, sizeof(ACL_SIZE_INFORMATION));
 
     // Check if the sacl has what the whodata scanner needs
-    switch(is_valid_sacl(old_sacl, (syscheck.wdata.dirs_status[position].object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
-        case 0:
-            mdebug1(FIM_SACL_CHECK_CONFIGURE, dir);
-            syscheck.wdata.dirs_status[position].status |= WD_IGNORE_REST;
+    switch (is_valid_sacl(old_sacl, (syscheck.wdata.dirs_status[position].object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
+    case 0:
+        // It is not necessary to configure the SACL of the directory
+        retval = 0;
+        goto end;
+    case 1:
+        mdebug1(FIM_SACL_CHECK_CONFIGURE, dir);
+        syscheck.wdata.dirs_status[position].status |= WD_IGNORE_REST;
 
+        // Empty SACL
+        if (!old_sacl) {
+            old_sacl_info.AclBytesInUse = sizeof(ACL);
+        } else {
             // Get SACL size
             if (!GetAclInformation(old_sacl, (LPVOID)&old_sacl_info, sizeof(ACL_SIZE_INFORMATION), AclSizeInformation)) {
                 merror(FIM_ERROR_SACL_GETSIZE, dir);
                 goto end;
             }
+        }
         break;
-        case 1:
-            // It is not necessary to configure the SACL of the directory
-            retval = 0;
-            goto end;
-        case 2:
-            // Empty SACL
-            syscheck.wdata.dirs_status[position].status |= WD_IGNORE_REST;
-            old_sacl_info.AclBytesInUse = sizeof(ACL);
-            break;
     }
+
     if (!ev_sid_size) {
         ev_sid_size = GetLengthSid(everyone_sid);
     }
@@ -268,29 +269,29 @@ int is_valid_sacl(PACL sacl, int is_file) {
     if (!everyone_sid) {
         if (!AllocateAndInitializeSid(&world_auth, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &everyone_sid)) {
             merror(FIM_ERROR_WHODATA_GET_SID, GetLastError());
-            return 0;
+            return 2;
         }
     }
 
     if (!sacl) {
         mdebug2(FIM_SACL_NOT_FOUND);
-        return 2;
+        return 1;
     }
 
     for (i = 0; i < sacl->AceCount; i++) {
         if (!GetAce(sacl, i, (LPVOID*)&ace)) {
             merror(FIM_ERROR_WHODATA_GET_ACE, GetLastError());
-            return 0;
+            return 1;
         }
 
         if ((is_file || (ace->Header.AceFlags & inherit_flag)) && // Check folder and subfolders
             (ace->Header.AceFlags & SUCCESSFUL_ACCESS_ACE_FLAG) && // Check successful attemp
             ((ace->Mask & (criteria)) == criteria) && // Check write, delete, change_permissions and change_attributes permission
             (EqualSid((PSID)&ace->SidStart, everyone_sid))) { // Check everyone user
-            return 1;
+            return 0;
         }
     }
-    return 0;
+    return 1;
 }
 
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
@@ -935,7 +936,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     d_status->status |= WD_STATUS_EXISTS;
                 } else {
                     // Check if the SACL is invalid
-                    if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
+                    if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0) == 1) {
                         minfo(FIM_WHODATA_SACL_CHANGED, syscheck.dir[i]);
                         // Mark the directory to prevent its children from
                         // sending partial whodata alerts
@@ -1095,14 +1096,14 @@ void set_subscription_query(wchar_t *query) {
 int check_object_sacl(char *obj, int is_file) {
     HANDLE hdle = NULL;
     PACL sacl = NULL;
-    int retval = 1;
+    int retval = 2;
     PSECURITY_DESCRIPTOR security_descriptor = NULL;
     long int result;
     int privilege_enabled = 0;
 
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
         merror(FIM_ERROR_SACL_OPENPROCESSTOKEN, GetLastError());
-        return 1;
+        return retval;
     }
 
     if (set_privilege(hdle, priv, TRUE)) {
@@ -1116,10 +1117,7 @@ int check_object_sacl(char *obj, int is_file) {
         goto end;
     }
 
-    if (is_valid_sacl(sacl, is_file) == 1) {
-        // Is a valid SACL
-        retval = 0;
-    }
+    retval = is_valid_sacl(sacl, is_file);
 
 end:
     if (privilege_enabled) {
