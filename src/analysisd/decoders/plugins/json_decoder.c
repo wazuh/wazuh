@@ -320,12 +320,12 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
 
                         z = strlen(VALUE_COMMA);
 
-                        if (n + z < OS_MAXSTR) {
-                            strcpy(value + n, VALUE_COMMA);
-                            n += z;
-                        } else {
+                        if (n + z >= OS_MAXSTR) {
                             *value = '\0';
                             break;
+                        } else if (array->next != NULL) {
+                            strcpy(value + n, VALUE_COMMA);
+                            n += z;
                         }
                     }
                 } else if (lf->decoder_info->flags & JSON_TREAT_ARRAY_AS_ARRAY) {
