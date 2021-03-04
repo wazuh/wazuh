@@ -29,6 +29,18 @@ PERMISSION_t= 'permission'
 IMPACT_t= 'impact'
 REQUIREMENT_t= 'requirement'
 
+# Aliases
+ALIAS_t='alias'
+# Contributors
+CONTRIBUTOR_t='contributor'
+# Platforms
+PLATFORM_t='platform'
+# References
+SOURCE_t='source'
+EXTERNAL_ID_t='external_id'
+SOURCE_NAME_t='source_name'
+URL_t='url'
+
 ### Relationships
 DATASOURCE_r= 'DataSource'
 DEFENSEBYPASSES_r='DefenseByPasses'
@@ -37,7 +49,15 @@ IMPACT_r= 'Impact'
 PERMISSION_r= 'Permission'
 SYSTEMREQ_r= 'SystemRequirement'
 TECHNIQUES_r= 'techniques'
+CONTRIBUTORS_r='Contributor'
+PLATFORMS_r='Platform'
+REFERENCES_r='Reference'
+ALIASES_r='Alias'
+GROUPS_r='Groups'
+SOFTWARE_r='Software'
+MITIGATIONS_r='Mitigation'
 
+### ForeignKey
 TECHNIQUE_ID_fk= 'techniques.id'
 
 ### Json index
@@ -77,6 +97,18 @@ IMPACT_TYPE_j= 'x_mitre_impact_type'
 PERMISSIONS_REQ_j= 'x_mitre_permissions_required'
 SYSTEM_REQ_j= 'x_mitre_system_requirements'
 
+# Aliases
+ALIAS_j='x_mitre_aliases'
+# Contributors
+CONTRIBUTOR_j='x_mitre_contributors'
+# Platforms
+PLATFORM_j='x_mitre_platforms'
+# References
+EXTERNAL_REFERENCES_j='external_references'
+SOURCE_NAME_j='source_name'
+EXTERNAL_ID_j='external_id'
+URL_j='url'
+
 # Relationship type
 RELATIONSHIP_j= 'relationship'
 RELATIONSHIP_TYPE_j= 'relationship_type'
@@ -84,3 +116,4 @@ REVOKED_BY_j= 'revoked-by'
 SOURCE_REF_j='source_ref'
 TARGET_REF_j= 'target_ref'
 SUBTECHNIQUE_OF_j= 'subtechnique-of'
+

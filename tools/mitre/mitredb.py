@@ -80,7 +80,9 @@ class Technique(Base):
     impacts = relationship(const.IMPACT_r, backref=const.TECHNIQUES_r)
     permissions = relationship(const.PERMISSION_r, backref=const.TECHNIQUES_r)
     requirements = relationship(const.SYSTEMREQ_r, backref=const.TECHNIQUES_r)
-
+    contributors = relationship(const.CONTRIBUTORS_r, backref=const.TECHNIQUES_r)
+    platforms = relationship(const.PLATFORMS_r, backref=const.TECHNIQUES_r)
+    references = relationship(const.REFERENCES_r, backref=const.TECHNIQUES_r)
 
 class DataSource(Base):
     """
@@ -190,6 +192,10 @@ class Groups(Base):
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
+    aliases = relationship(const.ALIASES_r, backref=const.GROUPS_r)
+    contributors = relationship(const.CONTRIBUTORS_r, backref=const.GROUPS_r)
+    references = relationship(const.REFERENCES_r, backref=const.GROUPS_r)
+
 
 class Software(Base):
     """
@@ -214,6 +220,11 @@ class Software(Base):
     mitre_version = Column(const.MITRE_VERSION_t, String, default=None)
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
+
+    aliases = relationship(const.ALIASES_r, backref=const.SOFTWARE_r)
+    contributors = relationship(const.CONTRIBUTORS_r, backref=const.SOFTWARE_r)
+    platforms = relationship(const.PLATFORMS_r, backref=const.SOFTWARE_r)
+    references = relationship(const.REFERENCES_r, backref=const.SOFTWARE_r)
 
 
 class Mitigations(Base):
@@ -240,6 +251,79 @@ class Mitigations(Base):
     revoked_by = Column(const.REVOKED_BY_t, String, default=None)
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
+    references = relationship(const.REFERENCES_r, backref=const.MITIGATIONS_r)
+
+
+class Aliases(Base):
+    """
+    In this table are stored the aliases of json file
+    The information stored:
+        id: Used to identify the technique, mitigation, group or software (FK) (PK)
+        alias: Alias related to this item (PK).
+    """
+    __tablename__ = "aliases"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    alias = Column(const.ALIAS_t, String, nullable=False)
+
+    def __init__(self, Id="", alias="") :
+        self.alias = alias
+
+class Contributors(Base):
+    """
+    In this table are stored the contributors of json file
+    The information stored:
+        id: Used to identify the technique, mitigation, group or software (FK) (PK).
+        contributor: Contributor related to this item (PK).
+    """
+    __tablename__ = "contributors"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    contributor = Column(const.CONTRIBUTOR_t, String, nullable=False)
+
+    def __init__(self, Id="", contributor="") :
+        self.contributor = contributor
+
+class Platforms(Base):
+    """
+    In this table are stored the platforms of json file
+    The information stored:
+        id: Used to identify the technique, mitigation, group or software (FK) (PK).
+        platform: OS related to this item (PK).
+    """
+    __tablename__ = "platforms"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    platform = Column(const.PLATFORM_t, String, nullable=False)
+
+    def __init__(self, Id="", platform="") :
+        self.platform = platform
+
+class References(Base):
+    """
+    In this table are stored the references of json file
+    The information stored:
+        id: Used to identify the tactic, technique, mitigation, group or software (FK) (PK).
+        source: Source of this reference (PK).
+        external_id: ID associated with this item (only in case of source mitre-attack).
+        url: URL of the reference.
+        description: Description of the reference.
+    """
+    __tablename__ = "references"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    source = Column(const.SOURCE_t, String, nullable=False)
+    external_id = Column(const.EXTERNAL_ID_t, String, default=None)
+    url = Column(const.URL_t, String, default=None)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+
+    def __init__(self, Id="", source="", external_id=None, url=None, description=None) :
+        self.source = source
+        self.external_id = external_id
+        self.url = url
+        self.description = description
+
+
 
 def parse_table_(function, data_object):
     table = function()
@@ -260,6 +344,31 @@ def parse_table_(function, data_object):
 
     if const.DEPRECATED_j in data_object:
         table.deprecated = data_object[const.DEPRECATED_j]
+
+    # Alias
+    if data_object.get(const.ALIAS_j):
+        for alias in list(set(data_object[const.ALIAS_j])):
+            o_alias = Aliases(techniques=technique, alias=alias)
+            o_alias.Id = data_object[const.ID_j]
+            table.aliases.append(o_alias)
+    # Contributor
+    if data_object.get(const.CONTRIBUTOR_j):
+        for contributor in list(set(data_object[const.CONTRIBUTOR_j])):
+            o_contributor = Contributors(techniques=technique, contributor=contributor)
+            o_contributor.Id = data_object[const.ID_j]
+            table.contributors.append(o_contributor)
+    # Platform
+    if data_object.get(const.PLATFORM_j):
+        for platform in list(set(data_object[const.PLATFORM_j])):
+            o_platform = Platforms(techniques=technique, platform=platform)
+            o_platform.Id = data_object[const.ID_j]
+            table.platforms.append(o_platform)
+    # External References
+    if data_object.get(const.EXTERNAL_REFERENCES_j):
+        for ext_reference in list(set(data_object[const.EXTERNAL_REFERENCES_j])):
+            o_reference = References(techniques=technique, ext_references=ext_references)
+            o_reference.Id = data_object[const.ID_j]
+            table.ext_references.append(o_reference)
 
     return table
 
@@ -304,6 +413,25 @@ def parse_json_techniques(technique_json):
     if technique_json.get(const.SYSTEM_REQ_j):
         for requirement in list(set(technique_json[const.SYSTEM_REQ_j])):
             technique.requirements.append(SystemRequirement(techniques=technique, requirement=requirement))
+    # Contributor
+    if technique_json.get(const.CONTRIBUTOR_j):
+        for contributor in list(set(technique_json[const.CONTRIBUTOR_j])):
+            o_contributor = Contributors(techniques=technique, contributor=contributor)
+            o_contributor.id = technique_json[const.ID_t]
+            technique.contributors.append(o_contributor)
+    # Platform
+    if technique_json.get(const.PLATFORM_j):
+        for platform in list(set(technique_json[const.PLATFORM_j])):
+            o_platform = Platforms(techniques=technique, platform=platform)
+            o_platform.id = technique_json[const.ID_t]
+            technique.platforms.append(o_platform)
+    # External References
+    if technique_json.get(const.EXTERNAL_REFERENCES_j):
+        for ext_reference in list(set(technique_json[const.EXTERNAL_REFERENCES_j])):
+            o_reference = References(techniques=technique, ext_references=ext_references)
+            o_reference.id = technique_json[const.ID_t]
+            technique.ext_references.append(o_reference)
+
     return technique
 
 
