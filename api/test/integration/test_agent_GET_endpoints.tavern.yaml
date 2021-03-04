@@ -397,7 +397,7 @@ stages:
               os:
                 version: "{expected_os_version:s}"
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 5
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Version

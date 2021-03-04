@@ -138,8 +138,8 @@ def general_procedure(module: str):
     module_content = os.path.join(current_path, 'env', 'configurations', module, '*')
     tmp_content = os.path.join(current_path, 'env', 'configurations', 'tmp')
     os.makedirs(tmp_content, exist_ok=True)
-    os.popen(f'cp -rf {base_content} {tmp_content}')
-    os.popen(f'cp -rf {module_content} {tmp_content}')
+    os.popen(f'cp -rf {base_content} {tmp_content}').close()
+    os.popen(f'cp -rf {module_content} {tmp_content}').close()
 
 
 def change_rbac_mode(rbac_mode: str = 'white'):
@@ -209,7 +209,8 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
     rbac_mode : str
         RBAC Mode: Black (by default: all allowed), White (by default: all denied)
     """
-    custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager', 'custom_rbac_schema.sql')
+    custom_rbac_path = os.path.join(current_path, 'env', 'configurations', 'tmp', 'manager',
+                                    'configuration_files', 'custom_rbac_schema.sql')
 
     try:
         with open(os.path.join(current_path, 'env', 'configurations', 'rbac', module,
