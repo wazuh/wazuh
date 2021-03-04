@@ -21,13 +21,13 @@
 
 static void test_GetUser_success(void ** state) {
     will_return(__wrap_sysconf, 1024);
-    uid_t uid = Privsep_GetUser("ossec");
+    uid_t uid = Privsep_GetUser("wazuh");
     assert_int_equal(uid, 1000);
 }
 
 static void test_GetUser_success_extend(void ** state) {
     will_return(__wrap_sysconf, 512);
-    uid_t uid = Privsep_GetUser("ossec");
+    uid_t uid = Privsep_GetUser("wazuh");
     assert_int_equal(uid, 1000);
 }
 
@@ -39,13 +39,13 @@ static void test_GetUser_failure(void ** state) {
 
 static void test_GetGroup_success(void ** state) {
     will_return(__wrap_sysconf, 1024);
-    uid_t uid = Privsep_GetGroup("ossec");
+    uid_t uid = Privsep_GetGroup("wazuh");
     assert_int_equal(uid, 1000);
 }
 
 static void test_GetGroup_success_extend(void ** state) {
     will_return(__wrap_sysconf, 512);
-    uid_t uid = Privsep_GetGroup("ossec");
+    uid_t uid = Privsep_GetGroup("wazuh");
     assert_int_equal(uid, 1000);
 }
 
