@@ -29,6 +29,8 @@ DEFENSE_t= 'defense'
 PERMISSION_t= 'permission'
 IMPACT_t= 'impact'
 REQUIREMENT_t= 'requirement'
+SOURCE_ID_t= 'source_id'
+TARGET_ID_t= 'target_id'
 TACTIC_ID_t= 'tactic_id'
 TECH_ID_t= 'tech_id'
 
@@ -60,9 +62,11 @@ GROUPS_r='Groups'
 SOFTWARE_r='Software'
 MITIGATIONS_r='Mitigation'
 TACTICS_r='Tactic'
+MITIGATE_r= 'Mitigate'
 
 ### ForeignKey
 TECHNIQUE_ID_fk= 'techniques.id'
+MITIGATION_ID_fk= 'mitigations.id'
 TACTICS_ID_fk= 'tactics.id'
 
 ### Json index
@@ -118,7 +122,6 @@ EXTERNAL_REFERENCES_j='external_references'
 SOURCE_NAME_j='source_name'
 EXTERNAL_ID_j='external_id'
 URL_j='url'
-
 # Relationship type
 RELATIONSHIP_j= 'relationship'
 RELATIONSHIP_TYPE_j= 'relationship_type'
@@ -126,4 +129,8 @@ REVOKED_BY_j= 'revoked-by'
 SOURCE_REF_j='source_ref'
 TARGET_REF_j= 'target_ref'
 SUBTECHNIQUE_OF_j= 'subtechnique-of'
+# Mitigates
+MITIGATES_j= 'mitigates'
+# Uses
+USES_j= 'uses'
 
