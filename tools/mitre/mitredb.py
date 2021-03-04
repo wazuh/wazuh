@@ -348,38 +348,20 @@ def parse_json_techniques(technique_json, phases_table):
     return technique
 
 
-def parse_json_relationships(relationships_json, session):
+def parse_json_relationships(relationships_json, relationship_table_revoked_by, relationship_table_subtechique_of):
     if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
-        if relationships_json[const.SOURCE_REF_j].startswith(const.INTRUSION_SET_j):
-            groups = session.query(Groups).get(relationships_json[const.SOURCE_REF_j])
-            groups.revoked_by = relationships_json[const.TARGET_REF_j]
-
-        elif relationships_json[const.SOURCE_REF_j].startswith(const.COURSE_OF_ACTION_j):
-            mitigations = session.query(Mitigations).get(relationships_json[const.SOURCE_REF_j])
-            mitigations.revoked_by = relationships_json[const.TARGET_REF_j]
-
-        elif relationships_json[const.SOURCE_REF_j].startswith(const.MALWARE_j) or \
-                relationships_json[const.SOURCE_REF_j].startswith(const.TOOL_j):
-            software = session.query(Software).get(relationships_json[const.SOURCE_REF_j])
-            software.revoked_by = relationships_json[const.TARGET_REF_j]
-
-        elif relationships_json[const.SOURCE_REF_j].startswith(const.ATTACK_PATTERN_j):
-            technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
-            technique.revoked_by = relationships_json[const.TARGET_REF_j]
+        relationship_table_revoked_by.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.SUBTECHNIQUE_OF_j:
-        technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
-        technique.subtechnique_of = relationships_json[const.TARGET_REF_j]
-
-    session.commit()
+        relationship_table_subtechique_of.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
 
 def parse_list_phases(session, phase_list):
     phase = Phases()
 
     phase.tech_id = phase_list[0]
-    account = session.query(Tactics).filter_by(short_name=phase_list[1]).first()
-    phase.tactic_id = account.Id
+    tactic = session.query(Tactics).filter_by(short_name=phase_list[1]).first()
+    phase.tactic_id = tactic.Id
 
     return phase
 
@@ -394,7 +376,11 @@ def parse_json(pathfile, session, database):
     :return:
     """
     try:
+        # Lists
         phases_table = []
+        relationship_table_revoked_by = []
+        relationship_table_subtechique_of = []
+
         metadata = Metadata()
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
@@ -420,6 +406,8 @@ def parse_json(pathfile, session, database):
                 elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
                     technique = parse_json_techniques(data_object, phases_table)
                     session.add(technique)
+                elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
+                    parse_json_relationships(data_object, relationship_table_revoked_by, relationship_table_subtechique_of)
                 else:
                     continue
                 session.commit()
@@ -428,13 +416,26 @@ def parse_json(pathfile, session, database):
             phases = parse_list_phases(session, table)
             session.add(phases)
 
-        session.commit()
+        for table in relationship_table_revoked_by:
+            if table[0].startswith(const.INTRUSION_SET_j):
+                groups = session.query(Groups).get(table[0])
+                groups.revoked_by = table[1]
 
-        with open(pathfile) as json_file:
-            datajson = json.load(json_file)
-            for data_object in datajson[const.OBJECT_j]:
-                if data_object[const.TYPE_j] == const.RELATIONSHIP_j:
-                    parse_json_relationships(data_object, session)
+            elif table[0].startswith(const.COURSE_OF_ACTION_j):
+                mitigations = session.query(Mitigations).get(table[0])
+                mitigations.revoked_by = table[1]
+
+            elif table[0].startswith(const.MALWARE_j) or table[0].startswith(const.TOOL_j):
+                software = session.query(Software).get(table[0])
+                software.revoked_by = table[1]
+
+            elif table[0].startswith(const.ATTACK_PATTERN_j):
+                technique = session.query(Technique).get(table[0])
+                technique.revoked_by = table[1]
+
+        for table in relationship_table_subtechique_of:
+            technique = session.query(Technique).get(table[0])
+            technique.subtechnique_of = table[1]
 
         session.add(metadata)
         session.commit()
