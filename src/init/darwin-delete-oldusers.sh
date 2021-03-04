@@ -17,14 +17,14 @@ function check_errm
       fi
 }
 
-USER=$1
-USER_MAIL=$2
-USER_REM=$3
-GROUP=$4
+USER=ossec
+USER_MAIL=ossecm
+USER_REM=ossecr
+GROUP=$1
 
-if ! [ $# -eq 4 ]; then
+if ! [ $# -eq 1 ]; then
     echo $#
-    echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME.";
+    echo "Usage: ${0} GROUPNAME.";
     exit 1;
 fi
 
