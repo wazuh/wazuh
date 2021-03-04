@@ -26,7 +26,7 @@ static void help_csyslogd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
+    print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
@@ -40,9 +40,9 @@ int main(int argc, char **argv)
     uid_t uid;
     gid_t gid;
 
-    /* Use MAILUSER (read only) */
+    /* Use USER (read only) */
     const char *dir  = DEFAULTDIR;
-    const char *user = MAILUSER;
+    const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
 

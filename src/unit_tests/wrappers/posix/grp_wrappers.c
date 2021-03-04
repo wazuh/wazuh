@@ -26,7 +26,7 @@ int __wrap_getgrnam_r(const char *name, struct group *grp,__attribute__((unused)
         return ERANGE;
     }
 
-    if (strcmp(name, "ossec") == 0) {
+    if (strcmp(name, "wazuh") == 0) {
         grp->gr_gid = 1000;
         *result = grp;
     }

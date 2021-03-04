@@ -29,7 +29,7 @@ static void help_remoted()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -u <user>   User to run as (default: %s)", REMUSER);
+    print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 
     const char *cfg = DEFAULTCPATH;
     const char *dir = DEFAULTDIR;
-    const char *user = REMUSER;
+    const char *user = USER;
     const char *group = GROUPGLOBAL;
 
     /* Set the name */
