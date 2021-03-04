@@ -21,11 +21,10 @@ function check_errm
 USER=$1
 GROUP=$2
 DIR=$3
-INSTYPE=$4
 
-if ! [ $# -eq 4 ]; then
+if ! [ $# -eq 3 ]; then
     echo $#
-    echo "Usage: ${0} USERNAME_DEFAULT GROUPNAME DIRECTORY INSTYPE.";
+    echo "Usage: ${0} USERNAME_DEFAULT GROUPNAME DIRECTORY.";
     exit 1;
 fi
 

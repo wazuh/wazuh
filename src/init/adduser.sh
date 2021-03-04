@@ -5,8 +5,8 @@
 set -e
 set -u
 
-if ! [ $# -eq 4 ]; then
-    echo "Usage: ${0} USERNAME_DEFAULT GROUPNAME DIRECTORY INSTYPE.";
+if ! [ $# -eq 3 ]; then
+    echo "Usage: ${0} USERNAME_DEFAULT GROUPNAME DIRECTORY.";
     exit 1;
 fi
 
@@ -15,14 +15,13 @@ echo "Wait for success..."
 USER=$1
 GROUP=$2
 DIR=$3
-INSTYPE=$4
 
 UNAME=$(uname);
 # Thanks Chuck L. for the mac addusers
 if [ "$UNAME" = "Darwin" ]; then
     if ! id -u "${USER}" > /dev/null 2>&1; then
         chmod +x ./init/darwin-addusers.sh
-        ./init/darwin-addusers.sh $USER $GROUP $DIR $INSTYPE
+        ./init/darwin-addusers.sh $USER $GROUP $DIR
     fi
 
 else
