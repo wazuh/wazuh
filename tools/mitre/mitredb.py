@@ -258,7 +258,7 @@ class Aliases(Base):
     """
     In this table are stored the aliases of json file
     The information stored:
-        id: Used to identify the technique, mitigation, group or software (FK) (PK)
+        id: Used to identify the group or software (PK).
         alias: Alias related to this item (PK).
     """
     __tablename__ = "aliase"
@@ -273,7 +273,7 @@ class Contributors(Base):
     """
     In this table are stored the contributors of json file
     The information stored:
-        id: Used to identify the technique, mitigation, group or software (FK) (PK).
+        id: Used to identify the technique, group or software (PK).
         contributor: Contributor related to this item (PK).
     """
     __tablename__ = "contributor"
@@ -288,7 +288,7 @@ class Platforms(Base):
     """
     In this table are stored the platforms of json file
     The information stored:
-        id: Used to identify the technique, mitigation, group or software (FK) (PK).
+        id: Used to identify the technique or software (PK).
         platform: OS related to this item (PK).
     """
     __tablename__ = "platform"
@@ -303,7 +303,7 @@ class References(Base):
     """
     In this table are stored the references of json file
     The information stored:
-        id: Used to identify the tactic, technique, mitigation, group or software (FK) (PK).
+        id: Used to identify the tactic, technique, mitigation, group or software (PK).
         source: Source of this reference (PK).
         external_id: ID associated with this item (only in case of source mitre-attack).
         url: URL of the reference.
