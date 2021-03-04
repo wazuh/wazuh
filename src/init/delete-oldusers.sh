@@ -5,23 +5,23 @@
 set -e
 set -u
 
-if ! [ $# -eq 4 ]; then
-    echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME.";
+if ! [ $# -eq 1 ]; then
+    echo "Usage: ${0} GROUPNAME.";
     exit 1;
 fi
 
 echo "Wait for success..."
 
-USER=$1
-USER_MAIL=$2
-USER_REM=$3
-GROUP=$4
+USER=ossec
+USER_MAIL=ossecm
+USER_REM=ossecr
+GROUP=$1
 
 UNAME=$(uname);
 if [ "$UNAME" = "Darwin" ]; then
     if id -u "${USER}" > /dev/null 2>&1; then
-        chmod +x ./init/darwin-delusers.sh
-        ./init/darwin-delusers.sh $USER $USER_MAIL $USER_REM $GROUP
+        chmod +x ./init/darwin-delete-oldusers.sh
+        ./init/darwin-delete-oldusers.sh $GROUP
     fi
 
 else

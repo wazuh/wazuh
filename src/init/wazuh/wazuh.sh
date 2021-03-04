@@ -134,7 +134,7 @@ WazuhUpgrade()
     rm -rf $DIRECTORY/queue/ossec
 
 	# Move rotated logs to new folder and remove the existing one
-	
+
 	if [ -d $DIRECTORY/logs/ossec ]; then
 		if [ "$(ls -A $DIRECTORY/logs/ossec)" ]; then
 			mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
@@ -197,4 +197,12 @@ WazuhUpgrade()
         rm -f $DIRECTORY/etc/ossec-init.conf
         rm -f /etc/ossec-init.conf
     fi
+
+    # Replace and delete ossec group together with ossec users
+    OSSEC_GROUP=ossec
+    if grep "^ossec:" /etc/group > /dev/null 2>&1 ; then
+        find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
+        find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
+    fi
+    ./src/init/delete-oldusers.sh $OSSEC_GROUP
 }
