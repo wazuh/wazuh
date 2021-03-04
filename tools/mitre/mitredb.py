@@ -409,12 +409,22 @@ def parse_json_mitigate_use(function, data_object):
     return table
 
 
-def parse_json_relationships(relationships_json, relationship_table_revoked_by, relationship_table_subtechique_of):
+def parse_json_relationships(relationships_json, session, relationship_table_revoked_by, relationship_table_subtechique_of):
     if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
         relationship_table_revoked_by.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.SUBTECHNIQUE_OF_j:
         relationship_table_subtechique_of.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
+
+    elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.MITIGATES_j:
+        mitigate = parse_json_mitigate_use(Mitigate, relationships_json)
+        session.add(mitigate)
+        session.commit()
+
+    elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.USES_j:
+        use = parse_json_mitigate_use(Use, relationships_json)
+        session.add(use)
+        session.commit()
 
 
 def parse_list_phases(session, phase_list):
@@ -468,7 +478,7 @@ def parse_json(pathfile, session, database):
                     technique = parse_json_techniques(data_object, phases_table)
                     session.add(technique)
                 elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
-                    parse_json_relationships(data_object, relationship_table_revoked_by, relationship_table_subtechique_of)
+                    parse_json_relationships(data_object, session, relationship_table_revoked_by, relationship_table_subtechique_of)
                 else:
                     continue
                 session.commit()
@@ -476,6 +486,7 @@ def parse_json(pathfile, session, database):
         for table in phases_table:
             phases = parse_list_phases(session, table)
             session.add(phases)
+        session.commit()
 
         for table in relationship_table_revoked_by:
             if table[0].startswith(const.INTRUSION_SET_j):
