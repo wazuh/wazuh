@@ -46,7 +46,7 @@ class Technique(Base):
     """
     In this table are stored the techniques of json file
     The information stored:
-        id: Used to identify the technique
+        id: Used to identify the technique (PK)
         name: Name of the technique
         description: Detailed description of the technique
         created_time: Publish date
@@ -55,7 +55,7 @@ class Technique(Base):
         mitre_detection: Detection information
         network_requirements:Boolean indicationg network requirements
         remote_support: Boolean indicationg remote support
-        revoked_by: ID of the technique that revokes this one, NULL otherwise. 
+        revoked_by: ID of the technique that revokes this one, NULL otherwise.
         deprecated: Boolean indicating if this technique is deprecated
         subtechnique_of: ID of the parent technique, NULL otherwise
     """
@@ -286,6 +286,39 @@ class Use(Base):
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
 
 
+class Tactics(Base):
+    """
+    In this table are stored the tactics of json file
+    The information stored:
+        id: Used to identify the tactic (PK)
+        name: Name of the tactic
+        description: Detailed description of the tactic
+        created_time: Publish date
+        modified_time: Last modification date
+        short_name: Short name of the tactic
+    """
+    __tablename__ = "tactics"
+
+    Id = Column(const.ID_t, String, primary_key=True)
+    name = Column(const.NAME_t, String, nullable=False)
+    description = Column(const.DESCRIPTION_t, String, default=None)
+    created_time = Column(const.CREATED_t, DateTime, default=None)
+    modified_time = Column(const.MODIFIED_t, DateTime, default=None)
+    short_name = Column(const.SHORT_NAME_t, String, default=None)
+
+
+class Phases(Base):
+    """
+    This table stores the relationship between techniques and the tactics table.
+    The information stored:
+        tactic_id: Used to identify the tactic (FK) (PK)
+        tech_id: Used to identify the technique (FK) (PK)
+    """
+    __tablename__ = "phases"
+
+    tactic_id = Column(const.TACTIC_ID_t, String, ForeignKey(const.TACTICS_ID_fk, ondelete='CASCADE'), primary_key=True)
+    tech_id = Column(const.TECH_ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
+
 def parse_table_(function, data_object):
     table = function()
     table.Id = data_object[const.ID_j]
@@ -300,16 +333,21 @@ def parse_table_(function, data_object):
     if const.MODIFIED_j in data_object:
         table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
 
-    if const.MITRE_VERSION_j in data_object:
-        table.mitre_version = data_object[const.MITRE_VERSION_j]
-
-    if const.DEPRECATED_j in data_object:
-        table.deprecated = data_object[const.DEPRECATED_j]
+    if function.__name__ == 'Tactics':
+        if const.SHORT_NAME_j in data_object:
+            table.short_name = data_object[const.SHORT_NAME_j]
+    elif function.__name__ == 'Groups' or \
+            function.__name__ == 'Software' or \
+            function.__name__ == 'Mitigations':
+        if const.MITRE_VERSION_j in data_object:
+            table.mitre_version = data_object[const.MITRE_VERSION_j]
+        if const.DEPRECATED_j in data_object:
+            table.deprecated = data_object[const.DEPRECATED_j]
 
     return table
 
 
-def parse_json_techniques(technique_json):
+def parse_json_techniques(technique_json, phases_table):
 
     technique = Technique()
     technique.id = technique_json[const.ID_t]
@@ -349,6 +387,9 @@ def parse_json_techniques(technique_json):
     if technique_json.get(const.SYSTEM_REQ_j):
         for requirement in list(set(technique_json[const.SYSTEM_REQ_j])):
             technique.requirements.append(SystemRequirement(techniques=technique, requirement=requirement))
+    if technique_json.get(const.PHASES_j):
+        for phase in technique_json[const.PHASES_j]:
+             phases_table.append([technique.id, phase[const.PHASE_NAME_j]])
     return technique
 
 
@@ -383,6 +424,7 @@ def parse_json_relationships(relationships_json, session):
         elif relationships_json[const.SOURCE_REF_j].startswith(const.ATTACK_PATTERN_j):
             technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
             technique.revoked_by = relationships_json[const.TARGET_REF_j]
+
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.SUBTECHNIQUE_OF_j:
         technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
         technique.subtechnique_of = relationships_json[const.TARGET_REF_j]
@@ -396,6 +438,16 @@ def parse_json_relationships(relationships_json, session):
     session.commit()
 
 
+def parse_list_phases(session, phase_list):
+    phase = Phases()
+
+    phase.tech_id = phase_list[0]
+    account = session.query(Tactics).filter_by(short_name=phase_list[1]).first()
+    phase.tactic_id = account.Id
+
+    return phase
+
+
 def parse_json(pathfile, session, database):
     """
     Parse enterprise-attack.json and fill mitre.db's tables.
@@ -406,6 +458,7 @@ def parse_json(pathfile, session, database):
     :return:
     """
     try:
+        phases_table = []
         metadata = Metadata()
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
@@ -418,20 +471,28 @@ def parse_json(pathfile, session, database):
                 elif data_object[const.TYPE_j] == const.INTRUSION_SET_j:
                     groups = parse_table_(Groups, data_object)
                     session.add(groups)
-                    session.commit()
                 elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
                     mitigations = parse_table_(Mitigations, data_object)
                     session.add(mitigations)
-                    session.commit()
                 elif data_object[const.TYPE_j] == const.MALWARE_j or \
                         data_object[const.TYPE_j] == const.TOOL_j:
                     software = parse_table_(Software, data_object)
                     session.add(software)
-                    session.commit()
+                elif data_object[const.TYPE_j] == const.TACTIC_j:
+                    tactics = parse_table_(Tactics, data_object)
+                    session.add(tactics)
                 elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
-                    technique = parse_json_techniques(data_object)
+                    technique = parse_json_techniques(data_object, phases_table)
                     session.add(technique)
-                    session.commit()
+                else:
+                    continue
+                session.commit()
+
+        for table in phases_table:
+            phases = parse_list_phases(session, table)
+            session.add(phases)
+
+        session.commit()
 
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
