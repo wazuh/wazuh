@@ -33,7 +33,7 @@ void test_queryid_error_socket(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -50,7 +50,7 @@ void test_queryid_no_response(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -69,7 +69,7 @@ void test_queryid_bad_response(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -85,7 +85,7 @@ void test_queryid_error_parse(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -101,7 +101,7 @@ void test_queryid_empty_array(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database has 0 elements.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -117,7 +117,7 @@ void test_queryid_error_parse_ids(void **state)
     expect_string(__wrap__merror, formatted_msg, "It was not possible to get Mitre techniques information.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -140,7 +140,7 @@ void test_querytactics_error_socket(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -163,7 +163,7 @@ void test_querytactics_no_response(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -188,7 +188,7 @@ void test_querytactics_bad_response(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -210,7 +210,7 @@ void test_querytactics_error_parse(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -232,7 +232,7 @@ void test_querytactics_empty_array(void **state)
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database has 0 elements.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -254,7 +254,7 @@ void test_querytactics_error_parse_tactics(void **state)
     expect_string(__wrap__merror, formatted_msg, "It was not possible to get MITRE tactics information.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -282,7 +282,7 @@ void test_queryname_error_socket(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket '/queue/db/wdb'");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-2, ret);
 }
 
@@ -311,7 +311,7 @@ void test_queryname_no_response(void **state) {
     expect_string(__wrap__merror, formatted_msg, "No response from wazuh-db.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -340,7 +340,7 @@ void test_queryname_bad_response(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Bad response from wazuh-db: not found");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(-1, ret);
 }
 
@@ -379,7 +379,7 @@ void test_querytactics_repeated_id(void **state)
     will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
     will_return(__wrap_wdbc_query_ex, 0);
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(0, ret);
 }
 
@@ -416,7 +416,7 @@ void test_querytactics_success(void **state)
     will_return(__wrap_wdbc_query_ex, "ok Data Compressed");
     will_return(__wrap_wdbc_query_ex, 0);
 
-    ret = mitre_load("test");
+    ret = mitre_load();
     assert_int_equal(0, ret);
 }
 
