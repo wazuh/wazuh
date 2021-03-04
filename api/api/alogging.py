@@ -3,7 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import logging
 import re
-from json import JSONDecodeError
 
 from aiohttp.abc import AbstractAccessLogger
 
@@ -19,7 +18,7 @@ class AccessLogger(AbstractAccessLogger):
         self.logger.info(f'{request.get("user", "unknown_user")} '
                          f'{request.remote} '
                          f'"{request.method} {request.path}" '
-                         f'with parameters {dict(request.query)} and body {request.get("body","{}")} '
+                         f'with parameters {dict(request.query)} and body {request.get("body", "{}")} '
                          f'done in {time:.3f}s: {response.status}')
 
 
