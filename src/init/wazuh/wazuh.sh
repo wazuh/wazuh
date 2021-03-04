@@ -200,7 +200,7 @@ WazuhUpgrade()
 
     # Replace and delete ossec group together with ossec users
     OSSEC_GROUP=ossec
-    if grep "^ossec:" /etc/group > /dev/null 2>&1 ; then
+    if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then
         find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
         find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
     fi

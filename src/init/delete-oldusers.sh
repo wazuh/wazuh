@@ -20,8 +20,8 @@ GROUP=$1
 UNAME=$(uname);
 if [ "$UNAME" = "Darwin" ]; then
     if id -u "${USER}" > /dev/null 2>&1; then
-        chmod +x ./init/darwin-delete-oldusers.sh
-        ./init/darwin-delete-oldusers.sh $GROUP
+        chmod +x ./src/init/darwin-delete-oldusers.sh
+        ./src/init/darwin-delete-oldusers.sh $GROUP
     fi
 
 else
