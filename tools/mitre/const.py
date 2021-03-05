@@ -36,6 +36,8 @@ TACTIC_ID_t= 'tactic_id'
 TECH_ID_t= 'tech_id'
 
 DB_VERSION_t = 'db_version'
+DB_VERSION_N_t = '1'
+MITRE_VERSION_t = 'mitre_version'
 
 ### Relationships
 DATASOURCE_r= 'DataSource'
@@ -70,7 +72,6 @@ ATTACK_PATTERN_j= 'attack-pattern'
 
 ID_j= 'id'
 VERSION_j= 'spec_version'
-IDENTITY_j= 'identity'
 MARKING_DEFINITION_j= 'marking-definition'
 DEFINITION_j= 'definition'
 STATEMENT_j= 'statement'

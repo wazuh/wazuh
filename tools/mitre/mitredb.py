@@ -451,10 +451,15 @@ def parse_json(pathfile, session, database):
         relationship_table_subtechique_of = []
 
         metadata = Metadata()
+        metadata.key = const.DB_VERSION_t
+        metadata.value = const.DB_VERSION_N_t
+        session.add(metadata)
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
-            metadata.key = const.DB_VERSION_t
+            metadata = Metadata()
+            metadata.key = const.MITRE_VERSION_t
             metadata.value = datajson[const.VERSION_j]
+            session.add(metadata)
             for data_object in datajson[const.OBJECT_j]:
                 if data_object[const.TYPE_j] == const.INTRUSION_SET_j:
                     groups = parse_table_(Groups, data_object)
@@ -504,7 +509,6 @@ def parse_json(pathfile, session, database):
             technique = session.query(Technique).get(table[0])
             technique.subtechnique_of = table[1]
 
-        session.add(metadata)
         session.commit()
 
     except TypeError as t_e:
