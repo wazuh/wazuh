@@ -496,7 +496,7 @@ x-rbac-catalog:
         resources: ['*:*:*']
         effect: "deny"
     'vulnerability:read':
-      description: "Allow read agents' vulnerabilities information"
+      description: "Allow reading agents' vulnerabilities information"
       resources:
         - $ref: '#/x-rbac-catalog/resources/agent:id'
         - $ref: '#/x-rbac-catalog/resources/agent:group'
@@ -4469,7 +4469,7 @@ components:
       description: "Filter by CVE version"
       schema:
         type: string
-        pattern: '^[a-zA-Z0-9\-_~.]*$'
+        format: alphanumeric_symbols
     wait_for_complete:
       in: query
       name: wait_for_complete

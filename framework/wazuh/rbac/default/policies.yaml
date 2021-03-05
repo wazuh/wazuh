@@ -332,7 +332,7 @@ default_policies:
         effect: allow
 
   vulnerability_read:
-    description: Allow read agents' vulnerabilities information.
+    description: Allow reading agents' vulnerabilities information.
     policies:
       vulnerability:
         actions:
