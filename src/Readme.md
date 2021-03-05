@@ -41,7 +41,7 @@ optional arguments:
   --clean CLEAN         Clean the lib. Example: python3 build.py --clean <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --cppcheck CPPCHECK   Run cppcheck on the code. Example: python3 build.py --cppcheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --asan ASAN           Run ASAN on the code. Example: python3 build.py --asan <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
-```
+
 
 Ready to review checks:
   1. runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
@@ -107,7 +107,6 @@ shared_modules/dbsync > [make: PASSED]
 <shared_modules/dbsync>[RTR: PASSED]<shared_modules/dbsync>
 
 ```
-
 
 Address sanitizer checks:
   1. clean previous builds <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
