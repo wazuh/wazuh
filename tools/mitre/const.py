@@ -10,6 +10,11 @@ TIME_FORMAT= '%Y-%m-%dT%H:%M:%S.%fZ'
 
 ### Table
 
+# Metadata
+DB_VERSION_t = 'db_version'
+DB_VERSION_N_t = '1'
+MITRE_VERSION_t = 'mitre_version'
+
 ID_t= 'id'
 KEY_t= 'key'
 VALUE_t= 'value'
@@ -34,10 +39,6 @@ SOURCE_ID_t= 'source_id'
 TARGET_ID_t= 'target_id'
 TACTIC_ID_t= 'tactic_id'
 TECH_ID_t= 'tech_id'
-
-DB_VERSION_t = 'db_version'
-DB_VERSION_N_t = '1'
-MITRE_VERSION_t = 'mitre_version'
 
 ### Relationships
 DATASOURCE_r= 'DataSource'
@@ -72,9 +73,6 @@ ATTACK_PATTERN_j= 'attack-pattern'
 
 ID_j= 'id'
 VERSION_j= 'spec_version'
-MARKING_DEFINITION_j= 'marking-definition'
-DEFINITION_j= 'definition'
-STATEMENT_j= 'statement'
 NAME_j= 'name'
 DESCRIPTION_j= 'description'
 CREATED_j= 'created'
