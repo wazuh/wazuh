@@ -31,15 +31,13 @@ class Metadata(Base):
     """
     In this table are stored the metadata of json file
     The information stored:
-        version: version of json (PK)
-        name: name
-        description: description
+        key: key (PK)
+        value: value
     """
     __tablename__ = "metadata"
 
-    version = Column(const.VERSION_t, String, primary_key=True)
-    name = Column(const.NAME_t, String, nullable=False)
-    description = Column(const.DESCRIPTION_t, String, default=None)
+    key = Column(const.KEY_t, String, primary_key=True)
+    value = Column(const.VALUE_t, String, nullable=False)
 
 
 class Technique(Base):
@@ -480,26 +478,28 @@ def parse_common_tables(table, data_object, session):
             o_alias = Aliases(alias=alias)
             o_alias.id = table.id
             session.add(o_alias)
-        
+
     if data_object.get(const.ALIAS_j):
         for alias in data_object[const.ALIAS_j]:
             o_alias = Aliases(alias=alias)
             o_alias.id = table.id
             session.add(o_alias)
+
     # Contributor
     if data_object.get(const.CONTRIBUTOR_j):
         for contributor in data_object[const.CONTRIBUTOR_j]:
             o_contributor = Contributors(contributor=contributor)
             o_contributor.id = table.id
             session.add(o_contributor)
+
     # Platform
     if data_object.get(const.PLATFORM_j):
         for platform in data_object[const.PLATFORM_j]:
             o_platform = Platforms(platform=platform)
             o_platform.id = table.id
             session.add(o_platform)
-    # External References
 
+    # External References
     if data_object.get(const.EXTERNAL_REFERENCES_j):
         for reference in data_object[const.EXTERNAL_REFERENCES_j]:
             if reference.get(const.URL_j):
@@ -523,44 +523,30 @@ def parse_json_ext_references(function, data_object):
     return table
 
 
-def parse_json_relationships(relationships_json, session):
+def parse_json_relationships(relationships_json, session, relationship_table_revoked_by, relationship_table_subtechique_of):
     if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
-        if relationships_json[const.SOURCE_REF_j].startswith(const.INTRUSION_SET_j):
-            groups = session.query(Groups).get(relationships_json[const.SOURCE_REF_j])
-            groups.revoked_by = relationships_json[const.TARGET_REF_j]
-
-        elif relationships_json[const.SOURCE_REF_j].startswith(const.COURSE_OF_ACTION_j):
-            mitigations = session.query(Mitigations).get(relationships_json[const.SOURCE_REF_j])
-            mitigations.revoked_by = relationships_json[const.TARGET_REF_j]
-
-        elif relationships_json[const.SOURCE_REF_j].startswith(const.MALWARE_j) or \
-                relationships_json[const.SOURCE_REF_j].startswith(const.TOOL_j):
-            software = session.query(Software).get(relationships_json[const.SOURCE_REF_j])
-            software.revoked_by = relationships_json[const.TARGET_REF_j]
-
-        elif relationships_json[const.SOURCE_REF_j].startswith(const.ATTACK_PATTERN_j):
-            technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
-            technique.revoked_by = relationships_json[const.TARGET_REF_j]
+        relationship_table_revoked_by.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.SUBTECHNIQUE_OF_j:
-        technique = session.query(Technique).get(relationships_json[const.SOURCE_REF_j])
-        technique.subtechnique_of = relationships_json[const.TARGET_REF_j]
+        relationship_table_subtechique_of.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
+
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.MITIGATES_j:
         mitigate = parse_json_mitigate_use(Mitigate, relationships_json)
         session.add(mitigate)
+        session.commit()
+
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.USES_j:
         use = parse_json_mitigate_use(Use, relationships_json)
         session.add(use)
-
-    session.commit()
+        session.commit()
 
 
 def parse_list_phases(session, phase_list):
     phase = Phases()
 
     phase.tech_id = phase_list[0]
-    account = session.query(Tactics).filter_by(short_name=phase_list[1]).first()
-    phase.tactic_id = account.id
+    tactic = session.query(Tactics).filter_by(short_name=phase_list[1]).first()
+    phase.tactic_id = tactic.id
 
     return phase
 
@@ -575,17 +561,23 @@ def parse_json(pathfile, session, database):
     :return:
     """
     try:
+        # Lists
         phases_table = []
+        relationship_table_revoked_by = []
+        relationship_table_subtechique_of = []
+
         metadata = Metadata()
+        metadata.key = const.DB_VERSION_t
+        metadata.value = const.DB_VERSION_N_t
+        session.add(metadata)
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
-            metadata.version = datajson[const.VERSION_j]
+            metadata = Metadata()
+            metadata.key = const.MITRE_VERSION_t
+            metadata.value = datajson[const.VERSION_j]
+            session.add(metadata)
             for data_object in datajson[const.OBJECT_j]:
-                if data_object[const.TYPE_j] == const.IDENTITY_j:
-                    metadata.name = data_object[const.NAME_j]
-                elif data_object[const.TYPE_j] == const.MARKING_DEFINITION_j:
-                    metadata.description = data_object[const.DEFINITION_j][const.STATEMENT_j]
-                elif data_object[const.TYPE_j] == const.INTRUSION_SET_j:
+                if data_object[const.TYPE_j] == const.INTRUSION_SET_j:
                     groups = parse_table_(Groups, data_object, session)
                     session.add(groups)
                 elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
@@ -601,6 +593,8 @@ def parse_json(pathfile, session, database):
                 elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
                     technique = parse_json_techniques(data_object, phases_table, session)
                     session.add(technique)
+                elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
+                    parse_json_relationships(data_object, session, relationship_table_revoked_by, relationship_table_subtechique_of)
                 else:
                     continue
                 session.commit()
@@ -608,16 +602,29 @@ def parse_json(pathfile, session, database):
         for table in phases_table:
             phases = parse_list_phases(session, table)
             session.add(phases)
-
         session.commit()
 
-        with open(pathfile) as json_file:
-            datajson = json.load(json_file)
-            for data_object in datajson[const.OBJECT_j]:
-                if data_object[const.TYPE_j] == const.RELATIONSHIP_j:
-                    parse_json_relationships(data_object, session)
+        for table in relationship_table_revoked_by:
+            if table[0].startswith(const.INTRUSION_SET_j):
+                groups = session.query(Groups).get(table[0])
+                groups.revoked_by = table[1]
 
-        session.add(metadata)
+            elif table[0].startswith(const.COURSE_OF_ACTION_j):
+                mitigations = session.query(Mitigations).get(table[0])
+                mitigations.revoked_by = table[1]
+
+            elif table[0].startswith(const.MALWARE_j) or table[0].startswith(const.TOOL_j):
+                software = session.query(Software).get(table[0])
+                software.revoked_by = table[1]
+
+            elif table[0].startswith(const.ATTACK_PATTERN_j):
+                technique = session.query(Technique).get(table[0])
+                technique.revoked_by = table[1]
+
+        for table in relationship_table_subtechique_of:
+            technique = session.query(Technique).get(table[0])
+            technique.subtechnique_of = table[1]
+
         session.commit()
 
     except TypeError as t_e:
