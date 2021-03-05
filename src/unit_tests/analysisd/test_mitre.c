@@ -452,43 +452,6 @@ void test_queryname_error_parse_technique_external_id(void **state) {
     assert_int_equal(-1, ret);
 }
 
-void test_querytactics_success(void **state)
-{
-    (void) state;
-    int ret;
-    cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\"},{\"id\":\"technique-0002\"}]");
-    cJSON * tactic_array = cJSON_Parse("[{\"phase_name\":\"Command And Control\"}]");
-    cJSON * tactic_array_2 = cJSON_Parse("[{\"phase_name\":\"Exfiltration\"}]");
-
-    /* Mitre's techniques IDs query */
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, id_array);
-
-    /* Mitre's tactics query */
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, tactic_array);
-
-    /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_any(__wrap_wdbc_query_ex, query);
-    expect_any(__wrap_wdbc_query_ex, len);
-    will_return(__wrap_wdbc_query_ex, "ok Data Obfuscation");
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, tactic_array_2);
-
-    /* Mitre technique's name query */
-    expect_any(__wrap_wdbc_query_ex, *sock);
-    expect_any(__wrap_wdbc_query_ex, query);
-    expect_any(__wrap_wdbc_query_ex, len);
-    will_return(__wrap_wdbc_query_ex, "ok Data Compressed");
-    will_return(__wrap_wdbc_query_ex, 0);
-
-    ret = mitre_load();
-    assert_int_equal(0, ret);
-}
-
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -512,7 +475,6 @@ int main(void) {
         cmocka_unit_test(test_queryname_error_parse),
         cmocka_unit_test(test_queryname_error_parse_technique_name),
         cmocka_unit_test(test_queryname_error_parse_technique_external_id),
-        //cmocka_unit_test(test_querytactics_success),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
