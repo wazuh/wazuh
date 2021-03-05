@@ -31,15 +31,13 @@ class Metadata(Base):
     """
     In this table are stored the metadata of json file
     The information stored:
-        version: version of json (PK)
-        name: name
-        description: description
+        key: key (PK)
+        value: value
     """
     __tablename__ = "metadata"
 
-    version = Column(const.VERSION_t, String, primary_key=True)
-    name = Column(const.NAME_t, String, nullable=False)
-    description = Column(const.DESCRIPTION_t, String, default=None)
+    key = Column(const.KEY_t, String, primary_key=True)
+    value = Column(const.VALUE_t, String, nullable=False)
 
 
 class Technique(Base):
@@ -482,15 +480,17 @@ def parse_json(pathfile, session, database):
         relationship_table_subtechique_of = []
 
         metadata = Metadata()
+        metadata.key = const.DB_VERSION_t
+        metadata.value = const.DB_VERSION_N_t
+        session.add(metadata)
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
-            metadata.version = datajson[const.VERSION_j]
+            metadata = Metadata()
+            metadata.key = const.MITRE_VERSION_t
+            metadata.value = datajson[const.VERSION_j]
+            session.add(metadata)
             for data_object in datajson[const.OBJECT_j]:
-                if data_object[const.TYPE_j] == const.IDENTITY_j:
-                    metadata.name = data_object[const.NAME_j]
-                elif data_object[const.TYPE_j] == const.MARKING_DEFINITION_j:
-                    metadata.description = data_object[const.DEFINITION_j][const.STATEMENT_j]
-                elif data_object[const.TYPE_j] == const.INTRUSION_SET_j:
+                if data_object[const.TYPE_j] == const.INTRUSION_SET_j:
                     group = parse_table_(Groups, data_object)
                     groups.append(group)
                 elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
@@ -554,8 +554,6 @@ def parse_json(pathfile, session, database):
 
         session.bulk_insert_mappings(Mitigate, mitigate_rows_list)
         session.bulk_insert_mappings(Use, use_rows_list)
-
-        session.add(metadata)
         session.commit()
 
     except TypeError as t_e:
