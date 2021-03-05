@@ -83,10 +83,6 @@ class WazuhException(Exception):
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
-        1120: {
-            'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
-            'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
-        },
         1121: {'message': "Error connecting with socket"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
