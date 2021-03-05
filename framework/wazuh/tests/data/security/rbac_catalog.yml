@@ -800,7 +800,7 @@ get_rbac_actions:
         related_endpoints:
           - GET /tasks/status
       vulnerability:read:
-        description: Allow read agents' vulnerabilities information
+        description: Allow reading agents' vulnerabilities information
         resources:
           - agent:id
           - agent:group
