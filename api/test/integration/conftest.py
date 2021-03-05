@@ -273,7 +273,6 @@ def api_test(request):
         rbac_mode = None
         module = test_filename[1]
     clean_tmp_folder()
-    general_procedure(module)
 
     if rbac_mode:
         change_rbac_mode(rbac_mode)
@@ -281,6 +280,7 @@ def api_test(request):
     else:
         enable_white_mode()
 
+    general_procedure(module)
     values = build_and_up(interval=10, build=request.config.getoption('--nobuild'))
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'])

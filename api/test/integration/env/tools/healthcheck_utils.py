@@ -52,15 +52,15 @@ def check(result):
 def get_master_health():
     os.system("/var/ossec/bin/agent_control -ls > /tmp/output.txt")
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
-    check0 = check(os.system("diff -q /tmp/output.txt /healthcheck/agent_control_check.txt"))
-    check1 = check(os.system("diff -q /tmp/daemons.txt /healthcheck/daemons_check.txt"))
+    check0 = check(os.system("diff -q /tmp/output.txt /tmp/healthcheck/agent_control_check.txt"))
+    check1 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
     check2 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
     return check0 or check1 or check2
 
 
 def get_worker_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
-    check0 = check(os.system("diff -q /tmp/daemons.txt /healthcheck/daemons_check.txt"))
+    check0 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
     check1 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
     return check0 or check1
 

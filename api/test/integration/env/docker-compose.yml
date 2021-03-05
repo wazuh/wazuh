@@ -9,6 +9,9 @@ services:
     hostname: wazuh-master
     ports:
       - "55000:55000"
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -23,6 +26,9 @@ services:
     hostname: wazuh-worker1
     ports:
       - "55001:55000"
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -37,6 +43,9 @@ services:
     hostname: wazuh-worker2
     ports:
       - "55002:55000"
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -49,6 +58,9 @@ services:
       dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent1
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
@@ -64,6 +76,9 @@ services:
       dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent2
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
@@ -80,6 +95,9 @@ services:
       dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent3
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
@@ -96,6 +114,9 @@ services:
       dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent4
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
@@ -112,10 +133,14 @@ services:
       dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent5
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent5
+      - agent_old
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -128,10 +153,14 @@ services:
       dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent6
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent6
+      - agent_old
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -144,10 +173,14 @@ services:
       dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent7
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent7
+      - agent_old
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -160,10 +193,14 @@ services:
       dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent8
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent8
+      - agent_old
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
