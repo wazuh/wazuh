@@ -26,6 +26,19 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+data_source_rows_list = []
+defense_bypassed_rows_list = []
+effective_permission_rows_list = []
+impact_rows_list = []
+permission_req_rows_list = []
+requirement_rows_list = []
+mitigate_rows_list = []
+use_rows_list = []
+alias_rows_list = []
+contributor_rows_list = []
+platform_rows_list = []
+external_reference_rows_list = []
+
 
 class Metadata(Base):
     """
@@ -242,6 +255,64 @@ class Mitigations(Base):
     mitigate = relationship(const.MITIGATE_r)
 
 
+class Aliases(Base):
+    """
+    In this table are stored the aliases of json file
+    The information stored:
+        id: Used to identify the group or software (PK).
+        alias: Alias related to this item (PK).
+    """
+    __tablename__ = "alias"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    alias = Column(const.ALIAS_t, String, primary_key=True)
+
+
+class Contributors(Base):
+    """
+    In this table are stored the contributors of json file
+    The information stored:
+        id: Used to identify the technique, group or software (PK).
+        contributor: Contributor related to this item (PK).
+    """
+    __tablename__ = "contributor"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    contributor = Column(const.CONTRIBUTOR_t, String, primary_key=True)
+
+
+class Platforms(Base):
+    """
+    In this table are stored the platforms of json file
+    The information stored:
+        id: Used to identify the technique or software (PK).
+        platform: OS related to this item (PK).
+    """
+    __tablename__ = "platform"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    platform = Column(const.PLATFORM_t, String, primary_key=True)
+
+
+class References(Base):
+    """
+    In this table are stored the references of json file
+    The information stored:
+        id: Used to identify the tactic, technique, mitigation, group or software (PK).
+        source: Source of this reference (PK).
+        external_id: ID associated with this item (only in case of source mitre-attack).
+        url: URL of the reference.
+        description: Description of the reference.
+    """
+    __tablename__ = "reference"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    source = Column(const.SOURCE_t, String, primary_key=True)
+    external_id = Column(const.EXTERNAL_ID_t, String, default=None, nullable=True)
+    url = Column(const.URL_t, String, primary_key=True)
+    description = Column(const.DESCRIPTION_t, String, default=None, nullable=True)
+
+
 class Mitigate(Base):
     """
     In this table are stored the mitigate information
@@ -341,17 +412,9 @@ def parse_table_(function, data_object):
         if const.DEPRECATED_j in data_object:
             row[const.DEPRECATED_t] = data_object[const.DEPRECATED_j]
 
+    parse_common_tables(row[const.ID_t], data_object)
+
     return row
-
-
-data_source_rows_list = []
-defense_bypassed_rows_list = []
-effective_permission_rows_list = []
-impact_rows_list = []
-permission_req_rows_list = []
-requirement_rows_list = []
-mitigate_rows_list = []
-use_rows_list = []
 
 
 def parse_json_techniques(technique_json, phases_table):
@@ -414,10 +477,13 @@ def parse_json_techniques(technique_json, phases_table):
     if technique_json.get(const.PHASES_j):
         for phase in technique_json[const.PHASES_j]:
              phases_table.append([row[const.ID_t], phase[const.PHASE_NAME_j]])
+
+    parse_common_tables(row[const.ID_t], technique_json)
+
     return row
 
 
-def parse_json_mitigate_use(function, data_object):
+def parse_json_mitigate_use(data_object):
     row = {}
     row[const.ID_t] = data_object[const.ID_t]
     row[const.SOURCE_ID_t] = data_object[const.SOURCE_REF_j]
@@ -433,7 +499,63 @@ def parse_json_mitigate_use(function, data_object):
     return row
 
 
-def parse_json_relationships(relationships_json, session, relationship_table_revoked_by, relationship_table_subtechique_of):
+def parse_common_tables(parent_id, data_object):
+    # Alias
+    if data_object.get(const.ALIASES_j):
+        for alias in data_object[const.ALIASES_j]:
+            row_alias = {}
+            row_alias[const.ID_t] = parent_id
+            row_alias[const.ALIAS_t] = alias
+            alias_rows_list.append(row_alias)
+
+    if data_object.get(const.ALIAS_j):
+        for alias in data_object[const.ALIAS_j]:
+            row_alias = {}
+            row_alias[const.ID_t] = parent_id
+            row_alias[const.ALIAS_t] = alias
+            alias_rows_list.append(row_alias)
+
+    # Contributor
+    if data_object.get(const.CONTRIBUTOR_j):
+        for contributor in data_object[const.CONTRIBUTOR_j]:
+            row_contributor = {}
+            row_contributor[const.ID_t] = parent_id
+            row_contributor[const.CONTRIBUTOR_t] = contributor
+            contributor_rows_list.append(row_contributor)
+
+    # Platform
+    if data_object.get(const.PLATFORM_j):
+        for platform in data_object[const.PLATFORM_j]:
+            row_platform = {}
+            row_platform[const.ID_t] = parent_id
+            row_platform[const.PLATFORM_t] = platform
+            platform_rows_list.append(row_platform)
+
+    # External References
+    if data_object.get(const.EXTERNAL_REFERENCES_j):
+        for reference in data_object[const.EXTERNAL_REFERENCES_j]:
+            if reference.get(const.URL_j):
+                row_external_ref = parse_json_ext_references(reference)
+                row_external_ref[const.ID_t] = parent_id
+                external_reference_rows_list.append(row_external_ref)
+
+
+def parse_json_ext_references(data_object):
+    row_external_ref = {}
+
+    if data_object.get(const.SOURCE_NAME_j):
+        row_external_ref[const.SOURCE_t] = data_object[const.SOURCE_NAME_j]
+    if data_object.get(const.EXTERNAL_ID_j):
+        row_external_ref[const.EXTERNAL_ID_t] = data_object[const.EXTERNAL_ID_j]
+    if data_object.get(const.URL_j):
+        row_external_ref[const.URL_t] = data_object[const.URL_j]
+    if data_object.get(const.DESCRIPTION_t):
+        row_external_ref[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_j]
+
+    return row_external_ref
+
+
+def parse_json_relationships(relationships_json, relationship_table_revoked_by, relationship_table_subtechique_of):
     if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
         relationship_table_revoked_by.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
@@ -441,11 +563,11 @@ def parse_json_relationships(relationships_json, session, relationship_table_rev
         relationship_table_subtechique_of.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.MITIGATES_j:
-        mitigate = parse_json_mitigate_use(Mitigate, relationships_json)
+        mitigate = parse_json_mitigate_use(relationships_json)
         mitigate_rows_list.append(mitigate)
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.USES_j:
-        use = parse_json_mitigate_use(Use, relationships_json)
+        use = parse_json_mitigate_use(relationships_json)
         use_rows_list.append(use)
 
 
@@ -507,7 +629,7 @@ def parse_json(pathfile, session, database):
                     technique = parse_json_techniques(data_object, phases_table)
                     techniques.append(technique)
                 elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
-                    parse_json_relationships(data_object, session, relationship_table_revoked_by, relationship_table_subtechique_of)
+                    parse_json_relationships(data_object, relationship_table_revoked_by, relationship_table_subtechique_of)
                 else:
                     continue
 
@@ -554,6 +676,12 @@ def parse_json(pathfile, session, database):
 
         session.bulk_insert_mappings(Mitigate, mitigate_rows_list)
         session.bulk_insert_mappings(Use, use_rows_list)
+
+        session.bulk_insert_mappings(Aliases, alias_rows_list)
+        session.bulk_insert_mappings(Contributors, contributor_rows_list)
+        session.bulk_insert_mappings(Platforms, platform_rows_list)
+        session.bulk_insert_mappings(References, external_reference_rows_list)
+
         session.commit()
 
     except TypeError as t_e:
