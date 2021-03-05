@@ -102,7 +102,7 @@ class SyncWorker:
 
             # Finish the synchronization process and notify where the file corresponding to the taskID is located.
             result = await self.worker.send_request(command=self.cmd + b'_e', data=task_id + b' ' +
-                                                    os.path.relpath(compressed_data_path, common.ossec_path).encode())
+                                                    os.path.relpath(compressed_data_path, common.wazuh_path).encode())
             if isinstance(result, Exception):
                 raise result
             elif result.startswith(b'Error'):
@@ -285,7 +285,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         super().connection_result(future_result)
         if self.connected:
             # create directory for temporary files
-            worker_tmp_files = os.path.join(common.ossec_path, 'queue', 'cluster', self.name)
+            worker_tmp_files = os.path.join(common.wazuh_path, 'queue', 'cluster', self.name)
             if not os.path.exists(worker_tmp_files):
                 utils.mkdir_with_mode(worker_tmp_files)
 
@@ -588,8 +588,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             """
             for filetype in agent_files:
 
-                filetype_glob = filetype.format(ossec_path=common.ossec_path, id='*', name='*', ip='*')
-                filetype_agent = {filetype.format(ossec_path=common.ossec_path, id=a['id'], name=a['name'], ip=a['ip'])
+                filetype_glob = filetype.format(ossec_path=common.wazuh_path, id='*', name='*', ip='*')
+                filetype_agent = {filetype.format(ossec_path=common.wazuh_path, id=a['id'], name=a['name'], ip=a['ip'])
                                   for a in agent_info}
 
                 for agent_file in set(glob.iglob(filetype_glob)) & filetype_agent:
@@ -662,7 +662,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     map(lambda x: x.split(' '), filter(lambda x: ck_line.match(x) is not None, client_keys_contents))
                     if not a_name.startswith('!')}
 
-        ck_path = os.path.join(common.ossec_path, 'etc', 'client.keys')
+        ck_path = os.path.join(common.wazuh_path, 'etc', 'client.keys')
         try:
             with open(ck_path) as ck:
                 # Can't use readlines function since it leaves a \n at the end of each item of the list.
@@ -707,7 +707,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             data : dict
                 File metadata such as modification time, whether it's a merged file or not, etc.
             """
-            full_filename_path = os.path.join(common.ossec_path, filename)
+            full_filename_path = os.path.join(common.wazuh_path, filename)
             if os.path.basename(filename) == 'client.keys':
                 self._check_removed_agents(os.path.join(zip_path, filename), logger)
 
@@ -715,7 +715,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
                 # and then move each one to the destination directory (<ossec_path>/filename).
                 for name, content, _ in wazuh.core.cluster.cluster.unmerge_info('agent-groups', zip_path, filename):
-                    full_unmerged_name = os.path.join(common.ossec_path, name)
+                    full_unmerged_name = os.path.join(common.wazuh_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
@@ -753,7 +753,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for file_to_remove in files:
                     try:
                         logger.debug2(f"Remove file: '{file_to_remove}'")
-                        file_path = os.path.join(common.ossec_path, file_to_remove)
+                        file_path = os.path.join(common.wazuh_path, file_to_remove)
                         try:
                             os.remove(file_path)
                         except OSError as e:
@@ -772,7 +772,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                 if self.cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
             try:
-                full_path = os.path.join(common.ossec_path, directory)
+                full_path = os.path.join(common.wazuh_path, directory)
                 dir_files = set(os.listdir(full_path))
                 if not dir_files or dir_files.issubset(set(self.cluster_items['files']['excluded_files'])):
                     shutil.rmtree(full_path)

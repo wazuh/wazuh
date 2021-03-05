@@ -142,7 +142,7 @@ def test_get_list_from_file(raw):
 
     `get_list_from_file` must retrieve the content of a CDB file.
     """
-    full_path = os.path.join(common.ossec_path, PATH_FILE)
+    full_path = os.path.join(common.wazuh_path, PATH_FILE)
     if raw:
         with open(full_path) as f:
             assert get_list_from_file(full_path, raw) == f.read()
@@ -183,11 +183,11 @@ def test_get_list_from_file_with_errors(error_to_raise, wazuh_error_code):
 
 def test_validate_cdb_list():
     """Test validate_cdb function"""
-    with open(os.path.join(common.ossec_path, PATH_FILE)) as f:
-        ossec_cdb_list = f.read()
+    with open(os.path.join(common.wazuh_path, PATH_FILE)) as f:
+        wazuh_cdb_list = f.read()
 
     try:
-        validate_cdb_list(ossec_cdb_list)
+        validate_cdb_list(wazuh_cdb_list)
     except WazuhError:
         pytest.fail('validate_cdb_list raised an exception but no exception was expected')
 
@@ -208,8 +208,8 @@ def test_validate_cdb_list_ko():
 def test_create_list_file(mock_delete, mock_chmod):
     """Test that create_list_file function works as expected"""
 
-    with open(os.path.join(common.ossec_path, PATH_FILE)) as f:
-        with patch('wazuh.core.cdb_list.common.ossec_path', new='/var/ossec'):
+    with open(os.path.join(common.wazuh_path, PATH_FILE)) as f:
+        with patch('wazuh.core.cdb_list.common.wazuh_path', new='/var/ossec'):
             with patch('builtins.open') as mock_open:
                 ossec_cdb_list = f.read()
                 result = create_list_file('/test/path', ossec_cdb_list, permissions=0o660)
@@ -230,8 +230,8 @@ def test_delete_list(mock_delete_wazuh_file, mock_remove):
     """Check that delete_list function uses expected params."""
     path = 'etc/list/test_list'
     delete_list(path)
-    mock_delete_wazuh_file.assert_called_once_with(os.path.join(common.ossec_path, path))
-    mock_remove.assert_called_once_with(os.path.join(common.ossec_path, path + '.cdb'))
+    mock_delete_wazuh_file.assert_called_once_with(os.path.join(common.wazuh_path, path))
+    mock_remove.assert_called_once_with(os.path.join(common.wazuh_path, path + '.cdb'))
 
 
 def test_get_filenames_paths():
