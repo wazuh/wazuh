@@ -21,6 +21,8 @@ def test_accesslogger_log(mock_logger_info):
     alogging.AccessLogger.log(MagicMock(), request=request, response=MagicMock(), time=0.0)
 
     assert request.method_calls[0] == call.get('user', 'unknown_user')
+    assert request.method_calls[1] == call.query.keys()
+    assert request.method_calls[2] == call.get('body', '{}')
 
 
 @patch('wazuh.core.wlogging.WazuhLogger.__init__')
