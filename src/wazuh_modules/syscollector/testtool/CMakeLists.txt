@@ -23,6 +23,10 @@ add_definitions(-DWAZUH_UNIT_TESTING)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
 
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")
+endif(FSANITIZE)
+
 file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/testtool/*.cpp"
         )

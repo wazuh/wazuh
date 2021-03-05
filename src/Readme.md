@@ -40,7 +40,8 @@ optional arguments:
                         Run valgrind on tests. Example: python3 build.py -v <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --clean CLEAN         Clean the lib. Example: python3 build.py --clean <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --cppcheck CPPCHECK   Run cppcheck on the code. Example: python3 build.py --cppcheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
-```
+  --asan ASAN           Run ASAN on the code. Example: python3 build.py --asan <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
+
 
 Ready to review checks:
   1. runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
@@ -51,29 +52,93 @@ Ready to review checks:
 If all the checks passed it returns 0 and prints a "[RTR: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
 
 
-Output Example executing the RTR tool with `data_provider` module:
+Output Example executing the RTR tool with `dbsync` module:
 ```
-#> python3 build.py -r data_provider
-<data_provider>=================== Running RTR checks  ===================<data_provider>
-<data_provider>=================== Running cppcheck    ===================<data_provider>
+#> python3 build.py -r shared_modules/dbsync
+<shared_modules/dbsync>=================== Running RTR checks  ===================<shared_modules/dbsync>
+<shared_modules/dbsync>=================== Running cppcheck    ===================<shared_modules/dbsync>
 [Cppcheck: PASSED]
-<data_provider>=================== Compiling library   ===================<data_provider>
-data_provider > [make: PASSED]
-<data_provider>=================== Running Tests       ===================<data_provider>
-[sysinfo_unit_test: PASSED]
-[sysInfoPackagesLinuxHelper_unit_test: PASSED]
-[sysInfoPort_unit_test: PASSED]
-[sysInfoNetworkLinux_unit_test: PASSED]
-<data_provider>=================== Running Valgrind    ===================<data_provider>
-[sysinfo_unit_test: PASSED]
-[sysInfoPackagesLinuxHelper_unit_test: PASSED]
-[sysInfoPort_unit_test: PASSED]
-[sysInfoNetworkLinux_unit_test: PASSED]
-<data_provider>=================== Running Coverage    ===================<data_provider>
+[Cleanfolder: PASSED]
+<shared_modules/dbsync>=================== Running CMake Conf  ===================<shared_modules/dbsync>
+[ConfigureCMake: PASSED]
+<shared_modules/dbsync>=================== Compiling library   ===================<shared_modules/dbsync>
+shared_modules/dbsync > [make: PASSED]
+<shared_modules/dbsync>=================== Running Tests       ===================<shared_modules/dbsync>
+[dbengine_unit_test: PASSED]
+[sqlite_unit_test: PASSED]
+[fim_integration_test: PASSED]
+[dbsync_unit_test: PASSED]
+[dbsyncPipelineFactory_unit_test: PASSED]
+<shared_modules/dbsync>=================== Running Valgrind    ===================<shared_modules/dbsync>
+[dbengine_unit_test: PASSED]
+[sqlite_unit_test: PASSED]
+[fim_integration_test: PASSED]
+[dbsync_unit_test: PASSED]
+[dbsyncPipelineFactory_unit_test: PASSED]
+<shared_modules/dbsync>=================== Running Coverage    ===================<shared_modules/dbsync>
 [lcov info: GENERATED]
 [genhtml info: GENERATED]
-Report: /src/ci/../data_provider/coverage_report/index.html
-[Lines Coverage 100.0%: PASSED]
-[Functions Coverage 100.0%: PASSED]
-<data_provider>[RTR: PASSED]<data_provider>
+Report: /home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/coverage_report/index.html
+[Lines Coverage 93.4%: PASSED]
+[Functions Coverage 96.7%: PASSED]
+<shared_modules/dbsync>=================== Running ASAN        ===================<shared_modules/dbsync>
+[Cleanfolder: PASSED]
+<shared_modules/dbsync>=================== Running CMake Conf  ===================<shared_modules/dbsync>
+[ConfigureCMake: PASSED]
+<shared_modules/dbsync>=================== Compiling library   ===================<shared_modules/dbsync>
+shared_modules/dbsync > [make: PASSED]
+<TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
+/home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/build//bin/dbsync_test_tool -c config.json -a snapshotsUpdate/insertData.json,snapshotsUpdate/updateWithSnapshot.json -o ./output
+[Cleanfolder: PASSED]
+[TestTool: PASSED]
+<TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
+/home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/build//bin/dbsync_test_tool -c config.json -a InsertionUpdateDeleteSelect/inputSyncRowInsert.json,InsertionUpdateDeleteSelect/inputSyncRowModified.json,InsertionUpdateDeleteSelect/deleteRows.json,InsertionUpdateDeleteSelect/inputSelectRows.json -o ./output
+[Cleanfolder: PASSED]
+[TestTool: PASSED]
+<TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
+/home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/build//bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
+[Cleanfolder: PASSED]
+[TestTool: PASSED]
+<TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
+/home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/build//bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
+[Cleanfolder: PASSED]
+[TestTool: PASSED]
+<shared_modules/dbsync>[ASAN: PASSED]<shared_modules/dbsync>
+<shared_modules/dbsync>[RTR: PASSED]<shared_modules/dbsync>
+
+```
+
+Address sanitizer checks:
+  1. clean previous builds <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
+  2. compiles with address sanitizers flags<data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>.
+  3. runs smoke tests <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
+  4. runs valgrind on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> UTs.
+If all the checks passed it returns 0 and prints a "[ASAN: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
+
+Output Example executing the ASAN tests with `dbsync` module:
+```
+#> python3 build.py -r shared_modules/dbsync
+<shared_modules/dbsync>=================== Running ASAN        ===================<shared_modules/dbsync>
+[Cleanfolder: PASSED]
+<shared_modules/dbsync>=================== Running CMake Conf  ===================<shared_modules/dbsync>
+[ConfigureCMake: PASSED]
+<shared_modules/dbsync>=================== Compiling library   ===================<shared_modules/dbsync>
+shared_modules/dbsync > [make: PASSED]
+<TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
+/home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/build//bin/dbsync_test_tool -c config.json -a snapshotsUpdate/insertData.json,snapshotsUpdate/updateWithSnapshot.json -o ./output
+[Cleanfolder: PASSED]
+[TestTool: PASSED]
+<TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
+/home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/build//bin/dbsync_test_tool -c config.json -a InsertionUpdateDeleteSelect/inputSyncRowInsert.json,InsertionUpdateDeleteSelect/inputSyncRowModified.json,InsertionUpdateDeleteSelect/deleteRows.json,InsertionUpdateDeleteSelect/inputSelectRows.json -o ./output
+[Cleanfolder: PASSED]
+[TestTool: PASSED]
+<TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
+/home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/build//bin/dbsync_test_tool -c config.json -a txnOperation/createTxn.json,txnOperation/inputSyncRowInsertTxn.json,txnOperation/inputSyncRowModifiedTxn.json,txnOperation/closeTxn.json -o ./output
+[Cleanfolder: PASSED]
+[TestTool: PASSED]
+<TESTTOOL>=================== Running TEST TOOL   ===================<TESTTOOL>
+/home/dwordcito/wazuh/src/ci/../shared_modules/dbsync/build//bin/dbsync_test_tool -c config.json -a triggerActions/insertDataProcesses.json,triggerActions/insertDataSocket.json,triggerActions/addTableRelationship.json,triggerActions/deleteRows.json -o ./output
+[Cleanfolder: PASSED]
+[TestTool: PASSED]
+<shared_modules/dbsync>[ASAN: PASSED]<shared_modules/dbsync>
 ```
