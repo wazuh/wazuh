@@ -560,7 +560,7 @@ def test_agent_get_key_ko(socket_mock, send_mock):
         agent.get_key()
 
 
-@patch('wazuh.core.agent.OssecQueue')
+@patch('wazuh.core.agent.WazuhQueue')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_restart(socket_mock, send_mock, mock_queue):
@@ -628,15 +628,15 @@ def test_agent_remove_ko(mock_remove_manual, mock_remove_authd):
         agent.remove(use_only_authd=True)
 
 
-@patch('wazuh.core.agent.OssecSocketJSON')
-def test_agent_remove_authd(mock_ossec_socket):
+@patch('wazuh.core.agent.WazuhSocketJSON')
+def test_agent_remove_authd(mock_wazuh_socket):
     """Tests if method remove_authd() works as expected"""
     agent = Agent(0)
     agent._remove_authd(purge=True)
-    mock_ossec_socket.return_value.send.assert_called_once_with(
+    mock_wazuh_socket.return_value.send.assert_called_once_with(
         {"function": "remove", "arguments": {"id": str(0).zfill(3), "purge": True}})
-    mock_ossec_socket.return_value.receive.assert_called_once()
-    mock_ossec_socket.return_value.close.assert_called_once()
+    mock_wazuh_socket.return_value.receive.assert_called_once()
+    mock_wazuh_socket.return_value.close.assert_called_once()
 
 
 @pytest.mark.parametrize('backup, exists_backup_dir', [
@@ -650,7 +650,7 @@ def test_agent_remove_authd(mock_ossec_socket):
 @patch('wazuh.core.agent.rmtree')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
-@patch("wazuh.core.common.ossec_path", new=test_data_path)
+@patch("wazuh.core.common.wazuh_path", new=test_data_path)
 @patch('wazuh.core.agent.path.exists')
 @patch('wazuh.core.database.isfile', return_value=True)
 @patch('wazuh.core.agent.path.isdir', return_value=False)
@@ -689,7 +689,7 @@ def test_agent_remove_manual(socket_mock, run_wdb_mock, send_mock, grp_mock, pwd
         stat_mock.assert_called_once_with(common.client_keys)
         mock_delete_agents.assert_called_once_with(['001'])
         run_wdb_mock.assert_called_once_with('global sql DELETE FROM belongs WHERE id_agent = 001')
-        remove_mock.assert_any_call(os.path.join(common.ossec_path, 'queue/rids/001'))
+        remove_mock.assert_any_call(os.path.join(common.wazuh_path, 'queue/rids/001'))
 
         # make sure the mock is called with a string according to a non-backup path
         exists_mock.assert_any_call('{0}/queue/agent-info/agent-1-any'.format(test_data_path))
@@ -763,8 +763,8 @@ def test_agent_add_ko(mock_maganer_status):
     ('test_agent', '172.19.0.100', '002', 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2O'
                                           'TE5MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz')
 ])
-@patch('wazuh.core.agent.OssecSocketJSON')
-def test_agent_add_authd(mock_ossec_socket, name, ip, id, key):
+@patch('wazuh.core.agent.WazuhSocketJSON')
+def test_agent_add_authd(mock_wazuh_socket, name, ip, id, key):
     """Tests if method _add_authd() works as expected
 
     Parameters
@@ -781,13 +781,13 @@ def test_agent_add_authd(mock_ossec_socket, name, ip, id, key):
     agent = Agent(id)
     agent._add_authd(name, ip, id, key)
 
-    mock_ossec_socket.return_value.receive.assert_called_once()
-    mock_ossec_socket.return_value.close.assert_called_once()
+    mock_wazuh_socket.return_value.receive.assert_called_once()
+    mock_wazuh_socket.return_value.close.assert_called_once()
     if id and key:
-        mock_ossec_socket.return_value.send.assert_called_once_with(
+        mock_wazuh_socket.return_value.send.assert_called_once_with(
             {"function": "add", "arguments": {"name": name, "ip": ip, "id": id, "key": key, "force": -1}})
     else:
-        mock_ossec_socket.return_value.send.assert_called_once_with(
+        mock_wazuh_socket.return_value.send.assert_called_once_with(
             {"function": "add", "arguments": {"name": name, "ip": ip, "force": -1}})
 
 
@@ -798,8 +798,8 @@ def test_agent_add_authd(mock_ossec_socket, name, ip, id, key):
     (WazuhError(9012, cmd_error=True), ".* 1708 .*"),
     (WazuhError(9000, cmd_error=True), ".* None")
 ])
-@patch('wazuh.core.agent.OssecSocketJSON')
-def test_agent_add_authd_ko(mock_ossec_socket, mocked_exception, expected_exception):
+@patch('wazuh.core.agent.WazuhSocketJSON')
+def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_exception):
     """Tests if method _add_authd() raises expected exception"""
     agent = Agent('001')
 
@@ -807,7 +807,7 @@ def test_agent_add_authd_ko(mock_ossec_socket, mocked_exception, expected_except
         with pytest.raises(WazuhError, match=".* 1709 .*"):
             agent._add_authd('test_add', '192.168.0.1', '2', 'adsiojew')
     else:
-        mock_ossec_socket.return_value.receive.side_effect = mocked_exception
+        mock_wazuh_socket.return_value.receive.side_effect = mocked_exception
         with pytest.raises(WazuhError, match=expected_exception):
             agent._add_authd('test_add', '192.168.0.1')
 
@@ -1396,21 +1396,21 @@ def test_agent_unset_single_group_agent_ko(socket_mock, send_mock):
                 Agent.unset_single_group_agent('002', 'default')
 
 
-@patch('wazuh.core.configuration.OssecSocket')
+@patch('wazuh.core.configuration.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_getconfig(socket_mock, send_mock, mock_ossec_socket):
+def test_agent_getconfig(socket_mock, send_mock, mock_wazuh_socket):
     """Test getconfig method returns expected message."""
     agent = Agent('001')
-    mock_ossec_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
+    mock_wazuh_socket.return_value.receive.return_value = b'ok {"test": "conf"}'
     result = agent.getconfig('com', 'active-response', 'Wazuh v4.0.0')
     assert result == {"test": "conf"}, 'Result message is not as expected.'
 
 
-@patch('wazuh.core.configuration.OssecSocket')
+@patch('wazuh.core.configuration.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_getconfig_ko(socket_mock, send_mock, mock_ossec_socket):
+def test_agent_getconfig_ko(socket_mock, send_mock, mock_wazuh_socket):
     """Test getconfig method raises expected exceptions."""
     # Invalid component
     agent = Agent('003')
@@ -1429,21 +1429,21 @@ def test_agent_getconfig_ko(socket_mock, send_mock, mock_ossec_socket):
         agent.getconfig('com', 'active-response', 'Wazuh v3.6.0')
 
 
-@patch('wazuh.core.stats.OssecSocket')
+@patch('wazuh.core.stats.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_stats(socket_mock, send_mock, mock_ossec_socket):
+def test_agent_get_stats(socket_mock, send_mock, mock_wazuh_socket):
     """Test get_stats method returns expected message."""
     agent = Agent('001')
-    mock_ossec_socket.return_value.receive.return_value = b'{"error":0, "data":{"test":0}}'
+    mock_wazuh_socket.return_value.receive.return_value = b'{"error":0, "data":{"test":0}}'
     result = agent.get_stats('logcollector')
     assert result == {"test": 0}, 'Result message is not as expected.'
 
 
-@patch('wazuh.core.stats.OssecSocket')
+@patch('wazuh.core.stats.WazuhSocket')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_stats_ko(socket_mock, send_mock, mock_ossec_socket):
+def test_agent_get_stats_ko(socket_mock, send_mock, mock_wazuh_socket):
     """Test get_stats method raises expected exception when the agent's version is lower than required."""
     agent = Agent('002')
     with pytest.raises(WazuhInternalError, match=r'\b1735\b'):
@@ -1475,7 +1475,7 @@ def test_calculate_status(last_keep_alive, pending, expected_status):
     (['001', '002', '003', '004'],
      [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
 ])
-@patch('wazuh.core.agent.OssecQueue')
+@patch('wazuh.core.agent.WazuhQueue')
 def test_send_restart_command(mock_ossec_queue, agents_list, versions_list):
     """Test that restart_command calls send_msg_to_agent with correct params.
 

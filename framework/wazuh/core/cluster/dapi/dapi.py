@@ -336,7 +336,7 @@ class DistributedAPI:
             log_filename = None
             for h in self.logger.handlers or self.logger.parent.handlers:
                 if hasattr(h, 'baseFilename'):
-                    log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.ossec_path))
+                    log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.wazuh_path))
             result[node]['logfile'] = log_filename
 
         return result
@@ -345,11 +345,11 @@ class DistributedAPI:
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
         client = self.get_client()
-        res = json.loads(await client.send_file(os.path.join(common.ossec_path,
+        res = json.loads(await client.send_file(os.path.join(common.wazuh_path,
                                                              self.f_kwargs['tmp_file']),
                                                 node_name),
                          object_hook=c_common.as_wazuh_object)
-        os.remove(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']))
+        os.remove(os.path.join(common.wazuh_path, self.f_kwargs['tmp_file']))
 
     async def execute_remote_request(self) -> Dict:
         """Execute a remote request. This function is used by worker nodes to execute master_only API requests.
