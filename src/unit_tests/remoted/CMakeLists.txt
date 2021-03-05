@@ -31,6 +31,8 @@ list(APPEND remoted_flags "-Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fwrite -
 
 list(APPEND remoted_names "test_remote-config")
 list(APPEND remoted_flags "-Wl,--wrap,_mwarn")
+list(APPEND remoted_names "test_syslogtcp")
+list(APPEND remoted_flags "-W")
 
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")
