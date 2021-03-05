@@ -43,6 +43,7 @@ deleteFolderDic = {\
 'shared_modules/dbsync':        ['/build','/smokeTests/output'],\
 'shared_modules/rsync':         ['/build','/smokeTests/output'],\
 'data_provider':                ['/build','/smokeTests/output'],\
+'shared_modules/utils':         ['/build'],\
 }
 
 currentBuildDir = os.path.dirname(os.path.realpath(__file__)) + "/../"
@@ -352,9 +353,12 @@ def runReadyToReview(moduleName):
     printHeader("<"+moduleName+">"+headerDic['rtr']+"<"+moduleName+">")
     runCppCheck(str(moduleName))
     cleanFolder(str(moduleName), "/build")
-    configureCMake(str(moduleName), True, True, False)
+    configureCMake(str(moduleName), True, (False, True)[str(moduleName) != 'shared_modules/utils'], False)
     makeLib(str(moduleName))
     runTests(str(moduleName))
     runValgrind(str(moduleName))
     runCoverage(str(moduleName))
+    if str(moduleName) != 'shared_modules/utils':
+        runASAN(moduleName)
+
     printGreen("<"+moduleName+">"+"[RTR: PASSED]"+"<"+moduleName+">")
