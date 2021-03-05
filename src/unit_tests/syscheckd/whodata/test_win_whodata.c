@@ -614,11 +614,14 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -689,11 +692,14 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -767,11 +773,14 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -851,11 +860,14 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -938,11 +950,14 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1028,11 +1043,14 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1124,11 +1142,14 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1223,11 +1244,14 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1327,11 +1351,14 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -1440,11 +1467,14 @@ void test_set_winsacl_success(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'C:\\a\\path'");
@@ -2993,7 +3023,7 @@ void test_is_valid_sacl_sid_error(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
 
     ret = is_valid_sacl(sacl, 0);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 2);
 }
 
 void test_is_valid_sacl_sacl_not_found(void **state) {
@@ -3010,7 +3040,7 @@ void test_is_valid_sacl_sacl_not_found(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "(6267): No SACL found on target. A new one will be created.");
 
     ret = is_valid_sacl(sacl, 0);
-    assert_int_equal(ret, 2);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_ace_not_found(void **state) {
@@ -3039,7 +3069,7 @@ void test_is_valid_sacl_ace_not_found(void **state) {
     expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '800'.");
 
     ret = is_valid_sacl(new_sacl, 0);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_not_valid(void **state) {
@@ -3065,7 +3095,7 @@ void test_is_valid_sacl_not_valid(void **state) {
     will_return(wrap_GetAce, 1);
 
     ret = is_valid_sacl(new_sacl, 1);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_valid(void **state) {
@@ -3092,7 +3122,7 @@ void test_is_valid_sacl_valid(void **state) {
     will_return(wrap_EqualSid, 1);
 
     ret = is_valid_sacl(&new_sacl, 1);
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 0);
 }
 
 void test_replace_device_path_invalid_path(void **state) {
@@ -5749,7 +5779,7 @@ void test_check_object_sacl_open_process_error(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_unable_to_set_privilege(void **state) {
@@ -5781,7 +5811,7 @@ void test_check_object_sacl_unable_to_set_privilege(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
@@ -5831,7 +5861,7 @@ void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_invalid_sacl(void **state) {
@@ -5869,11 +5899,14 @@ void test_check_object_sacl_invalid_sacl(void **state) {
 
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &acl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     // Inside set_privilege
@@ -6652,11 +6685,14 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 
             expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
             expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-            will_return(wrap_AllocateAndInitializeSid, 0);
+            will_return(wrap_AllocateAndInitializeSid, 1);
+
+            will_return(wrap_GetAce, &acl);
+            will_return(wrap_GetAce, 0);
 
             will_return(wrap_GetLastError, (unsigned int) 700);
 
-            expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+            expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
         }
 
         // Inside set_privilege
@@ -6932,11 +6968,14 @@ void test_state_checker_dir_readded_succesful(void **state) {
         {
             expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
             expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-            will_return(wrap_AllocateAndInitializeSid, 0);
+            will_return(wrap_AllocateAndInitializeSid, 1);
+
+            will_return(wrap_GetAce, &old_sacl);
+            will_return(wrap_GetAce, 0);
 
             will_return(wrap_GetLastError, (unsigned int) 700);
 
-            expect_string(__wrap__merror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+            expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
         }
 
         expect_string(__wrap__mdebug1, formatted_msg, "(6263): Setting up SACL for 'c:\\a\\path'");
