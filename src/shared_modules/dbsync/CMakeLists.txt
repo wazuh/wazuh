@@ -18,7 +18,11 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
@@ -40,6 +44,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 
+link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 
@@ -47,7 +52,7 @@ file(GLOB DBSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
 
-add_library(dbsync SHARED 
+add_library(dbsync SHARED
     ${DBSYNC_SRC} )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -67,8 +72,11 @@ elseif(UNIX AND NOT APPLE)
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(dbsync sqlite3 cjson)
-
+if(DISABLE_SHARED)
+  target_link_libraries(dbsync cjson sqlite3)
+else()
+  target_link_libraries(dbsync wazuhext)
+endif(DISABLE_SHARED)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
