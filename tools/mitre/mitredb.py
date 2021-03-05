@@ -26,6 +26,19 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+data_source_rows_list = []
+defense_bypassed_rows_list = []
+effective_permission_rows_list = []
+impact_rows_list = []
+permission_req_rows_list = []
+requirement_rows_list = []
+mitigate_rows_list = []
+use_rows_list = []
+alias_rows_list = []
+contributor_rows_list = []
+platform_rows_list = []
+external_reference_rows_list = []
+
 
 class Metadata(Base):
     """
@@ -376,169 +389,173 @@ class Phase(Base):
     tech_id = Column(const.TECH_ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
 
 
-def parse_table(function, data_object, session):
-    table = function()
-    table.id = data_object[const.ID_j]
-    table.name = data_object[const.NAME_j]
+def parse_table(function, data_object):
+    row = {}
+    row[const.ID_t] = data_object[const.ID_t]
+    row[const.NAME_t] = data_object[const.NAME_t]
 
     if const.DESCRIPTION_j in data_object:
-        table.description = data_object[const.DESCRIPTION_j]
+        row[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_t]
 
     if const.CREATED_j in data_object:
-        table.created_time = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
-
+        row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
     if const.MODIFIED_j in data_object:
-        table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
-
+        row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
     if function.__name__ == 'Tactic':
         if const.SHORT_NAME_j in data_object:
-            table.short_name = data_object[const.SHORT_NAME_j]
+            row[const.SHORT_NAME_t] = data_object[const.SHORT_NAME_j]
     elif function.__name__ == 'Group' or \
             function.__name__ == 'Software' or \
             function.__name__ == 'Mitigation':
         if const.MITRE_VERSION_j in data_object:
-            table.mitre_version = data_object[const.MITRE_VERSION_j]
+            row[const.MITRE_VERSION_t] = data_object[const.MITRE_VERSION_j]
         if const.DEPRECATED_j in data_object:
-            table.deprecated = data_object[const.DEPRECATED_j]
+            row[const.DEPRECATED_t] = data_object[const.DEPRECATED_j]
 
-    parse_common_tables(table, data_object, session)
+    parse_common_tables(row[const.ID_t], data_object)
 
-    return table
+    return row
 
 
-def parse_json_techniques(technique_json, phases_table, session):
-    technique = Technique()
-    technique.id = technique_json[const.ID_t]
-    technique.name = technique_json[const.NAME_t]
+def parse_json_techniques(technique_json, phases_table):
+    row = {}
+    row[const.ID_t] = technique_json[const.ID_t]
+    row[const.NAME_t] = technique_json[const.NAME_t]
 
     if technique_json.get(const.DESCRIPTION_t):
-        technique.description = technique_json[const.DESCRIPTION_t]
-
+        row[const.DESCRIPTION_t] = technique_json[const.DESCRIPTION_t]
     if technique_json.get(const.CREATED_j):
-        technique.created_time = datetime.strptime(technique_json[const.CREATED_j], const.TIME_FORMAT)
-
+        row[const.CREATED_t] = datetime.strptime(technique_json[const.CREATED_j], const.TIME_FORMAT)
     if technique_json.get(const.MODIFIED_j):
-        technique.modified_time = datetime.strptime(technique_json[const.MODIFIED_j], const.TIME_FORMAT)
-
+        row[const.MODIFIED_t] = datetime.strptime(technique_json[const.MODIFIED_j], const.TIME_FORMAT)
     if technique_json.get(const.MITRE_VERSION_j):
-        technique.mitre_version = technique_json[const.MITRE_VERSION_j]
-
+        row[const.MITRE_VERSION_t] = technique_json[const.MITRE_VERSION_j]
     if technique_json.get(const.MITRE_DETECTION_j):
-        technique.mitre_detection = technique_json[const.MITRE_DETECTION_j]
-
+        row[const.MITRE_DETECTION_t] = technique_json[const.MITRE_DETECTION_j]
     if technique_json.get(const.MITRE_NETWOR_REQ_j):
-        technique.network_requirements = technique_json[const.MITRE_NETWOR_REQ_j]
-
+        row[const.NETWORK_REQ_t] = technique_json[const.MITRE_NETWOR_REQ_j]
     if technique_json.get(const.MITRE_REMOTE_SUPP_j):
-        technique.remote_support = technique_json[const.MITRE_REMOTE_SUPP_j]
-
+        row[const.REMOTE_SUPPORT_t] = technique_json[const.MITRE_REMOTE_SUPP_j]
     if technique_json.get(const.DEPRECATED_j):
-        technique.deprecated = technique_json[const.DEPRECATED_j]
-
+        row[const.DEPRECATED_t] = technique_json[const.DEPRECATED_j]
     if technique_json.get(const.DATASOURCE_j):
         for data_source in list(set(technique_json[const.DATASOURCE_j])):
-            technique.data_sources.append(DataSource(technique=technique, source=data_source))
-
+            row_data_source = {}
+            row_data_source[const.ID_t] = row[const.ID_t]
+            row_data_source[const.SOURCE_t] = data_source
+            data_source_rows_list.append(row_data_source)
     if technique_json.get(const.DEFENSE_BYPASSED_j):
         for defense in list(set(technique_json[const.DEFENSE_BYPASSED_j])):
-            technique.defenses_bypassed.append(DefenseByPasses(technique=technique, defense=defense))
-
+            row_defense_bypassed = {}
+            row_defense_bypassed[const.ID_t] = row[const.ID_t]
+            row_defense_bypassed[const.DEFENSE_t] = defense
+            defense_bypassed_rows_list.append(row_defense_bypassed)
     if technique_json.get(const.EFFECTIVE_PERMISSION_j):
         for permission in list(set(technique_json[const.EFFECTIVE_PERMISSION_j])):
-            technique.effective_permissions.append(EffectivePermission(technique=technique, permission=permission))
-
+            row_permission = {}
+            row_permission[const.ID_t] = row[const.ID_t]
+            row_permission[const.PERMISSION_t] = permission
+            effective_permission_rows_list.append(row_permission)
     if technique_json.get(const.IMPACT_TYPE_j):
         for impact in list(set(technique_json[const.IMPACT_TYPE_j])):
-            technique.impacts.append(Impact(technique=technique, impact=impact))
-
+            row_impact = {}
+            row_impact[const.ID_t] = row[const.ID_t]
+            row_impact[const.IMPACT_t] = impact
+            impact_rows_list.append(row_impact)
     if technique_json.get(const.PERMISSIONS_REQ_j):
-        for permission in list(set(technique_json[const.PERMISSIONS_REQ_j])):
-            technique.permissions.append(Permission(technique=technique, permission=permission))
-
+        for permission_req in list(set(technique_json[const.PERMISSIONS_REQ_j])):
+            row_permission_req = {}
+            row_permission_req[const.ID_t] = row[const.ID_t]
+            row_permission_req[const.PERMISSION_t] = permission_req
+            permission_req_rows_list.append(row_permission_req)
     if technique_json.get(const.SYSTEM_REQ_j):
         for requirement in list(set(technique_json[const.SYSTEM_REQ_j])):
-            technique.requirements.append(SystemRequirement(technique=technique, requirement=requirement))
-
+            row_requirement = {}
+            row_requirement[const.ID_t] = row[const.ID_t]
+            row_requirement[const.REQUIREMENT_t] = requirement
+            requirement_rows_list.append(row_requirement)
     if technique_json.get(const.PHASES_j):
         for phase in technique_json[const.PHASES_j]:
-             phases_table.append([technique.id, phase[const.PHASE_NAME_j]])
+             phases_table.append([row[const.ID_t], phase[const.PHASE_NAME_j]])
 
-    parse_common_tables(technique, technique_json, session)
+    parse_common_tables(row[const.ID_t], technique_json)
 
-    return technique
+    return row
 
 
-def parse_json_mitigate_use(function, data_object):
-    table = function()
-    table.id = data_object[const.ID_t]
-    table.source_id = data_object[const.SOURCE_REF_j]
-    table.target_id = data_object[const.TARGET_REF_j]
+def parse_json_mitigate_use(data_object):
+    row = {}
+    row[const.ID_t] = data_object[const.ID_t]
+    row[const.SOURCE_ID_t] = data_object[const.SOURCE_REF_j]
+    row[const.TARGET_ID_t] = data_object[const.TARGET_REF_j]
 
     if data_object.get(const.DESCRIPTION_t):
-        table.description = data_object[const.DESCRIPTION_t]
-
+        row[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_t]
     if data_object.get(const.CREATED_j):
-        table.created_time = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
-
+        row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
     if data_object.get(const.MODIFIED_j):
-        table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
+        row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
 
-    return table
+    return row
 
 
-def parse_common_tables(table, data_object, session):
+def parse_common_tables(parent_id, data_object):
     # Alias
     if data_object.get(const.ALIASES_j):
         for alias in data_object[const.ALIASES_j]:
-            o_alias = Aliases(alias=alias)
-            o_alias.id = table.id
-            session.add(o_alias)
+            row_alias = {}
+            row_alias[const.ID_t] = parent_id
+            row_alias[const.ALIAS_t] = alias
+            alias_rows_list.append(row_alias)
 
     if data_object.get(const.ALIAS_j):
         for alias in data_object[const.ALIAS_j]:
-            o_alias = Aliases(alias=alias)
-            o_alias.id = table.id
-            session.add(o_alias)
+            row_alias = {}
+            row_alias[const.ID_t] = parent_id
+            row_alias[const.ALIAS_t] = alias
+            alias_rows_list.append(row_alias)
 
     # Contributor
     if data_object.get(const.CONTRIBUTOR_j):
         for contributor in data_object[const.CONTRIBUTOR_j]:
-            o_contributor = Contributors(contributor=contributor)
-            o_contributor.id = table.id
-            session.add(o_contributor)
+            row_contributor = {}
+            row_contributor[const.ID_t] = parent_id
+            row_contributor[const.CONTRIBUTOR_t] = contributor
+            contributor_rows_list.append(row_contributor)
 
     # Platform
     if data_object.get(const.PLATFORM_j):
         for platform in data_object[const.PLATFORM_j]:
-            o_platform = Platforms(platform=platform)
-            o_platform.id = table.id
-            session.add(o_platform)
+            row_platform = {}
+            row_platform[const.ID_t] = parent_id
+            row_platform[const.PLATFORM_t] = platform
+            platform_rows_list.append(row_platform)
 
     # External References
     if data_object.get(const.EXTERNAL_REFERENCES_j):
         for reference in data_object[const.EXTERNAL_REFERENCES_j]:
             if reference.get(const.URL_j):
-                o_reference = parse_json_ext_references(References, reference)
-                o_reference.id = table.id
-                session.add(o_reference)
+                row_external_ref = parse_json_ext_references(reference)
+                row_external_ref[const.ID_t] = parent_id
+                external_reference_rows_list.append(row_external_ref)
 
 
-def parse_json_ext_references(function, data_object):
-    table = function()
+def parse_json_ext_references(data_object):
+    row_external_ref = {}
 
     if data_object.get(const.SOURCE_NAME_j):
-        table.source = data_object[const.SOURCE_NAME_j]
+        row_external_ref[const.SOURCE_t] = data_object[const.SOURCE_NAME_j]
     if data_object.get(const.EXTERNAL_ID_j):
-        table.external_id = data_object[const.EXTERNAL_ID_j]
+        row_external_ref[const.EXTERNAL_ID_t] = data_object[const.EXTERNAL_ID_j]
     if data_object.get(const.URL_j):
-        table.url = data_object[const.URL_j]
+        row_external_ref[const.URL_t] = data_object[const.URL_j]
     if data_object.get(const.DESCRIPTION_t):
-        table.description = data_object[const.DESCRIPTION_j]
+        row_external_ref[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_j]
 
-    return table
+    return row_external_ref
 
 
-def parse_json_relationships(relationships_json, session, relationship_table_revoked_by, relationship_table_subtechique_of):
+def parse_json_relationships(relationships_json, relationship_table_revoked_by, relationship_table_subtechique_of):
     if relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.REVOKED_BY_j:
         relationship_table_revoked_by.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
@@ -546,24 +563,22 @@ def parse_json_relationships(relationships_json, session, relationship_table_rev
         relationship_table_subtechique_of.append([relationships_json[const.SOURCE_REF_j], relationships_json[const.TARGET_REF_j]])
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.MITIGATES_j:
-        mitigate = parse_json_mitigate_use(Mitigate, relationships_json)
-        session.add(mitigate)
-        session.commit()
+        mitigate = parse_json_mitigate_use(relationships_json)
+        mitigate_rows_list.append(mitigate)
 
     elif relationships_json.get(const.RELATIONSHIP_TYPE_j) == const.USES_j:
-        use = parse_json_mitigate_use(Use, relationships_json)
-        session.add(use)
-        session.commit()
+        use = parse_json_mitigate_use(relationships_json)
+        use_rows_list.append(use)
 
 
 def parse_list_phases(session, phase_list):
-    phase = Phase()
+    row = {}
 
-    phase.tech_id = phase_list[0]
+    row[const.TECH_ID_t] = phase_list[0]
     tactic = session.query(Tactic).filter_by(short_name=phase_list[1]).first()
-    phase.tactic_id = tactic.id
+    row[const.TACTIC_ID_t] = tactic.id
 
-    return phase
+    return row
 
 
 def parse_json(pathfile, session, database):
@@ -578,6 +593,11 @@ def parse_json(pathfile, session, database):
     try:
         # Lists
         phases_table = []
+        techniques = []
+        groups = []
+        mitigations = []
+        softwares = []
+        tactics = []
         relationship_table_revoked_by = []
         relationship_table_subtechique_of = []
 
@@ -594,31 +614,45 @@ def parse_json(pathfile, session, database):
             session.add(metadata)
             for data_object in datajson[const.OBJECT_j]:
                 if data_object[const.TYPE_j] == const.INTRUSION_SET_j:
-                    groups = parse_table(Group, data_object, session)
-                    session.add(groups)
+                    group = parse_table(Group, data_object)
+                    groups.append(group)
                 elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
-                    mitigations = parse_table(Mitigation, data_object, session)
-                    session.add(mitigations)
+                    mitigation = parse_table(Mitigation, data_object)
+                    mitigations.append(mitigation)
                 elif data_object[const.TYPE_j] == const.MALWARE_j or \
                         data_object[const.TYPE_j] == const.TOOL_j:
-                    software = parse_table(Software, data_object, session)
-                    session.add(software)
+                    software = parse_table(Software, data_object)
+                    softwares.append(software)
                 elif data_object[const.TYPE_j] == const.TACTIC_j:
-                    tactics = parse_table(Tactic, data_object, session)
-                    session.add(tactics)
+                    tactic = parse_table(Tactic, data_object)
+                    tactics.append(tactic)
                 elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
-                    technique = parse_json_techniques(data_object, phases_table, session)
-                    session.add(technique)
+                    technique = parse_json_techniques(data_object, phases_table)
+                    techniques.append(technique)
                 elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
-                    parse_json_relationships(data_object, session, relationship_table_revoked_by, relationship_table_subtechique_of)
+                    parse_json_relationships(data_object, relationship_table_revoked_by, relationship_table_subtechique_of)
                 else:
                     continue
-                session.commit()
 
+        session.bulk_insert_mappings(Technique, techniques)
+        session.bulk_insert_mappings(DataSource, data_source_rows_list)
+        session.bulk_insert_mappings(DefenseByPasses, defense_bypassed_rows_list)
+        session.bulk_insert_mappings(EffectivePermission, effective_permission_rows_list)
+        session.bulk_insert_mappings(Impact, impact_rows_list)
+        session.bulk_insert_mappings(Permission, permission_req_rows_list)
+        session.bulk_insert_mappings(SystemRequirement, requirement_rows_list)
+        session.bulk_insert_mappings(Group, groups)
+        session.bulk_insert_mappings(Mitigation, mitigations)
+        session.bulk_insert_mappings(Software, softwares)
+        session.bulk_insert_mappings(Tactic, tactics)
+        session.commit()
+
+        phase_rows_list = []
         for table in phases_table:
-            phases = parse_list_phases(session, table)
-            session.add(phases)
-            session.commit()
+            phase = parse_list_phases(session, table)
+            phase_rows_list.append(phase)
+        session.bulk_insert_mappings(Phase, phase_rows_list)
+        session.commit()
 
         for table in relationship_table_revoked_by:
             if table[0].startswith(const.INTRUSION_SET_j):
@@ -640,6 +674,14 @@ def parse_json(pathfile, session, database):
         for table in relationship_table_subtechique_of:
             technique = session.query(Technique).get(table[0])
             technique.subtechnique_of = table[1]
+
+        session.bulk_insert_mappings(Mitigate, mitigate_rows_list)
+        session.bulk_insert_mappings(Use, use_rows_list)
+
+        session.bulk_insert_mappings(Aliases, alias_rows_list)
+        session.bulk_insert_mappings(Contributors, contributor_rows_list)
+        session.bulk_insert_mappings(Platforms, platform_rows_list)
+        session.bulk_insert_mappings(References, external_reference_rows_list)
 
         session.commit()
 
