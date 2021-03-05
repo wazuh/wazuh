@@ -48,16 +48,16 @@ Tool for setting the configuration of your Wazuh agent.
 param (
     [parameter (Mandatory=$true, Position=0)] [ValidateSet("enroll")] [string] ${config_group},
     [string[]]${address},
-    [string]${port},
-    [string]${protocol},
+    [ValidateRange(1, 65535)] [string]${port},
+    [ValidateSet("tcp", "udp")][string]${protocol},
     [string]${registration-address},
-    [string]${registration-port},
+    [ValidateRange(1, 65535)] [string]${registration-port},
     [string]${token},
-    [string]${keep-alive},
-    [string]${reconnection-time},
-    [string]${registration-ca},
-    [string]${registration-certificate},
-    [string]${registration-key},
+    [ValidateRange(1, [int]::MaxValue)] [string]${keep-alive},
+    [ValidateRange(1, [int]::MaxValue)] [string]${reconnection-time},
+    [ValidateScript({Test-Path $_})] [string]${registration-ca},
+    [ValidateScript({Test-Path $_})] [string]${registration-certificate},
+    [ValidateScript({Test-Path $_})] [string]${registration-key},
     [string]${name},
     [string]${group}
 )
@@ -84,7 +84,7 @@ if ($config_group -eq "enroll") {
             else 
             {
                 $reconnect_element = ${xml_conf}.CreateElement("time-reconnect")
-                [void]$client.AppendChild($reconnect_element) | Out-Null
+                $client.AppendChild($reconnect_element) | Out-Null
                 $client."time-reconnect" = ${reconnection-time} 
             }
         }
@@ -96,7 +96,7 @@ if ($config_group -eq "enroll") {
             else 
             {
                 $notify_element = ${xml_conf}.CreateElement("notify_time")
-                [void]$client.AppendChild($notify_element) | Out-Null
+                $client.AppendChild($notify_element) | Out-Null
                 $client.notify_time = ${keep-alive}
             }
         }
