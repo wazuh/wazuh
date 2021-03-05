@@ -10,8 +10,14 @@ TIME_FORMAT= '%Y-%m-%dT%H:%M:%S.%fZ'
 
 ### Table
 
+# Metadata
+DB_VERSION_t = 'db_version'
+DB_VERSION_N_t = '1'
+MITRE_VERSION_t = 'mitre_version'
+
 ID_t= 'id'
-VERSION_t= 'version'
+KEY_t= 'key'
+VALUE_t= 'value'
 NAME_t= 'name'
 DESCRIPTION_t= 'description'
 CREATED_t= 'created_time'
@@ -67,10 +73,6 @@ ATTACK_PATTERN_j= 'attack-pattern'
 
 ID_j= 'id'
 VERSION_j= 'spec_version'
-IDENTITY_j= 'identity'
-MARKING_DEFINITION_j= 'marking-definition'
-DEFINITION_j= 'definition'
-STATEMENT_j= 'statement'
 NAME_j= 'name'
 DESCRIPTION_j= 'description'
 CREATED_j= 'created'
