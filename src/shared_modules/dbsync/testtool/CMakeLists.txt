@@ -14,7 +14,7 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -std=c++14 -pthread")
 
 if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,undefined")
+  set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
 add_executable(dbsync_test_tool
