@@ -5,20 +5,40 @@
             "flags":"-r"
         },
         {
+            "name":"data_provider",
+            "flags":"--asan"
+        },
+        {
             "name":"shared_modules/dbsync",
             "flags":"-r"
+        },
+        {
+            "name":"shared_modules/dbsync",
+            "flags":"--asan"
         },
         {
             "name":"shared_modules/rsync",
             "flags":"-r"
         },
         {
+            "name":"shared_modules/rsync",
+            "flags":"--asan"
+        },
+        {
             "name":"shared_modules/utils",
             "flags":"-r"
         },
         {
+            "name":"shared_modules/utils",
+            "flags":"--asan"
+        },
+        {
             "name":"wazuh_modules/syscollector",
             "flags":"-r"
+        },
+        {
+            "name":"wazuh_modules/syscollector",
+            "flags":"--asan"
         }
     ]
 }

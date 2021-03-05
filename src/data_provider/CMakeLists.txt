@@ -20,7 +20,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address")
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
