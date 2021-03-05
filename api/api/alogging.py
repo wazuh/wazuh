@@ -1,6 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import json
 import logging
 import re
 
@@ -15,10 +16,16 @@ request_pattern = re.compile(r'\[.+\]|\s+\*\s+')
 class AccessLogger(AbstractAccessLogger):
 
     def log(self, request, response, time):
+        query = dict(request.query)
+        body = request.get("body", dict())
+        if 'password' in query:
+            query['password'] = '****'
+        if 'password' in body:
+            body['password'] = '****'
         self.logger.info(f'{request.get("user", "unknown_user")} '
                          f'{request.remote} '
                          f'"{request.method} {request.path}" '
-                         f'with parameters {dict(request.query)} and body {request.get("body", "{}")} '
+                         f'with parameters {json.dumps(query)} and body {json.dumps(body)} '
                          f'done in {time:.3f}s: {response.status}')
 
 

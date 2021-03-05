@@ -79,7 +79,7 @@ async def request_logging(request, handler):
     """Add request info to logging."""
     logger.debug2(f'Receiving headers {dict(request.headers)}')
     try:
-        body = f'{await request.json()}'
+        body = await request.json()
         request['body'] = body
     except JSONDecodeError:
         pass
