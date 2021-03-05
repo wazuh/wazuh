@@ -11,7 +11,8 @@ TIME_FORMAT= '%Y-%m-%dT%H:%M:%S.%fZ'
 ### Table
 
 ID_t= 'id'
-VERSION_t= 'version'
+KEY_t= 'key'
+VALUE_t= 'value'
 NAME_t= 'name'
 DESCRIPTION_t= 'description'
 CREATED_t= 'created_time'
@@ -33,6 +34,8 @@ SOURCE_ID_t= 'source_id'
 TARGET_ID_t= 'target_id'
 TACTIC_ID_t= 'tactic_id'
 TECH_ID_t= 'tech_id'
+
+DB_VERSION_t = 'db_version'
 
 ### Relationships
 DATASOURCE_r= 'DataSource'
