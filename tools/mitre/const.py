@@ -21,7 +21,11 @@ REVOKED_BY_t= 'revoked_by'
 DEPRECATED_t= 'deprecated'
 
 ### Metadata
-VERSION_t= 'version'
+KEY_t= 'key'
+VALUE_t= 'value'
+DB_VERSION_t = 'db_version'
+DB_VERSION_N_t = '1'
+MITRE_VERSION_t = 'mitre_version'
 
 ### Technique
 MITRE_DETECTION_t= 'mitre_detection'
@@ -67,8 +71,6 @@ TYPE_j= 'type'
 OBJECT_j= 'objects'
 
 ### Types
-IDENTITY_j= 'identity'
-MARKING_DEFINITION_j= 'marking-definition'
 ATTACK_PATTERN_j= 'attack-pattern'
 TACTIC_j= 'x-mitre-tactic'
 COURSE_OF_ACTION_j= 'course-of-action'
@@ -87,8 +89,6 @@ DEPRECATED_j= 'x_mitre_deprecated'
 
 ### Metadata
 VERSION_j= 'spec_version'
-DEFINITION_j= 'definition'
-STATEMENT_j= 'statement'
 
 ### Technique
 MITRE_DETECTION_j= 'x_mitre_detection'
