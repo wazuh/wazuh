@@ -102,9 +102,16 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
  */
 int OS_SetSendTimeout(int socket, int seconds);
 
-/* Send secure TCP message
+/**
+ * @brief Send secure TCP message
+ *
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
- * Return 0 on success or OS_SOCKTERR on error.
+ *
+ * @param sock Socket file descriptor.
+ * @param size Message length, in bytes.
+ * @param msg Pointer to the message content.
+ * @retval 0 on success.
+ * @retval OS_SOCKTERR on error.
  */
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
@@ -115,7 +122,7 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
 
 /**
- * @brief Send secure TCP Cluster message 
+ * @brief Send secure TCP Cluster message
  * @param sock Socket to write on
  * @param command Command to send
  * @param payload Payload of the command to send
