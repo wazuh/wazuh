@@ -81,4 +81,7 @@
 #define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
                                                 "(decoder `%s`). Default value will be used"
 
+/* Remoted */
+#define REMOTED_INV_VALUE_IGNORE                "(9001): Ignored invalid value '%s' for '%s'."
+
 #endif /* WARN_MESSAGES_H */

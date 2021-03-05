@@ -162,6 +162,10 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcasecmp(node[i]->element, xml_remote_ipv6) == 0) {
             if (strcasecmp(node[i]->content, "yes") == 0) {
                 logr->ipv6[pl] = 1;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                logr->ipv6[pl] = 0;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_remote_ipv6);
             }
         } else if (strcasecmp(node[i]->element, xml_remote_lip) == 0) {
             os_strdup(node[i]->content, logr->lip[pl]);
