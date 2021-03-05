@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#Copyright (C) 2015-2020, Wazuh Inc.
+#Copyright (C) 2015-2021, Wazuh Inc.
 
 set -e
 set -u
@@ -35,14 +35,14 @@ else
         GROUPDEL="/usr/bin/rmgroup"
         USERDEL="/usr/sbin/userdel"
     else
-    # All current linux distributions should support system accounts for
-    # users/groups. If not, leave the GROUPDEL/USERDEL as it was before
-    # this change
-    sys_acct_chk () {
-        $1 --help 2>&1 | grep -e " *-r.*system account" >/dev/null 2>&1 && echo "$1 -r" || echo "$1"
-      }
-    GROUPDEL=$(sys_acct_chk "/usr/sbin/groupdel")
-    USERDEL=$(sys_acct_chk "/usr/sbin/userdel")
+        # All current linux distributions should support system accounts for
+        # users/groups. If not, leave the GROUPDEL/USERDEL as it was before
+        # this change
+        sys_acct_chk () {
+            $1 --help 2>&1 | grep -e " *-r.*system account" >/dev/null 2>&1 && echo "$1 -r" || echo "$1"
+        }
+        GROUPDEL=$(sys_acct_chk "/usr/sbin/groupdel")
+        USERDEL=$(sys_acct_chk "/usr/sbin/userdel")
     fi
 
     OSSECUSERS="${USER_REM} ${USER_MAIL} ${USER}"
