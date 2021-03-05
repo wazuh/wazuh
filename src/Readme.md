@@ -116,6 +116,7 @@ Address sanitizer checks:
 If all the checks passed it returns 0 and prints a "[ASAN: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
 
 Output Example executing the ASAN tests with `dbsync` module:
+```
 #> python3 build.py -r shared_modules/dbsync
 <shared_modules/dbsync>=================== Running ASAN        ===================<shared_modules/dbsync>
 [Cleanfolder: PASSED]
@@ -140,3 +141,4 @@ shared_modules/dbsync > [make: PASSED]
 [Cleanfolder: PASSED]
 [TestTool: PASSED]
 <shared_modules/dbsync>[ASAN: PASSED]<shared_modules/dbsync>
+```
