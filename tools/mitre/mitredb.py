@@ -475,6 +475,12 @@ def parse_json_mitigate_use(function, data_object):
 
 def parse_common_tables(table, data_object, session):
     # Alias
+    if data_object.get(const.ALIASES_j):
+        for alias in data_object[const.ALIASES_j]:
+            o_alias = Aliases(alias=alias)
+            o_alias.id = table.id
+            session.add(o_alias)
+        
     if data_object.get(const.ALIAS_j):
         for alias in data_object[const.ALIAS_j]:
             o_alias = Aliases(alias=alias)

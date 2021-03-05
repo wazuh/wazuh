@@ -113,6 +113,7 @@ SHORT_NAME_j= 'x_mitre_shortname'
 
 # Aliases
 ALIAS_j= 'x_mitre_aliases'
+ALIASES_j= 'aliases'
 # Contributors
 CONTRIBUTOR_j= 'x_mitre_contributors'
 # Platforms
