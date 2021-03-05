@@ -9,9 +9,9 @@
 
 #include "mitre.h"
 
-#define SQL_GET_ALL_TECHNIQUES "mitre sql SELECT technique.id, technique.name, reference.external_id FROM technique LEFT JOIN reference ON technique.id = reference.id WHERE reference.external_id LIKE \"T%%\";"
+#define SQL_GET_ALL_TECHNIQUES "mitre sql SELECT technique.id, technique.name, reference.external_id FROM technique LEFT JOIN reference ON technique.id = reference.id WHERE reference.source = 'mitre-attack';"
 #define SQL_GET_ALL_TECHNIQUE_PHASES "mitre sql SELECT tactic_id FROM phase WHERE tech_id = '%s';"
-#define SQL_GET_TACTIC_INFORMATION "mitre sql SELECT tactic.name, reference.external_id FROM tactic LEFT JOIN reference ON tactic.id = reference.id WHERE reference.external_id LIKE \"TA%%\" AND tactic.id = '%s';"
+#define SQL_GET_TACTIC_INFORMATION "mitre sql SELECT tactic.name, reference.external_id FROM tactic LEFT JOIN reference ON tactic.id = reference.id WHERE reference.source = 'mitre-attack' AND tactic.id = '%s';"
 
 static OSHash *techniques_table;
 
@@ -72,7 +72,7 @@ int mitre_load() {
         techniques = cJSON_GetArrayItem(techniques_json, i);
 
         if (tech_id_json = cJSON_GetObjectItem(techniques, "id"), tech_id_json == NULL) {
-            merror("It was not possible to get Mitre technique id.");
+            merror("It was not possible to get Mitre technique ID.");
             result = -1;
             goto end;
         }
@@ -115,7 +115,7 @@ int mitre_load() {
             phases = cJSON_GetArrayItem(phases_json, j);
 
             if (tactic_id_json = cJSON_GetObjectItem(phases, "tactic_id"), tactic_id_json == NULL) {
-                merror("It was not possible to get MITRE tactics information.");
+                merror("It was not possible to get MITRE tactic ID.");
                 result = -1;
                 goto end;
             }
@@ -207,6 +207,10 @@ end:
     if (result != 0) {
          merror("Mitre matrix information could not be loaded.");
     }
+
+#ifdef WAZUH_UNIT_TESTING
+    OSHash_Free(techniques_table);
+#endif
 
     return result;
 }
