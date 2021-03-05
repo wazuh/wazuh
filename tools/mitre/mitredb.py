@@ -180,7 +180,7 @@ class Group(Base):
     """
     __tablename__ = "group"
 
-    Id = Column(const.ID_t, String, primary_key=True)
+    id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
     created_time = Column(const.CREATED_t, DateTime, default=None)
@@ -205,7 +205,7 @@ class Software(Base):
     """
     __tablename__ = "software"
 
-    Id = Column(const.ID_t, String, primary_key=True)
+    id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
     created_time = Column(const.CREATED_t, DateTime, default=None)
@@ -230,7 +230,7 @@ class Mitigation(Base):
     """
     __tablename__ = "mitigation"
 
-    Id = Column(const.ID_t, String, primary_key=True)
+    id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
     created_time = Column(const.CREATED_t, DateTime, default=None)
@@ -240,6 +240,64 @@ class Mitigation(Base):
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
     mitigate = relationship(const.MITIGATE_r)
+
+
+class Aliases(Base):
+    """
+    In this table are stored the aliases of json file
+    The information stored:
+        id: Used to identify the group or software (PK).
+        alias: Alias related to this item (PK).
+    """
+    __tablename__ = "alias"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    alias = Column(const.ALIAS_t, String, primary_key=True)
+
+
+class Contributors(Base):
+    """
+    In this table are stored the contributors of json file
+    The information stored:
+        id: Used to identify the technique, group or software (PK).
+        contributor: Contributor related to this item (PK).
+    """
+    __tablename__ = "contributor"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    contributor = Column(const.CONTRIBUTOR_t, String, primary_key=True)
+
+
+class Platforms(Base):
+    """
+    In this table are stored the platforms of json file
+    The information stored:
+        id: Used to identify the technique or software (PK).
+        platform: OS related to this item (PK).
+    """
+    __tablename__ = "platform"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    platform = Column(const.PLATFORM_t, String, primary_key=True)
+
+
+class References(Base):
+    """
+    In this table are stored the references of json file
+    The information stored:
+        id: Used to identify the tactic, technique, mitigation, group or software (PK).
+        source: Source of this reference (PK).
+        external_id: ID associated with this item (only in case of source mitre-attack).
+        url: URL of the reference.
+        description: Description of the reference.
+    """
+    __tablename__ = "reference"
+
+    id = Column(const.ID_t, String, primary_key=True)
+    source = Column(const.SOURCE_t, String, primary_key=True)
+    external_id = Column(const.EXTERNAL_ID_t, String, default=None, nullable=True)
+    url = Column(const.URL_t, String, primary_key=True)
+    description = Column(const.DESCRIPTION_t, String, default=None, nullable=True)
 
 
 class Mitigate(Base):
@@ -297,7 +355,7 @@ class Tactic(Base):
     """
     __tablename__ = "tactic"
 
-    Id = Column(const.ID_t, String, primary_key=True)
+    id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
     created_time = Column(const.CREATED_t, DateTime, default=None)
@@ -318,9 +376,9 @@ class Phase(Base):
     tech_id = Column(const.TECH_ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
 
 
-def parse_table(function, data_object):
+def parse_table(function, data_object, session):
     table = function()
-    table.Id = data_object[const.ID_j]
+    table.id = data_object[const.ID_j]
     table.name = data_object[const.NAME_j]
 
     if const.DESCRIPTION_j in data_object:
@@ -343,10 +401,12 @@ def parse_table(function, data_object):
         if const.DEPRECATED_j in data_object:
             table.deprecated = data_object[const.DEPRECATED_j]
 
+    parse_common_tables(table, data_object, session)
+
     return table
 
 
-def parse_json_techniques(technique_json, phases_table):
+def parse_json_techniques(technique_json, phases_table, session):
     technique = Technique()
     technique.id = technique_json[const.ID_t]
     technique.name = technique_json[const.NAME_t]
@@ -403,6 +463,8 @@ def parse_json_techniques(technique_json, phases_table):
         for phase in technique_json[const.PHASES_j]:
              phases_table.append([technique.id, phase[const.PHASE_NAME_j]])
 
+    parse_common_tables(technique, technique_json, session)
+
     return technique
 
 
@@ -420,6 +482,58 @@ def parse_json_mitigate_use(function, data_object):
 
     if data_object.get(const.MODIFIED_j):
         table.modified_time = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
+
+    return table
+
+
+def parse_common_tables(table, data_object, session):
+    # Alias
+    if data_object.get(const.ALIASES_j):
+        for alias in data_object[const.ALIASES_j]:
+            o_alias = Aliases(alias=alias)
+            o_alias.id = table.id
+            session.add(o_alias)
+
+    if data_object.get(const.ALIAS_j):
+        for alias in data_object[const.ALIAS_j]:
+            o_alias = Aliases(alias=alias)
+            o_alias.id = table.id
+            session.add(o_alias)
+
+    # Contributor
+    if data_object.get(const.CONTRIBUTOR_j):
+        for contributor in data_object[const.CONTRIBUTOR_j]:
+            o_contributor = Contributors(contributor=contributor)
+            o_contributor.id = table.id
+            session.add(o_contributor)
+
+    # Platform
+    if data_object.get(const.PLATFORM_j):
+        for platform in data_object[const.PLATFORM_j]:
+            o_platform = Platforms(platform=platform)
+            o_platform.id = table.id
+            session.add(o_platform)
+
+    # External References
+    if data_object.get(const.EXTERNAL_REFERENCES_j):
+        for reference in data_object[const.EXTERNAL_REFERENCES_j]:
+            if reference.get(const.URL_j):
+                o_reference = parse_json_ext_references(References, reference)
+                o_reference.id = table.id
+                session.add(o_reference)
+
+
+def parse_json_ext_references(function, data_object):
+    table = function()
+
+    if data_object.get(const.SOURCE_NAME_j):
+        table.source = data_object[const.SOURCE_NAME_j]
+    if data_object.get(const.EXTERNAL_ID_j):
+        table.external_id = data_object[const.EXTERNAL_ID_j]
+    if data_object.get(const.URL_j):
+        table.url = data_object[const.URL_j]
+    if data_object.get(const.DESCRIPTION_t):
+        table.description = data_object[const.DESCRIPTION_j]
 
     return table
 
@@ -447,7 +561,7 @@ def parse_list_phases(session, phase_list):
 
     phase.tech_id = phase_list[0]
     tactic = session.query(Tactic).filter_by(short_name=phase_list[1]).first()
-    phase.tactic_id = tactic.Id
+    phase.tactic_id = tactic.id
 
     return phase
 
@@ -480,20 +594,20 @@ def parse_json(pathfile, session, database):
             session.add(metadata)
             for data_object in datajson[const.OBJECT_j]:
                 if data_object[const.TYPE_j] == const.INTRUSION_SET_j:
-                    groups = parse_table(Group, data_object)
+                    groups = parse_table(Group, data_object, session)
                     session.add(groups)
                 elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
-                    mitigations = parse_table(Mitigation, data_object)
+                    mitigations = parse_table(Mitigation, data_object, session)
                     session.add(mitigations)
                 elif data_object[const.TYPE_j] == const.MALWARE_j or \
                         data_object[const.TYPE_j] == const.TOOL_j:
-                    software = parse_table(Software, data_object)
+                    software = parse_table(Software, data_object, session)
                     session.add(software)
                 elif data_object[const.TYPE_j] == const.TACTIC_j:
-                    tactics = parse_table(Tactic, data_object)
+                    tactics = parse_table(Tactic, data_object, session)
                     session.add(tactics)
                 elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
-                    technique = parse_json_techniques(data_object, phases_table)
+                    technique = parse_json_techniques(data_object, phases_table, session)
                     session.add(technique)
                 elif data_object[const.TYPE_j] == const.RELATIONSHIP_j:
                     parse_json_relationships(data_object, session, relationship_table_revoked_by, relationship_table_subtechique_of)

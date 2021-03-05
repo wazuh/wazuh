@@ -41,6 +41,14 @@ REQUIREMENT_t= 'requirement'
 ### Tactic
 SHORT_NAME_t= 'short_name'
 
+### Common tables
+ALIAS_t= 'alias'
+CONTRIBUTOR_t= 'contributor'
+PLATFORM_t= 'platform'
+SOURCE_t= 'source'
+EXTERNAL_ID_t= 'external_id'
+URL_t= 'url'
+
 ### Relationship
 SOURCE_ID_t= 'source_id'
 TARGET_ID_t= 'target_id'
@@ -57,7 +65,15 @@ IMPACT_r= 'Impact'
 PERMISSION_r= 'Permission'
 SYSTEMREQ_r= 'SystemRequirement'
 TECHNIQUES_r= 'technique'
+GROUPS_r= 'Groups'
+SOFTWARE_r= 'Software'
+MITIGATIONS_r= 'Mitigation'
+TACTICS_r= 'Tactic'
 MITIGATE_r= 'Mitigate'
+CONTRIBUTORS_r= 'Contributors'
+PLATFORMS_r= 'Platforms'
+REFERENCES_r= 'References'
+ALIASES_r= 'Aliases'
 
 ### ForeignKey
 TECHNIQUE_ID_fk= 'technique.id'
@@ -103,6 +119,16 @@ SYSTEM_REQ_j= 'x_mitre_system_requirements'
 
 ### Tactic
 SHORT_NAME_j= 'x_mitre_shortname'
+
+### Common tables
+ALIAS_j= 'x_mitre_aliases'
+ALIASES_j= 'aliases'
+CONTRIBUTOR_j= 'x_mitre_contributors'
+PLATFORM_j= 'x_mitre_platforms'
+EXTERNAL_REFERENCES_j= 'external_references'
+SOURCE_NAME_j= 'source_name'
+EXTERNAL_ID_j= 'external_id'
+URL_j= 'url'
 
 ### Relationship
 PHASES_j= 'kill_chain_phases'
