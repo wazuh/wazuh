@@ -296,9 +296,9 @@ class References(Base):
     __tablename__ = "reference"
 
     id = Column(const.ID_t, String, primary_key=True)
-    source = Column(const.SOURCE_t, String, primary_key=True, nullable=True)
-    external_id = Column(const.EXTERNAL_ID_t, String, primary_key=True, nullable=True)
-    url = Column(const.URL_t, String, default=None, nullable=True)
+    source = Column(const.SOURCE_t, String, primary_key=True)
+    external_id = Column(const.EXTERNAL_ID_t, String, default=None, nullable=True)
+    url = Column(const.URL_t, String, primary_key=True)
     description = Column(const.DESCRIPTION_t, String, default=None, nullable=True)
 
 
@@ -496,13 +496,15 @@ def parse_common_tables(table, data_object, session):
 
     if data_object.get(const.EXTERNAL_REFERENCES_j):
         for reference in data_object[const.EXTERNAL_REFERENCES_j]:
-            o_reference = parse_json_ext_references(References, reference)
-            o_reference.id = table.id
-            session.add(o_reference)
+            if reference.get(const.URL_j):
+                o_reference = parse_json_ext_references(References, reference)
+                o_reference.id = table.id
+                session.add(o_reference)
 
 
 def parse_json_ext_references(function, data_object):
     table = function()
+
     if data_object.get(const.SOURCE_NAME_j):
         table.source = data_object[const.SOURCE_NAME_j]
     if data_object.get(const.EXTERNAL_ID_j):
