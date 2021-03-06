@@ -137,7 +137,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
                             cJSON_AddItemToArray(mitre_tactic_array, cJSON_CreateString(data_tactic->tactic_name));
                         }
 
-                        tactic_node = OSList_GetCurrentlyNode(data_technique->tactics_list);
+                        tactic_node = OSList_GetNextNode(data_technique->tactics_list);
                     }
 
                     /* Filling technique array */
