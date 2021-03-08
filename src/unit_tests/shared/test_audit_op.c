@@ -26,8 +26,11 @@
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
 #include "../headers/exec_op.h"
+#include "../headers/list_op.h"
 
-extern w_audit_rules_list *_audit_rules_list;
+#define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
+
+extern OSList *audit_rules_list;
 
 /* auxiliary structs */
 
@@ -46,7 +49,7 @@ static int group_setup(void **state) {
 
 static int group_teardown(void **state) {
     test_mode = 0;
-    audit_free_list();
+    audit_rules_list_free();
     return 0;
 }
 
@@ -172,10 +175,7 @@ static void test_audit_get_rule_list(void **state) {
     int ret = audit_get_rule_list(0);
 
     assert_int_equal(ret, 1);
-    assert_non_null(_audit_rules_list);
-    assert_non_null(_audit_rules_list->list);
-    assert_int_equal(_audit_rules_list->used, 0);
-    assert_int_equal(_audit_rules_list->size, 25);
+    assert_non_null(audit_rules_list);
 }
 
 static void test_kernel_get_reply(void **state) {
@@ -216,14 +216,14 @@ static void test_audit_print_reply(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Audit rule loaded: -w  -p rwxa -k ");
 
     int ret = audit_print_reply(reply);
+    w_audit_rule *rule = (w_audit_rule *) OSList_GetFirstNode(audit_rules_list)->data;
 
     assert_int_equal(ret, 1);
-    assert_non_null(_audit_rules_list->list[0]);
-    assert_string_equal(_audit_rules_list->list[0]->path, "");
-    assert_string_equal(_audit_rules_list->list[0]->key, "");
-    assert_string_equal(_audit_rules_list->list[0]->perm, "rwxa");
-    assert_int_equal(_audit_rules_list->used, 1);
-    assert_int_equal(_audit_rules_list->size, 25);
+    assert_non_null(audit_rules_list->first_node);
+    assert_string_equal(rule->path, "");
+    assert_string_equal(rule->key, "");
+    assert_int_equal(rule->perm, (AUDIT_PERM_EXEC | AUDIT_PERM_WRITE | AUDIT_PERM_READ | AUDIT_PERM_ATTR));
+    assert_int_equal(audit_rules_list->currently_size, 1);
 }
 
 static void test_audit_clean_path(void **state) {
@@ -322,18 +322,17 @@ static void test_audit_rules_list_append(void **state) {
         w_audit_rule *rule = calloc(1, sizeof(w_audit_rule));
         rule->path = strdup("/test/file");
         rule->key = strdup("key");
-        rule->perm = strdup("rw");
-        audit_rules_list_append(_audit_rules_list, rule);
+        rule->perm = PERMS;
+        OSList_AddData(audit_rules_list, rule);
     }
 
-    assert_int_equal(_audit_rules_list->used, 31);
-    assert_int_equal(_audit_rules_list->size, 50);
+    assert_int_equal(audit_rules_list->currently_size, 31);
 }
 
 static void test_search_audit_rule(void **state) {
     (void) state;
 
-    int ret = search_audit_rule("/test/file", "rw", "key");
+    int ret = search_audit_rule("/test/file", PERMS, "key");
 
     assert_int_equal(ret, 1);
 }
@@ -341,7 +340,7 @@ static void test_search_audit_rule(void **state) {
 static void test_search_audit_rule_null(void **state) {
     (void) state;
 
-    int ret = search_audit_rule(NULL, NULL, NULL);
+    int ret = search_audit_rule(NULL, PERMS, NULL);
 
     assert_int_equal(ret, -1);
 }
@@ -349,7 +348,7 @@ static void test_search_audit_rule_null(void **state) {
 static void test_search_audit_rule_not_found(void **state) {
     (void) state;
 
-    int ret = search_audit_rule("/test/search2", "rwx", "search2");
+    int ret = search_audit_rule("/test/search2", (PERMS | AUDIT_PERM_EXEC)  , "search2");
 
     assert_int_equal(ret, 0);
 }
@@ -374,7 +373,7 @@ static void test_audit_add_rule(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_add_rule("/usr/bin", "bin-folder");
+    int ret = audit_add_rule("/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, 1);
 }
@@ -403,7 +402,7 @@ static void test_audit_delete_rule(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_delete_rule("/usr/bin", "bin-folder");
+    int ret = audit_delete_rule("/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
@@ -413,7 +412,7 @@ static void test_audit_manage_rules_open_error(void **state) {
 
     will_return(__wrap_audit_open, -1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/folder/path", "key-test");
+    int ret = audit_manage_rules(ADD_RULE, "/folder/path", PERMS, "key-test");
 
     assert_int_equal(ret, -1);
 }
@@ -427,7 +426,7 @@ static void test_audit_manage_rules_stat_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/folder/path", "key-test");
+    int ret = audit_manage_rules(ADD_RULE, "/folder/path", PERMS, "key-test");
 
     errno = 0;
 
@@ -449,7 +448,7 @@ static void test_audit_manage_rules_add_dir_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
@@ -472,7 +471,7 @@ static void test_audit_manage_rules_update_perms_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
@@ -497,7 +496,7 @@ static void test_audit_manage_rules_key_length_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", key);
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", PERMS, key);
 
     assert_int_equal(ret, -1);
 }
@@ -524,7 +523,7 @@ static void test_audit_manage_rules_fieldpair_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", "bin-folder");
+    int ret = audit_manage_rules(ADD_RULE, "/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }
@@ -547,7 +546,7 @@ static void test_audit_manage_rules_action_error(void **state) {
 
     will_return(__wrap_audit_close, 1);
 
-    int ret = audit_manage_rules(-1, "/usr/bin", "bin-folder");
+    int ret = audit_manage_rules(-1, "/usr/bin", PERMS, "bin-folder");
 
     assert_int_equal(ret, -1);
 }

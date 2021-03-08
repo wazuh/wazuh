@@ -1469,7 +1469,7 @@ stages:
             - connection: !anystr
               ipv6: !anystr
               port: !anystr
-              protocol: !anystr
+              protocol: !anylist
               queue_size: !anystr
 
   - name: Request-Request-Internal

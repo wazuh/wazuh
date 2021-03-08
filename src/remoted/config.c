@@ -88,8 +88,21 @@ cJSON *getRemoteConfig(void) {
             else if (logr.conn[i] == SECURE_CONN) cJSON_AddStringToObject(conn,"connection","secure");
             if (logr.ipv6 && logr.ipv6[i]) cJSON_AddStringToObject(conn,"ipv6","yes"); else cJSON_AddStringToObject(conn,"ipv6","no");
             if (logr.lip && logr.lip[i]) cJSON_AddStringToObject(conn,"local_ip",logr.lip[i]);
-            if (logr.proto && logr.proto[i] == IPPROTO_UDP) cJSON_AddStringToObject(conn,"protocol","udp");
-            else if (logr.proto && logr.proto[i] == IPPROTO_TCP) cJSON_AddStringToObject(conn,"protocol","tcp");
+
+            if (logr.proto) {
+                cJSON * proto_array = cJSON_CreateArray();
+
+                /* If TCP is enabled */
+                if (logr.proto[i] & REMOTED_NET_PROTOCOL_TCP) {
+                    cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_TCP_STR));
+                }
+                /* If UDP is enabled */
+                if (logr.proto[i] & REMOTED_NET_PROTOCOL_UDP) {
+                    cJSON_AddItemToArray(proto_array, cJSON_CreateString(REMOTED_NET_PROTOCOL_UDP_STR));
+                }
+                cJSON_AddItemToObject(conn, "protocol", proto_array);
+            }
+
             if (logr.port && logr.port[i]){
                 sprintf(port,"%d",logr.port[i]);
                 cJSON_AddStringToObject(conn,"port",port);

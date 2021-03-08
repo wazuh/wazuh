@@ -66,6 +66,8 @@ All notable changes to this project will be documented in this file.
   - File /etc/ossec-init.conf does not exist anymore. ([#7175](https://github.com/wazuh/wazuh/pull/7175))
   - Unused files have been removed from the repository, including TAP tests. ([#7398](https://github.com/wazuh/wazuh/issues/7398))
 
+- **API:**
+  - Removed `behind_proxy_server` option from configuration. ([#7006](https://github.com/wazuh/wazuh/issues/7006))
 
 ## [v4.1.1]
 

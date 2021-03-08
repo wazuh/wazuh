@@ -18,19 +18,21 @@
 #include <sddl.h>
 #include <winevt.h>
 
-#include "../wrappers/common.h"
-#include "../wrappers/libc/stdio_wrappers.h"
-#include "../wrappers/libc/stdlib_wrappers.h"
-#include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/wazuh/shared/file_op_wrappers.h"
-#include "../wrappers/wazuh/shared/fs_op_wrappers.h"
-#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
-#include "../wrappers/wazuh/shared/mq_op_wrappers.h"
-#include "../wrappers/wazuh/shared/string_op_wrappers.h"
-#include "../wrappers/wazuh/shared/randombytes_wrappers.h"
-#include "../wrappers/wazuh/syscheckd/config_wrappers.h"
-#include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
-#include "../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
+#include "wrappers/common.h"
+#include "wrappers/libc/stdio_wrappers.h"
+#include "wrappers/libc/stdlib_wrappers.h"
+#include "wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "wrappers/wazuh/shared/file_op_wrappers.h"
+#include "wrappers/wazuh/shared/fs_op_wrappers.h"
+#include "wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "wrappers/wazuh/shared/string_op_wrappers.h"
+#include "wrappers/wazuh/shared/randombytes_wrappers.h"
+#include "wrappers/wazuh/syscheckd/config_wrappers.h"
+#include "wrappers/wazuh/syscheckd/create_db_wrappers.h"
+#include "wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
+#include "wrappers/wazuh/shared/validate_op_wrappers.h"
+
 
 #include "syscheckd/syscheck.h"
 
@@ -157,8 +159,7 @@ int syscheck_teardown(void ** state) {
 
 int test_group_setup(void **state) {
     int ret;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: 'test_syscheck.conf'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6287): Reading configuration file: '../test_syscheck.conf'");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
@@ -168,9 +169,9 @@ int test_group_setup(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
-
-    ret = Read_Syscheck_Config("test_syscheck.conf");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [../test_syscheck.conf]");
+    will_return_always(__wrap_getDefine_Int, 0);
+    ret = Read_Syscheck_Config("../test_syscheck.conf");
 
     SIZE_EVENTS = sizeof(EVT_VARIANT) * NUM_EVENTS;
     test_mode = 1;

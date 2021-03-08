@@ -23,8 +23,8 @@ def set_logging(foreground_mode=False, debug_mode=0):
 
 
 def print_version():
-    from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
-    print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
+    from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
+    print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
 
 
 #
@@ -114,9 +114,9 @@ if __name__ == '__main__':
         debug_mode = 0
 
     # set correct permissions on cluster.log file
-    if os.path.exists('{0}/logs/cluster.log'.format(common.ossec_path)):
-        os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid(), common.ossec_gid())
-        os.chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
+    if os.path.exists('{0}/logs/cluster.log'.format(common.wazuh_path)):
+        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.ossec_uid(), common.ossec_gid())
+        os.chmod('{0}/logs/cluster.log'.format(common.wazuh_path), 0o660)
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
 
