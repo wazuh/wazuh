@@ -78,7 +78,7 @@ def previous_month(n=1):
 
 
 def execute(command):
-    """Executes a command. It is used to execute ossec commands.
+    """Executes a command. It is used to execute Wazuh commands.
 
     :param command: Command as list.
     :return: If output.error !=0 returns output.data, otherwise launches a WazuhException with output.error as error code and output.message as description.
@@ -474,7 +474,7 @@ def delete_wazuh_file(full_path):
     bool
         True if success.
     """
-    if not full_path.startswith(common.ossec_path) or '..' in full_path:
+    if not full_path.startswith(common.wazuh_path) or '..' in full_path:
         raise WazuhError(1907)
 
     if path.exists(full_path):
@@ -1628,7 +1628,7 @@ def upload_file(content, path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.wazuh_path, time.time(), random.randint(0, 1000))
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
@@ -1639,7 +1639,7 @@ def upload_file(content, path, check_xml_formula_values=True):
 
     # Move temporary file to group folder
     try:
-        new_conf_path = join(common.ossec_path, path)
+        new_conf_path = join(common.wazuh_path, path)
         safe_move(tmp_file_path, new_conf_path, permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
@@ -1679,7 +1679,7 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
     return original_content
 
 
-def to_relative_path(full_path: str, prefix: str = common.ossec_path):
+def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
     """Return a relative path from the Wazuh base directory.
 
     Parameters
@@ -1687,7 +1687,7 @@ def to_relative_path(full_path: str, prefix: str = common.ossec_path):
     full_path : str
         Absolute path.
     prefix : str, opt
-        Prefix to strip from the absolute path. Default `common.ossec_path`
+        Prefix to strip from the absolute path. Default `common.wazuh_path`
 
     Returns
     -------

@@ -112,9 +112,9 @@ def test_remove_bulk_agents(isdir_mock, agents_mock, glob_mock, remove_mock, rmt
     """
     agents_mock.return_value = {'totalItems': len(agents_to_remove),
                                 'items': [{'id': a_id, 'ip': '0.0.0.0', 'name': 'test'} for a_id in agents_to_remove]}
-    files_to_remove = [common.ossec_path + '/queue/rootcheck/({name}) {ip}->rootcheck',
-                       common.ossec_path + '/queue/diff/{name}', common.ossec_path + '/queue/agent-groups/{id}',
-                       common.ossec_path + '/queue/rids/{id}', common.ossec_path + '/var/db/agents/{name}-{id}.db',
+    files_to_remove = [common.wazuh_path + '/queue/rootcheck/({name}) {ip}->rootcheck',
+                       common.wazuh_path + '/queue/diff/{name}', common.wazuh_path + '/queue/agent-groups/{id}',
+                       common.wazuh_path + '/queue/rids/{id}', common.wazuh_path + '/var/db/agents/{name}-{id}.db',
                        'global.db']
     glob_mock.side_effect = [[f.format(id=a, ip='0.0.0.0', name='test') for a in agents_to_remove] for f in
                              files_to_remove]

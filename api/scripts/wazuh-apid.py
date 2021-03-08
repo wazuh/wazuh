@@ -57,9 +57,9 @@ def start(foreground, root, config_file):
     logger = logging.getLogger('wazuh-api')
 
     # Set correct permissions on api.log file
-    if os.path.exists(os.path.join(common.ossec_path, log_path)):
-        os.chown(os.path.join(common.ossec_path, log_path), common.ossec_uid(), common.ossec_gid())
-        os.chmod(os.path.join(common.ossec_path, log_path), 0o660)
+    if os.path.exists(os.path.join(common.wazuh_path, log_path)):
+        os.chown(os.path.join(common.wazuh_path, log_path), common.ossec_uid(), common.ossec_gid())
+        os.chmod(os.path.join(common.wazuh_path, log_path), 0o660)
 
     # Configure https
     ssl_context = None

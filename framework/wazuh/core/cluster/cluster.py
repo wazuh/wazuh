@@ -184,7 +184,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
 
     # Get list of all files and directories inside 'dirname'.
     try:
-        entries = listdir(os.path.join(common.ossec_path, dirname))
+        entries = listdir(os.path.join(common.wazuh_path, dirname))
     except OSError as e:
         raise WazuhError(3015, str(e))
 
@@ -201,8 +201,8 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
             # If 'all' files have been requested or entry is in the specified files list.
             if entry in files or files == ["all"]:
 
-                if not path.isdir(os.path.join(common.ossec_path, full_path)):
-                    file_mod_time = datetime.utcfromtimestamp(stat(os.path.join(common.ossec_path, full_path)).st_mtime)
+                if not path.isdir(os.path.join(common.wazuh_path, full_path)):
+                    file_mod_time = datetime.utcfromtimestamp(stat(os.path.join(common.wazuh_path, full_path)).st_mtime)
 
                     # Create dict with metadata of 'full_path' file.
                     entry_metadata = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
@@ -214,12 +214,12 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                         entry_metadata['merged'] = False
 
                     if get_md5:
-                        entry_metadata['md5'] = md5(os.path.join(common.ossec_path, full_path))
+                        entry_metadata['md5'] = md5(os.path.join(common.wazuh_path, full_path))
 
                     # Use the relative file path as a key to save its metadata dictionary.
                     walk_files[full_path] = entry_metadata
 
-            if recursive and path.isdir(os.path.join(common.ossec_path, full_path)):
+            if recursive and path.isdir(os.path.join(common.wazuh_path, full_path)):
                 walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions,
                                            get_cluster_item_key, get_md5))
 
@@ -302,7 +302,7 @@ def compress_files(name, list_path, cluster_control_json=None):
         Path where the zip file has been saved.
     """
     failed_files = list()
-    zip_file_path = os.path.join(common.ossec_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
+    zip_file_path = os.path.join(common.wazuh_path, 'queue', 'cluster', name, f'{name}-{time()}-{str(random())[2:]}.zip')
     if not os.path.exists(os.path.dirname(zip_file_path)):
         mkdir_with_mode(os.path.dirname(zip_file_path))
     with zipfile.ZipFile(zip_file_path, 'x') as zf:
@@ -310,7 +310,7 @@ def compress_files(name, list_path, cluster_control_json=None):
         if list_path:
             for f in list_path:
                 try:
-                    zf.write(filename=os.path.join(common.ossec_path, f), arcname=f)
+                    zf.write(filename=os.path.join(common.wazuh_path, f), arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhError(3001, str(e))
                 except Exception as e:
@@ -345,7 +345,7 @@ async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     """
     try:
         ko_files = ""
-        # Create a directory like {ossec_path}/{cluster_path}/123456-123456.zipdir/
+        # Create a directory like {wazuh_path}/{cluster_path}/123456-123456.zipdir/
         zip_dir = zip_path + 'dir'
         mkdir_with_mode(zip_dir)
         with zipfile.ZipFile(zip_path) as zipf:
@@ -485,7 +485,7 @@ def clean_up(node_name=""):
                 continue
 
     try:
-        rm_path = os.path.join(common.ossec_path, 'queue', 'cluster', node_name)
+        rm_path = os.path.join(common.wazuh_path, 'queue', 'cluster', node_name)
         logger.debug(f"[Cluster] Removing '{rm_path}'.")
         remove_directory_contents(rm_path)
         logger.debug(f"[Cluster] Removed '{rm_path}'.")
@@ -521,12 +521,12 @@ def merge_info(merge_type, node_name, files=None, file_type=""):
         Path to the created merged file.
     """
     min_mtime = 0
-    merge_path = os.path.join(common.ossec_path, 'queue', merge_type)
+    merge_path = os.path.join(common.wazuh_path, 'queue', merge_type)
     output_file = os.path.join('queue', 'cluster', node_name, merge_type + file_type + '.merged')
     files_to_send = 0
     files = "all" if files is None else {path.basename(f) for f in files}
 
-    with open(os.path.join(common.ossec_path, output_file), 'wb') as o_f:
+    with open(os.path.join(common.wazuh_path, output_file), 'wb') as o_f:
         for filename in os.listdir(merge_path):
             if files != "all" and filename not in files:
                 continue

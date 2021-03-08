@@ -10,9 +10,9 @@ from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
-class OssecQueue:
+class WazuhQueue:
     """
-    OssecQueue Object.
+    WazuhQueue Object.
     """
 
     # Messages
@@ -39,8 +39,8 @@ class OssecQueue:
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             self.socket.connect(self.path)
             length_send_buffer = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
-            if length_send_buffer < OssecQueue.MAX_MSG_SIZE:
-                self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, OssecQueue.MAX_MSG_SIZE)
+            if length_send_buffer < WazuhQueue.MAX_MSG_SIZE:
+                self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, WazuhQueue.MAX_MSG_SIZE)
         except Exception:
             raise WazuhInternalError(1010, self.path)
 
@@ -116,7 +116,7 @@ class OssecQueue:
             str_agent_id = "(null)"
 
         # AR
-        if msg_type == OssecQueue.AR_TYPE:
+        if msg_type == WazuhQueue.AR_TYPE:
 
             if agent_id != "000":
                 # Example restart 'msg': restart-ossec0 - null (from_the_server) (no_rule_id)
@@ -135,10 +135,10 @@ class OssecQueue:
 
         # Legacy: Restart syscheck, restart agents
         else:
-            if msg == OssecQueue.HC_SK_RESTART:
+            if msg == WazuhQueue.HC_SK_RESTART:
                 socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NO_AR_C, str_agent,
-                                                            str_agent_id, OssecQueue.HC_SK_RESTART)
-            elif msg == OssecQueue.RESTART_AGENTS or msg == OssecQueue.RESTART_AGENTS_JSON:
+                                                            str_agent_id, WazuhQueue.HC_SK_RESTART)
+            elif msg == WazuhQueue.RESTART_AGENTS or msg == WazuhQueue.RESTART_AGENTS_JSON:
                 socket_msg = "{0} {1}{2}{3} {4} {5} - {6} (from_the_server) (no_rule_id)".format("(msg_to_agent) []",
                                                                                                  str_all_agents, NONE_C,
                                                                                                  str_agent,
@@ -151,16 +151,16 @@ class OssecQueue:
             try:
                 self._send(socket_msg.encode())
             except:
-                if msg == OssecQueue.HC_SK_RESTART:
+                if msg == WazuhQueue.HC_SK_RESTART:
                     if agent_id:
                         raise WazuhError(1601, "on agent")
                     else:
                         raise WazuhError(1601, "on all agents")
-                elif msg == OssecQueue.RESTART_AGENTS:
+                elif msg == WazuhQueue.RESTART_AGENTS:
                     raise WazuhError(1702)
 
             # Return message
-            if msg == OssecQueue.HC_SK_RESTART:
+            if msg == WazuhQueue.HC_SK_RESTART:
                 return "Restarting Syscheck on agent" if agent_id else "Restarting Syscheck on all agents"
-            elif msg == OssecQueue.RESTART_AGENTS:
+            elif msg == WazuhQueue.RESTART_AGENTS:
                 return "Restarting agent" if agent_id else "Restarting all agents"

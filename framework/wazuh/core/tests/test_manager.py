@@ -145,9 +145,9 @@ def test_validate_ossec_conf(mock_remove, mock_exists, mock_fcntl, mock_open, er
 
         assert result == {'status': 'OK'}
         assert mock_fcntl.lockf.call_count == 2
-        mock_remove.assert_called_with(join(common.ossec_path, 'queue', 'alerts', 'execa'))
-        mock_exists.assert_called_with(join(common.ossec_path, 'queue', 'alerts', 'execa'))
-        mock_open.assert_called_once_with(join(common.ossec_path, "var", "run", ".api_execq_lock"), 'a+')
+        mock_remove.assert_called_with(join(common.wazuh_path, 'queue', 'alerts', 'execa'))
+        mock_exists.assert_called_with(join(common.wazuh_path, 'queue', 'alerts', 'execa'))
+        mock_open.assert_called_once_with(join(common.wazuh_path, "var", "run", ".api_execq_lock"), 'a+')
 
 
 @patch('wazuh.core.manager.open')

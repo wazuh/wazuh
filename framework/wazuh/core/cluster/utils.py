@@ -22,7 +22,7 @@ from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
-execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
+execq_lockfile = join(common.wazuh_path, "var/run/.api_execq_lock")
 
 
 def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
@@ -102,7 +102,7 @@ def get_manager_status() -> typing.Dict:
                  'wazuh-execd', 'wazuh-integratord', 'wazuh-logcollector', 'wazuh-maild', 'wazuh-remoted',
                  'wazuh-reportd', 'wazuh-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid']
 
-    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.wazuh_path, 'var/run')
     for process in processes:
         pidfile = glob(join(run_dir, f"{process}-*.pid"))
         if exists(join(run_dir, f'{process}.failed')):
@@ -201,7 +201,7 @@ def get_cluster_items():
     """
     try:
         here = os.path.abspath(os.path.dirname(__file__))
-        with open(os.path.join(common.ossec_path, here, 'cluster.json')) as f:
+        with open(os.path.join(common.wazuh_path, here, 'cluster.json')) as f:
             cluster_items = json.load(f)
         # Rebase permissions.
         list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
