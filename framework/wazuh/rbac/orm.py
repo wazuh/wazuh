@@ -2445,7 +2445,7 @@ class RolesRulesManager:
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
 # Only if executing as root
-chown(_auth_db_file, 'ossec', 'ossec')
+chown(_auth_db_file, 'wazuh', 'wazuh')
 os.chmod(_auth_db_file, 0o640)
 
 default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
