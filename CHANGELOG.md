@@ -163,7 +163,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - **API:**
-  - Fixed spec regexes for paths used in /manager/files and /cluster/{node_id}/files endpoints. ([#7131](https://github.com/wazuh/wazuh/issues/7131))
+  - Fixed a path traversal flaw ([CVE-2021-26814](https://nvd.nist.gov/vuln/detail/CVE-2021-26814)) affecting 4.0.0 to 4.0.3 at `/manager/files` and `/cluster/{node_id}/files` endpoints. ([#7131](https://github.com/wazuh/wazuh/issues/7131))
 - **Framework:**
   - Fixed a bug with add_manual(agents) function when authd is disabled. ([#7135](https://github.com/wazuh/wazuh/issues/7135))
 - **Core:**
