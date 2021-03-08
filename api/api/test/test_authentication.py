@@ -83,7 +83,7 @@ def test_generate_secret(mock_open, mock_chown, mock_chmod, mock_token):
 
     calls = [call(authentication._secret_file_path, mode='x')]
     mock_open.has_calls(calls)
-    mock_chown.assert_called_once_with(authentication._secret_file_path, 'ossec', 'ossec')
+    mock_chown.assert_called_once_with(authentication._secret_file_path, 'wazuh', 'wazuh')
     mock_chmod.assert_called_once_with(authentication._secret_file_path, 0o640)
 
     with patch('os.path.exists', return_value=True):

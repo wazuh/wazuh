@@ -158,6 +158,6 @@ if __name__ == '__main__':
         main_logger.info("SIGINT received. Bye!")
     except MemoryError:
         main_logger.error("Directory '/tmp' needs read, write & execution "
-                          "permission for 'ossec' user")
+                          "permission for 'wazuh' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
