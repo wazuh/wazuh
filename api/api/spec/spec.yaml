@@ -15731,7 +15731,7 @@ paths:
   /vulnerability/{agent_id}:
     get:
       tags:
-        - Vulnerabilities
+        - Vulnerability
       summary: "Get vulnerabilities"
       description: "Return the vulnerabilities of an agent"
       operationId: api.controllers.vulnerability_controller.get_vulnerability_agent
