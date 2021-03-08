@@ -10,8 +10,10 @@
  */
 #include <fstream>
 #include <iostream>
+#include <alpm.h>
 #include "sharedDefs.h"
 #include "stringHelper.h"
+#include "timeHelper.h"
 #include "filesystemHelper.h"
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
@@ -259,12 +261,71 @@ static nlohmann::json getDpkgInfo(const std::string& fileName)
     return ret;
 }
 
+struct AlmpDeleter
+{
+    void operator()(alpm_handle_t* handle)
+    {
+        alpm_release(handle);
+    }
+};
+
+static nlohmann::json getPacmanInfo(const std::string& libPath)
+{
+    constexpr auto ROOT_PATH{"/"};
+    nlohmann::json ret;
+    alpm_errno_t err{ALPM_ERR_OK};
+    auto handle {alpm_initialize(ROOT_PATH, libPath.c_str(), &err)};
+    if (!handle)
+    {
+        throw std::runtime_error
+        {
+            std::string{"alpm_initialize failure: "} + alpm_strerror(err)
+        };
+    }
+    const std::unique_ptr<alpm_handle_t, AlmpDeleter> spDbHandle{handle};
+    auto dbLocal{alpm_get_localdb(spDbHandle.get())};
+    if (!dbLocal)
+    {
+        throw std::runtime_error
+        {
+            std::string{"alpm_get_localdb failure: "} + alpm_strerror(alpm_errno(spDbHandle.get()))
+        };
+    }
+    for (auto item{alpm_db_get_pkgcache(dbLocal)}; item; item = alpm_list_next(item))
+    {
+        alpm_pkg_t* pkg{reinterpret_cast<alpm_pkg_t*>(item->data)};
+        nlohmann::json packageInfo;
+        std::string groups;
+        packageInfo["name"]         = alpm_pkg_get_name(pkg);
+        packageInfo["size"]         = alpm_pkg_get_isize(pkg);
+        packageInfo["install_time"] = Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pkg)));
+        for (auto group{alpm_pkg_get_groups(pkg)}; group; group = alpm_list_next(group))
+        {
+            const std::string groupString{reinterpret_cast<char*>(group->data)};
+            groups += groupString + "-";
+        }
+        groups = groups.empty() ? "": groups.substr(0, groups.size()-1);//remove last -
+        packageInfo["groups"]       = groups;
+        packageInfo["version"]      = alpm_pkg_get_version(pkg);
+        packageInfo["architecture"] = alpm_pkg_get_arch(pkg);
+        packageInfo["format"]       = "pkg";// FIXME: Using the pkg in order to support older server versions (in the future this should be replaced with the "pacman" format
+        packageInfo["vendor"]       = "";
+        packageInfo["description"]  = alpm_pkg_get_desc(pkg);
+        ret.push_back(packageInfo);
+    }
+    return ret;
+}
+
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
     if (Utils::existsDir(DPKG_PATH))
     {
         packages = getDpkgInfo(DPKG_STATUS_PATH);
+    }
+    else if (Utils::existsDir(PACMAN_PATH))
+    {
+        packages = getPacmanInfo(PACMAN_PATH);
     }
     else
     {
