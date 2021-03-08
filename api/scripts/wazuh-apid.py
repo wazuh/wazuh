@@ -108,7 +108,7 @@ def start(foreground, root, config_file):
                       f'file WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}')
             sys.exit(1)
 
-    # Drop privileges to ossec
+    # Drop privileges to wazuh
     if not root:
         if api_conf['drop_privileges']:
             os.setgid(common.wazuh_gid())
