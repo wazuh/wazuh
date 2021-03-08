@@ -452,6 +452,69 @@ void test_queryname_error_parse_technique_external_id(void **state) {
     assert_int_equal(-1, ret);
 }
 
+void test_query_tactics_error_filling_technique(void **state)
+{
+    (void) state;
+    int ret;
+    cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"}]");
+    cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
+    cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\",\"external_id\":\"TA001\"}]");
+
+    /* Mitre's techniques IDs query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, id_array);
+
+    /* Mitre's tactics query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, tactic_array);
+
+    /* Mitre tactic's information query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, tactic_info_array);
+
+    /* OSHash  */
+    expect_string(__wrap_OSHash_Add,  key, "T1001");
+    will_return(__wrap_OSHash_Add, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Mitre techniques hash table adding failed. Mitre Technique ID 'T1001' cannot be stored.");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
+    ret = mitre_load();
+    assert_int_equal(-1, ret);
+}
+
+void test_query_tactics_success(void **state)
+{
+    (void) state;
+    int ret;
+    cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"}]");
+    cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
+    cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\",\"external_id\":\"TA001\"}]");
+    cJSON * technique_last = cJSON_Parse(" ");
+
+    /* Mitre's techniques IDs query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, id_array);
+
+    /* Mitre's tactics query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, tactic_array);
+
+    /* Mitre tactic's information query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, tactic_info_array);
+
+    /* OSHash  */
+    expect_string(__wrap_OSHash_Add,  key, "T1001");
+    will_return(__wrap_OSHash_Add, 1);
+
+    /* Last Getting technique ID and name from Mitre's database in Wazuh-DB  */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, technique_last);
+
+    ret = mitre_load();
+    assert_int_equal(0, ret);
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -475,6 +538,9 @@ int main(void) {
         cmocka_unit_test(test_queryname_error_parse),
         cmocka_unit_test(test_queryname_error_parse_technique_name),
         cmocka_unit_test(test_queryname_error_parse_technique_external_id),
+		cmocka_unit_test(test_query_tactics_error_filling_technique),
+		cmocka_unit_test(test_query_tactics_success),
+
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
