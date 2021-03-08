@@ -91,7 +91,7 @@ def generate_secret():
             with open(_secret_file_path, mode='x') as secret_file:
                 secret_file.write(jwt_secret)
             try:
-                chown(_secret_file_path, 'ossec', 'ossec')
+                chown(_secret_file_path, 'wazuh', 'wazuh')
             except PermissionError:
                 pass
             os.chmod(_secret_file_path, 0o640)
