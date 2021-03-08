@@ -588,8 +588,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             """
             for filetype in agent_files:
 
-                filetype_glob = filetype.format(ossec_path=common.wazuh_path, id='*', name='*', ip='*')
-                filetype_agent = {filetype.format(ossec_path=common.wazuh_path, id=a['id'], name=a['name'], ip=a['ip'])
+                filetype_glob = filetype.format(wazuh_path=common.wazuh_path, id='*', name='*', ip='*')
+                filetype_agent = {filetype.format(wazuh_path=common.wazuh_path, id=a['id'], name=a['name'], ip=a['ip'])
                                   for a in agent_info}
 
                 for agent_file in set(glob.iglob(filetype_glob)) & filetype_agent:
@@ -613,10 +613,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             logger.debug2(f"Removing files from agents {', '.join(agents_ids_sublist)}")
 
             # Remove agent related files inside these paths.
-            files_to_remove = ['{ossec_path}/queue/rootcheck/({name}) {ip}->rootcheck',
-                               '{ossec_path}/queue/diff/{name}', '{ossec_path}/queue/agent-groups/{id}',
-                               '{ossec_path}/queue/rids/{id}',
-                               '{ossec_path}/var/db/agents/{name}-{id}.db']
+            files_to_remove = ['{wazuh_path}/queue/rootcheck/({name}) {ip}->rootcheck',
+                               '{wazuh_path}/queue/diff/{name}', '{wazuh_path}/queue/agent-groups/{id}',
+                               '{wazuh_path}/queue/rids/{id}',
+                               '{wazuh_path}/var/db/agents/{name}-{id}.db']
             remove_agent_file_type(files_to_remove)
 
             # Remove agent from groups in the global.db database, using wazuh-db socket.
@@ -713,7 +713,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             if data['merged']:  # worker nodes can only receive agent-groups files
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
-                # and then move each one to the destination directory (<ossec_path>/filename).
+                # and then move each one to the destination directory (<wazuh_path>/filename).
                 for name, content, _ in wazuh.core.cluster.cluster.unmerge_info('agent-groups', zip_path, filename):
                     full_unmerged_name = os.path.join(common.wazuh_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
@@ -727,7 +727,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 # Create destination dir if it doesn't exist.
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
-                # Move the file from zipdir (directory containing unzipped files) to <ossec_path>/filename.
+                # Move the file from zipdir (directory containing unzipped files) to <wazuh_path>/filename.
                 safe_move(os.path.join(zip_path, filename), full_filename_path,
                           permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
                           ownership=(common.ossec_uid(), common.ossec_gid())
