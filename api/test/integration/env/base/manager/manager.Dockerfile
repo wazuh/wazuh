@@ -30,4 +30,4 @@ RUN if [ "$manager_type" = "master" ]; then \
     fi
 
 # HEALTHCHECK
-HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /configuration_files/healthcheck/healthcheck.py || exit 1
+HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /var/ossec/framework/python/bin/python3 /configuration_files/healthcheck/healthcheck.py || exit 1

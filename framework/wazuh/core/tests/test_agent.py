@@ -63,7 +63,7 @@ wpk_versions = [['v3.10.0', '251b1af81d45d291540d8589b124302613f0a4e0'],
 
 class InitAgent:
 
-    def __init__(self, data_path=test_data_path):
+    def __init__(self, data_path=test_data_path, db_name='schema_global_test.sql'):
         """
         Sets up necessary test environment for agents:
             * One active agent.
@@ -76,7 +76,7 @@ class InitAgent:
         self.global_db = sqlite3.connect(':memory:')
         self.global_db.row_factory = sqlite3.Row
         self.cur = self.global_db.cursor()
-        with open(os.path.join(data_path, 'schema_global_test.sql')) as f:
+        with open(os.path.join(data_path, db_name)) as f:
             self.cur.executescript(f.read())
 
         self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id'}

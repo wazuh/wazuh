@@ -495,6 +495,15 @@ x-rbac-catalog:
         actions: ['task:status']
         resources: ['*:*:*']
         effect: "deny"
+    'vulnerability:read':
+      description: "Allow reading agents' vulnerabilities information"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'vulnerability:read' ]
+        resources: [ 'agent:id:011', 'agent:group:us-west' ]
+        effect: "allow"
 
 components:
   responses:
@@ -3750,6 +3759,13 @@ components:
         - syscheck
         - rootcheck
         - wmodules
+    cve:
+      in: query
+      name: cve
+      description: "Filter by CVE"
+      schema:
+        type: string
+        format: alphanumeric
     decoder_name:
       in: query
       name: decoder_names
@@ -3975,7 +3991,7 @@ components:
     name:
       in: query
       name: name
-      description: "Filter by agent name"
+      description: "Filter by name"
       schema:
         type: string
         format: alphanumeric
@@ -4447,6 +4463,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    cve_version:
+      in: query
+      name: version
+      description: "Filter by CVE version"
+      schema:
+        type: string
+        format: alphanumeric_symbols
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -5258,6 +5281,8 @@ tags:
     description: "File integrity monitoring"
   - name: Syscollector
     description: "Syscollector information"
+  - name: Vulnerability
+    description: "Vulnerabilities information"
 
 security:
   - jwt: []
@@ -15702,6 +15727,63 @@ paths:
                   total_failed_items: 0
                   failed_items: [ ]
                 message: All specified task's status were returned
+
+  /vulnerability/{agent_id}:
+    get:
+      tags:
+        - Vulnerabilities
+      summary: "Get vulnerabilities"
+      description: "Return the vulnerabilities of an agent"
+      operationId: api.controllers.vulnerability_controller.get_vulnerability_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/cve'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/cve_version'
+      responses:
+        '200':
+          description: "Get agent vulnerabilities"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - cve: CVE-2020-27350
+                      architecture: amd64
+                      version: 1.2.32ubuntu0.1
+                      name: apt
+                    - cve: CVE-2019-18276
+                      architecture: amd64
+                      version: 4.3-14ubuntu1.4
+                      name: bash
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: All selected vulnerabilities were returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
 
 externalDocs:
   description: "Find more about Wazuh API usage"
