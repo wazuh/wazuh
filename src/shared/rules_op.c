@@ -134,6 +134,8 @@ int OS_ReadXMLRules(const char *rulefile,
 
     const char *xml_mitre = "mitre";
     const char *xml_mitre_id = "id";
+    const char *xml_mitre_tactic_id = "tacticID";
+    const char *xml_mitre_technique_id = "techniqueID";
 
     char *rulepath = NULL;
 
@@ -933,6 +935,8 @@ int OS_ReadXMLRules(const char *rulefile,
                 } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
                     int ind;
                     int l;
+                    int tactic_id_inarray = 0;
+                    int technique_id_inarray = 0;
                     XML_NODE mitre_opt = NULL;
                     mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
 
@@ -965,6 +969,46 @@ int OS_ReadXMLRules(const char *rulefile,
                                     mitre_size++;
                                 }
                             }
+                        } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_tactic_id) == 0) {
+                            tactic_id_inarray = 1;
+                            if (strlen(mitre_opt[ind]->content) == 0) {
+                                mwarn("No Mitre Tactic ID found for rule '%d'",
+                                    config_ruleinfo->sigid);
+                            } else {
+                                int inarray = 0;
+                                for (l = 0; l < mitre_size; l++) {
+                                    if (strcmp(config_ruleinfo->mitre_tactic_id[l], mitre_opt[ind]->content) == 0) {
+                                        inarray = 1;
+                                    }
+                                }
+                                if (!inarray) {
+                                    os_realloc(config_ruleinfo->mitre_tactic_id, (mitre_size + 2) * sizeof(char *),
+                                                config_ruleinfo->mitre_tactic_id);
+                                    os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_tactic_id[mitre_size]);
+                                    config_ruleinfo->mitre_tactic_id[mitre_size + 1] = NULL;
+                                    mitre_size++;
+                                }
+                            }
+                        } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_technique_id) == 0) {
+                            technique_id_inarray = 1;
+                            if (strlen(mitre_opt[ind]->content) == 0) {
+                                mwarn("No Mitre Technique ID found for rule '%d'",
+                                    config_ruleinfo->sigid);
+                            } else {
+                                int inarray = 0;
+                                for (l = 0; l < mitre_size; l++) {
+                                    if (strcmp(config_ruleinfo->mitre_technique_id[l], mitre_opt[ind]->content) == 0) {
+                                        inarray = 1;
+                                    }
+                                }
+                                if (!inarray) {
+                                    os_realloc(config_ruleinfo->mitre_technique_id, (mitre_size + 2) * sizeof(char *),
+                                                config_ruleinfo->mitre_technique_id);
+                                    os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_technique_id[mitre_size]);
+                                    config_ruleinfo->mitre_technique_id[mitre_size + 1] = NULL;
+                                    mitre_size++;
+                                }
+                            }
                         } else {
                             merror("Invalid option '%s' for "
                             "rule '%d'", mitre_opt[ind]->element,
@@ -977,6 +1021,10 @@ int OS_ReadXMLRules(const char *rulefile,
                             OS_ClearNode(mitre_opt);
                             goto cleanup;
                         }
+                    }
+                    if(tactic_id_inarray == 0 || technique_id_inarray == 0) {
+                        mwarn("tacticID and techniqueID should be defined in rule '%d'",
+                                config_ruleinfo->sigid);
                     }
                     OS_ClearNode(mitre_opt);
                 }

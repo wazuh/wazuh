@@ -210,6 +210,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
     const char *xml_mitre = "mitre";
     const char *xml_mitre_id = "id";
+    const char *xml_mitre_tactic_id = "tacticID";
+    const char *xml_mitre_technique_id = "techniqueID";
 
     char *rulepath = NULL;
     char *regex = NULL;
@@ -307,8 +309,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 goto cleanup;
             }
             if ((!node[i]->attributes) || (!node[i]->values)
-                || (!node[i]->values[0]) || (!node[i]->attributes[0]) 
-                || (strcasecmp(node[i]->attributes[0], "name") != 0) 
+                || (!node[i]->values[0]) || (!node[i]->attributes[0])
+                || (strcasecmp(node[i]->attributes[0], "name") != 0)
                 || (node[i]->attributes[1])) {
                 smerror(log_msg, "rules_op: Invalid root element '%s'."
                        "Only the group name is allowed", node[i]->element);
@@ -1441,6 +1443,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
                         int ind;
                         int l;
+                        int tactic_id_inarray = 0;
+                        int technique_id_inarray = 0;
                         XML_NODE mitre_opt = NULL;
                         mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
 
@@ -1472,6 +1476,46 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                         mitre_size++;
                                     }
                                 }
+                            } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_tactic_id) == 0) {
+                                tactic_id_inarray = 1;
+                                if (strlen(mitre_opt[ind]->content) == 0) {
+                                    smwarn(log_msg, "No Mitre Tactic ID found for rule '%d'",
+                                        config_ruleinfo->sigid);
+                                } else {
+                                    int inarray = 0;
+                                    for (l = 0; l < mitre_size; l++) {
+                                        if (strcmp(config_ruleinfo->mitre_tactic_id[l], mitre_opt[ind]->content) == 0) {
+                                            inarray = 1;
+                                        }
+                                    }
+                                    if (!inarray) {
+                                        os_realloc(config_ruleinfo->mitre_tactic_id, (mitre_size + 2) * sizeof(char *),
+                                                   config_ruleinfo->mitre_tactic_id);
+                                        os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_tactic_id[mitre_size]);
+                                        config_ruleinfo->mitre_tactic_id[mitre_size + 1] = NULL;
+                                        mitre_size++;
+                                    }
+                                }
+                            } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_technique_id) == 0) {
+                                technique_id_inarray = 1;
+                                if (strlen(mitre_opt[ind]->content) == 0) {
+                                    smwarn(log_msg, "No Mitre Technique ID found for rule '%d'",
+                                        config_ruleinfo->sigid);
+                                } else {
+                                    int inarray = 0;
+                                    for (l = 0; l < mitre_size; l++) {
+                                        if (strcmp(config_ruleinfo->mitre_technique_id[l], mitre_opt[ind]->content) == 0) {
+                                            inarray = 1;
+                                        }
+                                    }
+                                    if (!inarray) {
+                                        os_realloc(config_ruleinfo->mitre_technique_id, (mitre_size + 2) * sizeof(char *),
+                                                   config_ruleinfo->mitre_technique_id);
+                                        os_strdup(mitre_opt[ind]->content, config_ruleinfo->mitre_technique_id[mitre_size]);
+                                        config_ruleinfo->mitre_technique_id[mitre_size + 1] = NULL;
+                                        mitre_size++;
+                                    }
+                                }
                             } else {
                                 smerror(log_msg, "Invalid option '%s' for rule '%d'", mitre_opt[ind]->element,
                                         config_ruleinfo->sigid);
@@ -1479,6 +1523,10 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                 OS_ClearNode(mitre_opt);
                                 goto cleanup;
                             }
+                        }
+                        if(tactic_id_inarray == 0 || technique_id_inarray == 0) {
+                            smwarn(log_msg, "tacticID and techniqueID should be defined in rule '%d'",
+                                        config_ruleinfo->sigid);
                         }
                         OS_ClearNode(mitre_opt);
 
