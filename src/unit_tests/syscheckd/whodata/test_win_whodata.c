@@ -6643,6 +6643,8 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     ACL acl;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
+    acl.AceCount = 1;
+
     expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
 
     will_return(__wrap_FOREVER, 1);

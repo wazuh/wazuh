@@ -94,18 +94,42 @@ STATIC int restore_policies = 0;
 // Whodata function headers
 void restore_sacls();
 int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
-int is_valid_sacl(PACL sacl, int is_file);
 unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attribute__((unused)) void *_void, EVT_HANDLE event);
 int set_policies();
 void set_subscription_query(wchar_t *query);
 extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 int restore_audit_policies();
-int check_object_sacl(char *obj, int is_file);
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 void notify_SACL_change(char *dir);
 int whodata_path_filter(char **path);
 void whodata_adapt_path(char **path);
 int whodata_check_arch();
+
+/**
+ * @brief Checks the sacl status of an object.
+ *
+ * @param obj String with the object to be checked
+ * @param is_file Boolean to check if it is file
+
+ * @return Returns the sacl status of an object.
+ * @retval 0: if the object has valid sacl.
+ * @retval 1: if the object has invalid sacl.
+ * @retval 2: if the object cannot be opened, set privileges or obtain security information.
+ */
+int check_object_sacl(char *obj, int is_file);
+
+/**
+ * @brief Checks if sacl is valid
+ *
+ * @param sacl PACL with the sacl to be checked
+ * @param is_file Boolean to check if it is file
+
+ * @return Returns the status of the sacl passed as a parameter
+ * @retval 0: if sacl is valid
+ * @retval 1: if sacl is invalid or NULL
+ * @retval 2: if we cannot allocate the everyone_sid variable
+ */
+int is_valid_sacl(PACL sacl, int is_file);
 
 // Whodata list operations
 char *get_whodata_path(const short unsigned int *win_path);
@@ -150,7 +174,9 @@ int set_winsacl(const char *dir, int position) {
     ZeroMemory(&old_sacl_info, sizeof(ACL_SIZE_INFORMATION));
 
     // Check if the sacl has what the whodata scanner needs
-    switch (is_valid_sacl(old_sacl, (syscheck.wdata.dirs_status[position].object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
+    int is_file = syscheck.wdata.dirs_status[position].object_type == WD_STATUS_FILE_TYPE ? 1 : 0;
+
+    switch (is_valid_sacl(old_sacl, is_file)) {
     case 0:
         // It is not necessary to configure the SACL of the directory
         retval = 0;
@@ -169,6 +195,9 @@ int set_winsacl(const char *dir, int position) {
                 goto end;
             }
         }
+        break;
+    default:
+        // Can't access everyone_sid variable, nothing to do
         break;
     }
 
@@ -936,7 +965,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     d_status->status |= WD_STATUS_EXISTS;
                 } else {
                     // Check if the SACL is invalid
-                    if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0) == 1) {
+                    if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE)) == 1) {
                         minfo(FIM_WHODATA_SACL_CHANGED, syscheck.dir[i]);
                         // Mark the directory to prevent its children from
                         // sending partial whodata alerts
