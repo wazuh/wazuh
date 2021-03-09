@@ -70,7 +70,7 @@ class Technique(Base):
         deprecated: Boolean indicating if this technique is deprecated
         subtechnique_of: ID of the parent technique, NULL otherwise
     """
-    __tablename__ = "techniques"
+    __tablename__ = "technique"
 
     id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
@@ -178,7 +178,7 @@ class SystemRequirement(Base):
     requirement = Column(const.REQUIREMENT_t, String, primary_key=True)
 
 
-class Groups(Base):
+class Group(Base):
     """
     In this table are stored the groups of json file
     The information stored:
@@ -191,7 +191,7 @@ class Groups(Base):
         revoked_by: ID of the group that revokes this one, NULL otherwise
         deprecated: Boolean indicating if this group is deprecated
     """
-    __tablename__ = "groups"
+    __tablename__ = "group"
 
     id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
@@ -228,7 +228,7 @@ class Software(Base):
     deprecated = Column(const.DEPRECATED_t, Boolean, default=False)
 
 
-class Mitigations(Base):
+class Mitigation(Base):
     """
     In this table are stored the mitigations of json file
     The information stored:
@@ -241,7 +241,7 @@ class Mitigations(Base):
         revoked_by: ID of the mitigation that revokes this one, NULL otherwise
         deprecated: Boolean indicating if this mitigation is deprecated
     """
-    __tablename__ = "mitigations"
+    __tablename__ = "mitigation"
 
     id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
@@ -355,7 +355,7 @@ class Use(Base):
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
 
 
-class Tactics(Base):
+class Tactic(Base):
     """
     In this table are stored the tactics of json file
     The information stored:
@@ -366,7 +366,7 @@ class Tactics(Base):
         modified_time: Last modification date
         short_name: Short name of the tactic
     """
-    __tablename__ = "tactics"
+    __tablename__ = "tactic"
 
     id = Column(const.ID_t, String, primary_key=True)
     name = Column(const.NAME_t, String, nullable=False)
@@ -376,20 +376,20 @@ class Tactics(Base):
     short_name = Column(const.SHORT_NAME_t, String, default=None)
 
 
-class Phases(Base):
+class Phase(Base):
     """
     This table stores the relationship between techniques and the tactics table.
     The information stored:
         tactic_id: Used to identify the tactic (FK) (PK)
         tech_id: Used to identify the technique (FK) (PK)
     """
-    __tablename__ = "phases"
+    __tablename__ = "phase"
 
-    tactic_id = Column(const.TACTIC_ID_t, String, ForeignKey(const.TACTICS_ID_fk, ondelete='CASCADE'), primary_key=True)
+    tactic_id = Column(const.TACTIC_ID_t, String, ForeignKey(const.TACTIC_ID_fk, ondelete='CASCADE'), primary_key=True)
     tech_id = Column(const.TECH_ID_t, String, ForeignKey(const.TECHNIQUE_ID_fk, ondelete='CASCADE'), primary_key=True)
 
 
-def parse_table_(function, data_object):
+def parse_table(function, data_object):
     row = {}
     row[const.ID_t] = data_object[const.ID_t]
     row[const.NAME_t] = data_object[const.NAME_t]
@@ -401,12 +401,12 @@ def parse_table_(function, data_object):
         row[const.CREATED_t] = datetime.strptime(data_object[const.CREATED_j], const.TIME_FORMAT)
     if const.MODIFIED_j in data_object:
         row[const.MODIFIED_t] = datetime.strptime(data_object[const.MODIFIED_j], const.TIME_FORMAT)
-    if function.__name__ == 'Tactics':
+    if function.__name__ == 'Tactic':
         if const.SHORT_NAME_j in data_object:
             row[const.SHORT_NAME_t] = data_object[const.SHORT_NAME_j]
-    elif function.__name__ == 'Groups' or \
+    elif function.__name__ == 'Group' or \
             function.__name__ == 'Software' or \
-            function.__name__ == 'Mitigations':
+            function.__name__ == 'Mitigation':
         if const.MITRE_VERSION_j in data_object:
             row[const.MITRE_VERSION_t] = data_object[const.MITRE_VERSION_j]
         if const.DEPRECATED_j in data_object:
@@ -575,7 +575,7 @@ def parse_list_phases(session, phase_list):
     row = {}
 
     row[const.TECH_ID_t] = phase_list[0]
-    tactic = session.query(Tactics).filter_by(short_name=phase_list[1]).first()
+    tactic = session.query(Tactic).filter_by(short_name=phase_list[1]).first()
     row[const.TACTIC_ID_t] = tactic.id
 
     return row
@@ -605,6 +605,7 @@ def parse_json(pathfile, session, database):
         metadata.key = const.DB_VERSION_t
         metadata.value = const.DB_VERSION_N_t
         session.add(metadata)
+
         with open(pathfile) as json_file:
             datajson = json.load(json_file)
             metadata = Metadata()
@@ -613,17 +614,17 @@ def parse_json(pathfile, session, database):
             session.add(metadata)
             for data_object in datajson[const.OBJECT_j]:
                 if data_object[const.TYPE_j] == const.INTRUSION_SET_j:
-                    group = parse_table_(Groups, data_object)
+                    group = parse_table(Group, data_object)
                     groups.append(group)
                 elif data_object[const.TYPE_j] == const.COURSE_OF_ACTION_j:
-                    mitigation = parse_table_(Mitigations, data_object)
+                    mitigation = parse_table(Mitigation, data_object)
                     mitigations.append(mitigation)
                 elif data_object[const.TYPE_j] == const.MALWARE_j or \
                         data_object[const.TYPE_j] == const.TOOL_j:
-                    software = parse_table_(Software, data_object)
+                    software = parse_table(Software, data_object)
                     softwares.append(software)
                 elif data_object[const.TYPE_j] == const.TACTIC_j:
-                    tactic = parse_table_(Tactics, data_object)
+                    tactic = parse_table(Tactic, data_object)
                     tactics.append(tactic)
                 elif data_object[const.TYPE_j] == const.ATTACK_PATTERN_j:
                     technique = parse_json_techniques(data_object, phases_table)
@@ -640,26 +641,26 @@ def parse_json(pathfile, session, database):
         session.bulk_insert_mappings(Impact, impact_rows_list)
         session.bulk_insert_mappings(Permission, permission_req_rows_list)
         session.bulk_insert_mappings(SystemRequirement, requirement_rows_list)
-        session.bulk_insert_mappings(Groups, groups)
-        session.bulk_insert_mappings(Mitigations, mitigations)
+        session.bulk_insert_mappings(Group, groups)
+        session.bulk_insert_mappings(Mitigation, mitigations)
         session.bulk_insert_mappings(Software, softwares)
-        session.bulk_insert_mappings(Tactics, tactics)
+        session.bulk_insert_mappings(Tactic, tactics)
         session.commit()
 
         phase_rows_list = []
         for table in phases_table:
             phase = parse_list_phases(session, table)
             phase_rows_list.append(phase)
-        session.bulk_insert_mappings(Phases, phase_rows_list)
+        session.bulk_insert_mappings(Phase, phase_rows_list)
         session.commit()
 
         for table in relationship_table_revoked_by:
             if table[0].startswith(const.INTRUSION_SET_j):
-                groups = session.query(Groups).get(table[0])
+                groups = session.query(Group).get(table[0])
                 groups.revoked_by = table[1]
 
             elif table[0].startswith(const.COURSE_OF_ACTION_j):
-                mitigations = session.query(Mitigations).get(table[0])
+                mitigations = session.query(Mitigation).get(table[0])
                 mitigations.revoked_by = table[1]
 
             elif table[0].startswith(const.MALWARE_j) or table[0].startswith(const.TOOL_j):
