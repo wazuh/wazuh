@@ -2,7 +2,7 @@
 #define _FIM_DB_DUMP_H
 constexpr auto FIM_SQL_DB_DUMP
 {
-	R"(
+    R"(
 	PRAGMA foreign_keys=OFF;
 	BEGIN TRANSACTION;
 	CREATE TABLE entry_path (    path TEXT NOT NULL,    inode_id INTEGER,    mode INTEGER,    last_event INTEGER,    entry_type INTEGER,    scanned INTEGER,    options INTEGER,    checksum TEXT NOT NULL,    PRIMARY KEY(path));

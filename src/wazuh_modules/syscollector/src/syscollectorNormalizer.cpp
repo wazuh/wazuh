@@ -15,8 +15,8 @@
 
 SysNormalizer::SysNormalizer(const std::string& configFile,
                              const std::string& target)
-: m_typeExclusions{getTypeValues(configFile, target, "exclusions")}
-, m_typeDictionary{getTypeValues(configFile, target, "dictionary")}
+    : m_typeExclusions{getTypeValues(configFile, target, "exclusions")}
+    , m_typeDictionary{getTypeValues(configFile, target, "dictionary")}
 {
 }
 
@@ -25,6 +25,7 @@ nlohmann::json SysNormalizer::removeExcluded(const std::string& type,
 {
     nlohmann::json ret(data);
     const auto exclusionsIt{m_typeExclusions.find(type)};
+
     if (exclusionsIt != m_typeExclusions.cend())
     {
         for (const auto& exclusionItem : exclusionsIt->second)
@@ -33,11 +34,13 @@ nlohmann::json SysNormalizer::removeExcluded(const std::string& type,
             {
                 std::regex pattern{exclusionItem["pattern"].get_ref<const std::string&>()};
                 const auto& fieldName{exclusionItem["field_name"].get_ref<const std::string&>()};
+
                 if (ret.is_array())
                 {
                     for (auto item{ret.begin()}; item != ret.end(); ++item)
                     {
                         const auto fieldIt{item->find(fieldName)};
+
                         if (fieldIt != item->end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
                         {
                             ret.erase(item);
@@ -47,6 +50,7 @@ nlohmann::json SysNormalizer::removeExcluded(const std::string& type,
                 else
                 {
                     const auto fieldIt{ret.find(fieldName)};
+
                     if (fieldIt != ret.end() && std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
                     {
                         ret.clear();
@@ -54,11 +58,13 @@ nlohmann::json SysNormalizer::removeExcluded(const std::string& type,
                 }
             }
             // LCOV_EXCL_START
-            catch(...)
+            catch (...)
             {}
+
             // LCOV_EXCL_STOP
         }
     }
+
     return ret;
 }
 
@@ -70,36 +76,43 @@ static void normalizeItem(const nlohmann::json& dictionary,
     {
         const auto itFindPattern{dictItem.find("find_pattern")};
         const auto itFindField{dictItem.find("find_field")};
+
         if (itFindPattern != dictItem.end() && itFindField != dictItem.end())
         {
             const auto fieldIt{item.find(itFindField->get_ref<const std::string&>())};
             std::regex pattern{itFindPattern->get_ref<const std::string&>()};
+
             if (fieldIt == item.end() ||
-                !std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
+                    !std::regex_match(fieldIt->get_ref<const std::string&>(), pattern))
             {
                 //no field in the item or no matching, we continue
                 continue;
             }
         }
-        else if(itFindPattern != dictItem.end() || itFindField != dictItem.end())
+        else if (itFindPattern != dictItem.end() || itFindField != dictItem.end())
         {
             //we won't evaluate an incomplete item.
             continue;
         }
+
         const auto itReplacePattern{dictItem.find("replace_pattern")};
         const auto itReplaceField{dictItem.find("replace_field")};
         const auto itReplaceValue{dictItem.find("replace_value")};
+
         if (itReplacePattern != dictItem.end() && itReplaceField != dictItem.end() && itReplaceValue != dictItem.end())
         {
             std::regex pattern{itReplacePattern->get_ref<const std::string&>()};
             const auto fieldIt{item.find(itReplaceField->get_ref<const std::string&>())};
+
             if (fieldIt != item.end())
             {
                 *fieldIt = std::regex_replace(fieldIt->get_ref<const std::string&>(), pattern, itReplaceValue->get_ref<const std::string&>());
             }
         }
+
         const auto itAddField{dictItem.find("add_field")};
         const auto itAddValue{dictItem.find("add_value")};
+
         if (itAddField != dictItem.end() && itAddValue != dictItem.end())
         {
             item[itAddField->get_ref<const std::string&>()] = itAddValue->get_ref<const std::string&>();
@@ -112,6 +125,7 @@ nlohmann::json SysNormalizer::normalize(const std::string& type,
 {
     nlohmann::json ret(data);
     const auto dictionaryIt{m_typeDictionary.find(type)};
+
     if (dictionaryIt != m_typeDictionary.cend())
     {
         if (ret.is_array())
@@ -126,6 +140,7 @@ nlohmann::json SysNormalizer::normalize(const std::string& type,
             normalizeItem(dictionaryIt->second, ret);
         }
     }
+
     return ret;
 }
 
@@ -134,14 +149,17 @@ std::map<std::string, nlohmann::json> SysNormalizer::getTypeValues(const std::st
                                                                    const std::string& type)
 {
     std::map<std::string, nlohmann::json> ret;
+
     try
     {
         std::ifstream config{ configFile };
         nlohmann::json data;
+
         if (config.is_open())
         {
             const nlohmann::json& jsonConfigFile { nlohmann::json::parse(config) };
             const auto it{jsonConfigFile.find(type)};
+
             if (it != jsonConfigFile.end())
             {
                 for (const auto& item : *it)
@@ -154,8 +172,9 @@ std::map<std::string, nlohmann::json> SysNormalizer::getTypeValues(const std::st
             }
         }
     }
-    catch(...)
+    catch (...)
     {
     }
+
     return ret;
 }

@@ -66,10 +66,12 @@ void DBSyncImplementation::syncRowData(const DBSYNC_HANDLE      handle,
 {
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txn) };
+
     if (std::find(tnxCtx->m_tables.begin(), tnxCtx->m_tables.end(), json.at("table")) == tnxCtx->m_tables.end())
     {
         throw dbsync_error{INVALID_TABLE};
     }
+
     ctx->m_dbEngine->syncTableRowData(json.at("table"),
                                       json.at("data"),
                                       callback,
@@ -96,10 +98,12 @@ std::shared_ptr<DBSyncImplementation::DbEngineContext> DBSyncImplementation::dbE
 {
     std::lock_guard<std::mutex> lock{m_mutex};
     const auto it{ m_dbSyncContexts.find(handle) };
+
     if (it == m_dbSyncContexts.end())
     {
         throw dbsync_error { INVALID_HANDLE };
     }
+
     return it->second;
 }
 
@@ -121,7 +125,7 @@ TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE      hand
     };
     ctx->addTransactionContext(spTransactionContext);
     ctx->m_dbEngine->initializeStatusField(spTransactionContext->m_tables);
-    
+
     return spTransactionContext.get();
 }
 
@@ -130,12 +134,12 @@ void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
 {
     const auto& ctx{ dbEngineContext(handle) };
     const auto& tnxCtx { ctx->transactionContext(txn) };
-    
+
     ctx->m_dbEngine->deleteRowsByStatusField(tnxCtx->m_tables);
     ctx->deleteTransactionContext(txn);
 }
 
-void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle, 
+void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
                                       const TXN_HANDLE      txnHandle,
                                       const ResultCallback  callback)
 {
@@ -145,7 +149,7 @@ void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
     ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback);
 }
 
-void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle, 
+void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle,
                                       const nlohmann::json& json,
                                       const ResultCallback& callback)
 {
@@ -155,7 +159,7 @@ void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle,
                                 callback);
 }
 
-void DBSyncImplementation::addTableRelationship(const DBSYNC_HANDLE   handle, 
+void DBSyncImplementation::addTableRelationship(const DBSYNC_HANDLE   handle,
                                                 const nlohmann::json& json)
 {
     const auto ctx{ dbEngineContext(handle) };

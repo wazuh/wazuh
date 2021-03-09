@@ -15,12 +15,12 @@
 
 class FilesystemUtilsTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    FilesystemUtilsTest() = default;
-    virtual ~FilesystemUtilsTest() = default;
+        FilesystemUtilsTest() = default;
+        virtual ~FilesystemUtilsTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 #endif //FILESYSTEM_HELPER_TESTS_H

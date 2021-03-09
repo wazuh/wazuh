@@ -18,11 +18,11 @@ namespace RSync
     template <typename Type>
     class IMessageCreator
     {
-    public:
-        // LCOV_EXCL_START
-        virtual ~IMessageCreator() = default;
-        // LCOV_EXCL_STOP
-        virtual void send(const ResultCallback callback, const nlohmann::json& config, const Type& data) = 0;
+        public:
+            // LCOV_EXCL_START
+            virtual ~IMessageCreator() = default;
+            // LCOV_EXCL_STOP
+            virtual void send(const ResultCallback callback, const nlohmann::json& config, const Type& data) = 0;
     };
 };// namespace RSync
 

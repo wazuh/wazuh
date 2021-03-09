@@ -15,16 +15,16 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class DBSyncFimIntegrationTest : public ::testing::Test 
+class DBSyncFimIntegrationTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    DBSyncFimIntegrationTest();
-    virtual ~DBSyncFimIntegrationTest();
+        DBSyncFimIntegrationTest();
+        virtual ~DBSyncFimIntegrationTest();
 
-    void SetUp() override;
-    void TearDown() override;
-    const DBSYNC_HANDLE m_dbHandle;
+        void SetUp() override;
+        void TearDown() override;
+        const DBSYNC_HANDLE m_dbHandle;
 };
 
 #endif // _DBYSNC_FIM_INTEGRATION_TEST_H

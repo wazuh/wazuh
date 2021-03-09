@@ -12,9 +12,9 @@
 #ifndef _SHARED_DEFS_H
 #define _SHARED_DEFS_H
 
-constexpr auto WM_SYS_HW_DIR{"/sys/class/dmi/id/board_serial"};
-constexpr auto WM_SYS_CPU_DIR{"/proc/cpuinfo"};
-constexpr auto WM_SYS_MEM_DIR{"/proc/meminfo"};
+constexpr auto WM_SYS_HW_DIR {"/sys/class/dmi/id/board_serial"};
+constexpr auto WM_SYS_CPU_DIR {"/proc/cpuinfo"};
+constexpr auto WM_SYS_MEM_DIR {"/proc/meminfo"};
 constexpr auto WM_SYS_IFDATA_DIR {"/sys/class/net/"};
 constexpr auto WM_SYS_IF_FILE {"/etc/network/interfaces"};
 constexpr auto WM_SYS_IF_DIR_RH {"/etc/sysconfig/network-scripts/"};
@@ -25,7 +25,10 @@ constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 
 constexpr auto UNKNOWN_VALUE { " " };
-constexpr auto MAC_ADDRESS_COUNT_SEGMENTS {6ull};
+constexpr auto MAC_ADDRESS_COUNT_SEGMENTS
+{
+    6ull
+};
 
 #define ROUNDUP(a) ((a) > 0 ? (1 + (((a)-1) | (sizeof(long) - 1))) : sizeof(long))
 

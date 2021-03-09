@@ -20,8 +20,8 @@
 
 namespace PackageWindowsHelper
 {
-    constexpr auto WIN_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"};
-    constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
+    constexpr auto WIN_REG_HOTFIX {"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"};
+    constexpr auto VISTA_REG_HOTFIX {"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
 
     static std::string extractHFValue(std::string input)
     {
@@ -29,11 +29,13 @@ namespace PackageWindowsHelper
         std::string ret;
         input = Utils::toUpperCase(input);
         std::smatch match;
+
         if (std::regex_search(input, match, std::regex(KB_FORMAT_REGEX_STR)))
         {
             // KB format is correct
             ret = match[1];
         }
+
         return ret;
     }
 
@@ -44,15 +46,18 @@ namespace PackageWindowsHelper
             std::set<std::string> hotfixes;
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
             const auto packages{root.enumerate()};
+
             for (const auto& package : packages)
             {
                 if (Utils::startsWith(package, "Package_"))
                 {
                     std::string value;
                     Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
+
                     if (packageReg.string("InstallLocation", value))
                     {
                         const auto hfValue { extractHFValue(value) };
+
                         if (!hfValue.empty())
                         {
                             hotfixes.insert(hfValue);
@@ -60,6 +65,7 @@ namespace PackageWindowsHelper
                     }
                 }
             }
+
             for (const auto& hotfix : hotfixes)
             {
                 nlohmann::json hotfixValue;
@@ -67,7 +73,7 @@ namespace PackageWindowsHelper
                 data.push_back(hotfixValue);
             }
         }
-        catch(...)
+        catch (...)
         {
         }
     }
@@ -79,20 +85,23 @@ namespace PackageWindowsHelper
             std::set<std::string> hotfixes;
             Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
             const auto packages{root.enumerate()};
+
             for (const auto& package : packages)
             {
                 const auto hfValue { extractHFValue(package) };
+
                 if (!hfValue.empty())
                 {
                     hotfixes.insert(hfValue);
                 }
             }
+
             for (const auto& hotfix : hotfixes)
             {
                 data.push_back({{"hotfix", hotfix}});
             }
         }
-        catch(...)
+        catch (...)
         {
         }
     }

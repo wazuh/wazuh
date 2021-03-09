@@ -12,8 +12,8 @@
 #include "sqlite_wrapper.h"
 #include "db_exception.h"
 
-constexpr auto TEMP_TEST_DB_PATH{"temp_test.db"};
-constexpr auto TEMP_DB_PATH{"temp.db"};
+constexpr auto TEMP_TEST_DB_PATH {"temp_test.db"};
+constexpr auto TEMP_DB_PATH {"temp.db"};
 
 void SQLiteTest::SetUp() {};
 
@@ -29,12 +29,12 @@ using namespace DbSync;
 
 class ConnectionWrapper: public IConnection
 {
-public:
-    ConnectionWrapper() = default;
-    ~ConnectionWrapper() = default;
-    MOCK_METHOD(void, execute, (const std::string&), (override));
-    MOCK_METHOD(void, close, (), (override));
-    MOCK_METHOD((const std::shared_ptr<sqlite3>&), db, (), (const override));
+    public:
+        ConnectionWrapper() = default;
+        ~ConnectionWrapper() = default;
+        MOCK_METHOD(void, execute, (const std::string&), (override));
+        MOCK_METHOD(void, close, (), (override));
+        MOCK_METHOD((const std::shared_ptr<sqlite3>&), db, (), (const override));
 };
 
 

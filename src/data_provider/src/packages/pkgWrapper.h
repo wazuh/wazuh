@@ -24,152 +24,157 @@ static const std::string PLIST_BINARY_START { "bplist00"            };
 
 class PKGWrapper final : public IPackageWrapper
 {
-public:
-    explicit PKGWrapper(const PackageContext& ctx)
-      : m_format{"pkg"}
-    {
-        getPkgData(ctx.filePath+ "/" + ctx.package + "/" + APP_INFO_PATH);
-    }
-
-    ~PKGWrapper() = default;
-
-    std::string name() const override
-    {
-        return m_name;
-    }
-    std::string version() const override
-    {
-        return m_version;
-    }
-    std::string groups() const override
-    {
-        return m_groups;
-    }
-    std::string description() const override
-    {
-        return m_description;
-    }
-    std::string architecture() const override
-    {
-        return m_architecture;
-    }
-    std::string format() const override
-    {
-        return m_format;
-    }
-    std::string osPatch() const override
-    {
-        return m_osPatch;
-    }
-
-private:
-    void getPkgData(const std::string& filePath)
-    {
-        const auto isBinaryFnc
+    public:
+        explicit PKGWrapper(const PackageContext& ctx)
+            : m_format{"pkg"}
         {
-            [&filePath]()
-            {
-                // If first line is "bplist00" it's a binary plist file
-                std::fstream file {filePath, std::ios_base::in};
-                std::string line;
-                return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
-            }
-        };
-        const auto isBinary { isBinaryFnc() };
+            getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
+        }
 
-        static const auto getValueFnc
-        {
-            [](const std::string& val)
-            {
-                const auto start{val.find(">")};
-                const auto end{val.rfind("<")};
-                return val.substr(start+1, end - start -1);
-            }
-        };
+        ~PKGWrapper() = default;
 
-        const auto getDataFnc
+        std::string name() const override
         {
-            [this](std::istream& data)
+            return m_name;
+        }
+        std::string version() const override
+        {
+            return m_version;
+        }
+        std::string groups() const override
+        {
+            return m_groups;
+        }
+        std::string description() const override
+        {
+            return m_description;
+        }
+        std::string architecture() const override
+        {
+            return m_architecture;
+        }
+        std::string format() const override
+        {
+            return m_format;
+        }
+        std::string osPatch() const override
+        {
+            return m_osPatch;
+        }
+
+    private:
+        void getPkgData(const std::string& filePath)
+        {
+            const auto isBinaryFnc
             {
-                std::string line;
-                while(std::getline(data, line))
+                [&filePath]()
                 {
-                    line = Utils::trim(line," \t");
+                    // If first line is "bplist00" it's a binary plist file
+                    std::fstream file {filePath, std::ios_base::in};
+                    std::string line;
+                    return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
+                }
+            };
+            const auto isBinary { isBinaryFnc() };
 
-                    if (line == "<key>CFBundleName</key>" &&
-                        std::getline(data, line))
+            static const auto getValueFnc
+            {
+                [](const std::string & val)
+                {
+                    const auto start{val.find(">")};
+                    const auto end{val.rfind("<")};
+                    return val.substr(start + 1, end - start - 1);
+                }
+            };
+
+            const auto getDataFnc
+            {
+                [this](std::istream & data)
+                {
+                    std::string line;
+
+                    while (std::getline(data, line))
                     {
-                        m_name = getValueFnc(line);
-                    }
-                    else if (line == "<key>CFBundleShortVersionString</key>" &&
-                            std::getline(data, line))
-                    {
-                        m_version = getValueFnc(line);
-                    }
-                    else if (line == "<key>LSApplicationCategoryType</key>" &&
-                            std::getline(data, line))
-                    {
-                        m_groups = getValueFnc(line);
-                    }
-                    else if (line == "<key>CFBundleIdentifier</key>" &&
-                            std::getline(data, line))
-                    {
-                        m_description = getValueFnc(line);
+                        line = Utils::trim(line, " \t");
+
+                        if (line == "<key>CFBundleName</key>" &&
+                                std::getline(data, line))
+                        {
+                            m_name = getValueFnc(line);
+                        }
+                        else if (line == "<key>CFBundleShortVersionString</key>" &&
+                                 std::getline(data, line))
+                        {
+                            m_version = getValueFnc(line);
+                        }
+                        else if (line == "<key>LSApplicationCategoryType</key>" &&
+                                 std::getline(data, line))
+                        {
+                            m_groups = getValueFnc(line);
+                        }
+                        else if (line == "<key>CFBundleIdentifier</key>" &&
+                                 std::getline(data, line))
+                        {
+                            m_description = getValueFnc(line);
+                        }
                     }
                 }
-            }
-        };
+            };
 
-        if (isBinary)
-        {
-            auto xmlContent { binaryToXML(filePath) };
-            getDataFnc(xmlContent);
-        }
-        else
-        {
-            std::fstream file { filePath, std::ios_base::in };
-            if (file.is_open())
+            if (isBinary)
             {
-                getDataFnc(file);
+                auto xmlContent { binaryToXML(filePath) };
+                getDataFnc(xmlContent);
             }
-        }
-    }
-
-    std::stringstream binaryToXML(const std::string& filePath)
-    {
-        std::string xmlContent;
-        plist_t rootNode { nullptr };
-        const auto binaryContent { Utils::getBinaryContent(filePath) };
-
-        // plist C++ APIs calls - to be used when Makefile and external are updated.
-        // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
-        // const auto xmlContent { dataFromBin->ToXml() };
-
-        // Content binary file to plist representation
-        plist_from_bin(binaryContent.data(), binaryContent.size(), &rootNode);
-        if (nullptr != rootNode)
-        {
-            char* xml { nullptr };
-            uint32_t length { 0 };
-            // plist binary representation to XML
-            plist_to_xml(rootNode, &xml, &length);
-            if (nullptr != xml)
+            else
             {
-                xmlContent.assign(xml, xml+length);
-                plist_to_xml_free(xml);
-                plist_free(rootNode);
+                std::fstream file { filePath, std::ios_base::in };
+
+                if (file.is_open())
+                {
+                    getDataFnc(file);
+                }
             }
         }
-        return std::stringstream{xmlContent};
-    }
 
-    std::string m_name;
-    std::string m_version;
-    std::string m_groups;
-    std::string m_description;
-    std::string m_architecture;
-    const std::string m_format;
-    std::string m_osPatch;
+        std::stringstream binaryToXML(const std::string& filePath)
+        {
+            std::string xmlContent;
+            plist_t rootNode { nullptr };
+            const auto binaryContent { Utils::getBinaryContent(filePath) };
+
+            // plist C++ APIs calls - to be used when Makefile and external are updated.
+            // const auto dataFromBin { PList::Structure::FromBin(binaryContent) };
+            // const auto xmlContent { dataFromBin->ToXml() };
+
+            // Content binary file to plist representation
+            plist_from_bin(binaryContent.data(), binaryContent.size(), &rootNode);
+
+            if (nullptr != rootNode)
+            {
+                char* xml { nullptr };
+                uint32_t length { 0 };
+                // plist binary representation to XML
+                plist_to_xml(rootNode, &xml, &length);
+
+                if (nullptr != xml)
+                {
+                    xmlContent.assign(xml, xml + length);
+                    plist_to_xml_free(xml);
+                    plist_free(rootNode);
+                }
+            }
+
+            return std::stringstream{xmlContent};
+        }
+
+        std::string m_name;
+        std::string m_version;
+        std::string m_groups;
+        std::string m_description;
+        std::string m_architecture;
+        const std::string m_format;
+        std::string m_osPatch;
 };
 
 #endif //_PKG_WRAPPER_H

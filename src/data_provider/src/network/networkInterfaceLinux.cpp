@@ -22,7 +22,7 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
     {
         const auto family { interfaceWrapper->family() };
 
-        if(AF_INET == family)
+        if (AF_INET == family)
         {
             ret = std::make_shared<LinuxNetworkImpl<AF_INET>>(interfaceWrapper);
         }
@@ -43,6 +43,7 @@ std::shared_ptr<IOSNetwork> FactoryLinuxNetwork::create(const std::shared_ptr<IN
     {
         throw std::runtime_error { "Error nullptr interfaceWrapper instance." };
     }
+
     return ret;
 }
 
@@ -51,6 +52,7 @@ void LinuxNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
 {
     // Get IPv4 address
     const auto address { m_interfaceAddress->address() };
+
     if (!address.empty())
     {
         network["IPv4"]["address"] = address;
@@ -68,6 +70,7 @@ template <>
 void LinuxNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
 {
     const auto address { m_interfaceAddress->addressV6() };
+
     if (!address.empty())
     {
         network["IPv6"]["address"] = address;

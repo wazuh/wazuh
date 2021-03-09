@@ -16,13 +16,13 @@
 
 class WindowsHelperTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    WindowsHelperTest() = default;
-    virtual ~WindowsHelperTest() = default;
+        WindowsHelperTest() = default;
+        virtual ~WindowsHelperTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //WINDOWS_HELPER_TEST_H

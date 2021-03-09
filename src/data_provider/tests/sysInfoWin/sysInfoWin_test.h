@@ -17,13 +17,13 @@
 
 class SysInfoWinTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    SysInfoWinTest() = default;
-    virtual ~SysInfoWinTest() = default;
+        SysInfoWinTest() = default;
+        virtual ~SysInfoWinTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_WIN_TEST_H

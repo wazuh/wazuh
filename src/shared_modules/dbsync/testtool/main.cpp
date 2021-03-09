@@ -30,10 +30,10 @@ int main(int argc, const char* argv[])
     try
     {
         CmdLineArgs cmdLineArgs(argc, argv);
-    
+
         const auto actions { cmdLineArgs.actions() };
 
-        // dbsync configuration data 
+        // dbsync configuration data
         std::ifstream configFile{ cmdLineArgs.configFile() };
         const auto& jsonConfigFile { nlohmann::json::parse(configFile) };
         const std::string dbName{ jsonConfigFile.at("db_name").get_ref<const std::string&>() };
@@ -44,22 +44,23 @@ int main(int argc, const char* argv[])
 
         dbsync_initialize(loggerFunction);
 
-        auto handle 
-        { 
+        auto handle
+        {
             dbsync_create((hostType.compare("0") == 0) ? HostType::MANAGER : HostType::AGENT,
-                            (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
-                            dbName.c_str(),
-                            sqlStmt.c_str())
+                          (dbType.compare("1") == 0) ? DbEngineType::SQLITE3 : DbEngineType::UNDEFINED,
+                          dbName.c_str(),
+                          sqlStmt.c_str())
         };
 
 
-        if(0 != handle)
+        if (0 != handle)
         {
             std::unique_ptr<TestContext> testContext { std::make_unique<TestContext>()};
             testContext->handle = handle;
             testContext->outputPath = cmdLineArgs.outputFolder();
+
             // Let's take the input json list and apply the changes to the db
-            for (size_t idx = 0; idx < actions.size(); ++idx) 
+            for (size_t idx = 0; idx < actions.size(); ++idx)
             {
                 testContext->currentId = idx;
                 const std::string inputFile{ actions[idx] };
@@ -69,6 +70,7 @@ int main(int argc, const char* argv[])
                 auto action { FactoryAction::create(jsonAction["action"].get<std::string>()) };
                 action->execute(testContext, jsonAction);
             }
+
             dbsync_teardown();
             std::cout << "Resulting files are located in the " << cmdLineArgs.outputFolder() << " folder" << std::endl;
         }
@@ -77,11 +79,11 @@ int main(int argc, const char* argv[])
             std::cout << std::endl << "Something went wrong configuring the database. Please, check the config file data" << std::endl;
         }
     }
-    catch(const std::exception& ex)
+    catch (const std::exception& ex)
     {
         std::cerr << ex.what() << std::endl;
         CmdLineArgs::showHelp();
-    }        
+    }
 
     return 0;
 }

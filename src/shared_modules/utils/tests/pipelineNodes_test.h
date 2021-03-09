@@ -16,13 +16,13 @@
 
 class PipelineNodesTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    PipelineNodesTest() = default;
-    virtual ~PipelineNodesTest() = default;
+        PipelineNodesTest() = default;
+        virtual ~PipelineNodesTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //PIPELINE_NODE_TESTS_H

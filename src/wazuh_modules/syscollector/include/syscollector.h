@@ -31,12 +31,13 @@
 extern "C" {
 #endif
 
-typedef enum syscollector_log_level_t {
-   SYS_LOG_ERROR,
-   SYS_LOG_INFO,
-   SYS_LOG_DEBUG,
-   SYS_LOG_DEBUG_VERBOSE
-}syscollector_log_level_t;
+typedef enum syscollector_log_level_t
+{
+    SYS_LOG_ERROR,
+    SYS_LOG_INFO,
+    SYS_LOG_DEBUG,
+    SYS_LOG_DEBUG_VERBOSE
+} syscollector_log_level_t;
 
 typedef void((*log_callback_t)(const syscollector_log_level_t level, const char* log));
 

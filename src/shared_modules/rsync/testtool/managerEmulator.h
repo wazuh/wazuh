@@ -20,16 +20,16 @@
 
 class ManagerEmulator
 {
-public:
-    ManagerEmulator(const std::shared_ptr<SyncQueue>& inQueue);
-    ~ManagerEmulator();
-private:
+    public:
+        ManagerEmulator(const std::shared_ptr<SyncQueue>& inQueue);
+        ~ManagerEmulator();
+    private:
 
-    void syncData();
+        void syncData();
 
-    const std::shared_ptr<SyncQueue> m_inQueue;
-    std::thread m_syncThread;
-    std::atomic_bool m_threadRunning;
+        const std::shared_ptr<SyncQueue> m_inQueue;
+        std::thread m_syncThread;
+        std::atomic_bool m_threadRunning;
 };
 
 

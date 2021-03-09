@@ -21,18 +21,18 @@ using ::testing::Return;
 
 class SysOsInfoProviderWrapper : public ISysOsInfoProvider
 {
-public:
-    SysOsInfoProviderWrapper() = default;
-    ~SysOsInfoProviderWrapper() = default;
-    MOCK_METHOD(std::string, name, (), (const override));
-    MOCK_METHOD(std::string, version, (), (const override));
-    MOCK_METHOD(std::string, majorVersion, (), (const override));
-    MOCK_METHOD(std::string, minorVersion, (), (const override));
-    MOCK_METHOD(std::string, build, (), (const override));
-    MOCK_METHOD(std::string, release, (), (const override));
-    MOCK_METHOD(std::string, machine, (), (const override));
-    MOCK_METHOD(std::string, nodeName, (), (const override));
-    MOCK_METHOD(std::string, getSerialNumber, (), (const override));
+    public:
+        SysOsInfoProviderWrapper() = default;
+        ~SysOsInfoProviderWrapper() = default;
+        MOCK_METHOD(std::string, name, (), (const override));
+        MOCK_METHOD(std::string, version, (), (const override));
+        MOCK_METHOD(std::string, majorVersion, (), (const override));
+        MOCK_METHOD(std::string, minorVersion, (), (const override));
+        MOCK_METHOD(std::string, build, (), (const override));
+        MOCK_METHOD(std::string, release, (), (const override));
+        MOCK_METHOD(std::string, machine, (), (const override));
+        MOCK_METHOD(std::string, nodeName, (), (const override));
+        MOCK_METHOD(std::string, getSerialNumber, (), (const override));
 };
 
 

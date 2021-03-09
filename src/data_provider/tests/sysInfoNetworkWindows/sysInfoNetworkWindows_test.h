@@ -17,13 +17,13 @@
 
 class SysInfoNetworkWindowsTest : public ::testing::Test
 {
-protected:
+    protected:
 
-    SysInfoNetworkWindowsTest() = default;
-    virtual ~SysInfoNetworkWindowsTest() = default;
+        SysInfoNetworkWindowsTest() = default;
+        virtual ~SysInfoNetworkWindowsTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
+        void SetUp() override;
+        void TearDown() override;
 };
 
 #endif //_SYSINFO_NETWORK_WINDOWS_TEST_H

@@ -21,11 +21,11 @@ using DecodedValue = std::pair<Key, Value>;
 
 class DecoderWrapper
 {
-public:
-    DecoderWrapper(){}
-    ~DecoderWrapper(){}
-    MOCK_METHOD(DecodedValue, decode, (const RawValue&), ());
-    MOCK_METHOD(void, callback, (const Value&));
+    public:
+        DecoderWrapper() {}
+        ~DecoderWrapper() {}
+        MOCK_METHOD(DecodedValue, decode, (const RawValue&), ());
+        MOCK_METHOD(void, callback, (const Value&));
 };
 
 void MsgDispatcherTest::SetUp() {};
@@ -58,8 +58,14 @@ TEST_F(MsgDispatcherTest, MsgDispatcherPushAndRundown)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_TRUE(dispatcher.addCallback(key1, [&dispatcher](const Value& value){dispatcher.callback(value);}));
-    EXPECT_TRUE(dispatcher.addCallback(key2, [&dispatcher](const Value& value){dispatcher.callback(value);}));
+    EXPECT_TRUE(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
+    EXPECT_TRUE(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
 
 
     dispatcher.push(input1);
@@ -93,8 +99,14 @@ TEST_F(MsgDispatcherTest, MsgDispatcherPushSync)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_TRUE(dispatcher.addCallback(key1, [&dispatcher](const Value& value){dispatcher.callback(value);}));
-    EXPECT_TRUE(dispatcher.addCallback(key2, [&dispatcher](const Value& value){dispatcher.callback(value);}));
+    EXPECT_TRUE(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
+    EXPECT_TRUE(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
 
     dispatcher.dispatch(input1);
     dispatcher.dispatch(input2);
@@ -106,9 +118,18 @@ TEST_F(MsgDispatcherTest, MsgDispatcherAddCallbackTwice)
     const Key key1{100};
     const Key key2{200};
     TestMsgDispatcher dispatcher;
-    EXPECT_TRUE(dispatcher.addCallback(key1, [&dispatcher](const Value& value){dispatcher.callback(value);}));
-    EXPECT_TRUE(dispatcher.addCallback(key2, [&dispatcher](const Value& value){dispatcher.callback(value);}));
-    EXPECT_FALSE(dispatcher.addCallback(key2, [&dispatcher](const Value& value){dispatcher.callback(value);}));
+    EXPECT_TRUE(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
+    EXPECT_TRUE(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
+    EXPECT_FALSE(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
 }
 
 TEST_F(MsgDispatcherTest, MsgDispatcherRemoveCallback)
@@ -131,8 +152,14 @@ TEST_F(MsgDispatcherTest, MsgDispatcherRemoveCallback)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_TRUE(dispatcher.addCallback(key1, [&dispatcher](const Value& value){dispatcher.callback(value);}));
-    EXPECT_TRUE(dispatcher.addCallback(key2, [&dispatcher](const Value& value){dispatcher.callback(value);}));
+    EXPECT_TRUE(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
+    EXPECT_TRUE(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
+    {
+        dispatcher.callback(value);
+    }));
 
     dispatcher.dispatch(input1);
     dispatcher.dispatch(input2);

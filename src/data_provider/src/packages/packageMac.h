@@ -24,17 +24,17 @@ struct PackageContext
 
 class FactoryBSDPackage
 {
-public:
-    static std::shared_ptr<IPackage>create(const std::pair<PackageContext, int>& ctx);
+    public:
+        static std::shared_ptr<IPackage>create(const std::pair<PackageContext, int>& ctx);
 };
 
 class BSDPackageImpl final : public IPackage
 {
-    const std::shared_ptr<IPackageWrapper> m_packageWrapper;
-public:
-    explicit BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper);
+        const std::shared_ptr<IPackageWrapper> m_packageWrapper;
+    public:
+        explicit BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWrapper);
 
-    void buildPackageData(nlohmann::json& package) override;
+        void buildPackageData(nlohmann::json& package) override;
 };
 
 #endif // _PACKAGE_MAC_H

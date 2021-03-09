@@ -35,10 +35,10 @@ void DBSyncPipelineFactoryTest::TearDown()
 
 class CallbackWrapper
 {
-public:
-    CallbackWrapper() = default;
-    ~CallbackWrapper() = default;
-    MOCK_METHOD(void, callback, (ReturnTypeCallback result_type, const nlohmann::json&), ());
+    public:
+        CallbackWrapper() = default;
+        ~CallbackWrapper() = default;
+        MOCK_METHOD(void, callback, (ReturnTypeCallback result_type, const nlohmann::json&), ());
 };
 
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
@@ -53,7 +53,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
                                  json["tables"],
                                  threadNumber,
                                  maxQueueSize,
-                                 [](ReturnTypeCallback, const nlohmann::json&){})
+        [](ReturnTypeCallback, const nlohmann::json&) {})
     };
     ASSERT_NE(nullptr, pipeHandle);
     ASSERT_NE(nullptr, m_pipelineFactory.pipeline(pipeHandle));
@@ -70,8 +70,8 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidHandle)
                                  json["tables"],
                                  threadNumber,
                                  maxQueueSize,
-                                 [](ReturnTypeCallback, const nlohmann::json&){}),
-        DbSync::dbsync_error
+    [](ReturnTypeCallback, const nlohmann::json&) {}),
+    DbSync::dbsync_error
     );
 }
 
@@ -86,8 +86,8 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidTxnContext)
                                  json["tables"],
                                  threadNumber,
                                  maxQueueSize,
-                                 [](ReturnTypeCallback, const nlohmann::json&){}),
-        DbSync::dbsync_error
+    [](ReturnTypeCallback, const nlohmann::json&) {}),
+    DbSync::dbsync_error
     );
 }
 
@@ -123,7 +123,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowInvalidData)
     const auto& jsonInputNoData{ R"({"exception":"[json.exception.out_of_range.403] key 'data' not found","table":"processes"})"};
     const auto resultFnc
     {
-        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)
+        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json & result)
         {
             wrapper.callback(resultType, result);
         }
@@ -157,7 +157,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRow)
     const auto& jsonInput2{ R"({"table":"processes","data":[{"pid":4, "tid":102}]})"};
     const auto resultFnc
     {
-        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)
+        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json & result)
         {
             wrapper.callback(resultType, result);
         }
@@ -194,7 +194,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowMaxQueueSize)
     const auto& jsonInput{ R"({"table":"processes","data":[{"pid":4, "tid":100, "name":"System"}]})"};
     const auto resultFnc
     {
-        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)
+        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json & result)
         {
             wrapper.callback(resultType, result);
         }
@@ -226,7 +226,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeleted)
     const auto& jsonInputTxn2{ R"({"table":"processes","data":[{"pid":6, "tid":105, "name":"System2"}]})"};
     const auto resultFnc
     {
-        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)
+        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json & result)
         {
             wrapper.callback(resultType, result);
         }
@@ -264,7 +264,7 @@ TEST_F(DBSyncPipelineFactoryTest, PipelineSyncRowAndGetDeletedSameData)
     const auto& jsonInputTxn3{ R"({"table":"processes","data":[{"pid":6, "tid":105, "name":"System2"}]})"};
     const auto resultFnc
     {
-        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json& result)
+        [&wrapper](ReturnTypeCallback resultType, const nlohmann::json & result)
         {
             wrapper.callback(resultType, result);
         }

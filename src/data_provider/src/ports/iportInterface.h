@@ -17,11 +17,11 @@
 
 class IOSPort
 {
-public:
-    // LCOV_EXCL_START
-    virtual ~IOSPort() = default;
-    // LCOV_EXCL_STOP
-    virtual void buildPortData(nlohmann::json& port) = 0;
+    public:
+        // LCOV_EXCL_START
+        virtual ~IOSPort() = default;
+        // LCOV_EXCL_STOP
+        virtual void buildPortData(nlohmann::json& port) = 0;
 };
 
 #endif // _PORT_INTERFACE_H

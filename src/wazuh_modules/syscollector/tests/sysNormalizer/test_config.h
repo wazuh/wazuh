@@ -159,6 +159,6 @@ constexpr auto TEST_CONFIG_FILE_CONTENT
     })DELIMITER"
 };
 
-constexpr auto TEST_CONFIG_FILE_NAME{"test_config.json"};
+constexpr auto TEST_CONFIG_FILE_NAME {"test_config.json"};
 
 #endif //_TEST_CONFIG_H

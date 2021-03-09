@@ -16,7 +16,7 @@
 #include <iostream>
 #include <cstdio>
 #include <memory>
-	
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
@@ -34,13 +34,15 @@ namespace Utils
         const std::unique_ptr<FILE, FileSmartDeleter> file{popen(cmd.c_str(), "r")};
         char buffer[bufferSize];
         std::string result;
+
         if (file)
         {
-            while(fgets(buffer, bufferSize, file.get()))
+            while (fgets(buffer, bufferSize, file.get()))
             {
                 result += buffer;
             }
         }
+
         return result;
     }
 }
