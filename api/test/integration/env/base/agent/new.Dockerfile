@@ -3,7 +3,7 @@ FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-generi
 ARG WAZUH_BRANCH
 
 ## install Wazuh
-RUN git clone https://github.com/wazuh/wazuh -b $WAZUH_BRANCH --depth=1
+RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 ADD base/agent/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
 

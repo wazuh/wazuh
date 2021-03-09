@@ -5,7 +5,7 @@ ARG WAZUH_BRANCH
 
 ADD base/manager/supervisord.conf /etc/supervisor/conf.d/
 
-RUN git clone https://github.com/wazuh/wazuh -b $WAZUH_BRANCH --depth=1
+RUN mkdir wazuh && curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx --strip-components=1 -C wazuh
 COPY base/manager/preloaded-vars.conf /wazuh/etc/preloaded-vars.conf
 RUN /wazuh/install.sh
 
