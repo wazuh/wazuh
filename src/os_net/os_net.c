@@ -633,10 +633,8 @@ int OS_SetSendTimeout(int socket, int seconds)
 #endif
 }
 
-/* Send secure TCP message
- * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
- * Return 0 on success or OS_SOCKTERR on error.
- */
+// Send secure TCP message
+
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     int retval = OS_SOCKTERR;
     void* buffer = NULL;
@@ -823,7 +821,7 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
                 return -1;
             }
     }
-   
+
     if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
         return -2;
     }

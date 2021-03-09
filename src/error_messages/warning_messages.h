@@ -78,7 +78,11 @@
 /* Ruleset reading warnings */
 #define ANALYSISD_INV_VALUE_RULE                "(7600): Invalid value '%s' for attribute '%s' in rule %d"
 #define ANALYSISD_INV_VALUE_DEFAULT             "(7601): Invalid value for attribute '%s' in '%s' option " \
-                                                "(decoder `%s`). Default value will be taken"
+                                                "(decoder `%s`). Default value will be used"
+#define ANALYSISD_INV_OPT_VALUE_DEFAULT         "(7602): Invalid value '%s' in '%s' option " \
+                                                "(decoder `%s`). Default value will be used"
+#define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
+                                                "(decoder `%s`). Default value will be used"
 
 /* Logcollector */
 #define LOGCOLLECTOR_INV_VALUE_DEFAULT          "(8000): Invalid value '%s' for attribute '%s' in '%s' option. " \
@@ -95,5 +99,6 @@
                                                 " Default value (%s) will be used."
 #define REMOTED_INET6_SECURE_CONNNECTION        "(9003): Secure connection does not support IPv6. "\
                                                 "IPv4 will be used instead."
-
+#define REMOTED_INV_VALUE_DEFAULT               "(9004): Invalid value '%s' in '%s' option. " \
+                                                "Default value will be used."
 #endif /* WARN_MESSAGES_H */
