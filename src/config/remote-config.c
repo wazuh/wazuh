@@ -164,6 +164,10 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcasecmp(node[i]->element, xml_remote_ipv6) == 0) {
             if (strcasecmp(node[i]->content, "yes") == 0) {
                 logr->ipv6[pl] = 1;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                logr->ipv6[pl] = 0;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_remote_ipv6);
             }
         } else if (strcasecmp(node[i]->element, xml_remote_lip) == 0) {
             os_strdup(node[i]->content, logr->lip[pl]);
@@ -216,31 +220,21 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             defined_queue_size = 1;
         } else if (strcmp(node[i]->element, xml_rids_closing_time) == 0) {
-            char *endptr;
-            logr->rids_closing_time = strtol(node[i]->content, &endptr, 0);
+            char * time_unit_ptr = NULL;
+            long rids_closing_time = 0;
+            const char * TIME_UNITS = "sSmMhHdD";
 
-            if (logr->rids_closing_time == 0 || logr->rids_closing_time == INT_MAX) {
-                merror("Invalid value for option '<%s>'", xml_rids_closing_time);
-                return OS_INVALID;
+            time_unit_ptr = strpbrk(node[i]->content, TIME_UNITS);
+            rids_closing_time = w_parse_time(node[i]->content);
+
+            if ((time_unit_ptr != NULL && *(time_unit_ptr + 1) !='\0') ||
+                (rids_closing_time <= 0 || rids_closing_time > INT_MAX)) {
+                    mwarn(REMOTED_INV_VALUE_DEFAULT, node[i]->content, xml_rids_closing_time);
+                    rids_closing_time = REMOTED_RIDS_CLOSING_TIME_DEFAULT;
             }
 
-            switch (*endptr) {
-            case 'd':
-                logr->rids_closing_time *= 86400;
-                break;
-            case 'h':
-                logr->rids_closing_time *= 3600;
-                break;
-            case 'm':
-                logr->rids_closing_time *= 60;
-                break;
-            case 's':
-            case '\0':
-                break;
-            default:
-                merror("Invalid value for option '<%s>'", xml_rids_closing_time);
-                return OS_INVALID;
-            }
+            logr->rids_closing_time = (int) rids_closing_time;
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
