@@ -248,7 +248,7 @@ STATIC char *get_audit_field(const char *buffer, const char *key) {
     char *start = NULL;
     char *ascii_value = NULL;
     int is_hex_buffer = 1;
-    int end = 0;
+    int limiter_pos = 0;
     int key_length = strlen(key);
 
     // Find the key
@@ -274,15 +274,15 @@ STATIC char *get_audit_field(const char *buffer, const char *key) {
     }
 
     // The key can be limited by one of these three characters
-    if (end = strcspn(start, "\n \""), end == 0) {
+    if (limiter_pos = strcspn(start, "\n \""), limiter_pos == 0) {
         return NULL;
     }
 
-    os_calloc(end + 1, sizeof(char), value);
-    strncpy(value, start, end);
+    os_calloc(limiter_pos + 1, sizeof(char), value);
+    strncpy(value, start, limiter_pos);
 
     if (is_hex_buffer) {
-        ascii_value = decode_hex_buffer_2_ascii_buffer(value, end);
+        ascii_value = decode_hex_buffer_2_ascii_buffer(value, limiter_pos);
         free(value);
         return ascii_value;
     }
@@ -291,25 +291,24 @@ STATIC char *get_audit_field(const char *buffer, const char *key) {
 }
 
 /**
- * @brief Looks if the buffer contains a valid audit key (AUDIT_KEY, AUDIT_HC_KEY or a specified key)
+ * @brief Scans the buffer for a valid audit key (AUDIT_KEY, AUDIT_HC_KEY or a user configured key)
  *
- * @param buffer Audit message to look for.
+ * @param buffer Audit message being scanned.
  * @return Type of key.
  * @retval FIM_AUDIT_UNKNOWN_KEY if the key is unknown.
  * @retval FIM_AUDIT_KEY if the key of the event is AUDIT_KEY.
  * @retval FIM_AUDIT_HC_KEY if the key of the event is AUDIT_HEALTHCHECK_KEY.
- * @retval FIM_AUDIT_CUSTOM_KEY if the key of the event is configured using audit_key option.
+ * @retval FIM_AUDIT_CUSTOM_KEY if the key of the event is configured using the audit_key option.
  */
-STATIC audit_key_type filterkey_audit_events(char *buffer) {
+STATIC audit_key_type filterkey_audit_events(const char *buffer) {
     char *save_ptr = NULL;
     char *full_key = NULL;
     char *key = NULL;
-    audit_key_type retval = FIM_AUDIT_UNKNOWN_KEY;
     int i;
 
     // Find the key
     if (full_key = get_audit_field(buffer, "key"), full_key == NULL) {
-        return retval;
+        return FIM_AUDIT_UNKNOWN_KEY;
     }
 
     for (key = strtok_r(full_key, "\001", &save_ptr); key != NULL; key = strtok_r(NULL, "\001", &save_ptr)) {
@@ -319,27 +318,27 @@ STATIC audit_key_type filterkey_audit_events(char *buffer) {
 
         if (strcmp(key, AUDIT_KEY) == 0) {
             mdebug2(FIM_AUDIT_MATCH_KEY, full_key);
-            retval = FIM_AUDIT_KEY;
-            goto end;
+            free(full_key);
+            return FIM_AUDIT_KEY;
         }
 
         if (strcmp(key, AUDIT_HEALTHCHECK_KEY) == 0) {
             mdebug2(FIM_AUDIT_MATCH_KEY, full_key);
-            retval = FIM_AUDIT_HC_KEY;
-            goto end;
+            free(full_key);
+            return FIM_AUDIT_HC_KEY;
         }
 
         for (i = 0; syscheck.audit_key[i]; i++) {
             if (strcmp(key, syscheck.audit_key[i]) == 0) {
                 mdebug2(FIM_AUDIT_MATCH_KEY, key);
-                retval = FIM_AUDIT_CUSTOM_KEY;
-                goto end;
+                free(full_key);
+                return FIM_AUDIT_CUSTOM_KEY;
             }
         }
     }
-end:
+
     free(full_key);
-    return retval;
+    return FIM_AUDIT_UNKNOWN_KEY;
 }
 
 

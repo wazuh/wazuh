@@ -91,12 +91,6 @@ typedef struct diff_data {
     char *diff_file;
 } diff_data;
 
-typedef enum audit_key_type {
-    FIM_AUDIT_UNKNOWN_KEY = 0,
-    FIM_AUDIT_KEY,
-    FIM_AUDIT_HC_KEY,
-    FIM_AUDIT_CUSTOM_KEY
-} audit_key_type;
 
 #ifdef WIN32
 /* Flags to know if a directory/file's watcher has been removed */
