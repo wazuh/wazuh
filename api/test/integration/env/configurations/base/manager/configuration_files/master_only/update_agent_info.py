@@ -4,7 +4,7 @@ import time
 
 import yaml
 
-output_file = '/configuration_files/agent_info_output'
+output_file = '/tmp/configuration_files/agent_info_output'
 ADDR = '/var/ossec/queue/db/wdb'
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 sock.connect(ADDR)
@@ -67,4 +67,4 @@ def create_and_send_query(agent_info_file):
 
 
 if __name__ == "__main__":
-    create_and_send_query('/configuration_files/master_only/agent_info.yaml')
+    create_and_send_query('/tmp/configuration_files/master_only/agent_info.yaml')

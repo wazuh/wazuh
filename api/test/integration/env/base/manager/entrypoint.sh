@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
+# Apply API configuration
+cp -rf /tmp/config/* /var/ossec/ && chown -R ossec:ossec /var/ossec/api
+
 # Modify ossec.conf
-/var/ossec/framework/python/bin/python3 /scripts/xml_parser.py /var/ossec/etc/ossec.conf /scripts/xml_templates/ossec.conf
+for conf_file in /tmp/configuration_files/*.conf; do
+  python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
+done
 
 sed -i "s:<key>key</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:g" /var/ossec/etc/ossec.conf
 sed -i "s:<node>NODE_IP</node>:<node>$1</node>:g" /var/ossec/etc/ossec.conf
@@ -11,6 +16,7 @@ sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scr
 if [ "$3" != "master" ]; then
     sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" /var/ossec/etc/ossec.conf
 else
+    cp -rf /tmp/configuration_files/master_only/config/* /var/ossec/
     chown root:ossec /var/ossec/etc/client.keys
     chown -R ossec:ossec /var/ossec/queue/agent-groups
     chown -R ossec:ossec /var/ossec/etc/shared
@@ -22,11 +28,11 @@ fi
 sleep 1
 
 # Manager configuration
-for py_file in /configuration_files/*.py; do
+for py_file in /tmp/configuration_files/*.py; do
   /var/ossec/framework/python/bin/python3 $py_file
 done
 
-for sh_file in /configuration_files/*.sh; do
+for sh_file in /tmp/configuration_files/*.sh; do
   . $sh_file
 done
 
@@ -35,11 +41,11 @@ echo "" > /var/ossec/logs/api.log
 
 # Master-only configuration
 if [ "$3" == "master" ]; then
-  for py_file in /configuration_files/master_only/*.py; do
+  for py_file in /tmp/configuration_files/master_only/*.py; do
     /var/ossec/framework/python/bin/python3 $py_file
   done
 
-  for sh_file in /configuration_files/master_only/*.sh; do
+  for sh_file in /tmp/configuration_files/master_only/*.sh; do
     . $sh_file
   done
 
@@ -52,7 +58,7 @@ if [ "$3" == "master" ]; then
   done
 
   # RBAC configuration
-  for sql_file in /configuration_files/*.sql; do
+  for sql_file in /tmp/configuration_files/*.sql; do
     sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
   done
 fi
