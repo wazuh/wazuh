@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(sysInfoPackagesLinuxHelper_unit_test)
+project(sysInfoWindows_unit_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
 
-add_executable(sysInfoPackagesLinuxHelper_unit_test
+    add_executable(sysInfoWindows_unit_test
     ${sysinfo_UNIT_TEST_SRC})
 
-target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
+target_link_libraries(sysInfoWindows_unit_test
     debug gtestd
     debug gmockd
     debug gtest_maind
@@ -22,9 +22,8 @@ target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
     pthread
     sqlite3
     cjson
-    proc
-    dl
+    -static-libgcc -static-libstdc++
 )
 
-add_test(NAME sysInfoPackagesLinuxHelper_unit_test
-         COMMAND sysInfoPackagesLinuxHelper_unit_test)
+add_test(NAME sysInfoWindows_unit_test
+         COMMAND sysInfoWindows_unit_test)

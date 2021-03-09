@@ -1,7 +1,7 @@
 /*
- * Wazuh RSYNC
- * Copyright (C) 2015-2020, Wazuh Inc.
- * August 26, 2020.
+ * Wazuh SysInfo
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * February 25, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,23 +9,21 @@
  * Foundation.
  */
 
-#ifndef _RYSNC_TEST_H
-#define _RYSNC_TEST_H
+#ifndef _SYSINFO_WIN_TEST_H
+#define _SYSINFO_WIN_TEST_H
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include "commonDefs.h"
 
-class RSyncTest : public ::testing::Test
+class SysInfoWinTest : public ::testing::Test
 {
 protected:
 
-    RSyncTest() = default;
-    virtual ~RSyncTest() = default;
+    SysInfoWinTest() = default;
+    virtual ~SysInfoWinTest() = default;
 
     void SetUp() override;
     void TearDown() override;
 };
 
-
-#endif // _RYSNC_TEST_H
+#endif //_SYSINFO_WIN_TEST_H
