@@ -538,8 +538,8 @@ int main(void) {
         cmocka_unit_test(test_queryname_error_parse),
         cmocka_unit_test(test_queryname_error_parse_technique_name),
         cmocka_unit_test(test_queryname_error_parse_technique_external_id),
-		cmocka_unit_test(test_query_tactics_error_filling_technique),
-		cmocka_unit_test(test_query_tactics_success),
+        cmocka_unit_test(test_query_tactics_error_filling_technique),
+        cmocka_unit_test(test_query_tactics_success),
 
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
