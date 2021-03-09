@@ -4,9 +4,12 @@
 
 import os
 import sys
-from unittest.mock import patch, MagicMock, ANY, call
 from copy import deepcopy
+from unittest.mock import patch, MagicMock, ANY, call
+
 from werkzeug.exceptions import Unauthorized
+
+from wazuh.core.common import USER_NAME, GROUP_NAME
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -83,7 +86,7 @@ def test_generate_secret(mock_open, mock_chown, mock_chmod, mock_token):
 
     calls = [call(authentication._secret_file_path, mode='x')]
     mock_open.has_calls(calls)
-    mock_chown.assert_called_once_with(authentication._secret_file_path, 'wazuh', 'wazuh')
+    mock_chown.assert_called_once_with(authentication._secret_file_path, USER_NAME, GROUP_NAME)
     mock_chmod.assert_called_once_with(authentication._secret_file_path, 0o640)
 
     with patch('os.path.exists', return_value=True):
@@ -195,7 +198,8 @@ def test_decode_token_ko(mock_generate_secret, mock_raise_if_exc, mock_submit, m
                             authentication.decode_token(token='test_token')
 
                         with pytest.raises(Unauthorized):
-                            mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
-                                                             WazuhResult({'auth_token_exp_timeout': 900,
-                                                                          'rbac_mode': 'white'})]
+                            mock_raise_if_exc.side_effect = [
+                                WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
+                                WazuhResult({'auth_token_exp_timeout': 900,
+                                             'rbac_mode': 'white'})]
                             authentication.decode_token(token='test_token')

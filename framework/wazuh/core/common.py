@@ -7,12 +7,11 @@ import os
 import subprocess
 from contextvars import ContextVar
 from copy import deepcopy
+from functools import lru_cache
 from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict, Any
-from copy import deepcopy
-from functools import lru_cache
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))
@@ -192,13 +191,17 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 CHECK_CONFIG_COMMAND = 'check-manager-configuration'
 RESTART_WAZUH_COMMAND = 'restart-wazuh'
 
+# User and group name
+USER_NAME = 'wazuh'
+GROUP_NAME = 'wazuh'
+
 
 def wazuh_uid():
-    return getpwnam("wazuh").pw_uid if globals()['_wazuh_uid'] is None else globals()['_wazuh_uid']
+    return getpwnam(USER_NAME).pw_uid if globals()['_wazuh_uid'] is None else globals()['_wazuh_uid']
 
 
 def wazuh_gid():
-    return getgrnam("wazuh").gr_gid if globals()['_wazuh_gid'] is None else globals()['_wazuh_gid']
+    return getgrnam(GROUP_NAME).gr_gid if globals()['_wazuh_gid'] is None else globals()['_wazuh_gid']
 
 
 # Multigroup variables
