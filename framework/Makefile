@@ -44,7 +44,7 @@ install:
 #	Remove update_ruleset script when upgrading to >=4.2.0 (deprecated)
 	[ ! -e ${PREFIX}/bin/update_ruleset ] || $(RM_FILE) ${PREFIX}/bin/update_ruleset
 #	Install scripts/%.py on $(PREFIX)/bin/%
-	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
 
 examples: install
 	$(INSTALL_DIR) $(PREFIX)/framework/examples
