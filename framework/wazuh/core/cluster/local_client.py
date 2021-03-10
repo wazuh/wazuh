@@ -144,7 +144,7 @@ class LocalClient(client.AbstractClientManager):
                                                                                          name=self.name, logger=self.logger,
                                                                                          fernet_key='', manager=self,
                                                                                          cluster_items=self.cluster_items),
-                                             path=os.path.join(common.ossec_path, 'queue', 'cluster', 'c-internal.sock'))
+                                             path=os.path.join(common.wazuh_path, 'queue', 'cluster', 'c-internal.sock'))
         except (ConnectionRefusedError, FileNotFoundError):
             raise exception.WazuhInternalError(3012)
         except MemoryError:

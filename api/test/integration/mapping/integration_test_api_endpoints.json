@@ -837,22 +837,6 @@
                 ]
             },
             {
-                "name": "ossec_queue.py",
-                "tag": "ossec",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml",
-                    "test_experimental_endpoints.tavern.yaml",
-                    "test_security_DELETE_endpoints.tavern.yaml",
-                    "test_security_GET_endpoints.tavern.yaml",
-                    "test_security_POST_endpoints.tavern.yaml",
-                    "test_security_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "pyDaemonModule.py",
                 "tag": "pydaemonmodule",
                 "tests": [
@@ -971,6 +955,22 @@
             {
                 "name": "utils.py",
                 "tag": "utils",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "wazuh_queue.py",
+                "tag": "wazuh",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",
@@ -1673,6 +1673,8 @@
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
@@ -1758,6 +1760,66 @@
             {
                 "name": "users_roles_test_cases.yml",
                 "tag": "users",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
+        "path": "framework/wazuh/tests/data/security/default",
+        "files": [
+            {
+                "name": "default_cases.yml",
+                "tag": "default",
+                "tests": [
+                    "test_default_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "migration_policies.yml",
+                "tag": "migration",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "mock_relationships.yml",
+                "tag": "mock",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "new_default_policies.yml",
+                "tag": "new",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",
@@ -1914,22 +1976,6 @@
                 ]
             },
             {
-                "name": "ossec_queue.py",
-                "tag": "ossec",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml",
-                    "test_experimental_endpoints.tavern.yaml",
-                    "test_security_DELETE_endpoints.tavern.yaml",
-                    "test_security_GET_endpoints.tavern.yaml",
-                    "test_security_POST_endpoints.tavern.yaml",
-                    "test_security_PUT_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "pyDaemonModule.py",
                 "tag": "pydaemonmodule",
                 "tests": [
@@ -2048,6 +2094,22 @@
             {
                 "name": "utils.py",
                 "tag": "utils",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "wazuh_queue.py",
+                "tag": "wazuh",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",
@@ -2359,6 +2421,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2401,6 +2464,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2443,6 +2507,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2485,6 +2550,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2532,6 +2598,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2574,6 +2641,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2616,6 +2684,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2658,6 +2727,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2700,6 +2770,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2747,6 +2818,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2794,6 +2866,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -2841,6 +2914,7 @@
                     "test_rbac_black_task_endpoints.tavern.yaml",
                     "test_rbac_white_active_response_endpoints.tavern.yaml",
                     "test_rbac_white_agent_endpoints.tavern.yaml",
+                    "test_rbac_white_all_endpoints.tavern.yaml",
                     "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                     "test_rbac_white_ciscat_endpoints.tavern.yaml",
                     "test_rbac_white_cluster_endpoints.tavern.yaml",
@@ -3174,6 +3248,13 @@
                 ]
             },
             {
+                "name": "test_rbac_white_all_endpoints.tavern.yaml",
+                "tag": "test",
+                "tests": [
+                    "test_rbac_white_all_endpoints.tavern.yaml"
+                ]
+            },
+            {
                 "name": "test_rbac_white_cdb_list_endpoints.tavern.yaml",
                 "tag": "test",
                 "tests": [
@@ -3484,6 +3565,27 @@
         ]
     },
     {
+        "path": "api/test/integration/env/configurations/all/manager",
+        "files": [
+            {
+                "name": "base_security_test.sql",
+                "tag": "base",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
         "path": "api/test/integration/env/configurations/base/agent/healthcheck",
         "files": [
             {
@@ -3623,6 +3725,27 @@
             {
                 "name": "entrypoint.sh",
                 "tag": "entrypoint",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
+        "path": "api/test/integration/env/configurations/experimental/agent/healthcheck",
+        "files": [
+            {
+                "name": "healthcheck.py",
+                "tag": "healthcheck",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",
@@ -4371,6 +4494,27 @@
         ]
     },
     {
+        "path": "api/test/integration/env/configurations/security/agent/healthcheck",
+        "files": [
+            {
+                "name": "healthcheck.py",
+                "tag": "healthcheck",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
         "path": "api/test/integration/env/configurations/security/manager",
         "files": [
             {
@@ -4395,6 +4539,27 @@
                 "tests": [
                     "test_rbac_black_security_endpoints.tavern.yaml",
                     "test_rbac_white_security_endpoints.tavern.yaml",
+                    "test_security_DELETE_endpoints.tavern.yaml",
+                    "test_security_GET_endpoints.tavern.yaml",
+                    "test_security_POST_endpoints.tavern.yaml",
+                    "test_security_PUT_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
+        "path": "api/test/integration/env/configurations/security/manager/healthcheck",
+        "files": [
+            {
+                "name": "healthcheck.py",
+                "tag": "healthcheck",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml",
+                    "test_experimental_endpoints.tavern.yaml",
                     "test_security_DELETE_endpoints.tavern.yaml",
                     "test_security_GET_endpoints.tavern.yaml",
                     "test_security_POST_endpoints.tavern.yaml",

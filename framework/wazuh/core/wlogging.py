@@ -72,7 +72,7 @@ class WazuhLogger:
         :param logger_name: string sets logger name to register in logging module
         :param custom_formatter: subclass of logging.Formatter. Allows formatting messages depending on their contents
         """
-        self.log_path = os.path.join(common.ossec_path, log_path)
+        self.log_path = os.path.join(common.wazuh_path, log_path)
         self.tag = tag
         self.logger = None
         self.foreground_mode = foreground_mode

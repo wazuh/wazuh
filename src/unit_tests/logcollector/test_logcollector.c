@@ -567,6 +567,7 @@ void test_w_load_files_status_no_file(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -580,7 +581,7 @@ void test_w_load_files_status_no_file(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, -1);
 
     w_load_files_status(global_json);
@@ -593,6 +594,7 @@ void test_w_load_files_status_hash_NULL(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -606,7 +608,7 @@ void test_w_load_files_status_hash_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -622,6 +624,7 @@ void test_w_load_files_status_hash_str_NULL(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -635,7 +638,7 @@ void test_w_load_files_status_hash_str_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -653,6 +656,7 @@ void test_w_load_files_status_offset_NULL(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -666,7 +670,7 @@ void test_w_load_files_status_offset_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -687,6 +691,7 @@ void test_w_load_files_status_offset_str_NULL(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -700,7 +705,7 @@ void test_w_load_files_status_offset_str_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -723,6 +728,7 @@ void test_w_load_files_status_invalid_offset(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -736,7 +742,7 @@ void test_w_load_files_status_invalid_offset(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -761,6 +767,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     int mode = OS_BINARY;
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -774,7 +781,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -813,6 +820,7 @@ void test_w_load_files_status_update_fail(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     int mode = OS_BINARY;
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -826,7 +834,7 @@ void test_w_load_files_status_update_fail(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -863,6 +871,7 @@ void test_w_load_files_status_OK(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     int mode = OS_BINARY;
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -876,7 +885,7 @@ void test_w_load_files_status_OK(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -1022,6 +1031,7 @@ void test_w_initialize_file_status_OK(void ** state) {
 
     //w_load_files_status
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -1035,7 +1045,7 @@ void test_w_initialize_file_status_OK(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash

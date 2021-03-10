@@ -67,7 +67,7 @@ def set_groups(groups, general_groups, rule):
 def load_rules_from_file(rule_filename, rule_relative_path, rule_status):
     try:
         rules = list()
-        root = load_wazuh_xml(os.path.join(common.ossec_path, rule_relative_path, rule_filename))
+        root = load_wazuh_xml(os.path.join(common.wazuh_path, rule_relative_path, rule_filename))
 
         for xml_group in list(root):
             if xml_group.tag.lower() == "group":
@@ -143,7 +143,7 @@ def _remove_files(tmp_data, parameters):
 def item_format(data, all_items, exclude_filenames):
     for item in glob(all_items):
         item_name = os.path.basename(item)
-        item_dir = os.path.relpath(os.path.dirname(item), start=common.ossec_path)
+        item_dir = os.path.relpath(os.path.dirname(item), start=common.wazuh_path)
         item_status = Status.S_DISABLED.value if item_name in exclude_filenames else Status.S_ENABLED.value
         data.append({'filename': item_name, 'relative_dirname': item_dir, 'status': item_status})
 
@@ -151,7 +151,7 @@ def item_format(data, all_items, exclude_filenames):
 def _create_rule_decoder_dir_dict(ruleset_conf, tag, exclude_filenames, data):
     items = ruleset_conf[tag] if type(ruleset_conf[tag]) is list else [ruleset_conf[tag]]
     for item_dir in items:
-        all_rules = f"{common.ossec_path}/{item_dir}/*.xml"
+        all_rules = f"{common.wazuh_path}/{item_dir}/*.xml"
         item_format(data, all_rules, exclude_filenames)
 
 
@@ -162,7 +162,7 @@ def _create_dict(ruleset_conf, tag, exclude_filenames, data):
     for item in items:
         item_name = os.path.basename(item)
         full_dir = os.path.dirname(item)
-        item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path, start=common.ossec_path)
+        item_dir = os.path.relpath(full_dir if full_dir else common.ruleset_rules_path, start=common.wazuh_path)
         exclude_filenames.append(item_name) if tag == 'rule_exclude' or tag == 'decoder_exclude' else \
             data.append({'filename': item_name, 'relative_dirname': item_dir, 'status': item_status})
 

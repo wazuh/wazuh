@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,6 +12,20 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
+/**
+ * @brief Get the offset of the syslog message, discarding the PRI header.
+ * 
+ * @param syslog_msg RAW syslog message
+ * @return Length of the PRI header, 0 if not present
+ */
+STATIC size_t w_get_pri_header_len(const char * syslog_msg);
 
 /* Checks if an IP is not allowed */
 static int OS_IPNotAllowed(char *srcip)
@@ -39,7 +53,12 @@ static int OS_IPNotAllowed(char *srcip)
 void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
     char *data_pt = socket_buffer->data;
     int offset;
-    char *buffer_pt = strchr(data_pt, '\n');
+    char * buffer_pt = NULL; 
+
+    // ignore syslog PRI header
+    data_pt += w_get_pri_header_len(data_pt);
+
+    buffer_pt = strchr(data_pt, '\n');
 
     while(buffer_pt != NULL) {
         // Get the position of '\n' in buffer
@@ -56,6 +75,8 @@ void send_buffer(sockbuffer_t *socket_buffer, char *srcip) {
         // Re-calculate the used size of buffer and remove the message from the buffer
         socket_buffer->data_len = socket_buffer->data_len - (offset + 1);
         data_pt += (offset + 1);
+        // ignore syslog PRI header
+        data_pt += w_get_pri_header_len(data_pt);
         // Find the next '\n'
         buffer_pt = strchr(data_pt, '\n');
     }
@@ -158,4 +179,19 @@ void HandleSyslogTCP()
             continue;
         }
     }
+}
+
+STATIC size_t w_get_pri_header_len(const char * syslog_msg) {
+
+    size_t retval = 0;          // Offset
+    char * pri_head_end = NULL; // end of <PRI> head
+
+    if (syslog_msg != NULL && syslog_msg[0] == '<') {
+        pri_head_end = strchr(syslog_msg + 1, '>');
+        if (pri_head_end != NULL) {
+            retval = (pri_head_end + 1) - syslog_msg;
+        }
+    }
+
+    return retval;
 }

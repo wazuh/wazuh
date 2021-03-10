@@ -430,12 +430,18 @@ char *audit_get_id(const char * event);
 int init_regex(void);
 
 /**
- * @brief Adds audit rules to configured directories
+ * @brief Adds audit rules to directories
  *
- * @param first_time Indicates if it's the first time the rules are being added
- * @return The number of rules added
+ * @param path Path of the configured rule
  */
-int add_audit_rules_syscheck(bool first_time);
+void add_whodata_directory(const char *path);
+
+/**
+ * @brief Function the delete the audit rule for a specfic path
+ *
+ * @param path: Path of the configured rule.
+ */
+void remove_audit_rule_syscheck(const char *path);
 
 /**
  * @brief Read an audit event from socket
@@ -479,13 +485,6 @@ int set_auditd_config(void);
 int init_auditd_socket(void);
 
 /**
- * @brief Creates the necessary threads to process audit events
- *
- * @param [out] audit_sock The audit socket to read the events from
- */
-void *audit_main(int *audit_sock);
-
-/**
  * @brief Reloads audit rules every RELOAD_RULES_INTERVAL seconds
  *
  */
@@ -524,7 +523,7 @@ void get_parent_process_info(char *ppid, char ** const parent_name, char ** cons
  * This is necessary to include audit rules for hot added directories in the configuration
  *
  */
-void audit_reload_rules(void);
+void fim_audit_reload_rules(void);
 
 /**
  * @brief Parses an audit event and sends the corresponding alert message
@@ -553,15 +552,8 @@ void clean_rules(void);
  * @param buffer
  * @return 0 if no key is found, 1 if AUDIT_KEY is found, 2 if an existing key is found, 3 if AUDIT_HEALTHCHECK_KEY is found
  */
+
 int filterkey_audit_events(char *buffer);
-extern W_Vector *audit_added_dirs;
-extern volatile int audit_thread_active;
-extern volatile int whodata_alerts;
-extern volatile int audit_db_consistency_flag;
-extern pthread_mutex_t audit_mutex;
-extern pthread_cond_t audit_thread_started;
-extern pthread_cond_t audit_hc_started;
-extern pthread_cond_t audit_db_consistency;
 
 #elif WIN32
 /**
@@ -920,9 +912,9 @@ void fim_diff_folder_size();
  * physical object in the filesystem
  *
  * @param position Position of the directory in the structure
- * @return A string holding the element being monitored.
+ * @return A string holding the element being monitored. It must be freed after it's usage.
  */
-const char *fim_get_real_path(int position);
+char *fim_get_real_path(int position);
 
 /**
  * @brief Create a delete event and removes the entry from the database.

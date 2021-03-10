@@ -36,12 +36,11 @@
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portWindowsWrapper.h"
 #include "ports/portImpl.h"
+#include "packages/packagesWindowsParserHelper.h"
 
 constexpr auto BASEBOARD_INFORMATION_TYPE{2};
 constexpr auto CENTRAL_PROCESSOR_REGISTRY{"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
-constexpr auto WIN_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages"};
-constexpr auto VISTA_REG_HOTFIX{"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix"};
 constexpr auto SYSTEM_IDLE_PROCESS_NAME{"System Idle Process"};
 constexpr auto SYSTEM_PROCESS_NAME{"System"};
 
@@ -382,6 +381,10 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
                 {
                     architecture = "x86_64";
                 }
+                else
+                {
+                    architecture = UNKNOWN_VALUE;
+                }
 
                 packageJson["name"]         = name;
                 packageJson["version"]      = version;
@@ -393,74 +396,6 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, nlohma
 
                 data.push_back(packageJson);
             }
-        }
-    }
-    catch(...)
-    {
-    }
-}
-
-static void getHotFixFromReg(const HKEY key, const std::string& subKey, nlohmann::json& data)
-{
-    try
-    {
-        std::set<std::string> hotfixes;
-        Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-        const auto packages{root.enumerate()};
-        for (const auto& package : packages)
-        {
-            if (Utils::startsWith(package, "Package_"))
-            {
-                std::string value;
-                Utils::Registry packageReg{key, subKey + "\\" + package, KEY_WOW64_64KEY | KEY_READ};
-                if (packageReg.string("InstallLocation", value))
-                {
-                    value = Utils::toUpperCase(value);
-                    const auto start{value.find("KB")};
-                    if (start != std::string::npos)
-                    {
-                        value = value.substr(start);
-                        const auto end{value.find("-")};
-                        value = value.substr(0, end);
-                        hotfixes.insert(value);
-                    }
-                }
-            }
-        }
-        for (const auto& hotfix : hotfixes)
-        {
-            nlohmann::json hotfixValue;
-            hotfixValue["hotfix"] = hotfix;
-            data.push_back(hotfixValue);
-        }
-    }
-    catch(...)
-    {
-    }
-}
-
-static void getHotFixFromRegNT(const HKEY key, const std::string& subKey, nlohmann::json& data)
-{
-    static const std::string KB_PREFIX{"KB"};
-    static const auto KB_PREFIX_SIZE{KB_PREFIX.size()};
-    try
-    {
-        std::set<std::string> hotfixes;
-        Utils::Registry root{key, subKey, KEY_WOW64_64KEY | KEY_ENUMERATE_SUB_KEYS | KEY_READ};
-        const auto packages{root.enumerate()};
-        for (const auto& package : packages)
-        {
-            auto value{Utils::toUpperCase(package)};
-            if (Utils::startsWith(value, KB_PREFIX))
-            {
-                value = value.substr(KB_PREFIX_SIZE);
-                value = Utils::trim(value.substr(0, value.find_first_not_of("1234567890")));
-                hotfixes.insert(KB_PREFIX + value);
-            }
-        }
-        for (const auto& hotfix : hotfixes)
-        {
-            data.push_back({{"hotfix", hotfix}});
         }
     }
     catch(...)
@@ -607,8 +542,8 @@ nlohmann::json SysInfo::getPackages() const
     {
         getPackagesFromReg(HKEY_USERS, user + "\\" + UNINSTALL_REGISTRY, ret);
     }
-    getHotFixFromReg(HKEY_LOCAL_MACHINE, WIN_REG_HOTFIX, ret);
-    getHotFixFromRegNT(HKEY_LOCAL_MACHINE, VISTA_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromReg(HKEY_LOCAL_MACHINE, PackageWindowsHelper::WIN_REG_HOTFIX, ret);
+    PackageWindowsHelper::getHotFixFromRegNT(HKEY_LOCAL_MACHINE, PackageWindowsHelper::VISTA_REG_HOTFIX, ret);
     return ret;
 }
 

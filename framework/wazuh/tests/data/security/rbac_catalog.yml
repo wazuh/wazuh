@@ -473,6 +473,19 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - DELETE /rootcheck
+      rootcheck:run:
+        description: Run agents rootcheck scan
+        resources:
+          - agent:id
+          - agent:group
+        example:
+          actions:
+            - rootcheck:run
+          resources:
+            - agent:id:*
+          effect: allow
+        related_endpoints:
+          - PUT /rootcheck
       rootcheck:read:
         description: Access information from agents rootcheck database
         resources:
@@ -487,19 +500,6 @@ get_rbac_actions:
         related_endpoints:
           - GET /rootcheck/{agent_id}
           - GET /rootcheck/{agent_id}/last_scan
-      rootcheck:run:
-        description: Run agents rootcheck scan
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:run
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - PUT /rootcheck
       rules:read:
         description: Read rules files
         resources:
@@ -667,6 +667,18 @@ get_rbac_actions:
           - GET /syscollector/{agent_id}/packages
           - GET /syscollector/{agent_id}/ports
           - GET /syscollector/{agent_id}/processes
+      security:edit_run_as:
+        description: Change the value of the allow_run_as flag for a user
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - security:edit_run_as
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - PUT /security/users/{user_id}/run_as
       security:read:
         description: Access information about system security resources
         resources:
