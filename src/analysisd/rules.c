@@ -1444,8 +1444,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
                         int ind;
                         int l;
-                        XML_NODE tactic_id = NULL;
-                        XML_NODE technique_id = NULL;
+                        char *tactic_id = NULL;
+                        char *technique_id = NULL;
                         XML_NODE mitre_opt = NULL;
                         mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
 
@@ -1482,14 +1482,14 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                     smwarn(log_msg, "No Mitre Tactic ID found for rule '%d'",
                                         config_ruleinfo->sigid);
                                 } else {
-                                    tactic_id = mitre_opt[ind]->content;
+                                    os_strdup(mitre_opt[ind]->content, tactic_id);
                                 }
                             } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_technique_id) == 0) {
                                 if (strlen(mitre_opt[ind]->content) == 0) {
                                     smwarn(log_msg, "No Mitre Technique ID found for rule '%d'",
                                         config_ruleinfo->sigid);
                                 } else {
-                                    technique_id = mitre_opt[ind]->content;
+                                    os_strdup(mitre_opt[ind]->content, technique_id);
                                 }
                             } else {
                                 smerror(log_msg, "Invalid option '%s' for rule '%d'", mitre_opt[ind]->element,

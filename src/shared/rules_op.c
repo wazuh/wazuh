@@ -706,7 +706,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
-                } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 || 
+                } else if (strcmp(rule_opt[k]->element, xml_different_id) == 0 ||
                            strcmp(rule_opt[k]->element, xml_notsame_id) == 0) {
                     config_ruleinfo->different_field |= FIELD_ID;
 
@@ -774,7 +774,7 @@ int OS_ReadXMLRules(const char *rulefile,
                     }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_different_user) == 0 ||
-                           strcasecmp(rule_opt[k]->element, 
+                           strcasecmp(rule_opt[k]->element,
                                       xml_notsame_user) == 0) {
                     config_ruleinfo->different_field |= FIELD_USER;
 
@@ -936,8 +936,8 @@ int OS_ReadXMLRules(const char *rulefile,
                 } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
                     int ind;
                     int l;
-                    XML_NODE tactic_id = NULL;
-                    XML_NODE technique_id = NULL;
+                    char *tactic_id = NULL;
+                    char *technique_id = NULL;
                     XML_NODE mitre_opt = NULL;
                     mitre_opt = OS_GetElementsbyNode(&xml, rule_opt[k]);
 
@@ -975,14 +975,14 @@ int OS_ReadXMLRules(const char *rulefile,
                                 mwarn("No Mitre Tactic ID found for rule '%d'",
                                     config_ruleinfo->sigid);
                             } else {
-                                tactic_id = mitre_opt[ind]->content;
+                                os_strdup(mitre_opt[ind]->content, tactic_id);
                             }
                         } else if (strcasecmp(mitre_opt[ind]->element, xml_mitre_technique_id) == 0) {
                             if (strlen(mitre_opt[ind]->content) == 0) {
                                 mwarn("No Mitre Technique ID found for rule '%d'",
                                     config_ruleinfo->sigid);
                             } else {
-                                technique_id = mitre_opt[ind]->content;
+                                os_strdup(mitre_opt[ind]->content, technique_id);
                             }
                         } else {
                             merror("Invalid option '%s' for "
