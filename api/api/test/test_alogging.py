@@ -31,17 +31,19 @@ def test_accesslogger_log(mock_dumps, side_effect, user):
 
     Parameters
     ----------
-    response : StreamResponse
-        Response used to log a mocked request.
+    side_effect : function
+        Side effect used in the decode_token mock.
+    user : str
+        User returned by the request.get function of alogging.py, which is mocked using a class.
     """
 
     class MockedRequest(MagicMock):
         def get(self, *args, **kwargs):
             return user
 
-    if not user:
-        with patch('api.alogging.decode_token', side_effect=side_effect) as mocked_decode_token:
-            alogging.AccessLogger.log(MagicMock(), request=MockedRequest(), response=MagicMock(), time=0.0)
+    with patch('api.alogging.decode_token', side_effect=side_effect) as mocked_decode_token:
+        alogging.AccessLogger.log(MagicMock(), request=MockedRequest(), response=MagicMock(), time=0.0)
+        if not user:
             mocked_decode_token.assert_called_once()
 
 
