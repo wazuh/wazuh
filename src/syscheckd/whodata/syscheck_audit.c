@@ -18,12 +18,12 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
-#define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
-#define AUDIT_CONF_LINK "af_wazuh.conf"
-#define BUF_SIZE OS_MAXSTR
-#define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
-
+#ifndef WAZUH_UNIT_TESTING
+#define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
+                                (mode == HEALTHCHECK_MODE && hc_thread_active))
+#else
+#define audit_thread_status() FOREVER()
+#endif
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -264,26 +264,39 @@ void audit_create_rules_file() {
 
 void audit_rules_to_realtime() {
     char *real_path = NULL;
+    int found;
 
     for (int i = 0; syscheck.dir[i] != NULL; i++) {
         if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
             continue;
         }
 
+        found = 0;
         real_path = fim_get_real_path(i);
 
-        if (search_audit_rule(real_path, "wa", AUDIT_KEY) == 1) {
-            return;
+        // Initialize audit_rule_list
+        int auditd_fd = audit_open();
+        int res = audit_get_rule_list(auditd_fd);
+        audit_close(auditd_fd);
+        if (!res) {
+            merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
         }
 
-        for (int j = 0; syscheck.audit_key[j]; j++) {
-            if (search_audit_rule(real_path, "wa", syscheck.audit_key[j]) == 1) {
-                return;
+        if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1) {
+            found = 1;
+        } else {
+            for (int j = 0; syscheck.audit_key[j]; j++) {
+                if (search_audit_rule(real_path, WHODATA_PERMS, syscheck.audit_key[j]) == 1) {
+                    found = 1;
+                }
             }
         }
-        mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
-        syscheck.opts[i] &= ~WHODATA_ACTIVE;
-        syscheck.opts[i] |= REALTIME_ACTIVE;
+
+        if (!found){
+            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
+            syscheck.opts[i] &= ~WHODATA_ACTIVE;
+            syscheck.opts[i] |= REALTIME_ACTIVE;
+        }
 
         free(real_path);
     }

@@ -482,10 +482,16 @@ void audit_set_db_consistency(void);
 int check_auditd_enabled(void);
 
 /**
+ * @brief Create the necessary file to store the audit rules to be loaded by the immutable mode.
+ *
+*/
+void audit_create_rules_file();
+
+/**
  * @brief Set all directories that don't have audit rules and have whodata enabled to realtime.
  *
 */
-void audit_no_rules_to_realtime();
+void audit_rules_to_realtime();
 
 /**
  * @brief Set Auditd socket configuration
