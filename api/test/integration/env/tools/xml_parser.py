@@ -86,12 +86,12 @@ if __name__ == '__main__':
     og_xml_name = sys.argv[1]
     new_xml_name = sys.argv[2]
 
-    sanitized_file = sanitize_xml(or_xml_name)
+    sanitized_file = sanitize_xml(og_xml_name)
 
-    with open(or_xml_name, 'w') as f:
+    with open(og_xml_name, 'w') as f:
         f.writelines(sanitized_file)
 
-    original_xml = parse(or_xml_name)
+    original_xml = parse(og_xml_name)
     new_xml_sections = parse(new_xml_name)
 
     for section in new_xml_sections.getroot():
