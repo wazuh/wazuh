@@ -19,7 +19,6 @@ static void free_technique_data(void *data);
 
 static void free_tactic_list_data(OSList *tactics_list);
 
-
 static OSHash *techniques_table;
 
 int mitre_load() {
@@ -75,7 +74,8 @@ int mitre_load() {
 
     /* Create techniques hash table */
     techniques_table = OSHash_Create();
-    /* Set  Free Data Pointer */
+
+    /* Set Free Data Pointer */
     OSHash_SetFreeDataPointer(techniques_table, (void (*)(void *))free_technique_data);
 
     do {
@@ -224,54 +224,52 @@ end:
     return result;
 }
 
-
 technique_data* mitre_get_attack(const char *mitre_id) {
     return OSHash_Get(techniques_table, mitre_id);
 }
 
-
 int mitre_free_techniques(void) {
 
     if (techniques_table != NULL) {
-    	if(OSHash_Free(techniques_table)) {
-    		return -1;
-    	}
+        if(OSHash_Free(techniques_table)) {
+            return -1;
+        }
     }
     return 0;
 }
 
-
 static void free_technique_data(void *data) {
 
-	technique_data * tech = (technique_data *)data;
+    technique_data * tech = (technique_data *)data;
 
-	if (!tech) return;
+    if (tech == NULL) {
+        return;
+    }
     if (tech->technique_id) {
-    	os_free(tech->technique_id);
+        os_free(tech->technique_id);
     }
     if (tech->technique_name) {
-    	os_free(tech->technique_name);
+        os_free(tech->technique_name);
     }
     if (tech->tactics_list) {
-    	free_tactic_list_data(tech->tactics_list);
+        free_tactic_list_data(tech->tactics_list);
     }
     os_free(tech);
 }
-
 
 static void free_tactic_list_data(OSList* tactics_list) {
 
     OSListNode* tactic_node = NULL;
     tactic_data* data_tactic = NULL;
 
-	tactic_node = OSList_GetFirstNode(tactics_list);
-	while (tactic_node) {
-		data_tactic = (tactic_data *)tactic_node->data;
-		os_free(data_tactic->tactic_name);
-		os_free(data_tactic->tactic_id);
-		os_free(data_tactic);
-		OSList_DeleteCurrentlyNode(tactics_list);
-		tactic_node = OSList_GetCurrentlyNode(tactics_list);
-	}
-	os_free(tactics_list);
+    tactic_node = OSList_GetFirstNode(tactics_list);
+    while (tactic_node) {
+        data_tactic = (tactic_data *)tactic_node->data;
+        os_free(data_tactic->tactic_name);
+        os_free(data_tactic->tactic_id);
+        os_free(data_tactic);
+        OSList_DeleteCurrentlyNode(tactics_list);
+        tactic_node = OSList_GetCurrentlyNode(tactics_list);
+    }
+    os_free(tactics_list);
 }
