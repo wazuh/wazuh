@@ -397,7 +397,7 @@ stages:
               os:
                 version: "{expected_os_version:s}"
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: 5
           total_failed_items: 0
 
   - name: Try to show agents using a non existing OS Version
@@ -772,7 +772,7 @@ stages:
       verify: False
       <<: *get_agents
       params:
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=18)
+        q: id<5;id!=2;manager~waz;(os.major=16,os.major=20)
     response:
       status_code: 200
       json:
@@ -4017,7 +4017,7 @@ stages:
       <<: *distinct_request
       params:
         fields: status
-        q: id<5;id!=2;manager~waz;(os.major=16,os.major=18)
+        q: id<5;id!=2;manager~waz;(os.major=16,os.major=20)
     response:
       status_code: 200
       json:

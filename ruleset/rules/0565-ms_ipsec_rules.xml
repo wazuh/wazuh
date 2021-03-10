@@ -40,7 +40,7 @@
     <id>^4960$</id>
     <description>IPsec dropped an inbound packet that failed an integrity check</description>
     <mitre>
-      <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
+      <id>T1107</id>
     </mitre>
     <group>windows,</group>
   </rule>
@@ -50,7 +50,7 @@
     <id>^4961$|^4962$</id>
     <description>IPsec dropped an inbound packet that failed a replay check</description>
     <mitre>
-      <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
+      <id>T1107</id>
     </mitre>
     <group>windows,</group>
   </rule>
@@ -60,7 +60,7 @@
     <id>^4963$</id>
     <description>IPsec dropped an inbound clear text packet that should have been secured</description>
     <mitre>
-      <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
+      <id>T1107</id>
     </mitre>
     <group>windows,</group>
   </rule>

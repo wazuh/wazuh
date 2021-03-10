@@ -15,12 +15,17 @@ with patch('wazuh.core.common.ossec_uid'):
 
 
 @patch('api.alogging.logging.Logger')
-def test_accesslogger_log(mock_logger_info):
+@patch('api.alogging.json.dumps')
+def test_accesslogger_log(mock_dumps, mock_logger_info):
     """Tests expected methods are called when using log()"""
     request = MagicMock()
     alogging.AccessLogger.log(MagicMock(), request=request, response=MagicMock(), time=0.0)
 
-    assert request.method_calls[0] == call.get('user', 'unknown_user')
+    assert request.method_calls[0] == call.query.keys()
+    assert request.method_calls[1] == call.get('body', dict())
+    assert request.method_calls[2] == call.get('user', 'unknown_user')
+
+
 
 
 @patch('wazuh.core.wlogging.WazuhLogger.__init__')
