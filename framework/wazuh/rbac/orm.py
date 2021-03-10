@@ -23,7 +23,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
-from wazuh.core.common import USER_NAME, GROUP_NAME
+from wazuh.core.common import wazuh_uid, wazuh_gid
 
 # Max reserved ID value
 max_id_reserved = 99
@@ -2446,7 +2446,7 @@ class RolesRulesManager:
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
 # Only if executing as root
-chown(_auth_db_file, USER_NAME, GROUP_NAME)
+chown(_auth_db_file, wazuh_uid(), wazuh_gid())
 os.chmod(_auth_db_file, 0o640)
 
 default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
