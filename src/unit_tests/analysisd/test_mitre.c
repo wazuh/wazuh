@@ -35,6 +35,8 @@ void test_queryid_error_socket(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryid_no_response(void **state)
@@ -52,6 +54,8 @@ void test_queryid_no_response(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryid_bad_response(void **state)
@@ -71,6 +75,8 @@ void test_queryid_bad_response(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryid_error_parse(void **state)
@@ -87,6 +93,8 @@ void test_queryid_error_parse(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryid_empty_array(void **state)
@@ -103,6 +111,8 @@ void test_queryid_empty_array(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryid_error_parse_technique_id(void **state)
@@ -119,6 +129,8 @@ void test_queryid_error_parse_technique_id(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryid_error_parse_technique_name(void **state)
@@ -135,6 +147,8 @@ void test_queryid_error_parse_technique_name(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryid_error_parse_technique_external_id(void **state)
@@ -151,6 +165,8 @@ void test_queryid_error_parse_technique_external_id(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_querytactics_error_socket(void **state)
@@ -174,6 +190,8 @@ void test_querytactics_error_socket(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_querytactics_no_response(void **state)
@@ -197,6 +215,8 @@ void test_querytactics_no_response(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_querytactics_bad_response(void **state)
@@ -222,6 +242,8 @@ void test_querytactics_bad_response(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_querytactics_error_parse(void **state)
@@ -244,6 +266,8 @@ void test_querytactics_error_parse(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_querytactics_empty_array(void **state)
@@ -266,6 +290,8 @@ void test_querytactics_empty_array(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_querytactics_error_parse_tactics(void **state)
@@ -288,6 +314,8 @@ void test_querytactics_error_parse_tactics(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryname_error_socket(void **state) {
@@ -315,6 +343,8 @@ void test_queryname_error_socket(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 
@@ -343,6 +373,8 @@ void test_queryname_no_response(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryname_bad_response(void **state) {
@@ -372,6 +404,8 @@ void test_queryname_bad_response(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryname_error_parse(void **state) {
@@ -398,6 +432,8 @@ void test_queryname_error_parse(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryname_error_parse_technique_name(void **state) {
@@ -424,6 +460,8 @@ void test_queryname_error_parse_technique_name(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_queryname_error_parse_technique_external_id(void **state) {
@@ -450,6 +488,8 @@ void test_queryname_error_parse_technique_external_id(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_query_tactics_error_filling_technique(void **state)
@@ -481,6 +521,8 @@ void test_query_tactics_error_filling_technique(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+    mitre_free_techniques();
 }
 
 void test_query_tactics_success(void **state)
@@ -514,6 +556,8 @@ void test_query_tactics_success(void **state)
 
     ret = mitre_load();
     assert_int_equal(0, ret);
+
+    mitre_free_techniques();
 }
 
 int main(void) {
