@@ -187,8 +187,8 @@ def set_logging(log_path='logs/api.log', foreground_mode=False, debug_mode='info
 
 
 def print_version():
-    from wazuh.core.cluster import __version__, __author__, __ossec_name__, __licence__
-    print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
+    from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
+    print("\n{} {} - {}\n\n{}".format(__wazuh_name__, __version__, __author__, __licence__))
 
 
 def test_config(config_file):
