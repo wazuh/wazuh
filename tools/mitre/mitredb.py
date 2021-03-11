@@ -42,7 +42,7 @@ external_reference_rows_list = []
 
 class Metadata(Base):
     """
-    In this table are stored the metadata of json file
+    This table stores the metadata of the JSON file.
     The information stored:
         key: key (PK)
         value: value
@@ -55,7 +55,7 @@ class Metadata(Base):
 
 class Technique(Base):
     """
-    In this table are stored the techniques of json file
+    This table stores the techniques of the JSON file.
     The information stored:
         id: Used to identify the technique (PK)
         name: Name of the technique
@@ -91,13 +91,14 @@ class Technique(Base):
     impacts = relationship(const.IMPACT_r, backref=const.TECHNIQUES_r)
     permissions = relationship(const.PERMISSION_r, backref=const.TECHNIQUES_r)
     requirements = relationship(const.SYSTEMREQ_r, backref=const.TECHNIQUES_r)
+
     mitigate = relationship(const.MITIGATE_r)
+    phase = relationship(const.PHASE_r)
 
 
 class DataSource(Base):
     """
-    In this table are stored the Sources for each technique identified
-    with key x_mitre_data_sources on json file
+    This table stores the sources for each technique.
     The information stored:
         id: Used to identify the technique (FK)
         source: Data source for this technique
@@ -110,8 +111,7 @@ class DataSource(Base):
 
 class DefenseByPasses(Base):
     """
-    In this table are stored the Defenses bypassed for each technique identified
-    with key x_mitre_defense_bypassed on json file
+    This table stores the defenses for each technique.
     The information stored:
         id: Used to identify the technique (FK)
         defense: Defense bypassed for this technique
@@ -124,8 +124,7 @@ class DefenseByPasses(Base):
 
 class EffectivePermission(Base):
     """
-    In this table are stored the Effective permissions for each technique identified
-    with key x_mitre_effective_permissions on json file
+    This table stores the effective permissions for each technique.
     The information stored:
         id: Used to identify the technique (FK)
         permission: Effective permission for this technique
@@ -138,8 +137,7 @@ class EffectivePermission(Base):
 
 class Impact(Base):
     """
-    In this table are stored the Impacts of each technique identified with
-    key x_mitre_impact_type on json file
+    This table stores the impacts for each technique.
     The information stored:
         id: Used to identify the technique (FK)
         impact: Impact of this technique
@@ -152,8 +150,7 @@ class Impact(Base):
 
 class Permission(Base):
     """
-    In this table are stored the Permissions for each technique identified
-    with key x_mitre_permissions_required on json file
+    This table stores the permissions for each technique.
     The information stored:
         id: Used to identify the technique (FK)
         permission: Permission for this technique
@@ -166,8 +163,7 @@ class Permission(Base):
 
 class SystemRequirement(Base):
     """
-    In this table are stored the Requirements for each technique identified
-    with key x_mitre_system_requirements on json file
+    This table stores the requirements for each technique.
     The information stored:
         id: Used to identify the technique (FK)
         requirements: System requirement for this technique
@@ -180,7 +176,7 @@ class SystemRequirement(Base):
 
 class Group(Base):
     """
-    In this table are stored the groups of json file
+    This table stores the groups of the JSON file.
     The information stored:
         id: Used to identify the group (PK)
         name: Name of the group
@@ -205,7 +201,7 @@ class Group(Base):
 
 class Software(Base):
     """
-    In this table are stored the software of json file
+    This table stores the software of the JSON file.
     The information stored:
         id: Used to identify the software (PK)
         name: Name of the software
@@ -230,7 +226,7 @@ class Software(Base):
 
 class Mitigation(Base):
     """
-    In this table are stored the mitigations of json file
+    This table stores the mitigations of the JSON file.
     The information stored:
         id: Used to identify the mitigation (PK)
         name: Name of the mitigation
@@ -257,7 +253,7 @@ class Mitigation(Base):
 
 class Aliases(Base):
     """
-    In this table are stored the aliases of json file
+    This table stores the aliases of the JSON file.
     The information stored:
         id: Used to identify the group or software (PK).
         alias: Alias related to this item (PK).
@@ -270,7 +266,7 @@ class Aliases(Base):
 
 class Contributors(Base):
     """
-    In this table are stored the contributors of json file
+    This table stores the contributors of the JSON file.
     The information stored:
         id: Used to identify the technique, group or software (PK).
         contributor: Contributor related to this item (PK).
@@ -283,7 +279,7 @@ class Contributors(Base):
 
 class Platforms(Base):
     """
-    In this table are stored the platforms of json file
+    This table stores the platforms of the JSON file.
     The information stored:
         id: Used to identify the technique or software (PK).
         platform: OS related to this item (PK).
@@ -296,7 +292,7 @@ class Platforms(Base):
 
 class References(Base):
     """
-    In this table are stored the references of json file
+    This table stores the references of the JSON file.
     The information stored:
         id: Used to identify the tactic, technique, mitigation, group or software (PK).
         source: Source of this reference (PK).
@@ -315,6 +311,7 @@ class References(Base):
 
 class Mitigate(Base):
     """
+    This table stores the relationship between mitigation and technique table.
     In this table are stored the mitigate information
     The information stored:
         id: Used to identify the mitigate
@@ -336,7 +333,7 @@ class Mitigate(Base):
 
 class Use(Base):
     """
-    In this table are stored the Use information
+    This table stores the relationship of use.
     The information stored:
         id: Used to identify the use
         source_id: Used to identify the group or software
@@ -357,7 +354,7 @@ class Use(Base):
 
 class Tactic(Base):
     """
-    In this table are stored the tactics of json file
+    This table stores the tactics of the JSON file.
     The information stored:
         id: Used to identify the tactic (PK)
         name: Name of the tactic
@@ -375,10 +372,12 @@ class Tactic(Base):
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
     short_name = Column(const.SHORT_NAME_t, String, default=None)
 
+    phase = relationship(const.PHASE_r)
+
 
 class Phase(Base):
     """
-    This table stores the relationship between techniques and the tactics table.
+    This table stores the relationship between tactic and technique table.
     The information stored:
         tactic_id: Used to identify the tactic (FK) (PK)
         tech_id: Used to identify the technique (FK) (PK)
