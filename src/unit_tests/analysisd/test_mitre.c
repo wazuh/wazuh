@@ -16,9 +16,17 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
+
 #include "../analysisd/mitre.h"
 
 /* tests */
+
+static int test_mitre_free_technique(void **state) {
+
+    mitre_free_techniques();
+    return 0;
+}
+
 
 void test_queryid_error_socket(void **state)
 {
@@ -538,31 +546,56 @@ void test_query_tactics_success(void **state)
 
 }
 
+void test_mitre_get_attack(void **state)
+{
+    (void) state;
+    test_mode = 1;
+
+    static OSHash techniques_table;
+    technique_data tech;
+    technique_data tech_rec;
+    technique_data *p_tech;
+    char *mitre_id = "T1001";
+    p_tech = &tech_rec;
+
+    tech.technique_id = mitre_id;
+    tech.technique_name = "Technique1";
+    /* set string to receive*/
+    expect_any(__wrap_OSHash_Get,  self);
+    expect_string(__wrap_OSHash_Get,  key, mitre_id);
+    will_return(__wrap_OSHash_Get, &tech);
+
+    p_tech = mitre_get_attack((const char *)mitre_id);
+    /* compare name string searched by id */
+    assert_string_equal(tech.technique_name, p_tech->technique_name);
+}
+
+
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_teardown(test_queryid_error_socket, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryid_no_response, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryid_bad_response, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryid_error_parse, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryid_empty_array, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryid_error_parse_technique_id, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryid_error_parse_technique_name, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryid_error_parse_technique_external_id, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_querytactics_error_socket, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_querytactics_no_response, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_querytactics_bad_response, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_querytactics_error_parse, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_querytactics_empty_array, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_querytactics_error_parse_tactics, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryname_error_socket, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryname_no_response, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryname_bad_response, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryname_error_parse, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryname_error_parse_technique_name, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_queryname_error_parse_technique_external_id, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_query_tactics_error_filling_technique, mitre_free_techniques),
-        cmocka_unit_test_teardown(test_query_tactics_success, mitre_free_techniques),
-
+        cmocka_unit_test_teardown(test_queryid_error_socket, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_no_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_bad_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_error_parse, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_empty_array, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_id, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_name, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_external_id, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_error_socket, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_no_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_bad_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_error_parse, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_empty_array, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_error_parse_tactics, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_error_socket, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_no_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_bad_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_error_parse, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_error_parse_technique_name, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_error_parse_technique_external_id, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_query_tactics_error_filling_technique, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_query_tactics_success, test_mitre_free_technique),
+        cmocka_unit_test(test_mitre_get_attack),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
