@@ -17,7 +17,15 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif(FSANITIZE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -38,10 +46,12 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 
+link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
+link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -83,15 +93,12 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 
-add_library(sysinfo SHARED 
+add_library(sysinfo SHARED
     ${SYSINFO_SRC}
     ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
 
-target_link_libraries(sysinfo cjson)
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
-
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
@@ -100,14 +107,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    target_link_libraries(sysinfo proc)
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-
   set_target_properties(sysinfo PROPERTIES
           LINK_FLAGS "-static-libgcc -static-libstdc++")
 
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+    if(DISABLE_SHARED)
+      target_link_libraries(sysinfo proc)
+    endif(DISABLE_SHARED)
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   else()
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
@@ -115,12 +121,18 @@ elseif(UNIX AND NOT APPLE)
     target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 elseif(APPLE)
-  target_link_libraries(sysinfo ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
+  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+if(DISABLE_SHARED)
+  target_link_libraries(sysinfo cjson)
+else()
+  target_link_libraries(sysinfo wazuhext)
+endif(DISABLE_SHARED)
+
 if(APPLE)
-  add_custom_command(TARGET sysinfo 
-    POST_BUILD COMMAND 
+  add_custom_command(TARGET sysinfo
+    POST_BUILD COMMAND
     ${CMAKE_INSTALL_NAME_TOOL} -id "@rpath/libsysinfo.dylib"
     $<TARGET_FILE:sysinfo>)
 endif(APPLE)
@@ -134,5 +146,8 @@ if(UNIT_TEST)
 
   add_subdirectory(tests)
 else()
+  if(FSANITIZE)
+      target_link_libraries(sysinfo gcov)
+  endif(FSANITIZE)
   add_subdirectory(testtool)
 endif(UNIT_TEST)

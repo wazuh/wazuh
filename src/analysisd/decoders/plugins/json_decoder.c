@@ -121,7 +121,6 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
     static const char * VALUE_TRUE = "true";
     static const char * VALUE_FALSE = "false";
     static const char * VALUE_COMMA = ",";
-    static const char * VALUE_EMPTY = "";
 
     cJSON *next, *array;
     char *key = NULL;
@@ -163,7 +162,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_Array:
-                if (lf->decoder_info->flags & CSV_STRING) {
+                if (lf->decoder_info->flags & JSON_TREAT_ARRAY_AS_CSV_STRING) {
                     os_malloc(OS_MAXSTR, value);
                     *value = '\0';
                     size_t n = 0;
@@ -229,15 +228,15 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
 
                         z = strlen(VALUE_COMMA);
 
-                        if (n + z < OS_MAXSTR) {
-                            strcpy(value + n, VALUE_COMMA);
-                            n += z;
-                        } else {
+                        if (n + z >= OS_MAXSTR) {
                             *value = '\0';
                             break;
+                        } else if (array->next != NULL) {
+                            strcpy(value + n, VALUE_COMMA);
+                            n += z;
                         }
                     }
-                } else if (lf->decoder_info->flags & JSON_ARRAY) {
+                } else if (lf->decoder_info->flags & JSON_TREAT_ARRAY_AS_ARRAY) {
                     value = cJSON_Print(logJSON);
                 }
 
@@ -249,9 +248,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                 break;
 
             case cJSON_NULL:
-                if (lf->decoder_info->flags & EMPTY) {
-                    fillData(lf, key, VALUE_EMPTY);
-                } else if (lf->decoder_info->flags & SHOW_STRING) {
+                if (lf->decoder_info->flags & JSON_TREAT_NULL_AS_STRING) {
                     fillData(lf, key, VALUE_NULL);
                 }
                 break;

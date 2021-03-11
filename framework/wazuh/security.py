@@ -112,8 +112,43 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
     return result
 
 
+@expose_resources(actions=['security:edit_run_as'], resources=['*:*:*'])
+def edit_run_as(user_id: str = None, allow_run_as: bool = False):
+    """Enable/Disable the user's allow_run_as flag
+
+    Parameters
+    ----------
+    user_id : str
+        User ID
+    allow_run_as : bool
+        Enable or disable authorization context login method for the specified user
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Status message
+    """
+    result = AffectedItemsWazuhResult(none_msg=f"The parameter allow_run_as could not be "
+                                               f"{'enabled' if allow_run_as else 'disabled'} for the user",
+                                      all_msg=f"Parameter allow_run_as has been "
+                                              f"{'enabled' if allow_run_as else 'disabled'} for the user")
+    with AuthenticationManager() as auth:
+        user_id = int(user_id)
+        query = auth.edit_run_as(user_id, allow_run_as)
+        if query is False:
+            result.add_failed_item(id_=user_id, error=WazuhError(5001))
+        elif query == SecurityError.INVALID:
+            result.add_failed_item(id_=user_id, error=WazuhError(5010))
+        else:
+            result.affected_items.append(auth.get_user_id(user_id))
+            result.total_affected_items += 1
+            invalid_users_tokens(users=[user_id])
+
+    return result
+
+
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
-def create_user(username: str = None, password: str = None, allow_run_as: bool = False):
+def create_user(username: str = None, password: str = None):
     """Create a new user
 
     Parameters
@@ -122,8 +157,6 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
         Name for the new user
     password : str
         Password for the new user
-    allow_run_as : bool
-        Enable authorization context login method for the new user
 
     Returns
     -------
@@ -138,7 +171,7 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
                                       all_msg='User was successfully created')
     with AuthenticationManager() as auth:
-        if auth.add_user(username, password, allow_run_as=allow_run_as):
+        if auth.add_user(username, password):
             operation = auth.get_user(username)
             if operation:
                 result.affected_items.append(operation)
@@ -152,7 +185,7 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None, allow_run_as: bool = None):
+def update_user(user_id: str = None, password: str = None):
     """Update a specified user
 
     Parameters
@@ -161,14 +194,12 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
         User ID
     password : str
         Password for the new user
-    allow_run_as : bool
-        Enable authorization context login method for the new user
 
     Returns
     -------
     Status message
     """
-    if password is None and allow_run_as is None:
+    if password is None:
         raise WazuhError(4001)
     if password:
         if len(password) > 64 or len(password) < 8:
@@ -178,7 +209,7 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
-        query = auth.update_user(int(user_id[0]), password, allow_run_as)
+        query = auth.update_user(int(user_id[0]), password)
         if query is False:
             result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5001))
         else:

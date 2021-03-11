@@ -211,9 +211,9 @@ def test_create_list_file(mock_delete, mock_chmod):
     with open(os.path.join(common.wazuh_path, PATH_FILE)) as f:
         with patch('wazuh.core.cdb_list.common.wazuh_path', new='/var/ossec'):
             with patch('builtins.open') as mock_open:
-                ossec_cdb_list = f.read()
-                result = create_list_file('/test/path', ossec_cdb_list, permissions=0o660)
-                assert mock_open.return_value.__enter__().write.call_count == len(ossec_cdb_list.split('\n'))-1
+                wazuh_cdb_list = f.read()
+                result = create_list_file('/test/path', wazuh_cdb_list, permissions=0o660)
+                assert mock_open.return_value.__enter__().write.call_count == len(wazuh_cdb_list.split('\n'))-1
 
     mock_chmod.assert_called_once_with('/test/path', 0o660)
 

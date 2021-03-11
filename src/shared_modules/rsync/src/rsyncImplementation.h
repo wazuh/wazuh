@@ -36,7 +36,7 @@ struct CJsonDeleter
 
 namespace RSync
 {
-    enum IntegrityMsgType 
+    enum IntegrityMsgType
     {
         INTEGRITY_CHECK_LEFT,       ///< Splitted chunk: left part.
         INTEGRITY_CHECK_RIGHT,      ///< Splitted chunk: right part.
@@ -44,7 +44,7 @@ namespace RSync
         INTEGRITY_CLEAR             ///< Clear data (no files at all).
     };
 
-    static std::map<IntegrityMsgType, std::string> IntegrityCommands 
+    static std::map<IntegrityMsgType, std::string> IntegrityCommands
     {
         { INTEGRITY_CHECK_LEFT, "integrity_check_left" },
         { INTEGRITY_CHECK_RIGHT, "integrity_check_right" },
@@ -62,9 +62,9 @@ namespace RSync
         IntegrityMsgType type;
     };
 
-    enum CalcChecksumType 
+    enum CalcChecksumType
     {
-        CHECKSUM_COMPLETE,      
+        CHECKSUM_COMPLETE,
         CHECKSUM_SPLIT
     };
 
@@ -75,7 +75,7 @@ namespace RSync
         CalcChecksumType type;
         size_t size;
     };
-    
+
     static std::map<std::string, SyncMsgBodyType> SyncMsgBodyTypeMap
     {
         { "JSON_RANGE", SYNC_RANGE_JSON }
@@ -104,16 +104,16 @@ namespace RSync
                         const nlohmann::json& startConfiguration,
                         const ResultCallback callbackWrapper);
 
-        void registerSyncId(const RSYNC_HANDLE handle, 
-                            const std::string& messageHeaderId, 
-                            const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
-                            const nlohmann::json& syncConfiguration, 
+        void registerSyncId(const RSYNC_HANDLE handle,
+                            const std::string& messageHeaderId,
+                            const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
+                            const nlohmann::json& syncConfiguration,
                             const ResultCallback callbackWrapper);
 
-        void push(const RSYNC_HANDLE handle, 
+        void push(const RSYNC_HANDLE handle,
                   const std::vector<unsigned char>& data);
 
-        
+
     private:
 
         class RSyncContext final
@@ -126,10 +126,10 @@ namespace RSync
         std::shared_ptr<RSyncContext> remoteSyncContext(const RSYNC_HANDLE handle);
 
         static size_t getRangeCount(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
-                                    const nlohmann::json& jsonSyncConfiguration, 
+                                    const nlohmann::json& jsonSyncConfiguration,
                                     const SyncInputData& syncData);
 
-        static void fillChecksum(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
+        static void fillChecksum(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
                                        const nlohmann::json& jsonConfiguration,
                                        const std::string& begin,
                                        const std::string& end,
@@ -146,13 +146,14 @@ namespace RSync
 
         static void sendAllData(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
                                 const nlohmann::json& jsonSyncConfiguration,
-                                const ResultCallback callbackWrapper);
+                                const ResultCallback callbackWrapper,
+                                const SyncInputData& ctx);
 
-        static void sendChecksumFail(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper, 
+        static void sendChecksumFail(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
                                      const nlohmann::json& jsonSyncConfiguration,
                                      const ResultCallback callbackWrapper,
                                      const SyncInputData syncData);
-        
+
         RSyncImplementation() = default;
         ~RSyncImplementation() = default;
         RSyncImplementation(const RSyncImplementation&) = delete;

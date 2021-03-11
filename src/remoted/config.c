@@ -40,8 +40,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
 
     /* Setting default values for global parameters */
-    cfg->global.agents_disconnection_time = 20;
-    cfg->global.agents_disconnection_alert_time = 100;
+    cfg->global.agents_disconnection_time = 600;
+    cfg->global.agents_disconnection_alert_time = 0;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
         ReadConfig(CGLOBAL, cfgfile, &cfg->global, NULL) < 0 ) {
@@ -57,17 +57,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
         mwarn("Queue size is very high. The application may run out of memory.");
     }
 
-    const char *(xmlf[]) = {"ossec_config", "cluster", "node_name", NULL};
-
-    OS_XML xml;
-
-    if (OS_ReadXML(cfgfile, &xml) < 0){
-        merror_exit(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    }
-
-    node_name = OS_GetOneContentforElement(&xml, xmlf);
-
-    OS_ClearXML(&xml);
+    /* Get node name of the manager in cluster */
+    node_name = get_node_name();
 
     return (1);
 }

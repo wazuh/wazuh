@@ -186,8 +186,8 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     mond->emailidsname = NULL;
 
     /* Setting default agent's global configuration */
-    mond->global.agents_disconnection_time = 20;
-    mond->global.agents_disconnection_alert_time = 100;
+    mond->global.agents_disconnection_time = 600;
+    mond->global.agents_disconnection_alert_time = 0;
 
     modules |= CREPORTS;
 

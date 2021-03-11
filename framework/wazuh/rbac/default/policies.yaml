@@ -69,6 +69,7 @@ default_policies:
           - security:read_config
           - security:update_config
           - security:revoke
+          - security:edit_run_as
         resources:
           - '*:*:*'
         effect: allow
@@ -91,6 +92,7 @@ default_policies:
         actions:
           - security:create_user
           - security:revoke
+          - security:edit_run_as
         resources:
           - '*:*:*'
         effect: allow
@@ -101,6 +103,16 @@ default_policies:
           - security:delete
         resources:
           - user:id:*
+        effect: allow
+
+  users_modify_run_as:
+    description: Allow changing the allow_run_as value of the users.
+    policies:
+      flag:
+        actions:
+          - security:edit_run_as
+        resources:
+          - '*:*:*'
         effect: allow
 
   ciscat_read:
@@ -153,7 +165,7 @@ default_policies:
   lists_read:
     description: Allow reading all lists paths in the system.
     policies:
-      lists:
+      rules:
         actions:
           - lists:read
         resources:
@@ -163,7 +175,7 @@ default_policies:
   lists_all:
     description: Allow managing all CDB lists files in the system.
     policies:
-      files:
+      rules:
         actions:
           - lists:read
           - lists:delete

@@ -200,17 +200,7 @@ void wm_sync_manager() {
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
     /* Get node name of the manager in cluster */
-    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
-
-    OS_XML xml;
-
-    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
-        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
-    }
-
-    manager_data->node_name = OS_GetOneContentforElement(&xml, xml_node);
-
-    OS_ClearXML(&xml);
+    manager_data->node_name = get_node_name();
 
     if ((os_uname = strdup(getuname()))) {
         char *ptr;
