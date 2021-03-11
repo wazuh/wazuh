@@ -167,6 +167,14 @@ def test_add_policy(orm_setup):
             # Obtain not existent policy
             assert pm.get_policy('noexist') == orm_setup.SecurityError.POLICY_NOT_EXIST
 
+            # Attempt to insert a duplicate policy (same body, different name)
+            assert pm.add_policy(name='newPolicyName',
+                                 policy=policy) == orm_setup.SecurityError.POLICY_BODY_ALREADY_EXIST
+
+            # Attempt to insert a duplicate policy (same name, different body)
+            policy['actions'] = ['agents:read']
+            assert pm.add_policy(name='newPolicy1', policy=policy) == orm_setup.SecurityError.ALREADY_EXIST
+
 
 def test_add_rule(orm_setup):
     """Check rules in the database"""
