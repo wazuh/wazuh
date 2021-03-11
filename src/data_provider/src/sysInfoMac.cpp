@@ -367,11 +367,16 @@ nlohmann::json SysInfo::getPorts() const
             nlohmann::json port;
             std::make_unique<PortImpl>(std::make_shared<BSDPortWrapper>(processInfo.first, fdSocket))->buildPortData(port);
 
-            if (ports["ports"].end() == std::find_if(ports["ports"].begin(), ports["ports"].end(),
-                                                     [&port](const auto & element)
-        {
-            return 0 == port.dump().compare(element.dump());
-            }))
+            const auto portFound
+            {
+                std::find_if(ports["ports"].begin(), ports["ports"].end(),
+                             [&port](const auto & element)
+                {
+                    return 0 == port.dump().compare(element.dump());
+                });
+            };
+
+            if (ports["ports"].end() == portFound)
             {
                 ports["ports"].push_back(port);
             }

@@ -63,13 +63,10 @@ TEST_F(PipelineNodesTest, ReadWriteNodeAsync)
     };
     auto spReadWriteNode
     {
-        std::make_shared<ReadWriteNode>
-        (
-            [](const std::string & value)
+        std::make_shared<ReadWriteNode>([](const std::string & value)
         {
             return std::stoi(value);
-        }
-        )
+        })
     };
     Utils::connect(spReadWriteNode, spReadNode);
 

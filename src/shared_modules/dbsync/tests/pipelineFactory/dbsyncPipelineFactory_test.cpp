@@ -58,21 +58,15 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineOk)
     ASSERT_NE(nullptr, pipeHandle);
     ASSERT_NE(nullptr, m_pipelineFactory.pipeline(pipeHandle));
 }
+
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidHandle)
 {
     const DBSYNC_HANDLE handle{ nullptr };
     const auto& json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const unsigned int threadNumber{ 1 };
     const unsigned int maxQueueSize{ 1000 };
-    EXPECT_THROW
-    (
-        m_pipelineFactory.create(handle,
-                                 json["tables"],
-                                 threadNumber,
-                                 maxQueueSize,
-    [](ReturnTypeCallback, const nlohmann::json&) {}),
-    DbSync::dbsync_error
-    );
+    EXPECT_THROW(m_pipelineFactory.create(handle, json["tables"], threadNumber, maxQueueSize,
+    [](ReturnTypeCallback, const nlohmann::json&) {}), DbSync::dbsync_error);
 }
 
 TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidTxnContext)
@@ -96,15 +90,7 @@ TEST_F(DBSyncPipelineFactoryTest, CreatePipelineInvalidCallback)
     const auto& json{ nlohmann::json::parse(R"({"tables": ["processes"]})") };
     const unsigned int threadNumber{ 1 };
     const unsigned int maxQueueSize{ 1000 };
-    EXPECT_THROW
-    (
-        m_pipelineFactory.create(m_dbHandle,
-                                 json["tables"],
-                                 threadNumber,
-                                 maxQueueSize,
-                                 nullptr),
-        DbSync::dbsync_error
-    );
+    EXPECT_THROW(m_pipelineFactory.create(m_dbHandle, json["tables"], threadNumber, maxQueueSize, nullptr), DbSync::dbsync_error);
 }
 
 TEST_F(DBSyncPipelineFactoryTest, GetPipelineInvalidTxnContext)

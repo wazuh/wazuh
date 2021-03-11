@@ -17,11 +17,6 @@
 #include "stringHelper.h"
 #include "windowsHelper.h"
 
-const auto IPV6_BUFFER_ADDRESS_SIZE
-{
-    16
-};
-
 static const std::map<int32_t, std::string> STATE_TYPE =
 {
     { MIB_TCP_STATE_ESTAB,                 "established"    },

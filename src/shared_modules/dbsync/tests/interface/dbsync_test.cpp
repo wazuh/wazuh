@@ -166,7 +166,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationship)
     const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
     ASSERT_NE(nullptr, handle);
 
-    const auto insertDataProcess{ R"(
+    const auto insertDataProcess { R"(
         {
             "table": "processes",
             "data":[
@@ -237,8 +237,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationship)
                     }
                 }
             ]
-        })"
-                               };
+        })"};
 
     const std::unique_ptr<cJSON, smartDeleterJson> jsRelationship{ cJSON_Parse(relationshipJson) };
     EXPECT_EQ(0, dbsync_add_table_relationship(handle, jsRelationship.get()));
@@ -1717,7 +1716,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationshipCPP)
     const std::unique_ptr<cJSON, smartDeleterJson> jsInsertSocket{ cJSON_Parse(insertDataSocket) };
     EXPECT_NO_THROW(dbSync->insertData(nlohmann::json::parse(insertDataSocket)));
 
-    const auto relationshipJson{ R"(
+    const auto relationshipJson { R"(
         {
             "base_table":"processes",
             "relationed_tables":
@@ -1730,8 +1729,7 @@ TEST_F(DBSyncTest, dbsyncAddTableRelationshipCPP)
                     }
                 }
             ]
-        })"
-                               };
+        })"};
 
     EXPECT_NO_THROW(dbSync->addTableRelationship(nlohmann::json::parse(relationshipJson)));
 

@@ -16,14 +16,7 @@
 #include "sharedDefs.h"
 #include "bits/stdc++.h"
 
-constexpr auto IPv6AddressHexSize
-{
-    32
-};
-constexpr auto IPv4AddressHexSize
-{
-    8
-};
+constexpr int IPV6_ADDRESS_HEX_SIZE { 32 };
 
 enum AddressField
 {
@@ -78,7 +71,6 @@ static const std::map<int32_t, std::string> STATE_TYPE =
     { TCP_CLOSING,                         "closing"        }
 };
 
-
 class LinuxPortWrapper final : public IPortWrapper
 {
         std::vector<std::string> m_fields;
@@ -102,7 +94,7 @@ class LinuxPortWrapper final : public IPortWrapper
 
             const auto hexAddressLength { hexRawAddress.length() };
 
-            if (hexAddressLength == IPv6AddressHexSize)
+            if (hexAddressLength == IPV6_ADDRESS_HEX_SIZE)
             {
                 in6_addr sin6 {};
                 char address[INET6_ADDRSTRLEN] { 0 };
