@@ -172,6 +172,11 @@ int mitre_load() {
                     result = -1;
                     goto end;
                 }
+
+                if (tactic_json != NULL) {
+                    cJSON_Delete(tactic_json);
+                    tactic_json = NULL;
+                }
             }
 
             os_malloc(sizeof(technique_data), data_technique);
@@ -188,9 +193,16 @@ int mitre_load() {
                 result = -1;
                 goto end;
             }
+
+            if (phases_json != NULL) {
+                cJSON_Delete(phases_json);
+                phases_json = NULL;
+            }
         }
 
-        cJSON_Delete(techniques_json);
+        if (techniques_json != NULL) {
+            cJSON_Delete(techniques_json);
+        }
 
         offset += MAX_TECHNIQUES_REQUEST;
 
@@ -204,14 +216,14 @@ end:
     os_free(wazuhdb_query);
     os_free(response);
 
-    if (techniques_json != NULL) {
-        cJSON_Delete(techniques_json);
+    if (tactic_json != NULL) {
+        cJSON_Delete(tactic_json);
     }
     if (phases_json != NULL) {
         cJSON_Delete(phases_json);
     }
-    if (tactic_json != NULL) {
-        cJSON_Delete(tactic_json);
+    if (techniques_json != NULL) {
+        cJSON_Delete(techniques_json);
     }
     if (tactics_list != NULL && result != 0) {
     	free_tactic_list_data(tactics_list);

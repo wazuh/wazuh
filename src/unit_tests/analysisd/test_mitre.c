@@ -36,7 +36,6 @@ void test_queryid_error_socket(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryid_no_response(void **state)
@@ -55,7 +54,6 @@ void test_queryid_no_response(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryid_bad_response(void **state)
@@ -76,7 +74,6 @@ void test_queryid_bad_response(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryid_error_parse(void **state)
@@ -94,7 +91,6 @@ void test_queryid_error_parse(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryid_empty_array(void **state)
@@ -112,7 +108,6 @@ void test_queryid_empty_array(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryid_error_parse_technique_id(void **state)
@@ -130,7 +125,6 @@ void test_queryid_error_parse_technique_id(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryid_error_parse_technique_name(void **state)
@@ -148,7 +142,6 @@ void test_queryid_error_parse_technique_name(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryid_error_parse_technique_external_id(void **state)
@@ -166,7 +159,6 @@ void test_queryid_error_parse_technique_external_id(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_querytactics_error_socket(void **state)
@@ -191,7 +183,6 @@ void test_querytactics_error_socket(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_querytactics_no_response(void **state)
@@ -216,7 +207,6 @@ void test_querytactics_no_response(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_querytactics_bad_response(void **state)
@@ -243,7 +233,6 @@ void test_querytactics_bad_response(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_querytactics_error_parse(void **state)
@@ -267,7 +256,6 @@ void test_querytactics_error_parse(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_querytactics_empty_array(void **state)
@@ -291,7 +279,6 @@ void test_querytactics_empty_array(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_querytactics_error_parse_tactics(void **state)
@@ -315,7 +302,6 @@ void test_querytactics_error_parse_tactics(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryname_error_socket(void **state) {
@@ -344,7 +330,6 @@ void test_queryname_error_socket(void **state) {
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 
@@ -374,7 +359,6 @@ void test_queryname_no_response(void **state) {
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryname_bad_response(void **state) {
@@ -405,7 +389,6 @@ void test_queryname_bad_response(void **state) {
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryname_error_parse(void **state) {
@@ -433,7 +416,6 @@ void test_queryname_error_parse(void **state) {
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryname_error_parse_technique_name(void **state) {
@@ -461,7 +443,6 @@ void test_queryname_error_parse_technique_name(void **state) {
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_queryname_error_parse_technique_external_id(void **state) {
@@ -489,7 +470,6 @@ void test_queryname_error_parse_technique_external_id(void **state) {
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_query_tactics_error_filling_technique(void **state)
@@ -522,7 +502,6 @@ void test_query_tactics_error_filling_technique(void **state)
     ret = mitre_load();
     assert_int_equal(-1, ret);
 
-    mitre_free_techniques();
 }
 
 void test_query_tactics_success(void **state)
@@ -557,33 +536,32 @@ void test_query_tactics_success(void **state)
     ret = mitre_load();
     assert_int_equal(0, ret);
 
-    mitre_free_techniques();
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_queryid_error_socket),
-        cmocka_unit_test(test_queryid_no_response),
-        cmocka_unit_test(test_queryid_bad_response),
-        cmocka_unit_test(test_queryid_error_parse),
-        cmocka_unit_test(test_queryid_empty_array),
-        cmocka_unit_test(test_queryid_error_parse_technique_id),
-        cmocka_unit_test(test_queryid_error_parse_technique_name),
-        cmocka_unit_test(test_queryid_error_parse_technique_external_id),
-        cmocka_unit_test(test_querytactics_error_socket),
-        cmocka_unit_test(test_querytactics_no_response),
-        cmocka_unit_test(test_querytactics_bad_response),
-        cmocka_unit_test(test_querytactics_error_parse),
-        cmocka_unit_test(test_querytactics_empty_array),
-        cmocka_unit_test(test_querytactics_error_parse_tactics),
-        cmocka_unit_test(test_queryname_error_socket),
-        cmocka_unit_test(test_queryname_no_response),
-        cmocka_unit_test(test_queryname_bad_response),
-        cmocka_unit_test(test_queryname_error_parse),
-        cmocka_unit_test(test_queryname_error_parse_technique_name),
-        cmocka_unit_test(test_queryname_error_parse_technique_external_id),
-        cmocka_unit_test(test_query_tactics_error_filling_technique),
-        cmocka_unit_test(test_query_tactics_success),
+        cmocka_unit_test_teardown(test_queryid_error_socket, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryid_no_response, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryid_bad_response, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryid_error_parse, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryid_empty_array, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_id, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_name, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_external_id, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_querytactics_error_socket, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_querytactics_no_response, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_querytactics_bad_response, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_querytactics_error_parse, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_querytactics_empty_array, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_querytactics_error_parse_tactics, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryname_error_socket, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryname_no_response, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryname_bad_response, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryname_error_parse, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryname_error_parse_technique_name, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_queryname_error_parse_technique_external_id, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_query_tactics_error_filling_technique, mitre_free_techniques),
+        cmocka_unit_test_teardown(test_query_tactics_success, mitre_free_techniques),
 
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
