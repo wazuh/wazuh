@@ -19,11 +19,14 @@
 #endif
 
 /// Pending restart bit field
-static struct {
-    unsigned syscheck:1;
-    unsigned rootcheck:1;
-} os_restart;
+typedef struct os_restart_s {
+    atomic_int_t syscheck;
+    atomic_int_t rootcheck;
+} os_restart_t;
 
+
+static os_restart_t os_restart = {.syscheck = ATOMIC_INT_INITIALIZER(0),
+                                  .rootcheck = ATOMIC_INT_INITIALIZER(0)};
 #ifndef WIN32
 
 //Alloc and create an agent removal command payload
@@ -44,8 +47,8 @@ static cJSON* w_create_agent_add_payload(const char *name, const char *ip, const
  */
 int os_check_restart_syscheck()
 {
-    int current = os_restart.syscheck;
-    os_restart.syscheck = 0;
+    int current = atomic_int_get(&(os_restart.syscheck));
+    atomic_int_set(&(os_restart.syscheck), 0);
     return current;
 }
 
@@ -54,16 +57,16 @@ int os_check_restart_syscheck()
  */
 int os_check_restart_rootcheck()
 {
-    int current = os_restart.rootcheck;
-    os_restart.rootcheck = 0;
+    int current = atomic_int_get(&(os_restart.rootcheck));
+    atomic_int_set(&(os_restart.rootcheck), 0);
     return current;
 }
 
 /* Set syscheck and rootcheck to be restarted */
 void os_set_restart_syscheck()
 {
-    os_restart.syscheck = 1;
-    os_restart.rootcheck = 1;
+    atomic_int_set(&(os_restart.syscheck), 1);
+    atomic_int_set(&(os_restart.rootcheck), 1);
 }
 
 /* Read the agent name for the current agent
