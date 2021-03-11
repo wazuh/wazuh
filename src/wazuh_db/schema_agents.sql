@@ -181,6 +181,19 @@ CREATE TABLE IF NOT EXISTS sys_programs (
 
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
+    CREATE TRIGGER package_delete
+        AFTER DELETE ON sys_programs
+    BEGIN
+        UPDATE vuln_cves SET state = 'INVALID' WHERE vuln_cves.item_id = old.item_id;
+    END;
+
+    CREATE TRIGGER package_insert
+        AFTER INSERT ON sys_programs
+    BEGIN
+        UPDATE vuln_cves SET state = 'VALID' WHERE vuln_cves.item_id = new.item_id;
+    END;
+
+
 CREATE TABLE IF NOT EXISTS sys_hotfixes (
     scan_id INTEGER,
     scan_time TEXT,
@@ -344,6 +357,8 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     name TEXT,
     version TEXT,
     architecture TEXT,
+    item_id TEXT,
+    state TEXT,
     cve TEXT,
     PRIMARY KEY (name, version, architecture, cve)
 );
