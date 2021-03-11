@@ -13,6 +13,7 @@ int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version
     }
 
         /////////////////////////
+    int return_val;
     SHA_CTX shactx;
     unsigned char digest[SHA_DIGEST_LENGTH];
     int i=0,j=0;
@@ -26,7 +27,7 @@ int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version
 
     for (i=0; i<SHA_DIGEST_LENGTH; i++) {
         char * test = (char*) malloc (sizeof(char) * 3);
-        snprintf (test, 2, "%02x",digest[i]);
+        snprintf (test, 3, "%02x",digest[i]);
         strcpy(item_id_final+j,test);
         j+=2;
         os_free(test);
@@ -40,9 +41,11 @@ int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version
     sqlite3_bind_text(stmt, 5, "VALID", -1, NULL);
     sqlite3_bind_text(stmt, 6, cve, -1, NULL);
 
-    os_free(item_id_final);
 
-    return wdb_exec_stmt_silent(stmt);
+
+    return_val = wdb_exec_stmt_silent(stmt);
+    os_free(item_id_final);
+    return return_val;
 
 }
 

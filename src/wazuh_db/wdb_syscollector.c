@@ -492,7 +492,6 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         j+=2;
         os_free(test);
     }
-    item_id = item_id_final;
     /////////////////////////
 
     if (wdb_package_insert(wdb,
@@ -513,7 +512,7 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         location,
         0,
         checksum,
-        item_id,
+        item_id_final,
         replace) < 0) {
 
         return -1;
