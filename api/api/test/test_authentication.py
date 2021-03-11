@@ -9,8 +9,6 @@ from unittest.mock import patch, MagicMock, ANY, call
 
 from werkzeug.exceptions import Unauthorized
 
-from wazuh.core.common import USER_NAME, GROUP_NAME
-
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.results import WazuhResult
@@ -79,14 +77,15 @@ def test_check_user(mock_raise_if_exc, mock_submit, mock_distribute_function, mo
 @patch('api.authentication.chown')
 @patch('builtins.open')
 def test_generate_secret(mock_open, mock_chown, mock_chmod, mock_token):
-    """Check if result's length and type are as expected and mocked function are called with correct params"""
+    """Check if result's length and type are as expected and mocked function are called with correct params."""
     result = authentication.generate_secret()
     assert isinstance(result, str)
     assert result == 'test_token'
 
     calls = [call(authentication._secret_file_path, mode='x')]
     mock_open.has_calls(calls)
-    mock_chown.assert_called_once_with(authentication._secret_file_path, USER_NAME, GROUP_NAME)
+    mock_chown.assert_called_once_with(authentication._secret_file_path, authentication.wazuh_uid(),
+                                       authentication.wazuh_gid())
     mock_chmod.assert_called_once_with(authentication._secret_file_path, 0o640)
 
     with patch('os.path.exists', return_value=True):
