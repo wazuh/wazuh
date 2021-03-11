@@ -1451,6 +1451,7 @@ nlohmann::json Syscollector::getPortsData()
     nlohmann::json ret;
     constexpr auto PORT_LISTENING_STATE { "listening" };
     constexpr auto TCP_PROTOCOL { "tcp" };
+    constexpr auto UDP_PROTOCOL { "udp" };
     const auto& data { m_spInfo->ports() };
 
     if (!data.is_null())
@@ -1461,26 +1462,32 @@ nlohmann::json Syscollector::getPortsData()
         {
             for (auto item : itPorts.value())
             {
-                const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-                if(isListeningState)
+                const auto protocol { item.at("protocol").get_ref<const std::string&>() };
+                if (Utils::startsWith(protocol, TCP_PROTOCOL))
                 {
-                    item["checksum"] = getItemChecksum(item);
-                    item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
-                    // Only update and notify "Listening" state ports
+                    // All ports.
                     if (m_portsAll)
                     {
-                        // TCP and UDP ports
+                        item["checksum"] = getItemChecksum(item);
+                        item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
                         ret.push_back(item);
                     }
-                    else
+                    else // Only listening ports.
                     {
-                        // Only TCP ports
-                        const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
-                        if (isTCPProto)
+                        const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+                        if(isListeningState)
                         {
+                            item["checksum"] = getItemChecksum(item);
+                            item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
                             ret.push_back(item);
                         }
                     }
+                }
+                else if (Utils::startsWith(protocol, UDP_PROTOCOL))
+                {
+                    item["checksum"] = getItemChecksum(item);
+                    item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
+                    ret.push_back(item);
                 }
             }
         }
