@@ -646,7 +646,7 @@ def add_policy(name: str = None, policy: str = None, resource_type: ResourceType
                                       all_msg='Policy was successfully created')
     with PoliciesManager() as pm:
         status = pm.add_policy(name=name, policy=policy, resource_type=resource_type)
-        if status == SecurityError.ALREADY_EXIST:
+        if status == SecurityError.ALREADY_EXIST or status == SecurityError.POLICY_BODY_ALREADY_EXIST:
             result.add_failed_item(id_=name, error=WazuhError(4009))
         elif status == SecurityError.INVALID:
             result.add_failed_item(id_=name, error=WazuhError(4006))
