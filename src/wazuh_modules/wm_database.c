@@ -80,6 +80,9 @@ static void wm_sync_agents();
 // Clean dangling database files
 static void wm_clean_dangling_db();
 
+// Clean dangling group files
+void wm_clean_dangling_groups();
+
 static void wm_sync_multi_groups(const char *dirname);
 
 #endif // LOCAL
@@ -116,6 +119,7 @@ void* wm_database_main(wm_database *data) {
     }
 
 #ifndef LOCAL
+    wm_clean_dangling_groups();
     wm_clean_dangling_db();
 #endif
 
@@ -353,6 +357,51 @@ void wm_clean_dangling_db() {
             } else {
                 mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", dirname, dirent->d_name);
             }
+        }
+    }
+
+    closedir(dir);
+}
+
+// Clean dangling group files
+void wm_clean_dangling_groups() {
+    char path[PATH_MAX];
+    char * name;
+    int agent_id;
+    struct dirent * dirent = NULL;
+    DIR * dir;
+
+    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", DEFAULTDIR GROUPS_DIR);
+    dir = opendir(DEFAULTDIR GROUPS_DIR);
+
+    if (dir == NULL) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", DEFAULTDIR GROUPS_DIR, strerror(errno));
+        return;
+    }
+
+    while ((dirent = readdir(dir)) != NULL) {
+        if (dirent->d_name[0] != '.') {
+            os_snprintf(path, sizeof(path), DEFAULTDIR GROUPS_DIR "/%s", dirent->d_name);
+            agent_id = atoi(dirent->d_name);
+
+            if (agent_id <= 0) {
+                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", DEFAULTDIR GROUPS_DIR, dirent->d_name);
+                continue;
+            }
+
+            name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock);
+
+            if (name == NULL) {
+                mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", agent_id);
+                continue;
+            }
+
+            if (*name == '\0') {
+                mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", dirent->d_name);
+                unlink(path);
+            }
+
+            free(name);
         }
     }
 
