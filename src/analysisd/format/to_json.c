@@ -184,7 +184,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
 
                         if (strcmp(data_tactic->tactic_id, lf->generated_rule->mitre_tactic_id[i]) == 0) {
                             tactic_exist = TRUE;
-                            /* Check if the element is already in the array */
+                            /* Check if the tactic is already in the array */
                             cJSON_ArrayForEach(element, mitre_tactic_array){
                                 if (strcmp(element->valuestring, data_tactic->tactic_name) == 0) {
                                     inarray = TRUE;
@@ -202,7 +202,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
 
                     inarray = FALSE;
                     if(tactic_exist == TRUE) {
-                        /* Check if the element is already in the array */
+                        /* Check if the technique is already in the array */
                         cJSON_ArrayForEach(element, mitre_technique_array){
                             if (strcmp(element->valuestring, data_technique->technique_name) == 0) {
                                 inarray = TRUE;
