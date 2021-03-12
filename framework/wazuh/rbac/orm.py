@@ -79,8 +79,8 @@ class SecurityError(IntEnum):
     RELATIONSHIP_ERROR = -8
     # Protected resources of the system
     PROTECTED_RESOURCES = -9
-    # A policy with the same body but different name already exists in the database
-    POLICY_BODY_ALREADY_EXIST = -10
+    # sqlalchemy UniqueConstraint or CheckConstraint failed
+    CONSTRAINT_ERROR = -10
 
 
 class ResourceType(Enum):
@@ -1524,7 +1524,7 @@ class PoliciesManager:
                 return SecurityError.INVALID
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.POLICY_BODY_ALREADY_EXIST
+            return SecurityError.CONSTRAINT_ERROR
 
     def delete_policy(self, policy_id: int):
         """Delete an existent policy in the system. This function can remove a resource regardless of its resource_type.

@@ -146,7 +146,6 @@ def test_add_policy(orm_setup):
     """Check policy is added to database"""
     with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
         with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
-            # New policy
             policy = {
                 'actions': ['agents:update'],
                 'resources': [
@@ -154,22 +153,24 @@ def test_add_policy(orm_setup):
                 ],
                 'effect': 'allow'
             }
+
+            # Too long name
+            assert pm.add_policy('v'*65, policy=policy) == orm_setup.SecurityError.CONSTRAINT_ERROR
+
+            # New policy
             pm.add_policy(name='newPolicy', policy=policy)
             assert pm.get_policy('newPolicy')
-            # New policy
+
+            # Another policy
             policy['actions'] = ['agents:delete']
             pm.add_policy(name='newPolicy1', policy=policy)
             assert pm.get_policy('newPolicy1')
-
-            # Too long name
-            assert not pm.add_policy('v'*65, policy)
 
             # Obtain not existent policy
             assert pm.get_policy('noexist') == orm_setup.SecurityError.POLICY_NOT_EXIST
 
             # Attempt to insert a duplicate policy (same body, different name)
-            assert pm.add_policy(name='newPolicyName',
-                                 policy=policy) == orm_setup.SecurityError.POLICY_BODY_ALREADY_EXIST
+            assert pm.add_policy(name='newPolicyName', policy=policy) == orm_setup.SecurityError.CONSTRAINT_ERROR
 
             # Attempt to insert a duplicate policy (same name, different body)
             policy['actions'] = ['agents:read']
@@ -341,7 +342,7 @@ def test_edit_run_as(orm_setup):
     with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
         am.add_user(username='runas', password='testingA6!')
         assert am.edit_run_as(user_id='106', allow_run_as=True)
-        assert am.edit_run_as(user_id='106', allow_run_as="INVALID") == db_setup.SecurityError.INVALID
+        assert am.edit_run_as(user_id='106', allow_run_as="INVALID") == orm_setup.SecurityError.INVALID
         assert not am.edit_run_as(user_id='999', allow_run_as=False)
 
 
