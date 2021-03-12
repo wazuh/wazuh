@@ -9,16 +9,13 @@
  * Foundation.
  */
 
-#include "wdb.h"
+#include "wdb_global_helpers.h"
 #include "defs.h"
 #include "wazuhdb_op.h"
 
 #ifdef WIN32
 #define chown(x, y, z) 0
 #endif
-
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
