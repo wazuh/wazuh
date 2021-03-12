@@ -15,6 +15,10 @@
 
 #define MAX_TECHNIQUES_REQUEST 100
 
+static void free_technique_data(void *data);
+
+static void free_tactic_list_data(OSList *tactics_list);
+
 static OSHash *techniques_table;
 
 int mitre_load() {
@@ -49,9 +53,6 @@ int mitre_load() {
     OSList* tactics_list = NULL;
     tactic_data* data_tactic = NULL;
 
-    /* Create techniques hash table */
-    techniques_table = OSHash_Create();
-
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
@@ -70,6 +71,12 @@ int mitre_load() {
         result = -1;
         goto end;
     }
+
+    /* Create techniques hash table */
+    techniques_table = OSHash_Create();
+
+    /* Set Free Data Pointer */
+    OSHash_SetFreeDataPointer(techniques_table, (void (*)(void *))free_technique_data);
 
     do {
         for (i = 0; i < size_ids; i++) {
@@ -165,6 +172,11 @@ int mitre_load() {
                     result = -1;
                     goto end;
                 }
+
+                if (tactic_json != NULL) {
+                    cJSON_Delete(tactic_json);
+                    tactic_json = NULL;
+                }
             }
 
             os_malloc(sizeof(technique_data), data_technique);
@@ -181,9 +193,16 @@ int mitre_load() {
                 result = -1;
                 goto end;
             }
+
+            if (phases_json != NULL) {
+                cJSON_Delete(phases_json);
+                phases_json = NULL;
+            }
         }
 
-        cJSON_Delete(techniques_json);
+        if (techniques_json != NULL) {
+            cJSON_Delete(techniques_json);
+        }
 
         offset += MAX_TECHNIQUES_REQUEST;
 
@@ -197,38 +216,72 @@ end:
     os_free(wazuhdb_query);
     os_free(response);
 
-    if (techniques_json != NULL) {
-        cJSON_Delete(techniques_json);
+    if (tactic_json != NULL) {
+        cJSON_Delete(tactic_json);
     }
     if (phases_json != NULL) {
         cJSON_Delete(phases_json);
     }
-    if (tactic_json != NULL) {
-        cJSON_Delete(tactic_json);
+    if (techniques_json != NULL) {
+        cJSON_Delete(techniques_json);
     }
     if (tactics_list != NULL && result != 0) {
-        OSListNode *tactic_node = OSList_GetFirstNode(tactics_list);
-        while (tactic_node) {
-            data_tactic = (tactic_data *)tactic_node->data;
-            os_free(data_tactic->tactic_name);
-            os_free(data_tactic->tactic_id);
-            os_free(data_tactic);
-            OSList_DeleteCurrentlyNode(tactics_list);
-            tactic_node = OSList_GetCurrentlyNode(tactics_list);
-        }
-        os_free(tactics_list);
+    	free_tactic_list_data(tactics_list);
     }
+
     if (result != 0) {
          merror("Mitre matrix information could not be loaded.");
     }
-
-#ifdef WAZUH_UNIT_TESTING
-    OSHash_Free(techniques_table);
-#endif
 
     return result;
 }
 
 technique_data* mitre_get_attack(const char *mitre_id) {
     return OSHash_Get(techniques_table, mitre_id);
+}
+
+int mitre_free_techniques(void) {
+
+    if (techniques_table != NULL) {
+        if(OSHash_Free(techniques_table)) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static void free_technique_data(void *data) {
+
+    technique_data * tech = (technique_data *)data;
+
+    if (tech == NULL) {
+        return;
+    }
+    if (tech->technique_id) {
+        os_free(tech->technique_id);
+    }
+    if (tech->technique_name) {
+        os_free(tech->technique_name);
+    }
+    if (tech->tactics_list) {
+        free_tactic_list_data(tech->tactics_list);
+    }
+    os_free(tech);
+}
+
+static void free_tactic_list_data(OSList* tactics_list) {
+
+    OSListNode* tactic_node = NULL;
+    tactic_data* data_tactic = NULL;
+
+    tactic_node = OSList_GetFirstNode(tactics_list);
+    while (tactic_node) {
+        data_tactic = (tactic_data *)tactic_node->data;
+        os_free(data_tactic->tactic_name);
+        os_free(data_tactic->tactic_id);
+        os_free(data_tactic);
+        OSList_DeleteCurrentlyNode(tactics_list);
+        tactic_node = OSList_GetCurrentlyNode(tactics_list);
+    }
+    os_free(tactics_list);
 }

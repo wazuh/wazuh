@@ -43,4 +43,12 @@ int mitre_load();
  */
 technique_data* mitre_get_attack(const char *mitre_id);
 
+/**
+ * @brief This function free techniques table.
+ *
+ * @return int, it returns 0 on success and -1 on failure.
+ */
+int mitre_free_techniques(void);
+
+
 #endif /* MITRE_H */
