@@ -872,6 +872,7 @@ main()
     fi
 
     . ./src/init/update.sh
+
     # Is this an update?
     if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
         echo ""
@@ -901,6 +902,40 @@ main()
             esac
         done
 
+        # Only if the update is for a version lower than 5.0.0
+        USER_OLD_VERSION=`getPreinstalledVersion`
+        VERSIONv5="v5.0.0"
+
+        if [ "$USER_OLD_VERSION" < "$VERSIONv5" ]; then
+            echo ""
+            ct="1"
+            while [ $ct = "1" ]; do
+                ct="0"
+                echo " - Warning: Upgrading to $NAME $VERSION from a version prior to v5.0.0 means"
+                echo " that you will lose all ossec.log settings."
+                $ECHO " - Do you want to continue? ($yes/$no): "
+                if [ "X${USER_UPDATE}" = "X" ]; then
+                    read ANY
+                else
+                    ANY=$yes
+                fi
+
+                case $ANY in
+                    $yes)
+                        update_only="yes"
+                        break;
+                        ;;
+                    $no)
+                        echo ""
+                        echo "We recommend reading our documentation for more information - http://www.wazuh.com"
+                        exit 0;
+                        ;;
+                    *)
+                        ct="1"
+                        ;;
+                esac
+            done
+        fi
 
         # Do some of the update steps.
         if [ "X${update_only}" = "Xyes" ]; then
