@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -19,9 +19,9 @@
 #include "os_regex/os_regex.h"
 #include "headers/file_op.h"
 
-#define OSSECCONF   "ossec.conf"
-#define OSSECDEF    "default-ossec.conf"
-#define OSSECLAST   "ossec.conf.bak"
+#define OSSECCONF   "agent.conf"
+#define OSSECDEF    "default-agent.conf"
+#define AGENT_CONF_LAST   "agent.conf.bak"
 #define CLIENTKEYS  "client.keys"
 #define OS_MAXSTR   1024
 

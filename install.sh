@@ -1026,7 +1026,11 @@ main()
     echo " - ${tostop}:"
     echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
-    echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
+    echo " - ${configat}:"
+    if ([ "X$INSTYPE" = "Xserver" ] || [ "X$INSTYPE" = "Xlocal" ]); then
+        echo "      $INSTALLDIR/etc/manager.conf"
+    fi
+    echo "      $INSTALLDIR/etc/agent.conf"
     echo ""
 
 

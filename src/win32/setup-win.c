@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 
         system("echo y|icacls .  /remove  \"*S-1-5-32-545\" ");
 
-        system("echo y|icacls ossec.conf  /remove  \"*S-1-1-0\" ");
+        system("echo y|icacls agent.conf  /remove  \"*S-1-1-0\" ");
 
         /* Copy them back */
 
