@@ -336,17 +336,19 @@ void wm_clean_dangling_db() {
                 *end = 0;
 
                 if (name = wdb_get_agent_name(atoi(dirent->d_name), &wdb_wmdb_sock), name) {
-                    // Agent found: OK
-                    free(name);
-                } else {
-                    *end = '-';
+                    if (*name == '\0') {
+                        // Agent not found.
+                        *end = '-';
 
-                    if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
-                        mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
-                        if (remove(path) < 0) {
-                            mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                        if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
+                            mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
+                            if (remove(path) < 0) {
+                                mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                            }
                         }
                     }
+
+                    free(name);
                 }
             } else {
                 mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", dirname, dirent->d_name);
