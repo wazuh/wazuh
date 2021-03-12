@@ -9,6 +9,7 @@
  */
 
 #include "csyslogd.h"
+#include "../client-agent/agentd.h"
 #include "cJSON.h"
 #include "config/config.h"
 #include "os_net/os_net.h"
@@ -18,15 +19,22 @@
  * Returns 1 on success or 0 on error
  */
 
-int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
+int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 {
     char *tstamp;
     char *hostname;
     char syslog_msg[OS_MAXSTR];
 
-    /* Invalid socket */
+
+    /* Invalid socket, reconnect */
     if (syslog_config->socket < 0) {
-        return (0);
+        mdebug2("Resolving server hostname: %s", syslog_config->server);
+        resolveHostname(&syslog_config->server, 5);
+
+        syslog_config->socket = OS_ConnectUDP(syslog_config->port, syslog_config->server, 0);
+        if (syslog_config->socket < 0) {
+            return (0);
+        }
     }
 
     /* Clear the memory before insert */
@@ -310,7 +318,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 /* Send alerts via syslog from JSON alert
  * Returns 1 on success or 0 on error
  */
-int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config) {
+int OS_Alert_SendSyslog_JSON(cJSON *json_data, SyslogConfig *syslog_config) {
     cJSON * rule;
     cJSON * timestamp;
     cJSON * groups;
@@ -418,6 +426,17 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config
              /* JSON Encoded Data */
              string
             );
+
+    /* Invalid socket, reconnect */
+    if (syslog_config->socket < 0) {
+        mdebug2("Resolving server hostname: %s", syslog_config->server);
+        resolveHostname(&syslog_config->server, 5);
+
+        syslog_config->socket = OS_ConnectUDP(syslog_config->port, syslog_config->server, 0);
+        if (syslog_config->socket < 0) {
+            return (0);
+        }
+    }
 
     mdebug2("OS_Alert_SendSyslog_JSON(): sending '%s'", msg);
     OS_SendUDPbySize(syslog_config->socket, strlen(msg), msg);

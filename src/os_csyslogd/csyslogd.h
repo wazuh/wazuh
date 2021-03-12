@@ -30,12 +30,12 @@ void * csyscom_main(__attribute__((unused)) void * arg);
 /* Send alerts via syslog
  * Returns 1 on success or 0 on error
  */
-int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config);
+int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config);
 
 /* Send alerts via syslog from JSON alert
  * Returns 1 on success or 0 on error
  */
-int OS_Alert_SendSyslog_JSON(cJSON *json_data, const SyslogConfig *syslog_config);
+int OS_Alert_SendSyslog_JSON(cJSON *json_data, SyslogConfig *syslog_config);
 
 /* Database inserting main function */
 void OS_CSyslogD(SyslogConfig **syslog_config) __attribute__((noreturn));
