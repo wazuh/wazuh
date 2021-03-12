@@ -1026,7 +1026,7 @@ main()
     echo " - ${tostop}:"
     echo "      $INSTALLDIR/bin/wazuh-control stop"
     echo ""
-    echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
+    echo " - ${configat} $INSTALLDIR/etc/agent.conf"
     echo ""
 
 

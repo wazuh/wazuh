@@ -18,7 +18,7 @@
 #include <commctrl.h>
 
 /* Default values */
-#define CONFIG          "ossec.conf"
+#define CONFIG          "agent.conf"
 #define LASTCONFIG      "last-ossec.conf"
 #define VERSION_FILE    "VERSION"
 #define REVISION_FILE   "REVISION"

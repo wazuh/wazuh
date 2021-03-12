@@ -1,5 +1,5 @@
 ' Script for configuration Windows agent.
-' Copyright (C) 2015-2020, Wazuh Inc. <support@wazuh.com>
+' Copyright (C) 2015-2021, Wazuh Inc. <support@wazuh.com>
 '
 ' This program is free software; you can redistribute it and/or modify
 ' it under the terms of the GNU General Public License as published by
@@ -30,8 +30,8 @@ public function removeAll()
  
    Set objSFO = CreateObject("Scripting.FileSystemObject")
 
-   If objSFO.fileExists(home_dir & "ossec.conf.save") AND objSFO.fileExists(home_dir & "ossec.conf") Then
-      objSFO.DeleteFile(home_dir & "ossec.conf.save")
+   If objSFO.fileExists(home_dir & "agent.conf.save") AND objSFO.fileExists(home_dir & "agent.conf") Then
+      objSFO.DeleteFile(home_dir & "agent.conf.save")
    End If
 
    If objSFO.fileExists(home_dir & "client.keys.save") AND objSFO.fileExists(home_dir & "client.keys") Then
@@ -42,8 +42,8 @@ public function removeAll()
       objSFO.DeleteFile(home_dir & "local_internal_options.conf.save")
    End If
 
-   If objSFO.fileExists(home_dir & "ossec.conf") Then
-      objSFO.GetFile(home_dir + "\ossec.conf").Name = "ossec.conf.save"
+   If objSFO.fileExists(home_dir & "agent.conf") Then
+      objSFO.GetFile(home_dir + "\agent.conf").Name = "agent.conf.save"
    End If
 
    If objSFO.fileExists(home_dir & "client.keys") Then
@@ -59,7 +59,7 @@ public function removeAll()
  
       ' Everything in the application's root folder will be deleted.
       ' *BUT*, the files specified here *will not* be deleted
-       Dim filesToKeep: filesToKeep = Array("ossec.conf.save", "client.keys.save", _
+       Dim filesToKeep: filesToKeep = Array("agent.conf.save", "client.keys.save", _
                                             "local_internal_options.conf.save")
  
       ' Construct a simple dictionary to check out later whether a file is in
