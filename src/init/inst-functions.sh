@@ -890,35 +890,28 @@ InstallCommon()
         fi
     fi
 
-    if [ ${INSTYPE} = 'server' ]; then
-        if [ -f  ../etc/wazuh-manager.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-manager.mc ${PREFIX}/etc/manager.conf
-        else
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-server.conf ${PREFIX}/etc/manager.conf
+    if ([ ${INSTYPE} = 'server' ] || [ ${INSTYPE} = 'local' ]); then
+        if [ ! -f ${PREFIX}/etc/manager.conf ]; then
+            if [ -f  ../etc/wazuh-manager.mc ]; then
+                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-manager.mc ${PREFIX}/etc/manager.conf
+            else
+                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-server.conf ${PREFIX}/etc/manager.conf
+            fi
         fi
-
-        if [ -f  ../etc/wazuh-agent.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
-        else
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
+        if [ ! -f ${PREFIX}/etc/agent.conf ]; then
+            if [ -f  ../etc/wazuh-agent.mc ]; then
+                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
+            else
+                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
+            fi
         fi
     elif [ ${INSTYPE} = 'agent' ]; then
-        if [ -f  ../etc/wazuh-agent.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
-        else
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
-        fi
-    elif [ ${INSTYPE} = 'local' ]; then
-        if [ -f  ../etc/wazuh-manager.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-manager.mc ${PREFIX}/etc/manager.conf
-        else
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-server.conf ${PREFIX}/etc/manager.conf
-        fi
-
-        if [ -f  ../etc/wazuh-agent.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
-        else
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent-local.conf ${PREFIX}/etc/agent.conf
+        if [ ! -f ${PREFIX}/etc/agent.conf ]; then
+            if [ -f  ../etc/wazuh-agent.mc ]; then
+                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
+            else
+                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
+            fi
         fi
     fi
 
