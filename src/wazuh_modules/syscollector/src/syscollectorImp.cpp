@@ -1153,7 +1153,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool ports,
                         const bool portsAll,
                         const bool processes,
-                        const bool hotfixes)
+                        const bool hotfixes,
+                        const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = reportDiffFunction;
@@ -1169,6 +1170,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_portsAll = portsAll;
     m_processes = processes;
     m_hotfixes = hotfixes;
+    m_notify = notifyOnFirstScan;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
