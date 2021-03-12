@@ -435,6 +435,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     int result = 0;
     int id_agent = -1;
     int type;
+    char * name;
 
     mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
 
@@ -455,11 +456,26 @@ int wm_sync_file(const char *dirname, const char *fname) {
     switch (type) {
     case WDB_GROUPS:
         id_agent = atoi(fname);
-        if (id_agent < 0) {
+        if (id_agent <= 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
             return -1;
         }
 
+        name = wdb_get_agent_name(id_agent, &wdb_wmdb_sock);
+
+        if (name == NULL) {
+            mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", id_agent);
+            return -1;
+        }
+
+        if (*name == '\0') {
+            mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", fname);
+            unlink(path);
+            free(name);
+            return -1;
+        }
+
+        free(name);
         result = wm_sync_agent_group(id_agent, fname);
         break;
 
