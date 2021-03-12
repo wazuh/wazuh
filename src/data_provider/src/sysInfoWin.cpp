@@ -38,10 +38,7 @@
 #include "ports/portImpl.h"
 #include "packages/packagesWindowsParserHelper.h"
 
-constexpr auto BASEBOARD_INFORMATION_TYPE
-{
-    2
-};
+constexpr int BASEBOARD_INFORMATION_TYPE { 2 };
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
 const std::string UNINSTALL_REGISTRY{"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"};
 constexpr auto SYSTEM_IDLE_PROCESS_NAME {"System Idle Process"};
