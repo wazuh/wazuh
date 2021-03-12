@@ -43,33 +43,6 @@ SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.t
 WriteSyscheck()
 {
     # Adding to the config file
-    #if [ "X$SYSCHECK" = "Xyes" ]; then
-    #  SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    #  if [ "$SYSCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-    #    SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    #  fi
-    #  cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG
-    #  echo "" >> $NEWCONFIG
-    #else
-    #  if [ "$1" = "manager" ]; then
-    #    echo "  <syscheck>" >> $NEWCONFIG
-    #    echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-    #    echo "" >> $NEWCONFIG
-    #    echo "    <scan_on_start>yes</scan_on_start>" >> $NEWCONFIG
-    #    echo "" >> $NEWCONFIG
-    #    echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG
-    #    echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG
-    #    echo "" >> $NEWCONFIG
-    #    echo "  </syscheck>" >> $NEWCONFIG
-    #    echo "" >> $NEWCONFIG
-    #  else
-    #    echo "  <syscheck>" >> $NEWCONFIG
-    #    echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-    #    echo "  </syscheck>" >> $NEWCONFIG
-    #    echo "" >> $NEWCONFIG
-    #  fi
-    #fi
-    # Adding to the config file
     if [ "X$SYSCHECK" = "Xyes" ]; then
       SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       if [ "$SYSCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
@@ -898,22 +871,16 @@ InstallCommon()
                 ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-server.conf ${PREFIX}/etc/manager.conf
             fi
         fi
-        if [ ! -f ${PREFIX}/etc/agent.conf ]; then
-            if [ -f  ../etc/wazuh-agent.mc ]; then
-                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
-            else
-                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
-            fi
-        fi
-    elif [ ${INSTYPE} = 'agent' ]; then
-        if [ ! -f ${PREFIX}/etc/agent.conf ]; then
-            if [ -f  ../etc/wazuh-agent.mc ]; then
-                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
-            else
-                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
-            fi
+    fi
+
+    if [ ! -f ${PREFIX}/etc/agent.conf ]; then
+        if [ -f  ../etc/wazuh-agent.mc ]; then
+            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
+        else
+            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
         fi
     fi
+
 
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
