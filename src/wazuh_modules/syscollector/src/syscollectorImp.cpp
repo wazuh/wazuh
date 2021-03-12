@@ -1474,7 +1474,8 @@ nlohmann::json Syscollector::getPortsData()
                         item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
                         ret.push_back(item);
                     }
-                    else // Only listening ports.
+                    // Only listening ports.
+                    else
                     {
                         const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
                         if(isListeningState)
