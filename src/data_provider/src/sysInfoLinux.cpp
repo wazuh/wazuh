@@ -209,9 +209,8 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100*memFree/ramTotal);
 }
 
-static nlohmann::json getRpmInfo()
+static void getRpmInfo(nlohmann::json& ret)
 {
-    nlohmann::json ret;
     auto rawData{ Utils::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'")};
     if (!rawData.empty())
     {
@@ -225,12 +224,10 @@ static nlohmann::json getRpmInfo()
             }
         }
     }
-    return ret;
 }
 
-static nlohmann::json getDpkgInfo(const std::string& fileName)
+static void getDpkgInfo(const std::string& fileName, nlohmann::json& ret)
 {
-    nlohmann::json ret;
     std::fstream file{fileName, std::ios_base::in};
     if (file.is_open())
     {
@@ -258,7 +255,6 @@ static nlohmann::json getDpkgInfo(const std::string& fileName)
             }
         }
     }
-    return ret;
 }
 
 struct AlmpDeleter
@@ -269,10 +265,9 @@ struct AlmpDeleter
     }
 };
 
-static nlohmann::json getPacmanInfo(const std::string& libPath)
+static void getPacmanInfo(const std::string& libPath, nlohmann::json& ret)
 {
     constexpr auto ROOT_PATH{"/"};
-    nlohmann::json ret;
     alpm_errno_t err{ALPM_ERR_OK};
     auto handle {alpm_initialize(ROOT_PATH, libPath.c_str(), &err)};
     if (!handle)
@@ -308,12 +303,11 @@ static nlohmann::json getPacmanInfo(const std::string& libPath)
         packageInfo["groups"]       = groups;
         packageInfo["version"]      = alpm_pkg_get_version(pkg);
         packageInfo["architecture"] = alpm_pkg_get_arch(pkg);
-        packageInfo["format"]       = "pkg";// FIXME: Using the pkg in order to support older server versions (in the future this should be replaced with the "pacman" format
+        packageInfo["format"]       = "pkg"; // FIXME: Using the pkg in order to support older server versions (in the future this should be replaced with the "pacman" format
         packageInfo["vendor"]       = "";
         packageInfo["description"]  = alpm_pkg_get_desc(pkg);
         ret.push_back(packageInfo);
     }
-    return ret;
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -321,15 +315,15 @@ nlohmann::json SysInfo::getPackages() const
     nlohmann::json packages;
     if (Utils::existsDir(DPKG_PATH))
     {
-        packages = getDpkgInfo(DPKG_STATUS_PATH);
+        getDpkgInfo(DPKG_STATUS_PATH, packages);
     }
-    else if (Utils::existsDir(PACMAN_PATH))
+    if (Utils::existsDir(PACMAN_PATH))
     {
-        packages = getPacmanInfo(PACMAN_PATH);
+        getPacmanInfo(PACMAN_PATH, packages);
     }
-    else
+    if (Utils::existsDir(RPM_PATH))
     {
-        packages = getRpmInfo();
+        getRpmInfo(packages);
     }
     return packages;
 }
