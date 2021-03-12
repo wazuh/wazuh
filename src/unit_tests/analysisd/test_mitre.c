@@ -549,7 +549,6 @@ void test_query_tactics_success(void **state)
 void test_mitre_get_attack(void **state)
 {
     (void) state;
-    test_mode = 1;
 
     static OSHash techniques_table;
     technique_data tech;
