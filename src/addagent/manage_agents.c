@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -74,7 +74,7 @@ char *chomp(char *str)
 
 #ifndef CLIENT
 
-int add_agent(int json_output, int no_limit)
+int add_agent(int json_output)
 {
     int i = 1;
     FILE *fp;
@@ -223,7 +223,6 @@ int add_agent(int json_output, int no_limit)
             double antiquity = OS_AgentAntiquity_ID(id_exist);
 
             if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
-                OS_BackupAgentInfo_ID(id_exist);
                 OS_RemoveAgent(id_exist);
             } else {
                 if (json_output) {
@@ -312,11 +311,6 @@ int add_agent(int json_output, int no_limit)
         /* If user accepts to add */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
             if (!authd_running) {
-                if ( !no_limit && limitReached() ) {
-                    merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-                    merror_exit(CONFIG_ERROR, KEYS_FILE);
-                }
-
                 time3 = time(0);
                 rand2 = os_random();
 
@@ -340,8 +334,8 @@ int add_agent(int json_output, int no_limit)
                  * Random 5: Final key
                  */
 
-                snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
-                snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
+                os_snprintf(str1, STR_SIZE, "%d%s%d", (int)(time3 - time2), name, (int)rand1);
+                os_snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2 - time1), ip, id, (int)rand2);
 
                 OS_MD5_Str(str1, -1, md1);
                 OS_MD5_Str(str2, -1, md2);
@@ -380,7 +374,7 @@ int add_agent(int json_output, int no_limit)
                     } else
                         merror_exit("Lost authd socket connection.");
                 }
-                if (auth_add_agent(sock, id, name, ip, NULL, env_remove_dup ? force_antiquity : -1, json_output,NULL,1) < 0) {
+                if (w_request_agent_add_local(sock, id, name, ip, NULL, NULL, env_remove_dup ? force_antiquity : -1, json_output,NULL,1) < 0) {
                     break;
                 }
             }
@@ -580,79 +574,4 @@ int list_agents(int cmdlist)
     }
 
     return (0);
-}
-
-int limitReached() {
-    FILE *fp;
-    const char *keys_file = isChroot() ? KEYS_FILE : KEYSFILE_PATH;
-    char buffer[OS_BUFFER_SIZE + 1];
-    int counter = 0;
-
-    fp = fopen(keys_file, "r");
-    if (!fp) {
-        /* We can leave from here */
-        merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
-        merror_exit(NO_CLIENT_KEYS);
-    }
-
-    /* Read each line. Lines are divided as "id name ip key" */
-    while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
-        char *tmp_str;
-
-        if ((buffer[0] == '#') || (buffer[0] == ' ')) {
-            continue;
-        }
-
-        /* Get ID */
-        tmp_str = strchr(buffer, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-
-        /* Removed entry */
-        if (*tmp_str == '#' || *tmp_str == '!') {
-            continue;
-        }
-
-        /* Get name */
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-
-        /* Get IP address */
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-
-        /* Get key */
-        tmp_str = strchr(tmp_str, '\n');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        }
-
-        counter++;
-        continue;
-    }
-
-    fclose(fp);
-
-    /* Check for maximum agent size */
-    if ( counter >= (MAX_AGENTS - 2) )
-        return 1;
-    return 0;
-
 }

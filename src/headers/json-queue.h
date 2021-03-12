@@ -1,7 +1,7 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -30,5 +30,15 @@ cJSON * jqueue_next(file_queue * queue);
 
 // Close queue
 void jqueue_close(file_queue * queue);
+
+/**
+ * @brief Read and validate a JSON alert from the file queue
+ *
+ * @param queue pointer to the file_queue struct
+ * @post The flag variable may be set to CRALERT_READ_FAILED if the read operation got no data.
+ * @post The read position is restored if failed to get a JSON object.
+ * @retval NULL No data read or could not get a valid JSON object. Pointer to the JSON object otherwise.
+ */
+cJSON * jqueue_parse_json(file_queue * queue);
 
 #endif

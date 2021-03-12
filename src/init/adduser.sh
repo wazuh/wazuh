@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#Copyright (C) 2015-2019, Wazuh Inc.
+#Copyright (C) 2015-2020, Wazuh Inc.
 
 set -e
 set -u
@@ -23,15 +23,8 @@ UNAME=$(uname);
 # Thanks Chuck L. for the mac addusers
 if [ "$UNAME" = "Darwin" ]; then
     if ! id -u "${USER}" > /dev/null 2>&1; then
-
-        # Creating for <= 10.4
-        if /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.2.|10.3|10.4" > /dev/null 2>&1; then
-            chmod +x ./init/darwin-addusers.pl
-            ./init/darwin-addusers.pl $USER $USER_MAIL $USER_REM $INSTYPE
-        else
-            chmod +x ./init/osx105-addusers.sh
-            ./init/osx105-addusers.sh $USER $USER_MAIL $USER_REM $GROUP $INSTYPE
-        fi
+        chmod +x ./init/darwin-addusers.sh
+        ./init/darwin-addusers.sh $USER $USER_MAIL $USER_REM $GROUP $INSTYPE
     fi
 
 else
@@ -51,6 +44,10 @@ else
         GROUPADD="/usr/bin/mkgroup"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
+    elif [ "$UNAME" = "NetBSD" ]; then
+        GROUPADD="/usr/sbin/groupadd"
+        USERADD="/usr/sbin/useradd"
+        OSMYSHELL="/sbin/nologin"
     else
     # All current linux distributions should support system accounts for
     # users/groups. If not, leave the GROUPADD/USERADD as it was before
@@ -88,7 +85,7 @@ else
 
     for U in ${NEWUSERS}; do
         if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
-            if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" ]; then
+            if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
                 ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${U}"
             elif [ "$UNAME" = "AIX" ]; then
                 GID=$(cat /etc/group | grep ossec| cut -d':' -f 3)

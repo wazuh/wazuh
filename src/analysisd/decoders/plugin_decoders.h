@@ -1,17 +1,17 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#ifndef __PLUGINDECODER_H
-#define __PLUGINDECODER_H
+#ifndef PLUGINDECODER_H
+#define PLUGINDECODER_H
 
-#include "eventinfo.h"
+#include "../eventinfo.h"
 
 /* Plugin decoder for OpenBSD PF */
 void *PF_Decoder_Init(void);
@@ -27,7 +27,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 
 /* Plugin for OSSEC alert */
 void *OSSECAlert_Decoder_Init(void);
-void *OSSECAlert_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
+void *OSSECAlert_Decoder_Exec(Eventinfo *lf, OSHash *rules_hash, regex_matching *decoder_match);
 
 /* Plugin for JSON */
 void *JSON_Decoder_Init(void);
@@ -39,4 +39,4 @@ extern const char *(plugin_decoders[]);
 extern void *(plugin_decoders_init[]);
 extern void *(plugin_decoders_exec[]);
 
-#endif /* __PLUGINDECODER_H */
+#endif /* PLUGINDECODER_H */

@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -174,10 +174,14 @@ void *mysql_osdb_connect(const char *host, const char *user, const char *pass, c
         return (NULL);
     }
 
-    /* If host is 127.0.0.1 or localhost, use TCP socket */
-    if ((strcmp(host, "127.0.0.1") == 0) ||
-            (strcmp(host, "localhost") == 0)) {
-        if (sock != NULL) {
+
+    /* If host is 127.0.0.1 or localhost, use tcp socket */
+    if((strcmp(host, "127.0.0.1") == 0) ||
+       (strcmp(host, "::1") == 0) ||
+       (strcmp(host, "localhost") == 0))
+    {
+        if(sock != NULL)
+        {
             mysql_options(conn, MYSQL_OPT_NAMED_PIPE, NULL);
         } else {
             unsigned int p_type = MYSQL_PROTOCOL_TCP;
@@ -338,32 +342,4 @@ int postgresql_osdb_query_select(void *db_conn, const char *query)
     return (result_int);
 }
 /** End of PostgreSQL calls **/
-#endif
-
-/* Everything else when db is not defined */
-#if !defined(PGSQL_DATABASE_ENABLED) && !defined(MYSQL_DATABASE_ENABLED)
-
-void *none_osdb_connect(__attribute__((unused)) const char *host, __attribute__((unused)) const char *user,
-                        __attribute__((unused)) const char *pass, __attribute__((unused)) const char *db,
-                        __attribute__((unused)) unsigned int port, __attribute__((unused)) const char *sock)
-{
-    merror("Database support not enabled. Exiting.");
-    return (NULL);
-}
-void *none_osdb_close(__attribute__((unused)) void *db_conn)
-{
-    merror("Database support not enabled. Exiting.");
-    return (NULL);
-}
-int none_osdb_query_insert(__attribute__((unused)) void *db_conn, __attribute__((unused)) const char *query)
-{
-    merror("Database support not enabled. Exiting.");
-    return (0);
-}
-int none_osdb_query_select(__attribute__((unused)) void *db_conn, __attribute__((unused)) const char *query)
-{
-    merror("Database support not enabled. Exiting.");
-    return (0);
-}
-
 #endif

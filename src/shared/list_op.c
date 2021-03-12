@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -32,8 +32,8 @@ OSList *OSList_Create()
     my_list->count = 0;
     my_list->pending_remove = 0;
     my_list->free_data_function = NULL;
-    my_list->wr_mutex = (pthread_rwlock_t)PTHREAD_RWLOCK_INITIALIZER;
-    my_list->mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+    w_rwlock_init(&my_list->wr_mutex, NULL);
+    w_mutex_init(&my_list->mutex, NULL);
 
     return (my_list);
 }
@@ -333,4 +333,31 @@ void *OSList_AddData(OSList *list, void *data)
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 
     return ret;
+}
+
+void OSList_CleanNodes(OSList *list) {
+    if (list == NULL || list->free_data_function == NULL) {
+        return;
+    }
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    OSListNode *aux_node = NULL;
+
+    while(list->first_node != NULL) {
+        aux_node = list->first_node;
+        list->first_node = aux_node->next;
+        list->free_data_function(aux_node->data);
+        free(aux_node);
+    }
+
+    list->last_node = NULL;
+    list->cur_node = NULL;
+    list->first_node = NULL;
+
+    list->currently_size = 0;
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 }

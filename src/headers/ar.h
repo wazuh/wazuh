@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,8 +10,8 @@
 
 /* Active Response shared headers */
 
-#ifndef __AR_H
-#define __AR_H
+#ifndef AR_H
+#define AR_H
 
 /* Recipient agents */
 #define ALL_AGENTS      0000001
@@ -32,11 +32,4 @@
 #define REMOTE_AR       00001
 #define LOCAL_AR        00002
 
-/* Expected values */
-#define FILENAME    0000010
-#define SRCIP       0000004
-#define DSTIP       0000002
-#define USERNAME    0000001
-
-#endif /* __AR_H */
-
+#endif /* AR_H */

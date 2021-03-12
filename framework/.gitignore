@@ -15,3 +15,5 @@ wazuh-clusterd-internal
 
 # Projects
 .idea
+
+wazuh/wazuh.json

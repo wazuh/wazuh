@@ -1,14 +1,24 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
 #include "shared.h"
+
+#ifdef WAZUH_UNIT_TESTING
+#define static
+
+#undef OSSEC_DEFINES
+#define OSSEC_DEFINES   "./internal_options.conf"
+
+#undef OSSEC_LDEFINES
+#define OSSEC_LDEFINES   "./local_internal_options.conf"
+#endif
 
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
@@ -56,6 +66,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         }
         return (NULL);
     }
+    w_file_cloexec(fp);
 
     /* Invalid call */
     if (!high_name || !low_name) {
@@ -144,6 +155,10 @@ int getNetmask(unsigned int mask, char *strmask, size_t size)
     if (mask == 0) {
         snprintf(strmask, size, "/any");
         return (1);
+    }
+
+    if (!_mask_inited) {
+        _init_masks();
     }
 
     for (i = 0; i <= 31; i++) {
@@ -517,6 +532,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
     if ((*str == 'a') || (*str == 'A')) {
         str++;
         if ((*str == 'm') || (*str == 'M')) {
+            if (chour == 12) chour = 0;
             snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
             str++;
             return (str);
@@ -524,6 +540,7 @@ static const char *__gethour(const char *str, char *ossec_hour)
     } else if ((*str == 'p') || (*str == 'P')) {
         str++;
         if ((*str == 'm') || (*str == 'M')) {
+            if (chour == 12) chour = 0;
             chour += 12;
 
             /* New hour must be valid */
@@ -736,7 +753,6 @@ char *OS_IsValidDay(const char *day_str)
         }
 
         if (!days[i]) {
-            merror(INVALID_DAY, day_str);
             return (NULL);
         }
 
@@ -748,7 +764,6 @@ char *OS_IsValidDay(const char *day_str)
         } else if (*day_str == '\0') {
             break;
         } else {
-            merror(INVALID_DAY, day_str);
             return (NULL);
         }
     }
@@ -772,7 +787,6 @@ char *OS_IsValidDay(const char *day_str)
     /* At least one day must be checked */
     if (ng == 0) {
         free(ret);
-        merror(INVALID_DAY, day_str);
         return (NULL);
     }
 
@@ -838,7 +852,8 @@ int w_validate_wday(const char * day_str) {
 // Acceptable format: hh:mm (24 hour format)
 char * w_validate_time(const char * time_str) {
 
-    int hour, min;
+    int hour = -1;
+    int min = -1;
     char * ret_time = NULL;
 
     if (!time_str) {
@@ -887,4 +902,35 @@ int w_validate_interval(int interval, int force) {
     }
 
     return ret;
+}
+
+long long w_validate_bytes(const char *content) {
+
+    long long converted_value = 0;
+    char * end;
+    long read_value = strtol(content, &end, 10);
+
+    if (read_value < 0 || read_value == LONG_MAX || content == end) {
+        return -1;
+    }
+
+    switch (*end) {
+        case 'K':
+        case 'k':
+            converted_value = read_value * 1024LL;
+            break;
+        case 'M':
+        case 'm':
+            converted_value = read_value * (1024 * 1024LL);
+            break;
+        case 'G':
+        case 'g':
+            converted_value = read_value * (1024 * 1024 * 1024LL);
+            break;
+        default:
+            converted_value = read_value;
+            break;
+    }
+
+    return converted_value;
 }

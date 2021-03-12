@@ -1,9 +1,9 @@
 /*
  * Label Configuration
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * February 20, 2017.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -93,6 +93,7 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
 error:
     labels_free(*labels);
+    *labels = NULL;
     return OS_INVALID;
 }
 

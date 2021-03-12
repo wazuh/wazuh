@@ -1,15 +1,15 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
 
-#include "dodiff.h"
-
+#include "rules.h"
+#include "eventinfo.h"
 #include "shared.h"
 
 static int _add2last(const char *str, size_t strsize, const char *file)
@@ -65,7 +65,7 @@ static int _add2last(const char *str, size_t strsize, const char *file)
     return (1);
 }
 
-int doDiff(RuleInfo *rule, Eventinfo *lf)
+int doDiff(RuleInfo *rule, struct _Eventinfo *lf)
 {
     time_t date_of_change;
     char *htpt = NULL;
@@ -81,22 +81,15 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
         if (htpt) {
             *htpt = '\0';
         }
-#ifndef TESTRULE
-        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname + 1, rule->sigid, DIFF_LAST_FILE);
-#else
+
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
-#endif
 
         if (htpt) {
             *htpt = ')';
         }
         htpt = NULL;
     } else {
-#ifndef TESTRULE
-        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname, rule->sigid, DIFF_LAST_FILE);
-#else
         snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, DIFF_TEST_HOST, rule->sigid, DIFF_LAST_FILE);
-#endif
     }
 
     /* lf->size can't be too long */

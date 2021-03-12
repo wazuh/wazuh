@@ -1,7 +1,7 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #define MAX_CACHE 16
 #define MAX_HEADER 64
@@ -48,14 +49,19 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     char *id;
     char *p;
     size_t z;
-    int64_t offset;
-    int64_t rbytes;
+    int64_t offset = 0;
+    int64_t rbytes = 0;
 
     int lines = 0;
 
     *rc = 0;
 
-    for (offset = w_ftell(lf->fp); fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    /* Obtain context to calculate hash */
+    SHA_CTX context;
+    offset = w_ftell(lf->fp);
+    w_get_hash_context(lf->file, &context, offset);
+
+    for (offset = w_ftell(lf->fp); can_read() && fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
 
         /* Flow control */
@@ -66,6 +72,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         lines++;
 
         if (buffer[rbytes - 1] == '\n') {
+            OS_SHA1_Stream(&context, NULL, buffer);
             buffer[rbytes - 1] = '\0';
 
             if ((int64_t)strlen(buffer) != rbytes - 1)
@@ -84,6 +91,8 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                         break;
                     }
 
+                    OS_SHA1_Stream(&context, NULL, buffer);
+
                     if (buffer[rbytes - 1] == '\n') {
                         break;
                     }
@@ -91,7 +100,10 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
             } else if (feof(lf->fp)) {
                 mdebug2("Message not complete. Trying again: '%s'", buffer);
 
-                fseek(lf->fp, offset, SEEK_SET);
+                if (fseek(lf->fp, offset, SEEK_SET) < 0) {
+                   merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
+                   break;
+               }
             }
 
             break;
@@ -126,6 +138,8 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
     if (icache > 0)
         audit_send_msg(cache, icache, lf->file, drop_it, lf->log_target);
+
+    w_update_file_status(lf->file, offset, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return NULL;

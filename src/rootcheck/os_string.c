@@ -1,7 +1,7 @@
 /* Included and modified strings.c from the OpenBSD project */
 
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (c) 1980, 1987, 1993
  * The Regents of the University of California.  All rights reserved.
  *
@@ -150,7 +150,7 @@ int os_string(char *file, char *regex)
     unsigned char *bfr;
     char line[OS_SIZE_1024 + 1];
     char *buf;
-    EXEC *head;
+    EXEC *head = NULL;
     os_strings oss;
 
     /* Return didn't match */

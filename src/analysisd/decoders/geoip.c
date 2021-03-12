@@ -1,11 +1,11 @@
 /* @(#) $Id: ./src/analysisd/decoders/geoip.c, 2014/03/08 dcid Exp $
  */
 
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2014 Daniel Cid
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -69,16 +69,16 @@ char *GetGeoInfobyIP(char *ip_addr)
         {
             snprintf(geobuffer, 255, "%s / %s", geoiprecord->country_code, regionname);
             geobuffer[255] = '\0';
-            geodata = strdup(geobuffer);
+            os_strdup(geobuffer, geodata);
         }
         else
         {
-            geodata = strdup(geoiprecord->country_code);
+            os_strdup(geoiprecord->country_code, geodata);
         }
     }
     else
     {
-        geodata = strdup(geoiprecord->country_code);
+        os_strdup(geoiprecord->country_code, geodata);
     }
 
     GeoIPRecord_delete(geoiprecord);

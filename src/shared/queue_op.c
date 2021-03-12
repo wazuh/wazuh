@@ -1,9 +1,9 @@
 /*
  * Queue (abstract data type)
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * October 2, 2017
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -18,17 +18,17 @@ w_queue_t * queue_init(size_t size) {
     queue->size = size;
     queue->elements = 0;
     w_mutex_init(&queue->mutex, NULL);
-    pthread_cond_init(&queue->available, NULL);
-    pthread_cond_init(&queue->available_not_empty, NULL);
+    w_cond_init(&queue->available, NULL);
+    w_cond_init(&queue->available_not_empty, NULL);
     return queue;
 }
 
 void queue_free(w_queue_t * queue) {
     if (queue) {
         free(queue->data);
-        pthread_mutex_destroy(&queue->mutex);
-        pthread_cond_destroy(&queue->available);
-        pthread_cond_destroy(&queue->available_not_empty);
+        w_mutex_destroy(&queue->mutex);
+        w_cond_destroy(&queue->available);
+        w_cond_destroy(&queue->available_not_empty);
         free(queue);
     }
 }
@@ -90,7 +90,6 @@ void * queue_pop(w_queue_t * queue) {
         return NULL;
     } else {
         data = queue->data[queue->end];
-        queue->data[queue->begin] = data;
         queue->end = (queue->end + 1) % queue->size;
         queue->elements--;
         return data;
@@ -104,6 +103,24 @@ void * queue_pop_ex(w_queue_t * queue) {
 
     while (data = queue_pop(queue), !data) {
         w_cond_wait(&queue->available, &queue->mutex);
+    }
+
+    w_cond_signal(&queue->available_not_empty);
+    w_mutex_unlock(&queue->mutex);
+
+    return data;
+}
+
+void * queue_pop_ex_timedwait(w_queue_t * queue, const struct timespec * abstime) {
+    void * data;
+
+    w_mutex_lock(&queue->mutex);
+
+    while (data = queue_pop(queue), !data) {
+        if (pthread_cond_timedwait(&queue->available, &queue->mutex, abstime) != 0) {
+            w_mutex_unlock(&queue->mutex);
+            return NULL;
+        }
     }
 
     w_cond_signal(&queue->available_not_empty);

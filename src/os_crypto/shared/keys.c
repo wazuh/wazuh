@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -102,6 +102,8 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     keys->keyentries[keys->keysize]->fp = NULL;
     keys->keyentries[keys->keysize]->inode = 0;
     keys->keyentries[keys->keysize]->sock = -1;
+    keys->keyentries[keys->keysize]->updating_time = 0;
+    keys->keyentries[keys->keysize]->rids_node = NULL;
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     if (keys->flags.rehash_keys) {
@@ -164,7 +166,7 @@ int OS_CheckKeys()
 }
 
 /* Read the authentication keys */
-void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit)
+void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed)
 {
     FILE *fp;
 
@@ -179,16 +181,22 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
-        merror(NO_AUTHFILE, keys_file);
-        merror_exit(NO_CLIENT_KEYS);
+        if (pass_empty_keyfile) {
+            mdebug1(NO_AUTHFILE, keys_file);
+        } else {
+            merror(NO_AUTHFILE, keys_file);
+            merror_exit(NO_CLIENT_KEYS);
+        }
     }
 
     keys->inode = File_Inode(keys_file);
     fp = fopen(keys_file, "r");
     if (!fp) {
-        /* We can leave from here */
-        merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
-        merror_exit(NO_CLIENT_KEYS);
+        if (!pass_empty_keyfile) {
+            /* We can leave from here */
+            merror(FOPEN_ERROR, keys_file, errno, strerror(errno));
+            merror_exit(NO_CLIENT_KEYS);
+        }
     }
 
     /* Initialize hashes */
@@ -211,104 +219,103 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     __memclear(id, name, ip, key, KEYSIZE + 1);
     memset(buffer, '\0', OS_BUFFER_SIZE + 1);
 
-    /* Read each line. Lines are divided as "id name ip key" */
-    while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
-        char *tmp_str;
-        char *valid_str;
+    /* Add additional entry for sender == keysize */
+    os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
+    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
-        if ((buffer[0] == '#') || (buffer[0] == ' ')) {
-            continue;
-        }
+    if(fp) {
+        /* Read each line. Lines are divided as "id name ip key" */
+        while (fgets(buffer, OS_BUFFER_SIZE, fp) != NULL) {
+            char *tmp_str;
+            char *valid_str;
 
-        /* Get ID */
-        valid_str = buffer;
-        tmp_str = strchr(buffer, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-        strncpy(id, valid_str, KEYSIZE - 1);
-
-        /* Update counter */
-
-        id_number = strtol(id, &end, 10);
-
-        if (!*end && id_number > keys->id_counter)
-            keys->id_counter = id_number;
-
-        /* Removed entry */
-        if (*tmp_str == '#' || *tmp_str == '!') {
-            if (save_removed) {
-                tmp_str[-1] = ' ';
-                tmp_str = strchr(tmp_str, '\n');
-
-                if (tmp_str) {
-                    *tmp_str = '\0';
-                }
-
-                save_removed_key(keys, buffer);
+            if ((buffer[0] == '#') || (buffer[0] == ' ')) {
+                continue;
             }
 
-            continue;
-        }
+            /* Get ID */
+            valid_str = buffer;
+            tmp_str = strchr(buffer, ' ');
+            if (!tmp_str) {
+                merror(INVALID_KEY, buffer);
+                continue;
+            }
 
-        /* Get name */
-        valid_str = tmp_str;
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-        strncpy(name, valid_str, KEYSIZE - 1);
-
-        /* Get IP address */
-        valid_str = tmp_str;
-        tmp_str = strchr(tmp_str, ' ');
-        if (!tmp_str) {
-            merror(INVALID_KEY, buffer);
-            continue;
-        }
-
-        *tmp_str = '\0';
-        tmp_str++;
-        strncpy(ip, valid_str, KEYSIZE - 1);
-
-        /* Get key */
-        valid_str = tmp_str;
-        tmp_str = strchr(tmp_str, '\n');
-        if (tmp_str) {
             *tmp_str = '\0';
+            tmp_str++;
+            strncpy(id, valid_str, KEYSIZE - 1);
+
+            /* Update counter */
+
+            id_number = strtol(id, &end, 10);
+
+            if (!*end && id_number > keys->id_counter)
+                keys->id_counter = id_number;
+
+            /* Removed entry */
+            if (*tmp_str == '#' || *tmp_str == '!') {
+                if (save_removed) {
+                    tmp_str[-1] = ' ';
+                    tmp_str = strchr(tmp_str, '\n');
+
+                    if (tmp_str) {
+                        *tmp_str = '\0';
+                    }
+
+                    save_removed_key(keys, buffer);
+                }
+
+                continue;
+            }
+
+            /* Get name */
+            valid_str = tmp_str;
+            tmp_str = strchr(tmp_str, ' ');
+            if (!tmp_str) {
+                merror(INVALID_KEY, buffer);
+                continue;
+            }
+
+            *tmp_str = '\0';
+            tmp_str++;
+            strncpy(name, valid_str, KEYSIZE - 1);
+
+            /* Get IP address */
+            valid_str = tmp_str;
+            tmp_str = strchr(tmp_str, ' ');
+            if (!tmp_str) {
+                merror(INVALID_KEY, buffer);
+                continue;
+            }
+
+            *tmp_str = '\0';
+            tmp_str++;
+            strncpy(ip, valid_str, KEYSIZE - 1);
+
+            /* Get key */
+            valid_str = tmp_str;
+            tmp_str = strchr(tmp_str, '\n');
+            if (tmp_str) {
+                *tmp_str = '\0';
+            }
+
+            strncpy(key, valid_str, KEYSIZE - 1);
+
+            /* Generate the key hash */
+            OS_AddKey(keys, id, name, ip, key);
+
+            /* Clear the memory */
+            __memclear(id, name, ip, key, KEYSIZE + 1);
+
+            continue;
         }
 
-        strncpy(key, valid_str, KEYSIZE - 1);
+        fclose(fp);
+        fp = NULL;
 
-        /* Generate the key hash */
-        OS_AddKey(keys, id, name, ip, key);
-
-        /* Clear the memory */
+        /* Clear one last time before leaving */
         __memclear(id, name, ip, key, KEYSIZE + 1);
-
-        /* Check for maximum agent size */
-        if ( !no_limit && keys->keysize >= (MAX_AGENTS - 2) ) {
-            merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-            merror_exit(CONFIG_ERROR, keys_file);
-        }
-
-        continue;
     }
-
-    /* Close key file */
-    fclose(fp);
-    fp = NULL;
-
-    /* Clear one last time before leaving */
-    __memclear(id, name, ip, key, KEYSIZE + 1);
 
     /* Check if there are any agents available */
     if (keys->keysize == 0) {
@@ -318,10 +325,6 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
             merror_exit(NO_CLIENT_KEYS);
         }
     }
-
-    /* Add additional entry for sender == keysize */
-    os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
-    w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
 
     return;
 }
@@ -349,7 +352,11 @@ void OS_FreeKey(keyentry *key) {
         fclose(key->fp);
     }
 
-    pthread_mutex_destroy(&key->mutex);
+    if (key->rids_node) {
+        free(key->rids_node);
+    }
+
+    w_mutex_destroy(&key->mutex);
     free(key);
 }
 
@@ -391,6 +398,8 @@ void OS_FreeKeys(keystore *keys)
         keys->removed_keys_size = 0;
     }
 
+    linked_queue_free(keys->opened_fp_queue);
+
     /* Free structure */
     free(keys->keyentries);
     keys->keyentries = NULL;
@@ -419,7 +428,7 @@ void OS_UpdateKeys(keystore *keys)
     /* Read keys */
     mdebug2("OS_ReadKeys");
     minfo(ENC_READ);
-    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed, 0);
+    OS_ReadKeys(keys, keys->flags.rehash_keys, keys->flags.save_removed);
 
     mdebug2("OS_StartCounter");
     OS_StartCounter(keys);
@@ -629,7 +638,7 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
     }
 
     copy->sock = key->sock;
-    copy->mutex = key->mutex;
+    w_mutex_init(&copy->mutex, NULL);
     copy->peer_info = key->peer_info;
 
     return copy;
@@ -652,9 +661,18 @@ int OS_DeleteSocket(keystore * keys, int sock) {
     snprintf(strsock, sizeof(strsock), "%d", sock);
 
     if (entry = OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
-        entry->sock = -1;
+        if (sock == entry->sock) {
+            entry->sock = -1;
+        }
         return 0;
     } else {
         return -1;
     }
+}
+
+int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id) {
+
+    const int key_id = OS_IsAllowedID(keys, agent_id);
+    
+    return (key_id >= 0 ? keys->keyentries[key_id]->net_protocol : key_id);
 }

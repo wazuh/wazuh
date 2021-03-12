@@ -1,0 +1,381 @@
+---
+test_name: GET /mitre
+
+marks:
+  - base_tests
+
+stages:
+
+    # GET /mitre
+  - name: Try to get all MITRE attacks
+    request: &get_mitre
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/mitre"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: &full_items_array
+            - phase_name: !anylist
+              id: !anystr
+              json: !anydict
+              platform_name: !anylist
+
+    # GET /mitre?limit=5
+  - name: Try to get MITRE attacks using limit parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        limit: 5
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *full_items_array
+            - <<: *full_items_array
+            - <<: *full_items_array
+            - <<: *full_items_array
+            - <<: *full_items_array
+      # Save some data for future use in the test
+      save:
+        json:
+          returned_phase: data.affected_items[2].phase_name
+          returned_id: data.affected_items[2].id
+          returned_json: data.affected_items[2].json
+          returned_platform: data.affected_items[2].platform_name
+
+    # We implement a dual stage to check offset parameter behaviour
+    # GET /mitre?limit=2&offset=0
+  - name: Try to get MITRE attacks using limit and offset parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *full_items_array
+            - <<: *full_items_array
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+      # Save second item to check offset in next stage
+      save:
+        json:
+          offset_item: data.affected_items[1]
+
+    # GET /mitre?limit=1&offset=1
+  - name: Try to get MITRE attacks using limit and offset parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+              # Check offset matches with previous request
+            - id: "{offset_item.id}"
+              phase_name: !force_format_include "{offset_item.phase_name}"
+              json: !force_format_include "{offset_item.json}"
+              platform_name: !force_format_include "{offset_item.platform_name}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+
+  # GET /mitre?id=ID
+  - name: Try to get MITRE attacks using ID parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        id: "{returned_id}"
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{returned_id}"
+              phase_name: !force_format_include "{returned_phase}"
+              json: !force_format_include "{returned_json}"
+              platform_name: !force_format_include "{returned_platform}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /mitre?search=ID
+  - name: Try to get MITRE attacks using search parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        search: "{returned_id}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{returned_id}"
+              phase_name: !force_format_include "{returned_phase}"
+              json: !force_format_include "{returned_json}"
+              platform_name: !force_format_include "{returned_platform}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /mitre?search=random_search
+  - name: Try to get MITRE attacks searching something that does not exist.
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        search: random_search
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+    # GET /mitre?phase_name=phase
+  - name: Try to get MITRE attacks using phase_name parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        phase_name: "{returned_phase[0]}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "phase_name"
+            expected_values: "{returned_phase[0]}"
+
+  # GET /mitre?platform_name=platform
+  - name: Try to get MITRE attacks using platform_name parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        phase_name: "{returned_platform[0]}"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "platform_name"
+            expected_values: "{returned_platform[0]}"
+
+  # GET /mitre?platform_name=linux&phase_name=Exfiltration
+  - name: Try to get MITRE attacks using platform_name and phase_name parameters
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        phase_name: "Exfiltration"
+        platform_name: "linux"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "phase_name"
+            expected_values: "Exfiltration"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "platform_name"
+            expected_values: "Linux"
+
+  # GET /mitre?sort=incorrect_field
+  - name: Try to get MITRE attacks using sort parameter with incorrect field
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        sort: "-incorrect_field"
+    response:
+      status_code: 400
+
+
+  # GET /mitre?select=id
+  - name: Try to get MITRE attacks using select parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        select: "id"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "id"
+
+  # GET /mitre?select=json
+  - name: Try to get MITRE attacks using select parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        select: "json"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "json"
+
+
+  # GET /mitre?select=json&select=phase_name
+  - name: Try to get MITRE attacks using select parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        select: "json,phase_name"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_select_key_affected_items
+          extra_kwargs:
+            select_key: "json,phase_name"
+
+
+  # GET /mitre?select=incorrect_field
+  - name: Try to get MITRE attacks using select parameter with incorrect field
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        select: "incorrect_field"
+    response:
+      status_code: 400
+
+  # GET /mitre?limit=1&sort=-id
+  - name: Try to get MITRE attacks using sort parameter and limit parameter
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        select: "id"
+        sort: "-id"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "id"
+
+  # GET /mitre?limit=50
+  - name: Verify no more than 10 elements are shown when json is included
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        limit: 50
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_count_elements
+          extra_kwargs:
+            n_expected_items: 10
+
+  # GET /mitre?limit=50&select=id,platform_name
+  - name: Verify more than 10 elements are shown when json is NOT included
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        limit: 50
+        select: "id,platform_name"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_count_elements
+          extra_kwargs:
+            n_expected_items: 50
+
+  # GET /mitre?q=phase_name=execution;limit=1
+  - name: Verify that query parameter work as expected
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        q: "phase_name=execution"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "phase_name"
+            expected_values: "Execution"
+
+  # GET /mitre?q=id=NOEXISTS
+  - name: Verify that query parameter work as expected when using non-existent ID
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        q: "id=NOEXISTS"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /mitre?q=phase_name=Privilege%20Escalation,phase_name=Persistence;platform_name=Windows
+  - name: Verify that query parameter work as expected when using multiple values
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        q: "phase_name=Privilege%20Escalation,phase_name=Persistence;platform_name=Windows"
+    response:
+      status_code: 200
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "phase_name"
+            expected_values: "Privilege Escalation,Persistence"
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "platform_name"
+            expected_values: "Windows"
+
+  # GET /mitre?q=wrong_field=execution
+  - name: Verify that query parameter work as expected (ko)
+    request:
+      verify: False
+      <<: *get_mitre
+      params:
+        q: "wrong_field=execution"
+    response:
+      status_code: 400

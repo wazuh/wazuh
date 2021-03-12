@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -16,9 +16,6 @@
 #include "rootcheck/rootcheck.h"
 #include "os_net/os_net.h"
 
-
-char **wcom_ca_store;
-static int enable_ca_verification = 1;
 int is_disabled;
 
 /* Read the config file */
@@ -27,12 +24,9 @@ int ExecdConfig(const char *cfgfile)
     is_disabled = 0;
 
     const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
-    const char *(castore[]) = {"ossec_config", "active-response", "ca_store", NULL};
-    const char *(caverify[]) = {"ossec_config", "active-response", "ca_verification", NULL};
     char *disable_entry;
     char *repeated_t = NULL;
     char **repeated_a;
-    char **ca_verification;
     int i = 0;
 
     OS_XML xml;
@@ -163,62 +157,9 @@ next:
         free(repeated_a);
     }
 
-    if (ca_verification = OS_GetContents(&xml, caverify), ca_verification)
-    {
-        for (i = 0; ca_verification[i]; ++i)
-        {
-            if (strcasecmp(ca_verification[i], "yes") == 0)
-            {
-                enable_ca_verification = 1;
-            }
-            else if (strcasecmp(ca_verification[i], "no") == 0)
-            {
-                enable_ca_verification = 0;
-            }
-            else
-            {
-                mwarn("Invalid content for tag <%s>: '%s'", caverify[2], ca_verification[i]);
-            }
-        }
-
-        free_strarray(ca_verification);
-    }
-
-    if (enable_ca_verification)
-    {
-        if (wcom_ca_store = OS_GetContents(&xml, castore), wcom_ca_store)
-        {
-            for (i = 0; wcom_ca_store[i]; i++)
-            {
-                if (wcom_ca_store[i][0])
-                {
-                    mdebug1("Added CA store '%s'.", wcom_ca_store[i]);
-                }
-            }
-        }
-    }
-
     OS_ClearXML(&xml);
 
     return (is_disabled);
-}
-
-
-void CheckExecConfig()
-{
-    if (enable_ca_verification)
-    {
-        if (!wcom_ca_store)
-        {
-            minfo("No option <ca_store> defined. Using Wazuh default CA (%s).", DEF_CA_STORE);
-            os_calloc(2, sizeof(char *), wcom_ca_store);
-            os_strdup(DEF_CA_STORE, wcom_ca_store[0]);
-        }
-    }
-    else
-    {
-        minfo("WPK verification with CA is disabled.");
-    }
 }
 
 cJSON *getARConfig(void) {
@@ -228,13 +169,6 @@ cJSON *getARConfig(void) {
     unsigned int i;
 
     if (is_disabled) cJSON_AddStringToObject(ar,"disabled","yes"); else cJSON_AddStringToObject(ar,"disabled","no");
-    if (wcom_ca_store) {
-        cJSON *calist = cJSON_CreateArray();
-        for (i=0;wcom_ca_store[i];i++) {
-            cJSON_AddItemToArray(calist,cJSON_CreateString(wcom_ca_store[i]));
-        }
-        cJSON_AddItemToObject(ar,"ca_store",calist);
-    }
     if (*repeated_offenders_timeout) {
         cJSON *rot = cJSON_CreateArray();
         for (i=0;repeated_offenders_timeout[i];i++) {
@@ -242,7 +176,6 @@ cJSON *getARConfig(void) {
         }
         cJSON_AddItemToObject(ar,"repeated_offenders",rot);
     }
-    if (enable_ca_verification) cJSON_AddStringToObject(ar,"ca_verification","yes"); else cJSON_AddStringToObject(ar,"ca_verification","no");
 
     cJSON_AddItemToObject(root,"active-response",ar);
 
@@ -272,63 +205,70 @@ cJSON *getClusterConfig(void) {
     char req[] = "get_config";
     char *buffer = NULL;
     int sock = -1;
-	char sockname[PATH_MAX + 1];
+    char sockname[PATH_MAX + 1];
     ssize_t length;
-	length = strlen(req);
 
     cJSON *cluster_config_cJSON;
 
-	if (isChroot()) {
-		strcpy(sockname, CLUSTER_SOCK);
-	} else {
-		strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
-	}
+    if (isChroot()) {
+        strcpy(sockname, CLUSTER_SOCK);
+    } else {
+        strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
+    }
 
-	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-		switch (errno) {
-		case ECONNREFUSED:
-			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-			break;
-
-		default:
-			merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-		}
-	} else {
-		if (OS_SendSecureTCPCluster(sock, req, "", 0) != 0) {
-			merror("send(): %s", strerror(errno));
-            close(sock);
-            return NULL;
-		}
-
-        os_calloc(OS_MAXSTR,sizeof(char),buffer);
-
-        switch (length = OS_RecvSecureClusterTCP(sock, buffer, OS_MAXSTR), length) {
-        case -1:
-            merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
-            free(buffer);
-            close(sock);
-            return NULL;
-
-        case 0:
-            mdebug1("Empty message from local client.");
-            free(buffer);
-            close(sock);
-            return NULL;
-
-        case OS_MAXLEN:
-            merror("Received message > %i", OS_MAXSTR);
-            free(buffer);
-            close(sock);
-            return NULL;
+    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+        switch (errno) {
+        case ECONNREFUSED:
+            merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            break;
 
         default:
-            close(sock);
+            merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
         }
-	}
+        return NULL;
+    }
 
-    cluster_config_cJSON = cJSON_Parse(buffer);
+    if (OS_SendSecureTCPCluster(sock, req, "", 0) != 0) {
+        merror("send(): %s", strerror(errno));
+        close(sock);
+        return NULL;
+    }
+
+    os_calloc(OS_MAXSTR,sizeof(char),buffer);
+
+    switch (length = OS_RecvSecureClusterTCP(sock, buffer, OS_MAXSTR), length) {
+    case -2:
+        merror("Cluster error detected");
+        free(buffer);
+        close(sock);
+        return NULL;
+                           
+    case -1:
+        merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
+        free(buffer);
+        close(sock);
+        return NULL;
+
+    case 0:
+        mdebug1("Empty message from local client.");
+        free(buffer);
+        close(sock);
+        return NULL;
+
+    case OS_MAXLEN:
+        merror("Received message > %i", OS_MAXSTR);
+        free(buffer);
+        close(sock);
+        return NULL;
+
+    default:
+        close(sock);
+    }
+
+    const char *jsonErrPtr;
+    cluster_config_cJSON = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0);
     if (!cluster_config_cJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event. %s", buffer);
         free(buffer);
         return NULL;
     }

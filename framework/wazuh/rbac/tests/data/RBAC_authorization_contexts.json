@@ -1,0 +1,206 @@
+[
+    {
+        "name": "Initial_auth",
+        "auth": {
+            "name": "Bill",
+            "office": "20"
+        }
+    },
+    {
+        "name": "First_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20"
+        }
+    },
+    {
+        "name": "Second_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ]
+        }
+    },
+    {
+        "name": "Third_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ]
+        }
+    },
+    {
+        "name": "Fourth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical", "Commercial"
+            ]
+        }
+    },
+    {
+        "name": "Fifth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ],
+            "bindings": {
+                "authLevel": [
+                    "basic", "advanced-agents", "administrator"
+                ]
+            }
+        }
+    },
+    {
+        "name": "Sixth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ],
+            "bindings": {
+                "authLevel": [
+                    "basic", "advanced-agents", "administrator"
+                ],
+                "area": [
+                    "agents", "syscheck", "syscollector"
+                ]
+            }
+        }
+    },
+    {
+        "name": "Seventh_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ],
+            "bindings": {
+                "authLevel": [
+                    "basic", "advanced-agents", "administrator"
+                ],
+                "area": [
+                    "agents", "syscheck", "syscollector"
+                ]
+            },
+            "test": {
+                "new": {
+                    "test2": ["new"]
+                },
+                "test": "new2"
+            }
+        }
+    },
+    {
+        "name": "Eighth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ],
+            "bindings": {
+                "authLevel": [
+                    "basic"
+                ],
+                "area": [
+                    "agents"
+                ]
+            },
+            "test": {
+                "new": {
+                    "test2": ["new"],
+                    "test3": {
+                        "test4": [
+                            "a"
+                        ]
+                    }
+                },
+                "test": "new2"
+            }
+        }
+    },
+    {
+        "name": "Nineth_auth",
+        "auth": {
+            "disabled": false,
+            "name": "Bill",
+            "office": "20",
+            "department": [
+                "Technical"
+            ],
+            "bindings": {
+                "authLevel": [
+                    "basic", "advanced-agents", "administrator"
+                ],
+                "area": [
+                    "agents", "syscheck", "syscollector"
+                ]
+            },
+            "test": {
+                "new": {
+                    "test2": ["new"],
+                    "test3": {
+                        "test4": [
+                            "a", "b", "c", "d4"
+                        ]
+                    }
+                },
+                "test": "new2"
+            }
+        }
+    },
+    {
+        "name": "Tenth_auth",
+        "auth": {
+            "deep": {
+                "deeep": [
+                    {
+                        "moredeep": [
+                            {
+                                "toodeep": [
+                                    {
+                                        "insanedeep": [
+                                            {
+                                                "nocomments": {
+                                                    "last": "not too deep"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            "user": "deep",
+            "office": "20"
+        }
+    },
+    {
+        "name": "Eleventh_auth",
+        "auth": {
+            "test": "New",
+            "department": ["Technical1"],
+            "authLevel": ["basic1"]
+        }
+    }
+]

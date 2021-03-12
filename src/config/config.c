@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -13,13 +13,6 @@
 #include "shared.h"
 #include "os_xml/os_xml.h"
 #include "config.h"
-
-/* Prototypes */
-static int read_main_elements(const OS_XML *xml, int modules,
-                              XML_NODE node,
-                              void *d1,
-                              void *d2);
-
 
 /* Read the main elements of the configuration */
 static int read_main_elements(const OS_XML *xml, int modules,
@@ -51,7 +44,13 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
-    const char *ossca = "sca";     /* Security Configuration Assessment */
+    const char *ossca = "sca";                          /* Security Configuration Assessment */
+    const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
+    const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
+    const char *wlogtest = "rule_test";                  /* Wazuh Logtest */
+
+    const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
+    const char *task_manager = "task-manager";          /* Task Manager Module */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
 #endif
@@ -96,7 +95,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
-            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0)) {
+            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
                 goto fail;
             }
             if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {
@@ -146,13 +145,25 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } 
+        } else if (strcmp(node[i]->element, osvulndet) == 0) {
+#if !defined(WIN32) && !defined(CLIENT)
+            if ((modules & CWMODULE) && (Read_Vuln(xml, chld_node, d1, 1) < 0)) {
+                goto fail;
+            }
+#else
+            mwarn("%s configuration is only set in the manager.", node[i]->element);
+#endif
+        } else if (strcmp(node[i]->element, osgcp) == 0) {
+            if ((modules & CWMODULE) && (Read_GCP(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+        }
 #ifndef WIN32
         else if (strcmp(node[i]->element, osfluent_forward) == 0) {
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } 
+        }
 #endif
         else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
@@ -171,6 +182,22 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
+        } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
+            if ((modules & CLOGTEST) && (Read_Logtest(chld_node) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
+            if ((modules & CWMODULE) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
+            #if !defined(WIN32) && !defined(CLIENT)  
+                if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
+                    goto fail;
+                }
+            #else
+                mwarn("%s configuration is only set in the manager.", node[i]->element);
+            #endif
         } else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;

@@ -1,8 +1,8 @@
 /*
-* Copyright (C) 2015-2019, Wazuh Inc.
+* Copyright (C) 2015-2020, Wazuh Inc.
 * April 23, 2018.
 *
-* This program is a free software; you can redistribute it
+* This program is free software; you can redistribute it
 * and/or modify it under the terms of the GNU General Public
 * License (version 2) as published by the FSF - Free Software
 * Foundation.
@@ -16,15 +16,18 @@
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
 #include "string_op.h"
+#include "wazuhdb_op.h"
 
 static OSDecoderInfo *ciscat_decoder = NULL;
+
+extern OSStore *os_analysisd_decoder_store;
 
 #define VAR_LENGTH  32
 
 void CiscatInit(){
 
     os_calloc(1, sizeof(OSDecoderInfo), ciscat_decoder);
-    ciscat_decoder->id = getDecoderfromlist(CISCAT_MOD);
+    ciscat_decoder->id = getDecoderfromlist(CISCAT_MOD, &os_analysisd_decoder_store);
     ciscat_decoder->name = CISCAT_MOD;
     ciscat_decoder->type = OSSEC_RL;
     ciscat_decoder->fts = 0;
@@ -61,9 +64,11 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
     }
 
     // Parsing event.
-    logJSON = cJSON_Parse(lf->log);
+    const char *jsonErrPtr;
+    logJSON = cJSON_ParseWithOpts(lf->log, &jsonErrPtr, 0);
     if (!logJSON) {
-        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+        mdebug1("Error parsing JSON event.");
+        mdebug2("Input JSON: '%s", lf->log);
         return (0);
     }
 
@@ -171,10 +176,22 @@ int DecodeCiscat(Eventinfo *lf, int *socket)
                 wm_strcat(&msg, "NULL", '|');
             }
 
-            if (sc_send_db(msg, socket) < 0) {
+            char *response;
+            char *message;
+            os_calloc(OS_SIZE_6144, sizeof(char), response);
+            if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
+                if (wdbc_parse_result(response, &message) != WDBC_OK) {
+                    cJSON_Delete(logJSON);
+                    free(response);
+                    return (0);
+                }
+            } else {
                 cJSON_Delete(logJSON);
+                free(response);
                 return (0);
             }
+            free(response);
+            free(msg);
         } else {
             mdebug1("Unable to parse CIS-CAT event for agent '%s'", lf->agent_id);
             cJSON_Delete(logJSON);

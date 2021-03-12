@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -18,31 +18,31 @@
 unsigned int fts_minsize_for_str = 0;
 int fts_list_size;
 
-static OSList *fts_list = NULL;
-static OSHash *fts_store = NULL;
-
 static FILE *fp_list = NULL;
 static FILE **fp_ignore = NULL;
+
+OSList *os_analysisd_fts_list;
+OSHash *os_analysisd_fts_store;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t file_update_rwlock;
 static pthread_mutex_t fts_write_lock;
 
 /* Start the FTS module */
-int FTS_Init(int threads)
+int FTS_Init(int threads, OSList **fts_list, OSHash **fts_store)
 {
     char _line[OS_FLSIZE + 1];
     int i;
 
     _line[OS_FLSIZE] = '\0';
 
-    fts_list = OSList_Create();
-    if (!fts_list) {
+    *fts_list = OSList_Create();
+    if (!(*fts_list)) {
         merror(LIST_ERROR);
         return (0);
     }
 
-    pthread_rwlock_init(&file_update_rwlock, NULL);
+    w_rwlock_init(&file_update_rwlock, NULL);
     fts_write_lock = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 
     fp_ignore = (FILE **)calloc(threads, sizeof(FILE*));
@@ -52,13 +52,13 @@ int FTS_Init(int threads)
     }
 
     /* Create store data */
-    fts_store = OSHash_Create();
-    if (!fts_store) {
-        merror(LIST_ERROR);
+    *fts_store = OSHash_Create();
+    if (!(*fts_store)) {
+        merror(HASH_ERROR);
         return (0);
     }
-    if (!OSHash_setSize(fts_store, 2048)) {
-        merror(LIST_ERROR);
+    if (!OSHash_setSize(*fts_store, 2048)) {
+        merror(LIST_SIZE_ERROR);
         return (0);
     }
 
@@ -72,7 +72,7 @@ int FTS_Init(int threads)
                           "fts_min_size_for_str",
                           6, 128);
 
-    if (!OSList_SetMaxSize(fts_list, fts_list_size)) {
+    if (!OSList_SetMaxSize(*fts_list, fts_list_size)) {
         merror(LIST_SIZE_ERROR);
         return (0);
     }
@@ -109,7 +109,7 @@ int FTS_Init(int threads)
 
     /* Add content from the files to memory */
     fseek(fp_list, 0, SEEK_SET);
-    while (fgets(_line, OS_FLSIZE , fp_list) != NULL) {
+    while (fgets(_line, sizeof(_line), fp_list) != NULL) {
         char *tmp_s;
 
         /* Remove newlines */
@@ -119,11 +119,11 @@ int FTS_Init(int threads)
         }
 
         os_strdup(_line, tmp_s);
-        if (OSHash_Add(fts_store, tmp_s, tmp_s) != 2) {
+        if (OSHash_Add(*fts_store, tmp_s, tmp_s) != 2) {
             free(tmp_s);
             merror(LIST_ADD_ERROR);
         }
-        
+
         /* Reset pointer addresses before using strdup() again */
         /* The hash will keep the needed memory references */
         tmp_s = NULL;
@@ -163,8 +163,6 @@ int FTS_Init(int threads)
         fp_ignore[i] = fopen(IG_QUEUE, "r+");
     }
 
-    mdebug1("FTSInit completed.");
-
     return (1);
 }
 
@@ -173,10 +171,6 @@ void AddtoIGnore(Eventinfo *lf, int pos)
 {
     w_rwlock_wrlock(&file_update_rwlock);
     fseek(fp_ignore[pos], 0, SEEK_END);
-
-#ifdef TESTRULE
-    return;
-#endif
 
     /* Assign the values to the FTS */
     fprintf(fp_ignore[pos], "\n%s %s %s %s %s %s %s %s",
@@ -276,7 +270,7 @@ int IGnore(Eventinfo *lf, int pos)
 /*  Check if the word "msg" is present on the "queue".
  *  If it is not, write it there.
  */
-char * FTS(Eventinfo *lf)
+char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
 {
     int i;
     int number_of_matches = 0;
@@ -309,7 +303,7 @@ char * FTS(Eventinfo *lf)
     }
 
     /** Check if FTS is already present **/
-    if (OSHash_Get_ex(fts_store, _line)) {
+    if (OSHash_Get_ex(*fts_store, _line)) {
         free(_line);
         return NULL;
     }
@@ -318,7 +312,7 @@ char * FTS(Eventinfo *lf)
      * If yes, we just ignore it.
      */
     if (lf->decoder_info->type == IDS) {
-        fts_node = OSList_GetLastNode(fts_list);
+        fts_node = OSList_GetLastNode(*fts_list);
         while (fts_node) {
             if (OS_StrHowClosedMatch((char *)fts_node->data, _line) >
                     fts_minsize_for_str) {
@@ -331,19 +325,19 @@ char * FTS(Eventinfo *lf)
                 }
             }
 
-            fts_node = OSList_GetPrevNode(fts_list);
+            fts_node = OSList_GetPrevNode(*fts_list);
         }
 
         fts_node = NULL;
-        
+
         os_strdup(_line, line_for_list);
         if (!line_for_list) {
             merror(MEM_ERROR, errno, strerror(errno));
             free(_line);
             return NULL;
         }
-        
-        fts_node = OSList_AddData(fts_list, line_for_list);
+
+        fts_node = OSList_AddData(*fts_list, line_for_list);
         if (!fts_node) {
             free(line_for_list);
             free(_line);
@@ -361,18 +355,14 @@ char * FTS(Eventinfo *lf)
         }
     }
 
-    if (OSHash_Add_ex(fts_store, line_for_list, line_for_list) != 2) {
-        if (fts_node) OSList_DeleteThisNode(fts_list, fts_node);
+    if (OSHash_Add_ex(*fts_store, line_for_list, line_for_list) != 2) {
+        if (fts_node) OSList_DeleteThisNode(*fts_list, fts_node);
         free(line_for_list);
         free(_line);
         return NULL;
     }
 
     return _line;
-}
-
-FILE **w_get_fp_ignore(){
-    return fp_ignore;
 }
 
 void FTS_Fprintf(char * _line){

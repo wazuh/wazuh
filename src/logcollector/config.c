@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,6 +10,9 @@
 
 #include "shared.h"
 #include "logcollector.h"
+
+/* To string size of max-size option */
+#define OFFSET_SIZE 11
 
 int accept_remote;
 int lc_debug_level;
@@ -47,6 +50,7 @@ int LogCollectorConfig(const char *cfgfile)
     reload_interval = getDefine_Int("logcollector", "reload_interval", 1, 86400);
     reload_delay = getDefine_Int("logcollector", "reload_delay", 0, 30000);
     free_excluded_files_interval = getDefine_Int("logcollector", "exclude_files_interval", 1, 172800);
+    state_interval = getDefine_Int("logcollector", "state_interval", 0, 3600);
 
     /* Current and total files counter */
     total_files = 0;
@@ -114,6 +118,16 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
+
+        if (list[i].future == 1){
+            cJSON_AddStringToObject(file, "only-future-events", "yes");
+        } else {
+            char offset[OFFSET_SIZE] = {0};
+            sprintf(offset, "%ld", list[i].diff_max_size);
+            cJSON_AddStringToObject(file, "only-future-events", "no");
+            cJSON_AddStringToObject(file, "max-size", offset);
+        }
+
         if (list[i].target && *list[i].target) {
             cJSON *target = cJSON_CreateArray();
             for (j=0;list[i].target[j];j++) {
@@ -142,9 +156,17 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             }
             cJSON_AddItemToObject(file,"labels",label);
         }
-        if (list[i].ign) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
-        if (list[i].future) cJSON_AddStringToObject(file,"only-future-events","yes");
-
+        if (list[i].ign && list[i].logformat != NULL && (strcmp(list[i].logformat,"command")==0 || strcmp(list[i].logformat,"full_command")==0)) cJSON_AddNumberToObject(file,"frequency",list[i].ign);
+        if (list[i].future && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddStringToObject(file,"only-future-events","yes");
+        if (list[i].reconnect_time && list[i].logformat != NULL && strcmp(list[i].logformat,"eventchannel")==0) cJSON_AddNumberToObject(file,"reconnect_time",list[i].reconnect_time);
+        if (list[i].multiline) {
+            cJSON * multiline = cJSON_CreateObject();
+            cJSON_AddStringToObject(multiline, "match", multiline_attr_match_str(list[i].multiline->match_type));
+            cJSON_AddStringToObject(multiline, "replace", multiline_attr_replace_str(list[i].multiline->replace_type));
+            cJSON_AddStringToObject(multiline, "regex", w_expression_get_regex_pattern(list[i].multiline->regex));
+            cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
+            cJSON_AddItemToObject(file, "multiline_regex", multiline);
+        }
         cJSON_AddItemToArray(array, file);
         i++;
     }
@@ -194,7 +216,7 @@ cJSON *getSocketConfig(void) {
 
         cJSON_AddStringToObject(target,"name",logsk[i].name);
         cJSON_AddStringToObject(target,"location",logsk[i].location);
-        if (logsk[i].mode == UDP_PROTO) {
+        if (logsk[i].mode == IPPROTO_UDP) {
             cJSON_AddStringToObject(target,"mode","udp");
         } else {
             cJSON_AddStringToObject(target,"mode","tcp");
@@ -233,6 +255,9 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"force_reload",force_reload);
     cJSON_AddNumberToObject(logcollector,"reload_interval",reload_interval);
     cJSON_AddNumberToObject(logcollector,"reload_delay",reload_delay);
+    cJSON_AddNumberToObject(logcollector, "exclude_files_interval", free_excluded_files_interval);
+    cJSON_AddNumberToObject(logcollector, "state_interval", state_interval);
+
 #ifndef WIN32
     cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);
 #endif

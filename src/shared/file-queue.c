@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -109,6 +109,7 @@ int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags)
     }
     fileq->last_change = 0;
     fileq->flags = 0;
+    fileq->read_attempts = 0;
 
     fileq->day = p->tm_mday;
     fileq->year = p->tm_year + 1900;
@@ -147,7 +148,7 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
     if(!fileq->fp){
         return (NULL);
     }
-    
+
     if (al_data = GetAlertData(fileq->flags, fileq->fp), al_data) {
         return al_data;
     }

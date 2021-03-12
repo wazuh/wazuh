@@ -102,11 +102,11 @@ tostart="要启动 Wazuh"
 tostop="要停止 Wazuh"
 configat="要查看或修改系统配置,请编辑 "
 addserveragent="为使代理能够联接服务器端, 您需要将每个代理添加到服务器."
-runma="允许'manage_agents'来添加活删除代理"
 presskey="请按ENTER继续"
 
 # Update
 wanttoupdate="您已经安装过 Wazuh ,要升级它吗?"
+mustuninstall="如果不卸载旧版本，安装将无法继续。 正在退出。"
 unabletoupdate="不能对原版本进行升级. 必须进行全新安装."
 updatecompleted="升级完成."
 updatefailed="升级失败."

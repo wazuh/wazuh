@@ -1,156 +1,218 @@
-
-
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 from glob import glob
-from operator import itemgetter
-from wazuh.exception import WazuhException
-from wazuh.agent import Agent
-from wazuh.ossec_queue import OssecQueue
-from wazuh import common, Connection
-from datetime import datetime
-from wazuh.wdb import WazuhDBConnection
+
+from wazuh.core import common
+from wazuh.core.agent import Agent, get_agents_info
+from wazuh.core.database import Connection
+from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
+from wazuh.core.wazuh_queue import WazuhQueue
+from wazuh.core.results import AffectedItemsWazuhResult
+from wazuh.core.syscheck import WazuhDBQuerySyscheck
+from wazuh.core.utils import WazuhVersion
+from wazuh.core.wdb import WazuhDBConnection
+from wazuh.rbac.decorators import expose_resources
 
 
-def run(agent_id=None, all_agents=False):
+@expose_resources(actions=["syscheck:run"], resources=["agent:id:{agent_list}"])
+def run(agent_list=None):
+    """Run a syscheck scan in the specified agents.
+
+    Parameters
+    ----------
+    agent_list : str
+        List of the agents IDs to run the scan for.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
     """
-    Runs rootcheck and syscheck.
-
-    :param agent_id: Run rootcheck/syscheck in the agent.
-    :param all_agents: Run rootcheck/syscheck in all agents.
-    :return: Message.
-    """
-
-    if agent_id == "000" or all_agents:
+    result = AffectedItemsWazuhResult(all_msg='Syscheck scan was restarted on returned agents',
+                                      some_msg='Syscheck scan was not restarted on some agents',
+                                      none_msg='No syscheck scan was restarted')
+    for agent_id in agent_list:
         try:
-            SYSCHECK_RESTART = "{0}/var/run/.syscheck_run".format(common.ossec_path)
+            agent_info = Agent(agent_id).get_basic_information()
+            agent_status = agent_info.get('status', 'N/A')
+            if agent_status.lower() != 'active':
+                result.add_failed_item(
+                    id_=agent_id, error=WazuhError(1601, extra_message='Status - {}'.format(agent_status)))
+            else:
+                wq = WazuhQueue(common.ARQUEUE)
+                wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
+                result.affected_items.append(agent_id)
+                wq.close()
+        except WazuhError as e:
+            result.add_failed_item(id_=agent_id, error=e)
+    result.affected_items = sorted(result.affected_items, key=int)
+    result.total_affected_items = len(result.affected_items)
 
-            fp = open(SYSCHECK_RESTART, 'w')
-            fp.write('{0}\n'.format(SYSCHECK_RESTART))
-            fp.close()
-            ret_msg = "Restarting Syscheck/Rootcheck locally"
-        except:
-            raise WazuhException(1601, "locally")
-
-        if all_agents:
-            oq = OssecQueue(common.ARQUEUE)
-            ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART)
-            oq.close()
-    else:
-        # Check if agent exists
-        agent_info = Agent(agent_id).get_basic_information()
-        if 'status' in agent_info:
-            agent_status = agent_info['status']
-        else:
-            agent_status = "N/A"
-
-        if agent_status.lower() != 'active':
-            raise WazuhException(1604, '{0} - {1}'.format(agent_id, agent_status))
-
-        oq = OssecQueue(common.ARQUEUE)
-        ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
-        oq.close()
-
-    return ret_msg
+    return result
 
 
-def clear(agent_id=None, all_agents=False):
+@expose_resources(actions=["syscheck:clear"], resources=["agent:id:{agent_list}"])
+def clear(agent_list=None):
+    """Clear the syscheck database of the specified agents.
+
+    Parameters
+    ----------
+    agent_list : str
+        Agent ID.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
     """
-    Clears the database.
-
-    :param agent_id: For an agent.
-    :param all_agents: For all agents.
-    :return: Message.
-    """
-    agents = [agent_id] if not all_agents else map(itemgetter('id'), Agent.get_agents_overview(select={'fields': ['id']})['items'])
-
+    result = AffectedItemsWazuhResult(all_msg='Syscheck database was cleared on returned agents',
+                                      some_msg='Syscheck database was not cleared on some agents',
+                                      none_msg="No syscheck database was cleared")
     wdb_conn = WazuhDBConnection()
-    for agent in agents:
-        Agent(agent).get_basic_information()  # check if the agent exists
-        wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)
-        # update key fields which contains keys to value 000
-        wdb_conn.execute("agent {} sql update metadata set value = '000' where key like 'fim_db%'".format(agent), update=True)
-        wdb_conn.execute("agent {} sql update metadata set value = '000' where key = 'syscheck-db-completed'".format(agent), update=True)
+    for agent in agent_list:
+        if agent not in get_agents_info():
+            result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701))
+        else:
+            try:
+                wdb_conn.execute("agent {} sql delete from fim_entry".format(agent), delete=True)
+                # Update key fields which contains keys to value 000
+                wdb_conn.execute("agent {} sql update metadata set value = '000' "
+                                 "where key like 'fim_db%'".format(agent), update=True)
+                wdb_conn.execute("agent {} sql update metadata set value = '000' "
+                                 "where key = 'syscheck-db-completed'".format(agent), update=True)
+                result.affected_items.append(agent)
+            except WazuhError as e:
+                result.add_failed_item(id_=agent, error=e)
 
-    return "Syscheck database deleted"
+    result.affected_items.sort(key=int)
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
-def last_scan(agent_id):
+@expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
+def last_scan(agent_list):
+    """Get the last scan of an agent.
+
+    Parameters
+    ----------
+    agent_list : str
+        Agent ID.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
     """
-    Gets the last scan of the agent.
-
-    :param agent_id: Agent ID.
-    :return: Dictionary: end, start.
-    """
-    my_agent = Agent(agent_id)
-    # if agent status is never connected, a KeyError happens
+    my_agent = Agent(agent_list[0])
+    result = AffectedItemsWazuhResult(all_msg='Last syscheck scan of the agent was returned',
+                                      none_msg='No last scan information was returned')
+    # If agent status is never_connected, a KeyError happens
     try:
-        agent_version = my_agent.get_basic_information(select={'fields': ['version']})['version']
+        agent_version = my_agent.get_basic_information(select=['version'])['version']
     except KeyError:
-        # if the agent is never connected, it won't have either version (key error) or last scan information.
-        return {'start': 'ND', 'end': 'ND'}
+        # If the agent is never_connected, it won't have either version (key error) or last scan information.
+        result.affected_items.append({'start': None, 'end': None})
+        result.total_affected_items += 1
 
-    if agent_version < 'Wazuh v3.7.0':
-        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
+        return result
+
+    if WazuhVersion(agent_version) < WazuhVersion('Wazuh v3.7.0'):
+        db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_list[0]))
         if not db_agent:
-            raise WazuhException(1600)
+            raise WazuhInternalError(1600, extra_message=agent_list[0])
         else:
             db_agent = db_agent[0]
         conn = Connection(db_agent)
+
+        data = {}
         # end time
-        query = "SELECT date_last, log FROM pm_event WHERE log LIKE '% syscheck scan.'"
+        query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
         conn.execute(query)
+        for t in conn:
+            data['end'] = t['max(date_last)'] if t['max(date_last)'] is not None else "ND"
 
-        return {'end' if log.startswith('End') else 'start': date_last for date_last, log in conn}
+        # start time
+        query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
+        conn.execute(query)
+        for t in conn:
+            data['start'] = t['max(date_last)'] if t['max(date_last)'] is not None else "ND"
+
+        result.affected_items.append(data)
     else:
-        fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
-                                                          filters={'module': 'fim'})[0]
-        end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        # if start is 'ND', end will be as well.
-        return {'start': start, 'end': 'ND' if start == 'ND' else end}
+        fim_scan_info = WazuhDBQuerySyscheck(agent_id=agent_list[0], query='module=fim', offset=0, sort=None,
+                                             search=None, limit=common.database_limit, select={'end', 'start'},
+                                             fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
+                                             table='scan_info', default_sort_field='start_scan').run()['items'][0]
+        end = None if not fim_scan_info['end'] else fim_scan_info['end']
+        start = None if not fim_scan_info['start'] else fim_scan_info['start']
+        # If start is None or the scan is running, end will be None.
+        result.affected_items.append(
+            {'start': start, 'end': None if start is None else None if end is None or end < start else end})
+    result.total_affected_items = len(result.affected_items)
+
+    return result
 
 
-def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
+@expose_resources(actions=["syscheck:read"], resources=["agent:id:{agent_list}"])
+def files(agent_list=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters=None,
+          q='', nested=True, summary=False, distinct=False):
+    """Return a list of files from the syscheck database of the specified agents.
+
+    Parameters
+    ----------
+    agent_list : str
+        Agent ID.
+    filters : dict
+        Fields to filter by.
+    summary : bool
+        Returns a summary grouping by filename.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    sort : str
+        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    search : str
+        Looks for items with the specified string.
+    select : list[str]
+        Select fields to return. Format: ["field1","field2"].
+    q : str
+        Query to filter by.
+    nested : bool
+        Specify whether there are nested fields or not.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Confirmation/Error message.
     """
-    Return a list of files from the database that match the filters
-
-    :param agent_id: Agent ID.
-    :param filters: Fields to filter by
-    :param summary: Returns a summary grouping by filename.
-    :param offset: First item to return.
-    :param limit: Maximum number of items to return.
-    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    :param search: Looks for items with the specified string.
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
-    """
-    parameters = {"date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
-                  "uid", "type", "attributes", "symbolic_path"}
-    summary_parameters = {"date", "mtime", "file"}
-
-    if select is None:
-        select = summary_parameters if summary else parameters
-    else:
-        select = set(select['fields'])
-        if not select.issubset(parameters):
-            raise WazuhException(1724, "Allowed select fields: {0}. Fields: {1}.".format(', '.join(parameters),
-                                                                                         ','.join(select - parameters)))
+    if filters is None:
+        filters = {}
+    parameters = {"date": "date", "arch": "arch", "value.type": "value_type", "value.name": "value_name",
+                  "mtime": "mtime", "file": "file", "size": "size", "perm": "perm",
+                  "uname": "uname", "gname": "gname", "md5": "md5", "sha1": "sha1", "sha256": "sha256",
+                  "inode": "inode", "gid": "gid", "uid": "uid", "type": "type", "changes": "changes",
+                  "attributes": "attributes"}
+    summary_parameters = {"date": "date", "mtime": "mtime", "file": "file"}
+    result = AffectedItemsWazuhResult(all_msg='FIM findings of the agent were returned',
+                                      none_msg='No FIM information was returned')
 
     if 'hash' in filters:
-        or_filters = {'md5': filters['hash'], 'sha1': filters['hash'], 'sha256': filters['hash']}
+        q = f'(md5={filters["hash"]},sha1={filters["hash"]},sha256={filters["hash"]})' + ('' if not q else ';' + q)
         del filters['hash']
-    else:
-        or_filters = {}
 
-    items, totalItems = Agent(agent_id)._load_info_from_agent_db(table='fim_entry', select=select, offset=offset, limit=limit,
-                                                        sort=sort, search=search, filters=filters, count=True,
-                                                        or_filters=or_filters)
-    for date_field in select & {'mtime', 'date'}:
-        for item in items:
-            # date fields with value 0 are returned as ND
-            item[date_field] = "ND" if item[date_field] == 0 \
-                                    else datetime.fromtimestamp(float(item[date_field])).strftime('%Y-%m-%d %H:%M:%S')
+    db_query = WazuhDBQuerySyscheck(agent_id=agent_list[0], offset=offset, limit=limit, sort=sort, search=search,
+                                    filters=filters, nested=nested, query=q, select=select, table='fim_entry',
+                                    distinct=distinct, fields=summary_parameters if summary else parameters,
+                                    min_select_fields={'file'})
 
-    return {'totalItems': totalItems, 'items': items}
+    db_query = db_query.run()
+
+    result.affected_items = db_query['items']
+    result.total_affected_items = db_query['totalItems']
+
+    return result

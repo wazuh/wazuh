@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "logcollector.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 
 /* Read snort_full files */
@@ -27,9 +28,17 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     f_msg[OS_MAXSTR] = '\0';
 
-    while (fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
+    /* Obtain context to calculate hash */
+    SHA_CTX context;
+    int64_t current_position = w_ftell(lf->fp);
+    w_get_hash_context(lf->file, &context, current_position);
+
+    while (can_read() && fgets(str, OS_MAXSTR, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
 
         lines++;
+
+        OS_SHA1_Stream(&context, NULL, str);
+
         /* Remove \n at the end of the string */
         if ((q = strrchr(str, '\n')) != NULL) {
             *q = '\0';
@@ -84,7 +93,6 @@ void *read_snortfull(logreader *lf, int *rc, int drop_it) {
                 /* Third line has the 01/13-15 (date) */
                 if ((str[2] == '/') && (str[5] == '-') && (q = strchr(str, ' '))) {
                     strncat(f_msg, ++q, f_msg_size);
-                    f_msg_size -= strlen(q) + 1;
                     p = NULL;
 
                     /* Send the message */
@@ -111,6 +119,9 @@ file_error:
         return (NULL);
 
     }
+
+    current_position = w_ftell(lf->fp);
+    w_update_file_status(lf->file, current_position, &context);
 
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);

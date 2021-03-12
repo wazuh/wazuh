@@ -1,15 +1,15 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _HCONFIG__H
-#define _HCONFIG__H
+#ifndef HCONFIG_H
+#define HCONFIG_H
 
 #define CGLOBAL       000000001
 #define CRULES        000000002
@@ -33,9 +33,7 @@
 #define CBUFFER       002000000
 #define CCLUSTER      004000000
 #define CSOCKET       010000000
-
-#define UDP_PROTO   6
-#define TCP_PROTO   17
+#define CLOGTEST      020000000
 
 #define MAX_NEEDED_TAGS 4
 
@@ -54,7 +52,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 int Read_Global(XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
 int Read_Rules(XML_NODE node, void *d1, void *d2);
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modules);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Alerts(XML_NODE node, void *d1, void *d2);
 int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
@@ -71,6 +69,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
+int Read_GCP(const OS_XML *xml, xml_node *node, void *d1);
 #ifndef WIN32
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
 #endif
@@ -78,6 +77,15 @@ int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Authd(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
+int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
+int Read_AgentUpgrade(const OS_XML *xml, xml_node *node, void *d1);
+int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
+
+/**
+ * @brief Read the configuration for logtest thread
+ * @param node rule_test configuration
+ */
+int Read_Logtest(XML_NODE node);
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
 int Test_Syscheck(const char * path);
@@ -100,4 +108,4 @@ int Test_WModule(const char * path);
 /* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
 int Test_Labels(const char * path);
 
-#endif /* _HCONFIG__H */
+#endif /* HCONFIG_H */

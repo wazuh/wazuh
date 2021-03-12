@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,8 +10,8 @@
 
 /* See README for details */
 
-#ifndef __OS_REGEX_H
-#define __OS_REGEX_H
+#ifndef OS_REGEX_H
+#define OS_REGEX_H
 
 /* size_t */
 #include <stddef.h>
@@ -150,10 +150,16 @@ int OS_StrStartsWith(const char *str, const char *pattern) __attribute__((nonnul
 /* Checks if a specific string is numeric (like "129544") */
 int OS_StrIsNum(const char *str);
 
+/*
+ * @brief Free memory of regex_matching struct
+ * @param reg struct to remove
+ */
+void OSRegex_free_regex_matching (regex_matching *reg);
+
 /* Checks if a specified char is in the following range:
  * a-z, A-Z, 0-9, _-.
  */
 extern const unsigned char hostname_map[256];
 #define isValidChar(x) (hostname_map[(unsigned char)x])
 
-#endif /* __OS_REGEX_H */
+#endif /* OS_REGEX_H */

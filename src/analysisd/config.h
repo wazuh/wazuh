@@ -1,15 +1,15 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _CONFIG__H
-#define _CONFIG__H
+#ifndef CONFIG_H
+#define CONFIG_H
 
 #include "config/config.h"
 #include "config/global-config.h"
@@ -26,7 +26,7 @@ extern long int __crt_ftell; /* Global ftell pointer */
 extern _Config Config;       /* Global Config structure */
 
 #ifdef LIBGEOIP_ENABLED
-GeoIP *geoipdb;
+extern GeoIP *geoipdb;
 #endif
 
 int GlobalConf(const char *cfgfile);
@@ -42,5 +42,6 @@ cJSON *getRulesConfig(void);
 void _getRulesListJSON(RuleNode *list, cJSON *array);
 cJSON *getAnalysisInternalOptions(void);
 cJSON *getManagerLabelsConfig(void);
+void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg);
 
-#endif /* _CONFIG__H */
+#endif /* CONFIG_H */

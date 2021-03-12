@@ -1,8 +1,8 @@
 /*
  * Shared functions for Rootcheck events decoding
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -118,7 +118,7 @@ OSList *w_os_get_process_list()
 
 #endif
 /* Check if a file exists */
-int w_is_file(char *file)
+int w_is_file(const char * const file)
 {
     FILE *fp;
     fp = fopen(file, "r");
@@ -168,6 +168,9 @@ int w_del_plist(OSList *p_list)
         free(p_node);
         p_node = NULL;
     }
+
+    pthread_mutex_destroy(&(p_list->mutex));
+    pthread_rwlock_destroy(&(p_list->wr_mutex));
 
     free(p_list);
 

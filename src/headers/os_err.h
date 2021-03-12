@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -10,8 +10,8 @@
 
 /* Basic error codes */
 
-#ifndef __OS_ERR
-#define __OS_ERR
+#ifndef OS_ERR
+#define OS_ERR
 
 #define OS_SUCCESS      0   /* Success                  */
 #define OS_INVALID      -1  /* Invalid entry            */
@@ -26,8 +26,11 @@
 #define OS_MEMERR       -10 /* Memory Error             */
 #define OS_SOCKBUSY     -11 /* Socket busy -- try again */
 #define OS_MAXLEN       -12 /* Max length               */
+#define OS_TIMEOUT      -13 /* Timeout error            */
 
 #define OS_ENDFILE      -20 /* End of file              */
 #define OS_FINISH       -21 /* Finished this task       */
 
-#endif /* __OS_ERR */
+typedef int w_err_t;
+
+#endif /* OS_ERR */

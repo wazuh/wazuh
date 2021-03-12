@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -17,6 +17,7 @@
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_sca.h"
 #include "agentd.h"
+#include "syscheck_op.h"
 
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
 w_queue_t * winexec_queue;
@@ -61,6 +62,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
             continue;
         }
 
+        run_notify();
+
         FD_ZERO(&fdset);
         FD_SET(agt->sock, &fdset);
 
@@ -82,7 +85,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
         /* Read until no more messages are available */
         while (1) {
-            if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
+            if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
                 /* Only one read per call */
                 if (reads++) {
                     break;
@@ -99,13 +102,13 @@ void *receiver_thread(__attribute__((unused)) void *none)
                         merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
                     }
 
-                    update_status(GA_STATUS_NACTIVE);
+                    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
                     merror(LOST_ERROR);
                     os_setwait();
                     start_agent(0);
                     minfo(SERVER_UP);
                     os_delwait();
-                    update_status(GA_STATUS_ACTIVE);
+                    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
                     break;
                 }
             } else {
@@ -130,7 +133,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                 /* This is the only thread that modifies it */
                 available_server = (int)time(NULL);
-                update_ack(available_server);
+                w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
 
                 /* If it is an active response message */
                 if (strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0) {
@@ -138,7 +141,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                     /* Run on Windows */
                     if (agt->execdq >= 0) {
-                        //WinExecdRun(tmp_msg);
                         queue_push_ex(winexec_queue, strdup(tmp_msg));
                     }
 
@@ -146,8 +148,22 @@ void *receiver_thread(__attribute__((unused)) void *none)
                 }
 
                 /* Restart syscheck */
-                else if (strcmp(tmp_msg, HC_SK_RESTART) == 0) {
-                    os_set_restart_syscheck();
+                else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0) {
+                    ag_send_syscheck(tmp_msg + strlen(HC_SK));
+                    continue;
+                }
+                else if (strncmp(tmp_msg, HC_FIM_FILE, strlen(HC_FIM_FILE)) == 0) {
+                    ag_send_syscheck(tmp_msg + strlen(HC_FIM_FILE));
+                    continue;
+                }
+                else if (strncmp(tmp_msg, HC_FIM_REGISTRY, strlen(HC_FIM_REGISTRY)) == 0) {
+                    ag_send_syscheck(tmp_msg + strlen(HC_FIM_REGISTRY));
+                    continue;
+                }
+
+                /* syscollector */
+                else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
+                    wmcom_send(tmp_msg);
                     continue;
                 }
 
@@ -226,12 +242,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     /* No error */
                     os_md5 currently_md5;
 
-                    /* Close for the rename to work */
-                    if (fp) {
-                        fclose(fp);
-                        fp = NULL;
-                    }
-
                     if (file[0] == '\0') {
                         /* Nothing to be done */
                     }
@@ -259,7 +269,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                                     if(!UnmergeFiles(file, SHAREDCFG_DIR, OS_TEXT)){
                                         char msg_output[OS_MAXSTR];
 
-                                        snprintf(msg_output, OS_MAXSTR, "%c:%s:%s:",  LOCALFILE_MQ, "ossec-agent", AG_IN_UNMERGE);
+                                        snprintf(msg_output, OS_MAXSTR, "%c:%s:%s:",  LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
                                         send_msg(msg_output, -1);
                                     }
                                     else if (agt->flags.remote_conf && !verifyRemoteConf()) {
@@ -287,7 +297,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
             else if (fp) {
                 available_server = (int)time(NULL);
-                update_ack(available_server);
+                w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
                 fprintf(fp, "%s", tmp_msg);
             }
 

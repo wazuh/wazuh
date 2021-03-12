@@ -105,11 +105,11 @@ tostart="To start Wazuh"
 tostop="To stop Wazuh"
 configat="The configuration can be viewed or modified at"
 addserveragent="In order to connect agent and server, you need to add each agent to the server."
-runma="Run the 'manage_agents' to add or remove them"
 presskey="Press ENTER to continue"
 
 # Update
 wanttoupdate="You already have Wazuh installed. Do you want to update it?"
+mustuninstall="The installation can't proceed without uninstalling old versions. Exiting."
 unabletoupdate="Unable to perform update. A full new install will be required."
 updatecompleted="Update completed."
 updatefailed="Update failed."

@@ -1,19 +1,18 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
-#ifndef _CAR__H
-#define _CAR__H
+#ifndef CAR_H
+#define CAR_H
 
 /* Active response commands */
 typedef struct _ar_command {
-    int expect;
     int timeout_allowed;
 
     char *name;
@@ -39,4 +38,4 @@ typedef struct _ar {
 /* Active response flag */
 extern int ar_flag;
 
-#endif /* _CAR__H */
+#endif /* CAR_H */

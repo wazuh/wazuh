@@ -1,0 +1,12 @@
+module_version: 0.1
+
+var:
+  - name: paths
+    default:
+      - /var/ossec/logs/alerts/alerts.json
+  - name: index_prefix
+    default: wazuh-alerts-4.x-
+
+input: config/alerts.yml
+
+ingest_pipeline: ingest/pipeline.json

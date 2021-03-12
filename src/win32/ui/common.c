@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -15,6 +15,8 @@
 #include "os_net/os_net.h"
 #include "validate_op.h"
 
+/* Agent status */
+char ui_server_info[2048 + 1];
 
 /* Generate server info (for the main status) */
 int gen_server_info(HWND hwnd)

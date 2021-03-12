@@ -1,8 +1,8 @@
 /*
- * Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2015-2020, Wazuh Inc.
  * Contributed by Arshad Khan (@arshad01)
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -24,7 +24,7 @@ int OS_SHA256_File(const char *fname, os_sha256 output, int mode)
     unsigned char md[SHA256_DIGEST_LENGTH];
     size_t n;
 
-    memset(output, 0, 65);
+    memset(output, 0, sizeof(os_sha256));
     buf[2049] = '\0';
 
     fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");

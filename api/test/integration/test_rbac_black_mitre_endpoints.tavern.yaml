@@ -1,0 +1,19 @@
+---
+test_name: GET /mitre
+
+marks:
+  - rbac_tests
+
+stages:
+
+  - name: Request MITRE attacks (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 403
+      json:
+        error: 4000

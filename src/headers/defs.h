@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
@@ -10,8 +10,8 @@
 
 /* Global Definitions */
 
-#ifndef __OS_HEADERS
-#define __OS_HEADERS
+#ifndef OS_HEADERS
+#define OS_HEADERS
 
 #define TRUE            1
 #define FALSE           0
@@ -34,6 +34,9 @@
 #define OS_SIZE_512     512
 #define OS_SIZE_256     256
 #define OS_SIZE_128     128
+#define OS_SIZE_64      64
+#define OS_SIZE_32      32
+#define OS_SIZE_16      16
 
 /* Level of log messages */
 #define LOGLEVEL_CRITICAL 4
@@ -42,26 +45,27 @@
 #define LOGLEVEL_INFO 1
 #define LOGLEVEL_DEBUG 0
 
-#define OS_MAXSTR       OS_SIZE_65536    /* Size for logs, sockets, etc  */
-#define OS_BUFFER_SIZE  OS_SIZE_2048    /* Size of general buffers      */
-#define OS_FLSIZE       OS_SIZE_256     /* Maximum file size            */
-#define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size          */
-#define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size      */
-#define OS_SK_HEADER    OS_SIZE_6144    /* Maximum syscheck header size */
-#define IPSIZE          16              /* IP Address size              */
-#define AUTH_POOL       1000            /* Max number of connections    */
-#define BACKLOG         128             /* Socket input queue length    */
-#define MAX_EVENTS      1024            /* Max number of epoll events   */
-#define EPOLL_MILLIS    -1              /* Epoll wait time              */
-#define MAX_TAG_COUNTER 256             /* Max retrying counter         */
-#define SOCK_RECV_TIME0 300             /* Socket receiving timeout (s) */
-#define MIN_ORDER_SIZE  10              /* Minimum size of orders array */
-#define KEEPALIVE_SIZE  700             /* Random keepalive string size */
-#define MAX_DYN_STR     4194304         /* Max message size received 4MiB */
+#define OS_MAXSTR       OS_SIZE_65536       /* Size for logs, sockets, etc      */
+#define OS_BUFFER_SIZE  OS_SIZE_2048        /* Size of general buffers          */
+#define OS_FLSIZE       OS_SIZE_256         /* Maximum file size                */
+#define OS_HEADER_SIZE  OS_SIZE_128         /* Maximum header size              */
+#define OS_LOG_HEADER   OS_SIZE_256         /* Maximum log header size          */
+#define OS_SK_HEADER    OS_SIZE_6144        /* Maximum syscheck header size     */
+#define IPSIZE          INET6_ADDRSTRLEN    /* IP Address size                  */
+#define AUTH_POOL       1000                /* Max number of connections        */
+#define BACKLOG         128                 /* Socket input queue length        */
+#define MAX_EVENTS      1024                /* Max number of epoll events       */
+#define EPOLL_MILLIS    -1                  /* Epoll wait time                  */
+#define MAX_TAG_COUNTER 256                 /* Max retrying counter             */
+#define SOCK_RECV_TIME0 300                 /* Socket receiving timeout (s)     */
+#define MIN_ORDER_SIZE  32                  /* Minimum size of orders array     */
+#define KEEPALIVE_SIZE  700                 /* Random keepalive string size     */
+#define MAX_DYN_STR     4194304             /* Max message size received 4MiB   */
+#define DATE_LENGTH     64                  /* Format date time %D %T           */
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.9.4"
+#define __ossec_version "v4.2.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -78,11 +82,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MAX_PID 32768
 #endif
 
-/* Limit of 256 agents */
-#ifndef MAX_AGENTS
-#define MAX_AGENTS  256
-#endif
-
 /* First ID assigned by authd */
 #ifndef AUTHD_FIRST_ID
 #define AUTHD_FIRST_ID  1024
@@ -91,7 +90,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Notify the manager */
 #define NOTIFY_TIME     10      // ... every 10 seconds
 #define RECONNECT_TIME  60      // Time to reconnect
-#define DISCON_TIME     1800    // Take agent as disconnected
 
 /* User Configuration */
 #ifndef MAILUSER
@@ -119,28 +117,37 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Default queue */
-#define DEFAULTQUEUE    "/queue/ossec/queue"
+#define DEFAULTQUEUE    "/queue/sockets/queue"
 
 // Authd local socket
-#define AUTH_LOCAL_SOCK "/queue/ossec/auth"
+#define AUTH_LOCAL_SOCK "/queue/sockets/auth"
 #define AUTH_LOCAL_SOCK_PATH DEFAULTDIR AUTH_LOCAL_SOCK
 
 // Remote requests socket
-#define REMOTE_REQ_SOCK "/queue/ossec/request"
+#define REMOTE_REQ_SOCK "/queue/sockets/request"
 
 // Local requests socket
-#define COM_LOCAL_SOCK  "/queue/ossec/com"
-#define LC_LOCAL_SOCK  "/queue/ossec/logcollector"
-#define SYS_LOCAL_SOCK  "/queue/ossec/syscheck"
-#define WM_LOCAL_SOCK  "/queue/ossec/wmodules"
-#define ANLSYS_LOCAL_SOCK  "/queue/ossec/analysis"
-#define MAIL_LOCAL_SOCK "/queue/ossec/mail"
-#define LESSD_LOCAL_SOCK "/queue/ossec/agentless"
-#define INTG_LOCAL_SOCK "/queue/ossec/integrator"
-#define CSYS_LOCAL_SOCK  "/queue/ossec/csyslog"
-#define MON_LOCAL_SOCK  "/queue/ossec/monitor"
+#define COM_LOCAL_SOCK  "/queue/sockets/com"
+#define LC_LOCAL_SOCK  "/queue/sockets/logcollector"
+#define SYS_LOCAL_SOCK  "/queue/sockets/syscheck"
+#define WM_LOCAL_SOCK  "/queue/sockets/wmodules"
+#define ANLSYS_LOCAL_SOCK  "/queue/sockets/analysis"
+#define MAIL_LOCAL_SOCK "/queue/sockets/mail"
+#define LESSD_LOCAL_SOCK "/queue/sockets/agentless"
+#define INTG_LOCAL_SOCK "/queue/sockets/integrator"
+#define CSYS_LOCAL_SOCK  "/queue/sockets/csyslog"
+#define MON_LOCAL_SOCK  "/queue/sockets/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
-#define CONTROL_SOCK "/queue/ossec/control"
+#define CONTROL_SOCK "/queue/sockets/control"
+#define LOGTEST_SOCK "/queue/sockets/logtest"
+#define AGENT_UPGRADE_SOCK "/queue/sockets/upgrade"
+
+
+// Tasks socket
+#define TASK_QUEUE "/queue/tasks/task"
+
+// Absolute path local requests socket
+#define CONTROL_SOCK_PATH DEFAULTDIR CONTROL_SOCK
 
 // Attempts to check sockets availability
 #define SOCK_ATTEMPTS   10
@@ -151,11 +158,18 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_LOCAL_SOCK_PATH DEFAULTDIR WDB_LOCAL_SOCK
 #endif
 
-#define WM_DOWNLOAD_SOCK "/queue/ossec/download"
+#define WM_DOWNLOAD_SOCK "/queue/sockets/download"
 #define WM_DOWNLOAD_SOCK_PATH DEFAULTDIR WM_DOWNLOAD_SOCK
 
-#define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
+#define WM_KEY_REQUEST_SOCK "/queue/sockets/krequest"
 #define WM_KEY_REQUEST_SOCK_PATH DEFAULTDIR WM_KEY_REQUEST_SOCK
+
+// Tasks socket
+#define WM_UPGRADE_SOCK "/queue/tasks/upgrade"
+#define WM_UPGRADE_SOCK_PATH DEFAULTDIR WM_UPGRADE_SOCK
+
+#define WM_TASK_MODULE_SOCK "/queue/tasks/task"
+#define WM_TASK_MODULE_SOCK_PATH DEFAULTDIR WM_TASK_MODULE_SOCK
 
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
@@ -192,10 +206,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Decoder file */
 #define XML_LDECODER    "etc/decoders/local_decoder.xml"
 
-/* Agent information location */
-#define AGENTINFO_DIR    "/queue/agent-info"
-#define AGENTINFO_DIR_PATH DEFAULTDIR "/queue/agent-info"
-
 /* Agent groups location */
 #define GROUPS_DIR    "/queue/agent-groups"
 
@@ -205,29 +215,69 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Syscheck directory */
 #define SYSCHECK_DIR    "/queue/syscheck"
 
+/* Syscollector normalization configs */
+#ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH    ".\\norm_config.json"
+#else
+#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH    "./norm_config.json"
+#endif // WIN32
+#else
+#ifdef WIN32
+#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH "queue/syscollector/norm_config.json"
+#else
+#define SYSCOLLECTOR_NORM_CONFIG_DISK_PATH DEFAULTDIR "/queue/syscollector/norm_config.json"
+#endif // WIN32
+#endif // WAZUH_UNIT_TESTING
+
+#if defined(__MACH__)
+#define SYSCOLLECTOR_NORM_TYPE "macos"
+#elif defined(WIN32)
+#define SYSCOLLECTOR_NORM_TYPE "windows"
+#else
+#define SYSCOLLECTOR_NORM_TYPE "linux"
+#endif // __MACH__
+
+
+/* Syscollector db directory */
+#ifndef WAZUH_UNIT_TESTING
+#ifndef WIN32
+#define SYSCOLLECTOR_DB_DISK_PATH DEFAULTDIR "/queue/syscollector/db/local.db"
+#else
+#define SYSCOLLECTOR_DB_DISK_PATH "queue/syscollector/db/local.db"
+#endif // WIN32
+#else
+#ifndef WIN32
+#define SYSCOLLECTOR_DB_DISK_PATH    "./local.db"
+#else
+#define SYSCOLLECTOR_DB_DISK_PATH    ".\\local.db"
+#endif // WIN32
+#endif // WAZUH_UNIT_TESTING
+
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
-
-/* Backup directory for agents */
-#define AGNBACKUP_DIR    "/backup/agents"
 
 /* Wazuh Database */
 #define WDB_DIR         "var/db"
 #define WDB2_DIR        "queue/db"
-#define WDB_GLOB_NAME   "global.db"
+#define WDB_GLOB_NAME   "global"
+#define WDB_MITRE_NAME  "mitre"
 #define WDB_PROF_NAME   ".template.db"
+#define WDB_TASK_DIR    "queue/tasks"
+#define WDB_TASK_NAME   "tasks"
 
 /* Diff queue */
 #ifndef WIN32
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
 #else
-#define DIFF_DIR_PATH "queue/diff"
+#define DIFF_DIR        "queue/diff"
+#define DIFF_DIR_PATH   DIFF_DIR
 #endif
-#define DIFF_NEW_FILE  "new-entry"
-#define DIFF_LAST_FILE "last-entry"
-#define DIFF_GZ_FILE "last-entry.gz"
-#define DIFF_TEST_HOST "__test"
+#define DIFF_NEW_FILE   "new-entry"
+#define DIFF_LAST_FILE  "last-entry"
+#define DIFF_GZ_FILE    "last-entry.gz"
+#define DIFF_TEST_HOST  "__test"
 
 /* Syscheck data */
 #define SYSCHECK        "syscheck"
@@ -238,16 +288,15 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Wait file */
 #ifndef WIN32
-#define WAIT_FILE       "/queue/ossec/.wait"
+#define WAIT_FILE       "/queue/sockets/.wait"
 #else
 #define WAIT_FILE       ".wait"
 #endif
 
 /* Agent information file */
 #ifndef WIN32
-#define AGENT_INFO_FILE "/queue/ossec/.agent_info"
+#define AGENT_INFO_FILE "/queue/sockets/.agent_info"
 #define AGENT_INFO_FILEP DEFAULTDIR AGENT_INFO_FILE
-#define AGENT_INFO_FILEF DEFAULTDIR AGENTINFO_DIR "/%s-%s"
 #else
 #define AGENT_INFO_FILE ".agent_info"
 #define AGENT_INFO_FILEP AGENT_INFO_FILE
@@ -276,6 +325,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #ifndef WIN32
 #define OSSEC_DEFINES   "/etc/internal_options.conf"
 #define OSSEC_LDEFINES   "/etc/local_internal_options.conf"
+#define OSSEC_DEFINES_PATH DEFAULTDIR OSSEC_DEFINES
 #else
 #define OSSEC_DEFINES   "internal_options.conf"
 #define OSSEC_LDEFINES   "local_internal_options.conf"
@@ -405,6 +455,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
 #endif
 
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
+
 /* XML global elements */
 #ifndef xml_global
 #define xml_global "global"
@@ -464,4 +518,4 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define FTELL_INT64 (long)
 #endif
 
-#endif /* __OS_HEADERS */
+#endif /* OS_HEADERS */

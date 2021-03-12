@@ -1,4 +1,1 @@
-rhel/6/cis_rhel6_linux_rcl.yml
-generic/system_audit_rcl.yml
-generic/system_audit_ssh.yml
-generic/system_audit_pw.yml
+centos/6/cis_centos6_linux.yml

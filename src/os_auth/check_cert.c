@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -107,7 +107,7 @@ int check_subject_cn(X509 *cert, const char *manager)
 {
     X509_NAME *name = NULL;
     int result = VERIFY_FALSE;
-    int i = 0;
+    int i = -1;
 
     if ((name = X509_get_subject_name(cert))) {
         while ((i = X509_NAME_get_index_by_NID(name, NID_commonName, i)) >= 0 && result == VERIFY_FALSE) {

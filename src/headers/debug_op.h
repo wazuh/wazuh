@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -16,8 +16,8 @@
  * The merror is printed by default when an important error occurs
  */
 
-#ifndef __DEBUG_H
-#define __DEBUG_H
+#ifndef DEBUG_H
+#define DEBUG_H
 
 #ifndef __GNUC__
 #define __attribute__(x)
@@ -68,6 +68,11 @@ void _mtferror(const char *tag, const char * file, int line, const char * func, 
 void _merror_exit(const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull)) __attribute__ ((noreturn));
 void _mterror_exit(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull)) __attribute__ ((noreturn));
 
+/**
+ * @brief Logging module initializer
+ */
+void w_logging_init(void);
+
 /* Function to read the logging format configuration */
 void os_logging_config(void);
 cJSON *getLoggingConfig(void);
@@ -94,4 +99,4 @@ int isChroot(void);
 #define DEBUG_MSG(x,y,z)
 #endif /* end debug analysisd */
 
-#endif /* __DEBUG_H */
+#endif /* DEBUG_H */

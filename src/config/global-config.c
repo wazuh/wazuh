@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -13,6 +13,7 @@
 #include "global-config.h"
 #include "mail-config.h"
 #include "config.h"
+#include "string_op.h"
 
 
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
@@ -150,6 +151,9 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_custom_alert_output = "custom_alert_output";
     const char *xml_rotate_interval = "rotate_interval";
     const char *xml_max_output_size = "max_output_size";
+    const char *xml_agents_disconnection_time = "agents_disconnection_time";
+    const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
+
 
     const char *xml_emailto = "email_to";
     const char *xml_emailfrom = "email_from";
@@ -530,7 +534,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
                 Mail->maxperhour = atoi(node[i]->content);
 
-                if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 9999)) {
+                if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 1000000)) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
@@ -653,6 +657,32 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return OS_INVALID;
                 }
 
+            }
+        }
+        /* Agent's disconnection time parameter */
+        else if (strcmp(node[i]->element, xml_agents_disconnection_time) == 0) {
+            if (Config) {
+                long time = w_parse_time(node[i]->content);
+
+                if (time < 1) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                } else {
+                    Config->agents_disconnection_time = time;
+                }
+            }
+        }
+        /* Agent's disconnection alert time parameter */
+        else if (strcmp(node[i]->element, xml_agents_disconnection_alert_time) == 0) {
+            if (Config) {
+                long time = w_parse_time(node[i]->content);
+
+                if (time < 0) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                } else {
+                    Config->agents_disconnection_alert_time = time;
+                }
             }
         } else {
             merror(XML_INVELEM, node[i]->element);

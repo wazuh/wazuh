@@ -1,8 +1,8 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
- * This program is a free software; you can redistribute it
+ * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
@@ -11,11 +11,21 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
+#include "wazuh_db/wdb.h"
+
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
 
 /* Global variables */
 int sender_pool;
 
 static netbuffer_t netbuffer;
+
+size_t global_counter;
 
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
@@ -24,10 +34,12 @@ static void * rem_handler_main(__attribute__((unused)) void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client);
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
+
+STATIC void * close_fp_main(void * args);
 
 /* Status of keypolling wodle */
 static char key_request_available = 0;
@@ -47,6 +59,14 @@ static void _push_request(const char *request,const char *type);
 static int key_request_connect();
 static int key_request_reconnect();
 
+/* Defines to switch according to different OS_AddSocket or, failing that, the case of using UDP protocol */
+#define OS_ADDSOCKET_ERROR          0   ///< OSHash_Set_ex returns 0 on error (* see OS_AddSocket and OSHash_Set_ex)
+#define OS_ADDSOCKET_KEY_UPDATED    1   ///< OSHash_Set_ex returns 1 when key existed, so it is update (*)
+#define OS_ADDSOCKET_KEY_ADDED      2   ///< OSHash_Set_ex returns 2 when key didn't existed, so it is added  (*)
+#define REMOTED_USING_UDP           42  ///< When using UDP, OS_AddSocket isn't called, so an arbitrary value is used
+
+#define USING_UDP_NO_CLIENT_SOCKET  -1  ///< When using UDP, no valid client socket FD is set
+
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -56,6 +76,7 @@ void HandleSecure()
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
     struct sockaddr_in peer_info;
+    memset(&peer_info, 0, sizeof(struct sockaddr_in));
     wnotify_t * notify = NULL;
 
     /* Initialize manager */
@@ -100,10 +121,17 @@ void HandleSecure()
         }
     }
 
+    // Reset all the agents' connection status in Wazuh DB
+    // The master will disconnect and alert the agents on its own DB. Thus, synchronization is not required.
+    if (OS_SUCCESS != wdb_reset_agents_connection("synced", NULL))
+        mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
+
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
-
+        // Initialize FD list and counter.
+        global_counter = 0;
+        rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
             w_create_thread(rem_handler_main, NULL);
             worker_pool--;
@@ -113,19 +141,20 @@ void HandleSecure()
     /* Connect to the message queue
      * Exit if it fails.
      */
-    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
+    if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
-    minfo(AG_AX_AGENTS, MAX_AGENTS);
-
     /* Read authentication keys */
     minfo(ENC_READ);
-    OS_ReadKeys(&keys, 1, 0, 0);
+    OS_ReadKeys(&keys, 1, 0);
     OS_StartCounter(&keys);
 
     // Key reloader thread
     w_create_thread(rem_keyupdate_main, NULL);
+
+    // fp closer thread
+    w_create_thread(close_fp_main, &keys);
 
     /* Set up peer size */
     logr.peer_size = sizeof(peer_info);
@@ -133,111 +162,141 @@ void HandleSecure()
     /* Initialize some variables */
     memset(buffer, '\0', OS_MAXSTR + 1);
 
-    if (protocol == TCP_PROTO) {
-        if (notify = wnotify_init(MAX_EVENTS), !notify) {
-            merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
-        }
+    /* Events watcher is started (is used to monitor sockets events) */
+    if (notify = wnotify_init(MAX_EVENTS), !notify) {
+        merror_exit("wnotify_init(): %s (%d)", strerror(errno), errno);
+    }
 
-        if (wnotify_add(notify, logr.sock) < 0) {
-            merror_exit("wnotify_add(%d): %s (%d)", logr.sock, strerror(errno), errno);
+    /* If TCP is set on the config, then the corresponding sockets is added to the watching list  */
+    if (protocol & REMOTED_NET_PROTOCOL_TCP) {
+        if (wnotify_add(notify, logr.tcp_sock) < 0) {
+            merror_exit("wnotify_add(%d): %s (%d)", logr.tcp_sock, strerror(errno), errno);
+        }
+    }
+
+    /* If UDP is set on the config, then the corresponding sockets is added to the watching list  */
+    if (protocol & REMOTED_NET_PROTOCOL_UDP) {
+        if (wnotify_add(notify, logr.udp_sock) < 0) {
+            merror_exit("wnotify_add(%d): %s (%d)", logr.udp_sock, strerror(errno), errno);
         }
     }
 
     while (1) {
-        /* Receive message  */
-        if (protocol == TCP_PROTO) {
-            if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
-                if (errno != EINTR) {
-                    merror("Waiting for connection: %s (%d)", strerror(errno), errno);
-                    sleep(1);
-                }
-
-                continue;
+        
+        /* It waits for a socket event */
+        if (n_events = wnotify_wait(notify, EPOLL_MILLIS), n_events < 0) {
+            if (errno != EINTR) {
+                merror("Waiting for connection: %s (%d)", strerror(errno), errno);
+                sleep(1);
             }
 
-            int i;
-            for (i = 0; i < n_events; i++) {
-                int fd = wnotify_get(notify, i);
+            continue;
+        }
 
-                if (fd == logr.sock) {
-                    sock_client = accept(logr.sock, (struct sockaddr *)&peer_info, &logr.peer_size);
-                    if (sock_client < 0) {
-                        merror_exit(ACCEPT_ERROR);
+        int i;
+        for (i = 0; i < n_events; i++) {
+            // Returns the fd of the socket that recived a message
+            int fd = wnotify_get(notify, i);
+
+            // In case of failure or unexpected file descriptor
+            if (fd <= 0) {
+                merror("Unexpected file descriptor: %d, %s (%d)", fd, strerror(errno), errno);
+                continue;
+            }
+            // If a new TCP connection was received and TCP is enabled
+            else if ((fd == logr.tcp_sock) && (protocol & REMOTED_NET_PROTOCOL_TCP)) {
+                sock_client = accept(logr.tcp_sock, (struct sockaddr *) &peer_info, &logr.peer_size);
+                if (sock_client < 0) {
+                    switch (errno) {
+                    case ECONNABORTED:
+                        mdebug1(ACCEPT_ERROR, strerror(errno), errno);
+                        break;
+                    default:
+                        merror(ACCEPT_ERROR, strerror(errno), errno);
                     }
 
-                    nb_open(&netbuffer, sock_client, &peer_info);
-                    rem_inc_tcp();
-                    mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
+                    continue;
+                }
 
-                    if (wnotify_add(notify, sock_client) < 0) {
-                        merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
-                        _close_sock(&keys, sock_client);
-                    }
+                nb_open(&netbuffer, sock_client, &peer_info);
+                rem_inc_tcp();
+                mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
+
+                if (wnotify_add(notify, sock_client) < 0) {
+                    merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
+                    _close_sock(&keys, sock_client);
+                }
+            }
+            // If a new UDP connection was received and UDP is enabled
+            else if (fd == logr.udp_sock && protocol & REMOTED_NET_PROTOCOL_UDP) {
+                recv_b = recvfrom(logr.udp_sock, buffer, OS_MAXSTR, 0, (struct sockaddr *) &peer_info, &logr.peer_size);
+
+                /* Nothing received */
+                if (recv_b <= 0) {
+                    continue;
                 } else {
-                    sock_client = fd;
+                    rem_msgpush(buffer, recv_b, &peer_info, USING_UDP_NO_CLIENT_SOCKET);
+                    rem_add_recv((unsigned long) recv_b);
+                }
+            }
+            // If a message was received through a TCP client and tcp is enabled
+            else if (protocol & REMOTED_NET_PROTOCOL_TCP) {
+                sock_client = fd;
 
-                    switch (recv_b = nb_recv(&netbuffer, sock_client), recv_b) {
-                    case -2:
-                        mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info.sin_addr), sock_client);
-                        _close_sock(&keys, sock_client);
-                        continue;
+                switch (recv_b = nb_recv(&netbuffer, sock_client), recv_b) {
+                case -2:
+                    mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info.sin_addr), sock_client);
+                    _close_sock(&keys, sock_client);
+                    continue;
 
-                    case -1:
-                        switch (errno) {
-                        case ECONNRESET:
-                        case ENOTCONN:
-                        case EAGAIN:
+                case -1:
+                    switch (errno) {
+                    case ECONNRESET:
+                    case ENOTCONN:
+                    case EAGAIN:
 #if EAGAIN != EWOULDBLOCK
-                        case EWOULDBLOCK:
+                    case EWOULDBLOCK:
 #endif
 #if ETIMEDOUT
-                        case ETIMEDOUT:
+                    case ETIMEDOUT:
 #endif
-                            mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
-                            break;
-                        default:
-                            merror("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
-                        }
-
-                        // Fallthrough
-
-                    case 0:
-                        if (wnotify_delete(notify, sock_client) < 0) {
-                            merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
-                        }
-
-                        _close_sock(&keys, sock_client);
-                        continue;
-
+                        mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, 
+                                inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
+                        break;
                     default:
-                        rem_add_recv((unsigned long)recv_b);
+                        merror("TCP peer [%d] at %s: %s (%d)", sock_client,
+                                inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                     }
-                }
-            }
-        } else {
-            recv_b = recvfrom(logr.sock, buffer, OS_MAXSTR, 0, (struct sockaddr *)&peer_info, &logr.peer_size);
+                    fallthrough;
+                case 0:
+                    _close_sock(&keys, sock_client);
+                    continue;
 
-            /* Nothing received */
-            if (recv_b <= 0) {
-                continue;
-            } else {
-                rem_msgpush(buffer, recv_b, &peer_info, -1);
-                rem_add_recv((unsigned long)recv_b);
+                default:
+                    rem_add_recv((unsigned long) recv_b);
+                }
             }
         }
     }
+
+    manager_free();
 }
 
 // Message handler thread
 void * rem_handler_main(__attribute__((unused)) void * args) {
     message_t * message;
     char buffer[OS_MAXSTR + 1] = "";
+    int wdb_sock = -1;
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
-        memcpy(buffer, message->buffer, message->size);
-        HandleSecureMessage(buffer, message->size, &message->addr, message->sock);
+        if (message->sock == USING_UDP_NO_CLIENT_SOCKET || message->counter > rem_getCounter(message->sock)) {
+            memcpy(buffer, message->buffer, message->size);
+            HandleSecureMessage(buffer, message->size, &message->addr, message->sock, &wdb_sock);
+        } else {
+            rem_inc_dequeued();
+        }
         rem_msgfree(message);
     }
 
@@ -258,21 +317,67 @@ void * rem_keyupdate_main(__attribute__((unused)) void * args) {
     }
 }
 
-static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client) {
+// Closer rids thread
+STATIC void * close_fp_main(void * args) {
+    keystore * keys = (keystore *)args;
+    int seconds;
+    int flag;
+
+    mdebug1("Rids closer thread started.");
+    seconds = logr.rids_closing_time;
+
+    while (1) {
+        sleep(seconds);
+        key_lock_read();
+        flag = 1;
+        while (flag) {
+            w_linked_queue_node_t * first_node = keys->opened_fp_queue->first;
+            mdebug2("Opened rids queue size: %d", keys->opened_fp_queue->elements);
+            if (first_node) {
+                int now = time(0);
+                keyentry * first_node_key = (keyentry *)first_node->data;
+                mdebug2("Checking rids_node of agent %s.", first_node_key->id);
+                if ((now - seconds) > first_node_key->updating_time) {
+                    first_node_key = (keyentry *)linked_queue_pop_ex(keys->opened_fp_queue);
+                    w_mutex_lock(&first_node_key->mutex);
+                    mdebug2("Pop rids_node of agent %s.", first_node_key->id);
+                    if (first_node_key->fp != NULL) {
+                        mdebug2("Closing rids for agent %s.", first_node_key->id);
+                        fclose(first_node_key->fp);
+                        first_node_key->fp = NULL;
+                    }
+                    first_node_key->updating_time = 0;
+                    first_node_key->rids_node = NULL;
+                    w_mutex_unlock(&first_node_key->mutex);
+                } else {
+                    flag = 0;
+                }
+            } else {
+                flag = 0;
+            }
+        }
+        key_unlock();
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
+    }
+    return NULL;
+}
+
+static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *peer_info, int sock_client, int *wdb_sock) {
     int agentid;
-    int protocol = logr.proto[logr.position];
+    const int protocol = (sock_client == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
     char srcmsg[OS_FLSIZE + 1];
-    char srcip[IPSIZE + 1];
-    char agname[KEYSIZE + 1];
+    char srcip[IPSIZE + 1] = {0};
+    char agname[KEYSIZE + 1] = {0};
     char *tmp_msg;
     size_t msg_length;
     char ip_found = 0;
     int r;
 
     /* Set the source IP */
-    strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
-    srcip[IPSIZE] = '\0';
+    inet_ntop(peer_info->sin_family, &peer_info->sin_addr, srcip, IPSIZE);
 
     /* Initialize some variables */
     memset(cleartext_msg, '\0', OS_MAXSTR + 1);
@@ -330,13 +435,30 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             return;
         }
+    } else if (strncmp(buffer, "#ping", 5) == 0) {
+            int retval = 0;
+            char *msg = "#pong";
+            ssize_t msg_size = strlen(msg);
+
+            if (protocol == REMOTED_NET_PROTOCOL_UDP) {
+                retval = sendto(logr.udp_sock, msg, msg_size, 0, (struct sockaddr *)peer_info, logr.peer_size) == msg_size ? 0 : -1;
+            } else {
+                retval = OS_SendSecureTCP(sock_client, msg_size, msg);
+            }
+
+            if (retval < 0) {
+                mwarn("Ping operation could not be delivered completely (%d)", retval);
+            }
+
+            return;
+
     } else {
         key_lock_read();
         agentid = OS_IsAllowedIP(&keys, srcip);
 
         if (agentid < 0) {
             key_unlock();
-            mwarn(DENYIP_WARN, srcip);
+            mwarn(DENYIP_WARN " Source agent ID is unknown.", srcip);
 
             // Send key request by ip
             push_request(srcip,"ip");
@@ -372,21 +494,28 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 
+        keys.keyentries[agentid]->net_protocol = protocol;
+
         memcpy(&keys.keyentries[agentid]->peer_info, peer_info, logr.peer_size);
         keyentry * key = OS_DupKeyEntry(keys.keyentries[agentid]);
-        r = (protocol == TCP_PROTO) ? OS_AddSocket(&keys, agentid, sock_client) : 2;
+        r = (protocol == REMOTED_NET_PROTOCOL_TCP) ? OS_AddSocket(&keys, agentid, sock_client) : REMOTED_USING_UDP;
         keys.keyentries[agentid]->rcvd = time(0);
 
         switch (r) {
-        case 0:
+        case OS_ADDSOCKET_ERROR:
             merror("Couldn't add TCP socket to keystore.");
             break;
-        case 1:
+        case OS_ADDSOCKET_KEY_UPDATED:
             mdebug2("TCP socket %d already in keystore. Updating...", sock_client);
+            break;
+        case OS_ADDSOCKET_KEY_ADDED:
+            mdebug2("TCP socket %d added to keystore.", sock_client);
+            break;
+        case REMOTED_USING_UDP:
+            keys.keyentries[agentid]->sock = USING_UDP_NO_CLIENT_SOCKET;
             break;
         default:
             ;
@@ -395,7 +524,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
         key_unlock();
 
         // The critical section for readers closes within this function
-        save_controlmsg(key, tmp_msg, msg_length - 3);
+        save_controlmsg(key, tmp_msg, msg_length - 3, wdb_sock);
         rem_inc_ctrl_msg();
 
         OS_FreeKey(key);
@@ -416,8 +545,14 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
                 SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
-        if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+        // Try to reconnect infinitely
+        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
+            // Something went wrong sending a message after an immediate reconnection...
+            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         }
     } else {
         rem_inc_evt();
@@ -435,6 +570,8 @@ int _close_sock(keystore * keys, int sock) {
     if (nb_close(&netbuffer, sock) == 0) {
         rem_dec_tcp();
     }
+
+    rem_setCounter(sock, global_counter);
 
     mdebug1("TCP peer disconnected [%d]", sock);
 

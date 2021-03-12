@@ -1,0 +1,7 @@
+
+| Actions                  | Resources | Allow                     | Deny |
+|--------------------------|-----------|---------------------------|------|
+| manager:read             | *         |                           | *    |
+| manager:restart          | *         |                           | *    |
+| manager:update_config    | *         | *                         |      |
+| manager:read_api_config  | *         | *                         |      |

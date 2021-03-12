@@ -1,12 +1,11 @@
 #!/bin/sh
 
-# Init functions for the OSSEC HIDS
-# Copyright (C) 2015-2019, Wazuh Inc.
+# Init functions for Wazuh
+# Copyright (C) 2015-2020, Wazuh Inc.
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 UN=${NUNAME};
 service="wazuh";
-./dist-detect.sh
 
 runInit()
 {
@@ -31,15 +30,14 @@ runInit()
             type=agent
         fi
         # RHEL 8 services must to be installed in /usr/lib/systemd/system/
-        if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" = "8" ]; then
-            cp -p ./src/systemd/wazuh-$type.service /usr/lib/systemd/system/
-            chown root:ossec /usr/lib/systemd/system/"wazuh-"$type.service
-            systemctl daemon-reload
+        if [ "${DIST_NAME}" = "rhel" -a "${DIST_VER}" = "8" ] || [ "${DIST_NAME}" = "centos" -a "${DIST_VER}" = "8" ]; then
+            SERVICE_UNIT_PATH=/usr/lib/systemd/system/wazuh-$type.service
         else
-            cp -p ./src/systemd/wazuh-$type.service /etc/systemd/system/
-            chown root:ossec /etc/systemd/system/"wazuh-"$type.service
-            systemctl daemon-reload
+            SERVICE_UNIT_PATH=/etc/systemd/system/wazuh-$type.service
         fi
+        GenerateService wazuh-$type.service > ${SERVICE_UNIT_PATH}
+        chown root:ossec ${SERVICE_UNIT_PATH}
+        systemctl daemon-reload
 
         if [ "X${update_only}" = "X" ]
         then
@@ -54,7 +52,7 @@ runInit()
         if [ -d /etc/rc.d/init.d ]; then
             echo " - ${systemis} Redhat Linux."
             echo " - ${modifiedinit}"
-            cp -pr ./src/init/ossec-hids-rh.init /etc/rc.d/init.d/${service}
+            GenerateService ossec-hids-rh.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
             chown root:ossec /etc/rc.d/init.d/${service}
 
@@ -70,7 +68,7 @@ runInit()
     if [ -r "/etc/gentoo-release" ]; then
         echo " - ${systemis} Gentoo Linux."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids-gentoo.init /etc/init.d/${service}
+        GenerateService ossec-hids-gentoo.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
         chown root:ossec /etc/init.d/${service}
 
@@ -86,8 +84,7 @@ runInit()
     if [ -r "/etc/SuSE-release" ]; then
         echo " - ${systemis} Suse Linux."
         echo " - ${modifiedinit}"
-
-        cp -pr ./src/init/ossec-hids-suse.init  /etc/init.d/${service}
+        GenerateService ossec-hids-suse.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
         chown root:ossec /etc/init.d/${service}
 
@@ -103,7 +100,7 @@ runInit()
     if [ -r "/etc/slackware-version" ]; then
         echo " - ${systemis} Slackware Linux."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids.init /etc/rc.d/rc.${service}
+        GenerateService ossec-hids.init > /etc/rc.d/rc.${service}
         chmod 755 /etc/rc.d/rc.${service}
         chown root:ossec /etc/rc.d/rc.${service}
 
@@ -123,14 +120,14 @@ runInit()
 
         echo " - ${systemis} Darwin."
         echo " - ${modifiedinit}"
-        sh ./src/init/darwin-init.sh
+        sh ./src/init/darwin-init.sh ${INSTALLDIR}
         return 0;
     fi
 
     if [ "X${UN}" = "XSunOS" ]; then
         echo " - ${systemis} Solaris (SunOS)."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids-solaris.init /etc/init.d/${service}
+        GenerateService ossec-hids-solaris.init > /etc/init.d/${service}
         chmod 755 /etc/init.d/${service}
 
         if [ "X${update_only}" = "X" ]
@@ -145,7 +142,7 @@ runInit()
     if [ "X${UN}" = "XHP-UX" ]; then
         echo " - ${systemis} HP-UX."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids-hpux.init /sbin/init.d/${service}
+        GenerateService ossec-hids-hpux.init > /sbin/init.d/${service}
         chmod 755 /sbin/init.d/${service}
 
         if [ "X${update_only}" = "X" ]
@@ -160,7 +157,7 @@ runInit()
     if [ "X${UN}" = "XAIX" ]; then
         echo " - ${systemis} AIX."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids-aix.init /etc/rc.d/init.d/${service}
+        GenerateService ossec-hids-aix.init > /etc/rc.d/init.d/${service}
         chmod 755 /etc/rc.d/init.d/${service}
 
         if [ "X${update_only}" = "X" ]
@@ -173,11 +170,11 @@ runInit()
     fi
 
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
-        # Checking for the presence of ossec-control on rc.local
-        grep ossec-control /etc/rc.local > /dev/null 2>&1
+        # Checking for the presence of wazuh-control on rc.local
+        grep wazuh-control /etc/rc.local > /dev/null 2>&1
         if [ $? != 0 ]; then
             echo "echo \"${starting}\"" >> /etc/rc.local
-            echo "${INSTALLDIR}/bin/ossec-control start" >> /etc/rc.local
+            echo "${INSTALLDIR}/bin/wazuh-control start" >> /etc/rc.local
         fi
         echo " - ${systemis} ${NUNAME}."
         echo " - ${modifiedinit}"
@@ -187,16 +184,16 @@ runInit()
             echo " - ${systemis} Linux."
             echo " - ${modifiedinit}"
 
-            grep ossec-control /etc/rc.d/rc.local > /dev/null 2>&1
+            grep wazuh-control /etc/rc.d/rc.local > /dev/null 2>&1
             if [ $? != 0 ]; then
                 echo "echo \"${starting}\"" >> /etc/rc.d/rc.local
-                echo "${INSTALLDIR}/bin/ossec-control start" >> /etc/rc.d/rc.local
+                echo "${INSTALLDIR}/bin/wazuh-control start" >> /etc/rc.d/rc.local
             fi
             return 0;
         elif [ -d "/etc/rc.d/init.d" ]; then
             echo " - ${systemis} Linux (SysV)."
             echo " - ${modifiedinit}"
-            cp -pr ./src/init/ossec-hids.init  /etc/rc.d/init.d/${service}
+            GenerateService ossec-hids.init > /etc/rc.d/init.d/${service}
             chmod 755 /etc/rc.d/init.d/${service}
             chown root:ossec /etc/rc.d/init.d/${service}
             return 0;
@@ -204,7 +201,7 @@ runInit()
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
             echo " - ${systemis} Debian (Ubuntu or derivative)."
             echo " - ${modifiedinit}"
-            cp -pr ./src/init/ossec-hids-debian.init  /etc/init.d/${service}
+            GenerateService ossec-hids-debian.init > /etc/init.d/${service}
             chmod +x /etc/init.d/${service}
             chmod go-w /etc/init.d/${service}
             chown root:ossec /etc/init.d/${service}

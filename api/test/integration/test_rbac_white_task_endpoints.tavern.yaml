@@ -1,0 +1,60 @@
+---
+test_name: GET /tasks/status
+
+marks:
+  - base_tests
+
+stages:
+
+  - name: Get all existent tasks (At this point there is no task created)
+    request: &get_tasks
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Upgrade an agent
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force: True
+        agents_list: '001'
+        version: '4.0.1'
+    response:
+      status_code: 200
+
+  - name: Get all existent tasks (At this point there is a task created)
+    request:
+      verify: False
+      <<: *get_tasks
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - agent_id: "001"
+              create_time: !anyint
+              node: !anystr
+              status: !anystr
+              last_update_time: !anyint
+              command: "upgrade"
+              module: "upgrade_module"
+              task_id: 1
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
