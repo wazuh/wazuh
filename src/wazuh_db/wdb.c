@@ -204,6 +204,8 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
+    [WDB_STMT_VULN_CVE_INSERT] = "INSERT OR IGNORE INTO vuln_cves (name, version, architecture, cve) VALUES(?,?,?,?);",
+    [WDB_STMT_VULN_CVE_CLEAR] = "DELETE FROM vuln_cves;"
 };
 
 wdb_config wconfig;
@@ -906,6 +908,18 @@ void wdb_close_old() {
     w_mutex_unlock(&pool_mutex);
 }
 
+int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+    case SQLITE_DONE:
+        return OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQL statement execution failed");
+        return OS_INVALID;
+    }
+}
+
 cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
     cJSON* result = NULL;
 
@@ -1253,4 +1267,18 @@ void wdb_free_agent_info_data(agent_info_data *agent_data) {
         }
         os_free(agent_data);
     }
+}
+
+sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index){
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+
+    if (wdb_stmt_cache(wdb, statement_index) < 0) {
+        mdebug1("Cannot cache statement");
+        return NULL;
+    }
+
+    return wdb->stmt[statement_index];
 }

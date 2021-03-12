@@ -340,6 +340,16 @@ CREATE TABLE IF NOT EXISTS sync_info (
     n_completions INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS vuln_cves (
+    name TEXT,
+    version TEXT,
+    architecture TEXT,
+    cve TEXT,
+    PRIMARY KEY (name, version, architecture, cve)
+);
+CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);
+CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
+
 BEGIN;
 
 INSERT INTO metadata (key, value) VALUES ('db_version', '7');
