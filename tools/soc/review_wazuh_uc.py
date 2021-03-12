@@ -9,17 +9,14 @@
 
 import sys
 import sqlite3
+import argparse
 from os import get_terminal_size
-
-try:
-    tty_size = int(get_terminal_size().columns)
-except:
-    tty_size = 79
-    print ('Cannot detect tty column size, falling back to ' + str(tty_size))
+from os import popen
+from os import getuid
+from pwd import getpwuid
 
 try:
     import texttable as tt
-    tab = tt.Texttable(max_width=tty_size)
     pretty_ascii = True
 except Exception as e:
     print('Module "texttable" not found. Install it to get pretty ascii tables')
@@ -27,13 +24,29 @@ except Exception as e:
 
 
 
-# TODO: accept alternative db location/name
-db_dir = '/var/ossec/var/db/integrations/'
-db_file = 'alerts.db'
+argp = argparse.ArgumentParser()
+argp.add_argument('--db_dir', help='database directory', type=str, default='/var/ossec/var/db/integrations/')
+argp.add_argument('--db_file', help='sqlite database file', type=str, default='alerts.db')
+arg = argp.parse_args()
+db_dir = arg.db_dir
+db_file = arg.db_file
 db_name = (db_dir + db_file)
 sql_unc = 'SELECT * from alert WHERE classification IS NULL'
 sql_all = 'SELECT * from alert'
+c_name = getpwuid( getuid() )[4]
 
+def sql_recent():
+    days = input('How many days of classified alerts do you like to see: ')
+    return "SELECT * from alert WHERE alert_time > date('now','-"+ days+ " day')"
+
+
+def set_tty():
+    try:
+        tty_size = int(get_terminal_size().columns)
+    except:
+        tty_size = 79
+        print ('Cannot detect tty column size, falling back to ' + str(tty_size))
+    return tty_size
 
 def user_menu():
 
@@ -47,7 +60,8 @@ def user_menu():
         print('3. Classify a single alert ')
         print('4. Classify a range of alerts ')
         print('5. Classify ALL unclassified alerts (careful now) ')
-        print('6. Quit ')
+        print('6. Display last x days of alerts ')
+        print('7. Quit ')
         print(59 * '-')
         print(59 * ' ')
 
@@ -55,15 +69,15 @@ def user_menu():
         print_menu()
         while True:
             try:
-                choice = int(input("Enter your choice [1-6]: "))
+                choice = int(input("Enter your choice [1-7]: "))
 
             except ValueError:
                 print("Please enter a valid number.")
 
             else:
-                if 1 <= choice <= 5:
+                if 1 <= choice <= 6:
                     break
-                elif choice == 6:
+                elif choice == 7:
                     print("Exiting..")
                     break
                 else:
@@ -80,7 +94,10 @@ def display_unc():
 
     """Print unclassified alerts."""
 
+    tty_size = set_tty()
+
     if pretty_ascii:
+        tab = tt.Texttable(max_width=tty_size)
         tab.reset()
 
     conn = sqlite3.connect(db_name)
@@ -106,9 +123,9 @@ def display_unc():
     if pretty_ascii:
         header = ['ID', 'Level', 'Description', 'Host', 'Date', 'Time']
         tab.header(header)
-        final_table = tab.draw()
-        print (final_table)
+        print (tab.draw())
 
+    cur.close()
     conn.close()
 
 
@@ -116,7 +133,10 @@ def display_all():
 
     """Print every alert logged to the database."""
 
+    tty_size = set_tty()
+
     if pretty_ascii:
+        tab = tt.Texttable(max_width=tty_size)
         tab.reset()
 
     conn = sqlite3.connect(db_name)
@@ -143,9 +163,49 @@ def display_all():
         header = ['ID', 'Level', 'Description', 'Host', 'Classification',\
             'Date', 'Time']
         tab.header(header)
-        final_table = tab.draw()
-        print (final_table)
+        print (tab.draw())
 
+    cur.close()
+    conn.close()
+
+
+def display_recent():
+
+    """Print alerts classified within the last x days logged to the database."""
+
+    tty_size = set_tty()
+
+    if pretty_ascii:
+        tab = tt.Texttable(max_width=tty_size)
+        tab.reset()
+
+    conn = sqlite3.connect(db_name)
+    cur = conn.cursor()
+    cur.execute(sql_recent())
+
+    # Make the tuple a list, and fiddle with the timestamp
+    # format before printing it out
+    for row in cur:
+        row = list(row)
+        row.pop(1)
+        d = row.pop(3).split('T', maxsplit=1)
+        t = d.pop(1).split('.', maxsplit=1)
+        t.pop(1)
+        tstamp = d + t
+        row.extend(tstamp)
+
+        if pretty_ascii:
+            tab.add_row(row)
+        else:
+            print ('ID: {0[0]:<3}- Level: {0[1]:<3}- Description: {0[2]:^} - Host: {0[3]} - Classification: {0[4]} - Date: {0[5]} - Time: {0[6]}'.format(row))
+
+    if pretty_ascii:
+        header = ['ID', 'Level', 'Description', 'Host', 'Classification',\
+            'Date', 'Time']
+        tab.header(header)
+        print (tab.draw())
+
+    cur.close()
     conn.close()
 
 
@@ -164,9 +224,10 @@ def classify_alert():
     """Classify a single alert by ID from the list."""
 
     while True:
-        c_name = input("Enter your name: ")
+        #c_name = input("Enter your name: ")
+        print("Alert(s) being logged by: %s" % (c_name))
         c_case = input("Enter case reference: ")
-        c_text = input("Enter classification: ")
+        c_text = input("Enter classification: ").replace('"','')
 
         try:
             c_id = int(input("Enter an ID value to classify: "))
@@ -181,6 +242,7 @@ def classify_alert():
             cur = conn.cursor()
             cur.execute(sql)
             conn.commit()
+            cur.close()
             conn.close()
             break
 
@@ -190,9 +252,10 @@ def classify_range():
     """Classify a range of alerts with a start and end ID."""
 
     while True:
-        c_name = input("Enter your name: ")
+        #c_name = input("Enter your name: ")
+        print("Alert(s) being logged by: %s" % (c_name))
         c_case = input("Enter case reference: ")
-        c_text = input("Enter classification: ")
+        c_text = input("Enter classification: ").replace('"','')
 
         try:
             c_id_s = int(input("Enter a start range of IDs to update: "))
@@ -211,6 +274,7 @@ def classify_range():
                 cur.execute(sql)
 
             conn.commit()
+            cur.close()
             conn.close()
             break
 
@@ -246,6 +310,9 @@ def main():
             classify_all()
 
         if choice == 6:
+            display_recent()
+
+        if choice == 7:
             break
 
 
