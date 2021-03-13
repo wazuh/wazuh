@@ -914,6 +914,22 @@ static void removeKeysWithEmptyValue(nlohmann::json& input)
     }
 }
 
+static bool isElementDuplicated(const nlohmann::json & input, const std::pair<std::string, std::string>& keyValue)
+{
+    const auto it
+    {
+        std::find_if
+        (
+            input.begin(), input.end(),
+            [&keyValue](const auto& elem)
+            {
+                return elem.at(keyValue.first) == keyValue.second;
+            }
+        )
+    };
+    return it != input.end();
+}
+
 void Syscollector::updateAndNotifyChanges(const std::string& table,
                                           const nlohmann::json& values)
 {
@@ -1386,18 +1402,7 @@ nlohmann::json Syscollector::getPackagesData()
             else
             {
                 const auto itemId{ getItemId(item, PACKAGES_ITEM_ID_FIELDS) };
-                const auto it
-                {
-                    std::find_if
-                    (
-                        packagesList.begin(), packagesList.end(),
-                        [&itemId](const auto& elem)
-                        {
-                            return elem.at("item_id") == itemId;
-                        }
-                    )
-                };
-                if(packagesList.end() == it)
+                if(!isElementDuplicated(packagesList, std::make_pair("item_id", itemId)))
                 {
                     item["item_id"] = itemId;
                     packagesList.push_back(item);
@@ -1470,9 +1475,14 @@ nlohmann::json Syscollector::getPortsData()
                     // All ports.
                     if (m_portsAll)
                     {
-                        item["checksum"] = getItemChecksum(item);
-                        item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
-                        ret.push_back(item);
+                        const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                        if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        {
+                            item["checksum"] = getItemChecksum(item);
+                            item["item_id"] = itemId;
+                            ret.push_back(item);
+                        }
                     }
                     else
                     {
@@ -1480,17 +1490,27 @@ nlohmann::json Syscollector::getPortsData()
                         const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
                         if(isListeningState)
                         {
-                            item["checksum"] = getItemChecksum(item);
-                            item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
-                            ret.push_back(item);
+                            const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                            if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                            {
+                                item["checksum"] = getItemChecksum(item);
+                                item["item_id"] = itemId;
+                                ret.push_back(item);
+                            }
                         }
                     }
                 }
                 else if (Utils::startsWith(protocol, UDP_PROTOCOL))
                 {
-                    item["checksum"] = getItemChecksum(item);
-                    item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
-                    ret.push_back(item);
+                    const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                    if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    {
+                        item["checksum"] = getItemChecksum(item);
+                        item["item_id"] = itemId;
+                        ret.push_back(item);
+                    }
                 }
             }
         }

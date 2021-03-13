@@ -659,6 +659,19 @@ TEST_F(SyscollectorImpTest, portAllEnable)
             "rx_queue":0,
             "state":"established",
             "tx_queue":0
+        },
+        {
+            "inode":122575,
+            "local_ip":"192.168.0.104",
+            "local_port":39106,
+            "pid":0,
+            "process_name":"",
+            "protocol":"tcp",
+            "remote_ip":"44.238.116.130",
+            "remote_port":443,
+            "rx_queue":0,
+            "state":"established",
+            "tx_queue":0
         }
     ]
     })")));
@@ -767,6 +780,19 @@ TEST_F(SyscollectorImpTest, portAllDisable)
             "tx_queue":0
         },
         {
+            "inode":50324,
+            "local_ip":"127.0.0.1",
+            "local_port":33060,
+            "pid":0,
+            "process_name":"",
+            "protocol":"tcp",
+            "remote_ip":"0.0.0.0",
+            "remote_port":0,
+            "rx_queue":0,
+            "state":"listening",
+            "tx_queue":0
+        },
+        {
             "inode":122575,
             "local_ip":"192.168.0.104",
             "local_port":39106,
@@ -824,6 +850,52 @@ TEST_F(SyscollectorImpTest, portAllDisable)
                                           "",
                                           "",
                                           3600, true, false, false, false, false, true, false, false, false, true);
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, PackagesDuplicated)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},{"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string& data)
+        {
+            auto delta = nlohmann::json::parse(data);
+            delta["data"].erase("checksum");
+            delta["data"].erase("scan_time");
+            wrapper.callbackMock(delta.dump());
+        }
+    };
+
+    const auto expectedResult1
+    {
+        R"({"data":{"architecture":"amd64","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+    };
+
+    EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          reportFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, true, false, false, false, false, true);
         }
     };
 
