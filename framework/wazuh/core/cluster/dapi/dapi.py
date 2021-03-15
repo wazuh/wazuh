@@ -132,18 +132,8 @@ class DistributedAPI:
             else:
                 self.debug_log(f"Receiving parameters {self.f_kwargs}")
 
-            import pydevd_pycharm
-            pydevd_pycharm.settrace('172.18.0.1', port=1234, stdoutToServer=True, stderrToServer=True)
-
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             is_cluster_disabled = self.node == local_client and not check_cluster_status()
-
-            # # if it is a cluster API request and the cluster is not enabled, raise an exception
-            # if is_cluster_disabled and 'cluster' in self.input_json['function'] and \
-            #         self.input_json['function'] != '/cluster/status' and \
-            #         self.input_json['function'] != '/cluster/config' and \
-            #         self.input_json['function'] != '/cluster/node':
-            #     raise exception.WazuhException(3013)
 
             # First case: execute the request locally.
             # If the distributed api is not enabled
