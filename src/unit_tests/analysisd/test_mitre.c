@@ -16,9 +16,17 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
+
 #include "../analysisd/mitre.h"
 
 /* tests */
+
+static int test_mitre_free_technique(void **state) {
+
+    mitre_free_techniques();
+    return 0;
+}
+
 
 void test_queryid_error_socket(void **state)
 {
@@ -35,6 +43,7 @@ void test_queryid_error_socket(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryid_no_response(void **state)
@@ -52,6 +61,7 @@ void test_queryid_no_response(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryid_bad_response(void **state)
@@ -71,6 +81,7 @@ void test_queryid_bad_response(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryid_error_parse(void **state)
@@ -87,6 +98,7 @@ void test_queryid_error_parse(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryid_empty_array(void **state)
@@ -103,6 +115,7 @@ void test_queryid_empty_array(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryid_error_parse_technique_id(void **state)
@@ -119,6 +132,7 @@ void test_queryid_error_parse_technique_id(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryid_error_parse_technique_name(void **state)
@@ -135,6 +149,7 @@ void test_queryid_error_parse_technique_name(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryid_error_parse_technique_external_id(void **state)
@@ -151,6 +166,7 @@ void test_queryid_error_parse_technique_external_id(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_querytactics_error_socket(void **state)
@@ -174,6 +190,7 @@ void test_querytactics_error_socket(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_querytactics_no_response(void **state)
@@ -197,6 +214,7 @@ void test_querytactics_no_response(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_querytactics_bad_response(void **state)
@@ -222,6 +240,7 @@ void test_querytactics_bad_response(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_querytactics_error_parse(void **state)
@@ -244,6 +263,7 @@ void test_querytactics_error_parse(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_querytactics_empty_array(void **state)
@@ -266,6 +286,7 @@ void test_querytactics_empty_array(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_querytactics_error_parse_tactics(void **state)
@@ -288,6 +309,7 @@ void test_querytactics_error_parse_tactics(void **state)
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryname_error_socket(void **state) {
@@ -315,6 +337,7 @@ void test_queryname_error_socket(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 
@@ -343,6 +366,7 @@ void test_queryname_no_response(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryname_bad_response(void **state) {
@@ -372,6 +396,7 @@ void test_queryname_bad_response(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryname_error_parse(void **state) {
@@ -398,6 +423,7 @@ void test_queryname_error_parse(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryname_error_parse_technique_name(void **state) {
@@ -424,6 +450,7 @@ void test_queryname_error_parse_technique_name(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
 }
 
 void test_queryname_error_parse_technique_external_id(void **state) {
@@ -450,31 +477,124 @@ void test_queryname_error_parse_technique_external_id(void **state) {
 
     ret = mitre_load();
     assert_int_equal(-1, ret);
+
+}
+
+void test_query_tactics_error_filling_technique(void **state)
+{
+    (void) state;
+    int ret;
+    cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"}]");
+    cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
+    cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\",\"external_id\":\"TA001\"}]");
+
+    /* Mitre's techniques IDs query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, id_array);
+
+    /* Mitre's tactics query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, tactic_array);
+
+    /* Mitre tactic's information query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, tactic_info_array);
+
+    /* OSHash  */
+    expect_string(__wrap_OSHash_Add,  key, "T1001");
+    will_return(__wrap_OSHash_Add, 0);
+
+    expect_string(__wrap__merror, formatted_msg, "Mitre techniques hash table adding failed. Mitre Technique ID 'T1001' cannot be stored.");
+    expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
+
+    ret = mitre_load();
+    assert_int_equal(-1, ret);
+
+}
+
+void test_query_tactics_success(void **state)
+{
+    (void) state;
+    int ret;
+    cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"}]");
+    cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
+    cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\",\"external_id\":\"TA001\"}]");
+    cJSON * technique_last = cJSON_Parse(" ");
+
+    /* Mitre's techniques IDs query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, id_array);
+
+    /* Mitre's tactics query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, tactic_array);
+
+    /* Mitre tactic's information query */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, tactic_info_array);
+
+    /* OSHash  */
+    expect_string(__wrap_OSHash_Add,  key, "T1001");
+    will_return(__wrap_OSHash_Add, 1);
+
+    /* Last Getting technique ID and name from Mitre's database in Wazuh-DB  */
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, technique_last);
+
+    ret = mitre_load();
+    assert_int_equal(0, ret);
+
+}
+
+void test_mitre_get_attack(void **state)
+{
+    (void) state;
+
+    static OSHash techniques_table;
+    technique_data tech;
+    technique_data tech_rec;
+    technique_data *p_tech;
+    char *mitre_id = "T1001";
+    p_tech = &tech_rec;
+
+    tech.technique_id = mitre_id;
+    tech.technique_name = "Technique1";
+    /* set string to receive*/
+    expect_any(__wrap_OSHash_Get,  self);
+    expect_string(__wrap_OSHash_Get,  key, mitre_id);
+    will_return(__wrap_OSHash_Get, &tech);
+
+    p_tech = mitre_get_attack((const char *)mitre_id);
+    /* compare name string searched by id */
+    assert_string_equal(tech.technique_name, p_tech->technique_name);
 }
 
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_queryid_error_socket),
-        cmocka_unit_test(test_queryid_no_response),
-        cmocka_unit_test(test_queryid_bad_response),
-        cmocka_unit_test(test_queryid_error_parse),
-        cmocka_unit_test(test_queryid_empty_array),
-        cmocka_unit_test(test_queryid_error_parse_technique_id),
-        cmocka_unit_test(test_queryid_error_parse_technique_name),
-        cmocka_unit_test(test_queryid_error_parse_technique_external_id),
-        cmocka_unit_test(test_querytactics_error_socket),
-        cmocka_unit_test(test_querytactics_no_response),
-        cmocka_unit_test(test_querytactics_bad_response),
-        cmocka_unit_test(test_querytactics_error_parse),
-        cmocka_unit_test(test_querytactics_empty_array),
-        cmocka_unit_test(test_querytactics_error_parse_tactics),
-        cmocka_unit_test(test_queryname_error_socket),
-        cmocka_unit_test(test_queryname_no_response),
-        cmocka_unit_test(test_queryname_bad_response),
-        cmocka_unit_test(test_queryname_error_parse),
-        cmocka_unit_test(test_queryname_error_parse_technique_name),
-        cmocka_unit_test(test_queryname_error_parse_technique_external_id),
+        cmocka_unit_test_teardown(test_queryid_error_socket, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_no_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_bad_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_error_parse, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_empty_array, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_id, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_name, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryid_error_parse_technique_external_id, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_error_socket, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_no_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_bad_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_error_parse, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_empty_array, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_querytactics_error_parse_tactics, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_error_socket, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_no_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_bad_response, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_error_parse, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_error_parse_technique_name, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_queryname_error_parse_technique_external_id, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_query_tactics_error_filling_technique, test_mitre_free_technique),
+        cmocka_unit_test_teardown(test_query_tactics_success, test_mitre_free_technique),
+        cmocka_unit_test(test_mitre_get_attack),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

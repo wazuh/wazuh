@@ -475,8 +475,8 @@ void test_MonitordConfig_success(void **state) {
     result = MonitordConfig(cfg, &mond, no_agents, day_wait);
 
     assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(mond.global.agents_disconnection_time, 20);
-    assert_int_equal(mond.global.agents_disconnection_alert_time, 100);
+    assert_int_equal(mond.global.agents_disconnection_time, 600);
+    assert_int_equal(mond.global.agents_disconnection_alert_time, 0);
 
     assert_null(mond.agents);
     assert_null(mond.smtpserver);

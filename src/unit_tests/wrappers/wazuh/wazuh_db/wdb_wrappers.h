@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -14,6 +14,8 @@
 #include "wazuh_db/wdb.h"
 
 wdb_t* __wrap_wdb_open_global();
+
+wdb_t* __wrap_wdb_open_agent2(int agent_id);
 
 int __wrap_wdb_begin2(wdb_t* aux);
 
@@ -72,5 +74,9 @@ int __wrap_wdb_close(wdb_t * wdb, bool commit);
 int __wrap_wdb_create_global(const char *path);
 
 void __wrap_wdb_pool_append(wdb_t * wdb);
+
+sqlite3_stmt* __wrap_wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index);
+
+int __wrap_wdb_exec_stmt_silent(sqlite3_stmt* stmt);
 
 #endif

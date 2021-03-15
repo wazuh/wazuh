@@ -12,7 +12,7 @@ from jsonschema import draft4_format_checker
 from wazuh.core import common
 
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
-_symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\'"|=]+$')
+_symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\'"|=~]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.%]+(,[\w\-\.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
@@ -80,7 +80,7 @@ def allowed_fields(filters: Dict) -> List:
     return [field for field in filters]
 
 
-def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: bool = True) -> bool:
+def is_safe_path(path: str, basedir: str = common.wazuh_path, follow_symlinks: bool = True) -> bool:
     """
     Checks if a path is correct
     :param path: Path to be checked
@@ -94,13 +94,13 @@ def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: b
 
     # Resolve symbolic links
     if follow_symlinks:
-        full_path = common.ossec_path + path
+        full_path = common.wazuh_path + path
         return os.path.realpath(full_path).startswith(basedir)
 
     return os.path.abspath(path).startswith(basedir)
 
 
-def is_wazuh_path(path: str, basedir: str = common.ossec_path) -> bool:
+def is_wazuh_path(path: str, basedir: str = common.wazuh_path) -> bool:
     """
     Check if an absolute path is inside Wazuh installation directory
     :param path: Path to be checked

@@ -16,7 +16,7 @@ void StringUtilsTest::SetUp() {};
 
 void StringUtilsTest::TearDown() {};
 
-TEST_F(StringUtilsTest, CheckReplacement) 
+TEST_F(StringUtilsTest, CheckReplacement)
 {
     std::string string_base { "hello_world" };
     const auto retVal { Utils::replaceAll(string_base, "hello_", "bye_") };
@@ -24,7 +24,7 @@ TEST_F(StringUtilsTest, CheckReplacement)
     EXPECT_TRUE(retVal);
 }
 
-TEST_F(StringUtilsTest, CheckNotReplacement) 
+TEST_F(StringUtilsTest, CheckNotReplacement)
 {
     std::string string_base {"hello_world" };
     const auto retVal { Utils::replaceAll(string_base, "nothing_", "bye_") };
@@ -32,19 +32,19 @@ TEST_F(StringUtilsTest, CheckNotReplacement)
     EXPECT_FALSE(retVal);
 }
 
-TEST_F(StringUtilsTest, SplitEmptyString) 
+TEST_F(StringUtilsTest, SplitEmptyString)
 {
     auto splitTextVector { Utils::split("", '.') };
     EXPECT_EQ(0ull, splitTextVector.size());
 }
 
-TEST_F(StringUtilsTest, SplitDelimiterNoCoincidence) 
+TEST_F(StringUtilsTest, SplitDelimiterNoCoincidence)
 {
     const auto splitTextVector { Utils::split("hello_world", '.') };
     EXPECT_EQ(1ull, splitTextVector.size());
 }
 
-TEST_F(StringUtilsTest, SplitDelimiterCoincidence) 
+TEST_F(StringUtilsTest, SplitDelimiterCoincidence)
 {
     const auto splitTextVector { Utils::split("hello.world", '.') };
     EXPECT_EQ(2ull, splitTextVector.size());
@@ -67,7 +67,7 @@ TEST_F(StringUtilsTest, AsciiToHexString)
     EXPECT_EQ(expected, result);
 }
 
-TEST_F(StringUtilsTest, CheckFirstReplacement) 
+TEST_F(StringUtilsTest, CheckFirstReplacement)
 {
     std::string string_base { "bye_bye" };
     const auto retVal { Utils::replaceFirst(string_base, "bye", "hello") };
@@ -75,7 +75,7 @@ TEST_F(StringUtilsTest, CheckFirstReplacement)
     EXPECT_TRUE(retVal);
 }
 
-TEST_F(StringUtilsTest, CheckNotFirstReplacement) 
+TEST_F(StringUtilsTest, CheckNotFirstReplacement)
 {
     std::string string_base {"hello_world" };
     const auto retVal { Utils::replaceFirst(string_base, "nothing_", "bye_") };
@@ -170,4 +170,39 @@ TEST_F(StringUtilsTest, CheckMultiReplacement)
     const auto retVal { Utils::replaceAll(string_base, "  ", " ") };
     EXPECT_EQ(string_base, "hello world");
     EXPECT_TRUE(retVal);
+}
+
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrect)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("hello         world", "         "), "hello");
+}
+
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEmpty)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("", " "), "");
+}
+
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceNoOccurrences)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("hello         world", "bye"), "hello         world");
+}
+
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEndText)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("hello         world", "world"), "hello         ");
+}
+
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectFirstText)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("hello         world", "hello"), "");
+}
+
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacter)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("hello\nworld", "\n"), "hello");
+}
+
+TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrectEscapeCharacterEmptyResult)
+{
+    EXPECT_EQ(Utils::substrOnFirstOccurrence("\n", "\n"), "");
 }

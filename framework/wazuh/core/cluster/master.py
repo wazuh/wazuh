@@ -282,7 +282,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             raise exception.WazuhClusterError(3031)
 
         # Create directory where zips and other files coming from or going to the worker will be managed.
-        worker_dir = os.path.join(common.ossec_path, 'queue', 'cluster', self.name)
+        worker_dir = os.path.join(common.wazuh_path, 'queue', 'cluster', self.name)
         if cmd == b'ok' and not os.path.exists(worker_dir):
             utils.mkdir_with_mode(worker_dir)
         return cmd, payload
@@ -629,7 +629,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 # Finish the synchronization process and notify where the file corresponding to the taskID is located.
                 result = await self.send_request(command=b'sync_m_c_e',
                                                  data=task_name + b' ' + os.path.relpath(
-                                                     compressed_data, common.ossec_path).encode())
+                                                     compressed_data, common.wazuh_path).encode())
                 if isinstance(result, Exception):
                     raise result
                 elif result.startswith(b'Error'):
@@ -680,7 +680,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 Metadata of the file (MD5, merged, etc).
             """
             # Full path
-            full_path, error_updating_file = os.path.join(common.ossec_path, name), False
+            full_path, error_updating_file = os.path.join(common.wazuh_path, name), False
 
             try:
                 # Only valid client.keys is the local one (master).
@@ -695,9 +695,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                                                                    decompressed_files_path,
                                                                                                    data['merge_name']):
                         # Destination path.
-                        full_unmerged_name = os.path.join(common.ossec_path, file_path)
+                        full_unmerged_name = os.path.join(common.wazuh_path, file_path)
                         # Path where to create the file before moving it to the destination path (with safe_move).
-                        tmp_unmerged_path = os.path.join(common.ossec_path, 'queue', 'cluster', self.name, os.path.basename(file_path))
+                        tmp_unmerged_path = os.path.join(common.wazuh_path, 'queue', 'cluster', self.name, os.path.basename(file_path))
 
                         try:
                             agent_id = os.path.basename(file_path)

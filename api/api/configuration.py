@@ -27,7 +27,6 @@ default_security_configuration = {
 default_api_configuration = {
     "host": "0.0.0.0",
     "port": 55000,
-    "behind_proxy_server": False,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
@@ -85,16 +84,16 @@ def dict_to_lowercase(mydict: Dict):
             mydict[k] = val.lower()
 
 
-def append_ossec_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
-    """Appends ossec path to all path fields in a dictionary
+def append_wazuh_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
+    """Appends wazuh path to all path fields in a dictionary
 
-    :param dictionary: dictionary to append ossec path
+    :param dictionary: dictionary to append wazuh path
     :param path_fields: List of tuples containing path fields
     :return: None (the dictionary's reference is modified)
     """
     for section, subsection in path_fields:
         try:
-            dictionary[section][subsection] = os.path.join(common.ossec_path, dictionary[section][subsection])
+            dictionary[section][subsection] = os.path.join(common.wazuh_path, dictionary[section][subsection])
         except KeyError:
             pass
 
@@ -241,8 +240,8 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
         dict_to_lowercase(configuration)
         configuration = fill_dict(default_conf, configuration)
 
-    # Append ossec_path to all paths in configuration
-    append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
+    # Append wazuh_path to all paths in configuration
+    append_wazuh_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
 
     return configuration
 

@@ -64,9 +64,9 @@ test_result = [
     (['001', '002', '003'], [{'status': status} for status in ['active', 'disconnected', 'disconnected']],
      test_result[2]),
 ])
-@patch('wazuh.syscheck.OssecQueue._connect')
-@patch('wazuh.syscheck.OssecQueue.send_msg_to_agent', side_effect=set_callable_list)
-@patch('wazuh.syscheck.OssecQueue.close')
+@patch('wazuh.syscheck.WazuhQueue._connect')
+@patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
+@patch('wazuh.syscheck.WazuhQueue.close')
 def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_list, expected_result):
     """Test function `run` from syscheck module.
 
@@ -97,8 +97,8 @@ def test_syscheck_run(close_mock, send_mock, connect_mock, agent_list, status_li
 @pytest.mark.parametrize('agent_list, status_list, expected_result', [
     (['001'], {'status': 'active'}, test_result[3])
 ])
-@patch('wazuh.syscheck.OssecQueue', side_effect=WazuhError(1000))
-def test_syscheck_run_exception(ossec_queue_mock, agent_list, status_list, expected_result):
+@patch('wazuh.syscheck.WazuhQueue', side_effect=WazuhError(1000))
+def test_syscheck_run_exception(wazuh_queue_mock, agent_list, status_list, expected_result):
     """Test function `run` from syscheck module.
 
     It will force an exception.

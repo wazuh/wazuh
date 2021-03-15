@@ -192,7 +192,8 @@
     <description>Windows audit log was cleared</description>
     <options>no_full_log</options>
     <mitre>
-      <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
+      <id>T1070</id>
+      <id>T1107</id>
     </mitre>
     <group>logs_cleared,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -1020,8 +1021,8 @@
     <field name="win.eventdata.failureCode">0x22</field>
     <description>Windows DC - Possible replay attack</description>
     <mitre>
-      <id technique="Rogue Domain Controller" tactic="Defense Evasion" tacticID="TA0005">T1207</id>
-      <id technique="Use Alternate Authentication Material: Pass the Hash" tactic="Lateral Movement" tacticID="TA0008">T1550.002</id>
+      <id>T1207</id>
+      <id>T1075</id>
     </mitre>
     <options>no_full_log</options>
     <group>authentication_failed,attacks,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>

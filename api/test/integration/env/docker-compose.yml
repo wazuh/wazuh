@@ -5,13 +5,13 @@ services:
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
-      args:
-        manager_branch: ${MANAGER_BRANCH}
-        manager_type: master
-    image: integration_test_wazuh-master
+    image: integration_test_wazuh-manager
     hostname: wazuh-master
     ports:
       - "55000:55000"
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -22,13 +22,13 @@ services:
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
-      args:
-        manager_branch: ${MANAGER_BRANCH}
-        manager_type: worker
-    image: integration_test_wazuh-worker
+    image: integration_test_wazuh-manager
     hostname: wazuh-worker1
     ports:
       - "55001:55000"
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -39,13 +39,13 @@ services:
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
-      args:
-        manager_branch: ${MANAGER_BRANCH}
-        manager_type: worker
-    image: integration_test_wazuh-worker
+    image: integration_test_wazuh-manager
     hostname: wazuh-worker2
     ports:
       - "55002:55000"
+    volumes:
+      - ./configurations/tmp/manager:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - wazuh-master
@@ -55,16 +55,16 @@ services:
   wazuh-agent1:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${MANAGER_BRANCH}
+      dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent1
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent1
-      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -73,16 +73,16 @@ services:
   wazuh-agent2:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${MANAGER_BRANCH}
+      dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent2
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent2
-      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -92,16 +92,16 @@ services:
   wazuh-agent3:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${MANAGER_BRANCH}
+      dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent3
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent3
-      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -111,16 +111,16 @@ services:
   wazuh-agent4:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${MANAGER_BRANCH}
+      dockerfile: base/agent/new.Dockerfile
     image: integration_test_wazuh-agent
     hostname: wazuh-agent4
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent4
-      - 4.x
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -130,15 +130,17 @@ services:
   wazuh-agent5:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${AGENT_BRANCH_OLD}
+      dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent5
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent5
+      - agent_old
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -148,15 +150,17 @@ services:
   wazuh-agent6:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${AGENT_BRANCH_OLD}
+      dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent6
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent6
+      - agent_old
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -166,15 +170,17 @@ services:
   wazuh-agent7:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${AGENT_BRANCH_OLD}
+      dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent7
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent7
+      - agent_old
     depends_on:
       - wazuh-worker1
       - wazuh-worker2
@@ -184,15 +190,17 @@ services:
   wazuh-agent8:
     build:
       context: .
-      dockerfile: base/agent/Dockerfile
-      args:
-        agent_branch: ${AGENT_BRANCH_OLD}
+      dockerfile: base/agent/old.Dockerfile
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent8
+    volumes:
+      - ./configurations/tmp/agent:/tmp
+      - ./tools/:/tools
     entrypoint:
       - /scripts/entrypoint.sh
       - nginx-lb
       - wazuh-agent8
+      - agent_old
     depends_on:
       - wazuh-worker1
       - wazuh-worker2

@@ -128,7 +128,18 @@ stages:
 test_name: PUT /lists/files/{filename}
 
 stages:
-  - name: Try to update audit-keys list (indirectly denied deletion)
+  - name: Try to update audit-keys list, overwrite=False (deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      data: "{new_cdb_list:s}"
+    response:
+      <<: *permission_denied
+
+  - name: Try to update audit-keys list, overwrite=True (deny)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists/files/audit-keys"
@@ -139,36 +150,7 @@ stages:
       params:
         overwrite: True
     response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          failed_items:
-            - error:
-                code: 4000
-              id:
-                - 'etc/lists/audit-keys'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  - name: Updload new list file (allow)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_cdb_list"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: PUT
-      data: "{new_cdb_list:s}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - 'etc/lists/new_cdb_list'
-          failed_items: [ ]
-          total_affected_items: 1
-          total_failed_items: 0
+      <<: *permission_denied
 
 ---
 test_name: DELETE /lists/files/{filename}
@@ -187,7 +169,7 @@ stages:
   - name: Delete a CDB list (allow)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/lists/files/new_cdb_list"
+      url: "{protocol:s}://{host:s}:{port:d}/lists/files/security-eventchannel"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: DELETE
@@ -197,7 +179,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - 'etc/lists/new_cdb_list'
+            - 'etc/lists/security-eventchannel'
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
