@@ -37,7 +37,8 @@ WORKDIR="$INSTALLDIR"
 CEXTRA=""
 
 # Internal definitions
-NEWCONFIG="./etc/ossec.mc"
+NEWCONFIG_AGENT="./etc/wazuh-agent.mc"
+NEWCONFIG_MANAGER="./etc/wazuh-manager.mc"
 PRECONFIG="./etc/PRECONFIG"
 
 ## Templates

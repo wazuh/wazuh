@@ -20,7 +20,7 @@
 #include "os_regex/os_regex.h"
 
 
-#define OSSECCONF   "ossec.conf"
+#define OSSECCONF   "agent.conf"
 #define OS_MAXSTR   1024
 
 int total;

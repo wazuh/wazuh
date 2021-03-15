@@ -48,25 +48,27 @@ WriteSyscheck()
       if [ "$SYSCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
-      cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
     else
       if [ "$1" = "manager" ]; then
-        echo "  <syscheck>" >> $NEWCONFIG
-        echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        echo "    <scan_on_start>yes</scan_on_start>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG
-        echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        echo "  </syscheck>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
+        cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG_MANAGER
+        echo "" >> $NEWCONFIG_MANAGER
+        echo "  <syscheck>" >> $NEWCONFIG_MANAGER
+        echo "    <disabled>yes</disabled>" >> $NEWCONFIG_MANAGER
+        echo "" >> $NEWCONFIG_MANAGER
+        echo "    <scan_on_start>yes</scan_on_start>" >> $NEWCONFIG_MANAGER
+        echo "" >> $NEWCONFIG_MANAGER
+        echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG_MANAGER
+        echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG_MANAGER
+        echo "" >> $NEWCONFIG_MANAGER
+        echo "  </syscheck>" >> $NEWCONFIG_MANAGER
+        echo "" >> $NEWCONFIG_MANAGER
       else
-        echo "  <syscheck>" >> $NEWCONFIG
-        echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-        echo "  </syscheck>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
+        cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG_AGENT
+        echo "" >> $NEWCONFIG_AGENT
+        echo "  <syscheck>" >> $NEWCONFIG_AGENT
+        echo "    <disabled>yes</disabled>" >> $NEWCONFIG_AGENT
+        echo "  </syscheck>" >> $NEWCONFIG_AGENT
+        echo "" >> $NEWCONFIG_AGENT
       fi
     fi
 }
@@ -76,23 +78,23 @@ WriteSyscheck()
 ##########
 DisableAuthd()
 {
-    echo "  <!-- Configuration for wazuh-authd -->" >> $NEWCONFIG
-    echo "  <auth>" >> $NEWCONFIG
-    echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-    echo "    <port>1515</port>" >> $NEWCONFIG
-    echo "    <use_source_ip>no</use_source_ip>" >> $NEWCONFIG
-    echo "    <force_insert>yes</force_insert>" >> $NEWCONFIG
-    echo "    <force_time>0</force_time>" >> $NEWCONFIG
-    echo "    <purge>yes</purge>" >> $NEWCONFIG
-    echo "    <use_password>no</use_password>" >> $NEWCONFIG
-    echo "    <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>" >> $NEWCONFIG
-    echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
-    echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
-    echo "    <ssl_manager_cert>${INSTALLDIR}/etc/sslmanager.cert</ssl_manager_cert>" >> $NEWCONFIG
-    echo "    <ssl_manager_key>${INSTALLDIR}/etc/sslmanager.key</ssl_manager_key>" >> $NEWCONFIG
-    echo "    <ssl_auto_negotiate>no</ssl_auto_negotiate>" >> $NEWCONFIG
-    echo "  </auth>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    echo "  <!-- Configuration for wazuh-authd -->" >> $NEWCONFIG_MANAGER
+    echo "  <auth>" >> $NEWCONFIG_MANAGER
+    echo "    <disabled>yes</disabled>" >> $NEWCONFIG_MANAGER
+    echo "    <port>1515</port>" >> $NEWCONFIG_MANAGER
+    echo "    <use_source_ip>no</use_source_ip>" >> $NEWCONFIG_MANAGER
+    echo "    <force_insert>yes</force_insert>" >> $NEWCONFIG_MANAGER
+    echo "    <force_time>0</force_time>" >> $NEWCONFIG_MANAGER
+    echo "    <purge>yes</purge>" >> $NEWCONFIG_MANAGER
+    echo "    <use_password>no</use_password>" >> $NEWCONFIG_MANAGER
+    echo "    <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>" >> $NEWCONFIG_MANAGER
+    echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG_MANAGER
+    echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG_MANAGER
+    echo "    <ssl_manager_cert>${INSTALLDIR}/etc/sslmanager.cert</ssl_manager_cert>" >> $NEWCONFIG_MANAGER
+    echo "    <ssl_manager_key>${INSTALLDIR}/etc/sslmanager.key</ssl_manager_key>" >> $NEWCONFIG_MANAGER
+    echo "    <ssl_auto_negotiate>no</ssl_auto_negotiate>" >> $NEWCONFIG_MANAGER
+    echo "  </auth>" >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 }
 
 ##########
@@ -106,13 +108,13 @@ WriteRootcheck()
       if [ "$ROOTCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
-      sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
+      sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_MANAGER
+      echo "" >> $NEWCONFIG_MANAGER
     else
-      echo "  <rootcheck>" >> $NEWCONFIG
-      echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-      echo "  </rootcheck>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
+      echo "  <rootcheck>" >> $NEWCONFIG_MANAGER
+      echo "    <disabled>yes</disabled>" >> $NEWCONFIG_MANAGER
+      echo "  </rootcheck>" >> $NEWCONFIG_MANAGER
+      echo "" >> $NEWCONFIG_MANAGER
     fi
 }
 
@@ -127,8 +129,8 @@ WriteSyscollector()
       if [ "$SYSCOLLECTOR_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
-      cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
+      cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG_MANAGER
+      echo "" >> $NEWCONFIG_MANAGER
     fi
 }
 
@@ -142,8 +144,8 @@ WriteOsquery()
     if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 }
 
 ##########
@@ -156,8 +158,8 @@ WriteCISCAT()
     if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 }
 
 ##########
@@ -168,8 +170,8 @@ WriteConfigurationAssessment()
     # Adding to the config file
     if [ "X$SECURITY_CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
       SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
+      cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG_MANAGER
+      echo "" >> $NEWCONFIG_MANAGER
     fi
 }
 
@@ -269,20 +271,20 @@ WriteLogs()
         if [ "$1" = "echo" ]; then
           echo "    -- $FILE"
         elif [ "$1" = "add" ]; then
-          echo "  <localfile>" >> $NEWCONFIG
+          echo "  <localfile>" >> $NEWCONFIG_MANAGER
           if [ "$FILE" = "snort" ]; then
             head -n 1 $FILE|grep "\[**\] "|grep -v "Classification:" > /dev/null
             if [ $? = 0 ]; then
-              echo "    <log_format>snort-full</log_format>" >> $NEWCONFIG
+              echo "    <log_format>snort-full</log_format>" >> $NEWCONFIG_MANAGER
             else
-              echo "    <log_format>snort-fast</log_format>" >> $NEWCONFIG
+              echo "    <log_format>snort-fast</log_format>" >> $NEWCONFIG_MANAGER
             fi
           else
-            echo "    <log_format>$LOG_FORMAT</log_format>" >> $NEWCONFIG
+            echo "    <log_format>$LOG_FORMAT</log_format>" >> $NEWCONFIG_MANAGER
           fi
-          echo "    <location>$FILE</location>" >>$NEWCONFIG
-          echo "  </localfile>" >> $NEWCONFIG
-          echo "" >> $NEWCONFIG
+          echo "    <location>$FILE</location>" >>$NEWCONFIG_MANAGER
+          echo "  </localfile>" >> $NEWCONFIG_MANAGER
+          echo "" >> $NEWCONFIG_MANAGER
         fi
       fi
   done
@@ -324,48 +326,48 @@ WriteAgent()
     NO_LOCALFILES=$1
 
     HEADERS=$(SetHeaders "Agent")
-    echo "$HEADERS" > $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    echo "$HEADERS" > $NEWCONFIG_AGENT
+    echo "" >> $NEWCONFIG_AGENT
 
-    echo "<wazuh_config>" >> $NEWCONFIG
-    echo "  <client>" >> $NEWCONFIG
-    echo "    <server>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG_AGENT
+    echo "  <client>" >> $NEWCONFIG_AGENT
+    echo "    <server>" >> $NEWCONFIG_AGENT
     if [ "X${HNAME}" = "X" ]; then
-      echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG
+      echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG_AGENT
     else
-      echo "      <address>$HNAME</address>" >> $NEWCONFIG
+      echo "      <address>$HNAME</address>" >> $NEWCONFIG_AGENT
     fi
-    echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "      <protocol>tcp</protocol>" >> $NEWCONFIG
-    echo "    </server>" >> $NEWCONFIG
+    echo "      <port>1514</port>" >> $NEWCONFIG_AGENT
+    echo "      <protocol>tcp</protocol>" >> $NEWCONFIG_AGENT
+    echo "    </server>" >> $NEWCONFIG_AGENT
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
-         echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG
+         echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG_AGENT
     else
       if [ "$DIST_VER" = "0" ]; then
-        echo "    <config-profile>$DIST_NAME</config-profile>" >> $NEWCONFIG
+        echo "    <config-profile>$DIST_NAME</config-profile>" >> $NEWCONFIG_AGENT
       else
         if [ "$DIST_SUBVER" = "0" ]; then
-          echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER</config-profile>" >> $NEWCONFIG
+          echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER</config-profile>" >> $NEWCONFIG_AGENT
         else
-          echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER, $DIST_NAME$DIST_VER.$DIST_SUBVER</config-profile>" >> $NEWCONFIG
+          echo "    <config-profile>$DIST_NAME, $DIST_NAME$DIST_VER, $DIST_NAME$DIST_VER.$DIST_SUBVER</config-profile>" >> $NEWCONFIG_AGENT
         fi
       fi
     fi
-    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
-    echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
-    echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
-    echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG
-    echo "  </client>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG_AGENT
+    echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG_AGENT
+    echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG_AGENT
+    echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG_AGENT
+    echo "  </client>" >> $NEWCONFIG_AGENT
+    echo "" >> $NEWCONFIG_AGENT
 
-    echo "  <client_buffer>" >> $NEWCONFIG
-    echo "    <!-- Agent buffer options -->" >> $NEWCONFIG
-    echo "    <disabled>no</disabled>" >> $NEWCONFIG
-    echo "    <queue_size>5000</queue_size>" >> $NEWCONFIG
-    echo "    <events_per_second>500</events_per_second>" >> $NEWCONFIG
-    echo "  </client_buffer>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    echo "  <client_buffer>" >> $NEWCONFIG_AGENT
+    echo "    <!-- Agent buffer options -->" >> $NEWCONFIG_AGENT
+    echo "    <disabled>no</disabled>" >> $NEWCONFIG_AGENT
+    echo "    <queue_size>5000</queue_size>" >> $NEWCONFIG_AGENT
+    echo "    <events_per_second>500</events_per_second>" >> $NEWCONFIG_AGENT
+    echo "  </client_buffer>" >> $NEWCONFIG_AGENT
+    echo "" >> $NEWCONFIG_AGENT
 
     # Rootcheck
     WriteRootcheck "agent"
@@ -389,10 +391,10 @@ WriteAgent()
 
     # Write the log files
     if [ "X${NO_LOCALFILES}" = "X" ]; then
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG_AGENT
       WriteLogs "add"
     else
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG_AGENT
     fi
 
     # Localfile commands
@@ -400,33 +402,33 @@ WriteAgent()
     if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
       LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG_AGENT
+    echo "" >> $NEWCONFIG_AGENT
 
-    echo "  <!-- Active response -->" >> $NEWCONFIG
+    echo "  <!-- Active response -->" >> $NEWCONFIG_AGENT
 
-    echo "  <active-response>" >> $NEWCONFIG
+    echo "  <active-response>" >> $NEWCONFIG_AGENT
     if [ "X$ACTIVERESPONSE" = "Xyes" ]; then
-        echo "    <disabled>no</disabled>" >> $NEWCONFIG
+        echo "    <disabled>no</disabled>" >> $NEWCONFIG_AGENT
     else
-        echo "    <disabled>yes</disabled>" >> $NEWCONFIG
+        echo "    <disabled>yes</disabled>" >> $NEWCONFIG_AGENT
     fi
-    echo "    <ca_store>${INSTALLDIR}/etc/wpk_root.pem</ca_store>" >> $NEWCONFIG
+    echo "    <ca_store>${INSTALLDIR}/etc/wpk_root.pem</ca_store>" >> $NEWCONFIG_AGENT
 
     if [ -n "$CA_STORE" ]
     then
-        echo "    <ca_store>${CA_STORE}</ca_store>" >> $NEWCONFIG
+        echo "    <ca_store>${CA_STORE}</ca_store>" >> $NEWCONFIG_AGENT
     fi
 
-    echo "    <ca_verification>yes</ca_verification>" >> $NEWCONFIG
-    echo "  </active-response>" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    echo "    <ca_verification>yes</ca_verification>" >> $NEWCONFIG_AGENT
+    echo "  </active-response>" >> $NEWCONFIG_AGENT
+    echo "" >> $NEWCONFIG_AGENT
 
     # Logging format
-    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG_AGENT
+    echo "" >> $NEWCONFIG_AGENT
 
-    echo "</wazuh_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG_AGENT
 }
 
 
@@ -438,33 +440,33 @@ WriteManager()
     NO_LOCALFILES=$1
 
     HEADERS=$(SetHeaders "Manager")
-    echo "$HEADERS" > $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    echo "$HEADERS" > $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
-    echo "<wazuh_config>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG_MANAGER
 
     if [ "$EMAILNOTIFY" = "yes"   ]; then
         sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
         s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
         s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
+        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG_MANAGER
     else
-        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
+        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG_MANAGER
     fi
-    echo "" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Alerts level
-    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Logging format
-    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Remote connection secure
     if [ "X$SLOG" = "Xyes" ]; then
-      cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
+      cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG_MANAGER
+      echo "" >> $NEWCONFIG_MANAGER
     fi
 
     # Write rootcheck
@@ -485,20 +487,20 @@ WriteManager()
     WriteConfigurationAssessment
 
     # Vulnerability Detector
-    cat ${VULN_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Write syscheck
     WriteSyscheck "manager"
 
     # Active response
     if [ "$SET_WHITE_LIST"="true" ]; then
-       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG
+       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG_MANAGER
       # Nameservers in /etc/resolv.conf
       for ip in ${NAMESERVERS} ${NAMESERVERS2};
         do
           if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
+              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG_MANAGER
           fi
       done
       # Read string
@@ -507,28 +509,28 @@ WriteManager()
           if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
             echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
             if [ $? = 0 ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
+              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG_MANAGER
             fi
           fi
         done
-        echo "  </global>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
+        echo "  </global>" >> $NEWCONFIG_MANAGER
+        echo "" >> $NEWCONFIG_MANAGER
     else
-      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
+      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG_MANAGER
+      echo "" >> $NEWCONFIG_MANAGER
     fi
 
-    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
+    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Write the log files
     if [ "X${NO_LOCALFILES}" = "X" ]; then
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG_MANAGER
       WriteLogs "add"
     else
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG_MANAGER
     fi
 
     # Localfile commands
@@ -536,30 +538,30 @@ WriteManager()
     if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
       LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Writting rules configuration
-    cat ${RULES_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${RULES_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Writting wazuh-logtest configuration
-    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Writting auth configuration
     if [ "X${AUTHD}" = "Xyes" ]; then
-        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
+        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG_MANAGER
+        echo "" >> $NEWCONFIG_MANAGER
     else
         DisableAuthd
     fi
 
     # Writting cluster configuration
-    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
-    echo "</wazuh_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG_MANAGER
 
 }
 
@@ -571,28 +573,28 @@ WriteLocal()
     NO_LOCALFILES=$1
 
     HEADERS=$(SetHeaders "Local")
-    echo "$HEADERS" > $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    echo "$HEADERS" > $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
-    echo "<wazuh_config>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG_MANAGER
 
     if [ "$EMAILNOTIFY" = "yes"   ]; then
         sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
         s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
         s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
+        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG_MANAGER
     else
-        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
+        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG_MANAGER
     fi
-    echo "" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Alerts level
-    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Logging format
-    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Write rootcheck
     WriteRootcheck "manager"
@@ -606,20 +608,20 @@ WriteLocal()
     WriteOsquery "manager"
 
     # Vulnerability Detector
-    cat ${VULN_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${VULN_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Write syscheck
     WriteSyscheck "manager"
 
     # Active response
     if [ "$SET_WHITE_LIST"="true" ]; then
-       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG
+       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG_MANAGER
       # Nameservers in /etc/resolv.conf
       for ip in ${NAMESERVERS} ${NAMESERVERS2};
         do
           if [ ! "X${ip}" = "X" ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
+              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG_MANAGER
           fi
       done
       # Read string
@@ -628,28 +630,28 @@ WriteLocal()
           if [ ! "X${ip}" = "X" ]; then
             echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
             if [ $? = 0 ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
+              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG_MANAGER
             fi
           fi
         done
-        echo "  </global>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
+        echo "  </global>" >> $NEWCONFIG_MANAGER
+        echo "" >> $NEWCONFIG_MANAGER
     else
-      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
+      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG_MANAGER
+      echo "" >> $NEWCONFIG_MANAGER
     fi
 
-    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
+    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Write the log files
     if [ "X${NO_LOCALFILES}" = "X" ]; then
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG_MANAGER
       WriteLogs "add"
     else
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG_MANAGER
     fi
 
     # Localfile commands
@@ -657,18 +659,18 @@ WriteLocal()
     if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
       LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
-    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Writting rules configuration
-    cat ${RULES_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${RULES_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
     # Writting wazuh-logtest configuration
-    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG_MANAGER
+    echo "" >> $NEWCONFIG_MANAGER
 
-    echo "</wazuh_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG_MANAGER
 }
 
 InstallCommon()
@@ -683,13 +685,10 @@ InstallCommon()
 
     if [ ${INSTYPE} = 'server' ]; then
         OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
-        OSSEC_CONF_SRC='../etc/ossec-server.conf'
     elif [ ${INSTYPE} = 'agent' ]; then
         OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
-        OSSEC_CONF_SRC='../etc/ossec-agent.conf'
     elif [ ${INSTYPE} = 'local' ]; then
         OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
-        OSSEC_CONF_SRC='../etc/ossec-local.conf'
     fi
 
     if [ ! ${PREFIX} = ${INSTALLDIR} ]; then
@@ -864,13 +863,24 @@ InstallCommon()
         fi
     fi
 
-    if [ ! -f ${PREFIX}/etc/ossec.conf ]; then
-        if [ -f  ../etc/ossec.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
-        else
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${PREFIX}/etc/ossec.conf
+    if ([ ${INSTYPE} = 'server' ] || [ ${INSTYPE} = 'local' ]); then
+        if [ ! -f ${PREFIX}/etc/manager.conf ]; then
+            if [ -f  ../etc/wazuh-manager.mc ]; then
+                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-manager.mc ${PREFIX}/etc/manager.conf
+            else
+                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-server.conf ${PREFIX}/etc/manager.conf
+            fi
         fi
     fi
+
+    if [ ! -f ${PREFIX}/etc/agent.conf ]; then
+        if [ -f  ../etc/wazuh-agent.mc ]; then
+            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
+        else
+            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
+        fi
+    fi
+
 
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
