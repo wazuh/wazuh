@@ -1444,7 +1444,6 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     } else if (strcasecmp(rule_opt[k]->element, xml_mitre) == 0) {
                         char *tactic_id = NULL;
                         char *technique_id = NULL;
-                        bool discarded = FALSE;
                         bool id_flag = FALSE;
                         bool id_tactic_flag = FALSE;
                         bool id_technique_flag = FALSE;
@@ -1511,6 +1510,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                         smwarn(log_msg, "Rule '%d' combined old and new Mitre formats, the old Mitre Technique format will be discarded.",
                                             config_ruleinfo->sigid);
                                         free_strarray(config_ruleinfo->mitre_id);
+                                        config_ruleinfo->mitre_id = NULL;
                                         failure = TRUE;
                                     } else {
                                         mitre_deprecated = TRUE;
@@ -1591,6 +1591,8 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                         config_ruleinfo->mitre_technique_id[mitre_size + 1] = NULL;
                                     mitre_size++;
                                 }
+                                os_free(tactic_id);
+                                os_free(technique_id);
                             }
                         }
                         OS_ClearNode(mitre_opt);

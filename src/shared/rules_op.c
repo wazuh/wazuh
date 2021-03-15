@@ -939,7 +939,6 @@ int OS_ReadXMLRules(const char *rulefile,
 
                     char *tactic_id = NULL;
                     char *technique_id = NULL;
-                    bool discarded = FALSE;
                     bool id_flag = FALSE;
                     bool id_tactic_flag = FALSE;
                     bool id_technique_flag = FALSE;
@@ -1007,6 +1006,7 @@ int OS_ReadXMLRules(const char *rulefile,
                                     mwarn("Rule '%d' combined old and new Mitre formats, the old Mitre Technique format will be discarded.",
                                         config_ruleinfo->sigid);
                                     free_strarray(config_ruleinfo->mitre_id);
+                                    config_ruleinfo->mitre_id = NULL;
                                     failure = TRUE;
                                 } else {
                                     mitre_deprecated = TRUE;
@@ -1087,6 +1087,8 @@ int OS_ReadXMLRules(const char *rulefile,
                                     config_ruleinfo->mitre_technique_id[mitre_size + 1] = NULL;
                                 mitre_size++;
                             }
+                            os_free(tactic_id);
+                            os_free(technique_id);
                         }
                     }
                     OS_ClearNode(mitre_opt);
