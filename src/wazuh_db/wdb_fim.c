@@ -202,6 +202,11 @@ int wdb_delete_fim(int id) {
     if (!name)
         return -1;
 
+    if (*name == '\0') {
+        free(name);
+        return -1;
+    }
+
     db = wdb_open_agent(id, name);
     free(name);
 
