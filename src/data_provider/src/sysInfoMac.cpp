@@ -373,7 +373,7 @@ nlohmann::json SysInfo::getPorts() const
                              [&port](const auto & element)
                 {
                     return 0 == port.dump().compare(element.dump());
-                });
+                })
             };
 
             if (ports["ports"].end() == portFound)
