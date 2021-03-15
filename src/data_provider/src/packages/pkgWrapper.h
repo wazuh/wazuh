@@ -100,7 +100,7 @@ private:
         {
             [this](std::istream& data)
             {
-                const auto filePathStr
+                const std::string filePathStr
                 {
                     std::istreambuf_iterator<char>(data),
                     std::istreambuf_iterator<char>()
