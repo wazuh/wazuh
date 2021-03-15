@@ -98,6 +98,9 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return (-1);
     }
 
+    mdebug1("Plain message: %.*s\n", msg_length, msg);
+    mdebug1("Encrypted message: %.*s\n", msg_size, crypt_msg);
+    
     /* Send initial message */
     if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
         retval = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
