@@ -1479,16 +1479,16 @@ class PoliciesManager:
         True -> Success | Invalid policy | Missing key (actions, resources, effect) or invalid policy (regex)
         """
         try:
-            # Check if the specified policy name is already in use
-            if self.get_policy(name) != SecurityError.POLICY_NOT_EXIST:
-                return SecurityError.ALREADY_EXIST
-
             # Check if the policy body is valid
             if not policy or not json_validator(policy) or len(policy.keys()) != 3:
                 return SecurityError.INVALID
 
+            # Check if the specified policy name is already in use
+            if self.get_policy(name) != SecurityError.POLICY_NOT_EXIST:
+                return SecurityError.ALREADY_EXIST
+
             # To add a policy it must have the keys actions, resources, effect
-            if 'actions' in policy.keys() and 'resources' in policy.keys() and 'effect' in policy.keys():
+            if 'actions' in policy and 'resources' in policy and 'effect' in policy:
                 # The keys actions and resources must be lists and the key effect must be str
                 if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
                         and isinstance(policy['effect'], str):
@@ -2778,7 +2778,7 @@ class DatabaseManager:
                                       hash_password=True,
                                       resource_type=resource_type,
                                       check_default=check_default)
-                auth_manager.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
+                auth_manager.edit_run_as(user_id=auth_manager.get_user(username=d_username)['id'],
                                          allow_run_as=payload['allow_run_as'])
 
         old_roles = get_data(Roles, Roles.id)
