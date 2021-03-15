@@ -1,7 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.1.2]
+## [v4.1.3]
+
+### Changed
+
+### Fixed
+
+
+## [v4.1.2] - 2021-03-08
 
 ### Changed
 
