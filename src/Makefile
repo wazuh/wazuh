@@ -38,8 +38,8 @@ EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
-EXTERNAL_PACMAN=external/pacman-5.2.2/
-EXTERNAL_LIBARCHIVE=external/libarchive-3.5.1/
+EXTERNAL_PACMAN=external/pacman/
+EXTERNAL_LIBARCHIVE=external/libarchive/
 endif
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
@@ -1133,18 +1133,6 @@ VULN_DETECTOR_DIR := wazuh_modules/vulnerability_detector
 .PHONY: deps
 deps: $(EXTERNAL_TAR)
 
-external/libarchive.tar.gz:
-	$(CURL) $@ https://www.libarchive.org/downloads/libarchive-3.5.1.tar.gz
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
-
-external/pacman.tar.gz:
-	$(CURL) $@ https://sources.archlinux.org/other/pacman/pacman-5.2.2.tar.gz
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
-
 external/$(CPYTHON).tar.gz:
 ifneq (,$(PRECOMPILED_RES))
 external/%.tar.gz: external-precompiled/%.tar.gz
@@ -2191,11 +2179,11 @@ ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
 endif
 
-ifneq ($(wildcard external/libarchive-3.5.1/Makefile),)
+ifneq ($(wildcard external/libarchive/Makefile),)
 	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
 endif
 
-ifneq ($(wildcard external/pacman-5.2.2/lib/libalpm/libalpm.a),)
+ifneq ($(wildcard external/pacman/lib/libalpm/libalpm.a),)
 	rm $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
 endif
 endif
