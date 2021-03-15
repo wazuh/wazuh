@@ -63,7 +63,7 @@ wpk_versions = [['v3.10.0', '251b1af81d45d291540d8589b124302613f0a4e0'],
 
 class InitAgent:
 
-    def __init__(self, data_path=test_data_path):
+    def __init__(self, data_path=test_data_path, db_name='schema_global_test.sql'):
         """
         Sets up necessary test environment for agents:
             * One active agent.
@@ -76,7 +76,7 @@ class InitAgent:
         self.global_db = sqlite3.connect(':memory:')
         self.global_db.row_factory = sqlite3.Row
         self.cur = self.global_db.cursor()
-        with open(os.path.join(data_path, 'schema_global_test.sql')) as f:
+        with open(os.path.join(data_path, db_name)) as f:
             self.cur.executescript(f.read())
 
         self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id'}
@@ -1476,7 +1476,7 @@ def test_calculate_status(last_keep_alive, pending, expected_status):
      [{'version': ver} for ver in ['Wazuh v4.2.0', 'Wazuh v4.0.0', 'Wazuh v4.2.1', 'Wazuh v3.13.2']])
 ])
 @patch('wazuh.core.agent.WazuhQueue')
-def test_send_restart_command(mock_ossec_queue, agents_list, versions_list):
+def test_send_restart_command(mock_wazuh_queue, agents_list, versions_list):
     """Test that restart_command calls send_msg_to_agent with correct params.
 
     Parameters
@@ -1489,9 +1489,9 @@ def test_send_restart_command(mock_ossec_queue, agents_list, versions_list):
     with patch('wazuh.core.agent.Agent.get_basic_information', side_effect=versions_list):
         for agent_id, agent_version in zip(agents_list, versions_list):
             send_restart_command(agent_id, agent_version['version'])
-            expected_msg = mock_ossec_queue.RESTART_AGENTS_JSON if WazuhVersion(
-                agent_version['version']) >= WazuhVersion(common.AR_LEGACY_VERSION) else mock_ossec_queue.RESTART_AGENTS
-            mock_ossec_queue.return_value.send_msg_to_agent.assert_called_with(expected_msg, agent_id)
+            expected_msg = mock_wazuh_queue.RESTART_AGENTS_JSON if WazuhVersion(
+                agent_version['version']) >= WazuhVersion(common.AR_LEGACY_VERSION) else mock_wazuh_queue.RESTART_AGENTS
+            mock_wazuh_queue.return_value.send_msg_to_agent.assert_called_with(expected_msg, agent_id)
 
 
 def test_get_agents_info():
