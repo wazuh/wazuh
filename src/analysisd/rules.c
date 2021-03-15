@@ -1591,9 +1591,9 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                         config_ruleinfo->mitre_technique_id[mitre_size + 1] = NULL;
                                     mitre_size++;
                                 }
-                                os_free(tactic_id);
-                                os_free(technique_id);
                             }
+                            os_free(tactic_id);
+                            os_free(technique_id);
                         }
                         OS_ClearNode(mitre_opt);
                     } else {

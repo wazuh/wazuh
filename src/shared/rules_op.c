@@ -1087,9 +1087,9 @@ int OS_ReadXMLRules(const char *rulefile,
                                     config_ruleinfo->mitre_technique_id[mitre_size + 1] = NULL;
                                 mitre_size++;
                             }
-                            os_free(tactic_id);
-                            os_free(technique_id);
                         }
+                        os_free(tactic_id);
+                        os_free(technique_id);
                     }
                     OS_ClearNode(mitre_opt);
                 }

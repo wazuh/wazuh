@@ -170,6 +170,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
                 cJSON_Delete(mitre_id_array);
                 cJSON_Delete(mitre_tactic_array);
                 cJSON_Delete(mitre_technique_array);
+                cJSON_DeleteItemFromObject(rule, "mitre");
             }
         } else if(lf->generated_rule->mitre_id) {
             const char **mitre_cpy = (const char**)lf->generated_rule->mitre_id;
@@ -227,6 +228,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf, bool force_full_log)
             } else {
                 cJSON_Delete(mitre_tactic_array);
                 cJSON_Delete(mitre_technique_array);
+                cJSON_DeleteItemFromObject(rule, "mitre");
             }
         }
         if(lf->generated_rule->cve) {
