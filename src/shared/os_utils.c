@@ -118,6 +118,7 @@ OSList *w_os_get_process_list()
 }
 
 #endif
+
 /* Check if a file exists */
 int w_is_file(const char * const file)
 {
@@ -353,4 +354,5 @@ OSList *w_os_get_process_list()
     CloseHandle(hsnap);
     return (p_list);
 }
+
 #endif

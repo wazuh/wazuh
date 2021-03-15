@@ -29,5 +29,7 @@ OSList *w_os_get_process_list();
 int w_is_file(const char * const file);
 /* Delete the process list */
 int w_del_plist(OSList *p_list);
+/* Resolve hostname */
+void resolveHostname(char **hostname, int attempts);
 
 #endif /* OS_UTILS_OP_H */

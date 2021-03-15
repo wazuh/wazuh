@@ -32,10 +32,6 @@
 #define FULL 2
 #define FLOOD 3
 
-
-/* Resolve hostname */
-void resolveHostname(char **hostname, int attempts);
-
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
