@@ -38,6 +38,20 @@ OSList *OSList_Create()
     return (my_list);
 }
 
+void OSList_Destroy(OSList *list) {
+    if (!list) {
+        return;
+    }
+
+    OSList_CleanNodes(list);
+
+    w_rwlock_destroy(&list->wr_mutex);
+    w_mutex_destroy(&list->mutex);
+    free(list);
+
+    return;
+}
+
 /* Set the maximum number of elements in the list
  * Returns 0 on error or 1 on success
  */

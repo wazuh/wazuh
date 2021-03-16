@@ -52,7 +52,7 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id);
+int fim_db_insert_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id);
 
 /**
  * @brief Insert or update entry path.
@@ -64,7 +64,7 @@ int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id);
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *entry, int inode_id);
+int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry, int inode_id);
 
 /**
  * @brief Insert an entry in the needed tables.
@@ -76,7 +76,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved);
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, fim_file_data *saved);
 
 /**
  * @brief Delete entry from the DB using file path.
@@ -199,5 +199,19 @@ int fim_db_get_count_file_entry(fdb_t * fim_sql);
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
 int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_file **file, int storage);
+
+/**
+ * @brief Verifies if the data row identified by a given device and inode exists in file_data.
+ *
+ * @param fim_sql FIM database struct.
+ * @param inode The inode to look for.
+ * @param dev The device that must be associated with the desired inode.
+ *
+ * @return An integer signaling wheter the row exists or not.
+ * @retval 1 if the row exists.
+ * @retval 0 if the row does not exist.
+ * @retval FIMDB_ERR if an error occurs when executing the query.
+ */
+int fim_db_data_exists(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
 
 #endif /* FIM_DB_FILES_H */

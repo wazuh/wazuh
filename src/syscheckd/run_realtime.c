@@ -210,7 +210,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
         return -1;
     }
 
-    index = fim_configuration_directory(dir, "file");
+    index = fim_configuration_directory(dir);
 
     if (index < 0) {
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
@@ -423,8 +423,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             }
             str_lowercase(final_path);
 
-            int index = fim_configuration_directory(wdchar, "file");
-            int file_index = fim_configuration_directory(final_path, "file");
+            int index = fim_configuration_directory(wdchar);
+            int file_index = fim_configuration_directory(final_path);
 
             if (index == file_index) {
                 /* Check the change */
