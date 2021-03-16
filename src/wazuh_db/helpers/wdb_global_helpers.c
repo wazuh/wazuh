@@ -9,16 +9,13 @@
  * Foundation.
  */
 
-#include "wdb.h"
+#include "wdb_global_helpers.h"
 #include "defs.h"
 #include "wazuhdb_op.h"
 
 #ifdef WIN32
 #define chown(x, y, z) 0
 #endif
-
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
@@ -688,6 +685,8 @@ char* wdb_get_agent_name(int id, int *sock) {
     json_name = cJSON_GetObjectItem(root->child,"name");
     if (cJSON_IsString(json_name) && json_name->valuestring != NULL) {
         os_strdup(json_name->valuestring, output);
+    } else {
+        os_strdup("", output);
     }
 
     cJSON_Delete(root);
@@ -903,7 +902,7 @@ int wdb_remove_agent(int id, int *sock) {
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
                 result = wdb_delete_agent_belongs(id, query_sock);
 
-                if ((OS_SUCCESS == result) && name &&
+                if ((OS_SUCCESS == result) && name && *name &&
                      OS_INVALID == wdb_remove_agent_db(id, name)) {
                      mdebug1("Unable to remove agent DB: %d - %s", id, name);
                 }
