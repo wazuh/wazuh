@@ -371,21 +371,21 @@ void wm_clean_dangling_groups() {
     struct dirent * dirent = NULL;
     DIR * dir;
 
-    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", DEFAULTDIR GROUPS_DIR);
-    dir = opendir(DEFAULTDIR GROUPS_DIR);
+    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", GROUPS_DIR);
+    dir = opendir(GROUPS_DIR);
 
     if (dir == NULL) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", DEFAULTDIR GROUPS_DIR, strerror(errno));
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
         return;
     }
 
     while ((dirent = readdir(dir)) != NULL) {
         if (dirent->d_name[0] != '.') {
-            os_snprintf(path, sizeof(path), DEFAULTDIR GROUPS_DIR "/%s", dirent->d_name);
+            os_snprintf(path, sizeof(path), GROUPS_DIR "/%s", dirent->d_name);
             agent_id = atoi(dirent->d_name);
 
             if (agent_id <= 0) {
-                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", DEFAULTDIR GROUPS_DIR, dirent->d_name);
+                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", GROUPS_DIR, dirent->d_name);
                 continue;
             }
 
