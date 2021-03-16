@@ -208,6 +208,15 @@ void resolveHostname(char **hostname, int attempts) {
     }
 }
 
+const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
+    char *tmp_str;
+
+    /* Check if we have a resolved_hostname or an IP */
+    tmp_str = strchr(resolved_hostname, '/');
+
+    return tmp_str ? ++tmp_str : resolved_hostname;
+}
+
 #ifdef WIN32
 
 /* Set Debug privilege
