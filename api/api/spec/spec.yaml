@@ -5302,6 +5302,8 @@ tags:
     description: "File integrity monitoring"
   - name: Syscollector
     description: "Syscollector information"
+  - name: Tasks
+    description: "Tasks information"
   - name: Vulnerability
     description: "Vulnerabilities information"
 
@@ -15743,7 +15745,7 @@ paths:
   /tasks/status:
     get:
       tags:
-        - tasks
+        - Tasks
       summary: "List tasks"
       description: "Returns all available information about the specified tasks"
       operationId: api.controllers.task_controller.get_tasks_status
