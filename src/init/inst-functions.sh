@@ -154,48 +154,6 @@ WriteSyscollector()
 }
 
 ##########
-# Osquery()
-##########
-WriteOsquery()
-{
-    # Select file to write
-    if [ "X$1" = "Xagent" ]; then
-      WRITE_TO="${NEWCONFIG_AGENT}"
-    else
-      WRITE_TO="${NEWCONFIG_MANAGER}"
-    fi
-
-    # Adding to the config file
-    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $WRITE_TO
-    echo "" >> $WRITE_TO
-}
-
-##########
-# WriteCISCAT()
-##########
-WriteCISCAT()
-{
-    # Select file to write
-    if [ "X$1" = "Xagent" ]; then
-      WRITE_TO="${NEWCONFIG_AGENT}"
-    else
-      WRITE_TO="${NEWCONFIG_MANAGER}"
-    fi
-
-    # Adding to the config file
-    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $WRITE_TO
-    echo "" >> $WRITE_TO
-}
-
-##########
 # WriteConfigurationAssessment()
 ##########
 WriteConfigurationAssessment()
@@ -422,14 +380,6 @@ WriteAgent()
     # Rootcheck
     WriteRootcheck "agent"
 
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "agent"
-
     # Syscollector configuration
     WriteSyscollector "agent"
 
@@ -522,14 +472,6 @@ WriteManager()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "manager"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Syscollector configuration
     WriteSyscollector "manager"
@@ -649,14 +591,6 @@ WriteLocal()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG_MANAGER
