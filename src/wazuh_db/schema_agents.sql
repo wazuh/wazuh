@@ -117,9 +117,8 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     version TEXT,
     os_release TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
-    os_display_version TEXT,
     triaged INTEGER(1) DEFAULT 0,
-    reference TEXT NOT NULL DEFAULT '',
+    reference TEXT DEFAULT '' NOT NULL,
     PRIMARY KEY (scan_id, os_name)
 );
 
@@ -377,7 +376,7 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     architecture TEXT,
     cve TEXT,
     reference TEXT DEFAULT '' NOT NULL,
-    type TEXT DEFAULT '' NOT NULL CHECK (type IN ('OS', 'PACKAGE')),
+    type TEXT DEFAULT 'UNDEFINED' NOT NULL CHECK (type IN ('OS', 'PACKAGE','UNDEFINED')),
     status TEXT DEFAULT 'PENDING' NOT NULL CHECK (status IN ('VALID', 'PENDING', 'OBSOLETE')),
     PRIMARY KEY (reference, cve)
 );
