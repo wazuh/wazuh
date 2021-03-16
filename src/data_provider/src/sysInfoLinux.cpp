@@ -25,7 +25,7 @@
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
 #include "packages/packagesLinuxParserHelper.h"
-#include "berkeleyRpmDbHelper.h"
+#include "packages/berkeleyRpmDbHelper.h"
 
 struct ProcTableDeleter
 {
@@ -211,7 +211,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
 static nlohmann::json getRpmInfo()
 {
     nlohmann::json ret;
-    Utils::BerkeleyRpmDBWrapper db;
+    BerkeleyRpmDBWrapper db;
 
     for (std::string row = db.getNext() ; !row.empty() ; row = db.getNext())
     {
