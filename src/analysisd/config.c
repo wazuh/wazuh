@@ -47,6 +47,7 @@ int GlobalConf(const char *cfgfile)
     Config.jsonout_output = 1;
     Config.alerts_log = 1;
     Config.memorysize = 8192;
+    Config.do_correlate_events = DEFAULT_DO_CORRELATE_EVENTS;
     Config.mailnotify = -1;
     Config.keeplogdate = 0;
     Config.syscheck_alert_new = 1;

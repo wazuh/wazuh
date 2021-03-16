@@ -71,6 +71,7 @@ typedef struct __Config {
 
     /* For the correlation */
     int memorysize;
+    bool do_correlate_events;
 
     /* List of files to ignore (syscheck) */
     char **syscheck_ignore;
@@ -116,6 +117,9 @@ typedef struct __Config {
     ssize_t max_output_size;
     long queue_size;
 } _Config;
+
+
+#define DEFAULT_DO_CORRELATE_EVENTS     true
 
 
 void config_free(_Config *config);

@@ -100,6 +100,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     const char *xml_rules_decoders_dir = "decoder_dir";
     const char *xml_rules_exclude = "rule_exclude";
     const char *xml_rules_exclude_decoder = "decoder_exclude";
+    const char *XML_RULES_EVENT_CORRELATION = "event_correlation";
 
     _Config *Config;
 
@@ -231,7 +232,22 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 } else {
                     os_strdup(".xml$", rules_dirs_pattern[rul_dirs_size - 2]);
                 }
-            } else {
+            } 
+            // <event_correlation>
+            else if (strcmp(node[i]->element, XML_RULES_EVENT_CORRELATION) == 0) {
+                // If label's value is "no", do_correlate_events is set to FALSE, in any other case it is set to TRUE
+                if (strcmp(node[i]->content, "no") == 0) {
+                    Config->do_correlate_events = false;
+                } else {
+                    Config->do_correlate_events = true;
+                    // If do_correlate_events is TRUE and label's value is not "yes", then a warning is triggered
+                    if (strcmp(node[i]->content, "yes") != 0) {
+                        mwarn(ANALYSISD_INV_CORRELATION_VALUE, node[i]->content);
+                    }
+                }
+            }
+            // unexpected labels
+            else {
                 merror(XML_INVELEM, node[i]->element);
                 OSRegex_FreePattern(&regex);
                 retval = OS_INVALID;
@@ -241,6 +257,13 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             i++;
         }
     }
+
+    if (Config->do_correlate_events) {
+        mdebug1("Event correlation is enabled");
+    } else {
+        mdebug1("Event correlation is disabled");
+    }
+
 
     /* If we haven't specified the decoders directory, use default */
     if (!decoder_dirs[0]) {

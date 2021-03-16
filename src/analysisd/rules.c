@@ -2502,6 +2502,10 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             rule->decoded_as != lf->decoder_info->id)) {
         return (NULL);
     }
+    
+    if (rule->frequency > 0 && !Config.do_correlate_events) {
+        return NULL;
+    }
 
     /* Check program name */
     if (rule->program_name) {
