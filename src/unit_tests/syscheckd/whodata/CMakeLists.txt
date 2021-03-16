@@ -20,7 +20,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     target_link_libraries(test_audit_healthcheck "${AUDIT_HC_FLAGS}")
     add_test(NAME test_audit_healthcheck COMMAND test_audit_healthcheck)
 
-    # test_syscheck_audit tests
+    # test_syscheck_rule_handling tests
     add_executable(test_audit_rule_handling test_audit_rule_handling.c)
     target_compile_options(test_audit_rule_handling PRIVATE "-Wall")
 
@@ -52,7 +52,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc \
                               -Wl,--wrap,getpid -Wl,--wrap,sleep -Wl,--wrap,unlink -Wl,--wrap,audit_delete_rule \
                               -Wl,--wrap,select -Wl,--wrap,audit_parse -Wl,--wrap,symlink -Wl,--wrap,SendMSG \
-                              -Wl,--wrap,audit_get_rule_list -Wl,--wrap,fim_audit_reload_rules -Wl,--wrap,search_audit_rule")
+                              -Wl,--wrap,audit_get_rule_list -Wl,--wrap,fim_audit_reload_rules \
+                              -Wl,--wrap,search_audit_rule -Wl,--wrap,abspath")
 
     target_link_libraries(test_syscheck_audit SYSCHECK_O ${TEST_DEPS})
 

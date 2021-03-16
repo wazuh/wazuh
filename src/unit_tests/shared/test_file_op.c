@@ -110,11 +110,12 @@ void test_DeletePID_success(void **state)
 
     struct stat stat_delete = { .st_mode = 0 };
 
-    expect_string(__wrap_unlink, file, "/var/run/test-2345.pid");
+    expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_stat, __file, "/var/run/test-2345.pid");
+    expect_string(__wrap_stat, __file, "var/run/test-2345.pid");
     will_return(__wrap_stat, &stat_delete);
+    will_return(__wrap_stat, 0);
 
     ret = DeletePID("test");
     assert_int_equal(0, ret);
@@ -553,13 +554,14 @@ void test_w_uncompress_gzfile_success(void **state) {
 void test_w_homedir_first_attempt(void **state)
 {
     char *argv0 = "/usr/share/wazuh/bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
     will_return(__wrap_realpath, argv0);
 
     expect_string(__wrap_stat, __file, "/usr/share/wazuh");
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     val = w_homedir(argv0);
@@ -570,6 +572,7 @@ void test_w_homedir_first_attempt(void **state)
 void test_w_homedir_second_attempt(void **state)
 {
     char *argv0 = "/usr/share/wazuh/bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
@@ -579,7 +582,7 @@ void test_w_homedir_second_attempt(void **state)
     will_return(__wrap_realpath, argv0);
 
     expect_string(__wrap_stat, __file, "/usr/share/wazuh");
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     val = w_homedir(argv0);
@@ -590,6 +593,7 @@ void test_w_homedir_second_attempt(void **state)
 void test_w_homedir_third_attempt(void **state)
 {
     char *argv0 = "/usr/share/wazuh/bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
@@ -602,7 +606,7 @@ void test_w_homedir_third_attempt(void **state)
     will_return(__wrap_realpath, argv0);
 
     expect_string(__wrap_stat, __file, "/usr/share/wazuh");
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     val = w_homedir(argv0);
@@ -613,6 +617,7 @@ void test_w_homedir_third_attempt(void **state)
 void test_w_homedir_check_argv0(void **state)
 {
     char *argv0 = "/usr/share/wazuh/bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
@@ -627,7 +632,7 @@ void test_w_homedir_check_argv0(void **state)
     will_return(__wrap_realpath, argv0);
 
     expect_string(__wrap_stat, __file, "/usr/share/wazuh");
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     val = w_homedir(argv0);
@@ -639,6 +644,7 @@ void test_w_homedir_env_var(void **state)
 {
     char *val = NULL;
     char *argv0 = "bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
     will_return(__wrap_realpath, NULL);
@@ -653,7 +659,7 @@ void test_w_homedir_env_var(void **state)
     will_return(__wrap_getenv, "/home/wazuh");
 
     expect_string(__wrap_stat, __file, "/home/wazuh");
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     val = w_homedir(argv0);
@@ -664,13 +670,14 @@ void test_w_homedir_env_var(void **state)
 void test_w_homedir_stat_fail(void **state)
 {
     char *argv0 = "/fake/dir/bin";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
     char *val = NULL;
 
     expect_string(__wrap_realpath, path, "/proc/self/exe");
     will_return(__wrap_realpath, argv0);
 
     expect_string(__wrap_stat, __file, "/fake/dir");
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, -1);
 
     expect_string(__wrap__merror_exit, formatted_msg, "(1108): Unable to find Wazuh install directory. Export it to WAZUH_HOME environment variable.");
