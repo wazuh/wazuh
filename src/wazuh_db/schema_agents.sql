@@ -117,6 +117,8 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     version TEXT,
     os_release TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
+    triaged INTEGER(1) DEFAULT 0,
+    reference TEXT DEFAULT '' NOT NULL,
     PRIMARY KEY (scan_id, os_name)
 );
 
@@ -345,14 +347,19 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     version TEXT,
     architecture TEXT,
     cve TEXT,
-    PRIMARY KEY (name, version, architecture, cve)
+    reference TEXT DEFAULT '' NOT NULL,
+    type TEXT DEFAULT 'UNDEFINED' NOT NULL CHECK (type IN ('OS', 'PACKAGE','UNDEFINED')),
+    status TEXT DEFAULT 'PENDING' NOT NULL CHECK (status IN ('VALID', 'PENDING', 'OBSOLETE')),
+    PRIMARY KEY (reference, cve)
 );
 CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);
 CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
+CREATE INDEX IF NOT EXISTS cve_type ON vuln_cves (type);
+CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '7');
+INSERT INTO metadata (key, value) VALUES ('db_version', '8');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
