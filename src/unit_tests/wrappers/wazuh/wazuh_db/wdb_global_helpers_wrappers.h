@@ -8,8 +8,8 @@
  */
 
 
-#ifndef WDB_AGENT_WRAPPERS_H
-#define WDB_AGENT_WRAPPERS_H
+#ifndef WDB_GLOBAL_HELPERS_WRAPPERS_H
+#define WDB_GLOBAL_HELPERS_WRAPPERS_H
 
 #include "wazuh_db/wdb.h"
 
