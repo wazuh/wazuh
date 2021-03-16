@@ -56,6 +56,7 @@ TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
     EXPECT_EQ("4",packages.at("description").get_ref<const std::string&>());
     EXPECT_EQ("5",packages.at("architecture").get_ref<const std::string&>());
     EXPECT_EQ("6",packages.at("format").get_ref<const std::string&>());
-    EXPECT_EQ("7",packages.at("source").get_ref<const std::string&>());
-    EXPECT_EQ("8",packages.at("location").get_ref<const std::string&>());
+    EXPECT_EQ("7",packages.at("osPatch").get_ref<const std::string&>());
+    EXPECT_EQ("8",packages.at("source").get_ref<const std::string&>());
+    EXPECT_EQ("9",packages.at("location").get_ref<const std::string&>());
 }
