@@ -16,7 +16,7 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14")
 
 if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")
+  set(CMAKE_CXX_FLAGS_DEBUG "-pthread -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

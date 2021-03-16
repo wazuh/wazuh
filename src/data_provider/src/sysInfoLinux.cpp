@@ -211,7 +211,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
 static nlohmann::json getRpmInfo()
 {
     nlohmann::json ret;
-    BerkeleyRpmDBWrapper db;
+    BerkeleyRpmDBReader db(std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE));
 
     for (std::string row = db.getNext() ; !row.empty() ; row = db.getNext())
     {

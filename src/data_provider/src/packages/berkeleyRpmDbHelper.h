@@ -1,5 +1,5 @@
 /*
- * Wazuh shared modules utils
+ * Wazuh SYSINFO
  * Copyright (C) 2015-2021, Wazuh Inc.
  * March 15, 2021.
  *
@@ -17,9 +17,8 @@
 #include <map>
 #include <vector>
 #include <algorithm>
-#include <cstring>
-#include "db.h"
 #include "byteArrayHelper.h"
+#include "berkeleyDbWrapper.h"
 
 #define TAG_NAME        1000
 #define TAG_VERSION     1001
@@ -36,18 +35,6 @@
 constexpr auto RPM_DATABASE {"/var/lib/rpm/Packages"};
 constexpr auto FIRST_ENTRY_OFFSET { 8 };
 constexpr auto ENTRY_SIZE { 16 };
-
-struct BerkeleyRpmDbDeleter
-{
-    void operator()(DB * db)
-    {
-        db->close(db, 0);
-    }
-    void operator()(DBC * cursor)
-    {
-        cursor->c_close(cursor);
-    }
-};
 
 struct BerkeleyHeaderEntry
 {
@@ -71,12 +58,11 @@ const std::vector<std::pair<int32_t, std::string>> TAG_NAMES =
     { std::make_pair(TAG_GROUP, "group") }
 };
 
-class BerkeleyRpmDBWrapper
+class BerkeleyRpmDBReader
 {
     private:
-        std::unique_ptr<DB, BerkeleyRpmDbDeleter>  m_db;
-        std::unique_ptr<DBC, BerkeleyRpmDbDeleter> m_cursor;
         bool m_firstIteration;
+        std::shared_ptr<IBerkeleyDbWrapper> m_dbWrapper;
 
         std::vector<BerkeleyHeaderEntry> parseHeader(const DBT & data)
         {
@@ -173,57 +159,28 @@ class BerkeleyRpmDBWrapper
         {
             std::string retVal;
             DBT key, data;
-            std::memset(&key, 0, sizeof(DBT));
-            std::memset(&data, 0, sizeof(DBT));
             int cursorRet;
 
             if(true == m_firstIteration)
             {
-                if (cursorRet = m_cursor->c_get(m_cursor.get(), &key, &data, DB_NEXT), cursorRet == 0)
+                if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
                 {
                     m_firstIteration = false;
                 }
             }
 
-            if (cursorRet = m_cursor->c_get(m_cursor.get(), &key, &data, DB_NEXT), cursorRet == 0)
+            if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
             {
                 retVal = parseBody(parseHeader(data), data);
             }
 
             return retVal;
         }
-        BerkeleyRpmDBWrapper()
+        explicit BerkeleyRpmDBReader(std::shared_ptr<IBerkeleyDbWrapper> dbWrapper)
             : m_firstIteration { true }
-        {
-            int ret;
-            DB * dbp;
-            DBC * cursor;
+            , m_dbWrapper { dbWrapper }
+        { }
 
-            if ((ret = db_create(&dbp, NULL, 0)) != 0)
-            {
-                throw std::runtime_error { db_strerror(ret) };
-            }
-
-            m_db = std::unique_ptr<DB, BerkeleyRpmDbDeleter>(dbp);
-
-            // Set Little-endian order by default
-            if (ret = m_db->set_lorder(m_db.get(), 1234), ret != 0)
-            {
-                //mtwarn(WM_SYS_LOGTAG, "Error setting byte-order.");
-            }
-
-            if ((ret = m_db->open(m_db.get(), NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0)
-            {
-                throw std::runtime_error { std::string("Failed to open database '") + RPM_DATABASE + "': " + db_strerror(ret) };
-            }
-
-            if ((ret = m_db->cursor(m_db.get(), NULL, &cursor, 0)) != 0)
-            {
-                throw std::runtime_error { std::string("Error creating cursor: ") + db_strerror(ret) };
-            }
-            m_cursor = std::unique_ptr<DBC, BerkeleyRpmDbDeleter>(cursor);
-        }
-
-        ~BerkeleyRpmDBWrapper() { }
+        ~BerkeleyRpmDBReader() { }
 };
 #endif // _BERKELEY_RPM_DB_HELPER_H
