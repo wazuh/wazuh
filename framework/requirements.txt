@@ -31,7 +31,7 @@ google-auth==1.14.1
 google-cloud-pubsub==1.4.3
 googleapis-common-protos==1.51.0
 grpc-google-iam-v1==0.12.3
-grpcio==1.36.1
+grpcio==1.28.1
 idna==2.9
 inflection==0.3.1
 itsdangerous==1.1.0
