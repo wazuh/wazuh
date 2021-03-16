@@ -61,7 +61,7 @@ static const char *XML_NAME = "name";
 static const char *XML_OS = "os";
 static const char *XML_UPDATE_INTERVAL = "update_interval";
 static const char *XML_RUN_ON_START = "run_on_start";
-static const char *XML_IGNORE_TIME = "ignore_time";
+static const char *XML_MIN_FULL_SCAN_INTERVAL = "min_full_scan_interval";
 static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
@@ -358,7 +358,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
     vuldet->flags.patch_scan = 1;
     vuldet->flags.permissive_patch_scan = 0;
     vuldet->flags.enabled = 1;
-    vuldet->ignore_time = VU_DEF_IGNORE_TIME;
+    vuldet->min_full_scan_interval = VU_DEF_MIN_FULL_SCAN_INTERVAL;
     vuldet->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vuldet->agents_software = NULL;
     cur_wmodule->context = &WM_VULNDETECTOR_CONTEXT;
@@ -416,9 +416,9 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
                 merror("Invalid content for tag '%s' at module '%s'", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
-        } else if (!strcmp(nodes[i]->element, XML_IGNORE_TIME)) {
-            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->ignore_time)) {
-                merror("Invalid ignore_time at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
+        } else if (!strcmp(nodes[i]->element, XML_MIN_FULL_SCAN_INTERVAL)) {
+            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->min_full_scan_interval)) {
+                merror("Invalid min_full_scan_interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {
