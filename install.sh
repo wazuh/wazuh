@@ -150,8 +150,9 @@ Install()
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
-        # Update versions previous to Wazuh 1.2
-        UpdateOldVersions
+
+        # Update versions previous to Wazuh 1.2 or Wazuh 5.0.0
+        UpdateOldVersions $update_to_5xx
         echo "Starting Wazuh..."
         UpdateStartOSSEC
     fi
@@ -906,14 +907,15 @@ main()
         USER_OLD_VERSION=`getPreinstalledVersion`
         VERSIONv5="v5.0.0"
 
-        if [ "$USER_OLD_VERSION" < "$VERSIONv5" ]; then
+        if [ "$USER_OLD_VERSION" \< "$VERSIONv5" ]; then
             echo ""
             ct="1"
             while [ $ct = "1" ]; do
                 ct="0"
-                echo " - Warning: Upgrading to $NAME $VERSION from a version prior to v5.0.0 means"
-                echo " that you will lose all ossec.log settings."
-                $ECHO " - Do you want to continue? ($yes/$no): "
+                echo " - WARNING:"
+                echo "  -- Your current $NAME version: $VERSION"
+                echo "  -- You have a version older than v5.0.0, if you upgrade you will lose all your ossec.conf"
+                $ECHO "  -- Do you want to continue? ($yes/$no): "
                 if [ "X${USER_UPDATE}" = "X" ]; then
                     read ANY
                 else
@@ -922,7 +924,7 @@ main()
 
                 case $ANY in
                     $yes)
-                        update_only="yes"
+                        update_to_5xx="yes"
                         break;
                         ;;
                     $no)
