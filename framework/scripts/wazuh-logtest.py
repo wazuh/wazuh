@@ -39,9 +39,14 @@ def init_argparse():
     )
     parser.add_argument(
         "-U", help='Unit test. Refer to ruleset/testing/runtests.py',
-        nargs=1,
         metavar='rule:alert:decoder',
         dest='ut'
+    )
+    parser.add_argument(
+        "-l", help='Use custom location. Default "stdin"',
+        default='stdin',
+        metavar='location',
+        dest='location'
     )
     parser.add_argument(
         "-q", help='Quiet execution',
@@ -67,13 +72,13 @@ def main():
 
     # Handle unit test request
     if args.ut:
-        ut = args.ut[0].split(":")
+        ut = args.ut.split(":")
         if len(ut) != 3:
-            logging.error('Unit test configuration wrong syntax: %s', args.ut[0])
+            logging.error('Unit test configuration wrong syntax: %s', args.ut)
             sys.exit(1)
 
     # Initialize wazuh-logtest component
-    w_logtest = WazuhLogtest()
+    w_logtest = WazuhLogtest(location=args.location)
     logging.info('Starting wazuh-logtest %s', Wazuh.get_version_str())
     logging.info('Type one log per line')
 
@@ -175,9 +180,9 @@ class WazuhDeamonProtocol:
         json_msg = json.loads(msg)
         # Get only the payload
         if json_msg['error']:
-            error_msg = ['\n\t{0}'.format(i) for i in json_msg['message']]
+            error_msg = json_msg['message']
             error_n = json_msg['error']
-            raise ValueError(str(error_n) + ''.join(error_msg))
+            raise ValueError(f'{error_n}: {error_msg}')
         data = json_msg['data']
         return data
 
@@ -254,13 +259,13 @@ class WazuhLogtest:
         recv_packet = self.socket.send(request)
 
         # Get logtest reply
+        logging.debug(f'Reply: %s\n', str(recv_packet,'utf-8'))
         reply = self.protocol.unwrap(recv_packet)
-        logging.debug('Reply: %s\n', reply)
 
         if reply['codemsg'] < 0:
             error_msg = ['\n\t{0}'.format(i) for i in reply['messages']]
             error_n = reply['codemsg']
-            raise ValueError(str(error_n) + ''.join(error_msg))
+            raise ValueError(f'{error_n}: {"".join(error_msg)}')
 
         # Save the token
         self.last_token = reply['token']

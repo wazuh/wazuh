@@ -110,7 +110,7 @@ namespace PackageLinuxHelper
             it = info.find("Installed-Size");
             if (it != info.end())
             {
-                size = stoi(it->second);
+                size = stol(it->second);
             }
             it = info.find("Multi-Arch");
             if (it != info.end())
@@ -140,7 +140,7 @@ namespace PackageLinuxHelper
             it = info.find("Description");
             if (it != info.end())
             {
-                description = it->second;
+                description = Utils::substrOnFirstOccurrence(it->second, "\n");
             }
 
             ret["priority"]     = priority;

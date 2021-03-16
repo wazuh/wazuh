@@ -193,7 +193,7 @@ TypeMessage:
         <match>File deleted</match>
         <description>Serv-U: File deleted</description>
         <mitre>
-            <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
+            <id>T1107</id>
         </mitre>
         <group>gdpr_II_5.1.f,</group>
     </rule>
@@ -220,7 +220,7 @@ TypeMessage:
         <match>Directory deleted</match>
         <description>Serv-U: Directory deleted</description>
         <mitre>
-            <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
+            <id>T1107</id>
         </mitre>
         <group>gdpr_II_5.1.f,</group>
     </rule>

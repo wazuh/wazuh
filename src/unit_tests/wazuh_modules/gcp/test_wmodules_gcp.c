@@ -206,7 +206,6 @@ static void test_wm_gcp_read_full_configuration(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -268,7 +267,6 @@ static void test_wm_gcp_read_no_project_id_tag(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -304,7 +302,6 @@ static void test_wm_gcp_read_no_subscription_name_tag(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -392,10 +389,10 @@ static void test_wm_gcp_read_credentials_file_tag_realpath_error(void **state) {
     int ret;
 
     expect_string(__wrap_realpath, path, "credentials.json");
-    will_return(__wrap_realpath, "credentials.json");
+
     will_return(__wrap_realpath, (char *) NULL);   //  realpath failed
 
-    expect_string(__wrap__mwarn, formatted_msg, "File 'credentials.json' from tag 'credentials_file' not found.");
+    expect_string(__wrap__mwarn, formatted_msg, "File '' from tag 'credentials_file' not found.");
 
     ret = wm_gcp_read(data->nodes, data->module);
 
@@ -408,7 +405,6 @@ static void test_wm_gcp_read_credentials_file_tag_file_not_found(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 1);
@@ -444,7 +440,6 @@ static void test_wm_gcp_read_max_messages_tag_empty(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -465,7 +460,6 @@ static void test_wm_gcp_read_max_messages_tag_not_digit(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -476,6 +470,7 @@ static void test_wm_gcp_read_max_messages_tag_not_digit(void **state) {
 
     assert_int_equal(ret, OS_INVALID);
 }
+
 static void test_wm_gcp_read_pull_on_start_tag_invalid(void **state) {
     group_data_t *data = *state;
     int ret;
@@ -500,7 +495,6 @@ static void test_wm_gcp_read_logging_tag_debug(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -538,7 +532,6 @@ static void test_wm_gcp_read_logging_tag_info(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -576,7 +569,6 @@ static void test_wm_gcp_read_logging_tag_warning(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -614,7 +606,6 @@ static void test_wm_gcp_read_logging_tag_error(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -652,7 +643,6 @@ static void test_wm_gcp_read_logging_tag_critical(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);
@@ -689,7 +679,6 @@ static void test_wm_gcp_read_logging_tag_invalid(void **state) {
 
     expect_string(__wrap_realpath, path, "credentials.json");
     will_return(__wrap_realpath, "credentials.json");
-    will_return(__wrap_realpath, (char *) 1);   //  realpath did not fail
 
     expect_string(__wrap_IsFile, file, "credentials.json");
     will_return(__wrap_IsFile, 0);

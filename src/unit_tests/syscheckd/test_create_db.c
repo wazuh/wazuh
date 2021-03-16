@@ -434,7 +434,7 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
  * @param dir_file_path Directory of the file.
  * @param file Dirent structure for the file.
  */
-void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path, struct dirent *file) {
+void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path, struct dirent *file, struct stat *directory_stat, struct stat *file_stat) {
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
 
@@ -445,7 +445,7 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
     will_return(__wrap_fim_db_get_not_scanned, FIMDB_OK);
 
     expect_string(__wrap_stat, __file, dir_file_path);
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, directory_stat);
     will_return(__wrap_stat, 0);
     expect_string(__wrap_HasFilesystem, path, dir_file_path);
     will_return(__wrap_HasFilesystem, 0);
@@ -453,7 +453,7 @@ void prepare_win_double_scan_success (char *test_file_path, char *dir_file_path,
     will_return(__wrap_readdir, file);
 
     expect_string(__wrap_stat, __file, test_file_path);
-    will_return(__wrap_stat, S_IFREG);
+    will_return(__wrap_stat, file_stat);
     will_return(__wrap_stat, 0);
     expect_string(__wrap_HasFilesystem, path, test_file_path);
     will_return(__wrap_HasFilesystem, 0);
@@ -1885,7 +1885,6 @@ static void test_fim_checker_fim_directory_on_max_recursion_level(void **state) 
 
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6347): Directory '/media/test' is already on the max recursion_level (0), it will not be scanned.");
-
     fim_checker(path, fim_data->item, NULL, 1);
 
     syscheck.recursion_level[3] = 50;
@@ -1913,6 +1912,8 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     char * path = "/test.file";
     struct stat buf;
     buf.st_mode = S_IFREG;
+    buf.st_gid = 0;
+
     fim_data->item->index = 0;
     fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
@@ -2653,6 +2654,7 @@ static void test_fim_checker_over_max_recursion_level(void **state) {
 static void test_fim_checker_deleted_file(void **state) {
     fim_data_t *fim_data = *state;
 
+    struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
     fim_data->item->index = 7;
@@ -2666,7 +2668,7 @@ static void test_fim_checker_deleted_file(void **state) {
     str_lowercase(expanded_path);
 
     expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, S_IFREG);
+    will_return(__wrap_stat, &stat_s);
     will_return(__wrap_stat, -1);
 
     errno = 1;
@@ -2682,6 +2684,7 @@ static void test_fim_checker_deleted_file(void **state) {
 static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_data_t *fim_data = *state;
 
+    struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
     fim_data->item->index = 7;
@@ -2715,7 +2718,7 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, S_IFREG);
+    will_return(__wrap_stat, &stat_s);
     will_return(__wrap_stat, -1);
 
     errno = ENOENT;
@@ -2746,6 +2749,8 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
 static void test_fim_checker_fim_regular(void **state) {
     fim_data_t *fim_data = *state;
 
+    struct stat stat_s = { .st_mode = S_IFREG };
+
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
 
     char expanded_path[OS_SIZE_128];
@@ -2758,7 +2763,7 @@ static void test_fim_checker_fim_regular(void **state) {
         fail();
     }
     expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, S_IFREG);
+    will_return(__wrap_stat, &stat_s);
 
     will_return(__wrap_stat, 0);
 
@@ -2798,6 +2803,7 @@ static void test_fim_checker_fim_regular(void **state) {
 static void test_fim_checker_fim_regular_ignore(void **state) {
     fim_data_t *fim_data = *state;
 
+    struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\ignored.file";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
@@ -2810,7 +2816,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
     str_lowercase(expanded_path);
 
     expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, S_IFREG);
+    will_return(__wrap_stat, &stat_s);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
@@ -2828,6 +2834,7 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 static void test_fim_checker_fim_regular_restrict(void **state) {
     fim_data_t *fim_data = *state;
 
+    struct stat stat_s = { .st_mode = S_IFREG };
     char * path = "%WINDIR%\\System32\\wbem\\restricted.exe";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
@@ -2840,7 +2847,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
     str_lowercase(expanded_path);
 
     expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, S_IFREG);
+    will_return(__wrap_stat, &stat_s);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
@@ -2857,6 +2864,7 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
 static void test_fim_checker_fim_regular_warning(void **state) {
     fim_data_t *fim_data = *state;
+    struct stat stat_s = { .st_mode = S_IFREG };
     char *path = "%WINDIR%\\System32\\drivers\\etc\\test.exe";
     char expanded_path[OS_MAXSTR];
     char debug_msg[OS_MAXSTR];
@@ -2869,7 +2877,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
     str_lowercase(expanded_path);
 
     expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, S_IFREG);
+    will_return(__wrap_stat, &stat_s);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
@@ -2904,7 +2912,7 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
 static void test_fim_checker_fim_directory(void **state) {
     fim_data_t *fim_data = *state;
-
+    struct stat stat_s = { .st_mode = S_IFDIR };
     char * path = "%WINDIR%\\System32\\drivers\\etc";
     char skip_directory_message[OS_MAXSTR];
     char expanded_path[OS_MAXSTR];
@@ -2921,9 +2929,9 @@ static void test_fim_checker_fim_directory(void **state) {
 
     expect_string(__wrap_stat, __file, expanded_path);
     expect_string(__wrap_stat, __file, expanded_path_test);
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, &stat_s);
     will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, S_IFDIR);
+    will_return(__wrap_stat, &stat_s);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
@@ -2935,6 +2943,7 @@ static void test_fim_checker_fim_directory(void **state) {
     will_return_always(__wrap_opendir, 1);
     will_return(__wrap_readdir, fim_data->entry);
     will_return(__wrap_readdir, NULL);
+
 
     snprintf(skip_directory_message, OS_MAXSTR,
         "(6347): Directory '%s' is already on the max recursion_level (0), it will not be scanned.", expanded_path_test);
@@ -2964,8 +2973,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     fim_data_t *fim_data = *state;
 
     char * path = "c:\\test.file";
-    struct stat buf;
-    buf.st_mode = S_IFREG;
+    struct stat buf = { .st_mode = S_IFREG };
     fim_data->item->index = 0;
     fim_data->item->statbuf = buf;
     fim_data->item->mode = FIM_REALTIME;
@@ -2991,7 +2999,7 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     will_return(__wrap_fim_db_set_scanned, 0);
 
     expect_string(__wrap_stat, __file, "c:\\test.file");
-    will_return(__wrap_stat, buf.st_mode);
+    will_return(__wrap_stat, &buf);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap_HasFilesystem, path, "c:\\test.file");
@@ -3007,6 +3015,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     struct dirent *file = *state;
     char test_file_path[OS_SIZE_256];
+
+    struct stat directory_stat = { .st_mode = S_IFDIR };
+    struct stat file_stat = { .st_mode = S_IFREG };
 
     char expanded_dirs[10][OS_SIZE_1024];
     char directories[10][OS_SIZE_256] = {
@@ -3044,7 +3055,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         str_lowercase(expanded_dirs[i]);
 
         expect_string(__wrap_stat, __file, expanded_dirs[i]);
-        will_return(__wrap_stat, S_IFDIR);
+        will_return(__wrap_stat, &directory_stat);
         will_return(__wrap_stat, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
@@ -3055,7 +3066,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     snprintf(test_file_path, 160, "%s\\test_file", expanded_dirs[0]);
 
-    prepare_win_double_scan_success(test_file_path, expanded_dirs[0], file);
+    prepare_win_double_scan_success(test_file_path, expanded_dirs[0], file, &directory_stat,&file_stat);
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6342): Maximum number of entries to be monitored: '50000'");
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
@@ -3083,6 +3094,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
     };
     int i;
+    struct stat buf = { .st_mode = S_IFDIR };
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -3105,7 +3117,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         str_lowercase(expanded_dirs[i]);
 
         expect_string(__wrap_stat, __file, expanded_dirs[i]);
-        will_return(__wrap_stat, S_IFDIR);
+        will_return(__wrap_stat, &buf);
         will_return(__wrap_stat, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
@@ -3148,6 +3160,7 @@ static void test_fim_scan_db_free(void **state) {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
     };
     int i;
+    struct stat buf = { .st_mode = S_IFDIR };
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -3170,7 +3183,7 @@ static void test_fim_scan_db_free(void **state) {
         str_lowercase(expanded_dirs[i]);
 
         expect_string(__wrap_stat, __file, expanded_dirs[i]);
-        will_return(__wrap_stat, S_IFDIR);
+        will_return(__wrap_stat, &buf);
         will_return(__wrap_stat, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
@@ -3217,6 +3230,7 @@ static void test_fim_scan_no_limit(void **state) {
         "%WINDIR%\\System32\\WindowsPowerShell\\v1.0",
     };
     int i;
+    struct stat buf = { .st_mode = S_IFDIR };
 
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -3239,7 +3253,7 @@ static void test_fim_scan_no_limit(void **state) {
         str_lowercase(expanded_dirs[i]);
 
         expect_string(__wrap_stat, __file, expanded_dirs[i]);
-        will_return(__wrap_stat, S_IFDIR);
+        will_return(__wrap_stat, &buf);
         will_return(__wrap_stat, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
@@ -4292,6 +4306,7 @@ static void test_free_inode_data_null(void **state) {
 static void test_fim_realtime_event_file_exists(void **state) {
 
     fim_data_t *fim_data = *state;
+    struct stat buf = { .st_mode = 0 };
 
     fim_data->fentry->file_entry.path = strdup("file");
     fim_data->fentry->file_entry.data = fim_data->local_data;
@@ -4321,7 +4336,7 @@ static void test_fim_realtime_event_file_exists(void **state) {
     will_return(__wrap_lstat, 0);
 #else
     expect_string(__wrap_stat, __file, "/test");
-    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, &buf);
     will_return(__wrap_stat, 0);
 #endif
 
@@ -4331,6 +4346,7 @@ static void test_fim_realtime_event_file_exists(void **state) {
 }
 
 static void test_fim_realtime_event_file_missing(void **state) {
+    struct stat stat_buf = { .st_mode = 0 };
 #ifdef TEST_WINAGENT
     char *path = "C:\\a\\random\\path";
 #else
@@ -4345,7 +4361,7 @@ static void test_fim_realtime_event_file_missing(void **state) {
     will_return(__wrap_lstat, -1);
 #else
     expect_string(__wrap_stat, __file, path);
-    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, -1);
 #endif
     errno = ENOENT;
@@ -4373,6 +4389,7 @@ static void test_fim_realtime_event_file_missing(void **state) {
 static void test_fim_whodata_event_file_exists(void **state) {
 
     fim_data_t *fim_data = *state;
+    struct stat buf = { .st_mode = 0 };
 
 #ifndef TEST_WINAGENT
     expect_string(__wrap_lstat, filename, fim_data->w_evt->path);
@@ -4380,7 +4397,7 @@ static void test_fim_whodata_event_file_exists(void **state) {
     will_return(__wrap_lstat, 0);
 #else
     expect_string(__wrap_stat, __file, fim_data->w_evt->path);
-    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, &buf);
     will_return(__wrap_stat, 0);
 #endif
 
@@ -4391,6 +4408,8 @@ static void test_fim_whodata_event_file_exists(void **state) {
 
 static void test_fim_whodata_event_file_missing(void **state) {
     fim_data_t *fim_data = *state;
+    struct stat buf = { .st_mode = 0 };
+
 #ifdef TEST_WINAGENT
     char start[OS_SIZE_32] = "./test/test.file\\";
     char top[OS_SIZE_32] = "./test/test.file]";
@@ -4405,7 +4424,7 @@ static void test_fim_whodata_event_file_missing(void **state) {
     will_return(__wrap_lstat, -1);
 #else
     expect_string(__wrap_stat, __file, fim_data->w_evt->path);
-    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, &buf);
     will_return(__wrap_stat, -1);
 #endif
     errno = ENOENT;

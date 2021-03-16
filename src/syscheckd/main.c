@@ -46,10 +46,6 @@ int main(int argc, char **argv)
     const char *cfg = OSSECCONF;
     gid_t gid;
     const char *group = GROUPGLOBAL;
-#ifdef ENABLE_AUDIT
-    audit_thread_active = 0;
-    whodata_alerts = 0;
-#endif
 
     /* Set the name */
     OS_SetName(ARGV0);

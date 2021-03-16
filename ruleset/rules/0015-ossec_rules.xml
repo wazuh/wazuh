@@ -41,7 +41,7 @@
     <match>Agent disconnected</match>
     <description>Ossec agent disconnected.</description>
     <mitre>
-      <id technique="Impair Defenses: Disable or Modify Tools" tactic="Defense Evasion" tacticID="TA0005">T1562.001</id>
+      <id>T1089</id>
     </mitre>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
   </rule>
@@ -51,7 +51,7 @@
     <match>Agent removed</match>
     <description>Ossec agent removed.</description>
     <mitre>
-      <id technique="Impair Defenses: Disable or Modify Tools" tactic="Defense Evasion" tacticID="TA0005">T1562.001</id>
+      <id>T1089</id>
     </mitre>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
   </rule>
@@ -131,7 +131,7 @@
     <match>Adware|Spyware</match>
     <description>Windows Adware/Spyware application found.</description>
     <mitre>
-      <id technique="Software Deployment Tools" tactic="Lateral Movement" tacticID="TA0008">T1072</id>
+      <id>T1017</id>
     </mitre>
     <group>rootcheck,gpg13_4.2,gdpr_IV_35.7.d,</group>
   </rule>
@@ -219,7 +219,7 @@
     <decoded_as>syscheck_integrity_changed</decoded_as>
     <description>Integrity checksum changed.</description>
     <mitre>
-      <id technique="Data Manipulation: Stored Data Manipulation" tactic="Impact" tacticID="TA0040">T1565.001</id>
+      <id>T1492</id>
     </mitre>
     <group>syscheck,syscheck_entry_modified,syscheck_file,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -229,8 +229,8 @@
     <decoded_as>syscheck_deleted</decoded_as>
     <description>File deleted.</description>
     <mitre>
-      <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
-      <id technique="Data Destruction" tactic="Impact" tacticID="TA0040">T1485</id>
+      <id>T1107</id>
+      <id>T1485</id>
     </mitre>
     <group>syscheck,syscheck_entry_deleted,syscheck_file,pci_dss_11.5,gpg13_4.11,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -285,7 +285,7 @@
     <match>^ossec: File size reduced</match>
     <description>Log file size reduced.</description>
     <mitre>
-      <id technique="Data Manipulation: Stored Data Manipulation" tactic="Impact" tacticID="TA0040">T1565.001</id>
+      <id>T1492</id>
     </mitre>
     <group>attacks,pci_dss_10.5.2,pci_dss_11.4,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.9,nist_800_53_SI.4,tsc_CC6.1,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
   </rule>
@@ -306,7 +306,7 @@
     <group>syscheck,syscheck_entry_modified,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Registry Key Integrity Checksum Changed</description>
     <mitre>
-      <id technique="Data Manipulation: Stored Data Manipulation" tactic="Impact" tacticID="TA0040">T1565.001</id>
+      <id>T1492</id>
     </mitre>
   </rule>
 
@@ -316,8 +316,8 @@
     <group>syscheck,syscheck_entry_deleted,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Registry Key Entry Deleted.</description>
     <mitre>
-      <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
-      <id technique="Data Destruction" tactic="Impact" tacticID="TA0040">T1485</id>
+      <id>T1107</id>
+      <id>T1485</id>
     </mitre>
   </rule>
 
@@ -471,7 +471,7 @@
     <group>syscheck,syscheck_entry_modified,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Registry Value Integrity Checksum Changed</description>
     <mitre>
-      <id technique="Data Manipulation: Stored Data Manipulation" tactic="Impact" tacticID="TA0040">T1565.001</id>
+      <id>T1492</id>
     </mitre>
   </rule>
 
@@ -481,8 +481,8 @@
     <group>syscheck,syscheck_entry_deleted,syscheck_registry,pci_dss_11.5,gpg13_4.13,gdpr_II_5.1.f,hipaa_164.312.c.1,hipaa_164.312.c.2,nist_800_53_SI.7,tsc_PI1.4,tsc_PI1.5,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
     <description>Registry Value Entry Deleted.</description>
     <mitre>
-      <id technique="Indicator Removal on Host: File Deletion" tactic="Defense Evasion" tacticID="TA0005">T1070.004</id>
-      <id technique="Data Destruction" tactic="Impact" tacticID="TA0040">T1485</id>
+      <id>T1107</id>
+      <id>T1485</id>
     </mitre>
   </rule>
 
