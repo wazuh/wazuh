@@ -934,7 +934,7 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-reportd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-maild ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-logtest ${PREFIX}/bin
+    ${INSTALL} -m 0750 -o root -g 0 wazuh-logtest.legacy ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-csyslogd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-dbd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} verify-agent-conf ${PREFIX}/bin/

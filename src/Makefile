@@ -680,7 +680,7 @@ BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
 BUILD_SERVER+=wazuh-analysisd
-BUILD_SERVER+=wazuh-logtest
+BUILD_SERVER+=wazuh-logtest.legacy
 BUILD_SERVER+=wazuh-dbd -
 BUILD_SERVER+=wazuh-integratord
 BUILD_SERVER+=wazuh-modulesd
@@ -1861,7 +1861,7 @@ analysisd/%-live.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
 
-wazuh-logtest: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a
+wazuh-logtest.legacy: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a
