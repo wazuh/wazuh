@@ -9,6 +9,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
+#include "os_err.h"
 #include "wazuh_db/wdb.h"
 
 typedef struct test_struct {
@@ -740,7 +741,184 @@ void test_wdb_parse_rootcheck_save_update_insert_success(void **state)
     os_free(query);
 }
 
+/* vuln_cve Tests */
 
+void test_vuln_cve_syntax_error(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("agent 000 vuln_cve", query);
+
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vuln_cve");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid vuln_cve query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "DB(000) vuln_cve query error near: vuln_cve");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid vuln_cve query syntax, near 'vuln_cve'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_invalid_action(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("agent 000 vuln_cve invalid", query);
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vuln_cve invalid");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid vuln_cve action: invalid");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_missing_action(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("", query);
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Missing vuln_cve action");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_insert_syntax_error(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("insert {\"name\":\"package\",\"version\":}", query);
+
+    // wdb_parse_agents_insert_vuln_cve
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cve JSON syntax when inserting vulnerable package.");
+    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: }");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{\"name\":\"package\",\"version\":}'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_insert_constraint_error(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\"}", query);
+
+    // wdb_parse_agents_insert_vuln_cve
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cve JSON data when inserting vulnerable package."
+    " Not compliant with constraints defined in the database.");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON data, missing required fields");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_insert_command_error(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\"}", query);
+
+    // wdb_parse_agents_insert_vuln_cve
+    will_return(__wrap_wdb_agents_insert_vuln_cve, OS_INVALID);
+    expect_string(__wrap_wdb_agents_insert_vuln_cve, name, "package");
+    expect_string(__wrap_wdb_agents_insert_vuln_cve, version, "2.2");
+    expect_string(__wrap_wdb_agents_insert_vuln_cve, architecture, "x86");
+    expect_string(__wrap_wdb_agents_insert_vuln_cve, cve, "CVE-2021-1500");
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cve insert command; SQL err: ERROR MESSAGE");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute vuln_cve insert command; SQL err: ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_insert_command_success(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\"}", query);
+
+    // wdb_parse_agents_insert_vuln_cve
+    will_return(__wrap_wdb_agents_insert_vuln_cve, OS_SUCCESS);
+    expect_string(__wrap_wdb_agents_insert_vuln_cve, name, "package");
+    expect_string(__wrap_wdb_agents_insert_vuln_cve, version, "2.2");
+    expect_string(__wrap_wdb_agents_insert_vuln_cve, architecture, "x86");
+    expect_string(__wrap_wdb_agents_insert_vuln_cve, cve, "CVE-2021-1500");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_vuln_cve_clear_command_error(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("clear", query);
+
+    // wdb_parse_agents_clear_vuln_cve
+    will_return(__wrap_wdb_agents_clear_vuln_cve, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cve clear command; SQL err: ERROR MESSAGE");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute vuln_cve clear command; SQL err: ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_clear_command_success(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("clear", query);
+
+    // wdb_parse_agents_clear_vuln_cve
+    will_return(__wrap_wdb_agents_clear_vuln_cve, OS_SUCCESS);
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
 
 int main()
 {
@@ -787,7 +965,18 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_cache_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_cache_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_success, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_success, test_setup, test_teardown),
+        /* vuln_cve Tests */
+        cmocka_unit_test_setup_teardown(test_vuln_cve_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_invalid_action, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_missing_action, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_insert_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_insert_constraint_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_insert_command_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_insert_command_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_clear_command_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_clear_command_success, test_setup, test_teardown)
+
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

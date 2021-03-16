@@ -12,7 +12,7 @@ from jsonschema import draft4_format_checker
 from wazuh.core import common
 
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
-_symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\'"|=]+$')
+_symbols_alphanumeric_param = re.compile(r'^[a-zA-Z0-9_,<>!\-.+\s:/()\'"|=~]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.%]+(,[\w\-\.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
@@ -41,6 +41,98 @@ _sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
 _timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
 _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
+
+
+security_config_schema = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "auth_token_exp_timeout": {"type": "integer"},
+        "rbac_mode": {"type": "string", "enum": ["white", "black"]}
+    }
+}
+
+api_config_schema = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "host": {"type": "string"},
+        "port": {"type": "number"},
+        "use_only_authd": {"type": "boolean"},
+        "drop_privileges": {"type": "boolean"},
+        "experimental_features": {"type": "boolean"},
+        "https": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "enabled": {"type": "boolean"},
+                "key": {"type": "string"},
+                "cert": {"type": "string"},
+                "use_ca": {"type": "boolean"},
+                "ca": {"type": "string"},
+                "ssl_cipher": {"type": "string"},
+            },
+        },
+        "logs": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "level": {"type": "string"},
+                "path": {"type": "string"},
+            },
+        },
+        "cors": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "enabled": {"type": "boolean"},
+                "source_route": {"type": "string"},
+                "expose_headers": {"type": "string"},
+                "allow_headers": {"type": "string"},
+                "allow_credentials": {"type": "boolean"},
+            },
+        },
+        "cache": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "enabled": {"type": "boolean"},
+                "time": {"type": "number"},
+            },
+        },
+        "access": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "max_login_attempts": {"type": "integer"},
+                "block_time": {"type": "integer"},
+                "max_request_per_minute": {"type": "integer"},
+            },
+        },
+        "remote_commands": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "localfile": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "exceptions": {"type": "array", "items": {"type": "string"}},
+                    },
+                },
+                "wodle_command": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "enabled": {"type": "boolean"},
+                        "exceptions": {"type": "array", "items": {"type": "string"}},
+                    },
+                },
+            },
+        },
+    },
+}
 
 
 def check_exp(exp: str, regex: str) -> bool:
