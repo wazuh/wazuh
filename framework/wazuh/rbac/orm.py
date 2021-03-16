@@ -79,7 +79,7 @@ class SecurityError(IntEnum):
     RELATIONSHIP_ERROR = -8
     # Protected resources of the system
     PROTECTED_RESOURCES = -9
-    # sqlalchemy UniqueConstraint or CheckConstraint failed
+    # Database constraint error
     CONSTRAINT_ERROR = -10
 
 
