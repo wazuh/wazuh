@@ -42,16 +42,23 @@ SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.t
 ##########
 WriteSyscheck()
 {
+    # Select file to write
+    if [ "X$1" = "Xagent" ]; then
+      WRITE_TO="${NEWCONFIG_AGENT}"
+    else
+      WRITE_TO="${NEWCONFIG_MANAGER}"
+    fi
+
     # Adding to the config file
     if [ "X$SYSCHECK" = "Xyes" ]; then
       SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       if [ "$SYSCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
+      cat ${SYSCHECK_TEMPLATE} >> $WRITE_TO
+      echo "" >> $WRITE_TO
     else
       if [ "$1" = "manager" ]; then
-        cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG_MANAGER
-        echo "" >> $NEWCONFIG_MANAGER
         echo "  <syscheck>" >> $NEWCONFIG_MANAGER
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG_MANAGER
         echo "" >> $NEWCONFIG_MANAGER
@@ -63,8 +70,6 @@ WriteSyscheck()
         echo "  </syscheck>" >> $NEWCONFIG_MANAGER
         echo "" >> $NEWCONFIG_MANAGER
       else
-        cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG_AGENT
-        echo "" >> $NEWCONFIG_AGENT
         echo "  <syscheck>" >> $NEWCONFIG_AGENT
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG_AGENT
         echo "  </syscheck>" >> $NEWCONFIG_AGENT
