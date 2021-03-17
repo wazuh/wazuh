@@ -9,12 +9,12 @@
  * Foundation.
  */
 #ifndef _SYSINFO_PACKAGES_BERKELEY_DB_TEST_H
-#define _SYSINFO_PACKAGES_LINUX_HELPER_TEST_H
+#define _SYSINFO_PACKAGES_BERKELEY_DB_TEST_H
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 
-class SysInfoPackagesBerkeleyDBTest : public ::testing::Test 
+class SysInfoPackagesBerkeleyDBTest : public ::testing::Test
 {
 protected:
 
@@ -25,4 +25,4 @@ protected:
     void TearDown() override;
 };
 
-#endif //_SYSINFO_PACKAGES_LINUX_HELPER_TEST_H
+#endif //_SYSINFO_PACKAGES_BERKELEY_DB_TEST_H

@@ -40,7 +40,7 @@ constexpr auto INT32_TYPE {4};
 constexpr auto STRING_TYPE {6};
 constexpr auto STRING_VECTOR_TYPE {9};
 
-struct BerkeleyHeaderEntry
+struct BerkeleyHeaderEntry final
 {
     std::string tag;
     int type;
@@ -62,7 +62,7 @@ const std::vector<std::pair<int32_t, std::string>> TAG_NAMES =
     { std::make_pair(TAG_GROUP, "group") }
 };
 
-class BerkeleyRpmDBReader
+class BerkeleyRpmDBReader final
 {
     private:
         bool m_firstIteration;
@@ -162,7 +162,7 @@ class BerkeleyRpmDBReader
             DBT key, data;
             int cursorRet;
 
-            if(true == m_firstIteration)
+            if(m_firstIteration)
             {
                 if (cursorRet = m_dbWrapper->getRow(key, data), cursorRet == 0)
                 {
