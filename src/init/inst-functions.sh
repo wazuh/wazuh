@@ -115,7 +115,12 @@ WriteRootcheck()
 
     # Adding to the config file
     if [ "X$ROOTCHECK" = "Xyes" ]; then
-      ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      if [ ${INSTYPE} = 'agent' ]; then
+        ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.agent.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      else
+        ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      fi
+
       if [ "$ROOTCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
@@ -439,6 +444,8 @@ WriteManager()
 {
     NO_LOCALFILES=$1
 
+    WriteAgent
+
     HEADERS=$(SetHeaders "Manager")
     echo "$HEADERS" > $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
@@ -469,21 +476,9 @@ WriteManager()
       echo "" >> $NEWCONFIG_MANAGER
     fi
 
-    # Write rootcheck
-    WriteRootcheck "manager"
-
-    # Syscollector configuration
-    WriteSyscollector "manager"
-
-    # Configuration assessment
-    WriteConfigurationAssessment
-
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
-
-    # Write syscheck
-    WriteSyscheck "manager"
 
     # Active response
     if [ "$SET_WHITE_LIST"="true" ]; then
@@ -515,22 +510,6 @@ WriteManager()
     cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
     cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG_MANAGER
-    echo "" >> $NEWCONFIG_MANAGER
-
-    # Write the log files
-    if [ "X${NO_LOCALFILES}" = "X" ]; then
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG_MANAGER
-      WriteLogs "add"
-    else
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG_MANAGER
-    fi
-
-    # Localfile commands
-    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
 
     # Writting rules configuration
@@ -564,6 +543,8 @@ WriteLocal()
 {
     NO_LOCALFILES=$1
 
+    WriteAgent
+
     HEADERS=$(SetHeaders "Local")
     echo "$HEADERS" > $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
@@ -588,15 +569,9 @@ WriteLocal()
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
 
-    # Write rootcheck
-    WriteRootcheck "manager"
-
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
-
-    # Write syscheck
-    WriteSyscheck "manager"
 
     # Active response
     if [ "$SET_WHITE_LIST"="true" ]; then
@@ -628,22 +603,6 @@ WriteLocal()
     cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
     cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG_MANAGER
-    echo "" >> $NEWCONFIG_MANAGER
-
-    # Write the log files
-    if [ "X${NO_LOCALFILES}" = "X" ]; then
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG_MANAGER
-      WriteLogs "add"
-    else
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG_MANAGER
-    fi
-
-    # Localfile commands
-    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG_MANAGER
     echo "" >> $NEWCONFIG_MANAGER
 
     # Writting rules configuration
