@@ -4,7 +4,6 @@
 
 import logging
 import re
-from typing import Union
 
 from aiohttp import web
 
@@ -147,7 +146,7 @@ async def get_user_me_policies(request, pretty=False, wait_for_complete=False):
     Users information
     """
     data = WazuhResult({'data': request['token_info']['rbac_policies'],
-                       'message': "Current user processed policies information was returned"})
+                        'message': "Current user processed policies information was returned"})
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
