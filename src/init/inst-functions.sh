@@ -32,9 +32,9 @@ LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
-VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
+VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.template"
 
-SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
+ROOTCHECK_TEMPLATE="./etc/templates/config/generic/rootcheck.template"
 
 ##########
 # WriteSyscheck()
@@ -85,12 +85,9 @@ WriteRootcheck()
 {
     # Adding to the config file
     if [ "X$ROOTCHECK" = "Xyes" ]; then
-      ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-
       if ([ ${INSTYPE} = 'server' ] || [ ${INSTYPE} = 'local' ]); then
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g; \
-                s|<rootkit_files>${INSTALLDIR}/etc/shared/rootkit_files.txt</rootkit_files>|<rootkit_files>${INSTALLDIR}/etc/rootcheck/rootkit_files.txt</rootkit_files>|g; \
-                s|<rootkit_trojans>${INSTALLDIR}/etc/shared/rootkit_trojans.txt</rootkit_trojans>|<rootkit_trojans>${INSTALLDIR}/etc/rootcheck/rootkit_trojans.txt</rootkit_trojans>|g;" \
+                s|/etc/shared/|/etc/rootcheck/|g;" \
                 "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_AGENT
       else
         sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g;" "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_AGENT
@@ -348,10 +345,7 @@ WriteAgent()
     fi
 
     # Localfile commands
-    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.agent.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
+    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG_AGENT
     echo "" >> $NEWCONFIG_AGENT
 
@@ -382,6 +376,47 @@ WriteAgent()
     echo "</wazuh_config>" >> $NEWCONFIG_AGENT
 }
 
+##########
+# WriteAgentConfServer() $1="no_locafiles" or empty
+##########
+WriteAgentConfServer()
+{
+    NO_LOCALFILES=$1
+
+    HEADERS=$(SetHeaders "Agent")
+    echo "$HEADERS" > $NEWCONFIG_AGENT
+    echo "" >> $NEWCONFIG_AGENT
+
+    echo "<wazuh_config>" >> $NEWCONFIG_AGENT
+
+    # Rootcheck
+    WriteRootcheck
+
+    # Syscollector configuration
+    WriteSyscollector
+
+    # Configuration assessment configuration (sca)
+    WriteConfigurationAssessment
+
+    # Syscheck
+    WriteSyscheck
+
+    # Write the log files
+    if [ "X${NO_LOCALFILES}" = "X" ]; then
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG_AGENT
+      WriteLogs "add"
+    else
+      echo "  <!-- Log analysis -->" >> $NEWCONFIG_AGENT
+    fi
+
+    # Localfile commands
+    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG_AGENT
+    echo "" >> $NEWCONFIG_AGENT
+
+    echo "</wazuh_config>" >> $NEWCONFIG_AGENT
+}
+
 
 ##########
 # WriteManager() $1="no_locafiles" or empty
@@ -390,7 +425,7 @@ WriteManager()
 {
     NO_LOCALFILES=$1
 
-    WriteAgent
+    WriteAgentConfServer
 
     HEADERS=$(SetHeaders "Manager")
     echo "$HEADERS" > $NEWCONFIG_MANAGER
@@ -489,7 +524,7 @@ WriteLocal()
 {
     NO_LOCALFILES=$1
 
-    WriteAgent
+    WriteAgentConfServer
 
     HEADERS=$(SetHeaders "Local")
     echo "$HEADERS" > $NEWCONFIG_MANAGER
@@ -754,20 +789,12 @@ InstallCommon()
 
     if ([ ${INSTYPE} = 'server' ] || [ ${INSTYPE} = 'local' ]); then
         if [ ! -f ${PREFIX}/etc/manager.conf ]; then
-            if [ -f  ../etc/wazuh-manager.mc ]; then
-                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-manager.mc ${PREFIX}/etc/manager.conf
-            else
-                ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-server.conf ${PREFIX}/etc/manager.conf
-            fi
+            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-manager.mc ${PREFIX}/etc/manager.conf
         fi
     fi
 
     if [ ! -f ${PREFIX}/etc/agent.conf ]; then
-        if [ -f  ../etc/wazuh-agent.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
-        else
-            ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.conf ${PREFIX}/etc/agent.conf
-        fi
+        ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} ../etc/wazuh-agent.mc ${PREFIX}/etc/agent.conf
     fi
 
 
