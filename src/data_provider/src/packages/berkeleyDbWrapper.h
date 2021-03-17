@@ -14,7 +14,7 @@
 
 #include "iberkeleyDbWrapper.h"
 
-struct BerkeleyRpmDbDeleter
+struct BerkeleyRpmDbDeleter final
 {
     void operator()(DB * db)
     {
@@ -26,7 +26,7 @@ struct BerkeleyRpmDbDeleter
     }
 };
 
-class BerkeleyDbWrapper : public IBerkeleyDbWrapper
+class BerkeleyDbWrapper final : public IBerkeleyDbWrapper
 {
     private:
         std::unique_ptr<DB, BerkeleyRpmDbDeleter>  m_db;
@@ -38,8 +38,9 @@ class BerkeleyDbWrapper : public IBerkeleyDbWrapper
             std::memset(&data, 0, sizeof(DBT));
             return m_cursor->c_get(m_cursor.get(), &key, &data, DB_NEXT);
         }
-
-        ~BerkeleyDbWrapper() { }
+        // LCOV_EXCL_START
+        ~BerkeleyDbWrapper() = default;
+        // LCOV_EXCL_STOP
         explicit BerkeleyDbWrapper(const std::string & directory)
         {
             int ret;

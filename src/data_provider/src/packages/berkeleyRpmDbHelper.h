@@ -36,6 +36,10 @@ constexpr auto RPM_DATABASE {"/var/lib/rpm/Packages"};
 constexpr auto FIRST_ENTRY_OFFSET { 8 };
 constexpr auto ENTRY_SIZE { 16 };
 
+constexpr auto INT32_TYPE {4};
+constexpr auto STRING_TYPE {6};
+constexpr auto STRING_VECTOR_TYPE {9};
+
 struct BerkeleyHeaderEntry
 {
     std::string tag;
@@ -114,9 +118,6 @@ class BerkeleyRpmDBReader
         {
             std::string retVal;
             auto bytes { reinterpret_cast<char *>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
-            constexpr auto INT32_TYPE {4};
-            constexpr auto STRING_TYPE {6};
-            constexpr auto STRING_VECTOR_TYPE {9};
 
             for (const auto & TAG : TAG_NAMES)
             {
