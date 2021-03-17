@@ -105,6 +105,10 @@ int local_start()
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+    if (agt->force_reconnect_interval) {
+        //JJP Ver como queda este mensaje
+        minfo("Using force_reconnect_interval, Wazuh Agent will reconnect every %d seconds", agt->force_reconnect_interval);
+    }
 
     // Resolve hostnames
     rc = 0;

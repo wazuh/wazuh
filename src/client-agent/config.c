@@ -16,6 +16,7 @@
 
 /* Global variables */
 time_t available_server;
+time_t last_connection_time;
 int run_foreground;
 keystore keys;
 agent *agt;
@@ -85,6 +86,7 @@ cJSON *getClientConfig(void) {
     if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
     cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
     cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
+    cJSON_AddNumberToObject(client,"force_reconnect_interval",agt->force_reconnect_interval);
     cJSON_AddNumberToObject(client,"ip_update_interval",agt->main_ip_update_interval);
     if (agt->lip) cJSON_AddStringToObject(client,"local_ip",agt->lip);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
