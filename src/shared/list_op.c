@@ -361,3 +361,29 @@ void OSList_CleanNodes(OSList *list) {
     w_mutex_unlock((pthread_mutex_t *)&list->mutex);
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 }
+
+void OSList_CleanOnlyNodes(OSList *list) {
+    if (list == NULL) {
+        return;
+    }
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    OSListNode *aux_node = NULL;
+
+    while(list->first_node != NULL) {
+        aux_node = list->first_node;
+        list->first_node = aux_node->next;
+        os_free(aux_node);
+    }
+
+    list->last_node = NULL;
+    list->cur_node = NULL;
+    list->first_node = NULL;
+
+    list->currently_size = 0;
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+}
