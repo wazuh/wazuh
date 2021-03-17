@@ -27,7 +27,7 @@ docutils==0.15.2
 ecdsa==0.13.3
 future==0.17.1
 google-api-core==1.16.0
-google-auth==1.14.1
+google-auth==1.28.0
 google-cloud-pubsub==1.4.3
 googleapis-common-protos==1.51.0
 grpc-google-iam-v1==0.12.3
