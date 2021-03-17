@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "string.h"
 #include "../os_regex/os_regex.h"
+#include "string_op.h"
 
 #ifdef WIN32
 #ifdef EVENTCHANNEL_SUPPORT
