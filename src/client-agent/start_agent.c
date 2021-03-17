@@ -120,6 +120,7 @@ bool connect_server(int server_id, bool verbose)
             }
         #endif
         agt->rip_id = server_id;
+        last_connection_time = (int)time(NULL);
         return true;
     }
     return false;
