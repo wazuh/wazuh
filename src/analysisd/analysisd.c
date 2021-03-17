@@ -2102,7 +2102,8 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     rule_ar++;
                 }
             }
-            
+
+
             /* Copy the structure to the state memory of if_matched_sid */
             if (t_currently_rule->sid_prev_matched) {
                 OSListNode *node;
