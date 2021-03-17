@@ -146,7 +146,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             }
         } else if (strcmp(node[i]->element, xml_force_reconnect_interval) == 0) {
             long t = w_parse_time(node[i]->content);
-            if (t <= 0) {
+            if (t < 0) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 logr->force_reconnect_interval = t;
