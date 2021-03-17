@@ -41,39 +41,16 @@ SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.t
 ##########
 WriteSyscheck()
 {
-    # Select file to write
-    if [ "X$1" = "Xagent" ]; then
-      WRITE_TO="${NEWCONFIG_AGENT}"
-    else
-      WRITE_TO="${NEWCONFIG_MANAGER}"
-    fi
-
     # Adding to the config file
     if [ "X$SYSCHECK" = "Xyes" ]; then
-      SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      if [ "$SYSCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      fi
-      cat ${SYSCHECK_TEMPLATE} >> $WRITE_TO
-      echo "" >> $WRITE_TO
+      SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG_AGENT
+      echo "" >> $NEWCONFIG_AGENT
     else
-      if [ "$1" = "manager" ]; then
-        echo "  <syscheck>" >> $NEWCONFIG_MANAGER
-        echo "    <disabled>yes</disabled>" >> $NEWCONFIG_MANAGER
-        echo "" >> $NEWCONFIG_MANAGER
-        echo "    <scan_on_start>yes</scan_on_start>" >> $NEWCONFIG_MANAGER
-        echo "" >> $NEWCONFIG_MANAGER
-        echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG_MANAGER
-        echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG_MANAGER
-        echo "" >> $NEWCONFIG_MANAGER
-        echo "  </syscheck>" >> $NEWCONFIG_MANAGER
-        echo "" >> $NEWCONFIG_MANAGER
-      else
-        echo "  <syscheck>" >> $NEWCONFIG_AGENT
-        echo "    <disabled>yes</disabled>" >> $NEWCONFIG_AGENT
-        echo "  </syscheck>" >> $NEWCONFIG_AGENT
-        echo "" >> $NEWCONFIG_AGENT
-      fi
+      echo "  <syscheck>" >> $NEWCONFIG_AGENT
+      echo "    <disabled>yes</disabled>" >> $NEWCONFIG_AGENT
+      echo "  </syscheck>" >> $NEWCONFIG_AGENT
+      echo "" >> $NEWCONFIG_AGENT
     fi
 }
 
@@ -106,31 +83,24 @@ DisableAuthd()
 ##########
 WriteRootcheck()
 {
-    # Select file to write
-    if [ "X$1" = "Xagent" ]; then
-      WRITE_TO="${NEWCONFIG_AGENT}"
-    else
-      WRITE_TO="${NEWCONFIG_MANAGER}"
-    fi
-
     # Adding to the config file
     if [ "X$ROOTCHECK" = "Xyes" ]; then
-      if [ ${INSTYPE} = 'agent' ]; then
-        ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.agent.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      else
-        ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      fi
+      ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
 
-      if [ "$ROOTCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      if ([ ${INSTYPE} = 'server' ] || [ ${INSTYPE} = 'local' ]); then
+        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g; \
+                s|<rootkit_files>${INSTALLDIR}/etc/shared/rootkit_files.txt</rootkit_files>|<rootkit_files>${INSTALLDIR}/etc/rootcheck/rootkit_files.txt</rootkit_files>|g; \
+                s|<rootkit_trojans>${INSTALLDIR}/etc/shared/rootkit_trojans.txt</rootkit_trojans>|<rootkit_trojans>${INSTALLDIR}/etc/rootcheck/rootkit_trojans.txt</rootkit_trojans>|g;" \
+                "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_AGENT
+      else
+        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g;" "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_AGENT
       fi
-      sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${ROOTCHECK_TEMPLATE}" >> $WRITE_TO
-      echo "" >> $WRITE_TO
+      echo "" >> $NEWCONFIG_AGENT
     else
-      echo "  <rootcheck>" >> $WRITE_TO
-      echo "    <disabled>yes</disabled>" >> $WRITE_TO
-      echo "  </rootcheck>" >> $WRITE_TO
-      echo "" >> $WRITE_TO
+      echo "  <rootcheck>" >> $NEWCONFIG_AGENT
+      echo "    <disabled>yes</disabled>" >> $NEWCONFIG_AGENT
+      echo "  </rootcheck>" >> $NEWCONFIG_AGENT
+      echo "" >> $NEWCONFIG_AGENT
     fi
 }
 
@@ -139,21 +109,11 @@ WriteRootcheck()
 ##########
 WriteSyscollector()
 {
-    # Select file to write
-    if [ "X$1" = "Xagent" ]; then
-      WRITE_TO="${NEWCONFIG_AGENT}"
-    else
-      WRITE_TO="${NEWCONFIG_MANAGER}"
-    fi
-
     # Adding to the config file
     if [ "X$SYSCOLLECTOR" = "Xyes" ]; then
-      SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      if [ "$SYSCOLLECTOR_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      fi
-      cat ${SYSCOLLECTOR_TEMPLATE} >> $WRITE_TO
-      echo "" >> $WRITE_TO
+      SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG_AGENT
+      echo "" >> $NEWCONFIG_AGENT
     fi
 }
 
@@ -162,18 +122,11 @@ WriteSyscollector()
 ##########
 WriteConfigurationAssessment()
 {
-    # Select file to write
-    if [ "X$1" = "Xagent" ]; then
-      WRITE_TO="${NEWCONFIG_AGENT}"
-    else
-      WRITE_TO="${NEWCONFIG_MANAGER}"
-    fi
-
     # Adding to the config file
     if [ "X$SECURITY_CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
       SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $WRITE_TO
-      echo "" >> $WRITE_TO
+      cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG_AGENT
+      echo "" >> $NEWCONFIG_AGENT
     fi
 }
 
@@ -248,13 +201,6 @@ GenerateAuthCert()
 ##########
 WriteLogs()
 {
-  # Select file to write
-  if [ "X$2" = "Xagent" ]; then
-    WRITE_TO="${NEWCONFIG_AGENT}"
-  else
-    WRITE_TO="${NEWCONFIG_MANAGER}"
-  fi
-
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
   for i in ${LOCALFILES_TMP}; do
       field1=$(echo $i | cut -d\: -f1)
@@ -280,20 +226,20 @@ WriteLogs()
         if [ "$1" = "echo" ]; then
           echo "    -- $FILE"
         elif [ "$1" = "add" ]; then
-          echo "  <localfile>" >> $WRITE_TO
+          echo "  <localfile>" >> $NEWCONFIG_AGENT
           if [ "$FILE" = "snort" ]; then
             head -n 1 $FILE|grep "\[**\] "|grep -v "Classification:" > /dev/null
             if [ $? = 0 ]; then
-              echo "    <log_format>snort-full</log_format>" >> $WRITE_TO
+              echo "    <log_format>snort-full</log_format>" >> $NEWCONFIG_AGENT
             else
-              echo "    <log_format>snort-fast</log_format>" >> $WRITE_TO
+              echo "    <log_format>snort-fast</log_format>" >> $NEWCONFIG_AGENT
             fi
           else
-            echo "    <log_format>$LOG_FORMAT</log_format>" >> $WRITE_TO
+            echo "    <log_format>$LOG_FORMAT</log_format>" >> $NEWCONFIG_AGENT
           fi
-          echo "    <location>$FILE</location>" >>$WRITE_TO
-          echo "  </localfile>" >> $WRITE_TO
-          echo "" >> $WRITE_TO
+          echo "    <location>$FILE</location>" >>$NEWCONFIG_AGENT
+          echo "  </localfile>" >> $NEWCONFIG_AGENT
+          echo "" >> $NEWCONFIG_AGENT
         fi
       fi
   done
@@ -382,21 +328,21 @@ WriteAgent()
     echo "" >> $NEWCONFIG_AGENT
 
     # Rootcheck
-    WriteRootcheck "agent"
+    WriteRootcheck
 
     # Syscollector configuration
-    WriteSyscollector "agent"
+    WriteSyscollector
 
     # Configuration assessment configuration (sca)
-    WriteConfigurationAssessment "agent"
+    WriteConfigurationAssessment
 
     # Syscheck
-    WriteSyscheck "agent"
+    WriteSyscheck
 
     # Write the log files
     if [ "X${NO_LOCALFILES}" = "X" ]; then
       echo "  <!-- Log analysis -->" >> $NEWCONFIG_AGENT
-      WriteLogs "add" "agent"
+      WriteLogs "add"
     else
       echo "  <!-- Log analysis -->" >> $NEWCONFIG_AGENT
     fi
