@@ -324,3 +324,42 @@ cJSON *getManagerLabelsConfig(void) {
 
     return root;
 }
+
+
+cJSON * getRulesetConfig(void) {
+
+    cJSON * root = cJSON_CreateObject();
+    cJSON * ruleset = cJSON_CreateObject();
+
+    if (Config.includes != NULL) {
+        cJSON * rule_files = cJSON_CreateArray();
+        // All the included rules files are added to the JSON structure (the explicitly excluded ones are not added)
+        for (int i = 0; Config.includes[i] != NULL; i++) {
+            cJSON_AddItemToArray(rule_files, cJSON_CreateString(Config.includes[i]));
+        }
+        cJSON_AddItemToObject(ruleset, "rule_files", rule_files);
+    }
+
+    if (Config.decoders != NULL) {
+        cJSON * decoder_files = cJSON_CreateArray();
+        // All the included decoders files are added to the JSON structure (the explicitly excluded ones are not added)
+        for (int i = 0; Config.decoders[i] != NULL; i++) {
+            cJSON_AddItemToArray(decoder_files, cJSON_CreateString(Config.decoders[i]));
+        }
+        cJSON_AddItemToObject(ruleset, "decoder_files", decoder_files);
+    }
+
+    if (Config.lists != NULL) {
+        cJSON * list = cJSON_CreateArray();
+        for (int i = 0; Config.lists[i] != NULL; i++) {
+            cJSON_AddItemToArray(list, cJSON_CreateString(Config.lists[i]));
+        }
+        cJSON_AddItemToObject(ruleset, "list", list);
+    }
+
+    cJSON_AddStringToObject(ruleset, "event_correlation", Config.do_correlate_events ? "yes":"no");
+
+    cJSON_AddItemToObject(root, "ruleset", ruleset);
+
+    return root;
+}

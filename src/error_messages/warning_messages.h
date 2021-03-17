@@ -83,7 +83,7 @@
                                                 "(decoder `%s`). Default value will be used"
 #define ANALYSISD_DEC_DEPRECATED_OPT_VALUE      "(7603): Deprecated value '%s' in '%s' option " \
                                                 "(decoder `%s`). Default value will be used"
-#define ANALYSISD_INV_CORRELATION_VALUE         "(7604): Wrong event_correlation's label value: '%s'. " \
+#define ANALYSISD_INV_CORRELATION_VALUE         "(7604): Invalid value '%s' in 'event_correlation' label. " \
                                                 "Allowed values are 'yes' or 'no'. Default value 'yes' will be used."
 
 /* Logcollector */
