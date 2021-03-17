@@ -80,38 +80,24 @@ def allowed_fields(filters: Dict) -> List:
     return [field for field in filters]
 
 
-def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: bool = True) -> bool:
+def is_safe_path(path: str, basedir: str = common.ossec_path, relative: bool = True) -> bool:
     """
     Checks if a path is correct
     :param path: Path to be checked
     :param basedir: Wazuh installation directory
-    :param follow_symlinks: True if path is relative, False if it is absolute
+    :param relative: True if path is relative, False if it is absolute
     :return: True if path is correct, False otherwise
     """
     # Protect path
     if './' in path or '../' in path:
         return False
 
-    # Resolve symbolic links
-    if follow_symlinks:
-        full_path = common.ossec_path + path
-        return os.path.realpath(full_path).startswith(basedir)
+    if relative:
+        # Resolve symbolic links
+        full_path = os.path.realpath(os.path.join(basedir, path))
+        return os.path.commonpath([full_path, basedir]) == basedir
 
-    return os.path.abspath(path).startswith(basedir)
-
-
-def is_wazuh_path(path: str, basedir: str = common.ossec_path) -> bool:
-    """
-    Check if an absolute path is inside Wazuh installation directory
-    :param path: Path to be checked
-    :param basedir: Wazuh installation directory
-    :return: True if path is correct, False otherwise
-    """
-    # Protect path
-    if './' in path or '../' in path:
-        return False
-
-    return os.path.abspath(path).startswith(basedir)
+    return os.path.commonpath([os.path.abspath(path), basedir]) == basedir
 
 
 @draft4_format_checker.checks("alphanumeric")
@@ -171,7 +157,7 @@ def format_path(value):
 
 @draft4_format_checker.checks("wazuh_path")
 def format_wazuh_path(value):
-    if not is_wazuh_path(value):
+    if not is_safe_path(value, relative=False):
         return False
     return check_exp(value, _paths)
 
