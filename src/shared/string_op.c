@@ -759,6 +759,54 @@ long w_parse_time(const char * string) {
     return seconds >= 0 ? seconds : -1;
 }
 
+// Get time unit from seconds
+
+char*  w_seconds_to_time_unit(long seconds, bool long_format) {
+
+    if (seconds < 0) {
+        return "invalid";
+    }
+    else if (seconds >= 604800) {
+        return long_format ? "week(s)" : "w" ;
+    }
+    else if (seconds >= 86400) {
+        return long_format ? "day(s)" : "d" ;
+    }
+    else if (seconds >= 3600) {
+        return long_format ? "hour(s)" : "h" ;
+    }
+    else if (seconds >= 60) {
+       return long_format ? "minute(s)" : "m" ;
+    }
+    else  {
+       return long_format ? "second(s)" : "s" ;
+    }
+}
+
+// Get time value from seconds
+
+long w_seconds_to_time_value(long seconds) {
+    
+    if(seconds < 0) {
+        return -1;
+    }
+    else if (seconds >= 604800) {
+        return seconds/604800;
+    }
+    else if (seconds >= 86400) {
+        return seconds/86400;
+    }
+    else if (seconds >= 3600) {
+        return seconds/3600;
+    }
+    else if (seconds >= 60) {
+        return seconds/60;
+    }
+    else {
+        return seconds;
+    }
+}
+
 char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)
 {
     if (!encoded_buffer) {

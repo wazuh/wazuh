@@ -71,8 +71,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
     if (agt->force_reconnect_interval) {
-        //JJP Ver como queda este mensaje
-        minfo("Using force_reconnect_interval, Wazuh Agent will reconnect every %d seconds", agt->force_reconnect_interval);
+        minfo("Using force_reconnect_interval, Wazuh Agent will reconnect every %ld %s", w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
     }
 
     if (!getuname()) {

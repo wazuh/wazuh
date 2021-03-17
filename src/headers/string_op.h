@@ -160,6 +160,35 @@ int w_parse_bool(const char * string);
  */
 long w_parse_time(const char * string);
 
+/**
+ * @brief Convert seconds into the greater valid time unit (s|m|h|d|w).
+ * The convertion will always round down the output. 
+ *
+ * s: seconds
+ * m: minutes
+ * h: hours
+ * d: days
+ * w: weeks
+ *
+ * @param seconds Positive amount of seconds.
+ * @param long_format Format of the output. 
+ *                    TRUE: long format ("second(s)").
+ *                    FALSE: short format ("s")
+ * @return String with the time unit.
+ * @retval "invalid" if the input is negative. A time unit if the input is valid.
+ */
+char* w_seconds_to_time_unit(long seconds, bool long_format);
+
+/**
+ * @brief Convert seconds into the greater time value.
+ *  * The convertion will always round down the output.
+ *
+ * @param seconds Positive amount of seconds.
+ * @return Value of the seconds converted to the greater time unit.
+ * @retval - if the input is negative. A time value if the input is valid.
+ */
+long w_seconds_to_time_value(long seconds);
+
 /*
  * @brief Length of the initial segment of s which consists entirely of non-escaped bytes different from reject
  *

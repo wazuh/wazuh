@@ -145,14 +145,11 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_force_reconnect_interval) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-            logr->force_reconnect_interval = atoi(node[i]->content);
-            if (logr->force_reconnect_interval < 0) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
+            long t = w_parse_time(node[i]->content);
+            if (t <= 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                logr->force_reconnect_interval = t;
             }
         } else if (strcmp(node[i]->element, xml_main_ip_update_interval) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
