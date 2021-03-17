@@ -13939,7 +13939,7 @@ paths:
       description: "This method should be called to get an API token using an authorization context body. This token
       will expire after auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT
       /security/config"
-      operationId: api.controllers.security_controller.login_user
+      operationId: api.controllers.security_controller.run_as_login
       parameters:
         - $ref: '#/components/parameters/raw'
       security:
