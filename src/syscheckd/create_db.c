@@ -394,28 +394,6 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
     return 0;
 }
 
-static int append_inode_paths(unsigned long inode, unsigned long dev, OSList *stack) {
-    int i;
-    char **inode_paths;
-
-    assert(stack != NULL);
-
-    inode_paths = fim_db_get_paths_from_inode(syscheck.database, inode, dev);
-    if (inode_paths == NULL) {
-        return -1;
-    }
-
-    // Add all of the files to the stack
-    for (i = 0; inode_paths[i] != NULL; ++i) {
-        char *duplicated_path;
-        os_strdup(inode_paths[i], duplicated_path);
-        OSList_AddData(stack, duplicated_path);
-    }
-
-    free_strarray(inode_paths);
-    return 0;
-}
-
 typedef enum { FIM_FILE_UPDATED, FIM_FILE_DELETED, FIM_FILE_ADDED_PATHS, FIM_FILE_ERROR } fim_sanitize_state_t;
 
 /**
@@ -489,9 +467,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
     }
 
     // The inode is currently being used, scan those files first
-    if (append_inode_paths(item.statbuf.st_ino, item.statbuf.st_dev, stack) == -1) {
-        return FIM_FILE_ERROR;
-    }
+    fim_db_append_paths_from_inode(syscheck.database, item.statbuf.st_ino, item.statbuf.st_dev, stack);
 
     return FIM_FILE_ADDED_PATHS;
 
@@ -530,7 +506,7 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
 
     OSList_SetFreeDataPointer(stack, free);
 
-    append_inode_paths(inode, dev, stack);
+    fim_db_append_paths_from_inode(syscheck.database, inode, dev, stack);
 
     while (stack->currently_size != 0) {
         char *current_path;

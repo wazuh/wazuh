@@ -44,7 +44,6 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_DELETE_PATH] = "DELETE FROM file_entry WHERE path = ?;",
     [FIMDB_STMT_DELETE_DATA] = "DELETE FROM file_data WHERE rowid = ?;",
     [FIMDB_STMT_GET_PATHS_INODE] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
-    [FIMDB_STMT_GET_PATHS_INODE_COUNT] = "SELECT count(*) FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE file_data.inode=? AND file_data.dev=?;",
     [FIMDB_STMT_SET_SCANNED] = "UPDATE file_entry SET scanned = 1 WHERE path = ?;",
     [FIMDB_STMT_GET_INODE_ID] = "SELECT inode_id FROM file_entry WHERE path = ?",
     [FIMDB_STMT_GET_COUNT_PATH] = "SELECT count(*) FROM file_entry",

@@ -44,6 +44,18 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path);
 char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
 
 /**
+ * @brief Get all the paths asociated to an inode
+ *
+ * @param fim_sql FIM databse struct.
+ * @param inode Inode.
+ * @param dev Device.
+ * @param list A list to which the paths retrieved from the DB will be added to.
+ *
+ * @return The number of paths retrieved from the DB
+ */
+int fim_db_append_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev, OSList *list);
+
+/**
  * @brief Insert or update entry data.
  *
  * @param fim_sql FIM database struct.
