@@ -426,10 +426,8 @@ UpdateOldVersions()
         OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
         OSSEC_CONF_FILE_BACKUP="$PREINSTALLEDDIR/etc/ossec.conf.backup"
 
-        # ossec.conf -> ossec.conf.backup
-        cp -pr $OSSEC_CONF_FILE $OSSEC_CONF_FILE_BACKUP
-        # deleted ossec.conf
-        rm $OSSEC_CONF_FILE
+        # rename ossec.conf to ossec.conf.backup
+        mv $OSSEC_CONF_FILE $OSSEC_CONF_FILE_BACKUP
 
         # If it is Wazuh 2.0 or newer, exit
         if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
