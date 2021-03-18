@@ -300,5 +300,5 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutputHeaderWithNoData)
         .WillOnce(DoAll(SetArgReferee<0>(key),SetArgReferee<1>(data),Return(0)))
         .WillOnce(DoAll(SetArgReferee<0>(key),SetArgReferee<1>(data),Return(0)));
     BerkeleyRpmDBReader reader(dbWrapper);
-    EXPECT_EQ("\t\t\t\t\t\t\t\t\t\t\n", reader.getNext());
+    EXPECT_TRUE(reader.getNext().empty());
 }

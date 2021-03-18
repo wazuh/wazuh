@@ -79,12 +79,11 @@ class BerkeleyRpmDBReader final
 
                 const auto dataSize { Utils::toInt32BE(bytes + sizeof(int32_t)) };
 
-                retVal.resize(indexSize);
-
-                bytes = &bytes[FIRST_ENTRY_OFFSET];
-
                 if (FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize <= data.size)
                 {
+                    bytes = &bytes[FIRST_ENTRY_OFFSET];
+
+                    retVal.resize(indexSize);
                     // Read all indexes
                     for (auto i = 0; i < indexSize; ++i)
                     {
