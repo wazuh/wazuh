@@ -17,7 +17,7 @@
 typedef enum agents_db_access {
     WDB_AGENTS_VULN_CVE_INSERT,
     WDB_AGENTS_VULN_CVE_CLEAR,
-    WDB_AGENTS_VULN_CVE_UPDATE
+    WDB_AGENTS_VULN_CVE_UPDATE_STATUS
 } agents_db_access;
 
 /**
@@ -57,7 +57,7 @@ int wdb_agents_vuln_cve_clear(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cve_update(int id,
+int wdb_agents_vuln_cve_update_status(int id,
                                       const char *old_status,
                                       const char *new_status,
                                       int *sock);
