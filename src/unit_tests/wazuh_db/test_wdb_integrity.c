@@ -32,6 +32,7 @@ static int setup_wdb_t(void **state) {
         return -1;
     }
 
+    test_mode = 1;
     *state = data;
     return 0;
 }
@@ -44,6 +45,7 @@ static int teardown_wdb_t(void **state) {
         os_free(data);
     }
 
+    test_mode = 0;
     return 0;
 }
 
@@ -794,6 +796,32 @@ void test_wdbi_get_last_manager_exec_stmt_fail(void **state)
     int ret_val = wdbi_get_last_manager_checksum(data, WDB_FIM_FILE, manager_checksum);
 
     assert_int_equal (ret_val, OS_INVALID);
+
+//Test wdbi_sha_calculate
+
+void test_wdbi_sha_calculate_success(void **state)
+{
+    const char** test_words = NULL;
+    int ret_val = -1;
+    os_sha1 hexdigest;
+
+    os_malloc(6 * sizeof(char*),test_words);
+
+    test_words[0] = "FirstWord";
+    test_words[1] = "SecondWord";
+    test_words[2] = "Word number 3";
+    test_words[3] = "";
+    test_words[4] = " ";
+    test_words[5]= NULL;
+
+    test_mode = 0;
+
+    ret_val = wdbi_sha_calculation(test_words, hexdigest);
+
+    assert_int_equal (ret_val, 0);
+    assert_string_equal(hexdigest, "159a9a6e19ff891a8560376df65a078e064bd0ce");
+
+    os_free(test_words);
 }
 
 int main(void) {
@@ -856,6 +884,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_checksum_success, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_stmt_cache_fail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_get_last_manager_exec_stmt_fail, setup_wdb_t, teardown_wdb_t),
+
+        //Test wdbi_sha_calculate
+        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculate_success, setup_wdb_t, teardown_wdb_t),
+
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
