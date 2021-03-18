@@ -11,12 +11,18 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "../../common.h"
 
-
+extern int __real_EVP_DigestUpdate(__attribute__((unused)) EVP_MD_CTX *ctx,const void *data, size_t count);
 int __wrap_EVP_DigestUpdate(__attribute__((unused)) EVP_MD_CTX *ctx,
                             const void *data,
                             size_t count) {
-   check_expected(data);
-   check_expected(count);
-   return mock();
+   if (test_mode) {
+      check_expected(data);
+      check_expected(count);
+      return mock();
+   }
+   else {
+     return __real_EVP_DigestUpdate(ctx, data, count);
+   }
 }

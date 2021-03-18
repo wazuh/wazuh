@@ -3590,6 +3590,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
     char * source;
     char * description;
     char * location;
+    char * item_id;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -3797,16 +3798,27 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         description = curr;
         *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Package info query syntax.");
+            mdebug2("Package info query: %s", source);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", source);
+            return -1;
+        }
 
         if (!strcmp(description, "NULL"))
             description = NULL;
 
-        if (!strcmp(next, "NULL"))
-            location = NULL;
-        else
-            location = next;
+        location = curr;
+        *next++ = '\0';
 
-        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, NULL, FALSE), result < 0) {
+        if (!strcmp(location, "NULL"))
+            location = NULL;
+
+        item_id = next;
+
+        if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, item_id, FALSE), result < 0) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
