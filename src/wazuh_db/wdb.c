@@ -206,7 +206,9 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_VULN_CVE_INSERT] = "INSERT OR IGNORE INTO vuln_cves (name, version, architecture, cve) VALUES(?,?,?,?);",
-    [WDB_STMT_VULN_CVE_CLEAR] = "DELETE FROM vuln_cves;"
+    [WDB_STMT_VULN_CVE_CLEAR] = "DELETE FROM vuln_cves;",
+    [WDB_STMT_VULN_CVE_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
+    [WDB_STMT_VULN_CVE_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?"
 };
 
 wdb_config wconfig;
