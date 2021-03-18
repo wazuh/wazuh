@@ -98,13 +98,8 @@ private:
 
         const auto getDataFnc
         {
-            [this](std::istream& data)
+            [this, &filePath](std::istream& data)
             {
-                const std::string filePathStr
-                {
-                    std::istreambuf_iterator<char>(data),
-                    std::istreambuf_iterator<char>()
-                };
                 std::string line;
                 while(std::getline(data, line))
                 {
@@ -131,8 +126,8 @@ private:
                         m_description = getValueFnc(line);
                     }
                 }
-                m_source   = filePathStr.find(UTILITIES_FOLDER) ? "utilities" : "applications";
-                m_location = filePathStr;
+                m_source   = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                m_location = filePath;
             }
         };
 
