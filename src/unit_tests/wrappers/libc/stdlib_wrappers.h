@@ -11,7 +11,6 @@
 #ifndef STDLIB_WRAPPERS_H
 #define STDLIB_WRAPPERS_H
 
-
 int __wrap_atexit(void (*callback)(void));
 
 char *__wrap_realpath(const char *path, char *resolved_path);
@@ -20,7 +19,5 @@ int __wrap_system(const char *__command);
 void expect_system(int ret);
 
 int __wrap_mkstemp(char *template);
-
-char *__wrap_getenv(const char *name);
 
 #endif

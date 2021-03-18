@@ -50,9 +50,3 @@ void expect_system(int ret) {
 int __wrap_mkstemp(__attribute__((unused)) char *template) {
     return mock();
 }
-
-char * __wrap_getenv(const char *name) {
-    check_expected(name);
-
-    return mock_type(char *);
-}

@@ -26,6 +26,15 @@
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
 
 
+extern char * __real_getenv(const char *name);
+char * __wrap_getenv(const char *name) {
+    if (!test_mode) {
+        return __real_getenv(name);
+    }
+    check_expected(name);
+    return mock_type(char *);
+}
+
 /* setups/teardowns */
 static int setup_group(void **state) {
     test_mode = 1;
@@ -127,7 +136,6 @@ void test_DeletePID_failure(void **state)
     (void) state;
     int ret = 0;
     struct stat stat_delete = { .st_mode = 0 };
-    char buffer[4096] = {'\0'};
 
     expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
     will_return(__wrap_unlink, 1);
@@ -136,8 +144,7 @@ void test_DeletePID_failure(void **state)
     will_return(__wrap_stat, &stat_delete);
     will_return(__wrap_stat, 0);
 
-    snprintf(buffer, 4096, DELETE_ERROR, "var/run/test-2345.pid", 0, "Success");
-    expect_string(__wrap__mferror, formatted_msg, buffer);
+    expect_string(__wrap__mferror, formatted_msg, "(1129): Could not unlink file 'var/run/test-2345.pid' due to [(0)-(Success)].");
 
     ret = DeletePID("test");
     assert_int_equal(-1, ret);
@@ -814,7 +821,7 @@ int main(void) {
         cmocka_unit_test(test_w_homedir_third_attempt),
         cmocka_unit_test(test_w_homedir_check_argv0),
         cmocka_unit_test(test_w_homedir_env_var),
-        cmocka_unit_test(test_w_homedir_stat_fail)
+        cmocka_unit_test(test_w_homedir_stat_fail),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),
