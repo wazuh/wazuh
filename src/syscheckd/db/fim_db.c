@@ -51,6 +51,7 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_GET_INODE] = "SELECT inode FROM file_data where rowid=(SELECT inode_id FROM file_entry WHERE path = ?)",
     [FIMDB_STMT_GET_PATH_FROM_PATTERN] = "SELECT path FROM file_entry INNER JOIN file_data ON file_data.rowid=file_entry.inode_id WHERE path LIKE ?",
     [FIMDB_STMT_DATA_ROW_EXISTS] = "SELECT EXISTS(SELECT 1 FROM file_data WHERE inode=? AND dev=?);",
+    [FIMDB_STMT_PATH_IS_SCANNED] = "SELECT scanned FROM file_entry WHERE path = ?;",
     // Registries
 #ifdef WIN32
     [FIMDB_STMT_REPLACE_REG_DATA] = "INSERT OR REPLACE INTO registry_data (key_id, name, type, size, hash_md5, hash_sha1, hash_sha256, scanned, last_event, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",

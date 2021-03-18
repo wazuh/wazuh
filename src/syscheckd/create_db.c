@@ -134,6 +134,10 @@ time_t fim_scan() {
 
     mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR_PATH, syscheck.diff_folder_size);
 
+    w_mutex_lock(&syscheck.fim_entry_mutex);
+    fim_db_set_all_unscanned(syscheck.database);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
+
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
     while (syscheck.dir[it] != NULL) {
@@ -190,10 +194,6 @@ time_t fim_scan() {
         }
 #endif
     }
-
-    w_mutex_lock(&syscheck.fim_entry_mutex);
-    fim_db_set_all_unscanned(syscheck.database);
-    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     gettime(&end);
     end_of_scan = time(NULL);
@@ -623,6 +623,20 @@ static cJSON *_unsafe_fim_file(const char *path, fim_element *item, whodata_evt 
     cJSON *json_event = NULL;
     char *diff = NULL;
     int alert_type;
+
+    if (item->mode == FIM_SCHEDULED) {
+        // Prevent analysis of the same file twice during the same scan
+        switch (fim_db_file_is_scanned(syscheck.database, path)) {
+            case FIMDB_ERR:
+                mdebug2("Failed to query status of file '%s'", path);
+                // Fallthrough
+            case 1:
+                return NULL;
+            case 0:
+            default:
+                break;
+        }
+    }
 
     //Get file attributes
     new = fim_get_data(path, item);

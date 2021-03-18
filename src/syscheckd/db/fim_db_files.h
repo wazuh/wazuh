@@ -226,4 +226,16 @@ int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_fi
  */
 int fim_db_data_exists(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
 
+/**
+ * @brief Checks the DB to see if a given file has already been scanned.
+ *
+ * @param fim_sql FIM database struct.
+ * @param path Path to the file we want to verify.
+ * @return An integer signaling if the files was scanned or not.
+ * @retval 1 if the files was scanned already.
+ * @retval 0 if tha file has not been scanned or no entry was found on the DB.
+ * @retval FIMDB_ERR if an error happened during the query.
+ */
+int fim_db_file_is_scanned(fdb_t *fim_sql, const char *path);
+
 #endif /* FIM_DB_FILES_H */
