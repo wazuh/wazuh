@@ -134,11 +134,11 @@ time_t fim_scan() {
 
     mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR_PATH, syscheck.diff_folder_size);
 
+    w_mutex_lock(&syscheck.fim_scan_mutex);
+
     w_mutex_lock(&syscheck.fim_entry_mutex);
     fim_db_set_all_unscanned(syscheck.database);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
-
-    w_mutex_lock(&syscheck.fim_scan_mutex);
 
     while (syscheck.dir[it] != NULL) {
         memset(&item, 0, sizeof(fim_element));

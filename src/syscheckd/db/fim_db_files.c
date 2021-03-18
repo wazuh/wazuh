@@ -282,12 +282,12 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
     os_calloc(2, sizeof(char *), paths);
 
     for (i = 0; sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]) == SQLITE_ROW; i++) {
-        os_realloc(paths, (i + 1) * sizeof(char *), paths);
+        os_realloc(paths, (i + 2) * sizeof(char *), paths);
 
         sqlite_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
     }
 
-    paths[i + 1] = NULL;
+    paths[i] = NULL;
 
     fim_db_check_transaction(fim_sql);
 
