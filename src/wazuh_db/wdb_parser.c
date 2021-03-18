@@ -6061,6 +6061,9 @@ int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
     else if (strcmp(next, "clear") == 0) {
         result = wdb_parse_agents_clear_vuln_cve(wdb, output);
     }
+    else if (strcmp(next, "update") == 0) {
+        result = wdb_parse_agents_update_vuln_cve(wdb, tail, output);
+    }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve action: %s", next);
     }
@@ -6115,5 +6118,42 @@ int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
     else {
         snprintf(output, OS_MAXSTR + 1, "ok");
     }
+    return ret;
+}
+
+int wdb_parse_agents_update_vuln_cve(wdb_t* wdb, char* input, char* output) {
+    cJSON *data = NULL;
+    const char *error = NULL;
+    int ret = OS_INVALID;
+
+    data = cJSON_ParseWithOpts(input, &error, TRUE);
+
+    if (!data) {
+        mdebug1("Invalid vuln_cve JSON syntax when updating status value.");
+        mdebug2("JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+    }
+    else {
+        cJSON* old_status = cJSON_GetObjectItem(data, "old_status");
+        cJSON* new_status = cJSON_GetObjectItem(data, "new_status");
+        // Required fields
+        if (!cJSON_IsString(old_status) || !cJSON_IsString(new_status)) {
+            mdebug1("Invalid vuln_cve JSON data when updating status value. Not compliant with constraints defined in the database.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
+        }
+
+        else {
+            ret = wdb_agents_update_vuln_cve(wdb, old_status->valuestring, new_status->valuestring);
+            if (OS_SUCCESS != ret) {
+                mdebug1("DB(%s) Cannot execute vuln_cve update command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve update command; SQL err: %s", sqlite3_errmsg(wdb->db));
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
+        }
+    }
+
+    cJSON_Delete(data);
     return ret;
 }
