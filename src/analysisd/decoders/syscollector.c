@@ -22,6 +22,7 @@
 #include "buffer_op.h"
 #include <time.h>
 #include "wazuhdb_op.h"
+#include "wazuh_db/wdb.h"
 
 static int error_package = 0;
 static int prev_package_id = 0;
@@ -1337,6 +1338,11 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
                 error_package = 0;
             }
         }
+        // The reference for packages is calculated with the name, version and architecture
+        os_sha1 hexdigest;
+        char** fields_to_hash = NULL;
+        os_malloc(4 * sizeof(char*),fields_to_hash);
+
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
         cJSON * format = cJSON_GetObjectItem(package, "format");
         cJSON * name = cJSON_GetObjectItem(package, "name");
@@ -1374,8 +1380,10 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         if (name) {
             wm_strcat(&msg, name->valuestring, '|');
             fillData(lf,"program.name",name->valuestring);
+            os_strdup(name->valuestring, fields_to_hash[0]);
         } else {
             wm_strcat(&msg, "NULL", '|');
+            os_strdup("", fields_to_hash[0]);
         }
 
         if (priority) {
@@ -1418,15 +1426,19 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         if (version) {
             wm_strcat(&msg, version->valuestring, '|');
             fillData(lf,"program.version",version->valuestring);
+            os_strdup(version->valuestring, fields_to_hash[1]);
         } else {
             wm_strcat(&msg, "NULL", '|');
+            os_strdup("", fields_to_hash[1]);
         }
 
         if (architecture) {
             wm_strcat(&msg, architecture->valuestring, '|');
             fillData(lf,"program.architecture",architecture->valuestring);
+            os_strdup(architecture->valuestring, fields_to_hash[2]);
         } else {
             wm_strcat(&msg, "NULL", '|');
+            os_strdup("", fields_to_hash[2]);
         }
 
         if (multiarch) {
@@ -1456,6 +1468,12 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
+
+        //Calculating hash of the NULL terminated array
+        fields_to_hash[3] = NULL;
+        wdbi_sha_calculation((const char **)fields_to_hash, hexdigest);
+        wm_strcat(&msg, hexdigest, '|');
+        free_strarray(fields_to_hash);
 
         char *message;
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
@@ -2035,5 +2053,3 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
     }
     return ret_val;
 }
-
-
