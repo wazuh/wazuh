@@ -387,3 +387,41 @@ end:
     cJSON_Delete(data);
     return retval;
 }
+
+// Method to perform SHA1 hash algorithm to a NULL terminated string array
+ int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest)
+ {
+    size_t it = 0;
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_size;
+    int ret_val = OS_SUCCESS;
+
+    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
+    if (!ctx) {
+        mdebug2("Failed during hash context creation");
+        return OS_INVALID;
+    }
+
+    if (1 != EVP_DigestInit(ctx, EVP_sha1()) ) {
+        mdebug2("Failed during hash context initialization");
+        EVP_MD_CTX_destroy(ctx);
+        return OS_INVALID;
+    }
+
+    while(strings_to_hash[it]) {
+        if (1 != EVP_DigestUpdate(ctx, strings_to_hash[it], strlen(strings_to_hash[it])) ) {
+            mdebug2("Failed during hash context update");
+            ret_val = OS_INVALID;
+            break;
+        }
+        it++;
+    }
+
+    EVP_DigestFinal_ex(ctx, digest, &digest_size);
+    EVP_MD_CTX_destroy(ctx);
+    if (ret_val != OS_INVALID) {
+        OS_SHA1_Hexdigest(digest, hexdigest);
+    }
+
+    return ret_val;
+ }
