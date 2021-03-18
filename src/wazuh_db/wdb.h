@@ -1258,6 +1258,14 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 int wdb_journal_wal(sqlite3 *db);
 
 /**
+*  @brief Calculates the SHA1 hash of all strings stored in a NULL terminated array
+*
+* @param [in] strings_to_hash NULL Terminated array with strings to hash
+* @param [out] hexdigest Final strings hashed
+*/
+ int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest);
+
+/**
  * @brief Function to get a MITRE technique's name.
  *
  * @param [in] wdb The MITRE struct database.
