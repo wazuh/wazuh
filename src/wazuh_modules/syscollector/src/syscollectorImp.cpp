@@ -581,7 +581,7 @@ constexpr auto PORTS_SQL_STATEMENT
        inode BIGINT,
        state TEXT,
        pid BIGINT,
-       process_name TEXT,
+       process TEXT,
        checksum TEXT,
        item_id TEXT,
        PRIMARY KEY (inode, protocol, local_ip, local_port)) WITHOUT ROWID;)"
