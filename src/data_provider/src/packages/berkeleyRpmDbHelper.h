@@ -33,8 +33,8 @@
 #define TAG_ARCH        1022
 
 constexpr auto RPM_DATABASE {"/var/lib/rpm/Packages"};
-constexpr auto FIRST_ENTRY_OFFSET { 8 };
-constexpr auto ENTRY_SIZE { 16 };
+constexpr auto FIRST_ENTRY_OFFSET { 8u };
+constexpr auto ENTRY_SIZE { 16u };
 
 constexpr auto INT32_TYPE {4};
 constexpr auto STRING_TYPE {6};
@@ -71,45 +71,54 @@ class BerkeleyRpmDBReader final
         std::vector<BerkeleyHeaderEntry> parseHeader(const DBT & data)
         {
             auto bytes { reinterpret_cast<uint8_t *>(data.data) };
+            std::vector<BerkeleyHeaderEntry> retVal;
 
-            const auto indexSize { Utils::toInt32BE(bytes) };
-
-            std::vector<BerkeleyHeaderEntry> retVal(indexSize);
-
-            bytes = &bytes[FIRST_ENTRY_OFFSET];
-
-            // Read all indexes
-            for (auto i = 0; i < indexSize; ++i)
+            if (data.size >= FIRST_ENTRY_OFFSET)
             {
-                auto ucp { reinterpret_cast<uint8_t *>(bytes) };
+                const auto indexSize { Utils::toInt32BE(bytes) };
 
-                const auto tag { Utils::toInt32BE(ucp) };
-                ucp += sizeof(int32_t);
+                const auto dataSize { Utils::toInt32BE(bytes + sizeof(int32_t)) };
 
-                const auto it
+                retVal.resize(indexSize);
+
+                bytes = &bytes[FIRST_ENTRY_OFFSET];
+
+                if (FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize <= data.size)
                 {
-                    std::find_if(TAG_NAMES.begin(),
-                                    TAG_NAMES.end(),
-                                    [tag](const auto & pair)
-                                    {
-                                    return tag == pair.first;
-                                    })
-                };
+                    // Read all indexes
+                    for (auto i = 0; i < indexSize; ++i)
+                    {
+                        auto ucp { reinterpret_cast<uint8_t *>(bytes) };
 
-                if (TAG_NAMES.end() != it)
-                {
-                    retVal[i].tag = it->second;
+                        const auto tag { Utils::toInt32BE(ucp) };
+                        ucp += sizeof(int32_t);
 
-                    retVal[i].type = Utils::toInt32BE(ucp);
-                    ucp += sizeof(int32_t);
+                        const auto it
+                        {
+                            std::find_if(TAG_NAMES.begin(),
+                                            TAG_NAMES.end(),
+                                            [tag](const auto & pair)
+                                            {
+                                            return tag == pair.first;
+                                            })
+                        };
 
-                    retVal[i].offset = Utils::toInt32BE(ucp);
-                    ucp += sizeof(int32_t);
+                        if (TAG_NAMES.end() != it)
+                        {
+                            retVal[i].tag = it->second;
 
-                    retVal[i].count = Utils::toInt32BE(ucp);
-                    ucp += sizeof(int32_t);
+                            retVal[i].type = Utils::toInt32BE(ucp);
+                            ucp += sizeof(int32_t);
+
+                            retVal[i].offset = Utils::toInt32BE(ucp);
+                            ucp += sizeof(int32_t);
+
+                            retVal[i].count = Utils::toInt32BE(ucp);
+                            ucp += sizeof(int32_t);
+                        }
+                        bytes = &bytes[ENTRY_SIZE];
+                    }
                 }
-                bytes = &bytes[ENTRY_SIZE];
             }
             return retVal;
         }
@@ -117,41 +126,44 @@ class BerkeleyRpmDBReader final
         std::string parseBody(const std::vector<BerkeleyHeaderEntry> & header, const DBT & data)
         {
             std::string retVal;
-            auto bytes { reinterpret_cast<char *>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
 
-            for (const auto & TAG : TAG_NAMES)
+            if (!header.empty())
             {
-                const auto it
-                {
-                    std::find_if(header.begin(),
-                                header.end(),
-                                [&TAG](const auto & headerEntry)
-                                {
-                                    return TAG.second.compare(headerEntry.tag) == 0;
-                                })
-                };
+                auto bytes { reinterpret_cast<char *>(data.data) + FIRST_ENTRY_OFFSET + (ENTRY_SIZE * header.size()) };
 
-                if (it != header.end())
+                for (const auto & TAG : TAG_NAMES)
                 {
-                    auto ucp { &bytes[it->offset] };
+                    const auto it
+                    {
+                        std::find_if(header.begin(),
+                                    header.end(),
+                                    [&TAG](const auto & headerEntry)
+                                    {
+                                        return TAG.second.compare(headerEntry.tag) == 0;
+                                    })
+                    };
 
-                    if (STRING_TYPE == it->type)
+                    if (it != header.end())
                     {
-                        retVal += ucp;
+                        auto ucp { &bytes[it->offset] };
+
+                        if (STRING_TYPE == it->type)
+                        {
+                            retVal += ucp;
+                        }
+                        else if (INT32_TYPE == it->type)
+                        {
+                            retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t *>(ucp)));
+                        }
+                        else if (STRING_VECTOR_TYPE == it->type)
+                        {
+                            retVal += ucp;
+                        }
                     }
-                    else if (INT32_TYPE == it->type)
-                    {
-                        retVal += std::to_string(Utils::toInt32BE(reinterpret_cast<uint8_t *>(ucp)));
-                    }
-                    else if (STRING_VECTOR_TYPE == it->type)
-                    {
-                        retVal += ucp;
-                    }
+                    retVal += "\t";
                 }
-                retVal += "\t";
+                retVal += "\n";
             }
-            retVal += "\n";
-
             return retVal;
         }
 

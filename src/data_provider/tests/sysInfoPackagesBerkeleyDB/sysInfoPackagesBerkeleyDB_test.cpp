@@ -31,6 +31,8 @@ public:
 TEST_F(SysInfoPackagesBerkeleyDBTest, EmptyTable)
 {
     DBT data, key;
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
     const auto& dbWrapper { std::make_shared<BerkeleyDbWrapperMock>() };
     EXPECT_CALL(*dbWrapper, getRow(_,_))
         .Times(2)
@@ -43,6 +45,8 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, EmptyTable)
 TEST_F(SysInfoPackagesBerkeleyDBTest, EmptyTableTwoCallsCheckHeaderOmit)
 {
     DBT data, key;
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
     const auto& dbWrapper { std::make_shared<BerkeleyDbWrapperMock>() };
     EXPECT_CALL(*dbWrapper, getRow(_,_))
         .Times(3)
@@ -57,21 +61,26 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, EmptyTableTwoCallsCheckHeaderOmit)
 TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutput)
 {
     DBT data, key;
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
     char bytes[FIRST_ENTRY_OFFSET + ENTRY_SIZE * 3 + 6 + 13 + 4 + 1];
     memset(bytes, 0, sizeof(bytes));
     char * cp;
     int * ip;
 
     data.data = bytes;
+    data.size = FIRST_ENTRY_OFFSET + ENTRY_SIZE * 3 + 6 + 13 + 4;
 
     cp = (char*) bytes;
 
-    // Data lenght
+    // index lenght
     ip = (int32_t *)cp;
     *ip = __builtin_bswap32(3);
     cp += 4;
 
-    // unused data
+    // Data lenght
+    ip = (int32_t *)cp;
+    *ip = __builtin_bswap32(23);
     cp += 4;
 
     // Name
@@ -148,21 +157,26 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutput)
 TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutputWithMissingTag)
 {
     DBT data, key;
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
     char bytes[FIRST_ENTRY_OFFSET + ENTRY_SIZE * 3 + 6 + 13 + 4 + 1];
     memset(bytes, 0, sizeof(bytes));
     char * cp;
     int * ip;
 
     data.data = bytes;
+    data.size = FIRST_ENTRY_OFFSET + ENTRY_SIZE * 3 + 6 + 13 + 4;
 
     cp = (char*) bytes;
 
-    // Data lenght
+    // index lenght
     ip = (int32_t *)cp;
     *ip = __builtin_bswap32(3);
     cp += 4;
 
-    // unused data
+    // Data lenght
+    ip = (int32_t *)cp;
+    *ip = __builtin_bswap32(23);
     cp += 4;
 
     // Name
@@ -234,4 +248,57 @@ TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutputWithMissingTag)
         .WillOnce(DoAll(SetArgReferee<0>(key),SetArgReferee<1>(data),Return(0)));
     BerkeleyRpmDBReader reader(dbWrapper);
     EXPECT_EQ("Wazuh\t\t\t1\t\t\t\t\t\t\t\n", reader.getNext());
+}
+
+
+TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutputNoHeader)
+{
+    DBT data, key;
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+
+    data.data = nullptr;
+    data.size = 4;
+
+    const auto& dbWrapper { std::make_shared<BerkeleyDbWrapperMock>() };
+    EXPECT_CALL(*dbWrapper, getRow(_,_))
+        .Times(2)
+        .WillOnce(DoAll(SetArgReferee<0>(key),SetArgReferee<1>(data),Return(0)))
+        .WillOnce(DoAll(SetArgReferee<0>(key),SetArgReferee<1>(data),Return(0)));
+    BerkeleyRpmDBReader reader(dbWrapper);
+    EXPECT_TRUE(reader.getNext().empty());
+}
+
+TEST_F(SysInfoPackagesBerkeleyDBTest, TableTwoCallsCheckOutputHeaderWithNoData)
+{
+    DBT data, key;
+    memset(&key, 0, sizeof(key));
+    memset(&data, 0, sizeof(data));
+    char bytes[FIRST_ENTRY_OFFSET + 1];
+    memset(bytes, 0, sizeof(bytes));
+    char * cp;
+    int * ip;
+
+    data.data = bytes;
+    data.size = 8;
+
+    cp = (char*) bytes;
+
+    // index lenght
+    ip = (int32_t *)cp;
+    *ip = __builtin_bswap32(3);
+    cp += 4;
+
+    // Data lenght
+    ip = (int32_t *)cp;
+    *ip = __builtin_bswap32(23);
+    cp += 4;
+
+    const auto& dbWrapper { std::make_shared<BerkeleyDbWrapperMock>() };
+    EXPECT_CALL(*dbWrapper, getRow(_,_))
+        .Times(2)
+        .WillOnce(DoAll(SetArgReferee<0>(key),SetArgReferee<1>(data),Return(0)))
+        .WillOnce(DoAll(SetArgReferee<0>(key),SetArgReferee<1>(data),Return(0)));
+    BerkeleyRpmDBReader reader(dbWrapper);
+    EXPECT_EQ("\t\t\t\t\t\t\t\t\t\t\n", reader.getNext());
 }
