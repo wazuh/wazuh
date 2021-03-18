@@ -92,12 +92,11 @@ def is_safe_path(path: str, basedir: str = common.ossec_path, relative: bool = T
     if './' in path or '../' in path:
         return False
 
-    if relative:
-        # Resolve symbolic links
-        full_path = os.path.realpath(os.path.join(basedir, path))
-        return os.path.commonpath([full_path, basedir]) == basedir
+    # Resolve symbolic links if present
+    full_path = os.path.realpath(os.path.join(basedir, path.lstrip("/")) if relative else path)
+    full_basedir = os.path.abspath(basedir)
 
-    return os.path.commonpath([os.path.abspath(path), basedir]) == basedir
+    return os.path.commonpath([full_path, full_basedir]) == full_basedir
 
 
 @draft4_format_checker.checks("alphanumeric")
