@@ -1686,9 +1686,9 @@ endif
 wpython: install_dependencies install_framework install_api install_mitre
 
 ifeq (${uname_S},Darwin)
-WLIBPYTHON=libpython3.8.dylib
+WLIBPYTHON=libpython3.9.dylib
 else
-WLIBPYTHON=libpython3.8.so.1.0
+WLIBPYTHON=libpython3.9.so.1.0
 endif
 
 build_python:
