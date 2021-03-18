@@ -1871,6 +1871,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
     /* Done over here */
     retval = 0;
+    config_ruleinfo = NULL;
 
 cleanup:
 
@@ -1898,7 +1899,7 @@ cleanup:
     OS_ClearNode(rule);
     OS_ClearNode(rule_opt);
     
-    if (retval) {
+    if (config_ruleinfo != NULL) {
         os_remove_ruleinfo(config_ruleinfo);
     }
 
