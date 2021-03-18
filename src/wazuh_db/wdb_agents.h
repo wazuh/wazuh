@@ -42,6 +42,6 @@ int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version
  * @param [in] new_status The new status.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_update_vuln_cve(wdb_t *wdb, const char* old_status, const char* new_status);
+int wdb_agents_update_status_vuln_cve(wdb_t *wdb, const char* old_status, const char* new_status);
 
 #endif
