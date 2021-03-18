@@ -128,7 +128,7 @@ int receive_msg()
             /* Force reconnect agent to the manager */
             else if (strncmp(tmp_msg, HC_FORCE_RECONNECT, strlen(HC_FORCE_RECONNECT)) == 0) {
                 /* Set lock and wait for it */
-                minfo("Wazuh Agent will be reconnected because a force_reconnect AR message was received");
+                minfo("Wazuh Agent will be reconnected because a reconnect message was received");
                 os_setwait();
                 w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
 
