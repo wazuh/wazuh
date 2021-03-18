@@ -26,15 +26,6 @@
 #include "../wrappers/externals/zlib/zlib_wrappers.h"
 
 
-extern char * __real_getenv(const char *name);
-char * __wrap_getenv(const char *name) {
-    if (!test_mode) {
-        return __real_getenv(name);
-    }
-    check_expected(name);
-    return mock_type(char *);
-}
-
 /* setups/teardowns */
 static int setup_group(void **state) {
     test_mode = 1;
@@ -47,6 +38,15 @@ static int teardown_group(void **state) {
 }
 
 #ifndef TEST_WINAGENT
+
+extern char * __real_getenv(const char *name);
+char * __wrap_getenv(const char *name) {
+    if (!test_mode) {
+        return __real_getenv(name);
+    }
+    check_expected(name);
+    return mock_type(char *);
+}
 
 void test_CreatePID_success(void **state)
 {
