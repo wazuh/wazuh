@@ -1,0 +1,142 @@
+<!-- WatchGuard - LEEF Format -->
+<decoder name="Watchguard">
+  <prematch>|WatchGuard|</prematch>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">msg=([a-z,A-Z,\d,\s,\-,(,),@,.]+)</regex>
+  <order>data</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">(\w+)@Firebox-DB.+from.(\d+.\d+.\d+.\d+).(.+$)</regex>
+  <order>dstuser, srcip,  extra_data</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex>(\d\d:\d\d:\d\d)</regex>
+  <order>time</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">ip_len=(\S+)\s+ip_TTL</regex>
+  <order>ip_len</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">ip_TTL=(\S+)\s+proto</regex>
+  <order>ip_TTL</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">tcp_offset=(\S+)\s+tcp_flag</regex>
+  <order>tcp_offset</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">tcp_flag=(\S+)\s+tcp_seq</regex>
+  <order>tcp_flag</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">tcp_seq=(\S+)\s+tcp_window</regex>
+  <order>tcp_seq</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex>tcp_window=(\S+)</regex>
+  <order>tcp_window</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">in_if=(\S+)\s+out_if</regex>
+  <order>in_if</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">out_if=(\S+)\s+ip_len</regex>
+  <order>out_if</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">policy=(\S+.\S+.\S+)\s+d</regex>
+  <order>policy</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex>devTime=(\S+\s\S+\s\S+) </regex>
+  <order>date</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex>sys_name=(\w\d\d)</regex>
+  <order>sys_name</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">\|(\d{8})\|</regex>
+  <order>id</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">src=(\S+)\s+src</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">srcPort=(\S+)\s+dst</regex>
+  <order>srcport</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">srcPort=(\S+)\s+srcPostNAT=</regex>
+  <order>srcport</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">dst=(\S+)\s+dstPort=</regex>
+  <order>dstip</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">dstPostNAT=(\S+)\s+tcp_off</regex>
+  <order>dstip</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">dst=\S+\s+dstPort=(\S+)</regex>
+  <order>dstport</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">disp=(\S+)\s+in_if</regex>
+  <order>action</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
+  <regex type="pcre2">proto=(\S+)\s+src=</regex>
+  <order>protocol</order>
+</decoder>
