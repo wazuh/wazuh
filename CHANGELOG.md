@@ -7,6 +7,10 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Core:**
+  - Fixed an error in FIM when getting the files' modification time on Windows due to wrong permission flags. ([#7870](https://github.com/wazuh/wazuh/pull/7870))
+  - Fixed a bug in Wazuh DB that truncated the output of the agents' status query towards the cluster. ([#7873](https://github.com/wazuh/wazuh/pull/7873))
+
 
 ## [v4.1.2] - 2021-03-08
 
