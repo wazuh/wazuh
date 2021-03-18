@@ -1246,6 +1246,26 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 int wdb_journal_wal(sqlite3 *db);
 
 /**
+*  @brief Calculates the SHA1 hash of all strings stored in a NULL terminated array
+*
+* @param [in] strings_to_hash NULL Terminated array with strings to hash
+* @param [out] hexdigest Final strings hashed
+*/
+ int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest);
+
+/**
+ * @brief Function to get a MITRE technique's name.
+ *
+ * @param [in] wdb The MITRE struct database.
+ * @param [in] id MITRE technique's ID.
+ * @param [out] output MITRE technique's name.
+ * @retval 1 Sucess: name found on MITRE database.
+ * @retval 0 On error: name not found on MITRE database.
+ * @retval -1 On error: invalid DB query syntax.
+ */
+int wdb_mitre_name_get(wdb_t *wdb, char *id, char *output);
+
+/**
  * @brief Function to insert an agent.
  *
  * @param [in] wdb The Global struct database.
