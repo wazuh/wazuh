@@ -14,7 +14,8 @@
 
 static const char *agents_db_commands[] = {
     [WDB_AGENTS_VULN_CVE_INSERT] = "agent %d vuln_cve insert %s",
-    [WDB_AGENTS_VULN_CVE_CLEAR] = "agent %d vuln_cve clear"
+    [WDB_AGENTS_VULN_CVE_CLEAR] = "agent %d vuln_cve clear",
+    [WDB_AGENTS_VULN_CVE_UPDATE] = "agent %d vuln_cve update %s"
 };
 
 int wdb_agents_vuln_cve_insert(int id,
@@ -116,6 +117,65 @@ int wdb_agents_vuln_cve_clear(int id,
         wdbc_close(&aux_sock);
     }
 
+    os_free(wdbquery);
+    os_free(wdboutput);
+
+    return result;
+}
+
+int wdb_agents_vuln_cve_update(int id,
+                                      const char *old_status,
+                                      const char *new_status,
+                                      int *sock) {
+    int result = 0;
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    data_in = cJSON_CreateObject();
+
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
+    }
+
+    cJSON_AddStringToObject(data_in, "old_status", old_status);
+    cJSON_AddStringToObject(data_in, "new_status", new_status);
+
+    data_in_str = cJSON_PrintUnformatted(data_in);
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVE_UPDATE], id, data_in_str);
+
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Agents DB (%d) Error in the response from socket", id);
+            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            result = OS_INVALID;
+            break;
+        default:
+            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
+            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            result = OS_INVALID;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
     os_free(wdbquery);
     os_free(wdboutput);
 
