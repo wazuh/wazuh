@@ -224,6 +224,8 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
     WDB_STMT_VULN_CVE_INSERT,
     WDB_STMT_VULN_CVE_CLEAR,
+    WDB_STMT_VULN_CVE_UPDATE,
+    WDB_STMT_VULN_CVE_UPDATE_ALL,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -1764,6 +1766,16 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  */
  int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output);
 
+/**
+ * @brief Function to parse the vuln_cve update action.
+ * 
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the the data in json format.
+ * @param [out] output Response of the query.
+ *  * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+ int wdb_parse_agents_update_vuln_cve(wdb_t* wdb, char* input, char* output);
 
 /**
  * Update old tasks with status in progress to status timeout

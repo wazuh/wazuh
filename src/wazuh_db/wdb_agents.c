@@ -24,3 +24,22 @@ int wdb_agents_clear_vuln_cve(wdb_t *wdb) {
 
     return wdb_exec_stmt_silent(stmt);
 }
+
+int wdb_agents_update_vuln_cve(wdb_t *wdb, const char* old_status, const char* new_status) {
+    sqlite3_stmt* stmt = NULL;
+    
+    if (strcmp(old_status, "*") == 0) {
+        stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_UPDATE_ALL);
+    } else {
+        stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_UPDATE);
+    }
+    
+    if (stmt == NULL) {
+        return OS_INVALID;
+    }
+
+    sqlite3_bind_text(stmt, 1, new_status, -1, NULL);
+    sqlite3_bind_text(stmt, 2, old_status, -1, NULL);
+
+    return wdb_exec_stmt_silent(stmt);
+}
