@@ -31,19 +31,14 @@ class BrewWrapper final : public IPackageWrapper
 
             for (const auto& row : rows)
             {
-                const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
+                auto rowParsed { Utils::trim(row) };
 
-                for (const auto& row : rows)
+                if (Utils::startsWith(rowParsed, "desc "))
                 {
-                    auto rowParsed { Utils::trim(row) };
-
-                    if (Utils::startsWith(rowParsed, "desc "))
-                    {
-                        Utils::replaceFirst(rowParsed, "desc ", "");
-                        Utils::replaceAll(rowParsed, "\"", "");
-                        m_description = rowParsed;
-                        break;
-                    }
+                    Utils::replaceFirst(rowParsed, "desc ", "");
+                    Utils::replaceAll(rowParsed, "\"", "");
+                    m_description = rowParsed;
+                    break;
                 }
             }
         }

@@ -76,9 +76,7 @@ class PKGWrapper final : public IPackageWrapper
         {
             const auto isBinaryFnc
             {
-                std::string line;
-
-                while (std::getline(data, line))
+                [&filePath]()
                 {
                     // If first line is "bplist00" it's a binary plist file
                     std::fstream file {filePath, std::ios_base::in};
@@ -129,10 +127,11 @@ class PKGWrapper final : public IPackageWrapper
                             m_description = getValueFnc(line);
                         }
                     }
+
+                    m_source   = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                    m_location = filePath;
                 }
-                m_source   = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
-                m_location = filePath;
-            }
+            };
 
             if (isBinary)
             {
