@@ -339,6 +339,176 @@ void test_wdb_agents_vuln_cve_clear_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_agents_vuln_cve_update_status */
+
+test_wdb_agents_vuln_cve_update_status_error_json(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *old_status = "valid";
+    const char *new_status = "obsolete";
+
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
+
+    ret = wdb_agents_vuln_cve_update_status(id, old_status, new_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+test_wdb_agents_vuln_cve_update_status_error_socket(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *old_status = "valid";
+    const char *new_status = "obsolete";
+
+    const char *json_str = strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+    const char *query_str = "agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "old_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "valid");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "new_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "obsolete");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+
+    ret = wdb_agents_vuln_cve_update_status(id, old_status, new_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+test_wdb_agents_vuln_cve_update_status_error_sql_execution(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *old_status = "valid";
+    const char *new_status = "obsolete";
+
+    const char *json_str = strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+    const char *query_str = "agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "old_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "valid");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "new_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "obsolete");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Cannot execute SQL query");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+
+    ret = wdb_agents_vuln_cve_update_status(id, old_status, new_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+test_wdb_agents_vuln_cve_update_status_error_result(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *old_status = "valid";
+    const char *new_status = "obsolete";
+
+    const char *json_str = strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+    const char *query_str = "agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "old_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "valid");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "new_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "obsolete");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error reported in the result of the query");
+
+    ret = wdb_agents_vuln_cve_update_status(id, old_status, new_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+test_wdb_agents_vuln_cve_update_status_success(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *old_status = "valid";
+    const char *new_status = "obsolete";
+
+    const char *json_str = strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+    const char *query_str = "agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}";
+    const char *response = "err";
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "old_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "valid");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "new_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "obsolete");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_agents_vuln_cve_update_status(id, old_status, new_status, NULL);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -354,6 +524,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_clear_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_clear_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_clear_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_agents_vuln_cve_update_status*/
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_update_status_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_update_status_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_update_status_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_update_status_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_update_status_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
