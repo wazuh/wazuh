@@ -713,10 +713,10 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
 
 class CallbackMock
 {
-public:
-    CallbackMock() = default;
-    ~CallbackMock() = default;
-    MOCK_METHOD(void, callbackMock, (const std::string&), ());
+    public:
+        CallbackMock() = default;
+        ~CallbackMock() = default;
+        MOCK_METHOD(void, callbackMock, (const std::string&), ());
 };
 
 TEST_F(SyscollectorImpTest, portAllEnable)
@@ -795,7 +795,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
     {
-        [&wrapper](const std::string& data)
+        [&wrapper](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
             delta["data"].erase("checksum");
@@ -845,6 +845,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
     Syscollector::instance().destroy();
+
     if (t.joinable())
     {
         t.join();
@@ -927,7 +928,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
     {
-        [&wrapper](const std::string& data)
+        [&wrapper](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
             delta["data"].erase("checksum");
@@ -971,6 +972,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
     Syscollector::instance().destroy();
+
     if (t.joinable())
     {
         t.join();
@@ -980,12 +982,13 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 TEST_F(SyscollectorImpTest, PackagesDuplicated)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
-    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},{"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                      R"([{"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},{"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
     {
-        [&wrapper](const std::string& data)
+        [&wrapper](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
             delta["data"].erase("checksum");
@@ -1017,6 +1020,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
     Syscollector::instance().destroy();
+
     if (t.joinable())
     {
         t.join();

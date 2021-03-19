@@ -917,18 +917,14 @@ static void removeKeysWithEmptyValue(nlohmann::json& input)
     }
 }
 
-static bool isElementDuplicated(const nlohmann::json & input, const std::pair<std::string, std::string>& keyValue)
+static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
 {
     const auto it
     {
-        std::find_if
-        (
-            input.begin(), input.end(),
-            [&keyValue](const auto& elem)
-            {
-                return elem.at(keyValue.first) == keyValue.second;
-            }
-        )
+        std::find_if (input.begin(), input.end(), [&keyValue](const auto & elem)
+        {
+            return elem.at(keyValue.first) == keyValue.second;
+        })
     };
     return it != input.end();
 }
@@ -1435,11 +1431,10 @@ nlohmann::json Syscollector::getPackagesData()
                 const auto itemId{ getItemId(item, PACKAGES_ITEM_ID_FIELDS) };
                 const auto it
                 {
-                    std::find_if(packagesList.begin(), packagesList.end(),
-                                [&itemId](const auto & elem)
-                                {
-                                    return elem.at("item_id") == itemId;
-                                })
+                    std::find_if(packagesList.begin(), packagesList.end(), [&itemId](const auto & elem)
+                    {
+                        return elem.at("item_id") == itemId;
+                    })
                 };
 
                 if (packagesList.end() == it)
@@ -1518,14 +1513,15 @@ nlohmann::json Syscollector::getPortsData()
             for (auto item : itPorts.value())
             {
                 const auto protocol { item.at("protocol").get_ref<const std::string&>() };
+
                 if (Utils::startsWith(protocol, TCP_PROTOCOL))
                 {
                     // All ports.
                     if (m_portsAll)
                     {
-                        const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+                        const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                        if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
                         {
                             item["checksum"] = getItemChecksum(item);
                             item["item_id"] = itemId;
@@ -1536,11 +1532,12 @@ nlohmann::json Syscollector::getPortsData()
                     {
                         // Only listening ports.
                         const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-                        if(isListeningState)
-                        {
-                            const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                            if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        if (isListeningState)
+                        {
+                            const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                            if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
                             {
                                 item["checksum"] = getItemChecksum(item);
                                 item["item_id"] = itemId;
@@ -1551,9 +1548,9 @@ nlohmann::json Syscollector::getPortsData()
                 }
                 else if (Utils::startsWith(protocol, UDP_PROTOCOL))
                 {
-                    const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+                    const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
 
-                    if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
                     {
                         item["checksum"] = getItemChecksum(item);
                         item["item_id"] = itemId;
