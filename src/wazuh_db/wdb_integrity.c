@@ -16,6 +16,7 @@
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include <openssl/evp.h>
+#include <stdarg.h>
 
 static const char * COMPONENT_NAMES[] = {
     [WDB_FIM] = "fim",
@@ -388,8 +389,8 @@ end:
     return retval;
 }
 
-// Method to perform SHA1 hash algorithm to a NULL terminated string array
- int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest)
+// Method to perform SHA1 hash algorithm to a NULL terminated string array or passing strings as parameters
+ int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest, unsigned int count, ...)
  {
     size_t it = 0;
     unsigned char digest[EVP_MAX_MD_SIZE];
@@ -408,13 +409,31 @@ end:
         return OS_INVALID;
     }
 
-    while(strings_to_hash[it]) {
-        if (1 != EVP_DigestUpdate(ctx, strings_to_hash[it], strlen(strings_to_hash[it])) ) {
-            mdebug2("Failed during hash context update");
-            ret_val = OS_INVALID;
-            break;
+    // An array of strings was sent
+    if (strings_to_hash) {
+        while(strings_to_hash[it]) {
+            if (1 != EVP_DigestUpdate(ctx, strings_to_hash[it], strlen(strings_to_hash[it])) ) {
+                mdebug2("Failed during hash context update");
+                ret_val = OS_INVALID;
+                break;
+            }
+            it++;
         }
-        it++;
+    }
+    // The words were sent individually instead
+    else if(count != 0) {
+        va_list parameters;
+        va_start(parameters, count);
+
+        for(unsigned int i = 0; i < count; i++) {
+            char* parameter = va_arg(parameters, char*);
+            if (1 != EVP_DigestUpdate(ctx, parameter, strlen(parameter)) ) {
+                mdebug2("Failed during hash context update");
+                ret_val = OS_INVALID;
+                break;
+            }
+        }
+        va_end(parameters);
     }
 
     EVP_DigestFinal_ex(ctx, digest, &digest_size);
