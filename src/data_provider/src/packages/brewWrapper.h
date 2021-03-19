@@ -21,13 +21,14 @@ class BrewWrapper final : public IPackageWrapper
 {
     public:
         explicit BrewWrapper(const PackageContext& ctx)
-        : m_name{ctx.package}
-        , m_version{Utils::splitIndex(ctx.version, '_', 0)}
-        , m_format{"pkg"}
-        , m_source{"homebrew"}
-        , m_location{ctx.filePath}
+            : m_name{ctx.package}
+            , m_version{Utils::splitIndex(ctx.version, '_', 0)}
+            , m_format{"pkg"}
+            , m_source{"homebrew"}
+            , m_location{ctx.filePath}
         {
             const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
+
             for (const auto& row : rows)
             {
                 const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};

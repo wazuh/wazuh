@@ -27,9 +27,9 @@ class PKGWrapper final : public IPackageWrapper
 {
     public:
         explicit PKGWrapper(const PackageContext& ctx)
-        : m_format{"pkg"}
+            : m_format{"pkg"}
         {
-            getPkgData(ctx.filePath+ "/" + ctx.package + "/" + APP_INFO_PATH);
+            getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
         }
 
         ~PKGWrapper() = default;
@@ -82,7 +82,8 @@ class PKGWrapper final : public IPackageWrapper
                     std::istreambuf_iterator<char>()
                 };
                 std::string line;
-                while(std::getline(data, line))
+
+                while (std::getline(data, line))
                 {
                     // If first line is "bplist00" it's a binary plist file
                     std::fstream file {filePath, std::ios_base::in};

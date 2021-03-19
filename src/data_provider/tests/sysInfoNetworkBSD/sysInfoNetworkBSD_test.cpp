@@ -108,29 +108,29 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
     EXPECT_CALL(*mock, type()).Times(1).WillOnce(Return("ethernet"));
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("up"));
     EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return("00:A0:C9:14:C8:29"));
-    EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0,1,2,3,4,5,6,7}));
+    EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0, 1, 2, 3, 4, 5, 6, 7}));
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("8.8.4.4"));
     EXPECT_CALL(*mock, adapter()).Times(1).WillOnce(Return(""));
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 
-    EXPECT_EQ("eth01",ifaddr.at("name").get_ref<const std::string&>());
-    EXPECT_EQ("ethernet",ifaddr.at("type").get_ref<const std::string&>());
-    EXPECT_EQ("up",ifaddr.at("state").get_ref<const std::string&>());
-    EXPECT_EQ("00:A0:C9:14:C8:29",ifaddr.at("mac").get_ref<const std::string&>());
+    EXPECT_EQ("eth01", ifaddr.at("name").get_ref<const std::string&>());
+    EXPECT_EQ("ethernet", ifaddr.at("type").get_ref<const std::string&>());
+    EXPECT_EQ("up", ifaddr.at("state").get_ref<const std::string&>());
+    EXPECT_EQ("00:A0:C9:14:C8:29", ifaddr.at("mac").get_ref<const std::string&>());
 
-    EXPECT_EQ(1,ifaddr.at("tx_packets").get<int32_t>());
-    EXPECT_EQ(0,ifaddr.at("rx_packets").get<int32_t>());
-    EXPECT_EQ(3,ifaddr.at("tx_bytes").get<int32_t>());
-    EXPECT_EQ(2,ifaddr.at("rx_bytes").get<int32_t>());
-    EXPECT_EQ(5,ifaddr.at("tx_errors").get<int32_t>());
-    EXPECT_EQ(4,ifaddr.at("rx_errors").get<int32_t>());
-    EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
+    EXPECT_EQ(1, ifaddr.at("tx_packets").get<int32_t>());
+    EXPECT_EQ(0, ifaddr.at("rx_packets").get<int32_t>());
+    EXPECT_EQ(3, ifaddr.at("tx_bytes").get<int32_t>());
+    EXPECT_EQ(2, ifaddr.at("rx_bytes").get<int32_t>());
+    EXPECT_EQ(5, ifaddr.at("tx_errors").get<int32_t>());
+    EXPECT_EQ(4, ifaddr.at("rx_errors").get<int32_t>());
+    EXPECT_EQ(6, ifaddr.at("rx_dropped").get<int32_t>());
 
-    EXPECT_EQ(1500,ifaddr.at("mtu").get<int32_t>());
+    EXPECT_EQ(1500, ifaddr.at("mtu").get<int32_t>());
 
-    EXPECT_EQ("8.8.4.4",ifaddr.at("gateway").get_ref<const std::string&>());
+    EXPECT_EQ("8.8.4.4", ifaddr.at("gateway").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_UNSPEC_THROW)

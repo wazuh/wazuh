@@ -49,12 +49,12 @@ TEST_F(SysInfoMacPackagesTest, Test_SPEC_Data)
     EXPECT_CALL(*mock, location()).Times(1).WillOnce(Return("8"));
 
     EXPECT_NO_THROW(std::make_unique<BSDPackageImpl>(mock)->buildPackageData(packages));
-    EXPECT_EQ("1",packages.at("name").get_ref<const std::string&>());
-    EXPECT_EQ("2",packages.at("version").get_ref<const std::string&>());
-    EXPECT_EQ("3",packages.at("groups").get_ref<const std::string&>());
-    EXPECT_EQ("4",packages.at("description").get_ref<const std::string&>());
-    EXPECT_EQ("5",packages.at("architecture").get_ref<const std::string&>());
-    EXPECT_EQ("6",packages.at("format").get_ref<const std::string&>());
-    EXPECT_EQ("7",packages.at("source").get_ref<const std::string&>());
-    EXPECT_EQ("8",packages.at("location").get_ref<const std::string&>());
+    EXPECT_EQ("1", packages.at("name").get_ref<const std::string&>());
+    EXPECT_EQ("2", packages.at("version").get_ref<const std::string&>());
+    EXPECT_EQ("3", packages.at("groups").get_ref<const std::string&>());
+    EXPECT_EQ("4", packages.at("description").get_ref<const std::string&>());
+    EXPECT_EQ("5", packages.at("architecture").get_ref<const std::string&>());
+    EXPECT_EQ("6", packages.at("format").get_ref<const std::string&>());
+    EXPECT_EQ("7", packages.at("source").get_ref<const std::string&>());
+    EXPECT_EQ("8", packages.at("location").get_ref<const std::string&>());
 }
