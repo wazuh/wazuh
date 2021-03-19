@@ -52,7 +52,7 @@ int wdb_agents_vuln_cve_clear(int id,
  * @brief Updates all or a specific status from the vuln_cve table in the agents database. 
  *  
  * @param[in] id The agent ID.
- * @param[in] old_status The status that is going to be updated.
+ * @param[in] old_status The status that is going to be updated. The '*' option changes all statuses.
  * @param[in] new_status The new status.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
