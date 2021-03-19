@@ -76,11 +76,6 @@ class PKGWrapper final : public IPackageWrapper
         {
             const auto isBinaryFnc
             {
-                const std::string filePathStr
-                {
-                    std::istreambuf_iterator<char>(data),
-                    std::istreambuf_iterator<char>()
-                };
                 std::string line;
 
                 while (std::getline(data, line))
@@ -105,7 +100,7 @@ class PKGWrapper final : public IPackageWrapper
 
             const auto getDataFnc
             {
-                [this](std::istream & data)
+                [this, &filePath](std::istream & data)
                 {
                     std::string line;
 
@@ -135,8 +130,8 @@ class PKGWrapper final : public IPackageWrapper
                         }
                     }
                 }
-                m_source   = filePathStr.find(UTILITIES_FOLDER) ? "utilities" : "applications";
-                m_location = filePathStr;
+                m_source   = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                m_location = filePath;
             }
 
             if (isBinary)
