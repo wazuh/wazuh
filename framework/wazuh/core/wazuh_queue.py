@@ -17,6 +17,7 @@ class WazuhQueue:
 
     # Messages
     HC_SK_RESTART = "syscheck restart"  # syscheck restart
+    HC_FORCE_RECONNECT = "force_reconnect"  # force reconnect command
     RESTART_AGENTS = "restart-ossec0"  # Agents, not manager (000)
     RESTART_AGENTS_JSON = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},
                                                                  command="restart-wazuh0",
@@ -135,9 +136,9 @@ class WazuhQueue:
 
         # Legacy: Restart syscheck, restart agents
         else:
-            if msg == WazuhQueue.HC_SK_RESTART:
+            if msg == WazuhQueue.HC_SK_RESTART or msg == WazuhQueue.HC_FORCE_RECONNECT:
                 socket_msg = "{0} {1}{2}{3} {4} {5}".format("(msg_to_agent) []", str_all_agents, NO_AR_C, str_agent,
-                                                            str_agent_id, WazuhQueue.HC_SK_RESTART)
+                                                            str_agent_id, msg)
             elif msg == WazuhQueue.RESTART_AGENTS or msg == WazuhQueue.RESTART_AGENTS_JSON:
                 socket_msg = "{0} {1}{2}{3} {4} {5} - {6} (from_the_server) (no_rule_id)".format("(msg_to_agent) []",
                                                                                                  str_all_agents, NONE_C,
@@ -156,7 +157,7 @@ class WazuhQueue:
                         raise WazuhError(1601, "on agent")
                     else:
                         raise WazuhError(1601, "on all agents")
-                elif msg == WazuhQueue.RESTART_AGENTS:
+                elif msg == WazuhQueue.RESTART_AGENTS or msg == WazuhQueue.RESTART_AGENTS_JSON:
                     raise WazuhError(1702)
 
             # Return message

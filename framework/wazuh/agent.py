@@ -7,6 +7,7 @@ import logging
 import operator
 from os import chmod, path, listdir
 from shutil import copyfile
+from typing import Union
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
@@ -115,6 +116,43 @@ def get_agents_summary_os(agent_list=None):
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
         result.affected_items = query_data['items']
         result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
+def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:
+    """Force reconnect a list of agents.
+
+    Parameters
+    ----------
+    agent_list : Union[list, str]
+        List of agent IDs. All possible values from 000 onwards. Default `*`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    result = AffectedItemsWazuhResult(all_msg='Force  command was sent to all agents',
+                                      some_msg='Restart command was not sent to some agents',
+                                      none_msg='Restart command was not sent to any agent'
+                                      )
+
+    system_agents = get_agents_info()
+    for agent_id in agent_list:
+        try:
+            if agent_id not in system_agents:
+                raise WazuhResourceNotFound(1701)
+            if agent_id == "000":
+                raise WazuhError(1703)
+            Agent(agent_id).reconnect()
+            result.affected_items.append(agent_id)
+        except WazuhException as e:
+            result.add_failed_item(id_=agent_id, error=e)
+
+    result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort(key=int)
 
     return result
 
