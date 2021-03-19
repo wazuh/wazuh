@@ -183,6 +183,16 @@ CREATE TABLE IF NOT EXISTS sys_programs (
 
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
+CREATE TRIGGER obsolete_vulnerabilities
+    AFTER DELETE ON sys_programs
+    WHEN (old.checksum = 'legacy' AND NOT EXISTS (SELECT 1 FROM sys_programs WHERE name = old.name
+                                                  AND version = old.version AND architecture = old.architecture
+                                                  AND scan_id != old.scan_id ))
+        OR old.checksum != 'legacy'
+BEGIN
+    UPDATE vuln_cves SET status = 'OBSOLETE' WHERE vuln_cves.reference = old.item_id;
+END;
+
 CREATE TABLE IF NOT EXISTS sys_hotfixes (
     scan_id INTEGER,
     scan_time TEXT,
