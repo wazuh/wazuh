@@ -134,9 +134,9 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
     -------
     AffectedItemsWazuhResult
     """
-    result = AffectedItemsWazuhResult(all_msg='Force  command was sent to all agents',
-                                      some_msg='Restart command was not sent to some agents',
-                                      none_msg='Restart command was not sent to any agent'
+    result = AffectedItemsWazuhResult(all_msg='Force reconnect command was sent to all agents',
+                                      some_msg='Force reconnect command was not sent to some agents',
+                                      none_msg='Force reconnect command was not sent to any agent'
                                       )
 
     system_agents = get_agents_info()
