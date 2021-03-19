@@ -20,7 +20,7 @@
 #include "headers/file_op.h"
 
 #define AGENTCONF   "agent.conf"
-#define OSSECDEF    "default-agent.conf"
+#define AGENTDEF    "default-agent.conf"
 #define AGENT_CONF_LAST   "agent.conf.bak"
 #define CLIENTKEYS  "client.keys"
 #define OS_MAXSTR   1024

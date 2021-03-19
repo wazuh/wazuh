@@ -420,7 +420,7 @@ UpdateOldVersions()
         done
     fi
 
-    # Update versions previous to Wazuh 5.0.0
+    # Update versions previous to Wazuh 5.0.0, which is a breaking change
     if [ "X$1" = "Xyes" ]; then
 
         OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
@@ -490,7 +490,19 @@ UpdateOldVersions()
 
             # Backup rules: All versions
             mv "$PREINSTALLEDDIR/rules" $BACKUP_RULESET
-        fi
+
+            MANAGER_CONF_FILE="$PREINSTALLEDDIR/etc/manager.conf"
+
+            # New manager.conf by default
+            ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $MANAGER_CONF_FILE
+            ./add_localfiles.sh $PREINSTALLEDDIR >> $MANAGER_CONF_FILE
+        else
+            AGENT_CONF_FILE="$PREINSTALLEDDIR/etc/agent.conf"
+
+            # New agent.conf by default
+            ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $AGENT_CONF_FILE
+            ./add_localfiles.sh $PREINSTALLEDDIR >> $AGENT_CONF_FILE
+            fi
     fi
 
 }
