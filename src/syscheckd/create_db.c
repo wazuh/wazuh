@@ -322,9 +322,7 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
 
         check_max_fps();
 
-        if (fim_file(path, item, w_evt, report) < 0) {
-            mwarn(FIM_WARN_SKIP_EVENT, path);
-        }
+        fim_file(path, item, w_evt, report);
         break;
 
     case FIM_DIRECTORY:
@@ -394,6 +392,7 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
     return 0;
 }
 
+#ifndef WIN32
 typedef enum { FIM_FILE_UPDATED, FIM_FILE_DELETED, FIM_FILE_ADDED_PATHS, FIM_FILE_ERROR } fim_sanitize_state_t;
 
 /**
@@ -539,6 +538,7 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
 
     return 0;
 }
+#endif
 
 /**
  * @brief Makes any necessary queries to get the entry updated in the DB.
@@ -566,6 +566,7 @@ fim_update_db_data(const char *path, const fim_file_data *data, fim_entry **save
     }
 
     if (*saved == NULL) {
+#ifndef WIN32
         switch (fim_db_data_exists(syscheck.database, data->inode, data->dev)) {
         case FIMDB_ERR:
             return FIM_FILE_ERROR;
@@ -579,6 +580,9 @@ fim_update_db_data(const char *path, const fim_file_data *data, fim_entry **save
         default:
             return fim_db_insert(syscheck.database, path, data, NULL);
         }
+#else // WIN32
+        return fim_db_insert(syscheck.database, path, data, NULL);
+#endif
     }
 
     if (strcmp(data->checksum, (*saved)->file_entry.data->checksum) == 0) {
@@ -587,6 +591,7 @@ fim_update_db_data(const char *path, const fim_file_data *data, fim_entry **save
         return 0;
     }
 
+#ifndef WIN32
     if (data->dev == (*saved)->file_entry.data->dev && data->inode == (*saved)->file_entry.data->inode) {
         return fim_db_insert(syscheck.database, path, data, (*saved)->file_entry.data);
     }
@@ -605,6 +610,7 @@ fim_update_db_data(const char *path, const fim_file_data *data, fim_entry **save
         mwarn("Failed to resolve an inode collision for file '%s'", path);
         return -1;
     }
+#endif
 
     // At this point, we should be safe to store the new data
     return fim_db_insert(syscheck.database, path, data, (*saved)->file_entry.data);
@@ -670,7 +676,7 @@ static cJSON *_unsafe_fim_file(const char *path, fim_element *item, whodata_evt 
     return json_event;
 }
 
-int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report) {
+void fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report) {
     cJSON *json_event = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
@@ -682,8 +688,6 @@ int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report
     }
 
     cJSON_Delete(json_event);
-
-    return 0;
 }
 
 

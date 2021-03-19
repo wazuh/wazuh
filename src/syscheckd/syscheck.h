@@ -182,9 +182,8 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
  * @param [in] item FIM item
  * @param [in] w_evt Whodata event
  * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
- * @return 0 on success, -1 on failure
  */
-int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report);
+void fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report);
 
 /**
  * @brief Process FIM realtime event
