@@ -16,8 +16,8 @@ void ByteArrayHelperTest::SetUp() {};
 
 void ByteArrayHelperTest::TearDown() {};
 
-constexpr uint8_t bufferBE[] = {0x12,0x34,0x56,0x78};
-constexpr uint8_t bufferLE[] = {0x78,0x56,0x34,0x12};
+constexpr uint8_t bufferBE[] = {0x12, 0x34, 0x56, 0x78};
+constexpr uint8_t bufferLE[] = {0x78, 0x56, 0x34, 0x12};
 constexpr int32_t result {305419896};
 
 TEST_F(ByteArrayHelperTest, toInt32BE)
