@@ -920,6 +920,86 @@ void test_vuln_cve_clear_command_success(void **state) {
     os_free(query);
 }
 
+void test_vuln_cve_update_status_syntax_error(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("update_status {\"old_status\",\"new_status\"}", query);
+
+    // wdb_parse_agents_update_status_vuln_cve
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cve JSON syntax when updating status value.");
+    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: ,\"new_status\"}");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON syntax, near '{\"old_status\",\"new_status\"}'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_update_status_constraint_error(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("update_status {\"old_status\":\"new_status\"}", query);
+
+    // wdb_parse_agents_update_status_vuln_cve
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cve JSON data when updating status value."
+    " Not compliant with constraints defined in the database.");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid JSON data, missing required fields");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_update_status_command_error(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", query);
+
+    // wdb_parse_agents_update_status_vuln_cve
+    will_return(__wrap_wdb_agents_update_status_vuln_cve, OS_INVALID);
+    expect_string(__wrap_wdb_agents_update_status_vuln_cve, old_status, "valid");
+    expect_string(__wrap_wdb_agents_update_status_vuln_cve, new_status, "obsolete");
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cve update_status command; SQL err: ERROR MESSAGE");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute vuln_cve update_status command; SQL err: ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cve_update_status_command_success(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", query);
+
+    // wdb_parse_agents_update_status_vuln_cve
+    will_return(__wrap_wdb_agents_update_status_vuln_cve, OS_SUCCESS);
+    expect_string(__wrap_wdb_agents_update_status_vuln_cve, old_status, "valid");
+    expect_string(__wrap_wdb_agents_update_status_vuln_cve, new_status, "obsolete");
+
+    ret = wdb_parse_vuln_cve(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -975,8 +1055,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_vuln_cve_insert_command_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cve_insert_command_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cve_clear_command_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cve_clear_command_success, test_setup, test_teardown)
-
+        cmocka_unit_test_setup_teardown(test_vuln_cve_clear_command_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_update_status_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_update_status_constraint_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_update_status_command_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cve_update_status_command_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
