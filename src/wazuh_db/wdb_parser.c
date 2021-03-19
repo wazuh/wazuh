@@ -6145,8 +6145,8 @@ int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* outpu
         else {
             ret = wdb_agents_update_status_vuln_cve(wdb, old_status->valuestring, new_status->valuestring);
             if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cve update command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve update command; SQL err: %s", sqlite3_errmsg(wdb->db));
+                mdebug1("DB(%s) Cannot execute vuln_cve update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
             }
             else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
