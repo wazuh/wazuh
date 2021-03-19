@@ -127,6 +127,8 @@ void test_wdb_agents_clear_vuln_cve_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+/* Tests wdb_agents_update_status_vuln_cve*/
+
 test_wdb_agents_update_status_vuln_cve_statement_init_fail(void **state){
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -190,7 +192,7 @@ int main()
         /* Tests wdb_agents_clear_vuln_cve */
         cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cve_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cve_success, test_setup, test_teardown),
-        /* Tests wdb_agents_update_vuln_cve */
+        /* Tests wdb_agents_update_status_vuln_cve */
         cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cve_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cve_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cve_success_all, test_setup, test_teardown),
