@@ -75,6 +75,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
       "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/packagesLinuxParserHelper.h"
       "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")

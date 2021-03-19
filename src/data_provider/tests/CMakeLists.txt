@@ -6,6 +6,7 @@ include_directories(${CMAKE_SOURCE_DIR})
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
+include_directories(${SRC_FOLDER}/external/pacman-5.2.2/lib/libalpm/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

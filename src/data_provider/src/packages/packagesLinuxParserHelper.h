@@ -17,6 +17,9 @@
 #include "cmdHelper.h"
 #include "stringHelper.h"
 #include "json.hpp"
+#include "timeHelper.h"
+#include <alpm.h>
+#include <package.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -155,6 +158,29 @@ namespace PackageLinuxHelper
             ret["description"]  = description;
         }
         return ret;
+    }
+
+    static nlohmann::json parsePacman(const alpm_list_t *item)
+    {
+        alpm_pkg_t* pkg{reinterpret_cast<alpm_pkg_t*>(item->data)};
+        nlohmann::json packageInfo;
+        std::string groups;
+        packageInfo["name"]         = alpm_pkg_get_name(pkg);
+        packageInfo["size"]         = alpm_pkg_get_isize(pkg);
+        packageInfo["install_time"] = Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pkg)));
+        for (auto group{alpm_pkg_get_groups(pkg)}; group; group = alpm_list_next(group))
+        {
+            const std::string groupString{reinterpret_cast<char*>(group->data)};
+            groups += groupString + "-";
+        }
+        groups = groups.empty() ? "": groups.substr(0, groups.size()-1);//remove last -
+        packageInfo["groups"]       = groups;
+        packageInfo["version"]      = alpm_pkg_get_version(pkg);
+        packageInfo["architecture"] = alpm_pkg_get_arch(pkg);
+        packageInfo["format"]       = "pkg"; // FIXME: Using the pkg in order to support older server versions (in the future this should be replaced with the "pacman" format
+        packageInfo["vendor"]       = "";
+        packageInfo["description"]  = alpm_pkg_get_desc(pkg);
+        return packageInfo;
     }
 };
 

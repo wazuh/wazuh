@@ -288,24 +288,7 @@ static void getPacmanInfo(const std::string& libPath, nlohmann::json& ret)
     }
     for (auto item{alpm_db_get_pkgcache(dbLocal)}; item; item = alpm_list_next(item))
     {
-        alpm_pkg_t* pkg{reinterpret_cast<alpm_pkg_t*>(item->data)};
-        nlohmann::json packageInfo;
-        std::string groups;
-        packageInfo["name"]         = alpm_pkg_get_name(pkg);
-        packageInfo["size"]         = alpm_pkg_get_isize(pkg);
-        packageInfo["install_time"] = Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pkg)));
-        for (auto group{alpm_pkg_get_groups(pkg)}; group; group = alpm_list_next(group))
-        {
-            const std::string groupString{reinterpret_cast<char*>(group->data)};
-            groups += groupString + "-";
-        }
-        groups = groups.empty() ? "": groups.substr(0, groups.size()-1);//remove last -
-        packageInfo["groups"]       = groups;
-        packageInfo["version"]      = alpm_pkg_get_version(pkg);
-        packageInfo["architecture"] = alpm_pkg_get_arch(pkg);
-        packageInfo["format"]       = "pkg"; // FIXME: Using the pkg in order to support older server versions (in the future this should be replaced with the "pacman" format
-        packageInfo["vendor"]       = "";
-        packageInfo["description"]  = alpm_pkg_get_desc(pkg);
+        auto packageInfo {PackageLinuxHelper::parsePacman(item)};
         ret.push_back(packageInfo);
     }
 }

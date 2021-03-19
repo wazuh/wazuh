@@ -234,3 +234,35 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_EQ("compression library - development", jsPackageInfo["description"]);
     EXPECT_EQ("zlib", jsPackageInfo["source"]);
 }
+
+TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
+{ 
+    alpm_list_t *mock   = new struct __alpm_list_t;
+    alpm_pkg_t  *data   = new struct __alpm_pkg_t;
+    data->ops           = new struct pkg_operations;
+    data->handle        = new struct __alpm_handle_t;
+    data->name          = NULL;
+    data->isize         = 0;
+    data->installdate   = 0;
+    data->groups        = NULL;
+    data->version       = NULL;
+    data->arch          = NULL;
+    data->desc          = NULL;
+    mock->data    = data;        	
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(mock) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ(NULL, jsPackageInfo["name"]);
+    EXPECT_EQ(0, jsPackageInfo["size"]);
+    EXPECT_EQ(0, jsPackageInfo["install_time"]);
+    EXPECT_EQ(NULL, jsPackageInfo["groups"]);
+    EXPECT_EQ(NULL, jsPackageInfo["version"]);
+    EXPECT_EQ(NULL, jsPackageInfo["architecture"]);
+    EXPECT_EQ("pkg", jsPackageInfo["format"]);
+    EXPECT_EQ("", jsPackageInfo["vendor"]);
+    EXPECT_EQ(NULL, jsPackageInfo["description"]);
+    delete mock;
+    delete data->ops;
+    delete data->handle;
+    delete data;
+}
