@@ -32,7 +32,6 @@ LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
-CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
 SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.template"
@@ -42,16 +41,23 @@ SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca.t
 ##########
 WriteSyscheck()
 {
+    # Select file to write
+    if [ "X$1" = "Xagent" ]; then
+      WRITE_TO="${NEWCONFIG_AGENT}"
+    else
+      WRITE_TO="${NEWCONFIG_MANAGER}"
+    fi
+
     # Adding to the config file
     if [ "X$SYSCHECK" = "Xyes" ]; then
       SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       if [ "$SYSCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         SYSCHECK_TEMPLATE=$(GetTemplate "syscheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
+      cat ${SYSCHECK_TEMPLATE} >> $WRITE_TO
+      echo "" >> $WRITE_TO
     else
       if [ "$1" = "manager" ]; then
-        cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG_MANAGER
-        echo "" >> $NEWCONFIG_MANAGER
         echo "  <syscheck>" >> $NEWCONFIG_MANAGER
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG_MANAGER
         echo "" >> $NEWCONFIG_MANAGER
@@ -63,8 +69,6 @@ WriteSyscheck()
         echo "  </syscheck>" >> $NEWCONFIG_MANAGER
         echo "" >> $NEWCONFIG_MANAGER
       else
-        cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG_AGENT
-        echo "" >> $NEWCONFIG_AGENT
         echo "  <syscheck>" >> $NEWCONFIG_AGENT
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG_AGENT
         echo "  </syscheck>" >> $NEWCONFIG_AGENT
@@ -102,19 +106,26 @@ DisableAuthd()
 ##########
 WriteRootcheck()
 {
+    # Select file to write
+    if [ "X$1" = "Xagent" ]; then
+      WRITE_TO="${NEWCONFIG_AGENT}"
+    else
+      WRITE_TO="${NEWCONFIG_MANAGER}"
+    fi
+
     # Adding to the config file
     if [ "X$ROOTCHECK" = "Xyes" ]; then
       ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       if [ "$ROOTCHECK_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         ROOTCHECK_TEMPLATE=$(GetTemplate "rootcheck.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
-      sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${ROOTCHECK_TEMPLATE}" >> $NEWCONFIG_MANAGER
-      echo "" >> $NEWCONFIG_MANAGER
+      sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${ROOTCHECK_TEMPLATE}" >> $WRITE_TO
+      echo "" >> $WRITE_TO
     else
-      echo "  <rootcheck>" >> $NEWCONFIG_MANAGER
-      echo "    <disabled>yes</disabled>" >> $NEWCONFIG_MANAGER
-      echo "  </rootcheck>" >> $NEWCONFIG_MANAGER
-      echo "" >> $NEWCONFIG_MANAGER
+      echo "  <rootcheck>" >> $WRITE_TO
+      echo "    <disabled>yes</disabled>" >> $WRITE_TO
+      echo "  </rootcheck>" >> $WRITE_TO
+      echo "" >> $WRITE_TO
     fi
 }
 
@@ -123,43 +134,22 @@ WriteRootcheck()
 ##########
 WriteSyscollector()
 {
+    # Select file to write
+    if [ "X$1" = "Xagent" ]; then
+      WRITE_TO="${NEWCONFIG_AGENT}"
+    else
+      WRITE_TO="${NEWCONFIG_MANAGER}"
+    fi
+
     # Adding to the config file
     if [ "X$SYSCOLLECTOR" = "Xyes" ]; then
       SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       if [ "$SYSCOLLECTOR_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
         SYSCOLLECTOR_TEMPLATE=$(GetTemplate "wodle-syscollector.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
-      cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG_MANAGER
-      echo "" >> $NEWCONFIG_MANAGER
+      cat ${SYSCOLLECTOR_TEMPLATE} >> $WRITE_TO
+      echo "" >> $WRITE_TO
     fi
-}
-
-##########
-# Osquery()
-##########
-WriteOsquery()
-{
-    # Adding to the config file
-    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG_MANAGER
-    echo "" >> $NEWCONFIG_MANAGER
-}
-
-##########
-# WriteCISCAT()
-##########
-WriteCISCAT()
-{
-    # Adding to the config file
-    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG_MANAGER
-    echo "" >> $NEWCONFIG_MANAGER
 }
 
 ##########
@@ -167,11 +157,18 @@ WriteCISCAT()
 ##########
 WriteConfigurationAssessment()
 {
+    # Select file to write
+    if [ "X$1" = "Xagent" ]; then
+      WRITE_TO="${NEWCONFIG_AGENT}"
+    else
+      WRITE_TO="${NEWCONFIG_MANAGER}"
+    fi
+
     # Adding to the config file
     if [ "X$SECURITY_CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
       SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG_MANAGER
-      echo "" >> $NEWCONFIG_MANAGER
+      cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $WRITE_TO
+      echo "" >> $WRITE_TO
     fi
 }
 
@@ -246,6 +243,13 @@ GenerateAuthCert()
 ##########
 WriteLogs()
 {
+  # Select file to write
+  if [ "X$2" = "Xagent" ]; then
+    WRITE_TO="${NEWCONFIG_AGENT}"
+  else
+    WRITE_TO="${NEWCONFIG_MANAGER}"
+  fi
+
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
   for i in ${LOCALFILES_TMP}; do
       field1=$(echo $i | cut -d\: -f1)
@@ -271,20 +275,20 @@ WriteLogs()
         if [ "$1" = "echo" ]; then
           echo "    -- $FILE"
         elif [ "$1" = "add" ]; then
-          echo "  <localfile>" >> $NEWCONFIG_MANAGER
+          echo "  <localfile>" >> $WRITE_TO
           if [ "$FILE" = "snort" ]; then
             head -n 1 $FILE|grep "\[**\] "|grep -v "Classification:" > /dev/null
             if [ $? = 0 ]; then
-              echo "    <log_format>snort-full</log_format>" >> $NEWCONFIG_MANAGER
+              echo "    <log_format>snort-full</log_format>" >> $WRITE_TO
             else
-              echo "    <log_format>snort-fast</log_format>" >> $NEWCONFIG_MANAGER
+              echo "    <log_format>snort-fast</log_format>" >> $WRITE_TO
             fi
           else
-            echo "    <log_format>$LOG_FORMAT</log_format>" >> $NEWCONFIG_MANAGER
+            echo "    <log_format>$LOG_FORMAT</log_format>" >> $WRITE_TO
           fi
-          echo "    <location>$FILE</location>" >>$NEWCONFIG_MANAGER
-          echo "  </localfile>" >> $NEWCONFIG_MANAGER
-          echo "" >> $NEWCONFIG_MANAGER
+          echo "    <location>$FILE</location>" >>$WRITE_TO
+          echo "  </localfile>" >> $WRITE_TO
+          echo "" >> $WRITE_TO
         fi
       fi
   done
@@ -330,6 +334,8 @@ WriteAgent()
     echo "" >> $NEWCONFIG_AGENT
 
     echo "<wazuh_config>" >> $NEWCONFIG_AGENT
+
+    # Client
     echo "  <client>" >> $NEWCONFIG_AGENT
     echo "    <server>" >> $NEWCONFIG_AGENT
     if [ "X${HNAME}" = "X" ]; then
@@ -361,6 +367,7 @@ WriteAgent()
     echo "  </client>" >> $NEWCONFIG_AGENT
     echo "" >> $NEWCONFIG_AGENT
 
+    #Client Buffer
     echo "  <client_buffer>" >> $NEWCONFIG_AGENT
     echo "    <!-- Agent buffer options -->" >> $NEWCONFIG_AGENT
     echo "    <disabled>no</disabled>" >> $NEWCONFIG_AGENT
@@ -372,19 +379,11 @@ WriteAgent()
     # Rootcheck
     WriteRootcheck "agent"
 
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "agent"
-
     # Syscollector configuration
     WriteSyscollector "agent"
 
-    # Configuration assessment configuration
-    WriteConfigurationAssessment
+    # Configuration assessment configuration (sca)
+    WriteConfigurationAssessment "agent"
 
     # Syscheck
     WriteSyscheck "agent"
@@ -392,7 +391,7 @@ WriteAgent()
     # Write the log files
     if [ "X${NO_LOCALFILES}" = "X" ]; then
       echo "  <!-- Log analysis -->" >> $NEWCONFIG_AGENT
-      WriteLogs "add"
+      WriteLogs "add" "agent"
     else
       echo "  <!-- Log analysis -->" >> $NEWCONFIG_AGENT
     fi
@@ -405,6 +404,7 @@ WriteAgent()
     cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG_AGENT
     echo "" >> $NEWCONFIG_AGENT
 
+    # Active Response
     echo "  <!-- Active response -->" >> $NEWCONFIG_AGENT
 
     echo "  <active-response>" >> $NEWCONFIG_AGENT
@@ -471,14 +471,6 @@ WriteManager()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "manager"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Syscollector configuration
     WriteSyscollector "manager"
@@ -598,14 +590,6 @@ WriteLocal()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG_MANAGER
