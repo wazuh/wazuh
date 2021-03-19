@@ -79,7 +79,7 @@ class BerkeleyRpmDBReader final
 
                 const auto dataSize { Utils::toInt32BE(bytes + sizeof(int32_t)) };
 
-                if (FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize <= data.size)
+                if (indexSize > 0 && FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize <= data.size)
                 {
                     bytes = &bytes[FIRST_ENTRY_OFFSET];
 
