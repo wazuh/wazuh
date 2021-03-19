@@ -65,6 +65,7 @@ typedef enum wdb_stmt {
     WDB_STMT_OSINFO_INSERT,
     WDB_STMT_OSINFO_INSERT2,
     WDB_STMT_OSINFO_DEL,
+    WDB_STMT_OSINFO_GET,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_INSERT2,
     WDB_STMT_PROGRAM_DEL,
@@ -651,7 +652,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged);
 
 // Save OS info into DB.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
@@ -1263,7 +1264,7 @@ int wdb_journal_wal(sqlite3 *db);
 * @param [in] strings_to_hash NULL Terminated array with strings to hash
 * @param [out] hexdigest Final strings hashed
 */
- int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest);
+ int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest, unsigned int count, ...);
 
 /**
  * @brief Function to get a MITRE technique's name.
