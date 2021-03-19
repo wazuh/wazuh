@@ -471,6 +471,10 @@ void test_wdb_init_stmt_in_cache_invalid_transaction(void **state) {
 
 void test_wdb_init_stmt_in_cache_invalid_statement(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
+    int STR_SIZE = 48;
+    char error_message[STR_SIZE];
+
+    snprintf(error_message, STR_SIZE, "DB(000) SQL statement index (%d) out of bounds", WDB_STMT_SIZE);
 
     // wdb_begin2
     will_return(__wrap_sqlite3_prepare_v2, SQLITE_OK);
@@ -478,7 +482,7 @@ void test_wdb_init_stmt_in_cache_invalid_statement(void **state) {
     will_return(__wrap_sqlite3_finalize, SQLITE_OK);
 
     // wdb_stmt_cache
-    expect_string(__wrap__merror, formatted_msg, "DB(000) SQL statement index (174) out of bounds");
+    expect_string(__wrap__merror, formatted_msg, error_message);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
 
     sqlite3_stmt* result = wdb_init_stmt_in_cache(data->wdb,WDB_STMT_SIZE);
