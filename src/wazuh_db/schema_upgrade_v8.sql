@@ -30,4 +30,14 @@ CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
 UPDATE vuln_metadata SET LAST_SCAN = '0';
 
+CREATE TRIGGER obsolete_vulnerabilities
+    AFTER DELETE ON sys_programs
+    WHEN (old.checksum = 'legacy' AND NOT EXISTS (SELECT 1 FROM sys_programs WHERE name = old.name
+                                                  AND version = old.version AND architecture = old.architecture
+                                                  AND scan_id != old.scan_id ))
+        OR old.checksum != 'legacy'
+BEGIN
+    UPDATE vuln_cves SET status = 'OBSOLETE' WHERE vuln_cves.reference = old.item_id;
+END;
+
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 8);
