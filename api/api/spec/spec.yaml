@@ -14,6 +14,9 @@ info:
     information between parties as a JSON object. Perform a call with `basicAuth` to `GET /security/user/authenticate`
     and obtain a JWT token in order to run any endpoint.
 
+    JWT tokens have a default duration of 900 seconds. To change this value, you must perform a call with a valid JWT token
+    to `PUT /security/config`. After this change, you will need to get a new JWT token.
+
     Login with USER and PASSWORD:
 
     `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate`
@@ -28,6 +31,11 @@ info:
     Use the token from previous response to perform any endpoint request:
 
     `curl -k -X <METHOD> "https://<HOST_IP>:55000/<ENDPOINT>" -H  "Authorization: Bearer <YOUR_JWT_TOKEN>"`
+
+    Change the token base duration:
+
+    `curl -k -X PUT "https://<HOST_IP>:55000/security/config" -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+    -d '{"auth_token_exp_timeout":"<NEW_EXPIRE_TIME_IN_SECONDS>"}'`
 
     <SecurityDefinitions />
 
