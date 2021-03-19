@@ -38,7 +38,7 @@ int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version
  * @brief Function to update the status field in agent database vuln_cve table.
  * 
  * @param [in] wdb The 'agents' struct database.
- * @param [in] old_status The status that is going to be updated.
+ * @param [in] old_status The status that is going to be updated. The '*' option changes all statuses.
  * @param [in] new_status The new status.
  * @return Returns 0 on success or -1 on error.
  */
