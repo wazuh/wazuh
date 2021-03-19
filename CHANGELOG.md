@@ -5,12 +5,17 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **External dependencies:**
+  - Upgraded Python version from 3.8.6 to 3.9.2 and several Python dependencies. ([#7943](https://github.com/wazuh/wazuh/pull/7943))
+  
 ### Fixed
 
 - **Core:**
   - Fixed an error in FIM when getting the files' modification time on Windows due to wrong permission flags. ([#7870](https://github.com/wazuh/wazuh/pull/7870))
   - Fixed a bug in Wazuh DB that truncated the output of the agents' status query towards the cluster. ([#7873](https://github.com/wazuh/wazuh/pull/7873))
 
+- **API:**
+  - Fixed validation for absolute and relative paths. ([#7906](https://github.com/wazuh/wazuh/pull/7906))
 
 ## [v4.1.2] - 2021-03-08
 
