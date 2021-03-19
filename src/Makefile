@@ -889,7 +889,7 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-DEPS_VERSION = 11
+DEPS_VERSION = 12
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 ifeq (${PREFIX},/var/ossec)
@@ -1686,9 +1686,9 @@ endif
 wpython: install_dependencies install_framework install_api install_mitre
 
 ifeq (${uname_S},Darwin)
-WLIBPYTHON=libpython3.8.dylib
+WLIBPYTHON=libpython3.9.dylib
 else
-WLIBPYTHON=libpython3.8.so.1.0
+WLIBPYTHON=libpython3.9.so.1.0
 endif
 
 build_python:
