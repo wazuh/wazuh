@@ -710,3 +710,315 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
         t.join();
     }
 }
+
+class CallbackMock
+{
+public:
+    CallbackMock() = default;
+    ~CallbackMock() = default;
+    MOCK_METHOD(void, callbackMock, (const std::string&), ());
+};
+
+TEST_F(SyscollectorImpTest, portAllEnable)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"({
+    "ports":[
+        {
+            "inode":43481,
+            "local_ip":"0.0.0.0",
+            "local_port":47748,
+            "pid":0,
+            "process_name":"",
+            "protocol":"udp",
+            "remote_ip":"0.0.0.0",
+            "remote_port":0,
+            "rx_queue":0,
+            "state":"",
+            "tx_queue":0
+        },
+        {
+            "inode":43482,
+            "local_ip":"::",
+            "local_port":51087,
+            "pid":0,
+            "process_name":"",
+            "protocol":"udp6",
+            "remote_ip":"::",
+            "remote_port":0,
+            "rx_queue":0,
+            "state":"",
+            "tx_queue":0
+        },
+        {
+            "inode":50324,
+            "local_ip":"127.0.0.1",
+            "local_port":33060,
+            "pid":0,
+            "process_name":"",
+            "protocol":"tcp",
+            "remote_ip":"0.0.0.0",
+            "remote_port":0,
+            "rx_queue":0,
+            "state":"listening",
+            "tx_queue":0
+        },
+        {
+            "inode":122575,
+            "local_ip":"192.168.0.104",
+            "local_port":39106,
+            "pid":0,
+            "process_name":"",
+            "protocol":"tcp",
+            "remote_ip":"44.238.116.130",
+            "remote_port":443,
+            "rx_queue":0,
+            "state":"established",
+            "tx_queue":0
+        },
+        {
+            "inode":122575,
+            "local_ip":"192.168.0.104",
+            "local_port":39106,
+            "pid":0,
+            "process_name":"",
+            "protocol":"tcp",
+            "remote_ip":"44.238.116.130",
+            "remote_port":443,
+            "rx_queue":0,
+            "state":"established",
+            "tx_queue":0
+        }
+    ]
+    })")));
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string& data)
+        {
+            auto delta = nlohmann::json::parse(data);
+            delta["data"].erase("checksum");
+            delta["data"].erase("scan_time");
+            wrapper.callbackMock(delta.dump());
+        }
+    };
+    const auto expectedResult1
+    {
+        R"({"data":{"inode":43481,"item_id":"12903a43db24ab10d872547cdd1d786a5876a0da","local_ip":"0.0.0.0","local_port":47748,"pid":0,"process_name":null,"protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+    };
+
+    const auto expectedResult2
+    {
+        R"({"data":{"inode":43482,"item_id":"ca7c9aff241cb251c6ad31e30b806366ecb2ad5f","local_ip":"::","local_port":51087,"pid":0,"process_name":null,"protocol":"udp6","remote_ip":"::","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+    };
+
+    const auto expectedResult3
+    {
+        R"({"data":{"inode":50324,"item_id":"8c790ef53962dd27f4516adb1d7f3f6096bc6d29","local_ip":"127.0.0.1","local_port":33060,"pid":0,"process_name":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+    };
+
+    const auto expectedResult4
+    {
+        R"({"data":{"inode":122575,"item_id":"d5511242275bd3f2d57175f248108d6c3b39c438","local_ip":"192.168.0.104","local_port":39106,"pid":0,"process_name":null,"protocol":"tcp","remote_ip":"44.238.116.130","remote_port":443,"rx_queue":0,"state":"established","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+    };
+
+    EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult2)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult3)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult4)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          reportFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, true, true, false, false, true);
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, portAllDisable)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"({
+    "ports":[
+        {
+            "inode":43481,
+            "local_ip":"0.0.0.0",
+            "local_port":47748,
+            "pid":0,
+            "process_name":"",
+            "protocol":"udp",
+            "remote_ip":"0.0.0.0",
+            "remote_port":0,
+            "rx_queue":0,
+            "state":"",
+            "tx_queue":0
+        },
+        {
+            "inode":43482,
+            "local_ip":"::",
+            "local_port":51087,
+            "pid":0,
+            "process_name":"",
+            "protocol":"udp6",
+            "remote_ip":"::",
+            "remote_port":0,
+            "rx_queue":0,
+            "state":"",
+            "tx_queue":0
+        },
+        {
+            "inode":50324,
+            "local_ip":"127.0.0.1",
+            "local_port":33060,
+            "pid":0,
+            "process_name":"",
+            "protocol":"tcp",
+            "remote_ip":"0.0.0.0",
+            "remote_port":0,
+            "rx_queue":0,
+            "state":"listening",
+            "tx_queue":0
+        },
+        {
+            "inode":50324,
+            "local_ip":"127.0.0.1",
+            "local_port":33060,
+            "pid":0,
+            "process_name":"",
+            "protocol":"tcp",
+            "remote_ip":"0.0.0.0",
+            "remote_port":0,
+            "rx_queue":0,
+            "state":"listening",
+            "tx_queue":0
+        },
+        {
+            "inode":122575,
+            "local_ip":"192.168.0.104",
+            "local_port":39106,
+            "pid":0,
+            "process_name":"",
+            "protocol":"tcp",
+            "remote_ip":"44.238.116.130",
+            "remote_port":443,
+            "rx_queue":0,
+            "state":"established",
+            "tx_queue":0
+        }
+    ]
+    })")));
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string& data)
+        {
+            auto delta = nlohmann::json::parse(data);
+            delta["data"].erase("checksum");
+            delta["data"].erase("scan_time");
+            wrapper.callbackMock(delta.dump());
+        }
+    };
+    const auto expectedResult1
+    {
+        R"({"data":{"inode":43481,"item_id":"12903a43db24ab10d872547cdd1d786a5876a0da","local_ip":"0.0.0.0","local_port":47748,"pid":0,"process_name":null,"protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+    };
+
+    const auto expectedResult2
+    {
+        R"({"data":{"inode":43482,"item_id":"ca7c9aff241cb251c6ad31e30b806366ecb2ad5f","local_ip":"::","local_port":51087,"pid":0,"process_name":null,"protocol":"udp6","remote_ip":"::","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+    };
+
+    const auto expectedResult3
+    {
+        R"({"data":{"inode":50324,"item_id":"8c790ef53962dd27f4516adb1d7f3f6096bc6d29","local_ip":"127.0.0.1","local_port":33060,"pid":0,"process_name":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+    };
+
+    EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult2)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult3)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          reportFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, false, true, false, false, false, true);
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F(SyscollectorImpTest, PackagesDuplicated)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, packages()).WillRepeatedly(Return(nlohmann::json::parse(R"([{"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},{"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"}])")));
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string& data)
+        {
+            auto delta = nlohmann::json::parse(data);
+            delta["data"].erase("checksum");
+            delta["data"].erase("scan_time");
+            wrapper.callbackMock(delta.dump());
+        }
+    };
+
+    const auto expectedResult1
+    {
+        R"({"data":{"architecture":"amd64","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+    };
+
+    EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackData,
+                                          reportFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, false, false, false, true, false, false, false, false, true);
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+    if (t.joinable())
+    {
+        t.join();
+    }
+}

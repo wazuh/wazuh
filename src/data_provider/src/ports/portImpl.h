@@ -18,10 +18,11 @@
 
 class PortImpl final : public IOSPort
 {
+    private:
         std::shared_ptr<IPortWrapper> m_spPortRawData;
     public:
         explicit PortImpl(const std::shared_ptr<IPortWrapper>& portRawData)
-            : m_spPortRawData(portRawData)
+        : m_spPortRawData(portRawData)
         { }
         // LCOV_EXCL_START
         ~PortImpl() = default;
@@ -38,7 +39,7 @@ class PortImpl final : public IOSPort
             port["inode"] = m_spPortRawData->inode();
             port["state"] = m_spPortRawData->state();
             port["pid"] = m_spPortRawData->pid();
-            port["process_name"] = m_spPortRawData->processName();
-        }
+            port["process"] = m_spPortRawData->processName();
+    }
 };
 #endif // _PORT_IMPL_H

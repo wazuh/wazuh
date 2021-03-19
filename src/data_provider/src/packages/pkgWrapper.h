@@ -21,14 +21,15 @@
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
+static const std::string UTILITIES_FOLDER   { "/Utilities"          };
 
 class PKGWrapper final : public IPackageWrapper
 {
     public:
         explicit PKGWrapper(const PackageContext& ctx)
-            : m_format{"pkg"}
+        : m_format{"pkg"}
         {
-            getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
+            getPkgData(ctx.filePath+ "/" + ctx.package + "/" + APP_INFO_PATH);
         }
 
         ~PKGWrapper() = default;
@@ -61,13 +62,27 @@ class PKGWrapper final : public IPackageWrapper
         {
             return m_osPatch;
         }
+        std::string source() const override
+        {
+            return m_source;
+        }
+        std::string location() const override
+        {
+            return m_location;
+        }
 
     private:
         void getPkgData(const std::string& filePath)
         {
             const auto isBinaryFnc
             {
-                [&filePath]()
+                const std::string filePathStr
+                {
+                    std::istreambuf_iterator<char>(data),
+                    std::istreambuf_iterator<char>()
+                };
+                std::string line;
+                while(std::getline(data, line))
                 {
                     // If first line is "bplist00" it's a binary plist file
                     std::fstream file {filePath, std::ios_base::in};
@@ -119,7 +134,9 @@ class PKGWrapper final : public IPackageWrapper
                         }
                     }
                 }
-            };
+                m_source   = filePathStr.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                m_location = filePathStr;
+            }
 
             if (isBinary)
             {
@@ -175,6 +192,8 @@ class PKGWrapper final : public IPackageWrapper
         std::string m_architecture;
         const std::string m_format;
         std::string m_osPatch;
+        std::string m_source;
+        std::string m_location;
 };
 
 #endif //_PKG_WRAPPER_H

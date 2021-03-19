@@ -5302,6 +5302,8 @@ tags:
     description: "File integrity monitoring"
   - name: Syscollector
     description: "Syscollector information"
+  - name: Tasks
+    description: "Tasks information"
   - name: Vulnerability
     description: "Vulnerabilities information"
 
@@ -13939,7 +13941,7 @@ paths:
       description: "This method should be called to get an API token using an authorization context body. This token
       will expire after auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT
       /security/config"
-      operationId: api.controllers.security_controller.login_user
+      operationId: api.controllers.security_controller.run_as_login
       parameters:
         - $ref: '#/components/parameters/raw'
       security:
@@ -15743,7 +15745,7 @@ paths:
   /tasks/status:
     get:
       tags:
-        - tasks
+        - Tasks
       summary: "List tasks"
       description: "Returns all available information about the specified tasks"
       operationId: api.controllers.task_controller.get_tasks_status

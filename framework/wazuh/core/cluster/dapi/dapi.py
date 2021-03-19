@@ -17,6 +17,8 @@ from functools import reduce
 from operator import or_
 from typing import Callable, Dict, Tuple
 
+from sqlalchemy.exc import OperationalError
+
 import wazuh.core.cluster.cluster
 import wazuh.core.cluster.utils
 import wazuh.core.manager
@@ -25,9 +27,9 @@ from wazuh import agent
 from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
+from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
-from sqlalchemy.exc import OperationalError
 
 
 class DistributedAPI:
@@ -131,12 +133,14 @@ class DistributedAPI:
                 self.debug_log(f"Receiving parameters {self.f_kwargs}")
 
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
+            is_cluster_disabled = self.node == local_client and not check_cluster_status()
+
             # First case: execute the request locally.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or self.request_type == 'local_any' or \
+            if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
 
@@ -215,6 +219,7 @@ class DistributedAPI:
         str
             JSON response.
         """
+
         def run_local():
             self.debug_log("Starting to execute request locally")
             common.rbac.set(self.rbac_permissions)
@@ -562,6 +567,7 @@ class DistributedAPI:
 
 class WazuhRequestQueue:
     """Represents a queue of Wazuh requests"""
+
     def __init__(self, server):
         self.request_queue = asyncio.Queue()
         self.server = server
@@ -603,7 +609,8 @@ class APIRequestQueue(WazuhRequestQueue):
             try:
                 node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
             except KeyError as e:
-                self.logger.error(f"Error in DAPI request. The destination node is not connected or does not exist: {e}.")
+                self.logger.error(
+                    f"Error in DAPI request. The destination node is not connected or does not exist: {e}.")
                 continue
 
             try:
