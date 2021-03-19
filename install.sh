@@ -913,7 +913,7 @@ main()
             while [ $ct = "1" ]; do
                 ct="0"
                 echo " - WARNING:"
-                echo "  -- Your current $NAME version: $VERSION"
+                echo "  -- Your current $NAME version: $USER_OLD_VERSION"
                 echo "  -- You have a version older than v5.0.0, if you upgrade you will lose all your configuration"
                 $ECHO "  -- Do you want to continue? ($yes/$no): "
                 if [ "X${USER_UPDATE}" = "X" ]; then
