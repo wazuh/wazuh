@@ -679,7 +679,7 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
 }
 
 //Test wdbi_sha_calculate
-void test_wdbi_sha_calculate_success(void **state)
+void test_wdbi_sha_calculate_array_success(void **state)
 {
     const char** test_words = NULL;
     int ret_val = -1;
@@ -694,14 +694,29 @@ void test_wdbi_sha_calculate_success(void **state)
     test_words[4] = " ";
     test_words[5]= NULL;
 
+    // Using real EVP_DigestUpdate
     test_mode = 0;
 
-    ret_val = wdbi_sha_calculation(test_words, hexdigest);
+    ret_val = wdbi_sha_calculation(test_words, hexdigest, 0);
 
     assert_int_equal (ret_val, 0);
     assert_string_equal(hexdigest, "159a9a6e19ff891a8560376df65a078e064bd0ce");
 
     os_free(test_words);
+}
+
+void test_wdbi_sha_calculate_parameters_success(void **state)
+{
+    int ret_val = -1;
+    os_sha1 hexdigest;
+
+    // Using real EVP_DigestUpdate
+    test_mode = 0;
+
+    ret_val = wdbi_sha_calculation(NULL, hexdigest, 5, "FirstWord", "SecondWord", "Word number 3", "", " ");
+
+    assert_int_equal (ret_val, 0);
+    assert_string_equal(hexdigest, "159a9a6e19ff891a8560376df65a078e064bd0ce");
 }
 
 int main(void) {
@@ -759,8 +774,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_check_left_ok, setup_wdb_t, teardown_wdb_t),
 
         //Test wdbi_sha_calculate
-        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculate_success, setup_wdb_t, teardown_wdb_t),
-
+        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculate_array_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculate_parameters_success, setup_wdb_t, teardown_wdb_t),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

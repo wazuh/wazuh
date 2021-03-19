@@ -1341,7 +1341,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         // The reference for packages is calculated with the name, version and architecture
         os_sha1 hexdigest;
         char** fields_to_hash = NULL;
-        os_malloc(4 * sizeof(char*),fields_to_hash);
+        os_calloc(4, sizeof(char*), fields_to_hash);
 
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
         cJSON * format = cJSON_GetObjectItem(package, "format");
@@ -1471,7 +1471,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
 
         //Calculating hash of the NULL terminated array
         fields_to_hash[3] = NULL;
-        wdbi_sha_calculation((const char **)fields_to_hash, hexdigest);
+        wdbi_sha_calculation((const char **)fields_to_hash, hexdigest, 0);
         wm_strcat(&msg, hexdigest, '|');
         free_strarray(fields_to_hash);
 
