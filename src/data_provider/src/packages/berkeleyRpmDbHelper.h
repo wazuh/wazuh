@@ -40,6 +40,9 @@ constexpr auto INT32_TYPE {4};
 constexpr auto STRING_TYPE {6};
 constexpr auto STRING_VECTOR_TYPE {9};
 
+//This constant is defined with this value in the RPM source code (header.c)
+constexpr auto HEADER_TAGS_MAX { 65535 };
+
 struct BerkeleyHeaderEntry final
 {
     std::string tag;
@@ -79,7 +82,9 @@ class BerkeleyRpmDBReader final
 
                 const auto dataSize { Utils::toInt32BE(bytes + sizeof(int32_t)) };
 
-                if (indexSize > 0 && FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize <= data.size)
+                const auto estimatedHeaderTagSize { FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize };
+
+                if (indexSize > 0 && indexSize < HEADER_TAGS_MAX && estimatedHeaderTagSize <= data.size)
                 {
                     bytes = &bytes[FIRST_ENTRY_OFFSET];
 
