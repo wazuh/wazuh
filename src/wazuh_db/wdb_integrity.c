@@ -488,9 +488,9 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
     return result;
 }
 
-// Calculates SHA1 hash from a NULL terminated string array
-int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest)
-{
+// Method to perform SHA1 hash algorithm to a NULL terminated string array or passing strings as parameters
+ int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest, unsigned int count, ...)
+ {
     size_t it = 0;
     unsigned char digest[EVP_MAX_MD_SIZE];
     unsigned int digest_size;
@@ -508,6 +508,7 @@ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest)
         return OS_INVALID;
     }
 
+    // An array of strings was sent
     if (strings_to_hash) {
         while(strings_to_hash[it]) {
             if (1 != EVP_DigestUpdate(ctx, strings_to_hash[it], strlen(strings_to_hash[it])) ) {
@@ -518,45 +519,20 @@ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest)
             it++;
         }
     }
+    // The words were sent individually instead
+    else if(count != 0) {
+        va_list parameters;
+        va_start(parameters, count);
 
-    EVP_DigestFinal_ex(ctx, digest, &digest_size);
-    EVP_MD_CTX_destroy(ctx);
-    if (ret_val != OS_INVALID) {
-        OS_SHA1_Hexdigest(digest, hexdigest);
-    }
-
-    return ret_val;
- }
-
- // Calculates SHA1 hash from a set of strings as parameters, with NULL as end
- int wdbi_strings_hash(os_sha1 hexdigest, ...)
- {
-    char* parameter = NULL;
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size;
-    int ret_val = OS_SUCCESS;
-    va_list parameters;
-
-    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
-    if (!ctx) {
-        mdebug2("Failed during hash context creation");
-        return OS_INVALID;
-    }
-
-    if (1 != EVP_DigestInit(ctx, EVP_sha1()) ) {
-        mdebug2("Failed during hash context initialization");
-        EVP_MD_CTX_destroy(ctx);
-        return OS_INVALID;
-    }
-
-    va_start(parameters, hexdigest);
-
-    while(parameter = va_arg(parameters, char*), parameter) {
-        if (1 != EVP_DigestUpdate(ctx, parameter, strlen(parameter)) ) {
-            mdebug2("Failed during hash context update");
-            ret_val = OS_INVALID;
-            break;
+        for(unsigned int i = 0; i < count; i++) {
+            char* parameter = va_arg(parameters, char*);
+            if (1 != EVP_DigestUpdate(ctx, parameter, strlen(parameter)) ) {
+                mdebug2("Failed during hash context update");
+                ret_val = OS_INVALID;
+                break;
+            }
         }
+        va_end(parameters);
     }
     va_end(parameters);
 
