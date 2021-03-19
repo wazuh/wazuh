@@ -6062,7 +6062,7 @@ int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
         result = wdb_parse_agents_clear_vuln_cve(wdb, output);
     }
     else if (strcmp(next, "update_status") == 0) {
-        result = wdb_parse_agents_update_status_vuln_cve(wdb, tail, output);
+        result = wdb_parse_agents_vuln_cve_update_status(wdb, tail, output);
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve action: %s", next);
@@ -6121,7 +6121,7 @@ int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
     return ret;
 }
 
-int wdb_parse_agents_update_status_vuln_cve(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
     const char *error = NULL;
     int ret = OS_INVALID;
