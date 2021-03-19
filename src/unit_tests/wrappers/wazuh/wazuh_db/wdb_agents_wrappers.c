@@ -24,3 +24,9 @@ int __wrap_wdb_agents_insert_vuln_cve( __attribute__((unused)) wdb_t *wdb, const
 int __wrap_wdb_agents_clear_vuln_cve( __attribute__((unused)) wdb_t *wdb) {
     return mock();
 }
+
+int __wrap_wdb_agents_update_status_vuln_cve( __attribute__((unused)) wdb_t *wdb, const char* old_status, const char* new_status) {
+    check_expected(old_status);
+    check_expected(new_status);
+    return mock();
+}
