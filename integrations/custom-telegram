@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+
+import sys
+import json
+import requests
+import logging
+import urllib
+import urllib2
+from requests.auth import HTTPBasicAuth
+reload(sys)
+sys.setdefaultencoding('utf8')
+BLACK_LIST= ["sca","vulnerability-detector"]
+BLACK_RULE= ["2902","2904","550","202","203"]
+def send_telegram_message(token, chat_id, text):
+    url = 'https://api.telegram.org/bot%s/sendMessage' % (token)
+    data = urllib.urlencode({'chat_id':chat_id, 'text':text, 'parse_mode':'Markdown'})
+    try:
+        urllib2.urlopen(url, data).read()
+    except Exception as e:
+        LOGGER.warn('Cannot send Telegram message: HTTP-Error: %s\n' % (e))
+# Set logging
+APP_NAME="WAZUH-TELEGRAM"
+LOG_FILE="/var/ossec/logs/integrations.log"
+LOGGER = logging.getLogger(APP_NAME)
+hdlr = logging.FileHandler(LOG_FILE)
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+hdlr.setFormatter(formatter)
+LOGGER.addHandler(hdlr)
+LOGGER.setLevel(logging.INFO)
+LOGGER.info("Receiving msg")
+# Read configuration parameters
+alert_file = open(sys.argv[1])
+#user = sys.argv[2].split(':')[0]
+#api_key = sys.argv[2].split(':')[1]
+token = sys.argv[2]
+chat_id = sys.argv[3]
+
+# Read the alert file
+alert_json = json.loads(alert_file.read())
+alert_file.close()
+LOGGER.info(alert_json)
+# Extract issue fields
+rule = alert_json['rule']['id']
+if 'full_log' in alert_json:
+    full_log = alert_json['full_log']
+else:
+    full_log = alert_json['data']
+description = alert_json['rule']['description']
+ipcheck = alert_json['data']['srcip']
+
+if not ipcheck:
+    ipcl = alert_json['agent']['name']
+else:
+    ipcl = alert_json['data']['srcip']
+
+hostname = alert_json['agent']['name']
+if 'ip' in alert_json['agent']:
+    ip = alert_json['agent']['ip']
+else:
+    ip = ""
+timestamp = alert_json['timestamp']
+location = alert_json['location']
+level = alert_json['rule']['level']
+text = """*Wazuh-OSSEC: (%s) %s -> %s*
+```
+Rule: %s
+Level:%s
+IP_client: %s
+Time: %s
+Description: %s
+%s```""" %(hostname,ip,location,rule,level,ipcl,timestamp,description,full_log)
+LOGGER.info(text)
+
+if location not in BLACK_LIST and rule not in BLACK_RULE and "ignore this message" not in description:
+        send_telegram_message(token, chat_id, text)
+sys.exit(0)
