@@ -282,9 +282,11 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
     os_calloc(2, sizeof(char *), paths);
 
     for (i = 0; sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]) == SQLITE_ROW; i++) {
+        char *p;
         os_realloc(paths, (i + 2) * sizeof(char *), paths);
 
-        sqlite_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
+        p = (char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0);
+        sqlite_strdup(p, paths[i]);
     }
 
     paths[i] = NULL;
@@ -305,7 +307,8 @@ int fim_db_append_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
 
     for (i = 0; sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]) == SQLITE_ROW; i++) {
         char *path = NULL;
-        sqlite_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), path);
+        char *p = (char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0);
+        sqlite_strdup(p, path);
         OSList_AddData(list, path);
     }
 
@@ -379,7 +382,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *ne
     }
     // Modified event
 #ifndef WIN32
-    else if (new->inode != saved->inode) {
+    else if (new->inode != saved->inode || new->dev != saved->dev) {
         fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
         fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_COUNT, file_path);
 
@@ -565,7 +568,7 @@ int fim_db_file_is_scanned(fdb_t *fim_sql, const char *path) {
     case SQLITE_DONE:
         return 0;
     case SQLITE_ERROR:
-        mdebug2("Failed to get scanned value of '%s' - %s", path, sqlite3_errmsg(fim_sql->db));
+        mdebug2(FIM_DB_FAIL_TO_GET_SCANNED_FILE, path, sqlite3_errmsg(fim_sql->db));
         // Fallthrough
     default:
         return FIMDB_ERR;

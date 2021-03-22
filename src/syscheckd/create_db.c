@@ -49,18 +49,6 @@ static const char *FIM_EVENT_MODE[] = {
 
 static cJSON *_unsafe_fim_file(const char *file, fim_element *item, whodata_evt *w_evt);
 
-static cJSON *_unsafe_delete_event(fdb_t *fim_sql,
-                                   const fim_entry *entry,
-                                   int configuration,
-                                   fim_event_mode mode,
-                                   const whodata_evt *w_evt) {
-
-    fim_db_remove_path(fim_sql, entry->file_entry.path);
-
-    return fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, configuration, FIM_DELETE, mode, w_evt,
-                          NULL);
-}
-
 void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
                            __attribute__((unused))void *alert,
                            __attribute__((unused))void *fim_ev_mode,
@@ -102,10 +90,18 @@ void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mu
 
     // Remove path from the DB.
     w_mutex_lock(mutex);
-    json_event = _unsafe_delete_event(fim_sql, entry, pos, mode, w_evt);
+    if (fim_db_remove_path(fim_sql, entry->file_entry.path) == FIMDB_ERR) {
+        w_mutex_unlock(mutex);
+        return;
+    }
+
+    if (send_alert) {
+        json_event =
+        fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, pos, FIM_DELETE, mode, w_evt, NULL);
+    }
     w_mutex_unlock(mutex);
 
-    if (send_alert && json_event != NULL) {
+    if (json_event != NULL) {
         mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
         send_syscheck_msg(json_event);
     }
@@ -276,10 +272,6 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
             return;
         }
 
-        if (item->configuration & CHECK_SEECHANGES) {
-            fim_diff_process_delete_file(path);
-        }
-
         w_mutex_lock(&syscheck.fim_entry_mutex);
         saved_entry = fim_db_get_path(syscheck.database, path);
         w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -289,6 +281,8 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
                                  (void *) (fim_event_mode) item->mode, (void *) w_evt);
             free_entry(saved_entry);
             saved_entry = NULL;
+        } else if (item->configuration & CHECK_SEECHANGES) {
+            fim_diff_process_delete_file(path);
         }
 
         return;
@@ -393,26 +387,27 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
 }
 
 #ifndef WIN32
-typedef enum { FIM_FILE_UPDATED, FIM_FILE_DELETED, FIM_FILE_ADDED_PATHS, FIM_FILE_ERROR } fim_sanitize_state_t;
-
 /**
  * @brief Processes a file by extracting its information from the DB.
  *
  * @param path The path to the file being processed.
  * @param stack A list used as a stack to store paths to stored inodes that have a conflict with the analysed file.
+ * @param event In case the processed file generates and event, it's returned here.
  * @return A fim_sanitize_state_t value representing how the operation ended.
  * @retval FIM_FILE_UPDATED The file has been updated correctly in the DB.
  * @retval FIM_FILE_DELETED The file has been deleted from the DB.
- * @retval FIM_FILE_ADDED_PATHS A collision was detected with the inode of the file, the paths gotten from the conflicting inode are added to `stack`.
+ * @retval FIM_FILE_ADDED_PATHS A collision was detected with provided inode, the paths gotten from the conflicting inode are added to `stack`.
  * @retval FIM_FILE_ERROR An error occured while processing the file.
  */
-static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *stack) {
+static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *stack, cJSON **event) {
     fim_element item;
+    fim_entry *entry;
 
     assert(path != NULL);
     assert(stack != NULL);
+    assert(event != NULL);
 
-    fim_entry *entry = fim_db_get_path(syscheck.database, path);
+    entry = fim_db_get_path(syscheck.database, path);
     if (entry == NULL) {
         // We didn't get an entry
         return FIM_FILE_ERROR;
@@ -423,7 +418,6 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
 
     if (w_stat(entry->file_entry.path, &item.statbuf) == -1) {
         int configuration;
-        cJSON *event;
 
         if (errno != ENOENT) {
             mdebug1(FIM_STAT_FAILED, entry->file_entry.path, errno, strerror(errno));
@@ -439,13 +433,12 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
             fim_diff_process_delete_file(entry->file_entry.path);
         }
 
-        event = _unsafe_delete_event(syscheck.database, entry, configuration, FIM_SCHEDULED, NULL);
-
-        if (event != NULL) {
-            send_syscheck_msg(event);
+        if (fim_db_remove_path(syscheck.database, entry->file_entry.path) == FIMDB_ERR) {
+            return FIM_FILE_ERROR;
         }
 
-        cJSON_Delete(event);
+        *event = fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, configuration, FIM_DELETE,
+                               FIM_SCHEDULED, NULL, NULL);
 
         return FIM_FILE_DELETED;
     }
@@ -477,13 +470,7 @@ end:
     item.index = fim_configuration_directory(entry->file_entry.path);
     item.configuration = syscheck.opts[item.index];
 
-    cJSON *event = _unsafe_fim_file(entry->file_entry.path, &item, NULL);
-
-    if (event != NULL && _base_line != 0) {
-        send_syscheck_msg(event);
-    }
-
-    cJSON_Delete(event);
+    *event = _unsafe_fim_file(entry->file_entry.path, &item, NULL);
 
     return FIM_FILE_UPDATED;
 }
@@ -506,19 +493,23 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
     OSList_SetFreeDataPointer(stack, free);
 
     fim_db_append_paths_from_inode(syscheck.database, inode, dev, stack);
+    w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     while (stack->currently_size != 0) {
         char *current_path;
+        cJSON *event;
         OSListNode *last = OSList_GetLastNode(stack);
 
         if (last == NULL) {
-            mwarn("Failed getting the next node to scan");
+            mdebug2("Failed getting the next node to scan");
             break;
         }
 
         current_path = (char *)last->data;
 
-        switch (fim_process_file_from_db(current_path, stack)) {
+        w_mutex_lock(&syscheck.fim_entry_mutex);
+
+        switch (fim_process_file_from_db(current_path, stack, &event)) {
         case FIM_FILE_UPDATED:
         case FIM_FILE_DELETED:
             OSList_DeleteCurrentlyNode(stack);
@@ -532,9 +523,20 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
             OSList_Destroy(stack);
             return -1;
         }
+
+        w_mutex_unlock(&syscheck.fim_entry_mutex);
+
+        if (event) {
+            send_syscheck_msg(event);
+        }
+
+        cJSON_Delete(event);
+        event = NULL;
     }
 
     OSList_Destroy(stack);
+
+    w_mutex_lock(&syscheck.fim_entry_mutex);
 
     return 0;
 }
@@ -1064,7 +1066,6 @@ fim_file_data * fim_get_data(const char *file, fim_element *item) {
     data->mode = item->mode;
     data->options = item->configuration;
     data->last_event = time(NULL);
-    data->scanned = 1;
     fim_get_checksum(data);
 
     return data;
