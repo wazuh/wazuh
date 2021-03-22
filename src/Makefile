@@ -41,6 +41,7 @@ EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
+STD_REDIRECTION?=/dev/null
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
@@ -128,6 +129,7 @@ CLEANFULL?=no
 
 DEFINES=-DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
+DEFINES+=-DREDIRECTED_OUT=\"${STD_REDIRECTION}\"
 DEFINES+=-DUSER=\"${OSSEC_USER}\"
 DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
@@ -307,10 +309,10 @@ DBSYNC_LIB+=-ldbsync
 RSYNC_LIB+=-lrsync
 
 ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin 
+	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
 	OSSEC_LDFLAGS+=-L${RSYNC}build/bin
 else
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib 
+	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
 	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
 endif
 
@@ -454,7 +456,7 @@ ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
 else
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib 
+	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
 endif
 
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))

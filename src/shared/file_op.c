@@ -26,6 +26,9 @@
 
 #ifndef WIN32
 #include <regex.h>
+#ifndef REDIRECTED_OUT
+#define REDIRECTED_OUT "/dev/null"
+#endif
 #else
 #include <aclapi.h>
 #endif
@@ -1212,12 +1215,14 @@ void goDaemon()
     }
 
     /* Dup stdin, stdout and stderr to /dev/null */
-    if ((fd = open("/dev/null", O_RDWR)) >= 0) {
+    if ((fd = open(REDIRECTED_OUT, O_RDWR | O_CREAT, S_IWGRP | S_IWUSR)) >= 0) {
         dup2(fd, 0);
         dup2(fd, 1);
         dup2(fd, 2);
 
         close(fd);
+    } else {
+        merror("Error opening %s %d %s", REDIRECTED_OUT, errno, strerror(errno));
     }
 
     /* Go to / */
