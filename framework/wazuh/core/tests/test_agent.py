@@ -563,6 +563,39 @@ def test_agent_get_key_ko(socket_mock, send_mock):
 @patch('wazuh.core.agent.WazuhQueue')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+def test_agent_reconnect(socket_mock, send_mock, mock_queue):
+    """Test if method reconnect calls other methods with correct params."""
+    with patch('wazuh.core.agent.Agent.getconfig', return_value={'active-response': {'disabled': 'no'}}) as \
+            mock_config:
+        agent_id = '000'
+        agent = Agent(agent_id)
+        agent.reconnect()
+
+        # Assert methods are called with correct params
+        mock_config.assert_called_once_with('com', 'active-response', 'Wazuh v3.9.0')
+        mock_queue.return_value.send_msg_to_agent.assert_called_with(mock_queue.HC_FORCE_RECONNECT, agent_id)
+
+
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_reconnect_ko(socket_mock, send_mock):
+    """Test if method reconnect raises exception."""
+    # Assert exception is raised when status of agent is not 'active'
+    with patch('wazuh.core.agent.Agent.getconfig', return_value={'active-response': {'disabled': 'no'}}):
+        with pytest.raises(WazuhError, match='.* 1757 .*'):
+            agent = Agent(3)
+            agent.reconnect()
+
+    # Assert exception is raised when active-response is disabled
+    with patch('wazuh.core.agent.Agent.getconfig', return_value={'active-response': {'disabled': 'yes'}}):
+        with pytest.raises(WazuhException, match='.* 1750 .*'):
+            agent = Agent(0)
+            agent.reconnect()
+
+
+@patch('wazuh.core.agent.WazuhQueue')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
 def test_agent_restart(socket_mock, send_mock, mock_queue):
     """Test if method restart calls other methods with correct params."""
     with patch('wazuh.core.agent.Agent.getconfig', return_value={'active-response': {'disabled': 'no'}}) as \
