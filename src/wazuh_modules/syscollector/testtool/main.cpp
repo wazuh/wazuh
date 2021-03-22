@@ -20,15 +20,7 @@
 #include "sysInfo.hpp"
 #include "syscollector.hpp"
 
-constexpr auto DEFAULT_SLEEP_TIME
-{
-    60
-};
-
-static void logFunction(const char* msg)
-{
-    std::cout << msg << std::endl;
-}
+constexpr int DEFAULT_SLEEP_TIME { 60 };
 
 int main(int argc, const char* argv[])
 {
