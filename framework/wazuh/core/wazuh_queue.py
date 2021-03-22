@@ -158,6 +158,7 @@ class WazuhQueue:
             # Send message
             self._send(socket_msg.encode())
         except:
-            raise WazuhError(1702) if msg_is_restart else WazuhError(1652)
+            raise WazuhError(1702) if msg_is_restart else WazuhError(1601) if msg == WazuhQueue.HC_SK_RESTART else \
+                WazuhError(1757) if msg == WazuhQueue.HC_FORCE_RECONNECT else WazuhError(1652)
 
         return ret_msg
