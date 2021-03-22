@@ -54,4 +54,11 @@ Eventinfo *Accumulate(Eventinfo *lf, OSHash **acm_store, int *acm_lookups, time_
  */
 void Accumulate_CleanUp(OSHash **acm_store, int *acm_lookups, time_t *acm_purge_ts);
 
+/**
+ * @brief Free accumulate hash table
+ * 
+ * @param acm_store accumulate hash table to free
+ */
+void w_analysisd_accumulate_free(OSHash **acm_store);
+
 #endif /* ACCUMULATOR_H */
