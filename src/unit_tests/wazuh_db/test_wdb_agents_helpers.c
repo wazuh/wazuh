@@ -425,7 +425,7 @@ test_wdb_agents_vuln_cve_update_status_error_sql_execution(void **state){
     expect_string(__wrap_wdbc_query_ex, query, query_str);
     expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
     will_return(__wrap_wdbc_query_ex, response);
-    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+    will_return(__wrap_wdbc_query_ex, -1);
 
     // Handling result
     expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Cannot execute SQL query");
