@@ -401,11 +401,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULTQPATH    DEFAULTDIR DEFAULTQUEUE
 
 #ifndef WIN32
-#define OSSECCONF       "/etc/ossec.conf"
-#define DEFAULTCPATH    DEFAULTDIR OSSECCONF
+#define WAZUHCONF_AGENT       "/etc/agent.conf"
+#define WAZUHCONF_MANAGER     "/etc/manager.conf"
+#define DEFAULTCPATH_AGENT    DEFAULTDIR WAZUHCONF_AGENT
+#define DEFAULTCPATH_MANAGER  DEFAULTDIR WAZUHCONF_MANAGER
 #else
-#define OSSECCONF       "ossec.conf"
-#define DEFAULTCPATH    "ossec.conf"
+#define WAZUHCONF_AGENT       "agent.conf"
+#define DEFAULTCPATH_AGENT    WAZUHCONF_AGENT
 #endif
 
 #ifndef WIN32

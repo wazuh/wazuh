@@ -204,8 +204,8 @@ void wm_sync_manager() {
 
     OS_XML xml;
 
-    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
-        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
+    if (OS_ReadXML(DEFAULTCPATH_MANAGER, &xml) < 0){
+        merror_exit(XML_ERROR, DEFAULTCPATH_MANAGER, xml.err, xml.err_line);
     }
 
     manager_data->node_name = OS_GetOneContentforElement(&xml, xml_node);

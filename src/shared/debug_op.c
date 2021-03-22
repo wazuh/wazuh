@@ -235,11 +235,11 @@ void os_logging_config(){
 
   pid = (int)getpid();
 
-  if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
+  if (OS_ReadXML(chroot_flag ? WAZUHCONF_AGENT : DEFAULTCPATH_AGENT, &xml) < 0){
     flags.log_plain = 1;
     flags.log_json = 0;
     OS_ClearXML(&xml);
-    merror_exit(XML_ERROR, chroot_flag ? OSSECCONF : DEFAULTCPATH, xml.err, xml.err_line);
+    merror_exit(XML_ERROR, chroot_flag ? WAZUHCONF_AGENT : DEFAULTCPATH_AGENT, xml.err, xml.err_line);
   }
 
   logformat = OS_GetOneContentforElement(&xml, xmlf);

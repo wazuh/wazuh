@@ -44,7 +44,7 @@ extern BIO *bio_err;
 #define DEFAULT_CIPHERS "HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH"
 #define DEFAULT_PORT 1515
 #define DEFAULT_CENTRALIZED_GROUP "default"
-#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file " DEFAULTCPATH "."
+#define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file " DEFAULTCPATH_MANAGER "."
 #define MAX_SSL_PACKET_SIZE 16384
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)

@@ -20,7 +20,7 @@ int w_is_worker(void) {
     const char * xmlf[] = {"wazuh_config", "cluster", NULL};
     const char * xmlf2[] = {"wazuh_config", "cluster", "node_type", NULL};
     const char * xmlf3[] = {"wazuh_config", "cluster", "disabled", NULL};
-    const char *cfgfile = DEFAULTCPATH;
+    const char *cfgfile = DEFAULTCPATH_MANAGER;
     int modules = 0;
     int is_worker = 0;
     _Config cfg;
@@ -76,7 +76,7 @@ char *get_master_node(void) {
 
     OS_XML xml;
     const char * xmlf[] = {"wazuh_config", "cluster", "nodes", "node", NULL};
-    const char *cfgfile = DEFAULTCPATH;
+    const char *cfgfile = DEFAULTCPATH_MANAGER;
     _Config cfg;
     int modules = 0;
     char *master_node = NULL;

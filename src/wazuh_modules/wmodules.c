@@ -59,10 +59,9 @@ int wm_config() {
         return OS_INVALID;
     }
 
+    // Read configuration: agent.conf
 
-    // Read configuration: ossec.conf
-
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0) {
+    if (ReadConfig(CWMODULE, DEFAULTCPATH_AGENT, &wmodules, &agent_cfg) < 0) {
         return -1;
     }
 

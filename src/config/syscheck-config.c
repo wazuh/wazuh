@@ -2174,7 +2174,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         }
     }
 
-    // Set prefilter only if it's expressly allowed (ossec.conf in agent side).
+    // Set prefilter only if it's expressly allowed (agent.conf in agent side).
 
     if (prefilter_cmd[0]) {
         if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
