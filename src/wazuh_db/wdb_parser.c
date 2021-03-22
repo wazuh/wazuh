@@ -5426,7 +5426,7 @@ int wdb_parse_global_sync_agent_info_get(wdb_t* wdb, char* input, char* output) 
     }
 
     wdbc_result status = wdb_global_sync_agent_info_get(wdb, &last_id, &agent_info_sync);
-    snprintf(output, WDB_MAX_RESPONSE_SIZE, "%s %s",  WDBC_RESULT[status], agent_info_sync);
+    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], agent_info_sync);
     os_free(agent_info_sync)
     if (status != WDBC_DUE) {
         last_id = 0;
