@@ -581,7 +581,7 @@ constexpr auto PORTS_SQL_STATEMENT
        inode BIGINT,
        state TEXT,
        pid BIGINT,
-       process_name TEXT,
+       process TEXT,
        checksum TEXT,
        item_id TEXT,
        PRIMARY KEY (inode, protocol, local_ip, local_port)) WITHOUT ROWID;)"
@@ -914,6 +914,22 @@ static void removeKeysWithEmptyValue(nlohmann::json& input)
     }
 }
 
+static bool isElementDuplicated(const nlohmann::json & input, const std::pair<std::string, std::string>& keyValue)
+{
+    const auto it
+    {
+        std::find_if
+        (
+            input.begin(), input.end(),
+            [&keyValue](const auto& elem)
+            {
+                return elem.at(keyValue.first) == keyValue.second;
+            }
+        )
+    };
+    return it != input.end();
+}
+
 void Syscollector::updateAndNotifyChanges(const std::string& table,
                                           const nlohmann::json& values)
 {
@@ -1153,7 +1169,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool ports,
                         const bool portsAll,
                         const bool processes,
-                        const bool hotfixes)
+                        const bool hotfixes,
+                        const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = reportDiffFunction;
@@ -1169,6 +1186,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_portsAll = portsAll;
     m_processes = processes;
     m_hotfixes = hotfixes;
+    m_notify = notifyOnFirstScan;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
@@ -1384,18 +1402,7 @@ nlohmann::json Syscollector::getPackagesData()
             else
             {
                 const auto itemId{ getItemId(item, PACKAGES_ITEM_ID_FIELDS) };
-                const auto it
-                {
-                    std::find_if
-                    (
-                        packagesList.begin(), packagesList.end(),
-                        [&itemId](const auto& elem)
-                        {
-                            return elem.at("item_id") == itemId;
-                        }
-                    )
-                };
-                if(packagesList.end() == it)
+                if(!isElementDuplicated(packagesList, std::make_pair("item_id", itemId)))
                 {
                     item["item_id"] = itemId;
                     packagesList.push_back(item);
@@ -1451,6 +1458,7 @@ nlohmann::json Syscollector::getPortsData()
     nlohmann::json ret;
     constexpr auto PORT_LISTENING_STATE { "listening" };
     constexpr auto TCP_PROTOCOL { "tcp" };
+    constexpr auto UDP_PROTOCOL { "udp" };
     const auto& data { m_spInfo->ports() };
 
     if (!data.is_null())
@@ -1461,25 +1469,47 @@ nlohmann::json Syscollector::getPortsData()
         {
             for (auto item : itPorts.value())
             {
-                const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-                if(isListeningState)
+                const auto protocol { item.at("protocol").get_ref<const std::string&>() };
+                if (Utils::startsWith(protocol, TCP_PROTOCOL))
                 {
-                    item["checksum"] = getItemChecksum(item);
-                    item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
-                    // Only update and notify "Listening" state ports
+                    // All ports.
                     if (m_portsAll)
                     {
-                        // TCP and UDP ports
-                        ret.push_back(item);
+                        const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                        if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        {
+                            item["checksum"] = getItemChecksum(item);
+                            item["item_id"] = itemId;
+                            ret.push_back(item);
+                        }
                     }
                     else
                     {
-                        // Only TCP ports
-                        const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
-                        if (isTCPProto)
+                        // Only listening ports.
+                        const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+                        if(isListeningState)
                         {
-                            ret.push_back(item);
+                            const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                            if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                            {
+                                item["checksum"] = getItemChecksum(item);
+                                item["item_id"] = itemId;
+                                ret.push_back(item);
+                            }
                         }
+                    }
+                }
+                else if (Utils::startsWith(protocol, UDP_PROTOCOL))
+                {
+                    const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                    if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    {
+                        item["checksum"] = getItemChecksum(item);
+                        item["item_id"] = itemId;
+                        ret.push_back(item);
                     }
                 }
             }
