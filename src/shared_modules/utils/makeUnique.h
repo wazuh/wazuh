@@ -11,7 +11,7 @@
 
 /* Taken from isocpp.org/files/papers/N3656.txt
  * Stephan T. Lavavej <stl@microsoft.com>
- */ 
+ */
 #ifndef _MAKE_UNIQUE_H
 #define _MAKE_UNIQUE_H
 

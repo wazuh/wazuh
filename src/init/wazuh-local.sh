@@ -218,7 +218,7 @@ testconfig()
 start_service()
 {
     echo "Starting $NAME $VERSION..."
-    TEST=$(${DIR}/bin/wazuh-analysisd -t  2>&1)
+    TEST=$(${DIR}/bin/wazuh-logtest.legacy -t  2>&1)
     echo $TEST
 
     if [ ! -z "$TEST" ]; then

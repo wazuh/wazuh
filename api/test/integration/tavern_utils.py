@@ -114,10 +114,16 @@ def test_count_elements(response, n_expected_items):
 
 
 def test_expected_value(response, key, expected_values):
-    """
-    :param response: Request response
-    :param key: Key whose value to compare.
-    :param expected_values: Values to be found inside response.
+    """Iterate all items in the response and check that <key> value is within <expected_values>.
+
+    Parameters
+    ----------
+    response : Request response
+        API response to request.
+    key : str
+        Key whose value is checked.
+    expected_values : str, list
+        List of values which are allowed.
     """
     expected_values = set(expected_values.split(',')) if not isinstance(expected_values, list) else set(expected_values)
 

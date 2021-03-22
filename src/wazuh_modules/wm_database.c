@@ -12,7 +12,7 @@
 #include "wmodules.h"
 #include "sec.h"
 #include "remoted_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
 
@@ -80,6 +80,9 @@ static void wm_sync_agents();
 // Clean dangling database files
 static void wm_clean_dangling_db();
 
+// Clean dangling group files
+void wm_clean_dangling_groups();
+
 static void wm_sync_multi_groups(const char *dirname);
 
 #endif // LOCAL
@@ -116,6 +119,7 @@ void* wm_database_main(wm_database *data) {
     }
 
 #ifndef LOCAL
+    wm_clean_dangling_groups();
     wm_clean_dangling_db();
 #endif
 
@@ -336,21 +340,68 @@ void wm_clean_dangling_db() {
                 *end = 0;
 
                 if (name = wdb_get_agent_name(atoi(dirent->d_name), &wdb_wmdb_sock), name) {
-                    // Agent found: OK
-                    free(name);
-                } else {
-                    *end = '-';
+                    if (*name == '\0') {
+                        // Agent not found.
+                        *end = '-';
 
-                    if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
-                        mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
-                        if (remove(path) < 0) {
-                            mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                        if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
+                            mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
+                            if (remove(path) < 0) {
+                                mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                            }
                         }
                     }
+
+                    free(name);
                 }
             } else {
                 mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", dirname, dirent->d_name);
             }
+        }
+    }
+
+    closedir(dir);
+}
+
+// Clean dangling group files
+void wm_clean_dangling_groups() {
+    char path[PATH_MAX];
+    char * name;
+    int agent_id;
+    struct dirent * dirent = NULL;
+    DIR * dir;
+
+    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", DEFAULTDIR GROUPS_DIR);
+    dir = opendir(DEFAULTDIR GROUPS_DIR);
+
+    if (dir == NULL) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", DEFAULTDIR GROUPS_DIR, strerror(errno));
+        return;
+    }
+
+    while ((dirent = readdir(dir)) != NULL) {
+        if (dirent->d_name[0] != '.') {
+            os_snprintf(path, sizeof(path), DEFAULTDIR GROUPS_DIR "/%s", dirent->d_name);
+            agent_id = atoi(dirent->d_name);
+
+            if (agent_id <= 0) {
+                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", DEFAULTDIR GROUPS_DIR, dirent->d_name);
+                continue;
+            }
+
+            name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock);
+
+            if (name == NULL) {
+                mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", agent_id);
+                continue;
+            }
+
+            if (*name == '\0') {
+                mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", dirent->d_name);
+                unlink(path);
+            }
+
+            free(name);
         }
     }
 
@@ -433,6 +484,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     int result = 0;
     int id_agent = -1;
     int type;
+    char * name;
 
     mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
 
@@ -453,11 +505,26 @@ int wm_sync_file(const char *dirname, const char *fname) {
     switch (type) {
     case WDB_GROUPS:
         id_agent = atoi(fname);
-        if (id_agent < 0) {
+        if (id_agent <= 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
             return -1;
         }
 
+        name = wdb_get_agent_name(id_agent, &wdb_wmdb_sock);
+
+        if (name == NULL) {
+            mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", id_agent);
+            return -1;
+        }
+
+        if (*name == '\0') {
+            mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", fname);
+            unlink(path);
+            free(name);
+            return -1;
+        }
+
+        free(name);
         result = wm_sync_agent_group(id_agent, fname);
         break;
 

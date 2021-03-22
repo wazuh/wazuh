@@ -60,7 +60,8 @@ public:
               const bool ports = true,
               const bool portsAll = true,
               const bool processes = true,
-              const bool hotfixes = true);
+              const bool hotfixes = true,
+              const bool notifyOnFirstScan = false);
 
     void destroy();
     void push(const std::string& data);
@@ -69,7 +70,7 @@ private:
     ~Syscollector() = default;
     Syscollector(const Syscollector&) = delete;
     Syscollector& operator=(const Syscollector&) = delete;
-    
+
     std::string getCreateStatement() const;
     nlohmann::json getOSData();
     nlohmann::json getHardwareData();
