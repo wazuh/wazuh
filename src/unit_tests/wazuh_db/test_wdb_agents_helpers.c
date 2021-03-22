@@ -361,8 +361,9 @@ test_wdb_agents_vuln_cve_update_status_error_socket(void **state){
     int id = 1;
     const char *old_status = "valid";
     const char *new_status = "obsolete";
+    const char *json_str = NULL;
 
-    const char *json_str = strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+    os_strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", json_str);
     const char *query_str = "agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}";
     const char *response = "err";
 
@@ -400,8 +401,9 @@ test_wdb_agents_vuln_cve_update_status_error_sql_execution(void **state){
     int id = 1;
     const char *old_status = "valid";
     const char *new_status = "obsolete";
+    const char *json_str = NULL;
 
-    const char *json_str = strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+    os_strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", json_str);
     const char *query_str = "agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}";
     const char *response = "err";
 
@@ -439,8 +441,9 @@ test_wdb_agents_vuln_cve_update_status_error_result(void **state){
     int id = 1;
     const char *old_status = "valid";
     const char *new_status = "obsolete";
+    const char *json_str = NULL;
 
-    const char *json_str = strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+    os_strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", json_str);
     const char *query_str = "agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}";
     const char *response = "err";
 
@@ -479,8 +482,9 @@ test_wdb_agents_vuln_cve_update_status_success(void **state){
     int id = 1;
     const char *old_status = "valid";
     const char *new_status = "obsolete";
+    const char *json_str = NULL;
 
-    const char *json_str = strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}");
+    os_strdup("{\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", json_str);
     const char *query_str = "agent 1 vuln_cve update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}";
     const char *response = "err";
 
