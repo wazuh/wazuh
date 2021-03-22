@@ -9,8 +9,7 @@ from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 
-def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, no_ar: bool = False,
-                                  is_restart: bool = False):
+def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, is_restart: bool = False):
     """Create message that will be sent to the WazuhQueue socket.
 
     Parameters
@@ -22,8 +21,6 @@ def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, no_ar:
         to all agents.
     msg : str
         Message to be sent to the agent or agents.
-    no_ar : bool
-        Indicates whether the message sent is a non active-response message or not. Default `False`
     is_restart : bool
         Indicates whether the message sent is a restart message or not. Default `False`
 
@@ -32,17 +29,8 @@ def create_wazuh_queue_socket_msg(flag: str, str_agent_id: str, msg: str, no_ar:
     str
         Message that will be sent to the WazuhQueue socket.
     """
-
-    # Modify flag to specify a non active-response command
-    if no_ar:
-        # 'NNS' -> 'N!S'
-        # 'ANN' -> 'A!N'
-        flag[1] = '!'
-
-    wq_socket_msg = f"(msg_to_agent) [] {flag} {str_agent_id} {msg}" if not is_restart else \
+    return f"(msg_to_agent) [] {flag} {str_agent_id} {msg}" if not is_restart else \
         f"(msg_to_agent) [] {flag} {str_agent_id} {msg} - null (from_the_server) (no_rule_id)"
-
-    return wq_socket_msg
 
 
 class WazuhQueue:
@@ -133,13 +121,16 @@ class WazuhQueue:
         str
             Message confirming the message has been sent.
         """
+        # Variables to check if msg is a non active-response message or a restart message
+        msg_is_no_ar = msg in [WazuhQueue.HC_SK_RESTART, WazuhQueue.HC_FORCE_RECONNECT]
+        msg_is_restart = msg in [WazuhQueue.RESTART_AGENTS, WazuhQueue.RESTART_AGENTS_JSON]
 
         # Create flag and string used to specify the agent ID
         if agent_id:
-            flag = 'NNS'
+            flag = 'NNS' if not msg_is_no_ar else 'N!S'
             str_agent_id = agent_id
         else:
-            flag = 'ANN'
+            flag = 'ANN' if not msg_is_no_ar else 'A!N'
             str_agent_id = '(null)'
 
         # AR
@@ -152,14 +143,9 @@ class WazuhQueue:
         # Restart agents
         else:
             # If msg is not a non active-response command and not a restart command, raises WazuhInternalError
-            msg_is_no_ar = msg in [WazuhQueue.HC_SK_RESTART, WazuhQueue.HC_FORCE_RECONNECT]
-            msg_is_restart = msg in [WazuhQueue.RESTART_AGENTS, WazuhQueue.RESTART_AGENTS_JSON]
             if not msg_is_no_ar and not msg_is_restart:
                 raise WazuhInternalError(1012, msg)
-
-            socket_msg = create_wazuh_queue_socket_msg(flag, str_agent_id, msg,
-                                                       no_ar=True if msg_is_no_ar else False,
-                                                       is_restart=True if msg_is_restart else False)
+            socket_msg = create_wazuh_queue_socket_msg(flag, str_agent_id, msg, is_restart=msg_is_restart)
             # Return message
             if msg == WazuhQueue.HC_SK_RESTART:
                 ret_msg = "Restarting Syscheck on agent" if agent_id else "Restarting Syscheck on all agents"
@@ -172,7 +158,6 @@ class WazuhQueue:
             # Send message
             self._send(socket_msg.encode())
         except:
-            raise WazuhError(1702) if msg in [WazuhQueue.RESTART_AGENTS,
-                                              WazuhQueue.RESTART_AGENTS_JSON] else WazuhError(1652)
+            raise WazuhError(1702) if msg_is_restart else WazuhError(1652)
 
         return ret_msg
