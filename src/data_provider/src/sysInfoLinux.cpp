@@ -10,10 +10,8 @@
  */
 #include <fstream>
 #include <iostream>
-#include <alpm.h>
 #include "sharedDefs.h"
 #include "stringHelper.h"
-#include "timeHelper.h"
 #include "filesystemHelper.h"
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
@@ -288,8 +286,11 @@ static void getPacmanInfo(const std::string& libPath, nlohmann::json& ret)
     }
     for (auto item{alpm_db_get_pkgcache(dbLocal)}; item; item = alpm_list_next(item))
     {
-        auto packageInfo {PackageLinuxHelper::parsePacman(item)};
-        ret.push_back(packageInfo);
+        const auto& packageInfo{ PackageLinuxHelper::parsePacman(item) };
+        if (!packageInfo.empty())
+        {
+            ret.push_back(packageInfo);
+        }
     }
 }
 

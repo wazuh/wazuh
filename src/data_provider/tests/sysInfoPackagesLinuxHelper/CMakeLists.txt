@@ -21,6 +21,9 @@ target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
     optimized gmock_main
     pthread
     sqlite3
+    alpm
+    archive
+    wazuhext
     cjson
     proc
     dl

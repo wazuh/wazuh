@@ -248,7 +248,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     data->version       = NULL;
     data->arch          = NULL;
     data->desc          = NULL;
-    mock->data    = data;        	
+    mock->data          = data;        	
 
     const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
