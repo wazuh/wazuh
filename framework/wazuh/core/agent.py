@@ -432,10 +432,10 @@ class Agent:
 
         Raises
         ------
-        WazuhError(1707)
-            If the agent to be reconnected is not active.
         WazuhError(1750)
             If the agent has active response disabled.
+        WazuhError(1757)
+            If the agent to be reconnected is not active.
 
         Returns
         -------
@@ -445,7 +445,7 @@ class Agent:
         # Check if agent is active
         self.get_basic_information()
         if self.status.lower() != 'active':
-            raise WazuhError(1707, extra_message='{0}'.format(self.status))
+            raise WazuhError(1757)
 
         # Check if agent has active-response enabled
         agent_conf = self.getconfig('com', 'active-response', self.version)
