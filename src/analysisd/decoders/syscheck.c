@@ -554,13 +554,13 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
         lf->decoder_info->id = fim_decoders[FILE_DECODER]->delete_id;
         lf->decoder_syscheck_id = lf->decoder_info->id;
         lf->decoder_info->name = fim_decoders[FILE_DECODER]->delete_name;
-        changes=1;
+        changes = 1;
     } else if (event_type == FIM_ADDED) {
         snprintf(msg_type, sizeof(msg_type), "was added.");
         lf->decoder_info->id = fim_decoders[FILE_DECODER]->add_id;
         lf->decoder_syscheck_id = lf->decoder_info->id;
         lf->decoder_info->name = fim_decoders[FILE_DECODER]->add_name;
-        changes=1;
+        changes = 1;
     } else if (event_type == FIM_MODIFIED) {
         snprintf(msg_type, sizeof(msg_type), "checksum changed.");
         lf->decoder_info->id = fim_decoders[FILE_DECODER]->modify_id;
@@ -605,7 +605,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             char *unesc_perms = wstr_replace(oldsum->win_perm, "\\:", ":");
             free(oldsum->win_perm);
             oldsum->win_perm = unesc_perms;
-            if (!strcmp(oldsum->win_perm, newsum->win_perm)) {
+            if (strcmp(oldsum->win_perm, newsum->win_perm) == 0) {
                 localsdb->perm[0] = '\0';
             } else if (*oldsum->win_perm != '\0' && *newsum->win_perm != '\0') {
                 changes = 1;
@@ -671,8 +671,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
         }
 
         /* SHA-256 message */
-        if(newsum->sha256 && newsum->sha256[0] != '\0')
-        {
+        if(newsum->sha256 && newsum->sha256[0] != '\0') {
             if(oldsum->sha256) {
                 if (strcmp(newsum->sha256, oldsum->sha256) == 0) {
                     localsdb->sha256[0] = '\0';
@@ -1675,19 +1674,19 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
 
         if (attr_it->type == cJSON_Number) {
             assert(lf->fields != NULL);
-            if (!strcmp(attr_it->string, "size")) {
+            if (strcmp(attr_it->string, "size") == 0) {
                 if (new_state) {
                     lf->fields[FIM_SIZE].value = w_long_str((long) attr_it->valuedouble);
                 } else {
                     lf->fields[FIM_SIZE_BEFORE].value = w_long_str((long) attr_it->valuedouble);
                 }
-            } else if (!strcmp(attr_it->string, "inode")) {
+            } else if (strcmp(attr_it->string, "inode") == 0) {
                 if (new_state) {
                     lf->fields[FIM_INODE].value = w_long_str((long) attr_it->valuedouble);
                 } else {
                     lf->fields[FIM_INODE_BEFORE].value = w_long_str((long) attr_it->valuedouble);;
                 }
-            } else if (!strcmp(attr_it->string, "mtime")) {
+            } else if (strcmp(attr_it->string, "mtime") == 0) {
                 aux_time = (long) attr_it->valuedouble;
                 time_string = ctime_r(&aux_time, buf_ptr);
                 time_string[strlen(time_string) - 1] = '\0';
@@ -1700,19 +1699,19 @@ int fim_fetch_attributes_state(cJSON *attr, Eventinfo *lf, char new_state) {
         } else if (attr_it->type == cJSON_String) {
             char **dst_data = NULL;
 
-            if (!strcmp(attr_it->string, "perm")) {
+            if (strcmp(attr_it->string, "perm") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_PERM].value : &lf->fields[FIM_PERM_BEFORE].value;
-            } else if (!strcmp(attr_it->string, "user_name")) {
+            } else if (strcmp(attr_it->string, "user_name") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_UNAME].value : &lf->fields[FIM_UNAME_BEFORE].value;
-            } else if (!strcmp(attr_it->string, "group_name")) {
+            } else if (strcmp(attr_it->string, "group_name") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_GNAME].value : &lf->fields[FIM_GNAME_BEFORE].value;
-            } else if (!strcmp(attr_it->string, "uid")) {
+            } else if (strcmp(attr_it->string, "uid") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_UID].value : &lf->fields[FIM_UID_BEFORE].value;
-            } else if (!strcmp(attr_it->string, "gid")) {
+            } else if (strcmp(attr_it->string, "gid") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_GID].value : &lf->fields[FIM_GID_BEFORE].value;
-            } else if (!strcmp(attr_it->string, "hash_md5")) {
+            } else if (strcmp(attr_it->string, "hash_md5") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_MD5].value : &lf->fields[FIM_MD5_BEFORE].value;
-            } else if (!strcmp(attr_it->string, "hash_sha1")) {
+            } else if (strcmp(attr_it->string, "hash_sha1") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_SHA1].value : &lf->fields[FIM_SHA1_BEFORE].value;
             } else if (strcmp(attr_it->string, "hash_sha256") == 0) {
                 dst_data = new_state ? &lf->fields[FIM_SHA256].value : &lf->fields[FIM_SHA256_BEFORE].value;

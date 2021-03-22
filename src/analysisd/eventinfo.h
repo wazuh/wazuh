@@ -247,6 +247,6 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy);
  * @param location location field from eventinfo structure
  * @return returns the name of the module from which the event is coming from
  */
-char *extract_module_from_location(const char *location);
+const char *extract_module_from_location(const char *location);
 
 #endif /* EVTINFO_H */
