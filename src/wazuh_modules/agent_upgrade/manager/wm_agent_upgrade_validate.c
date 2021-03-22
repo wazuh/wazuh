@@ -101,9 +101,7 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, wm_upgrade_comm
                     if(wm_agent_upgrade_compare_versions(tmp_agent_version, WM_UPGRADE_BREAKING_CHANGE_VERSION) < 0 &&
                         wm_agent_upgrade_compare_versions(upgrade_task->wpk_version, WM_UPGRADE_BREAKING_CHANGE_VERSION) >= 0) {
                         return_code = WM_UPGRADE_NOT_BREAKING_CHANGE_SUPPORTED;
-                    }
-
-                    if (!upgrade_task->force_upgrade) {
+                    } else if (!upgrade_task->force_upgrade) {
                         if (wm_agent_upgrade_compare_versions(tmp_agent_version, upgrade_task->wpk_version) >= 0) {
                             return_code = WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT;
                         } else if (wm_agent_upgrade_compare_versions(upgrade_task->wpk_version, manager_version) > 0) {
