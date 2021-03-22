@@ -392,6 +392,7 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
  *
  * @param path The path to the file being processed.
  * @param stack A list used as a stack to store paths to stored inodes that have a conflict with the analysed file.
+ * @param tree A tree that helps prevent duplicate entries from being added to the stack.
  * @param event In case the processed file generates and event, it's returned here.
  * @return A fim_sanitize_state_t value representing how the operation ended.
  * @retval FIM_FILE_UPDATED The file has been updated correctly in the DB.
@@ -399,12 +400,13 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
  * @retval FIM_FILE_ADDED_PATHS A collision was detected with provided inode, the paths gotten from the conflicting inode are added to `stack`.
  * @retval FIM_FILE_ERROR An error occured while processing the file.
  */
-static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *stack, cJSON **event) {
+static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *stack, rb_tree *tree, cJSON **event) {
     fim_element item;
     fim_entry *entry;
 
     assert(path != NULL);
     assert(stack != NULL);
+    assert(tree != NULL);
     assert(event != NULL);
 
     entry = fim_db_get_path(syscheck.database, path);
@@ -421,11 +423,13 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
 
         if (errno != ENOENT) {
             mdebug1(FIM_STAT_FAILED, entry->file_entry.path, errno, strerror(errno));
+            free_entry(entry);
             return FIM_FILE_ERROR;
         }
 
         configuration = fim_configuration_directory(path);
         if (configuration == -1) {
+            free_entry(entry);
             return FIM_FILE_ERROR;
         }
 
@@ -434,11 +438,13 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         }
 
         if (fim_db_remove_path(syscheck.database, entry->file_entry.path) == FIMDB_ERR) {
+            free_entry(entry);
             return FIM_FILE_ERROR;
         }
 
         *event = fim_json_event(entry->file_entry.path, NULL, entry->file_entry.data, configuration, FIM_DELETE,
                                FIM_SCHEDULED, NULL, NULL);
+        free_entry(entry);
 
         return FIM_FILE_DELETED;
     }
@@ -450,6 +456,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
     // We need to check if the new inode is being used in the DB
     switch (fim_db_data_exists(syscheck.database, item.statbuf.st_ino, item.statbuf.st_dev)) {
     case FIMDB_ERR:
+        free_entry(entry);
         return FIM_FILE_ERROR;
     case 0:
         goto end;
@@ -459,8 +466,9 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
     }
 
     // The inode is currently being used, scan those files first
-    fim_db_append_paths_from_inode(syscheck.database, item.statbuf.st_ino, item.statbuf.st_dev, stack);
+    fim_db_append_paths_from_inode(syscheck.database, item.statbuf.st_ino, item.statbuf.st_dev, stack, tree);
 
+    free_entry(entry);
     return FIM_FILE_ADDED_PATHS;
 
 end:
@@ -472,6 +480,7 @@ end:
 
     *event = _unsafe_fim_file(entry->file_entry.path, &item, NULL);
 
+    free_entry(entry);
     return FIM_FILE_UPDATED;
 }
 
@@ -483,21 +492,26 @@ end:
  * @return 0 if the collision was solved correctly, -1 if an error occurred.
  */
 static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
+    rb_tree *tree;
     OSList *stack;
 
-    stack = OSList_Create();
-    if (stack == NULL) {
+    tree = rbtree_init();
+    if (tree == NULL) {
         return -1;
     }
 
-    OSList_SetFreeDataPointer(stack, free);
+    stack = OSList_Create();
+    if (stack == NULL) {
+        rbtree_destroy(tree);
+        return -1;
+    }
 
-    fim_db_append_paths_from_inode(syscheck.database, inode, dev, stack);
+    fim_db_append_paths_from_inode(syscheck.database, inode, dev, stack, tree);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     while (stack->currently_size != 0) {
         char *current_path;
-        cJSON *event;
+        cJSON *event = NULL;
         OSListNode *last = OSList_GetLastNode(stack);
 
         if (last == NULL) {
@@ -509,11 +523,10 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
 
-        switch (fim_process_file_from_db(current_path, stack, &event)) {
+        switch (fim_process_file_from_db(current_path, stack, tree, &event)) {
         case FIM_FILE_UPDATED:
         case FIM_FILE_DELETED:
             OSList_DeleteCurrentlyNode(stack);
-            free(current_path);
             break;
         case FIM_FILE_ADDED_PATHS:
             // Nothing to do here, we will move to the new last path and retry there
@@ -521,6 +534,7 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
         case FIM_FILE_ERROR:
         default:
             OSList_Destroy(stack);
+            rbtree_destroy(tree);
             return -1;
         }
 
@@ -535,6 +549,7 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
     }
 
     OSList_Destroy(stack);
+    rbtree_destroy(tree);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 

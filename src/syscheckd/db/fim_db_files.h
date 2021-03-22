@@ -50,10 +50,15 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
  * @param inode Inode.
  * @param dev Device.
  * @param list A list to which the paths retrieved from the DB will be added to.
+ * @param tree A tree which helps avoid the operation from appending paths that already exist in the list.
  *
  * @return The number of paths retrieved from the DB
  */
-int fim_db_append_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev, OSList *list);
+int fim_db_append_paths_from_inode(fdb_t *fim_sql,
+                                   unsigned long int inode,
+                                   unsigned long int dev,
+                                   OSList *list,
+                                   rb_tree *tree);
 
 /**
  * @brief Insert or update entry data.

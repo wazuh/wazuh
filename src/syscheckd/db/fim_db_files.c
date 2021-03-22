@@ -296,20 +296,27 @@ char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsi
     return paths;
 }
 
-int fim_db_append_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev, OSList *list) {
+int fim_db_append_paths_from_inode(fdb_t *fim_sql,
+                                   unsigned long int inode,
+                                   unsigned long int dev,
+                                   OSList *list,
+                                   rb_tree *tree) {
     int i = 0;
 
     assert(list != NULL);
+    assert(tree != NULL);
 
     // Clean statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATHS_INODE);
     fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_PATHS_INODE, inode, dev);
 
     for (i = 0; sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]) == SQLITE_ROW; i++) {
-        char *path = NULL;
-        char *p = (char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0);
-        sqlite_strdup(p, path);
-        OSList_AddData(list, path);
+        rb_node *leaf =
+        rbtree_insert(tree, (char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), NULL);
+
+        if (leaf) {
+            OSList_AddData(list, leaf->key);
+        }
     }
 
     fim_db_check_transaction(fim_sql);

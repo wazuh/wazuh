@@ -170,7 +170,7 @@ void realtime_process() {
                         }
                     }
 
-                    if (rbtree_insert(tree, final_name, (void *)1) == NULL) {
+                    if (rbtree_insert(tree, final_name, NULL) == NULL) {
                         mdebug2("Duplicate event in real-time buffer: %s", final_name);
                     }
 

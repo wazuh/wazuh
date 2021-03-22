@@ -350,7 +350,7 @@ void *OSList_AddData(OSList *list, void *data)
 }
 
 void OSList_CleanNodes(OSList *list) {
-    if (list == NULL || list->free_data_function == NULL) {
+    if (list == NULL) {
         return;
     }
 
@@ -362,7 +362,9 @@ void OSList_CleanNodes(OSList *list) {
     while(list->first_node != NULL) {
         aux_node = list->first_node;
         list->first_node = aux_node->next;
-        list->free_data_function(aux_node->data);
+        if (list->free_data_function != NULL) {
+            list->free_data_function(aux_node->data);
+        }
         free(aux_node);
     }
 
