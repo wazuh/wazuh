@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     }
 
     /* Check if OSSEC-HIDS was installed already */
-    if (!fileexist(OSSECCONF)) {
+    if (!fileexist(AGENTCONF)) {
         printf("%s: OSSEC not installed yet. Exiting.\n", argv[0]);
         return (0);
     }
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     }
 
     /* Write to the config file */
-    if (OS_WriteXML(OSSECCONF, AGENT_CONFIG_TMP, xml_syscheck_status,
+    if (OS_WriteXML(AGENTCONF, AGENT_CONFIG_TMP, xml_syscheck_status,
                     "no", status) != 0) {
         printf("%s: Error writing to the Config file. Exiting.\n", argv[0]);
         return (0);
@@ -55,11 +55,11 @@ int main(int argc, char **argv)
 
     /* Rename config files */
     unlink(AGENT_CONF_LAST);
-    if (rename(OSSECCONF, AGENT_CONF_LAST)) {
-        printf(RENAME_ERROR, OSSECCONF, AGENT_CONF_LAST, errno, strerror(errno));
+    if (rename(AGENTCONF, AGENT_CONF_LAST)) {
+        printf(RENAME_ERROR, AGENTCONF, AGENT_CONF_LAST, errno, strerror(errno));
     }
-    if (rename(AGENT_CONFIG_TMP, OSSECCONF)) {
-        printf(RENAME_ERROR, AGENT_CONFIG_TMP, OSSECCONF, errno, strerror(errno));
+    if (rename(AGENT_CONFIG_TMP, AGENTCONF)) {
+        printf(RENAME_ERROR, AGENT_CONFIG_TMP, AGENTCONF, errno, strerror(errno));
     }
 
     return (0);

@@ -150,8 +150,9 @@ Install()
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
-        # Update versions previous to Wazuh 1.2
-        UpdateOldVersions
+
+        # Update versions previous to Wazuh 5.0.0
+        UpdateOldVersions $breaking_upgrade
         echo "Starting Wazuh..."
         UpdateStartOSSEC
     fi
@@ -872,6 +873,7 @@ main()
     fi
 
     . ./src/init/update.sh
+
     # Is this an update?
     if getPreinstalledDir && [ "X${USER_CLEANINSTALL}" = "X" ]; then
         echo ""
@@ -901,6 +903,41 @@ main()
             esac
         done
 
+        # Only if the update is for a version lower than 5.0.0
+        USER_OLD_VERSION=`getPreinstalledVersion`
+        VERSIONv5="v5.0.0"
+
+        if [ "$USER_OLD_VERSION" \< "$VERSIONv5" ]; then
+            echo ""
+            ct="1"
+            while [ $ct = "1" ]; do
+                ct="0"
+                echo " - WARNING:"
+                echo "  -- Your current $NAME version: $USER_OLD_VERSION"
+                echo "  -- You have a version older than v5.0.0, if you upgrade you will lose all your configuration"
+                $ECHO "  -- Do you want to continue? ($yes/$no): "
+                if [ "X${USER_UPDATE}" = "X" ]; then
+                    read ANY
+                else
+                    ANY=$yes
+                fi
+
+                case $ANY in
+                    $yes)
+                        breaking_upgrade="yes"
+                        break;
+                        ;;
+                    $no)
+                        echo ""
+                        echo "We recommend reading our documentation for more information - http://www.wazuh.com"
+                        exit 0;
+                        ;;
+                    *)
+                        ct="1"
+                        ;;
+                esac
+            done
+        fi
 
         # Do some of the update steps.
         if [ "X${update_only}" = "Xyes" ]; then
