@@ -113,8 +113,9 @@ updatefailed="Actualisatie is gefaald."
 updaterules="Wilt u de regels actualiseren?"
 updatingrules="Actualiseren van regels."
 notupdatingrules="Regels worden niet geactualiseerd."
-update_rev_newconf1="Back-up van uw ossec.conf is gemaakt op $INSTALLDIR/etc/ossec.conf.orig."
-update_rev_newconf2="Controleer uw ossec.conf configuratie op $INSTALLDIR/etc/ossec.conf."
+update_rev_newconf1="Back-up van uw ossec.conf is gemaakt op $INSTALLDIR/etc/ossec.conf.backup."
+update_rev_newconf2="Controleer uw manager.conf configuratie op $INSTALLDIR/etc/manager.conf."
+update_rev_newconf3="Controleer uw agent.conf configuratie op $INSTALLDIR/etc/agent.conf."
 
 # Pf support
 pfenable="Wilt u de PF firewall gebruiken bij actief handelen?"

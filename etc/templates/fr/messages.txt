@@ -113,8 +113,9 @@ updatefailed="Echec de la mise à jour."
 updaterules="Voulez-vous mettre à jour les règles ?"
 updatingrules="Mise à jour des règles."
 notupdatingrules="Règles non mises à jour."
-update_rev_newconf1="La sauvegarde de votre fichier ossec.conf a été créée dans $INSTALLDIR/etc/ossec.conf.orig."
-update_rev_newconf2="Vérifiez la configuration ossec.conf dans $INSTALLDIR/etc/ossec.conf."
+update_rev_newconf1="La sauvegarde de votre fichier ossec.conf a été créée dans $INSTALLDIR/etc/ossec.conf.backup."
+update_rev_newconf2="Vérifiez la configuration manager.conf dans $INSTALLDIR/etc/manager.conf."
+update_rev_newconf3="Vérifiez la configuration agent.conf dans $INSTALLDIR/etc/agent.conf."
 
 # Pf support
 pfenable="Voulez-vous utiliser le firewall PF dans la réponse active ?"

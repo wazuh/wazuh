@@ -2,7 +2,7 @@
 
 
 
-## Manager 'ossec.conf' file
+## Manager 'manager.conf' file
 
 
     header-comments.template
@@ -39,7 +39,7 @@
         rules.template
     </wazuh_config>
 
-## Agent 'ossec.conf' file
+## Agent 'agent.conf' file
 
     header-comments.template
 
