@@ -387,7 +387,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 
     // Getting old data to preserve triaged value
     if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_GET) < 0) {
-        mdebug1("at wdb_osinfo_save(): cannot cache statement (%d)", WDB_STMT_OSINFO_DEL);
+        mdebug1("at wdb_osinfo_save(): cannot cache statement (%d)", WDB_STMT_OSINFO_GET);
         return -1;
     }
 
@@ -421,7 +421,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 
     // Calculating OS reference
     os_sha1 hexdigest;
-    wdbi_sha_calculation(NULL, hexdigest, 14,
+    wdbi_sha_calculation(NULL, hexdigest, 13,
                          architecture ? architecture : "",
                          os_name ? os_name : "",
                          os_version ? os_version : "",
@@ -434,8 +434,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
                          sysname ? sysname : "",
                          release ? release : "",
                          version ? version : "",
-                         os_release ? os_release : "",
-                         hostname ? hostname : ""); // The hostname is just for testing, should be removed from production
+                         os_release ? os_release : "");
 
     // If there is a change in the OS, the triaged is set to 0
     triaged = reference && strcmp(hexdigest, reference) == 0 ? triaged : 0;
