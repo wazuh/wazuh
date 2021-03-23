@@ -93,7 +93,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, const fim_file_dat
  *
  * @return FIMDB_OK on success, FIMDB_ERR otherwise.
  */
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, fim_file_data *saved);
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, const fim_file_data *saved);
 
 /**
  * @brief Delete entry from the DB using file path.

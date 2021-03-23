@@ -47,7 +47,8 @@ static const char *FIM_EVENT_MODE[] = {
     "whodata"
 };
 
-static cJSON *_unsafe_fim_file(const char *file, fim_element *item, whodata_evt *w_evt);
+static cJSON *_fim_file(const char *file, fim_element *item, whodata_evt *w_evt);
+static cJSON *_fim_file_force_update(const char *path, const fim_element *item, const fim_entry *saved);
 
 void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
                            __attribute__((unused))void *alert,
@@ -467,7 +468,22 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
     }
 
     // The inode is currently being used, scan those files first
-    fim_db_append_paths_from_inode(syscheck.database, item.statbuf.st_ino, item.statbuf.st_dev, stack, tree);
+    if (fim_db_append_paths_from_inode(syscheck.database, item.statbuf.st_ino, item.statbuf.st_dev, stack, tree) == 0) {
+        // We have somehow reached a point an infinite loop could happen, we will need to update the current file
+        // forcefully which will generate a false positive alert
+        item.mode = FIM_SCHEDULED;
+        item.configuration = syscheck.opts[item.index];
+        item.index = fim_configuration_directory(entry->file_entry.path);
+        if (item.index == -1) {
+            // This should not happen
+            free_entry(entry);     // LCOV_EXCL_LINE
+            return FIM_FILE_ERROR; // LCOV_EXCL_LINE
+        }
+
+        *event = _fim_file_force_update(path, &item, entry);
+        free_entry(entry);
+        return FIM_FILE_UPDATED;
+    }
 
     free_entry(entry);
     return FIM_FILE_ADDED_PATHS;
@@ -484,7 +500,7 @@ end:
         return FIM_FILE_ERROR; // LCOV_EXCL_LINE
     }
 
-    *event = _unsafe_fim_file(entry->file_entry.path, &item, NULL);
+    *event = _fim_file(entry->file_entry.path, &item, NULL);
 
     free_entry(entry);
     return FIM_FILE_UPDATED;
@@ -650,7 +666,7 @@ static int fim_update_db_data(const char *path,
  * @param item Miscellaneous information linked to the event being processed.
  * @param w_evt Whodata information associated with the event.
  */
-static cJSON *_unsafe_fim_file(const char *path, fim_element *item, whodata_evt *w_evt) {
+static cJSON *_fim_file(const char *path, fim_element *item, whodata_evt *w_evt) {
     fim_entry *saved = NULL;
     fim_file_data *new = NULL;
     cJSON *json_event = NULL;
@@ -703,11 +719,54 @@ static cJSON *_unsafe_fim_file(const char *path, fim_element *item, whodata_evt 
     return json_event;
 }
 
+/**
+ * @brief Virtually identical to `_fim_file`, except this function updates the DB with no further validations
+ *
+ * @param path The path to the file being processed.
+ * @param item Miscellaneous information linked to the event being processed.
+ * @param saved The data linked to the file that was extracted from the DB in a previous operation.
+ */
+static cJSON *_fim_file_force_update(const char *path, const fim_element *item, const fim_entry *saved) {
+    fim_file_data *new = NULL;
+    cJSON *json_event = NULL;
+    char *diff = NULL;
+    int alert_type;
+
+    assert(path != NULL);
+    assert(item != NULL);
+    assert(saved != NULL);
+
+    // Get file attributes
+    new = fim_get_data(path, item);
+    if (new == NULL) {
+        mdebug1(FIM_GET_ATTRIBUTES, path);
+        return NULL;
+    }
+
+    if (fim_db_insert(syscheck.database, path, new, saved->file_entry.data) != 0) {
+        free_file_data(new);
+        return NULL;
+    }
+
+    alert_type = FIM_MODIFICATION; // Checking for changes
+
+    if (item->configuration & CHECK_SEECHANGES) {
+        diff = fim_file_diff(path);
+    }
+
+    json_event = fim_json_event(path, saved ? saved->file_entry.data : NULL, new, item->index, alert_type, item->mode, NULL, diff);
+
+    os_free(diff);
+    free_file_data(new);
+
+    return json_event;
+}
+
 void fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report) {
     cJSON *json_event = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    json_event = _unsafe_fim_file(file, item, w_evt);
+    json_event = _fim_file(file, item, w_evt);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (json_event && _base_line && report) {
@@ -983,7 +1042,7 @@ int fim_check_depth(const char * path, int dir_position) {
 
 
 // Get data from file
-fim_file_data * fim_get_data(const char *file, fim_element *item) {
+fim_file_data * fim_get_data(const char *file, const fim_element *item) {
     fim_file_data * data = NULL;
 
     os_calloc(1, sizeof(fim_file_data), data);

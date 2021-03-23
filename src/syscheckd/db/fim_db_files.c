@@ -312,6 +312,7 @@ int fim_db_append_paths_from_inode(fdb_t *fim_sql,
                                    OSList *list,
                                    rb_tree *tree) {
     int i = 0;
+    int appended = 0;
 
     assert(list != NULL);
     assert(tree != NULL);
@@ -326,12 +327,13 @@ int fim_db_append_paths_from_inode(fdb_t *fim_sql,
 
         if (leaf) {
             OSList_AddData(list, leaf->key);
+            appended++;
         }
     }
 
     fim_db_check_transaction(fim_sql);
 
-    return i;
+    return appended;
 }
 
 int fim_db_insert_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id) {
@@ -376,7 +378,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, const fim_file_dat
     return FIMDB_OK;
 }
 
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, fim_file_data *saved) {
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, const fim_file_data *saved) {
     int inode_id;
     int res, res_data, res_path;
     int nodes_count;

@@ -4893,6 +4893,7 @@ static void test_fim_process_file_from_db_conflicting_file_current_inode_taken_i
                         .st_ino = entry->file_entry.data->inode + 1,
                         .st_dev = entry->file_entry.data->dev };
     fim_sanitize_state_t ret;
+    char *paths[] = { "/etc/another/valid", NULL };
 
     free(entry->file_entry.path);
     entry->file_entry.path = strdup("/etc/valid");
@@ -4915,12 +4916,61 @@ static void test_fim_process_file_from_db_conflicting_file_current_inode_taken_i
 
     expect_value(__wrap_fim_db_append_paths_from_inode, inode, buf.st_ino);
     expect_value(__wrap_fim_db_append_paths_from_inode, dev, buf.st_dev);
-    will_return(__wrap_fim_db_append_paths_from_inode, NULL);
+    will_return(__wrap_fim_db_append_paths_from_inode, paths);
 
     ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
 
     assert_int_equal(ret, FIM_FILE_ADDED_PATHS);
     assert_null(event);
+}
+
+static void test_fim_process_file_from_db_conflicting_file_infinite_loop(void **state) {
+    cJSON *event = NULL;
+    OSList *list = ((fim_data_t *)(*state))->list;
+    rb_tree *tree = ((fim_data_t *)(*state))->tree;
+    fim_entry *entry = ((fim_data_t *)(*state))->fentry;
+    struct stat buf = { .st_mode = S_IFREG,
+                        .st_ino = entry->file_entry.data->inode + 1,
+                        .st_dev = entry->file_entry.data->dev };
+    fim_sanitize_state_t ret;
+
+    free(entry->file_entry.path);
+    entry->file_entry.path = strdup("/etc/valid");
+
+    if (entry->file_entry.path == NULL) {
+        fail_msg("Failed to set an invalid path.");
+    }
+
+    entry->file_entry.data->perm = strdup("rw-r--r--");
+
+    expect_value(__wrap_fim_db_get_path, fim_sql, syscheck.database);
+    expect_string(__wrap_fim_db_get_path, file_path, entry->file_entry.path);
+    will_return(__wrap_fim_db_get_path, entry);
+
+    expect_string(__wrap_lstat, filename, entry->file_entry.path);
+    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_value(__wrap_fim_db_data_exists, inode, buf.st_ino);
+    expect_value(__wrap_fim_db_data_exists, dev, buf.st_dev);
+    will_return(__wrap_fim_db_data_exists, 1);
+
+    expect_value(__wrap_fim_db_append_paths_from_inode, inode, buf.st_ino);
+    expect_value(__wrap_fim_db_append_paths_from_inode, dev, buf.st_dev);
+    will_return(__wrap_fim_db_append_paths_from_inode, NULL);
+
+    // Inside fim_get_data
+    expect_get_user(0, strdup("user"));
+    expect_get_group(0, strdup("group"));
+
+    expect_fim_db_insert(syscheck.database, entry->file_entry.path, FIMDB_OK);
+
+    expect_wrapper_fim_db_get_paths_from_inode(syscheck.database, buf.st_ino, buf.st_dev, NULL);
+
+    ret = fim_process_file_from_db(entry->file_entry.path, list, tree, &event);
+
+    assert_int_equal(ret, FIM_FILE_UPDATED);
+    assert_non_null(event);
 }
 
 static void test_fim_process_file_from_db_conflicting_file_error_in_db(void **state) {
@@ -5557,6 +5607,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_file_without_conflict, setup_process_file_from_db, teardown_process_file_from_db),
         cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_conflicting_file_current_inode_free_in_db, setup_process_file_from_db, teardown_process_file_from_db),
         cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_conflicting_file_current_inode_taken_in_db, setup_process_file_from_db, teardown_process_file_from_db),
+        cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_conflicting_file_infinite_loop, setup_process_file_from_db, teardown_process_file_from_db),
         cmocka_unit_test_setup_teardown(test_fim_process_file_from_db_conflicting_file_error_in_db, setup_process_file_from_db, teardown_process_file_from_db),
 
         /* fim_resolve_db_collision */

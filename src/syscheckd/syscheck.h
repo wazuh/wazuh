@@ -241,7 +241,7 @@ int fim_check_depth(const char *path, int dir_position);
  *
  * @return A fim_file_data structure with the data from the file
  */
-fim_file_data * fim_get_data(const char *file_name, fim_element *item);
+fim_file_data * fim_get_data(const char *file_name, const fim_element *item);
 
 /**
  * @brief Initialize a fim_file_data structure
