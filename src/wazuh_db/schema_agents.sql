@@ -203,6 +203,26 @@ CREATE TABLE IF NOT EXISTS sys_hotfixes (
 
 CREATE INDEX IF NOT EXISTS hotfix_id ON sys_hotfixes (scan_id);
 
+CREATE TRIGGER hotfix_delete
+    AFTER DELETE ON sys_hotfixes
+    WHEN (old.checksum = 'legacy' AND NOT EXISTS (SELECT 1 FROM sys_hotfixes
+                                                  WHERE hotfix = old.hotfix
+                                                  AND scan_id != old.scan_id ))
+    OR old.checksum != 'legacy'
+    BEGIN
+        UPDATE sys_osinfo SET triaged = 0;
+END;
+
+CREATE TRIGGER hotfix_insert
+    AFTER INSERT ON sys_hotfixes
+    WHEN (new.checksum = 'legacy' AND NOT EXISTS (SELECT 1 FROM sys_hotfixes
+                                                  WHERE hotfix = new.hotfix
+                                                  AND scan_id != new.scan_id ))
+    OR new.checksum != 'legacy'
+    BEGIN
+        UPDATE sys_osinfo SET triaged = 0;
+END;
+
 CREATE TABLE IF NOT EXISTS sys_processes (
     scan_id INTEGER,
     scan_time TEXT,
