@@ -341,7 +341,7 @@ void test_wdb_agents_vuln_cve_clear_success(void **state)
 
 /* Tests wdb_agents_vuln_cve_update_status */
 
-test_wdb_agents_vuln_cve_update_status_error_json(void **state){
+void test_wdb_agents_vuln_cve_update_status_error_json(void **state){
     int ret = 0;
     int id = 1;
     const char *old_status = "valid";
@@ -356,7 +356,7 @@ test_wdb_agents_vuln_cve_update_status_error_json(void **state){
     assert_int_equal(OS_INVALID, ret);
 }
 
-test_wdb_agents_vuln_cve_update_status_error_socket(void **state){
+void test_wdb_agents_vuln_cve_update_status_error_socket(void **state){
     int ret = 0;
     int id = 1;
     const char *old_status = "valid";
@@ -396,7 +396,7 @@ test_wdb_agents_vuln_cve_update_status_error_socket(void **state){
     assert_int_equal(OS_INVALID, ret);
 }
 
-test_wdb_agents_vuln_cve_update_status_error_sql_execution(void **state){
+void test_wdb_agents_vuln_cve_update_status_error_sql_execution(void **state){
     int ret = 0;
     int id = 1;
     const char *old_status = "valid";
@@ -436,7 +436,7 @@ test_wdb_agents_vuln_cve_update_status_error_sql_execution(void **state){
     assert_int_equal(OS_INVALID, ret);
 }
 
-test_wdb_agents_vuln_cve_update_status_error_result(void **state){
+void test_wdb_agents_vuln_cve_update_status_error_result(void **state){
     int ret = 0;
     int id = 1;
     const char *old_status = "valid";
@@ -477,7 +477,7 @@ test_wdb_agents_vuln_cve_update_status_error_result(void **state){
     assert_int_equal(OS_INVALID, ret);
 }
 
-test_wdb_agents_vuln_cve_update_status_success(void **state){
+void test_wdb_agents_vuln_cve_update_status_success(void **state){
     int ret = 0;
     int id = 1;
     const char *old_status = "valid";
