@@ -427,6 +427,9 @@ end:
 
         for(unsigned int i = 0; i < count; i++) {
             char* parameter = va_arg(parameters, char*);
+            if(!parameter) {
+                continue;
+            }
             if (1 != EVP_DigestUpdate(ctx, parameter, strlen(parameter)) ) {
                 mdebug2("Failed during hash context update");
                 ret_val = OS_INVALID;
