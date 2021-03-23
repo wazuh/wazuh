@@ -113,6 +113,8 @@ class WazuhQueue:
             If it was unable to run the command.
         WazuhInternalError(1012)
             If the message was invalid to queue.
+        WazuhError(1601)
+            If it was unable to run the syscheck scan on the agent because it is a non active agent.
         WazuhError(1702)
             If it was unable to restart the agent.
 
