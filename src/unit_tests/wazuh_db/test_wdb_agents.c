@@ -129,7 +129,7 @@ void test_wdb_agents_clear_vuln_cve_success(void **state)
 
 /* Tests wdb_agents_update_status_vuln_cve*/
 
-test_wdb_agents_update_status_vuln_cve_statement_init_fail(void **state){
+void test_wdb_agents_update_status_vuln_cve_statement_init_fail(void **state){
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "valid";
@@ -143,7 +143,7 @@ test_wdb_agents_update_status_vuln_cve_statement_init_fail(void **state){
     assert_int_equal(ret, OS_INVALID);
 }
 
-test_wdb_agents_update_status_vuln_cve_success(void **state){
+void test_wdb_agents_update_status_vuln_cve_success(void **state){
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "valid";
@@ -164,7 +164,7 @@ test_wdb_agents_update_status_vuln_cve_success(void **state){
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-test_wdb_agents_update_status_vuln_cve_success_all(void **state){
+void test_wdb_agents_update_status_vuln_cve_success_all(void **state){
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "*";
