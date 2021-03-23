@@ -97,6 +97,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     const char * node_label = "#\"_node_name\":";
     const char * version_label = "#\"_wazuh_version\":";
     int is_startup = 0;
+    int is_shutdown = 0;
     int agent_id = 0;
     int result = 0;
 
@@ -127,6 +128,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     if (strcmp(r_msg, HC_STARTUP) == 0) {
         mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
         is_startup = 1;
+    } else if (strcmp(r_msg, HC_SHUTDOWN) == 0) {
+        mdebug1("Agent %s sent HC_SHUTDOWN from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
+        is_shutdown = 1;
     } else {
         /* Clean msg and shared files (remove random string) */
         msg = r_msg;
@@ -143,7 +147,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     }
 
     /* Lock mutex */
-    w_mutex_lock(&lastmsg_mutex)
+    w_mutex_lock(&lastmsg_mutex);
 
     /* Check if there is a keep alive already for this agent */
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
@@ -179,9 +183,19 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             result = wdb_update_agent_connection_status(agent_id, AGENT_CS_PENDING, logr.worker_node?"syncreq":"synced", wdb_sock);
 
             if (OS_SUCCESS != result) {
-                mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
+                mwarn("Unable to set connection status as pending for agent: %s", key->id);
             }
-        } else {
+        } else if (is_shutdown) {
+            /* Unlock mutex */
+            w_mutex_unlock(&lastmsg_mutex);
+            agent_id = atoi(key->id);
+
+            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node?"syncreq":"synced", wdb_sock);
+
+            if (OS_SUCCESS != result) {
+                mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
+             }
+         } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s'", msg);
             os_free(data->message);
