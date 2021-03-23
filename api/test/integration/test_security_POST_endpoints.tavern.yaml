@@ -390,7 +390,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test_i1"
+        name: "test_new_policy"
         policy:
           actions:
             - "agent:delete"
@@ -407,9 +407,9 @@ stages:
           affected_items: []
           failed_items:
             - error:
-                code: 4009
+                code: 4027
               id:
-                - test_i1
+                - test_new_policy
           total_affected_items: 0
           total_failed_items: 1
 
@@ -422,7 +422,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: POST
       json:
-        name: "test_i1"
+        name: "test_invalid"
         policy:
           actions:
             - "[agent:delete"
@@ -441,7 +441,7 @@ stages:
             - error:
                 code: 4006
               id:
-                - test_i1
+                - test_invalid
           total_affected_items: 0
           total_failed_items: 1
 

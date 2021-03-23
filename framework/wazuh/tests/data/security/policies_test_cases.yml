@@ -144,6 +144,19 @@ add_policy:
       failed_items:
         "4009":
           - wazuhPolicy
+  - params:
+      name: valid_policy_name
+      policy:
+        actions:
+          - policy:read
+        effect: deny
+        resources:
+          - policy:id:*
+    result:
+      affected_items: []
+      failed_items:
+        "4027":
+          - valid_policy_name
 update_policy:
   - params:
       policy_id:
