@@ -678,8 +678,8 @@ void test_wdbi_query_checksum_check_left_ok(void **state)
     assert_int_equal(ret, 1);
 }
 
-//Test wdbi_sha_calculate
-void test_wdbi_sha_calculate_array_success(void **state)
+//Test wdbi_sha_calculation
+void test_wdbi_sha_calculation_array_success(void **state)
 {
     const char** test_words = NULL;
     int ret_val = -1;
@@ -705,7 +705,7 @@ void test_wdbi_sha_calculate_array_success(void **state)
     os_free(test_words);
 }
 
-void test_wdbi_sha_calculate_parameters_success(void **state)
+void test_wdbi_sha_calculation_parameters_success(void **state)
 {
     int ret_val = -1;
     os_sha1 hexdigest;
@@ -718,6 +718,35 @@ void test_wdbi_sha_calculate_parameters_success(void **state)
     assert_int_equal (ret_val, 0);
     assert_string_equal(hexdigest, "159a9a6e19ff891a8560376df65a078e064bd0ce");
 }
+
+void test_wdbi_sha_calculation_parameters_null(void **state)
+{
+    int ret_val = -1;
+    os_sha1 hexdigest;
+
+    // Using real EVP_DigestUpdate
+    test_mode = 0;
+
+    ret_val = wdbi_sha_calculation(NULL, hexdigest, 2, NULL, NULL);
+
+    assert_int_equal (ret_val, 0);
+    assert_string_equal(hexdigest, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+}
+
+void test_wdbi_sha_calculation_array_null(void **state)
+{
+    int ret_val = -1;
+    os_sha1 hexdigest;
+
+    // Using real EVP_DigestUpdate
+    test_mode = 0;
+
+    ret_val = wdbi_sha_calculation(NULL, hexdigest, 0);
+
+    assert_int_equal (ret_val, 0);
+    assert_string_equal(hexdigest, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -773,9 +802,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_check_left_no_tail, setup_wdb_t, teardown_wdb_t),
         cmocka_unit_test_setup_teardown(test_wdbi_query_checksum_check_left_ok, setup_wdb_t, teardown_wdb_t),
 
-        //Test wdbi_sha_calculate
-        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculate_array_success, setup_wdb_t, teardown_wdb_t),
-        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculate_parameters_success, setup_wdb_t, teardown_wdb_t),
+        //Test wdbi_sha_calculation
+        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculation_array_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculation_parameters_success, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculation_parameters_null, setup_wdb_t, teardown_wdb_t),
+        cmocka_unit_test_setup_teardown(test_wdbi_sha_calculation_array_null, setup_wdb_t, teardown_wdb_t),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
