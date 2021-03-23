@@ -19,6 +19,7 @@ else
     cp -rf /tmp/configuration_files/master_only/config/* /var/ossec/
     chown root:ossec /var/ossec/etc/client.keys
     chown -R ossec:ossec /var/ossec/queue/agent-groups
+    chown -R ossec:ossec /var/ossec/queue/db
     chown -R ossec:ossec /var/ossec/etc/shared
     chmod --reference=/var/ossec/etc/shared/default /var/ossec/etc/shared/group*
     cd /var/ossec/etc/shared && find -name merged.mg -exec chown ossecr:ossec {} \; && cd /
