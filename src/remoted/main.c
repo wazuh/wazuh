@@ -31,7 +31,7 @@ static void help_remoted()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", REMUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH_AGENT);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH_MANAGER);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -m          Avoid creating shared merged file (read only)");
     print_out(" ");
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     int test_config = 0, run_foreground = 0;
     int nocmerged = 0;
 
-    const char *cfg = DEFAULTCPATH_AGENT;
+    const char *cfg = DEFAULTCPATH_MANAGER;
     const char *dir = DEFAULTDIR;
     const char *user = REMUSER;
     const char *group = GROUPGLOBAL;

@@ -23,7 +23,7 @@ int main(int argc, char **argv)
         return (0);
     }
 
-    /* Try to chdir to the OSSEC directory */
+    /* Try to chdir to the WAZUH directory */
     if (chdir(argv[1]) != 0) {
         printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
         return (0);

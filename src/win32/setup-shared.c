@@ -19,7 +19,6 @@
 
 #include "os_regex/os_regex.h"
 
-#define AGENTCONF   "agent.conf"
 #define OS_MAXSTR   1024
 
 

@@ -494,13 +494,13 @@ UpdateOldVersions()
             MANAGER_CONF_FILE="$PREINSTALLEDDIR/etc/manager.conf"
 
             # New manager.conf by default
-            ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $MANAGER_CONF_FILE
+            ./gen_wazuh.sh conf "manager" $DIST_NAME $DIST_VER > $MANAGER_CONF_FILE
             ./add_localfiles.sh $PREINSTALLEDDIR >> $MANAGER_CONF_FILE
         else
             AGENT_CONF_FILE="$PREINSTALLEDDIR/etc/agent.conf"
 
             # New agent.conf by default
-            ./gen_ossec.sh conf "agent" $DIST_NAME $DIST_VER > $AGENT_CONF_FILE
+            ./gen_wazuh.sh conf "agent" $DIST_NAME $DIST_VER > $AGENT_CONF_FILE
             ./add_localfiles.sh $PREINSTALLEDDIR >> $AGENT_CONF_FILE
             fi
     fi
