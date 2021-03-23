@@ -241,28 +241,64 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     alpm_pkg_t  *data   = new struct __alpm_pkg_t;
     data->ops           = new struct pkg_operations;
     data->handle        = new struct __alpm_handle_t;
-    data->name          = NULL;
-    data->isize         = 0;
-    data->installdate   = 0;
-    data->groups        = NULL;
-    data->version       = NULL;
-    data->arch          = NULL;
-    data->desc          = NULL;
-    mock->data          = data;        	
+    data->groups        = new struct __alpm_list_t;
+
+    constexpr auto group    {"wazuh"};
+    constexpr auto arch     {"x86_64"};
+    constexpr auto name     {"firefox"};
+    constexpr auto desc     {"Standalone web browser from mozilla.org"};
+    constexpr auto version  {"86.0-2"};
+
+    off_t (*alpm_get_isize_ptr)(alpm_pkg_t *)
+    { 
+        [](alpm_pkg_t *pkg){ return pkg->isize; } 
+    };
+    alpm_time_t (*alpm_get_installdate_ptr)(alpm_pkg_t *)
+    {
+        [](alpm_pkg_t *pkg){ return pkg->installdate; }
+    };
+    alpm_list_t *(*alpm_get_groups_ptr)(alpm_pkg_t *)
+    {
+        [](alpm_pkg_t *pkg){ return pkg->groups; }
+    };
+    const char *(*alpm_get_arch_ptr)(alpm_pkg_t *)
+    {
+        [](alpm_pkg_t *pkg)->const char*{ return pkg->arch; }
+    };
+    const char *(*alpm_get_description_ptr)(alpm_pkg_t *)
+    {
+        [](alpm_pkg_t *pkg)->const char*{ return pkg->desc; }
+    };
+
+    data->isize                 = 1;
+    data->installdate           = 0;
+    data->groups->next          = NULL;
+    data->name                  = const_cast<char *>(name);
+    data->groups->data          = const_cast<char *>(group);
+    data->version               = const_cast<char *>(version);
+    data->arch                  = const_cast<char *>(arch);
+    data->desc                  = const_cast<char *>(desc);
+    mock->data                  = data;
+    data->ops->get_isize        = alpm_get_isize_ptr;
+    data->ops->get_installdate  = alpm_get_installdate_ptr;
+    data->ops->get_groups       = alpm_get_groups_ptr;
+    data->ops->get_desc         = alpm_get_description_ptr;
+    data->ops->get_arch         = alpm_get_arch_ptr;
 
     const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
-    EXPECT_EQ(NULL, jsPackageInfo["name"]);
-    EXPECT_EQ(0, jsPackageInfo["size"]);
-    EXPECT_EQ(0, jsPackageInfo["install_time"]);
-    EXPECT_EQ(NULL, jsPackageInfo["groups"]);
-    EXPECT_EQ(NULL, jsPackageInfo["version"]);
-    EXPECT_EQ(NULL, jsPackageInfo["architecture"]);
+    EXPECT_EQ("firefox", jsPackageInfo["name"]);
+    EXPECT_EQ(1, jsPackageInfo["size"]);
+    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["install_time"]);
+    EXPECT_EQ("wazuh", jsPackageInfo["groups"]);
+    EXPECT_EQ("86.0-2", jsPackageInfo["version"]);
+    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
     EXPECT_EQ("pkg", jsPackageInfo["format"]);
     EXPECT_EQ("", jsPackageInfo["vendor"]);
-    EXPECT_EQ(NULL, jsPackageInfo["description"]);
+    EXPECT_EQ("Standalone web browser from mozilla.org", jsPackageInfo["description"]);
     delete mock;
     delete data->ops;
     delete data->handle;
+    delete data->groups;
     delete data;
 }
