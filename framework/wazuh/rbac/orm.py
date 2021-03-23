@@ -79,6 +79,8 @@ class SecurityError(IntEnum):
     RELATIONSHIP_ERROR = -8
     # Protected resources of the system
     PROTECTED_RESOURCES = -9
+    # Database constraint error
+    CONSTRAINT_ERROR = -10
 
 
 class ResourceType(Enum):
@@ -1477,52 +1479,52 @@ class PoliciesManager:
         True -> Success | Invalid policy | Missing key (actions, resources, effect) or invalid policy (regex)
         """
         try:
-            if policy is not None and not json_validator(policy):
-                return SecurityError.ALREADY_EXIST
-            if len(policy.keys()) != 3:
+            # Check if the policy body is valid
+            if not policy or not json_validator(policy) or len(policy.keys()) != 3:
                 return SecurityError.INVALID
+
+            # Check if the specified policy name is already in use
+            if self.get_policy(name) != SecurityError.POLICY_NOT_EXIST:
+                return SecurityError.ALREADY_EXIST
+
             # To add a policy it must have the keys actions, resources, effect
-            if 'actions' in policy.keys() and 'resources' in policy.keys():
-                if 'effect' in policy.keys():
-                    # The keys actions and resources must be lists and the key effect must be str
-                    if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
-                            and isinstance(policy['effect'], str):
-                        # Regular expression that prevents the creation of invalid policies
-                        regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
-                        for action in policy['actions']:
-                            if not re.match(regex, action):
-                                return SecurityError.INVALID
-                        for resource in policy['resources']:
-                            if not re.match(regex, resource):
-                                return SecurityError.INVALID
+            if 'actions' in policy and 'resources' in policy and 'effect' in policy:
+                # The keys actions and resources must be lists and the key effect must be str
+                if isinstance(policy['actions'], list) and isinstance(policy['resources'], list) \
+                        and isinstance(policy['effect'], str):
+                    # Regular expression that prevents the creation of invalid policies
+                    regex = r'^[a-zA-Z_\-*]+:[a-zA-Z0-9_\-*]+([:|&]{0,1}[a-zA-Z0-9_\-\/.*]+)*$'
+                    for action in policy['actions']:
+                        if not re.match(regex, action):
+                            return SecurityError.INVALID
+                    for resource in policy['resources']:
+                        if not re.match(regex, resource):
+                            return SecurityError.INVALID
 
-                        policy_id = None
+                    try:
+                        if not check_default:
+                            policies = sorted([p.id for p in self.get_policies()]) or [0]
+                            policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
 
-                        try:
-                            if not check_default:
-                                policies = sorted([p.id for p in self.get_policies()]) or [0]
-                                policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
+                        elif check_default and \
+                                self.session.query(Policies).order_by(desc(Policies.id)
+                                                                      ).limit(1).scalar().id < max_id_reserved:
+                            policy_id = max_id_reserved + 1
 
-                            elif check_default and \
-                                    self.session.query(Policies).order_by(desc(Policies.id)
-                                                                          ).limit(1).scalar().id < max_id_reserved:
-                                policy_id = max_id_reserved + 1
+                    except (TypeError, AttributeError):
+                        pass
 
-                        except (TypeError, AttributeError):
-                            pass
-                        self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id,
-                                                  created_at=created_at, resource_type=resource_type))
-                        self.session.commit()
-                        return True
-                    else:
-                        return SecurityError.INVALID
+                    self.session.add(Policies(name=name, policy=json.dumps(policy), policy_id=policy_id,
+                                              created_at=created_at, resource_type=resource_type))
+                    self.session.commit()
+                    return True
                 else:
                     return SecurityError.INVALID
             else:
                 return SecurityError.INVALID
         except IntegrityError:
             self.session.rollback()
-            return SecurityError.ALREADY_EXIST
+            return SecurityError.CONSTRAINT_ERROR
 
     def delete_policy(self, policy_id: int):
         """Delete an existent policy in the system. This function can remove a resource regardless of its resource_type.
@@ -2776,7 +2778,7 @@ class DatabaseManager:
                                       hash_password=True,
                                       resource_type=resource_type,
                                       check_default=check_default)
-                auth_manager.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
+                auth_manager.edit_run_as(user_id=auth_manager.get_user(username=d_username)['id'],
                                          allow_run_as=payload['allow_run_as'])
 
         old_roles = get_data(Roles, Roles.id)
