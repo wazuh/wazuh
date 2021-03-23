@@ -31,8 +31,13 @@ int __wrap_chown(const char *__file, int __owner, int __group) {
 }
 
 int __wrap_lstat(const char *filename, struct stat *buf) {
+    struct stat * mock_buf;
     check_expected(filename);
-    buf->st_mode = mock();
+
+    mock_buf = mock_type(struct stat *);
+    if (mock_buf != NULL) {
+        memcpy(buf, mock_buf, sizeof(struct stat));
+    }
     return mock();
 }
 

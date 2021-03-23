@@ -8,6 +8,16 @@
 
 #include "fim_db_files.h"
 
+#ifdef WAZUH_UNIT_TESTING
+/* Remove static qualifier when unit testing */
+#define static
+
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char *const expression, const char *const file, const int line);
+#undef assert
+#define assert(expression) mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 extern const char *SQL_STMT[];
 
 // Convenience macros

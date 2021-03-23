@@ -429,12 +429,13 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
 
         configuration = fim_configuration_directory(path);
         if (configuration == -1) {
+            // This should not happen
             free_entry(entry);
             return FIM_FILE_ERROR;
         }
 
         if (syscheck.opts[configuration] & CHECK_SEECHANGES) {
-            fim_diff_process_delete_file(entry->file_entry.path);
+            fim_diff_process_delete_file(entry->file_entry.path); // LCOV_EXCL_LINE
         }
 
         if (fim_db_remove_path(syscheck.database, entry->file_entry.path) == FIMDB_ERR) {
@@ -475,8 +476,13 @@ end:
     // Once here, either the used row was cleared and is available or this file is a hardlink to other file
     // either way the only thing left to do is to process the file
     item.mode = FIM_SCHEDULED;
-    item.index = fim_configuration_directory(entry->file_entry.path);
     item.configuration = syscheck.opts[item.index];
+    item.index = fim_configuration_directory(entry->file_entry.path);
+    if (item.index == -1) {
+        // This should not happen
+        free_entry(entry);     // LCOV_EXCL_LINE
+        return FIM_FILE_ERROR; // LCOV_EXCL_LINE
+    }
 
     *event = _unsafe_fim_file(entry->file_entry.path, &item, NULL);
 
@@ -497,13 +503,13 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
 
     tree = rbtree_init();
     if (tree == NULL) {
-        return -1;
+        return -1; // LCOV_EXCL_LINE
     }
 
     stack = OSList_Create();
     if (stack == NULL) {
-        rbtree_destroy(tree);
-        return -1;
+        rbtree_destroy(tree); // LCOV_EXCL_LINE
+        return -1;            // LCOV_EXCL_LINE
     }
 
     fim_db_append_paths_from_inode(syscheck.database, inode, dev, stack, tree);
@@ -515,8 +521,8 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
         OSListNode *last = OSList_GetLastNode(stack);
 
         if (last == NULL) {
-            mdebug2("Failed getting the next node to scan");
-            break;
+            mdebug2("Failed getting the next node to scan"); // LCOV_EXCL_LINE
+            break;                                           // LCOV_EXCL_LINE
         }
 
         current_path = (char *)last->data;
@@ -541,7 +547,7 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (event) {
-            send_syscheck_msg(event);
+            send_syscheck_msg(event); // LCOV_EXCL_LINE
         }
 
         cJSON_Delete(event);
@@ -569,24 +575,28 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
  * @retval -1 if an error occurs.
  * @retval 0 if the operation ends correctly.
  */
-static int
-fim_update_db_data(const char *path, const fim_file_data *data, fim_entry **saved, fim_event_mode event_mode) {
+static int fim_update_db_data(const char *path,
+                              const fim_file_data *data,
+                              fim_entry **saved,
+                              __attribute__((unused)) fim_event_mode event_mode) {
     assert(saved != NULL);
 
     *saved = fim_db_get_path(syscheck.database, path);
 
+#ifndef WIN32
     // We will rely on realtime and whodata modes not losing deletion and creation events.
     // This will potentially trigger false positives in very particular cases and environments but
     // there is no easy way to implement the DB correction algorithm in those modes.
     if (event_mode != FIM_SCHEDULED) {
         return fim_db_insert(syscheck.database, path, data, *saved != NULL ? (*saved)->file_entry.data : NULL);
     }
+#endif
 
     if (*saved == NULL) {
 #ifndef WIN32
         switch (fim_db_data_exists(syscheck.database, data->inode, data->dev)) {
         case FIMDB_ERR:
-            return FIM_FILE_ERROR;
+            return -1;
         case 1:
             if (fim_resolve_db_collision(data->inode, data->dev) != 0) {
                 mwarn("Failed to resolve an inode collision for file '%s'", path);
@@ -615,7 +625,7 @@ fim_update_db_data(const char *path, const fim_file_data *data, fim_entry **save
 
     switch (fim_db_data_exists(syscheck.database, data->inode, data->dev)) {
     case FIMDB_ERR:
-        return FIM_FILE_ERROR;
+        return -1;
     case 0:
         return fim_db_insert(syscheck.database, path, data, (*saved)->file_entry.data);
     case 1:
@@ -624,8 +634,8 @@ fim_update_db_data(const char *path, const fim_file_data *data, fim_entry **save
     }
 
     if (fim_resolve_db_collision(data->inode, data->dev) != 0) {
-        mwarn("Failed to resolve an inode collision for file '%s'", path);
-        return -1;
+        mwarn("Failed to resolve an inode collision for file '%s'", path); // LCOV_EXCL_LINE
+        return -1;                                                         // LCOV_EXCL_LINE
     }
 #endif
 
