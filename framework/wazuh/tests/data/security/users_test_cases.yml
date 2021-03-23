@@ -10,6 +10,7 @@ edit_run_as:
           allow_run_as: false
           roles:
             - 1
+          resource_type: default
       failed_items: {}
   - params:
       user_id: 2
@@ -21,6 +22,7 @@ edit_run_as:
           allow_run_as: true
           roles:
             - 1
+          resource_type: default
       failed_items: {}
   - params:
       user_id: 2
