@@ -15,7 +15,7 @@ info:
     and obtain a JWT token in order to run any endpoint.
 
     JWT tokens have a default duration of 900 seconds. To change this value, you must perform a call with a valid JWT token
-    to `PUT /security/config`. After this change, you will need to get a new JWT token.
+    to `PUT /security/config`. After this change, you will need to get a new JWT token as all previously issued tokens are revoked when any change is performed on security configuration.
 
     Login with USER and PASSWORD:
 
