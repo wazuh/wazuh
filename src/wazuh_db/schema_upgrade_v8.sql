@@ -38,7 +38,7 @@ ALTER TABLE _sys_programs RENAME TO sys_programs;
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
 ALTER TABLE sys_osinfo ADD COLUMN os_display_version TEXT DEFAULT NULL;
-ALTER TABLE sys_osinfo ADD COLUMN reference TEXT DEFAULT '' NOT NULL;
+ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL DEFAULT '';
 ALTER TABLE sys_osinfo ADD COLUMN triaged INTEGER(1) DEFAULT 0;
 
 DROP TABLE IF EXISTS vuln_cves;
