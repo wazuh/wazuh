@@ -3802,8 +3802,8 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Package info query syntax.");
-            mdebug2("Package info query: %s", source);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", source);
+            mdebug2("Package info query: %s", description);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Package info query syntax, near '%.32s'", description);
             return -1;
         }
 
