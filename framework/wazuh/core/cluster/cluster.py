@@ -319,15 +319,15 @@ def compress_files(name, list_path, cluster_control_json=None):
         try:
             if cluster_control_json and failed_files:
                 update_cluster_control_with_failed(failed_files, cluster_control_json)
-            zf.writestr("cluster_control.json", json.dumps(cluster_control_json))
+            zf.writestr("files_metadata.json", json.dumps(cluster_control_json))
         except Exception as e:
             raise WazuhError(3001, str(e))
 
     return zip_file_path
 
 
-async def decompress_files(zip_path, ko_files_name="cluster_control.json"):
-    """Unzip files in a directory and load the cluster_control.json as a dict.
+async def decompress_files(zip_path, ko_files_name="files_metadata.json"):
+    """Unzip files in a directory and load the files_metadata.json as a dict.
 
     Parameters
     ----------
@@ -468,7 +468,7 @@ def clean_up(node_name=""):
             Directory whose content to delete.
         """
         if not path.exists(local_rm_path):
-            logger.debug(f"[Cluster] Nothing to remove in '{local_rm_path}'.")
+            logger.debug(f"Nothing to remove in '{local_rm_path}'.")
             return
 
         for f in listdir(local_rm_path):
@@ -481,16 +481,16 @@ def clean_up(node_name=""):
                 else:
                     remove(f_path)
             except Exception as err:
-                logger.error(f"[Cluster] Error removing '{f_path}': '{err}'.")
+                logger.error(f"Error removing '{f_path}': '{err}'.")
                 continue
 
     try:
         rm_path = os.path.join(common.wazuh_path, 'queue', 'cluster', node_name)
-        logger.debug(f"[Cluster] Removing '{rm_path}'.")
+        logger.debug(f"Removing '{rm_path}'.")
         remove_directory_contents(rm_path)
-        logger.debug(f"[Cluster] Removed '{rm_path}'.")
+        logger.debug(f"Removed '{rm_path}'.")
     except Exception as e:
-        logger.error(f"[Cluster] Error cleaning up: {str(e)}.")
+        logger.error(f"Error cleaning up: {str(e)}.")
 
 
 def merge_info(merge_type, node_name, files=None, file_type=""):

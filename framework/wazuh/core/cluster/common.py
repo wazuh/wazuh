@@ -216,7 +216,6 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         # Modify filter tags with context vars.
         wazuh.core.cluster.utils.context_tag.set(self.tag)
-        wazuh.core.cluster.utils.context_subtag.set("Main")
         self.cluster_items = cluster_items
         # Transports in asyncio are an abstraction of sockets.
         self.transport = None
