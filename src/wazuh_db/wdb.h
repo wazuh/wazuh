@@ -1245,11 +1245,16 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
  * @retval -1 On error.
  */
 int wdb_journal_wal(sqlite3 *db);
+// Calculates SHA1 hash from a NULL terminated string array or strings as parameters
 
 /**
-*  @brief Calculates the SHA1 hash of all strings stored in a NULL terminated array
+*  @brief Calculates SHA1 hash from a NULL terminated string array or strings as parameters.
+*
+* For example, wdbi_sha_calculation(array, hexdigest, 0)
+*              wdbi_sha_calculation(NULL, hexdigest, parameters_count, "first", "second", ...)
 *
 * @param [in] strings_to_hash NULL Terminated array with strings to hash
+* @param [in] count Number of variable parameters sent
 * @param [out] hexdigest Final strings hashed
 */
  int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest, unsigned int count, ...);
@@ -1777,7 +1782,7 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
 
 /**
  * @brief Function to parse the vuln_cve update action.
- * 
+ *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format.
  * @param [out] output Response of the query.
