@@ -399,7 +399,7 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
     return result;
 }
 
-// Method to perform SHA1 hash algorithm to a NULL terminated string array or passing strings as parameters
+// Calculates SHA1 hash from a NULL terminated string array or strings as parameters
  int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest, unsigned int count, ...)
  {
     size_t it = 0;
