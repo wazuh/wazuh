@@ -248,16 +248,16 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     constexpr auto PKG_DESC     {"Standalone web browser from mozilla.org"};
     constexpr auto PKG_VERSION  {"86.0-2"};
 
-    data->isize                 = 1;
-    data->installdate           = 0;
-    data->groups->next          = NULL;
-    data->name                  = const_cast<char *>(PKG_NAME);
-    data->groups->data          = const_cast<char *>(PKG_GROUP);
-    data->version               = const_cast<char *>(PKG_VERSION);
-    data->arch                  = const_cast<char *>(PKG_ARCH);
-    data->desc                  = const_cast<char *>(PKG_DESC);
-    mock->data                  = data;
-    data->ops                   = &default_pkg_ops;
+    data->isize         = 1;
+    data->installdate   = 0;
+    data->groups->next  = NULL;
+    data->name          = const_cast<char *>(PKG_NAME);
+    data->groups->data  = const_cast<char *>(PKG_GROUP);
+    data->version       = const_cast<char *>(PKG_VERSION);
+    data->arch          = const_cast<char *>(PKG_ARCH);
+    data->desc          = const_cast<char *>(PKG_DESC);
+    mock->data          = data;
+    data->ops           = &default_pkg_ops;
 
     const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
@@ -284,28 +284,28 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
     data->handle        = new struct __alpm_handle_t;
     data->groups        = new struct __alpm_list_t;
 
-    data->isize                 = 0;
-    data->installdate           = 0;
-    data->groups->next          = NULL;
-    data->name                  = NULL;
-    data->groups->data          = NULL;
-    data->version               = NULL;
-    data->arch                  = NULL;
-    data->desc                  = NULL;
-    mock->data                  = data;
-    data->ops                   = &default_pkg_ops;
+    data->isize         = 0;
+    data->installdate   = 0;
+    data->groups->next  = NULL;
+    data->name          = NULL;
+    data->groups->data  = NULL;
+    data->version       = NULL;
+    data->arch          = NULL;
+    data->desc          = NULL;
+    mock->data          = data;
+    data->ops           = &default_pkg_ops;
 
     const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
-    EXPECT_EQ("(null)", jsPackageInfo["name"]);
+    EXPECT_EQ("", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
     EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["install_time"]);
-    EXPECT_EQ("(null)", jsPackageInfo["groups"]);
-    EXPECT_EQ("(null)", jsPackageInfo["version"]);
-    EXPECT_EQ("(null)", jsPackageInfo["architecture"]);
+    EXPECT_EQ("", jsPackageInfo["groups"]);
+    EXPECT_EQ("", jsPackageInfo["version"]);
+    EXPECT_EQ("", jsPackageInfo["architecture"]);
     EXPECT_EQ("pacman", jsPackageInfo["format"]);
     EXPECT_EQ("", jsPackageInfo["vendor"]);
-    EXPECT_EQ("(null)", jsPackageInfo["description"]);
+    EXPECT_EQ("", jsPackageInfo["description"]);
 
     delete mock;
     delete data->handle;

@@ -167,7 +167,7 @@ namespace PackageLinuxHelper
         std::string groups;
         auto alpmWrapper
         {
-            [] (auto pkgData) { return pkgData ? pkgData : ("(null)"); }
+            [] (auto pkgData) { return pkgData ? pkgData : ""; }
         };
 
         packageInfo["name"]         = alpmWrapper(alpm_pkg_get_name(pkg));
@@ -175,14 +175,13 @@ namespace PackageLinuxHelper
         packageInfo["install_time"] = Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pkg)));
         for (auto group{alpm_pkg_get_groups(pkg)}; group; group = alpm_list_next(group))
         {
-            if (!group->data)
+            if (group->data)
             {
-                group->data = const_cast<char *>("(null)");
+                const std::string groupString{reinterpret_cast<char*>(group->data)};
+                groups  += groupString + "-";
             }
-            const std::string groupString{reinterpret_cast<char*>(group->data)};
-            groups += groupString + "-";
         }
-        groups = groups.empty() ? "": groups.substr(0, groups.size()-1);
+        groups = groups.empty() ? "" : groups.substr(0, groups.size()-1);
         packageInfo["groups"]       = groups;
         packageInfo["version"]      = alpmWrapper(alpm_pkg_get_version(pkg));
         packageInfo["architecture"] = alpmWrapper(alpm_pkg_get_arch(pkg));
