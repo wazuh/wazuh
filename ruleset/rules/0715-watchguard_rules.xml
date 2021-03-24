@@ -43,6 +43,7 @@ Created by Simon. V
     <description>WatchGuard - Traffic $(action) from $(in_if)</description>
     <action>Allow</action>
   </rule>
+  
   <rule id="89107" level="5">
     <decoded_as>Watchguard</decoded_as>
     <description>WatchGuard - Traffic $(action) from $(in_if)</description>
