@@ -1080,8 +1080,8 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-DEPS_VERSION = 11
-RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
+DEPS_VERSION = 12
+RESOURCES_URL := https://packages-dev.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 ifneq (${TARGET}, winagent)
 cpu_arch := ${uname_P}
