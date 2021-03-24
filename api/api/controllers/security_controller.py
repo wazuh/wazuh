@@ -4,7 +4,6 @@
 
 import logging
 import re
-from json import JSONDecodeError
 
 from aiohttp import web
 
@@ -28,28 +27,23 @@ logger = logging.getLogger('wazuh-api')
 auth_re = re.compile(r'basic (.*)', re.IGNORECASE)
 
 
-async def login_user(request, user: str, raw=False):
+async def login_user(user: str, raw: bool = False) -> web.Response:
     """User/password authentication to get an access token.
     This method should be called to get an API token. This token will expire at some time. # noqa: E501
 
     Parameters
     ----------
-    request : connexion.request
     user : str
-        Name of the user who wants to be authenticated
+        Name of the user who wants to be authenticated.
     raw : bool, optional
-        Respond in raw format
+        Respond in raw format. Default `False`
 
     Returns
     -------
-    TokenResponseModel
+    web.Response
+        Raw or JSON response with the generated access token.
     """
     f_kwargs = {'user_id': user}
-    try:
-        # Add authorization context in case there is body in request
-        f_kwargs['auth_context'] = await request.json()
-    except JSONDecodeError:
-        pass
 
     dapi = DistributedAPI(f=preprocessor.get_permissions,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -61,14 +55,49 @@ async def login_user(request, user: str, raw=False):
 
     token = None
     try:
-        token = generate_token(user_id=user, data=data.dikt, run_as='auth_context' in f_kwargs.keys())
+        token = generate_token(user_id=user, data=data.dikt)
     except WazuhException as e:
         raise_if_exc(e)
 
-    if raw:
-        return web.Response(text=token, content_type='text/plain', status=200)
-    else:
-        return web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
+    return web.Response(text=token, content_type='text/plain', status=200) if raw \
+        else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
+
+
+async def run_as_login(request, user: str, raw: bool = False) -> web.Response:
+    """User/password authentication to get an access token.
+    This method should be called to get an API token using an authorization context body. This token will expire at some time. # noqa: E501
+
+    Parameters
+    ----------
+    request : connexion.request
+    user : str
+        Name of the user who wants to be authenticated.
+    raw : bool, optional
+        Respond in raw format. Default `False`
+
+    Returns
+    -------
+    web.Response
+        Raw or JSON response with the generated access token.
+    """
+    f_kwargs = {'user_id': user, 'auth_context': await request.json()}
+
+    dapi = DistributedAPI(f=preprocessor.get_permissions,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    token = None
+    try:
+        token = generate_token(user_id=user, data=data.dikt, run_as=True)
+    except WazuhException as e:
+        raise_if_exc(e)
+
+    return web.Response(text=token, content_type='text/plain', status=200) if raw \
+        else web.json_response(data=WazuhResult({'data': TokenResponseModel(token=token)}), status=200, dumps=dumps)
 
 
 async def get_user_me(request, pretty=False, wait_for_complete=False):
@@ -117,7 +146,7 @@ async def get_user_me_policies(request, pretty=False, wait_for_complete=False):
     Users information
     """
     data = WazuhResult({'data': request['token_info']['rbac_policies'],
-                       'message': "Current user processed policies information was returned"})
+                        'message': "Current user processed policies information was returned"})
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 

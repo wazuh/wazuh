@@ -159,6 +159,14 @@ int __wrap_OSHash_setSize(OSHash *self, unsigned int new_size) {
     return mock();
 }
 
+void __wrap_w_analysisd_accumulate_free(OSHash **acm_store) {
+    return;
+}
+
+void __wrap_OSList_CleanOnlyNodes(OSList *list) {
+    return;
+}
+
 int __wrap_OSHash_SetFreeDataPointer(OSHash *self, void (free_data_function)(void *)) {
     return mock_type(int);
 }
@@ -870,8 +878,6 @@ void test_w_logtest_remove_session_OK(void **state)
 
     will_return(__wrap_OSHash_Free, session);
 
-    will_return(__wrap_OSHash_Free, session);
-
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'test' was closed successfully");
@@ -970,8 +976,6 @@ void test_w_logtest_check_inactive_sessions_remove(void **state)
 
     will_return(__wrap_OSHash_Free, session);
 
-    will_return(__wrap_OSHash_Free, session);
-
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'test' was closed successfully");
@@ -1036,8 +1040,6 @@ void test_w_logtest_remove_old_session_one(void ** state) {
 
     will_return(__wrap_OSHash_Free, old_session);
 
-    will_return(__wrap_OSHash_Free, old_session);
-
     will_return(__wrap_pthread_mutex_destroy, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "(7206): The session 'old_session' was closed successfully");
@@ -1088,8 +1090,6 @@ void test_w_logtest_remove_old_session_many(void ** state) {
     will_return(__wrap_OSHash_Delete, old_session);
 
     will_return(__wrap_OSStore_Free, NULL);
-
-    will_return(__wrap_OSHash_Free, old_session);
 
     will_return(__wrap_OSHash_Free, old_session);
 
@@ -1172,8 +1172,6 @@ void test_w_logtest_register_session_remove_old(void ** state) {
     will_return(__wrap_OSHash_Delete, old_session);
 
     will_return(__wrap_OSStore_Free, NULL);
-
-    will_return(__wrap_OSHash_Free, old_session);
 
     will_return(__wrap_OSHash_Free, old_session);
 
@@ -4059,8 +4057,6 @@ void test_w_logtest_process_request_remove_session_ok(void ** state)
     will_return(__wrap_OSHash_Delete, session);
 
     will_return(__wrap_OSStore_Free, session->decoder_store);
-
-    will_return(__wrap_OSHash_Free, session);
 
     will_return(__wrap_OSHash_Free, session);
 

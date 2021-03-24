@@ -190,7 +190,9 @@ cJSON* wdb_get_agent_labels(int id, int *sock);
  *
  * @param[in] id Id of the agent that the name must be selected.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return A string with the agent name on success or NULL on failure.
+ * @return A string with the agent name on success.
+ * @retval "" when the agent is not found.
+ * @retval NULL on database failure.
  */
 char* wdb_get_agent_name(int id, int *sock);
 
