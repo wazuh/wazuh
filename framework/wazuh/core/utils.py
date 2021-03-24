@@ -1106,7 +1106,7 @@ class WazuhDBQuery(object):
         self.date_fields = date_fields
         self.extra_fields = extra_fields
         self.q = query
-        self.legacy_filters = filters
+        self.legacy_filters = filters.copy() if filters else filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
         self.rbac_negate = rbac_negate
