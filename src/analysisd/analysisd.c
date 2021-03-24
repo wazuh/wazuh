@@ -2118,7 +2118,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                     }
 
                     if (do_ar && execdq >= 0) {
-                        OS_Exec(execdq, &arq, lf, *rule_ar);
+                        OS_Exec(&execdq, &arq, lf, *rule_ar);
                     }
                     rule_ar++;
                 }

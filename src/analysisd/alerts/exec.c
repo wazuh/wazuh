@@ -19,11 +19,11 @@
 #include "eventinfo.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "labels.h"
+#include "exec.h"
 
-static const char* get_ip(const Eventinfo *lf);
+static const char *get_ip(const Eventinfo *lf);
 
-void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar)
-{
+void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *ar) {
     char exec_msg[OS_SIZE_8192 + 1];
     char msg[OS_SIZE_8192 + 1];
     const char *ip;
@@ -70,10 +70,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
         }
 
         getActiveResponseInJSON(lf, ar, ar->ar_cmd->extra_args, exec_msg);
-
-        if (OS_SendUnix(execq, exec_msg, 0) < 0) {
-            merror("Error communicating with execd.");
-        }
+        send_exec_msg(execq, EXECQUEUE, exec_msg);
     }
 
     /* Active Response to the forwarder */
@@ -153,10 +150,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 cJSON_Delete(json_agt_info);
 
                 get_exec_msg(ar, c_agent_id, msg, exec_msg);
-
-                if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
-                    merror("Error communicating with ar queue.");
-                }
+                send_exec_msg(arq, ARQUEUE, exec_msg);
             }
 
             os_free(id_array);
@@ -232,10 +226,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
             cJSON_Delete(json_agt_info);
 
             get_exec_msg(ar, c_agent_id, msg, exec_msg);
-
-            if ((OS_SendUnix(*arq, exec_msg, 0)) < 0) {
-                merror("Error communicating with ar queue.");
-            }
+            send_exec_msg(arq, ARQUEUE, exec_msg);
         }
     }
 
@@ -331,8 +322,7 @@ void getActiveResponseInString( const Eventinfo *lf,
  * @param[out] exec_msg Complete massage containing the message and the header.
  * @return void.
  */
-void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, char *exec_msg)
-{
+void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, char *exec_msg) {
     char temp_msg[OS_SIZE_1024 + 1] = "\0";
 
     /* As now there are 2 different message formats (the JSON and the string)
@@ -348,4 +338,30 @@ void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, ch
     strcpy(exec_msg, temp_msg);
     strcat(exec_msg, " ");
     strcat(exec_msg, msg);
+}
+
+/**
+ * @brief Send the message to the socket, if it fails, try reconnecting
+ *
+ * @param socket Socket where the message will be sent.
+ * @param queue_path Queue in case it is necessary to reconnect the socket
+ * @param exec_msg Complete massage to be sent.
+ * @return void.
+ */
+void send_exec_msg(int *socket, char *queue_path, char *exec_msg) {
+    if (*socket < 0) {
+        if ((*socket = StartMQ(queue_path, WRITE, 1)) < 0) {
+            merror(QUEUE_ERROR, queue_path, strerror(errno));
+
+            return;
+        }
+    }
+
+    int rc = 0;
+    if ((rc = OS_SendUnix(*socket, exec_msg, 0)) < 0) {
+        if (rc == OS_SOCKBUSY) {
+            merror(EXEC_QUEUE_BUSY);
+        }
+        merror(EXEC_QUEUE_CONNECTION_ERROR, queue_path);
+    }
 }
