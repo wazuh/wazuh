@@ -54,7 +54,7 @@ char *get_agent_ip()
     }
 
     last_update = now;
-    *agent_ip = '\0';
+    agent_ip[0] = '\0';
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
@@ -66,6 +66,7 @@ char *get_agent_ip()
                 if (OS_RecvUnix(sock, IPSIZE, agent_ip) <= 0) {
                     mdebug1("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
                     last_update = 0;
+                    agent_ip[0] = '\0';
                 }
             }
 
@@ -105,14 +106,14 @@ void run_notify()
         /* If response is not available, set lock and wait for it */
         mwarn(SERVER_UNAV);
         os_setwait();
-        update_status(GA_STATUS_NACTIVE);
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
 
         /* Send sync message */
         start_agent(0);
 
         minfo(SERVER_UP);
         os_delwait();
-        update_status(GA_STATUS_ACTIVE);
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
     }
 #endif
 
@@ -182,6 +183,6 @@ void run_notify()
     send_msg(tmp_msg, -1);
 
     free(shared_files);
-    update_keepalive(curr_time);
+    w_agentd_state_update(UPDATE_KEEPALIVE, (void *) &curr_time);
     return;
 }

@@ -23,7 +23,7 @@ namespace RSync
         // LCOV_EXCL_START
         ~JSONMessageDecoder() = default;
         // LCOV_EXCL_STOP
-        SyncInputData decode(const std::vector<unsigned char>& rawData) override 
+        SyncInputData decode(const std::vector<unsigned char>& rawData) override
         {
             SyncInputData retVal{};
             const std::string rawDataString { reinterpret_cast<const char*>(rawData.data()), rawData.size() };
@@ -36,7 +36,7 @@ namespace RSync
                 if (std::string::npos != secondToken)
                 {
                     retVal.command = rawDataStringFromFirst.substr(0, secondToken);
-                    
+
                     const auto rawDataStringFromSecond { rawDataStringFromFirst.substr(secondToken + 1, rawDataStringFromFirst.length() - secondToken - 1) };
                     const auto& json { nlohmann::json::parse(rawDataStringFromSecond) };
                     const auto& begin{json.at("begin")};

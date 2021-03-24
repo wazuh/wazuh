@@ -82,7 +82,8 @@
     <info type="link">http://www.kb.cert.org/vuls/id/328867</info>
     <info type="text">US-Cert Note VU#328867: Multiple vendors' firewalls do not adequately keep state of FTP traffic</info>
     <mitre>
-      <id technique="Non-Standard Port" tactic="Command and Control" tacticID="TA0011">T1571</id>
+      <id>T1065</id>
+      <id>T1043</id>
     </mitre>
     <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,tsc_CC6.1,tsc_CC6.8,</group>
   </rule>

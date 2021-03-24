@@ -7,7 +7,7 @@ from wazuh.core import common
 from wazuh.core.agent import Agent, get_agents_info
 from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
-from wazuh.core.ossec_queue import OssecQueue
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.syscheck import WazuhDBQuerySyscheck
 from wazuh.core.utils import WazuhVersion
@@ -40,10 +40,10 @@ def run(agent_list=None):
                 result.add_failed_item(
                     id_=agent_id, error=WazuhError(1601, extra_message='Status - {}'.format(agent_status)))
             else:
-                oq = OssecQueue(common.ARQUEUE)
-                oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
+                wq = WazuhQueue(common.ARQUEUE)
+                wq.send_msg_to_agent(WazuhQueue.HC_SK_RESTART, agent_id)
                 result.affected_items.append(agent_id)
-                oq.close()
+                wq.close()
         except WazuhError as e:
             result.add_failed_item(id_=agent_id, error=e)
     result.affected_items = sorted(result.affected_items, key=int)

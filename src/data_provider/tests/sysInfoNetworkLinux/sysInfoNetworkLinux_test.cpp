@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * October 19, 2020.
  *
  * This program is free software; you can redistribute it
@@ -72,7 +72,6 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET)
     EXPECT_EQ("192.168.0.255",ifaddr.at("IPv4").at("broadcast").get_ref<const std::string&>());
     EXPECT_EQ("8.8.8.8",ifaddr.at("IPv4").at("dhcp").get_ref<const std::string&>());
     EXPECT_EQ("100",ifaddr.at("IPv4").at("metric").get_ref<const std::string&>());
-
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET6_THROW)
@@ -150,4 +149,38 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_UNSPEC_THROW_NULLPTR)
 {
     nlohmann::json ifaddr {};
     EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(nullptr)->buildNetworkData(ifaddr));
+}
+
+TEST_F(SysInfoNetworkLinuxTest, Test_Gateway_7546)
+{
+    auto mock { std::make_shared<SysInfoNetworkLinuxWrapperMock>() };
+    nlohmann::json ifaddr {};
+    EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_PACKET));
+    EXPECT_CALL(*mock, name()).Times(1).WillOnce(Return("eth01"));
+    EXPECT_CALL(*mock, adapter()).Times(1).WillOnce(Return("adapter"));
+    EXPECT_CALL(*mock, type()).Times(1).WillOnce(Return("ethernet"));
+    EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("up"));
+    EXPECT_CALL(*mock, MAC()).Times(1).WillOnce(Return("00:A0:C9:14:C8:29"));
+    EXPECT_CALL(*mock, stats()).Times(1).WillOnce(Return(LinkStats{0,1,2,3,4,5,6,7}));
+    EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
+    EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("A12BA8C0")); // Gateway value in hexa: A12BA8C0
+
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
+
+    EXPECT_EQ("eth01",ifaddr.at("name").get_ref<const std::string&>());
+    EXPECT_EQ("adapter",ifaddr.at("adapter").get_ref<const std::string&>());
+    EXPECT_EQ("ethernet",ifaddr.at("type").get_ref<const std::string&>());
+    EXPECT_EQ("up",ifaddr.at("state").get_ref<const std::string&>());
+    EXPECT_EQ("00:A0:C9:14:C8:29",ifaddr.at("mac").get_ref<const std::string&>());
+
+    EXPECT_EQ(1,ifaddr.at("tx_packets").get<int32_t>());
+    EXPECT_EQ(0,ifaddr.at("rx_packets").get<int32_t>());
+    EXPECT_EQ(3,ifaddr.at("tx_bytes").get<int32_t>());
+    EXPECT_EQ(2,ifaddr.at("rx_bytes").get<int32_t>());
+    EXPECT_EQ(5,ifaddr.at("tx_errors").get<int32_t>());
+    EXPECT_EQ(4,ifaddr.at("rx_errors").get<int32_t>());
+    EXPECT_EQ(7,ifaddr.at("tx_dropped").get<int32_t>());
+    EXPECT_EQ(6,ifaddr.at("rx_dropped").get<int32_t>());
+    EXPECT_EQ(1500,ifaddr.at("mtu").get<int32_t>());
+    EXPECT_EQ("A12BA8C0",ifaddr.at("gateway").get_ref<const std::string&>());
 }

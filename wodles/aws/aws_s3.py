@@ -141,7 +141,7 @@ class WazuhIntegration:
 
         self.wazuh_path = common.find_wazuh_path()
         self.wazuh_version = common.get_wazuh_version()
-        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
+        self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
         # GovCloud regions

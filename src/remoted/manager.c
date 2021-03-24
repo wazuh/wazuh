@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "remoted.h"
 #include "remoted_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "shared_download.h"
@@ -897,6 +897,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     FILE *fp;
     os_sha256 multi_group_hash;
     char *multi_group_hash_pt = NULL;
+    int protocol = -1; // Agent client net protocol
 
     /* Check if it is multigroup */
     if (strchr(group,MULTIGROUP_SEPARATOR)) {
@@ -933,6 +934,15 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
         return (-1);
     }
 
+    /* The following code is used to get the protocol that the client is using in order to answer accordingly */
+    key_lock_read();
+    protocol = w_get_agent_net_protocol_from_keystore(&keys, agent_id);
+    key_unlock();
+    if (protocol < 0) {
+        merror(AR_NOAGENT_ERROR, agent_id);
+        return -1;
+    }
+
     /* Send the file contents */
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
@@ -941,8 +951,8 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
             fclose(fp);
             return (-1);
         }
-
-        if (logr.proto[logr.position] == IPPROTO_UDP) {
+        /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
+        if (protocol == REMOTED_NET_PROTOCOL_UDP) {
             /* Sleep 1 every 30 messages -- no flood */
             if (i > 30) {
                 sleep(1);

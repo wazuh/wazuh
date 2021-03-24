@@ -92,6 +92,7 @@
 #define VU_METADATA_CLEAN     "(5484): Cleaning metadata for target '%s'"
 #define VU_UNS_OS             "(5485): Agent '%.3d' has an unsupported OS: '%s'"
 #define VU_PACKAGE_TP_SOURCE  "(5486): Discarded package '%s' from a third-party source ('%s') for agent '%.3d'"
+#define VU_ERROR_CMP_VER      "(5487): Unknown relation '%s' between versions '%s' and '%s' for package '%s'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."
@@ -216,7 +217,7 @@
 #define FIM_CONFIGURATION_NOTFOUND          "(6319): No configuration found for (%s):'%s'"
 #define FIM_PROCESS_PRIORITY                "(6320): Setting process priority to: '%d'"
 #define FIM_SEND                            "(6321): Sending FIM event: %s"
-#define FIM_AUDIT_RELOADED                  "(6322): Reloaded audit rule for monitoring directory: '%s'"
+#define FIM_AUDIT_ALREADY_ADDED             "(6322): Already added audit rule for monitoring directory: '%s'"
 #define FIM_REALTIME_DIRECTORYCHANGES       "(6323): Unable to set 'ReadDirectoryChangesW' for directory: '%s'"
 #define FIM_HASHES_FAIL                     "(6324): Couldn't generate hashes for '%s'"
 #define FIM_EXTRACT_PERM_FAIL               "(6325): It was not possible to extract the permissions of '%s'. Error: %d"

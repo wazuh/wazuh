@@ -66,7 +66,7 @@ constexpr auto OS_SYNC_CONFIG_STATEMENT
         "index":"os_name",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE os_name BETWEEN '?' and '?' ORDER BY os_name",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -152,7 +152,7 @@ constexpr auto HW_SYNC_CONFIG_STATEMENT
         "index":"board_serial",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE board_serial BETWEEN '?' and '?' ORDER BY board_serial",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -233,7 +233,7 @@ constexpr auto HOTFIXES_SYNC_CONFIG_STATEMENT
         "index":"hotfix",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE hotfix BETWEEN '?' and '?' ORDER BY hotfix",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -327,7 +327,7 @@ constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -433,7 +433,7 @@ constexpr auto PROCESSES_SYNC_CONFIG_STATEMENT
         "index":"pid",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE pid BETWEEN '?' and '?' ORDER BY pid",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -540,7 +540,7 @@ constexpr auto PORTS_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -581,7 +581,7 @@ constexpr auto PORTS_SQL_STATEMENT
        inode BIGINT,
        state TEXT,
        pid BIGINT,
-       process_name TEXT,
+       process TEXT,
        checksum TEXT,
        item_id TEXT,
        PRIMARY KEY (inode, protocol, local_ip, local_port)) WITHOUT ROWID;)"
@@ -632,7 +632,7 @@ constexpr auto NETIFACE_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -727,7 +727,7 @@ constexpr auto NETPROTO_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -813,7 +813,7 @@ constexpr auto NETADDRESS_SYNC_CONFIG_STATEMENT
         "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":" ",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -845,7 +845,7 @@ constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_address (
        iface TEXT,
-       proto TEXT,
+       proto INTEGER,
        address TEXT,
        netmask TEXT,
        broadcast TEXT,
@@ -912,6 +912,22 @@ static void removeKeysWithEmptyValue(nlohmann::json& input)
             }
         }
     }
+}
+
+static bool isElementDuplicated(const nlohmann::json & input, const std::pair<std::string, std::string>& keyValue)
+{
+    const auto it
+    {
+        std::find_if
+        (
+            input.begin(), input.end(),
+            [&keyValue](const auto& elem)
+            {
+                return elem.at(keyValue.first) == keyValue.second;
+            }
+        )
+    };
+    return it != input.end();
 }
 
 void Syscollector::updateAndNotifyChanges(const std::string& table,
@@ -1153,7 +1169,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool ports,
                         const bool portsAll,
                         const bool processes,
-                        const bool hotfixes)
+                        const bool hotfixes,
+                        const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = reportDiffFunction;
@@ -1169,6 +1186,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_portsAll = portsAll;
     m_processes = processes;
     m_hotfixes = hotfixes;
+    m_notify = notifyOnFirstScan;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
@@ -1292,7 +1310,7 @@ nlohmann::json Syscollector::getNetworkData()
 
                     // "dbsync_network_address" table data to update and notify
                     addressTableData["iface"]     = item.at("name");
-                    addressTableData["proto"]     = "IPv4";
+                    addressTableData["proto"]     = 0;
                     addressTableData["checksum"]  = getItemChecksum(addressTableData);
                     addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                     addressTableDataList.push_back(addressTableData);
@@ -1306,7 +1324,7 @@ nlohmann::json Syscollector::getNetworkData()
 
                     // "dbsync_network_address" table data to update and notify
                     addressTableData["iface"]     = item.at("name");
-                    addressTableData["proto"]     = "IPv6";
+                    addressTableData["proto"]     = 1;
                     addressTableData["checksum"]  = getItemChecksum(addressTableData);
                     addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                     addressTableDataList.push_back(addressTableData);
@@ -1384,18 +1402,7 @@ nlohmann::json Syscollector::getPackagesData()
             else
             {
                 const auto itemId{ getItemId(item, PACKAGES_ITEM_ID_FIELDS) };
-                const auto it
-                {
-                    std::find_if
-                    (
-                        packagesList.begin(), packagesList.end(),
-                        [&itemId](const auto& elem)
-                        {
-                            return elem.at("item_id") == itemId;
-                        }
-                    )
-                };
-                if(packagesList.end() == it)
+                if(!isElementDuplicated(packagesList, std::make_pair("item_id", itemId)))
                 {
                     item["item_id"] = itemId;
                     packagesList.push_back(item);
@@ -1451,6 +1458,7 @@ nlohmann::json Syscollector::getPortsData()
     nlohmann::json ret;
     constexpr auto PORT_LISTENING_STATE { "listening" };
     constexpr auto TCP_PROTOCOL { "tcp" };
+    constexpr auto UDP_PROTOCOL { "udp" };
     const auto& data { m_spInfo->ports() };
 
     if (!data.is_null())
@@ -1461,25 +1469,47 @@ nlohmann::json Syscollector::getPortsData()
         {
             for (auto item : itPorts.value())
             {
-                const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
-                if(isListeningState)
+                const auto protocol { item.at("protocol").get_ref<const std::string&>() };
+                if (Utils::startsWith(protocol, TCP_PROTOCOL))
                 {
-                    item["checksum"] = getItemChecksum(item);
-                    item["item_id"] = getItemId(item, PORTS_ITEM_ID_FIELDS);
-                    // Only update and notify "Listening" state ports
+                    // All ports.
                     if (m_portsAll)
                     {
-                        // TCP and UDP ports
-                        ret.push_back(item);
+                        const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                        if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        {
+                            item["checksum"] = getItemChecksum(item);
+                            item["item_id"] = itemId;
+                            ret.push_back(item);
+                        }
                     }
                     else
                     {
-                        // Only TCP ports
-                        const auto isTCPProto { item.at("protocol") == TCP_PROTOCOL };
-                        if (isTCPProto)
+                        // Only listening ports.
+                        const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+                        if(isListeningState)
                         {
-                            ret.push_back(item);
+                            const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                            if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                            {
+                                item["checksum"] = getItemChecksum(item);
+                                item["item_id"] = itemId;
+                                ret.push_back(item);
+                            }
                         }
+                    }
+                }
+                else if (Utils::startsWith(protocol, UDP_PROTOCOL))
+                {
+                    const auto & itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                    if(!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    {
+                        item["checksum"] = getItemChecksum(item);
+                        item["item_id"] = itemId;
+                        ret.push_back(item);
                     }
                 }
             }

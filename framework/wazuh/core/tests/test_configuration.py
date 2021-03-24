@@ -31,8 +31,8 @@ tmp_path = 'tests/data'
 
 
 @pytest.fixture(scope='module', autouse=True)
-def mock_ossec_path():
-    with patch('wazuh.core.common.ossec_path', new=os.path.join(parent_directory, tmp_path)):
+def mock_wazuh_path():
+    with patch('wazuh.core.common.wazuh_path', new=os.path.join(parent_directory, tmp_path)):
         yield
 
 
@@ -328,10 +328,10 @@ def test_upload_group_file(mock_safe_move, mock_open):
 ])
 def test_get_active_configuration(agent_id, component, config, msg):
     """This test checks the propper working of get_active_configuration function."""
-    with patch('wazuh.core.configuration.OssecSocket.__init__', return_value=None):
-        with patch('wazuh.core.configuration.OssecSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.OssecSocket.receive', return_value=f'ok {msg}'.encode()):
-                with patch('wazuh.core.configuration.OssecSocket.close', side_effect=None):
+    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
+        with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
+            with patch('wazuh.core.configuration.WazuhSocket.receive', return_value=f'ok {msg}'.encode()):
+                with patch('wazuh.core.configuration.WazuhSocket.close', side_effect=None):
                     if json.loads(msg).get('auth', {}).get('use_password') == 'yes':
                         result = configuration.get_active_configuration(agent_id, component, config)
                         assert 'authd.pass' not in result
@@ -353,7 +353,7 @@ def test_get_active_configuration(agent_id, component, config, msg):
 ])
 def test_get_active_configuration_first_exceptions(exception_type, agent_id, component, config, exception_):
     """This test checks the first three exceptions."""
-    with patch('wazuh.core.configuration.OssecSocket.__init__', return_value=Exception):
+    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=Exception):
         with pytest.raises(exception_type, match=f".* {exception_} .*"):
             configuration.get_active_configuration(agent_id, component, config)
 
@@ -363,9 +363,9 @@ def test_get_active_configuration_first_exceptions(exception_type, agent_id, com
 ])
 def test_get_active_configuration_second_exceptions(agent_id, component, config, exception_):
     """This test checks the fourth exception."""
-    with patch('wazuh.core.configuration.OssecSocket.__init__', return_value=None):
-        with patch('wazuh.core.configuration.OssecSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.OssecSocket.receive', side_effect=ValueError):
+    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
+        with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
+            with patch('wazuh.core.configuration.WazuhSocket.receive', side_effect=ValueError):
                 with pytest.raises(WazuhInternalError, match=f".* {exception_} .*"):
                     configuration.get_active_configuration(agent_id, component, config)
 
@@ -375,10 +375,10 @@ def test_get_active_configuration_second_exceptions(agent_id, component, config,
 ])
 def test_get_active_configuration_third_exceptions(agent_id, component, config, exception_):
     """This test checks the last exception."""
-    with patch('wazuh.core.configuration.OssecSocket.__init__', return_value=None):
-        with patch('wazuh.core.configuration.OssecSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.OssecSocket.receive', return_value=b'test 1'):
-                with patch('wazuh.core.configuration.OssecSocket.close', side_effect=None):
+    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
+        with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
+            with patch('wazuh.core.configuration.WazuhSocket.receive', return_value=b'test 1'):
+                with patch('wazuh.core.configuration.WazuhSocket.close', side_effect=None):
                     with pytest.raises(WazuhError, match=f".* {exception_} .*"):
                         configuration.get_active_configuration(agent_id, component, config)
 
@@ -387,10 +387,10 @@ def test_get_active_configuration_third_exceptions(agent_id, component, config, 
     ('000', 'agent', 'given', None)
 ])
 def test_get_active_configuration_fourth_exception(agent_id, component, config, exception_):
-    with patch('wazuh.core.configuration.OssecSocket.__init__', return_value=None):
-        with patch('wazuh.core.configuration.OssecSocket.send', side_effect=None):
-            with patch('wazuh.core.configuration.OssecSocket.receive', return_value=b'ok {"a": "2"}'):
-                with patch('wazuh.core.configuration.OssecSocket.close', side_effect=None):
+    with patch('wazuh.core.configuration.WazuhSocket.__init__', return_value=None):
+        with patch('wazuh.core.configuration.WazuhSocket.send', side_effect=None):
+            with patch('wazuh.core.configuration.WazuhSocket.receive', return_value=b'ok {"a": "2"}'):
+                with patch('wazuh.core.configuration.WazuhSocket.close', side_effect=None):
                     assert {"a": "2"} == configuration.get_active_configuration(agent_id, component, config)
 
 

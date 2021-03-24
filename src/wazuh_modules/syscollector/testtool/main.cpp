@@ -13,14 +13,37 @@
 #include <iostream>
 #include <stdio.h>
 #include <memory>
+#include <chrono>
 #include "defs.h"
 #include "dbsync.hpp"
 #include "rsync.hpp"
 #include "sysInfo.hpp"
 #include "syscollector.hpp"
 
-int main(int /*argc*/, const char** /*argv[]*/)
+constexpr auto DEFAULT_SLEEP_TIME { 60 };
+
+static void logFunction(const char* msg)
 {
+    std::cout << msg << std::endl;
+}
+
+int main(int argc, const char* argv[])
+{
+    auto timedMainLoop { false };
+    auto sleepTime { DEFAULT_SLEEP_TIME };
+    if (2 == argc)
+    {
+        timedMainLoop = true;
+        std::string firstArgument { argv[1] };
+
+        sleepTime = firstArgument.find_first_not_of("0123456789") == std::string::npos ? std::stoi(firstArgument) : DEFAULT_SLEEP_TIME;
+
+    }
+    else if (2 < argc)
+    {
+        return -1;
+    }
+
     const auto reportDiffFunction
     {
         [](const std::string& payload)
@@ -61,7 +84,6 @@ int main(int /*argc*/, const char** /*argv[]*/)
         }
     };
 
-    const std::chrono::milliseconds timeout{5000};
     const auto spInfo{ std::make_shared<SysInfo>() };
     RemoteSync::initialize(logErrorFunction);
     DBSync::initialize(logErrorFunction);
@@ -69,9 +91,16 @@ int main(int /*argc*/, const char** /*argv[]*/)
     {
         std::thread thread
         {
-            []
+            [timedMainLoop, sleepTime]
             {
-                while(std::cin.get() != 'q');
+                if (!timedMainLoop)
+                {
+                    while(std::cin.get() != 'q');
+                }
+                else
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(sleepTime));
+                }
                 Syscollector::instance().destroy();
             }
         };

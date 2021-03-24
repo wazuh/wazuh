@@ -262,7 +262,7 @@ start_service()
         echo "Starting $NAME $VERSION..."
     fi
 
-    TEST=$(${DIR}/bin/wazuh-analysisd -t  2>&1 | grep "ERROR")
+    TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1 | grep "ERROR")
     if [ ! -z "$TEST" ]; then
         if [ $USE_JSON = true ]; then
             echo -n '{"error":21,"message":"OSSEC analysisd: Testing rules failed. Configuration error."}'
