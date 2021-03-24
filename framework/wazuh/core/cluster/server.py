@@ -14,7 +14,7 @@ import uvloop
 
 from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
-from wazuh.core.cluster.utils import ClusterFilter, context_tag, context_subtag
+from wazuh.core.cluster.utils import ClusterFilter, context_tag
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -226,7 +226,6 @@ class AbstractServer:
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # logging tag
         context_tag.set(self.tag)
-        context_subtag.set("Main")
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
