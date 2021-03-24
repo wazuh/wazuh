@@ -51,9 +51,6 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     char * home_path = w_homedir(argv[0]);
-    if (chdir(home_path) == -1) {
-        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
-    }
 
     while ((c = getopt(argc, argv, "Vtdhfc:")) != -1) {
         switch (c) {
@@ -83,6 +80,11 @@ int main(int argc, char **argv)
                 help_syscheckd(home_path);
                 break;
         }
+    }
+
+    /* Change current working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
 
     /* Check if the group given is valid */

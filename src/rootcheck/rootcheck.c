@@ -30,7 +30,6 @@ char total_ports_tcp[65535 + 1];
 
 #ifndef OSSECHIDS
 
-
 /* Print help statement */
 void help_rootcheck(char * home_path)
 {
