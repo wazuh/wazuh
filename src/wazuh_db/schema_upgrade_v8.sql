@@ -8,7 +8,7 @@
  * and/or modify it under the terms of GPLv2.
 */
 
-ALTER TABLE sys_osinfo ADD COLUMN reference TEXT DEFAULT '' NOT NULL;
+ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL CHECK (checksum <> '');
 ALTER TABLE sys_osinfo ADD COLUMN triaged INTEGER(1) DEFAULT 0;
 
 DROP TABLE IF EXISTS vuln_cves;
