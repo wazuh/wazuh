@@ -242,17 +242,17 @@ def format_numbers_delete(value):
 
 
 @draft4_format_checker.checks("cdb_filename_path")
-def format_numbers_delete(value):
+def format_cdb_filename_path(value):
     return check_exp(value, _cdb_filename_path)
 
 
 @draft4_format_checker.checks("xml_filename")
-def format_numbers_delete(value):
+def format_xml_filename(value):
     return check_exp(value, _xml_filename)
 
 
 @draft4_format_checker.checks("xml_filename_path")
-def format_numbers_delete(value):
+def format_xml_filename_path(value):
     return check_exp(value, _xml_filename_path)
 
 
