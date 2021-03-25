@@ -28,6 +28,10 @@ typedef enum agents_db_access {
  * @param[in] version The affected package version.
  * @param[in] architecture The affected package architecture.
  * @param[in] cve The vulnerability ID.
+ * @param[in] reference The package reference.
+ * @param[in] type The package type.
+ * @param[in] status The vulnerability status.
+ * @param[in] check_pkg_existance If TRUE, it enables a package existance verification in sys_programs table.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
@@ -36,6 +40,10 @@ int wdb_agents_vuln_cve_insert(int id,
                                const char *version,
                                const char *architecture,
                                const char *cve,
+                               const char *reference,
+                               const char *type,
+                               const char *status,
+                               bool check_pkg_existance,
                                int *sock);
 
 /**
