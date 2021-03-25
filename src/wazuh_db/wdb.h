@@ -51,6 +51,14 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
+#define INSERT_SUCCESS         1         // Insert new CVE successfully.
+#define INSERT_ERROR           -1        // Insert new CVE error.
+#define UPDATE_SUCCESS         2         // Update CVE successfully.
+#define UPDATE_ERROR           -2        // Update CVE error.
+#define PACKAGE_NOT_FOUND      3         // Skip insert or update.
+#define PACKAGE_ERROR          -3        // Skip insert or update due to error.
+#define CVE_ERROR              -4        // Skip insert or update due to error.
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -70,6 +78,7 @@ typedef enum wdb_stmt {
     WDB_STMT_PROGRAM_DEL,
     WDB_STMT_PROGRAM_UPD,
     WDB_STMT_PROGRAM_GET,
+    WDB_STMT_PROGRAM_FIND,
     WDB_STMT_HWINFO_INSERT,
     WDB_STMT_HWINFO_INSERT2,
     WDB_STMT_HOTFIX_INSERT,
@@ -226,6 +235,7 @@ typedef enum wdb_stmt {
     WDB_STMT_VULN_CVE_CLEAR,
     WDB_STMT_VULN_CVE_UPDATE,
     WDB_STMT_VULN_CVE_UPDATE_ALL,
+    WDB_STMT_VULN_CVE_FIND_CVE,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
