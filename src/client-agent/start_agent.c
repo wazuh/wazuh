@@ -442,7 +442,7 @@ void send_agent_stopped_message() {
 
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_SHUTDOWN);
 
-    /* Send start up message */
+    /* Send shutdown message */
     send_msg(msg, -1);
 
     /* Read until our reply comes back */
