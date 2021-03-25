@@ -1796,7 +1796,8 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format. It could receive a status to remove all the vulnerabilities
  *                   whith that status, or the CVE and reference to remove a particular entry. Examples:
- *                   TOTATODO
+ *                   - To remove by status: {"status":"OBSOLETE"}
+ *                   - To remove a specific entry: {"cve":"cve-xxxx-xxxx","reference":"refxxx"}
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
