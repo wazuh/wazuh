@@ -207,7 +207,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100*memFree/ramTotal);
 }
 
-static void getRpmInfo(nlohmann::json& ret)
+static void getRpmInfo(nlohmann::json& packages)
 {
     auto rawData{ Utils::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'")};
     if (!rawData.empty())
@@ -218,13 +218,13 @@ static void getRpmInfo(nlohmann::json& ret)
             const auto& package{ PackageLinuxHelper::parseRpm(row) };
             if (!package.empty())
             {
-                ret.push_back(package);
+                packages.push_back(package);
             }
         }
     }
 }
 
-static void getDpkgInfo(const std::string& fileName, nlohmann::json& ret)
+static void getDpkgInfo(const std::string& fileName, nlohmann::json& packages)
 {
     std::fstream file{fileName, std::ios_base::in};
     if (file.is_open())
@@ -249,7 +249,7 @@ static void getDpkgInfo(const std::string& fileName, nlohmann::json& ret)
             const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
             if (!packageInfo.empty())
             {
-                ret.push_back(packageInfo);
+                packages.push_back(packageInfo);
             }
         }
     }
@@ -263,7 +263,7 @@ struct AlmpDeleter
     }
 };
 
-static void getPacmanInfo(const std::string& libPath, nlohmann::json& ret)
+static void getPacmanInfo(const std::string& libPath, nlohmann::json& packages)
 {
     constexpr auto ROOT_PATH{"/"};
     alpm_errno_t err{ALPM_ERR_OK};
@@ -289,7 +289,7 @@ static void getPacmanInfo(const std::string& libPath, nlohmann::json& ret)
         const auto& packageInfo{ PackageLinuxHelper::parsePacman(item) };
         if (!packageInfo.empty())
         {
-            ret.push_back(packageInfo);
+            packages.push_back(packageInfo);
         }
     }
 }
