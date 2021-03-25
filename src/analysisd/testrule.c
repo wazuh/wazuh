@@ -55,7 +55,7 @@ static void help_logtest(void)
     print_out("    -t          Test configuration");
     print_out("    -a          Alerts output");
     print_out("    -v          Verbose (full) output/rule debugging");
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH_MANAGER);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -U <rule:alert:decoder>  Unit test. Refer to ruleset/testing/runtests.py");
     print_out(" ");
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     int c = 0;
     char *ut_str = NULL;
     const char *dir = DEFAULTDIR;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH_MANAGER;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
@@ -227,7 +227,7 @@ int main(int argc, char **argv)
                 /* Read decoders */
                 Read_Rules(NULL, &Config, NULL);
 
-                /* New loaded based on file specified in ossec.conf */
+                /* New loaded based on file specified in manager.conf */
                 char **decodersfiles;
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
@@ -284,7 +284,7 @@ int main(int argc, char **argv)
                 }
 
             } else {
-                /* New loaded based on file specified in ossec.conf */
+                /* New loaded based on file specified in manager.conf */
                 char **decodersfiles;
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
