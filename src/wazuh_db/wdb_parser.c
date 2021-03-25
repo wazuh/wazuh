@@ -6032,20 +6032,38 @@ int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
         cJSON* j_version = cJSON_GetObjectItem(data, "version");
         cJSON* j_architecture = cJSON_GetObjectItem(data, "architecture");
         cJSON* j_cve = cJSON_GetObjectItem(data, "cve");
+        cJSON* j_reference = cJSON_GetObjectItem(data, "reference");
+        cJSON* j_type = cJSON_GetObjectItem(data, "type");
+        cJSON* j_status = cJSON_GetObjectItem(data, "status");
+        cJSON* j_check_pkg_existance = cJSON_GetObjectItem(data, "check_pkg_existance");
         // Required fields
-        if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve)) {
+        if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve) || 
+            !cJSON_IsString(j_reference) || !cJSON_IsString(j_type) || !cJSON_IsString(j_status) ||!cJSON_IsNumber(j_check_pkg_existance)) {
             mdebug1("Invalid vuln_cve JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
 
         else {
-            ret = wdb_agents_insert_vuln_cve(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring);
-            if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cve insert command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve insert command; SQL err: %s", sqlite3_errmsg(wdb->db));
-            }
-            else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
+            ret = wdb_agents_insert_vuln_cve(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring, 
+                                            j_reference->valuestring, j_type->valuestring, j_status->valuestring, j_check_pkg_existance->valueint);
+            
+            switch (ret) {
+                case INSERT_SUCCESS: 
+                    snprintf(output, OS_MAXSTR + 1, "Insert Success!");
+                    break;
+                case UPDATE_SUCCESS:
+                    snprintf(output, OS_MAXSTR + 1, "Update Success!");
+                    break;
+                case PACKAGE_NOT_FOUND:
+                    snprintf(output, OS_MAXSTR + 1, "Insert_or_update Skipped. Package not found in sys_programs table");
+                    break;
+                case CVE_ERROR:            
+                case INSERT_ERROR:
+                case UPDATE_ERROR:
+                case PACKAGE_ERROR:
+                    mdebug1("DB(%s) Cannot execute vuln_cve insert command; SQL err: %s code error", wdb->id, sqlite3_errmsg(wdb->db));
+                    snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve insert command; SQL err: %s code error", sqlite3_errmsg(wdb->db));
+                    break;
             }
         }
     }
