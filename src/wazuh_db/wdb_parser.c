@@ -444,14 +444,14 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_rootcheck(wdb, next, output);
             }
-        } else if (strcmp(query, "vuln_cve") == 0) {
+        } else if (strcmp(query, "vuln_cves") == 0) {
             if (!next) {
-                mdebug1("DB(%s) Invalid vuln_cve query syntax.", sagent_id);
-                mdebug2("DB(%s) vuln_cve query error near: %s", sagent_id, query);
-                snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve query syntax, near '%.32s'", query);
+                mdebug1("DB(%s) Invalid vuln_cves query syntax.", sagent_id);
+                mdebug2("DB(%s) vuln_cves query error near: %s", sagent_id, query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cves query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                result = wdb_parse_vuln_cve(wdb, next, output);
+                result = wdb_parse_vuln_cves(wdb, next, output);
             }
         } else if (strcmp(query, "sql") == 0) {
             if (!next) {
@@ -6056,7 +6056,7 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
 
 // 'agents' DB command parsing
 
-int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output) {
     int result = OS_INVALID;
     char * next;
     const char delim[] = " ";
@@ -6065,35 +6065,35 @@ int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
     next = strtok_r(input, delim, &tail);
 
     if (!next){
-        snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cve action");
+        snprintf(output, OS_MAXSTR + 1, "err Missing vuln_cves action");
     }
     else if (strcmp(next, "insert") == 0) {
-        result = wdb_parse_agents_insert_vuln_cve(wdb, tail, output);
+        result = wdb_parse_agents_insert_vuln_cves(wdb, tail, output);
     }
     else if (strcmp(next, "update_status") == 0) {
-        result = wdb_parse_agents_vuln_cve_update_status(wdb, tail, output);
+        result = wdb_parse_agents_vuln_cves_update_status(wdb, tail, output);
     }
     else if (strcmp(next, "remove") == 0) {
-        result = wdb_parse_agents_remove_vuln_cve(wdb, tail, output);
+        result = wdb_parse_agents_remove_vuln_cves(wdb, tail, output);
     }
     else if (strcmp(next, "clear") == 0) {
-        result = wdb_parse_agents_clear_vuln_cve(wdb, output);
+        result = wdb_parse_agents_clear_vuln_cves(wdb, output);
     }
     else {
-        snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve action: %s", next);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cves action: %s", next);
     }
 
     return result;
 }
 
-int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
     const char *error = NULL;
     int ret = OS_INVALID;
 
     data = cJSON_ParseWithOpts(input, &error, TRUE);
     if (!data) {
-        mdebug1("Invalid vuln_cve JSON syntax when inserting vulnerable package.");
+        mdebug1("Invalid vuln_cves JSON syntax when inserting vulnerable package.");
         mdebug2("JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
     }
@@ -6109,7 +6109,7 @@ int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
         // Required fields
         if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve) ||
             !cJSON_IsString(j_reference) || !cJSON_IsString(j_type) || !cJSON_IsString(j_status) ||!cJSON_IsNumber(j_check_pkg_existance)) {
-            mdebug1("Invalid vuln_cve JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
+            mdebug1("Invalid vuln_cves JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
         else {
@@ -6134,7 +6134,7 @@ int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
     return ret;
 }
 
-int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
     const char *error = NULL;
     int ret = OS_INVALID;
@@ -6142,7 +6142,7 @@ int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* outpu
     data = cJSON_ParseWithOpts(input, &error, TRUE);
 
     if (!data) {
-        mdebug1("Invalid vuln_cve JSON syntax when updating status value.");
+        mdebug1("Invalid vuln_cves JSON syntax when updating status value.");
         mdebug2("JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
     }
@@ -6151,15 +6151,15 @@ int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* outpu
         cJSON* new_status = cJSON_GetObjectItem(data, "new_status");
         // Required fields
         if (!cJSON_IsString(old_status) || !cJSON_IsString(new_status)) {
-            mdebug1("Invalid vuln_cve JSON data when updating status value. Not compliant with constraints defined in the database.");
+            mdebug1("Invalid vuln_cves JSON data when updating status value. Not compliant with constraints defined in the database.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
 
         else {
-            ret = wdb_agents_update_status_vuln_cve(wdb, old_status->valuestring, new_status->valuestring);
+            ret = wdb_agents_update_status_vuln_cves(wdb, old_status->valuestring, new_status->valuestring);
             if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cve update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
+                mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
             }
             else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
@@ -6171,7 +6171,7 @@ int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* outpu
     return ret;
 }
 
-int wdb_parse_agents_remove_vuln_cve(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
     const char *error = NULL;
     int ret = OS_INVALID;
@@ -6179,7 +6179,7 @@ int wdb_parse_agents_remove_vuln_cve(wdb_t* wdb, char* input, char* output) {
     data = cJSON_ParseWithOpts(input, &error, TRUE);
 
     if (!data) {
-        mdebug1("Invalid vuln_cve JSON syntax when removing vulnerabilities.");
+        mdebug1("Invalid vuln_cves JSON syntax when removing vulnerabilities.");
         mdebug2("JSON error near: %s", error);
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
     }
@@ -6192,24 +6192,24 @@ int wdb_parse_agents_remove_vuln_cve(wdb_t* wdb, char* input, char* output) {
         if (cJSON_IsString(status)) {
             char* removed_cves = NULL;
 
-            wdbc_result wdb_res = wdb_agents_remove_by_status_vuln_cve(wdb, status->valuestring, &removed_cves);
+            wdbc_result wdb_res = wdb_agents_remove_by_status_vuln_cves(wdb, status->valuestring, &removed_cves);
             snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], removed_cves);
             os_free(removed_cves)
             ret = OS_SUCCESS;
         }
         // Checking whether we should remove a specific entry
         else if (cJSON_IsString(cve) && cJSON_IsString(reference)) {
-            ret = wdb_agents_remove_vuln_cve(wdb, cve->valuestring, reference->valuestring);
+            ret = wdb_agents_remove_vuln_cves(wdb, cve->valuestring, reference->valuestring);
             if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cve remove command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve remove command; SQL err: %s", sqlite3_errmsg(wdb->db));
+                mdebug1("DB(%s) Cannot execute vuln_cves remove command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves remove command; SQL err: %s", sqlite3_errmsg(wdb->db));
             }
             else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
             }
         }
         else {
-            mdebug1("Invalid vuln_cve JSON data to remove vulnerabilities.");
+            mdebug1("Invalid vuln_cves JSON data to remove vulnerabilities.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data");
         }
     }
@@ -6218,11 +6218,11 @@ int wdb_parse_agents_remove_vuln_cve(wdb_t* wdb, char* input, char* output) {
     return ret;
 }
 
-int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
-    int ret = wdb_agents_clear_vuln_cve(wdb);
+int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output) {
+    int ret = wdb_agents_clear_vuln_cves(wdb);
     if (OS_SUCCESS != ret) {
-        mdebug1("DB(%s) Cannot execute vuln_cve clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) Cannot execute vuln_cves clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "ok");
