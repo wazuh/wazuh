@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Cluster:**
+  - Fixed workers reconnection after restarting master node. Updated `asyncio.Task.all_tasks` method removed in Python 3.9. ([#8017](https://github.com/wazuh/wazuh/pull/8017))
+
 
 ## [v4.1.3] - 2021-03-23
 
