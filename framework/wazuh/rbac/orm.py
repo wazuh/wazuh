@@ -2833,11 +2833,11 @@ class DatabaseManager:
         old_roles_policies = get_data(RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id)
         with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
             for role_policy in old_roles_policies:
-                role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
-                                                       policy_id=role_policy.policy_id,
-                                                       position=role_policy.level,
-                                                       created_at=role_policy.created_at,
-                                                       force_admin=True)
+                status = role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
+                                                               policy_id=role_policy.policy_id,
+                                                               position=role_policy.level,
+                                                               created_at=role_policy.created_at,
+                                                               force_admin=True)
 
         # Role-Rules relationships
         old_roles_rules = get_data(RolesRules, RolesRules.role_id, RolesRules.rule_id)
