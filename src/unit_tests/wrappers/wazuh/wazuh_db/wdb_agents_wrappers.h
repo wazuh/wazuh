@@ -13,7 +13,7 @@
 
 #include "wazuh_db/wdb.h"
 
-int __wrap_wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version, const char* architecture, const char* cve);
-int __wrap_wdb_agents_clear_vuln_cve(wdb_t *wdb);
+int __wrap_wdb_agents_insert_vuln_cves(wdb_t *wdb, const char* name, const char* version, const char* architecture, const char* cve);
+int __wrap_wdb_agents_clear_vuln_cves(wdb_t *wdb);
 
 #endif
