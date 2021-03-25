@@ -2754,15 +2754,16 @@ class DatabaseManager:
             try:
                 if not from_id and not to_id:
                     return self.sessions[source].query(table).all()
-                result = set()
+                result = list()
                 for column in args:
                     if from_id and to_id:
-                        partial_result = set(self.sessions[source].query(table).filter(column.between(from_id, to_id)).all())
+                        partial_result = self.sessions[source].query(table).filter(column.between(from_id, to_id)).order_by(column).all()
                     elif from_id:
-                        partial_result = set(self.sessions[source].query(table).filter(column >= from_id).all())
+                        partial_result = self.sessions[source].query(table).filter(column >= from_id).order_by(column).all()
                     elif to_id:
-                        partial_result = set(self.sessions[source].query(table).filter(column <= to_id).all())
-                    result = partial_result if result == set() else result.intersection(partial_result)
+                        partial_result = self.sessions[source].query(table).filter(column <= to_id).order_by(column).all()
+                    # We need to keep results sorted so intersection between partial_results must be resolved manually.
+                    result = partial_result if result == list() else [x for x in result if x in partial_result]
             except OperationalError:
                 # OperationalError will be raised if the database does not contain the specified table
                 pass
