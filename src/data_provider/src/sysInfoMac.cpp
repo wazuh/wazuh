@@ -178,7 +178,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             {
                 nlohmann::json jsPackage;
                 FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
-                if(!jsPackage.at("name").empty())
+                if(!jsPackage.at("name").get_ref<const std::string &>().empty())
                 {
                     // Only return valid content packages
                     result.push_back(jsPackage);
@@ -196,7 +196,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                     {
                         nlohmann::json jsPackage;
                         FactoryPackageFamilyCreator<OSType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
-                        if(!jsPackage.at("name").empty())
+                        if(!jsPackage.at("name").get_ref<const std::string &>().empty())
                         {
                             // Only return valid content packages
                             result.push_back(jsPackage);

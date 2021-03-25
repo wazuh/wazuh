@@ -13,7 +13,7 @@ import asyncio
 SOCKET_COMMUNICATION_PROTOCOL_VERSION = 1
 
 
-class OssecSocket:
+class WazuhSocket:
 
     MAX_SIZE = 65536
 
@@ -52,18 +52,18 @@ class OssecSocket:
             raise WazuhException(1014, str(e))
 
 
-class OssecSocketJSON(OssecSocket):
+class WazuhSocketJSON(WazuhSocket):
 
     MAX_SIZE = 65536
 
     def __init__(self, path):
-        OssecSocket.__init__(self, path)
+        WazuhSocket.__init__(self, path)
 
     def send(self, msg, header_format="<I"):
-        return OssecSocket.send(self, msg_bytes=dumps(msg).encode(), header_format=header_format)
+        return WazuhSocket.send(self, msg_bytes=dumps(msg).encode(), header_format=header_format)
 
     def receive(self, header_format="<I", header_size=4, raw=False):
-        response = loads(OssecSocket.receive(self, header_format=header_format, header_size=header_size).decode())
+        response = loads(WazuhSocket.receive(self, header_format=header_format, header_size=header_size).decode())
         if not raw:
             if 'error' in response.keys():
                 if response['error'] != 0:
@@ -191,7 +191,7 @@ class WazuhAsyncSocket:
             raise WazuhException(1014, str(e))
 
 
-class WazuhSocketJSON(WazuhAsyncSocket):
+class WazuhAsyncSocketJSON(WazuhAsyncSocket):
     """Handler class to connect and operate asynchronously with a socket using messages in JSON format."""
     def __init__(self):
         WazuhAsyncSocket.__init__(self)
@@ -247,7 +247,7 @@ async def wazuh_sendasync(daemon_name, message=None):
     message : str, optional
         Message in JSON format to be sent to the daemon's socket.
     """
-    sock = WazuhSocketJSON()
+    sock = WazuhAsyncSocketJSON()
     await sock.connect(daemons[daemon_name]['path'])
     await sock.send(message, daemons[daemon_name]['header_format'])
     data = await sock.receive(daemons[daemon_name]['size'])
@@ -267,7 +267,7 @@ async def wazuh_sendsync(daemon_name=None, message=None):
         Message in JSON format to be sent to the daemon's socket.
     """
     try:
-        sock = OssecSocket(daemons[daemon_name]['path'])
+        sock = WazuhSocket(daemons[daemon_name]['path'])
         if isinstance(message, dict):
             message = dumps(message)
         sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])

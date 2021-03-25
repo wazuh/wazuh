@@ -52,9 +52,9 @@ test_result = [
     (['001', '002', '003'], [{'status': status} for status in ['active', 'disconnected', 'disconnected']],
      test_result[2]),
 ])
-@patch('wazuh.syscheck.OssecQueue._connect')
-@patch('wazuh.syscheck.OssecQueue.send_msg_to_agent', side_effect=set_callable_list)
-@patch('wazuh.syscheck.OssecQueue.close')
+@patch('wazuh.syscheck.WazuhQueue._connect')
+@patch('wazuh.syscheck.WazuhQueue.send_msg_to_agent', side_effect=set_callable_list)
+@patch('wazuh.syscheck.WazuhQueue.close')
 def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_list, status_list, expected_result):
     """Test function `run` from rootcheck module.
 

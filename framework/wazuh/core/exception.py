@@ -83,10 +83,6 @@ class WazuhException(Exception):
         1117: {'message': "Unable to connect with component. The component might be disabled."},
         1118: {'message': "Could not request component configuration"},
         1119: "Directory '/tmp' needs read, write & execution permission for 'ossec' user",
-        1120: {
-            'message': "Error adding agent. HTTP header 'X-Forwarded-For' not present in a behind_proxy_server API configuration",
-            'remediation': "Please, make sure your proxy is setting 'X-Forwarded-For' HTTP header"
-        },
         1121: {'message': "Error connecting with socket"},
         1122: {'message': 'Experimental features are disabled',
                'remediation': 'Experimental features can be enabled in WAZUH_PATH/configuration/api.yaml or '
@@ -146,6 +142,8 @@ class WazuhException(Exception):
         1308: {'message': 'Stats file does not exist',
                'remediation': 'Stats files are usually generated at 12 PM on a daily basis'},
         1309: 'Statistics file damaged',
+        1310: {'message': 'Invalid agent ID',
+               'remediation': 'This component only exists in real agents'},
 
         # Utils: 1400 - 1499
         1400: 'Invalid offset',
@@ -291,7 +289,7 @@ class WazuhException(Exception):
                'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
                               f'`cluster_control -l` (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: {'message': 'Agent is not eligible for removal',
-               'remediation': f"Please check the agent's status official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/agents/agent-life-cycle.html#registered-agent)"
+               'remediation': f"Please, make sure the agent meets the requirements."
                },
         1732: {'message': 'No agents selected',
                'remediation': 'Please select an agent to perform the operation.'
@@ -539,6 +537,8 @@ class WazuhException(Exception):
                               'any other user with the necessary permissions'},
         5009: {'message': 'Insecure user password provided',
                'remediation': 'The password must contain a length between 8 and 64 characters.'},
+        5010: {'message': 'The value of the parameter allow_run_as is invalid',
+               'remediation': 'The value of the allow_run_as parameter must be true (enabled authentication through authorization context) or false (disabled authentication through authorization context).'},
 
         # Security issues
         6000: {'message': 'Limit of login attempts reached. '

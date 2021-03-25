@@ -146,13 +146,13 @@ def test_allowed_fields():
 def test_is_safe_path():
     """Verify that is_safe_path() works as expected"""
     assert is_safe_path('/api/configuration/api.yaml')
-    assert is_safe_path('etc/rules/local_rules.xml', follow_symlinks=False)
-    assert is_safe_path('etc/ossec.conf', follow_symlinks=True)
-    assert is_safe_path('ruleset/decoders/decoder.xml', follow_symlinks=False)
-    assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent')
-    assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', follow_symlinks=True)
-    assert not is_safe_path('./etc/rules/rule.xml', follow_symlinks=False)
-    assert not is_safe_path('./ruleset/decoders/decoder.xml./', follow_symlinks=False)
+    assert is_safe_path('etc/rules/local_rules.xml', relative=False)
+    assert is_safe_path('etc/ossec.conf', relative=True)
+    assert is_safe_path('ruleset/decoders/decoder.xml', relative=False)
+    assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
+    assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', relative=True)
+    assert not is_safe_path('./etc/rules/rule.xml', relative=False)
+    assert not is_safe_path('./ruleset/decoders/decoder.xml./', relative=False)
 
 
 @pytest.mark.parametrize('value, format', [

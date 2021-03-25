@@ -10,6 +10,12 @@
 
 #include "rules_op.h"
 
+/* Change path for test rule */
+#ifdef TESTRULE
+#undef RULEPATH
+#define RULEPATH "ruleset/rules/"
+#endif
+
 /* Prototypes */
 static int _OS_GetRulesAttributes(char **attributes,
                                   char **values,

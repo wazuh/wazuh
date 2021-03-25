@@ -36,7 +36,7 @@ echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
 # Rules and decoders test
 if [ "$TYPE" = "manager" ]; then
-    if !(${PWD}/bin/wazuh-analysisd -t > /dev/null 2>&1); then
+    if !(${PWD}/bin/wazuh-logtest-legacy -t > /dev/null 2>&1); then
         exit 1;
     fi
 fi

@@ -385,8 +385,8 @@ class Handler(asyncio.Protocol):
             raise exception.WazuhClusterError(3034, extra_message=filename)
 
         filename = filename.encode()
-        relative_path = filename.replace(common.ossec_path.encode(), b'')
-        # Tell to the destination node where (inside ossec_path) the file has to be written.
+        relative_path = filename.replace(common.wazuh_path.encode(), b'')
+        # Tell to the destination node where (inside wazuh_path) the file has to be written.
         await self.send_request(command=b'new_file', data=relative_path)
 
         # Send each chunk so it is updated in the destination.
@@ -616,7 +616,7 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        self.in_file[data] = {'fd': open(common.ossec_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
+        self.in_file[data] = {'fd': open(common.wazuh_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -813,16 +813,16 @@ class WazuhCommon:
         task_name, filename = task_and_file_names.split(' ', 1)
         if task_name not in self.sync_tasks:
             # Remove filename if task_name does not exists, before raising exception.
-            if os.path.exists(os.path.join(common.ossec_path, filename)):
+            if os.path.exists(os.path.join(common.wazuh_path, filename)):
                 try:
-                    os.remove(os.path.join(common.ossec_path, filename))
+                    os.remove(os.path.join(common.wazuh_path, filename))
                 except Exception as e:
                     self.get_logger(self.logger_tag).error(
-                        f"Attempt to delete file {os.path.join(common.ossec_path, filename)} failed: {e}")
+                        f"Attempt to delete file {os.path.join(common.wazuh_path, filename)} failed: {e}")
             raise exception.WazuhClusterError(3027, extra_message=task_name)
 
         # Set full path to file for task 'task_name' and notify it is ready to be read, so the lock is released.
-        self.sync_tasks[task_name].filename = os.path.join(common.ossec_path, filename)
+        self.sync_tasks[task_name].filename = os.path.join(common.wazuh_path, filename)
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
 

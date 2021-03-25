@@ -86,7 +86,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - logr.global.agents_disconnection_time)) {
         key_unlock();
-        mwarn(SEND_DISCON, keys.keyentries[key_id]->id);
+        mdebug1(SEND_DISCON, keys.keyentries[key_id]->id);
         return (-1);
     }
 
@@ -99,8 +99,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     }
 
     /* Send initial message */
-    if (logr.proto[logr.position] == IPPROTO_UDP) {
-        retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
+    if (keys.keyentries[key_id]->net_protocol == REMOTED_NET_PROTOCOL_UDP) {
+        retval = sendto(logr.udp_sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
         error = errno;
     } else if (keys.keyentries[key_id]->sock >= 0) {
         w_mutex_lock(&keys.keyentries[key_id]->mutex);

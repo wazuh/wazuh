@@ -1,9 +1,6 @@
 host: 0.0.0.0
 port: 55000
 
-# Set this option to "yes" in case the API is running behind a proxy server. Values: yes, no
-behind_proxy_server: no
-
 # Advanced configuration
 
 https:

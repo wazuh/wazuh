@@ -17,7 +17,7 @@
 namespace Utils
 {
     template<typename Key, typename Value>
-    class MapWrapperSafe final 
+    class MapWrapperSafe final
     {
         std::map<Key, Value> m_map;
         std::mutex m_mutex;
@@ -29,7 +29,7 @@ namespace Utils
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_map.emplace(key, value);
-        } 
+        }
 
         Value operator[](const Key& key)
         {
