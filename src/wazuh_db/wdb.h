@@ -227,13 +227,13 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
-    WDB_STMT_VULN_CVE_INSERT,
-    WDB_STMT_VULN_CVE_CLEAR,
-    WDB_STMT_VULN_CVE_UPDATE,
-    WDB_STMT_VULN_CVE_UPDATE_ALL,
-    WDB_STMT_VULN_CVE_FIND_CVE,
-    WDB_STMT_VULN_CVE_SELECT_BY_STATUS,
-    WDB_STMT_VULN_CVE_DELETE_ENTRY,
+    WDB_STMT_VULN_CVES_INSERT,
+    WDB_STMT_VULN_CVES_CLEAR,
+    WDB_STMT_VULN_CVES_UPDATE,
+    WDB_STMT_VULN_CVES_UPDATE_ALL,
+    WDB_STMT_VULN_CVES_FIND_CVE,
+    WDB_STMT_VULN_CVES_SELECT_BY_STATUS,
+    WDB_STMT_VULN_CVES_DELETE_ENTRY,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -1758,7 +1758,7 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
 int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * @brief Function to parse the vuln_cve requests.
+ * @brief Function to parse the vuln_cves requests.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the action and the data if needed.
@@ -1766,10 +1766,10 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output);
 
  /**
- * @brief Function to parse the vuln_cve insert action.
+ * @brief Function to parse the vuln_cves insert action.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format.
@@ -1777,10 +1777,10 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output);
 
 /**
- * @brief Function to parse the vuln_cve update status action.
+ * @brief Function to parse the vuln_cves update status action.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format.
@@ -1788,10 +1788,10 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  *  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* output);
 
  /**
- * @brief Function to parse the vuln_cve remove action.
+ * @brief Function to parse the vuln_cves remove action.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format. It could receive a status to remove all the vulnerabilities
@@ -1801,17 +1801,17 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_remove_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output);
 
  /**
- * @brief Function to parse the vuln_cve clear action.
+ * @brief Function to parse the vuln_cves clear action.
  *
  * @param [in] wdb The global struct database.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output);
+ int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output);
 
 /**
  * Update old tasks with status in progress to status timeout
