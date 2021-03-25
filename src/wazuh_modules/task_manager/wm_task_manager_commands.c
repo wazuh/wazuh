@@ -23,9 +23,6 @@
 #include "defs.h"
 #include "wazuhdb_op.h"
 
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
-
 /**
  * Analyze an upgrade or upgrade_custom command. Update the tasks DB when necessary.
  * @param task Upgrade task to be processed.
