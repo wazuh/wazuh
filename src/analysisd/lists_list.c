@@ -171,10 +171,11 @@ static int OS_DBSeachKey(ListRule *lrule, char *key)
             w_mutex_unlock(&lrule->mutex);
             return -1;
         }
-        w_mutex_unlock(&lrule->mutex);
         if ( cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
+            w_mutex_unlock(&lrule->mutex);
             return 1;
         }
+        w_mutex_unlock(&lrule->mutex);
     }else {
         w_mutex_unlock(&lrule->mutex);
     }
@@ -189,8 +190,8 @@ static int OS_DBSeachKeyAddress(ListRule *lrule, char *key)
             w_mutex_unlock(&lrule->mutex);
             return -1;
         }
-        w_mutex_unlock(&lrule->mutex);
         if ( cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
+            w_mutex_unlock(&lrule->mutex);
             return 1;
         } else {
             char *tmpkey;
@@ -199,12 +200,14 @@ static int OS_DBSeachKeyAddress(ListRule *lrule, char *key)
                 if (tmpkey[strlen(tmpkey) - 1] == '.') {
                     if ( cdb_find(&lrule->db->cdb, tmpkey, strlen(tmpkey)) > 0 ) {
                         free(tmpkey);
+                        w_mutex_unlock(&lrule->mutex);
                         return 1;
                     }
                 }
                 tmpkey[strlen(tmpkey) - 1] = '\0';
             }
             free(tmpkey);
+            w_mutex_unlock(&lrule->mutex);
         }
     }else{
         w_mutex_unlock(&lrule->mutex);
@@ -224,8 +227,6 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
             return 0;
         }
 
-        w_mutex_unlock(&lrule->mutex);
-
         /* First lookup for a single IP address */
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             vpos = cdb_datapos(&lrule->db->cdb);
@@ -234,6 +235,7 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
             w_mutex_lock(&lrule->db->cdb.mutex)
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             w_mutex_unlock(&lrule->db->cdb.mutex)
+            w_mutex_unlock(&lrule->mutex);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
             return result;
@@ -250,6 +252,7 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
                         w_mutex_lock(&lrule->db->cdb.mutex)
                         cdb_read(&lrule->db->cdb, val, vlen, vpos);
                         w_mutex_unlock(&lrule->db->cdb.mutex)
+                        w_mutex_unlock(&lrule->mutex);
                         result = OSMatch_Execute(val, vlen, lrule->matcher);
                         free(val);
                         free(tmpkey);
@@ -259,6 +262,7 @@ static int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
                 tmpkey[strlen(tmpkey) - 1] = '\0';
             }
             free(tmpkey);
+            w_mutex_unlock(&lrule->mutex);
             return 0;
         }
     }else{
