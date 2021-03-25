@@ -233,6 +233,11 @@ int local_start()
                         (LPDWORD)&threadID);
     }
 
+    /* Send disconnection message at exit */
+    if (atexit(send_disconnection_message)) {
+        merror(ATEXIT_ERROR);
+    }
+
     /* Check if server is connected */
     os_setwait();
     start_agent(1);

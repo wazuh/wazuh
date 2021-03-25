@@ -76,6 +76,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     } else
         minfo("Version detected -> %s", getuname());
 
+    /* Send disconnection message at exit */
+    if (atexit(send_disconnection_message)) {
+        merror(ATEXIT_ERROR);
+    }
+
     /* Try to connect to server */
     os_setwait();
 
@@ -109,7 +114,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     signal(SIGPIPE, SIG_IGN);
 
     /* Launch rotation thread */
-
     rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
     if (rotate_log) {
         w_create_thread(w_rotate_log_thread, (void *)NULL);
@@ -121,9 +125,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         buffer_init();
 
         w_create_thread(dispatch_buffer, (void *)NULL);
-    }else{
+    } else {
         minfo(DISABLED_BUFFER);
     }
+
     /* Connect remote */
     rc = 0;
     while (rc < agt->server_count) {

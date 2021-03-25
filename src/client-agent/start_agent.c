@@ -184,6 +184,38 @@ void start_agent(int is_startup)
     }
 }
 
+/* Send disconnection message to server before exit */
+void send_disconnection_message() {
+    size_t msg_length;
+    ssize_t recv_b = 0;
+
+    char *tmp_msg;
+    char msg[OS_MAXSTR + 2] = { '\0' };
+    char buffer[OS_MAXSTR + 1] = { '\0' };
+    char cleartext[OS_MAXSTR + 1] = { '\0' };
+
+    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_SHUTDOWN);
+
+    /* Send start up message */
+    send_msg(msg, -1);
+
+    /* Read until our reply comes back */
+    recv_b = receive_message(buffer, OS_MAXSTR);
+
+    if (recv_b > 0) {
+        if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
+            mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
+        }
+        else {
+            if (IsValidHeader(tmp_msg) && (strcmp(tmp_msg, HC_ACK) == 0)) {
+                minfo(AG_DISCONNECTED);
+                /* Send shutdown alert message */
+                //send_msg_on_shutdown();
+            }
+        }
+    }
+}
+
 /**
  * @brief Initialize keys structure, counter, agent info and crypto method.
  * Keys are read from client.keys. If no valid entry is found:
