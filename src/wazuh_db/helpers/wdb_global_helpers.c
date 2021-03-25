@@ -1082,7 +1082,7 @@ int wdb_reset_agents_connection(const char *sync_status, int *sock) {
     return result;
 }
 
-int* wdb_get_agents_by_connection_status (const char* connection_status, int *sock) {
+int* wdb_get_agents_by_connection_status(const char* connection_status, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
     int last_id = 0;
