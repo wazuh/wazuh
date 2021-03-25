@@ -1,7 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.1.3]
+## [v4.1.4] 
+
+### Fixed
+
+
+## [v4.1.3] - 2021-03-23
 
 ### Changed
 
@@ -16,6 +21,7 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Fixed validation for absolute and relative paths. ([#7906](https://github.com/wazuh/wazuh/pull/7906))
+
 
 ## [v4.1.2] - 2021-03-08
 
