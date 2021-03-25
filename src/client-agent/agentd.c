@@ -73,12 +73,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     if (!getuname()) {
         merror(MEM_ERROR, errno, strerror(errno));
-    } else
+    } else {
         minfo("Version detected -> %s", getuname());
-
-    /* Send agent stopped message at exit */
-    if (atexit(send_agent_stopped_message)) {
-        merror(ATEXIT_ERROR);
     }
 
     /* Try to connect to server */
@@ -169,6 +165,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     // Start request module
     req_init();
     w_create_thread(req_receiver, NULL);
+
+    /* Send agent stopped message at exit */
+    atexit(send_agent_stopped_message);
 
     /* Send first notification */
     run_notify();

@@ -233,11 +233,6 @@ int local_start()
                         (LPDWORD)&threadID);
     }
 
-    /* Send agent stopped message at exit */
-    if (atexit(send_agent_stopped_message)) {
-        merror(ATEXIT_ERROR);
-    }
-
     /* Check if server is connected */
     os_setwait();
     start_agent(1);
@@ -278,6 +273,9 @@ int local_start()
     }
 
     atexit(stop_wmodules);
+
+    /* Send agent stopped message at exit */
+    atexit(send_agent_stopped_message);
 
     /* Start logcollector -- main process here */
     LogCollectorStart();
