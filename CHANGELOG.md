@@ -1,6 +1,19 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v5.0.0]
+
+### Added
+
+### Changed
+
+- The ruleset has been ported to the core repository, and the rules and decoders have been rename to the standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
+- The configuration options have been normalized according to the Wazuh standard.([#7380](https://github.com/wazuh/wazuh/pull/7380))
+
+### Fixed
+
+## Removed
+
 ## [v4.2.0]
 
 ### Added
