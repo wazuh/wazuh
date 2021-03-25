@@ -17,6 +17,7 @@
 typedef enum agents_db_access {
     WDB_AGENTS_VULN_CVES_INSERT,
     WDB_AGENTS_VULN_CVES_CLEAR,
+    WDB_AGENTS_VULN_CVES_REMOVE,
     WDB_AGENTS_VULN_CVES_UPDATE_STATUS
 } agents_db_access;
 
@@ -61,6 +62,32 @@ cJSON* wdb_agents_vuln_cves_insert(int id,
  */
 int wdb_agents_vuln_cves_clear(int id,
                               int *sock);
+
+/**
+ * @brief Removes an entry from the vuln_cve table in the agent's database.
+ *
+ * @param[in] id The agent ID.
+ * @param[in] cve The cve of the vulnerability entry that should be removed.
+ * @param[in] reference The reference of the vulnerability entry that should be removed.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_agents_vuln_cve_remove_entry(int id,
+                                     char *cve,
+                                     char *reference,
+                                     int *sock);
+
+/**
+ * @brief Removes all the entries from the vuln_cve table in the agent's database that have the specified status.
+ *
+ * @param[in] id The agent ID.
+ * @param[in] status The status of the vulnerabilities that should be removed.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns a pointer to a cJSON object that contains the information of all the vulnerabilities removed.
+ */
+cJSON* wdb_agents_vuln_cve_remove_by_status(int id,
+                                            char *status,
+                                            int *sock);
 
 /**
  * @brief Updates all or a specific status from the vuln_cves table in the agents database.
