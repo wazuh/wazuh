@@ -39,6 +39,15 @@
   <fts>name, location, extra_data</fts>
 </decoder>
 
+<decoder name="ossec-agent-stop">
+  <parent>ossec</parent>
+  <type>ossec</type>
+  <prematch offset="after_parent">^Agent stopped:</prematch>
+  <regex offset="after_prematch">^ '(\S+\S)'</regex>
+  <order>extra_data</order>
+  <fts>name, location, extra_data</fts>
+</decoder>
+
 <decoder name="ossec-alert1">
    <parent>ossec</parent>
    <prematch>^ossec: Alert Level:</prematch>

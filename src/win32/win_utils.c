@@ -233,8 +233,8 @@ int local_start()
                         (LPDWORD)&threadID);
     }
 
-    /* Send disconnection message at exit */
-    if (atexit(send_disconnection_message)) {
+    /* Send agent stopped message at exit */
+    if (atexit(send_agent_stopped_message)) {
         merror(ATEXIT_ERROR);
     }
 

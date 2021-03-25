@@ -89,11 +89,11 @@ char *get_agent_ip();
 /* Initialize handshake to server */
 void start_agent(int is_startup);
 
-/* Send disconnection message to server */
-void send_disconnection_message();
-
 /* Connect to the server */
 bool connect_server(int initial_id, bool verbose);
+
+/* Send agent stopped message to server */
+void send_agent_stopped_message();
 
 /**
  * Tries to enroll to a server indicated by server_rip

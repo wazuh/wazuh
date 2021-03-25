@@ -76,8 +76,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     } else
         minfo("Version detected -> %s", getuname());
 
-    /* Send disconnection message at exit */
-    if (atexit(send_disconnection_message)) {
+    /* Send agent stopped message at exit */
+    if (atexit(send_agent_stopped_message)) {
         merror(ATEXIT_ERROR);
     }
 
