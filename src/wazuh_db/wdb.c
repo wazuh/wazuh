@@ -207,13 +207,13 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
-    [WDB_STMT_VULN_CVE_INSERT] = "INSERT OR REPLACE INTO vuln_cves (name, version, architecture, cve, reference, type, status) VALUES (?,?,?,?,?,?,?);",
-    [WDB_STMT_VULN_CVE_CLEAR] = "DELETE FROM vuln_cves;",
-    [WDB_STMT_VULN_CVE_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
-    [WDB_STMT_VULN_CVE_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
-    [WDB_STMT_VULN_CVE_FIND_CVE] = "SELECT 1 FROM vuln_cves WHERE cve = ? AND reference = ?;",
-    [WDB_STMT_VULN_CVE_SELECT_BY_STATUS] = "SELECT * FROM vuln_cves WHERE status = ? LIMIT 1;",
-    [WDB_STMT_VULN_CVE_DELETE_ENTRY] = "DELETE FROM vuln_cves WHERE cve = ? AND reference = ?;"
+    [WDB_STMT_VULN_CVES_INSERT] = "INSERT OR IGNORE INTO vuln_cves (name, version, architecture, cve) VALUES(?,?,?,?);",
+    [WDB_STMT_VULN_CVES_CLEAR] = "DELETE FROM vuln_cves;",
+    [WDB_STMT_VULN_CVES_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
+    [WDB_STMT_VULN_CVES_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
+    [WDB_STMT_VULN_CVES_FIND_CVE] = "SELECT 1 FROM vuln_cves WHERE cve = ? AND reference = ?;",
+    [WDB_STMT_VULN_CVES_SELECT_BY_STATUS] = "SELECT * FROM vuln_cves WHERE status = ? LIMIT 1;",
+    [WDB_STMT_VULN_CVES_DELETE_ENTRY] = "DELETE FROM vuln_cves WHERE cve = ? AND reference = ?;"
 };
 
 wdb_config wconfig;
