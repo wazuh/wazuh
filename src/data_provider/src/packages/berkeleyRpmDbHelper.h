@@ -122,7 +122,7 @@ class BerkeleyRpmDBReader final
                         }
                         else
                         {
-                            ucp = reinterpret_cast<uint8_t *>(&bytes[ENTRY_SIZE]);
+                            ucp += ENTRY_SIZE - sizeof(int32_t);
                         }
                     }
                 }
