@@ -2747,8 +2747,7 @@ class DatabaseManager:
 
             self.sessions[database].commit()
 
-    def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None,
-                     check_default: bool = True):
+    def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None):
         """Get the resources from the "source" database filtering by IDs and insert them into the "target" database."""
         def get_data(table, *args):
             try:
@@ -2778,7 +2777,7 @@ class DatabaseManager:
                                       user_id=user.id,
                                       hash_password=True,
                                       resource_type=resource_type,
-                                      check_default=check_default)
+                                      check_default=False)
                 auth_manager.edit_run_as(user_id=auth_manager.get_user(username=d_username)['id'],
                                          allow_run_as=payload['allow_run_as'])
 
@@ -2789,7 +2788,7 @@ class DatabaseManager:
                                       created_at=role.created_at,
                                       role_id=role.id,
                                       resource_type=resource_type,
-                                      check_default=check_default)
+                                      check_default=False)
 
         old_rules = get_data(Rules, Rules.id)
         with RulesManager(self.sessions[target]) as rule_manager:
@@ -2798,16 +2797,28 @@ class DatabaseManager:
                                       rule=json.loads(rule.rule),
                                       created_at=rule.created_at,
                                       rule_id=rule.id,
-                                      check_default=check_default)
+                                      check_default=False)
 
         old_policies = get_data(Policies, Policies.id)
         with PoliciesManager(self.sessions[target]) as policy_manager:
             for policy in old_policies:
-                policy_manager.add_policy(name=policy.name,
+                status = policy_manager.add_policy(name=policy.name,
                                           policy=json.loads(policy.policy),
                                           created_at=policy.created_at,
                                           policy_id=policy.id,
-                                          check_default=check_default)
+                                          check_default=False)
+                # If the user policy has the same body as a Default policy it won't be inserted and its role-policies
+                # relationships will be linked to that default policy instead to replace it.
+                if status == SecurityError.ALREADY_EXIST:
+                    roles_policies = self.sessions[source].query(RolesPolicies).filter(RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
+                    new_policy_id = self.sessions[target].query(Policies).filter_by(policy=str(policy.policy)).first().id
+                    with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
+                        for role_policy in roles_policies:
+                            status == role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
+                                                                   policy_id=new_policy_id,
+                                                                   position=role_policy.level,
+                                                                   created_at=role_policy.created_at,
+                                                                   force_admin=True)
 
         old_user_roles = get_data(UserRoles, UserRoles.user_id, UserRoles.role_id)
         with UserRolesManager(self.sessions[target]) as user_role_manager:
@@ -2882,8 +2893,7 @@ def check_database_integrity():
 
                     # Migrate data from old database
                     db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=cloud_reserved_range,
-                                            to_id=max_id_reserved, resource_type=ResourceType.PROTECTED,
-                                            check_default=False)
+                                            to_id=max_id_reserved, resource_type=ResourceType.PROTECTED)
                     db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=max_id_reserved + 1,
                                             resource_type=ResourceType.USER)
 
