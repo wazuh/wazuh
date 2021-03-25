@@ -51,6 +51,10 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
+#define VULN_CVES_STATUS_VALID    "VALID"
+#define VULN_CVES_STATUS_PENDING  "PENDING"
+#define VULN_CVES_STATUS_OBSOLETE "OBSOLETE"
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -228,6 +232,8 @@ typedef enum wdb_stmt {
     WDB_STMT_VULN_CVE_UPDATE,
     WDB_STMT_VULN_CVE_UPDATE_ALL,
     WDB_STMT_VULN_CVE_FIND_CVE,
+    WDB_STMT_VULN_CVE_SELECT_BY_STATUS,
+    WDB_STMT_VULN_CVE_DELETE_ENTRY,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -1774,17 +1780,7 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output);
 
 /**
- * @brief Function to parse the vuln_cve clear action.
- *
- * @param [in] wdb The global struct database.
- * @param [out] output Response of the query.
- * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
- int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output);
-
-/**
- * @brief Function to parse the vuln_cve update action.
+ * @brief Function to parse the vuln_cve update status action.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format.
@@ -1793,6 +1789,29 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  *        -1 On error: response contains "err" and an error description.
  */
  int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* output);
+
+ /**
+ * @brief Function to parse the vuln_cve remove action.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the the data in json format. It could receive a status to remove all the vulnerabilities
+ *                   whith that status, or the CVE and reference to remove a particular entry. Examples:
+ *                   TOTATODO
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+ int wdb_parse_agents_remove_vuln_cve(wdb_t* wdb, char* input, char* output);
+
+ /**
+ * @brief Function to parse the vuln_cve clear action.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+ int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output);
 
 /**
  * Update old tasks with status in progress to status timeout
