@@ -89,11 +89,11 @@ class BerkeleyRpmDBReader final
                     bytes = &bytes[FIRST_ENTRY_OFFSET];
 
                     retVal.resize(indexSize);
+
+                    auto ucp { reinterpret_cast<uint8_t *>(bytes) };
                     // Read all indexes
                     for (auto i = 0; i < indexSize; ++i)
                     {
-                        auto ucp { reinterpret_cast<uint8_t *>(bytes) };
-
                         const auto tag { Utils::toInt32BE(ucp) };
                         ucp += sizeof(int32_t);
 
@@ -120,7 +120,10 @@ class BerkeleyRpmDBReader final
                             retVal[i].count = Utils::toInt32BE(ucp);
                             ucp += sizeof(int32_t);
                         }
-                        bytes = &bytes[ENTRY_SIZE];
+                        else
+                        {
+                            ucp = reinterpret_cast<uint8_t *>(&bytes[ENTRY_SIZE]);
+                        }
                     }
                 }
             }
