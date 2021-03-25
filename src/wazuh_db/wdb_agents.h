@@ -15,14 +15,6 @@
 #include "wdb.h"
 
 /**
- * @brief Function to clear whole data from agent vuln_cve table.
- *
- * @param [in] wdb The 'agents' struct database.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_agents_clear_vuln_cve(wdb_t *wdb);
-
-/**
  * @brief Function to check if a certain package exists.
  *
  * @param [in] wdb The 'agents' struct database.
@@ -76,5 +68,33 @@ cJSON* wdb_agents_insert_vuln_cve(wdb_t *wdb,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_agents_update_status_vuln_cve(wdb_t *wdb, const char* old_status, const char* new_status);
+
+/**
+ * @brief Function to remove vulnerabilities from the vuln_cve table by specifying the PK of the entry.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] cve The cve of the entry that should be removed.
+ * @param [in] reference The reference of the entry that should be removed.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_agents_remove_vuln_cve(wdb_t *wdb, const char* cve, const char* reference);
+
+/**
+ * @brief Function to remove vulnerabilities from the vuln_cve table filtering by the status.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] status The status that is going to be updated. The '*' option changes all statuses.
+ * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
+ * @return wdbc_result to represent if all the vulnerabilities have been removed.
+ */
+wdbc_result wdb_agents_remove_by_status_vuln_cve(wdb_t *wdb, const char* status, char **output);
+
+/**
+ * @brief Function to clear whole data from agent vuln_cve table.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_agents_clear_vuln_cve(wdb_t *wdb);
 
 #endif
