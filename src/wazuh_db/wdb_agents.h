@@ -23,6 +23,25 @@
 int wdb_agents_clear_vuln_cve(wdb_t *wdb);
 
 /**
+ * @brief Function to check if a certain package exists.
+ * 
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] reference The package reference.
+ * @return Returns 1 if found, 0 if not, -1 on error.
+ */
+int wdb_agents_find_package(wdb_t *wdb, const char* reference);
+
+/**
+ * @brief Function to check if a certain cve exists.
+ * 
+ * @param [in] wdb The 'agents' struct database.
+ * @param [in] cve The CVE id of the vulnerability.
+ * @param [in] reference The package reference.
+ * @return Returns 1 if found, 0 if not, -1 on error.
+ */
+int wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
+
+/**
  * @brief Function to insert a new entry into the agent vuln_cve table.
  *
  * @param [in] wdb The 'agents' struct database.
@@ -30,9 +49,21 @@ int wdb_agents_clear_vuln_cve(wdb_t *wdb);
  * @param [in] version The vulnerable package version.
  * @param [in] architecture The vulnerable package architecture.
  * @param [in] cve The CVE id of the vulnerability.
+ * @param [in] reference The package reference.
+ * @param [in] type The package type.
+ * @param [in] status The vulnerability status.
+ * @param [in] check_pkg_existance If 1, it enables a package existance verification in sys_programs table.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_insert_vuln_cve(wdb_t *wdb, const char* name, const char* version, const char* architecture, const char* cve);
+int wdb_agents_insert_vuln_cve(wdb_t *wdb, 
+                               const char* name, 
+                               const char* version, 
+                               const char* architecture, 
+                               const char* cve,
+                               const char* reference,
+                               const char* type,
+                               const char* status,
+                               int check_pkg_existance);
 
 /**
  * @brief Function to update the status field in agent database vuln_cve table.
