@@ -49,9 +49,9 @@ static int test_teardown(void **state){
     return 0;
 }
 
-/* Tests wdb_agents_insert_vuln_cve */
+/* Tests wdb_agents_insert_vuln_cves */
 
-void test_wdb_agents_insert_vuln_cve_statement_init_fail(void **state)
+void test_wdb_agents_insert_vuln_cves_statement_init_fail(void **state)
 {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -61,14 +61,14 @@ void test_wdb_agents_insert_vuln_cve_statement_init_fail(void **state)
     const char* cve = "CVE-2021-1200";
 
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVE_INSERT);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_INSERT);
 
-    ret = wdb_agents_insert_vuln_cve(data->wdb, name, version, architecture, cve);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_insert_vuln_cve_success(void **state)
+void test_wdb_agents_insert_vuln_cves_success(void **state)
 {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -78,7 +78,7 @@ void test_wdb_agents_insert_vuln_cve_success(void **state)
     const char* cve = "CVE-2021-1200";
 
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVE_INSERT);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_INSERT);
 
     will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -92,65 +92,65 @@ void test_wdb_agents_insert_vuln_cve_success(void **state)
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    ret = wdb_agents_insert_vuln_cve(data->wdb, name, version, architecture, cve);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve);
 
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wdb_agents_clear_vuln_cve */
+/* Tests wdb_agents_clear_vuln_cves */
 
-void test_wdb_agents_clear_vuln_cve_statement_init_fail(void **state)
+void test_wdb_agents_clear_vuln_cves_statement_init_fail(void **state)
 {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVE_CLEAR);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_CLEAR);
 
-    ret = wdb_agents_clear_vuln_cve(data->wdb);
+    ret = wdb_agents_clear_vuln_cves(data->wdb);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_clear_vuln_cve_success(void **state)
+void test_wdb_agents_clear_vuln_cves_success(void **state)
 {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVE_CLEAR);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_CLEAR);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    ret = wdb_agents_clear_vuln_cve(data->wdb);
+    ret = wdb_agents_clear_vuln_cves(data->wdb);
 
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-/* Tests wdb_agents_update_status_vuln_cve*/
+/* Tests wdb_agents_update_status_vuln_cves*/
 
-void test_wdb_agents_update_status_vuln_cve_statement_init_fail(void **state){
+void test_wdb_agents_update_status_vuln_cves_statement_init_fail(void **state){
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "valid";
     const char* new_status = "pending";
 
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVE_UPDATE);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_UPDATE);
 
-    ret = wdb_agents_update_status_vuln_cve(data->wdb, old_status, new_status);
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_update_status_vuln_cve_success(void **state){
+void test_wdb_agents_update_status_vuln_cves_success(void **state){
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "valid";
     const char* new_status = "pending";
 
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVE_UPDATE);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_UPDATE);
 
     will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -160,18 +160,18 @@ void test_wdb_agents_update_status_vuln_cve_success(void **state){
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    ret = wdb_agents_update_status_vuln_cve(data->wdb, old_status, new_status);
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status);
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-void test_wdb_agents_update_status_vuln_cve_success_all(void **state){
+void test_wdb_agents_update_status_vuln_cves_success_all(void **state){
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "*";
     const char* new_status = "pending";
 
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVE_UPDATE_ALL);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_UPDATE_ALL);
 
     will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -179,23 +179,23 @@ void test_wdb_agents_update_status_vuln_cve_success_all(void **state){
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    ret = wdb_agents_update_status_vuln_cve(data->wdb, old_status, new_status);
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status);
     assert_int_equal(ret, OS_SUCCESS);
 }
 
 int main()
 {
     const struct CMUnitTest tests[] = {
-        /* Tests wdb_agents_insert_vuln_cve */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cve_statement_init_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cve_success, test_setup, test_teardown),
-        /* Tests wdb_agents_clear_vuln_cve */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cve_statement_init_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cve_success, test_setup, test_teardown),
-        /* Tests wdb_agents_update_status_vuln_cve */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cve_statement_init_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cve_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cve_success_all, test_setup, test_teardown),
+        /* Tests wdb_agents_insert_vuln_cves */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_statement_init_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_success, test_setup, test_teardown),
+        /* Tests wdb_agents_clear_vuln_cves */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_statement_init_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_success, test_setup, test_teardown),
+        /* Tests wdb_agents_update_status_vuln_cves */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_statement_init_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_success_all, test_setup, test_teardown),
       };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

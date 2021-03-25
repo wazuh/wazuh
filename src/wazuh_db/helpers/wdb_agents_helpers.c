@@ -13,12 +13,12 @@
 #include "wazuhdb_op.h"
 
 static const char *agents_db_commands[] = {
-    [WDB_AGENTS_VULN_CVE_INSERT] = "agent %d vuln_cve insert %s",
-    [WDB_AGENTS_VULN_CVE_CLEAR] = "agent %d vuln_cve clear",
-    [WDB_AGENTS_VULN_CVE_UPDATE_STATUS] = "agent %d vuln_cve update_status %s"
+    [WDB_AGENTS_VULN_CVES_INSERT] = "agent %d vuln_cves insert %s",
+    [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %d vuln_cves clear",
+    [WDB_AGENTS_VULN_CVES_UPDATE_STATUS] = "agent %d vuln_cves update_status %s"
 };
 
-int wdb_agents_vuln_cve_insert(int id,
+int wdb_agents_vuln_cves_insert(int id,
                                const char *name,
                                const char *version,
                                const char *architecture,
@@ -46,7 +46,7 @@ int wdb_agents_vuln_cve_insert(int id,
 
     data_in_str = cJSON_PrintUnformatted(data_in);
     os_malloc(WDBQUERY_SIZE, wdbquery);
-    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVE_INSERT], id, data_in_str);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVES_INSERT], id, data_in_str);
 
     os_malloc(WDBOUTPUT_SIZE, wdboutput);
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
@@ -81,7 +81,7 @@ int wdb_agents_vuln_cve_insert(int id,
     return result;
 }
 
-int wdb_agents_vuln_cve_clear(int id,
+int wdb_agents_vuln_cves_clear(int id,
                               int *sock) {
     int result = 0;
     char *wdbquery = NULL;
@@ -90,7 +90,7 @@ int wdb_agents_vuln_cve_clear(int id,
     int aux_sock = -1;
 
     os_malloc(WDBQUERY_SIZE, wdbquery);
-    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVE_CLEAR], id);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVES_CLEAR], id);
 
     os_malloc(WDBOUTPUT_SIZE, wdboutput);
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
@@ -123,7 +123,7 @@ int wdb_agents_vuln_cve_clear(int id,
     return result;
 }
 
-int wdb_agents_vuln_cve_update_status(int id,
+int wdb_agents_vuln_cves_update_status(int id,
                                const char *old_status,
                                const char *new_status,
                                int *sock) {
@@ -147,7 +147,7 @@ int wdb_agents_vuln_cve_update_status(int id,
 
     data_in_str = cJSON_PrintUnformatted(data_in);
     os_malloc(WDBQUERY_SIZE, wdbquery);
-    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVE_UPDATE_STATUS], id, data_in_str);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVES_UPDATE_STATUS], id, data_in_str);
 
     os_malloc(WDBOUTPUT_SIZE, wdboutput);
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
