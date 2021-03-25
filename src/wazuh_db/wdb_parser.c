@@ -6015,11 +6015,14 @@ int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output) {
     else if (strcmp(next, "insert") == 0) {
         result = wdb_parse_agents_insert_vuln_cve(wdb, tail, output);
     }
-    else if (strcmp(next, "clear") == 0) {
-        result = wdb_parse_agents_clear_vuln_cve(wdb, output);
-    }
     else if (strcmp(next, "update_status") == 0) {
         result = wdb_parse_agents_vuln_cve_update_status(wdb, tail, output);
+    }
+    else if (strcmp(next, "remove") == 0) {
+        result = wdb_parse_agents_remove_vuln_cve(wdb, tail, output);
+    }
+    else if (strcmp(next, "clear") == 0) {
+        result = wdb_parse_agents_clear_vuln_cve(wdb, output);
     }
     else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid vuln_cve action: %s", next);
@@ -6076,18 +6079,6 @@ int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output) {
     return ret;
 }
 
-int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
-    int ret = wdb_agents_clear_vuln_cve(wdb);
-    if (OS_SUCCESS != ret) {
-        mdebug1("DB(%s) Cannot execute vuln_cve clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
-    }
-    else {
-        snprintf(output, OS_MAXSTR + 1, "ok");
-    }
-    return ret;
-}
-
 int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
     const char *error = NULL;
@@ -6122,5 +6113,64 @@ int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* outpu
     }
 
     cJSON_Delete(data);
+    return ret;
+}
+
+int wdb_parse_agents_remove_vuln_cve(wdb_t* wdb, char* input, char* output) {
+    cJSON *data = NULL;
+    const char *error = NULL;
+    int ret = OS_INVALID;
+
+    data = cJSON_ParseWithOpts(input, &error, TRUE);
+
+    if (!data) {
+        mdebug1("Invalid vuln_cve JSON syntax when removing vulnerabilities.");
+        mdebug2("JSON error near: %s", error);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
+    }
+    else {
+        cJSON* status = cJSON_GetObjectItem(data, "status");
+        cJSON* cve = cJSON_GetObjectItem(data, "cve");
+        cJSON* reference = cJSON_GetObjectItem(data, "reference");
+
+        // Checking whether we should remove by status
+        if (cJSON_IsString(status)) {
+            char* removed_cves = NULL;
+
+            wdbc_result wdb_res = wdb_agents_remove_by_status_vuln_cve(wdb, status->valuestring, &removed_cves);
+            snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], removed_cves);
+            os_free(removed_cves)
+            ret = OS_SUCCESS;
+        }
+        // Checking whether we should remove a specific entry
+        else if (cJSON_IsString(cve) && cJSON_IsString(reference)) {
+            ret = wdb_agents_remove_vuln_cve(wdb, cve->valuestring, reference->valuestring);
+            if (OS_SUCCESS != ret) {
+                mdebug1("DB(%s) Cannot execute vuln_cve remove command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve remove command; SQL err: %s", sqlite3_errmsg(wdb->db));
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
+        }
+        else {
+            mdebug1("Invalid vuln_cve JSON data to remove vulnerabilities.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data");
+        }
+    }
+
+    cJSON_Delete(data);
+    return ret;
+}
+
+int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output) {
+    int ret = wdb_agents_clear_vuln_cve(wdb);
+    if (OS_SUCCESS != ret) {
+        mdebug1("DB(%s) Cannot execute vuln_cve clear command; SQL err: %s",  wdb->id, sqlite3_errmsg(wdb->db));
+        snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cve clear command; SQL err: %s", sqlite3_errmsg(wdb->db));
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
     return ret;
 }
