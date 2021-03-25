@@ -48,7 +48,10 @@ static const char *FIM_EVENT_MODE[] = {
 };
 
 static cJSON *_fim_file(const char *file, fim_element *item, whodata_evt *w_evt);
+
+#ifndef WIN32
 static cJSON *_fim_file_force_update(const char *path, const fim_element *item, const fim_entry *saved);
+#endif
 
 void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mutex,
                            __attribute__((unused))void *alert,
@@ -472,13 +475,13 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         // We have somehow reached a point an infinite loop could happen, we will need to update the current file
         // forcefully which will generate a false positive alert
         item.mode = FIM_SCHEDULED;
-        item.configuration = syscheck.opts[item.index];
         item.index = fim_configuration_directory(entry->file_entry.path);
         if (item.index == -1) {
             // This should not happen
             free_entry(entry);     // LCOV_EXCL_LINE
             return FIM_FILE_ERROR; // LCOV_EXCL_LINE
         }
+        item.configuration = syscheck.opts[item.index];
 
         *event = _fim_file_force_update(path, &item, entry);
         free_entry(entry);
@@ -492,13 +495,13 @@ end:
     // Once here, either the used row was cleared and is available or this file is a hardlink to other file
     // either way the only thing left to do is to process the file
     item.mode = FIM_SCHEDULED;
-    item.configuration = syscheck.opts[item.index];
     item.index = fim_configuration_directory(entry->file_entry.path);
     if (item.index == -1) {
         // This should not happen
         free_entry(entry);     // LCOV_EXCL_LINE
         return FIM_FILE_ERROR; // LCOV_EXCL_LINE
     }
+    item.configuration = syscheck.opts[item.index];
 
     *event = _fim_file(entry->file_entry.path, &item, NULL);
 
@@ -719,6 +722,7 @@ static cJSON *_fim_file(const char *path, fim_element *item, whodata_evt *w_evt)
     return json_event;
 }
 
+#ifndef WIN32
 /**
  * @brief Virtually identical to `_fim_file`, except this function updates the DB with no further validations
  *
@@ -754,13 +758,14 @@ static cJSON *_fim_file_force_update(const char *path, const fim_element *item, 
         diff = fim_file_diff(path);
     }
 
-    json_event = fim_json_event(path, saved ? saved->file_entry.data : NULL, new, item->index, alert_type, item->mode, NULL, diff);
+    json_event = fim_json_event(path, saved->file_entry.data, new, item->index, alert_type, item->mode, NULL, diff);
 
     os_free(diff);
     free_file_data(new);
 
     return json_event;
 }
+#endif
 
 void fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report) {
     cJSON *json_event = NULL;
@@ -1042,8 +1047,8 @@ int fim_check_depth(const char * path, int dir_position) {
 
 
 // Get data from file
-fim_file_data * fim_get_data(const char *file, const fim_element *item) {
-    fim_file_data * data = NULL;
+fim_file_data *fim_get_data(const char *file, const fim_element *item) {
+    fim_file_data *data = NULL;
 
     os_calloc(1, sizeof(fim_file_data), data);
     init_fim_data_entry(data);
