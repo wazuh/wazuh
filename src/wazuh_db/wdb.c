@@ -53,6 +53,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_PROGRAM_DEL] = "DELETE FROM sys_programs WHERE scan_id != ?;",
     [WDB_STMT_PROGRAM_UPD] = "UPDATE SYS_PROGRAMS SET CPE = ?, MSU_NAME = ?, TRIAGED = ? WHERE SCAN_ID = ? AND FORMAT IS ? AND NAME IS ? AND VENDOR IS ? AND VERSION IS ? AND ARCHITECTURE IS ?;",
     [WDB_STMT_PROGRAM_GET] = "SELECT CPE, MSU_NAME, TRIAGED, FORMAT, NAME, VENDOR, VERSION, ARCHITECTURE FROM SYS_PROGRAMS WHERE SCAN_ID != ?;",
+    [WDB_STMT_PROGRAM_FIND] = "SELECT 'TRUE' FROM sys_programs WHERE item_id = ?;",
     [WDB_STMT_HWINFO_INSERT] = "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_HWINFO_INSERT2] = "INSERT OR REPLACE INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_HOTFIX_INSERT] = "INSERT INTO sys_hotfixes (scan_id, scan_time, hotfix, checksum) VALUES (?, ?, ?, ?);",
@@ -204,10 +205,11 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
-    [WDB_STMT_VULN_CVE_INSERT] = "INSERT OR IGNORE INTO vuln_cves (name, version, architecture, cve) VALUES(?,?,?,?);",
+    [WDB_STMT_VULN_CVE_INSERT] = "INSERT OR REPLACE INTO vuln_cves (name, version, architecture, cve, reference, type, status) VALUES (?,?,?,?,?,?,?);",
     [WDB_STMT_VULN_CVE_CLEAR] = "DELETE FROM vuln_cves;",
     [WDB_STMT_VULN_CVE_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
-    [WDB_STMT_VULN_CVE_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?"
+    [WDB_STMT_VULN_CVE_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
+    [WDB_STMT_VULN_CVE_FIND_CVE] = "SELECT 1 FROM vuln_cves WHERE cve = ? AND reference = ?;"
 };
 
 wdb_config wconfig;
