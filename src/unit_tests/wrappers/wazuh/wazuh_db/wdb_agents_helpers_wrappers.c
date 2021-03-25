@@ -14,7 +14,7 @@
 #include <cmocka.h>
 #include <stdlib.h>
 
-int __wrap_wdb_agents_vuln_cve_insert(int id,
+int __wrap_wdb_agents_vuln_cves_insert(int id,
                                       const char *name,
                                       const char *version,
                                       const char *architecture,
@@ -28,7 +28,7 @@ int __wrap_wdb_agents_vuln_cve_insert(int id,
     return mock_type(int);
 }
 
-int __wrap_wdb_agents_vuln_cve_clear(int id,
+int __wrap_wdb_agents_vuln_cves_clear(int id,
                                      __attribute__((unused)) int *sock) {
     check_expected(id);
     return mock_type(int);
