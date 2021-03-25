@@ -95,11 +95,11 @@ cJSON* wdb_agents_insert_vuln_cve(wdb_t *wdb,
     return result;
 }
 
-int wdb_agents_update_status_vuln_cve(wdb_t *wdb, const char* old_status, const char* new_status) {
+int wdb_agents_update_status_vuln_cves(wdb_t *wdb, const char* old_status, const char* new_status) {
 
     bool update_all = (strcmp(old_status, "*") == 0);
 
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, update_all ? WDB_STMT_VULN_CVE_UPDATE_ALL : WDB_STMT_VULN_CVE_UPDATE);
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, update_all ? WDB_STMT_VULN_CVES_UPDATE_ALL : WDB_STMT_VULN_CVES_UPDATE);
 
     if (stmt == NULL) {
         return OS_INVALID;
@@ -115,13 +115,13 @@ int wdb_agents_update_status_vuln_cve(wdb_t *wdb, const char* old_status, const 
     return wdb_exec_stmt_silent(stmt);
 }
 
-int wdb_agents_remove_vuln_cve(wdb_t *wdb, const char* cve, const char* reference) {
+int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* reference) {
     if (!cve || !reference) {
         mdebug1("Invalid data provided");
         return OS_INVALID;
     }
 
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_DELETE_ENTRY);
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_DELETE_ENTRY);
 
     if (stmt == NULL) {
         return OS_INVALID;
@@ -133,7 +133,7 @@ int wdb_agents_remove_vuln_cve(wdb_t *wdb, const char* cve, const char* referenc
     return wdb_exec_stmt_silent(stmt);
 }
 
-wdbc_result wdb_agents_remove_by_status_vuln_cve(wdb_t *wdb, const char* status, char **output) {
+wdbc_result wdb_agents_remove_by_status_vuln_cves(wdb_t *wdb, const char* status, char **output) {
     sqlite3_stmt* stmt = NULL;
     unsigned response_size = 2; //Starts with "[]" size
     wdbc_result wdb_res = WDBC_UNKNOWN;
@@ -142,7 +142,7 @@ wdbc_result wdb_agents_remove_by_status_vuln_cve(wdb_t *wdb, const char* status,
     char *response_aux = *output;
 
     //Prepare SQL query
-    if (stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_SELECT_BY_STATUS), !stmt) {
+    if (stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_SELECT_BY_STATUS), !stmt) {
         mdebug1("Cannot cache statement");
         snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot cache statement");
         return WDBC_ERROR;
@@ -173,7 +173,7 @@ wdbc_result wdb_agents_remove_by_status_vuln_cve(wdb_t *wdb, const char* status,
                 //Check if new vulnerability fits in response
                 if (response_size+vuln_len+1 < WDB_MAX_RESPONSE_SIZE) {
                     //Delete the vulnerability
-                    if (OS_SUCCESS != wdb_agents_remove_vuln_cve(wdb, json_cve->valuestring, json_reference->valuestring)) {
+                    if (OS_SUCCESS != wdb_agents_remove_vuln_cves(wdb, json_cve->valuestring, json_reference->valuestring)) {
                         merror("Error removing vulnerability from the inventory database: %s", json_cve->valuestring);
                         wdb_res = WDBC_ERROR;
                     }
@@ -212,9 +212,9 @@ wdbc_result wdb_agents_remove_by_status_vuln_cve(wdb_t *wdb, const char* status,
     return wdb_res;
 }
 
-int wdb_agents_clear_vuln_cve(wdb_t *wdb) {
+int wdb_agents_clear_vuln_cves(wdb_t *wdb) {
 
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_CLEAR);
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_CLEAR);
     if (stmt == NULL) {
         return OS_INVALID;
     }

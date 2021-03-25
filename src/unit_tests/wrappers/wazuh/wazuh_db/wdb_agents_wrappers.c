@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_wdb_agents_insert_vuln_cve( __attribute__((unused)) wdb_t *wdb, const char* name, const char* version, const char* architecture, const char* cve) {
+int __wrap_wdb_agents_insert_vuln_cves( __attribute__((unused)) wdb_t *wdb, const char* name, const char* version, const char* architecture, const char* cve) {
     check_expected(name);
     check_expected(version);
     check_expected(architecture);
@@ -21,11 +21,11 @@ int __wrap_wdb_agents_insert_vuln_cve( __attribute__((unused)) wdb_t *wdb, const
     return mock();
 }
 
-int __wrap_wdb_agents_clear_vuln_cve( __attribute__((unused)) wdb_t *wdb) {
+int __wrap_wdb_agents_clear_vuln_cves( __attribute__((unused)) wdb_t *wdb) {
     return mock();
 }
 
-int __wrap_wdb_agents_update_status_vuln_cve( __attribute__((unused)) wdb_t *wdb, const char* old_status, const char* new_status) {
+int __wrap_wdb_agents_update_status_vuln_cves( __attribute__((unused)) wdb_t *wdb, const char* old_status, const char* new_status) {
     check_expected(old_status);
     check_expected(new_status);
     return mock();
