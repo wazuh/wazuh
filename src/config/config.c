@@ -65,11 +65,27 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         chld_node = OS_GetElementsbyNode(xml, node[i]);
 
-        if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
-            if (((modules & CGLOBAL) || (modules & CMAIL))
-                    && (Read_Global(chld_node, d1, d2) < 0)) {
+        /* Common configuration */
+		if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
+			if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
+				goto fail;
+			}
+        } else if (strcmp(node[i]->element, oslogging) == 0) {
+        } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
+            if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
+        } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
+            if ((modules & CWMODULE) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
+#if !defined(WIN32) && !defined(CLIENT)
+        /* manager.conf configuration */
+        } else if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
+			if (((modules & CGLOBAL) || (modules & CMAIL))
+					&& (Read_Global(chld_node, d1, d2) < 0)) {
+				goto fail;
+			}
         } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {
             if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0)) {
                 goto fail;
@@ -94,6 +110,52 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
+        } else if (chld_node && (strcmp(node[i]->element, osalerts) == 0)) {
+            if ((modules & CALERTS) && (Read_Alerts(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {
+            if ((modules & CREMOTE) && (Read_Remote(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, oscommand) == 0)) {
+            if ((modules & CAR) && (ReadActiveCommands(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
+            if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (strcmp(node[i]->element, osauthd) == 0) {
+            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
+            if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
+            if ((modules & CLOGTEST) && (Read_Logtest(chld_node) < 0)) {
+                goto fail;
+            }
+        } else if (strcmp(node[i]->element, osvulndet) == 0) {
+#if !defined(WIN32) && !defined(CLIENT)
+            if ((modules & CWMODULE) && (Read_Vuln(xml, chld_node, d1, 1) < 0)) {
+                goto fail;
+            }
+#else
+            mwarn("%s configuration is only set in the manager.", node[i]->element);
+#endif
+        } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
+#if !defined(WIN32) && !defined(CLIENT)
+			if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
+				goto fail;
+			}
+#else
+			mwarn("%s configuration is only set in the manager.", node[i]->element);
+#endif
+#endif
+		/* agent.conf configuration */
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
                 goto fail;
@@ -105,16 +167,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osalerts) == 0)) {
-            if ((modules & CALERTS) && (Read_Alerts(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
         } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
             if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {
-            if ((modules & CREMOTE) && (Read_Remote(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osclient) == 0)) {
@@ -125,18 +179,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, oscommand) == 0)) {
-            if ((modules & CAR) && (ReadActiveCommands(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
-            if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
-            if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
         } else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
@@ -145,59 +187,20 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, osvulndet) == 0) {
-#if !defined(WIN32) && !defined(CLIENT)
-            if ((modules & CWMODULE) && (Read_Vuln(xml, chld_node, d1, 1) < 0)) {
-                goto fail;
-            }
-#else
-            mwarn("%s configuration is only set in the manager.", node[i]->element);
-#endif
         } else if (strcmp(node[i]->element, osgcp) == 0) {
             if ((modules & CWMODULE) && (Read_GCP(xml, node[i], d1) < 0)) {
-                goto fail;
-            }
-        }
-#ifndef WIN32
-        else if (strcmp(node[i]->element, osfluent_forward) == 0) {
-            if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
-                goto fail;
-            }
-        }
-#endif
-        else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
-            if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (strcmp(node[i]->element, osauthd) == 0) {
-            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (strcmp(node[i]->element, oslogging) == 0) {
-        } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
-            if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
             if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
-            if ((modules & CLOGTEST) && (Read_Logtest(chld_node) < 0)) {
+#ifndef WIN32
+        } else if (strcmp(node[i]->element, osfluent_forward) == 0) {
+            if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {
-            if ((modules & CWMODULE) && (Read_AgentUpgrade(xml, node[i], d1) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
-            #if !defined(WIN32) && !defined(CLIENT)
-                if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
-                    goto fail;
-                }
-            #else
-                mwarn("%s configuration is only set in the manager.", node[i]->element);
-            #endif
+#endif
         } else {
             merror(XML_INVELEM, node[i]->element);
             goto fail;
