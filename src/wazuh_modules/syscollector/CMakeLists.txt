@@ -17,7 +17,15 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif(FSANITIZE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -42,16 +50,17 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
+link_directories(${SRC_FOLDER}/data_provider/build/lib)
+link_directories(${SRC_FOLDER})
+
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/external/sqlite/)
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
-link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
-link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
-link_directories(${SRC_FOLDER}/data_provider/build/lib)
 
-link_directories(${SRC_FOLDER}/external/openssl/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1
@@ -63,7 +72,7 @@ file(GLOB SYSCOLLECTOR_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
     )
 
-add_library(syscollector SHARED 
+add_library(syscollector SHARED
     ${SYSCOLLECTOR_SRC}
     )
 
@@ -78,23 +87,26 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif(UNIX AND NOT APPLE)
   set_target_properties(syscollector PROPERTIES
           LINK_FLAGS "-static-libgcc -static-libstdc++")
-          
   if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-  target_link_libraries(syscollector crypto dbsync rsync sysinfo cjson pthread)
+  if(DISABLE_SHARED)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+      target_link_libraries(syscollector dbsync rsync sysinfo cjson crypto ws2_32 ssl crypt32 pthread)
+    else()
+      target_link_libraries(syscollector dbsync rsync sysinfo cjson crypto pthread)
+    endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  else()
+    target_link_libraries(syscollector dbsync rsync sysinfo wazuhext)
+  endif(DISABLE_SHARED)
 else()
   string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
   string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
   target_link_libraries(syscollector crypto dbsync rsync sysinfo cjson pthread -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
 endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(syscollector crypto ws2_32 ssl crypt32 sqlite3 cjson)
-endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -105,5 +117,8 @@ if(UNIT_TEST)
 
   add_subdirectory(tests)
 else()
+  if(FSANITIZE)
+    target_link_libraries(syscollector gcov)
+  endif(FSANITIZE)
   add_subdirectory(testtool)
 endif(UNIT_TEST)

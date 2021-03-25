@@ -192,7 +192,7 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
-        socket_path = os.path.join(common.ossec_path, 'queue', 'cluster', 'c-internal.sock')
+        socket_path = os.path.join(common.wazuh_path, 'queue', 'cluster', 'c-internal.sock')
 
         try:
             local_server = await loop.create_unix_server(

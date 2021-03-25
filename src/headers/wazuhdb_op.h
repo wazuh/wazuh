@@ -13,6 +13,9 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 
+#define WDBQUERY_SIZE OS_BUFFER_SIZE
+#define WDBOUTPUT_SIZE OS_MAXSTR
+
 #define FIELD_SEPARATOR_DBSYNC "|"
 
 /// Enumeration of communication with Wazuh DB status.

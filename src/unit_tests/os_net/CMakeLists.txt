@@ -21,7 +21,7 @@ target_link_libraries(OS_NET_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate os_net tests
 list(APPEND os_net_names "test_os_net")
-list(APPEND os_net_flags " ")
+list(APPEND os_net_flags "-Wl,--wrap,socket -Wl,--wrap,listen -Wl,--wrap,bind -Wl,--wrap,setsockopt -Wl,--wrap,getsockopt -Wl,--wrap,connect -Wl,--wrap,accept -Wl,--wrap,send -Wl,--wrap,recv -Wl,--wrap,recvfrom -Wl,--wrap,chmod -Wl,--wrap,stat -Wl,--wrap,fcntl -Wl,--wrap,gethostbyname -Wl,--wrap,_merror -Wl,--wrap,_mwarn")
 
 # Compiling tests
 list(LENGTH os_net_names count)

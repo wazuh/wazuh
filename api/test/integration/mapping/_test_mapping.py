@@ -16,11 +16,9 @@ file_path = path.join(integration_tests, 'mapping', 'integration_test_api_endpoi
 
 # Wazuh modules
 wazuh_modules = [
-    api,                             # API
-    framework,                       # SDK
-    path.join(framework, 'core'),    # CORE
-    path.join(framework, 'rbac'),    # RBAC
-    integration_tests                # Integration tests
+    api,  # API
+    framework,  # SDK, CORE and RBAC (recursive call)
+    integration_tests  # Integration tests
 ]
 
 file_tag_regex = re.compile(r'([^_]+).*\.[a-z]{2,4}')
@@ -42,7 +40,8 @@ def calculate_test_mappings():
             test_mapping[test_tag.lower()].append(test)
 
     # Create custom tag for basic tests
-    for test in sorted([tests for tests in map(lambda x: test_mapping[x], ['agent', 'security', 'cluster', 'experimental'])]):
+    for test in sorted(
+            [tests for tests in map(lambda x: test_mapping[x], ['agent', 'security', 'cluster', 'experimental'])]):
         test_mapping['basic'].extend(test)
 
     return test_mapping
@@ -63,7 +62,8 @@ def get_file_and_test_info(test_name, test_mapping, module_name):
         related_tests = test_mapping['rbac']
     elif test_mapping[test_tag]:
         # If a tag matches, both their normal and RBAC tests will be assigned
-        related_tests = test_mapping[test_tag] + [test for test in test_mapping['rbac'] if test_tag in test]
+        related_tests = test_mapping[test_tag] + [test for test in test_mapping['rbac'] if test_tag in test] \
+            if test_tag != 'rbac' else test_mapping[test_tag]
     else:
         # If no tag is matched, basic tests will be assigned
         related_tests = test_mapping['basic']

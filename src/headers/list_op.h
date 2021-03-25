@@ -52,4 +52,18 @@ void OSList_DeleteOldestNode(OSList *list) __attribute__((nonnull));
 
 void *OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
 
+/**
+ * @brief Clears all the nodes from a list and frees the referenced data
+ *
+ * @param list List to delete
+ */
+void OSList_CleanNodes(OSList *list);
+
+/**
+ * @brief Clears all the nodes from a list without freeing the referenced data
+ *
+ * @param list List to delete nodes
+ */
+void OSList_CleanOnlyNodes(OSList *list);
+
 #endif /* OS_LIST */

@@ -24,7 +24,7 @@ namespace RSync
         CHECKSUM,
         ROW_DATA
     };
-    
+
     template <class Type, MessageType mType>
     class FactoryMessageCreator final
     {
@@ -56,7 +56,7 @@ namespace RSync
         {
             return std::make_shared<MessageRowData<Type>>();
         }
-    };    
+    };
 }// namespace RSync
 
 #endif // _MESSAGE_CREATOR_FACTORY_H

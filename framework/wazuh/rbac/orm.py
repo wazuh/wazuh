@@ -675,7 +675,35 @@ class AuthenticationManager:
     It manages users and token generation.
     """
 
-    def add_user(self, username: str, password: str, allow_run_as: bool = False, check_default: bool = True):
+    def edit_run_as(self, user_id: int, allow_run_as: bool):
+        """Change the specified user's allow_run_as flag.
+
+        Parameters
+        ----------
+        user_id : int
+            Unique user id
+        allow_run_as : bool
+            Flag that indicates if the user can log into the API through an authorization context
+
+        Returns
+        -------
+        True if the user's flag has been modified successfully.
+        INVALID if the specified value is not correct. False otherwise.
+        """
+        try:
+            user = self.session.query(User).filter_by(id=user_id).first()
+            if user is not None:
+                if isinstance(allow_run_as, bool):
+                    user.allow_run_as = allow_run_as
+                    self.session.commit()
+                    return True
+                return SecurityError.INVALID
+            return False
+        except IntegrityError:
+            self.session.rollback()
+            return False
+
+    def add_user(self, username: str, password: str, check_default: bool = True):
         """Creates a new user if it does not exist.
 
         Parameters
@@ -684,8 +712,6 @@ class AuthenticationManager:
             Unique user name
         password : str
             Password provided by user. It will be stored hashed
-        allow_run_as : bool
-            Flag that indicates if the user can log into the API throw an authorization context
         check_default : bool
             Flag that indicates if the user ID can be less than max_id_reserved
 
@@ -701,15 +727,14 @@ class AuthenticationManager:
                     user_id = max_id_reserved + 1
             except (TypeError, AttributeError):
                 pass
-            self.session.add(User(username=username, password=generate_password_hash(password),
-                                  allow_run_as=allow_run_as, user_id=user_id))
+            self.session.add(User(username=username, password=generate_password_hash(password), user_id=user_id))
             self.session.commit()
             return True
         except IntegrityError:
             self.session.rollback()
             return False
 
-    def update_user(self, user_id: int, password: str, allow_run_as: bool):
+    def update_user(self, user_id: int, password: str):
         """Update the password an existent user
 
         Parameters
@@ -718,8 +743,6 @@ class AuthenticationManager:
             Unique user id
         password : str
             Password provided by user. It will be stored hashed
-        allow_run_as : bool
-            Enable authorization context login method for the new user
 
         Returns
         -------
@@ -730,9 +753,6 @@ class AuthenticationManager:
             if user is not None:
                 if password:
                     user.password = generate_password_hash(password)
-                if allow_run_as is not None:
-                    user.allow_run_as = allow_run_as
-                if password or allow_run_as is not None:
                     self.session.commit()
                     return True
             return False
@@ -2436,8 +2456,8 @@ with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
 
     with AuthenticationManager() as auth:
         for d_username, payload in default_users[next(iter(default_users))].items():
-            auth.add_user(username=d_username, password=payload['password'],
-                          allow_run_as=payload['allow_run_as'], check_default=False)
+            auth.add_user(username=d_username, password=payload['password'], check_default=False)
+            auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'], allow_run_as=payload['allow_run_as'])
 
 # Create default roles if they don't exist yet
 with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:

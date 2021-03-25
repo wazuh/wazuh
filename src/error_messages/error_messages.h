@@ -143,6 +143,8 @@
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
 #define NO_CLIENT_KEYS  "(1751): File client.keys not found or empty."
 
+#define REMOTED_NET_PROTOCOL_NOT_SET  "(1752): Network protocol is not set."
+
 /* 1760 - 1769 -- reserved for maild */
 
 /* Active Response */
@@ -402,6 +404,7 @@
 #define VU_VER_INVALID_FORMAT       "(5588): Invalid format of Wazuh version for agent '%.3d'"
 #define VU_VER_READING_ERROR        "(5589): Couldn't read Wazuh version for agent '%.3d'"
 #define VU_OVAL_VULN_NOT_FOUND      "(5590): No vulnerabilities could be found in the OVAL for agent '%.3d'"
+#define VU_PKG_INVALID_VER          "(5591): Invalid version for package '%s' of the inventory: '%s'"
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"

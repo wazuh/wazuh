@@ -86,6 +86,9 @@ stages:
 ---
 test_name: GET /experimental/syscollector/hardware
 
+marks:
+  - xfail # https://github.com/wazuh/wazuh-jenkins/issues/2415
+
 stages:
 
   - name: Request
@@ -548,13 +551,17 @@ stages:
             - <<: *ports_response
               agent_id: '001'
             - <<: *ports_response
+              agent_id: '001'
+            - <<: *ports_response
+              agent_id: '003'
+            - <<: *ports_response
               agent_id: '003'
             - <<: *ports_response
               agent_id: '005'
             - <<: *ports_response
               agent_id: '007'
           failed_items: []
-          total_affected_items: 4
+          total_affected_items: 6
           total_failed_items: 0
 
 ---

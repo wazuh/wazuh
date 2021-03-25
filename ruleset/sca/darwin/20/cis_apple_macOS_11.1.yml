@@ -1,6 +1,6 @@
 # Security Configuration Assessment
-# CIS Checks for macOS 11.1
-# Copyright (C) 2015-2020, Wazuh Inc.
+# CIS Checks for macOS 11.x
+# Copyright (C) 2015-2021, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -8,24 +8,24 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Apple macOS 10.15 Benchmark v1.1.0 - 11-09-2020 and applied to macOS 11.01
+# Center for Internet Security Apple macOS 10.15 Benchmark v1.1.0 - 11-09-2020 and applied to macOS 11.x
 
 policy:
-  id: "cis_apple_macos_11.1"
+  id: "cis_apple_macos_11.x"
   file: "cis_apple_macOS_10.15.yml"
-  name: "CIS Apple macOS 10.15 Benchmark applied to macOS 11.1"
-  description: "This document, CIS Apple macOS 10.15 Benchmark was tested against Apple macOS 11.1"
+  name: "CIS Apple macOS 10.15 Benchmark applied to macOS 11.x"
+  description: "This document, CIS Apple macOS 10.15 Benchmark was tested against Apple macOS 11.x"
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
   title: "Check macOS version"
-  description: "Requirements for running the SCA scan against macOS 11.01 (Big Sur)."
+  description: "Requirements for running the SCA scan against macOS 11.x (Big Sur)."
   condition: any
   rules:
-    - 'c:sw_vers -> r:^ProductVersion:\t*\s*11\p1'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:\.*11\p1'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*11\p1'
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*11\p'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:\.*11\p'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*11\p'
 
 checks:
 # jal 
@@ -439,19 +439,6 @@ checks:
 
 # jal 
 # not implemented - SCA Limit -> 2.5.9 Review Advertising settings (Manual)
-  - id: 18029
-    title: "Review Advertising settings"
-    description: "Apple provides a framework that allows advertisers to target Apple users and end users to tailor their tolerance for what is shared with advertisers and what amount of targeting they will accept. While many people prefer that when they see advertising it is relevant to them and their interests the detailed information that is available with data mining collected information available in repositories to advertisers is often disconcerting."
-    rationale: "Organizations should manage user provacy settings on managed devices to align with organizational policies and user data protection requirements."
-    remediation: "For each needed user, run the following command to enable limited ad tracking: sudo -u <username> defaults -currentHost write /Users/<username>/Library/Preferences/com.apple.Adlib.plist forceLimitAdTracking -bool true"
-    compliance:
-      - cis: ["2.5.9"]
-    condition: all
-    rules:
-      - 'c:for d in /Users/*/ ; do (defaults read $d/Library/Preferences/com.apple.AdLib.plist forceLimitAdTracking); done -> n:(\d) compare != 1'
-
-
-# jal
 # not implemented - process -> 2.6.1 iCloud configuration (Manual)
 # not implemented - process -> 2.6.2 iCloud keychain (Manual)
 # not implemented - process -> 2.6.3 iCloud Drive (Manual)

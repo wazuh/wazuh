@@ -13,10 +13,9 @@ The DBSync Testing Tool was created to test and validate the dbsync module. This
 ![alt text](../images/dbsyncTestToolArchDiagram.png)
 
 ## Compile Wazuh
-In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:
+In order to run unit tests on a specific wazuh target, the project needs to be built either in release or debug mode.
 ```
-make deps RESOURCES_URL=file:///path/to/deps/
-make TARGET=server|agent DEBUG=1 TEST=1
+make TARGET=server|agent <DEBUG=1>
 ```
 
 ## How to use the tool
@@ -36,7 +35,7 @@ Where:
   - db_type: Database type to be used. Only SQLITE3 is currently supported.
   - host_type: Agent or Manager.
   - persistance: Database type of persistance being used. Not implemented yet.
-  - sql_statement: Database sql structure to be created. This structure will be associated the other files needed to used the tool.
+  - sql_statement: Database sql structure to be created. This structure will be associated with the other files needed to use the tool.
 
 2) Create the needed amount of json files representing the different actions information. These ones need to follow the sql_statement structure created in the step 1.
 3) Define an output folder where all resulting data will be located.

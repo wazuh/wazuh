@@ -173,7 +173,7 @@
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
     <description>syslog: Illegal root login.</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
     <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -405,7 +405,7 @@
     <match>module verification failed</match>
     <description>Unsigned kernel module was loaded</description>
     <mitre>
-      <id technique="Boot or Logon Autostart Execution: Kernel Modules and Extensions" tactic="Persistence" tacticID="TA0003">T1547.006</id>
+      <id>T1215</id>
     </mitre>
   </rule>
 
@@ -414,7 +414,7 @@
     <match>PKCS#7 signature not signed with a trusted key</match>
     <description>Signed but untrusted kernel module was loaded</description>
     <mitre>
-      <id technique="Boot or Logon Autostart Execution: Kernel Modules and Extensions" tactic="Persistence" tacticID="TA0003">T1547.006</id>
+      <id>T1215</id>
     </mitre>
   </rule>
 
@@ -504,7 +504,7 @@
     <match>REPLACE (root)</match>
     <description>Root's crontab entry changed.</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
     <group>pci_dss_10.2.7,pci_dss_10.6.1,pci_dss_10.2.2,gpg13_4.13,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.6,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -532,7 +532,7 @@
     <user>^root</user>
     <description>User missed the password to change UID to root.</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4</group>
   </rule>
@@ -644,7 +644,7 @@
     <match>incorrect password attempt</match>
     <description>Failed attempt to run sudo.</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -654,7 +654,7 @@
     <regex> ; USER=root ; COMMAND=| ; USER=root ; TSID=\S+ ; COMMAND=</regex>
     <description>Successful sudo to ROOT executed.</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
     <group>pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.6,gpg13_7.8,gpg13_7.13,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -664,7 +664,7 @@
     <regex> ; USER=\S+ ; COMMAND=| ; USER=\S+ ; TSID=\S+ ; COMMAND=</regex>
     <description>Successful sudo executed.</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
     <group>pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.6,gpg13_7.8,gpg13_7.13,gdpr_IV_32.2,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -674,7 +674,7 @@
     <if_fts />
     <description>First time user executed sudo.</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
   </rule>
 
@@ -683,7 +683,7 @@
     <match>3 incorrect password attempts</match>
     <description>Three failed attempts to run sudo</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -693,7 +693,7 @@
     <match>user NOT in sudoers</match>
     <description>Unauthorized user attempted to use sudo.</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Sudo and Sudo Caching" tactic="Privilege Escalation" tacticID="TA0004">T1548.003</id>
+      <id>T1169</id>
     </mitre>
     <group>pci_dss_10.2.2,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.6,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>

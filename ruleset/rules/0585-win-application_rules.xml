@@ -624,7 +624,7 @@
     <field name="win.system.eventID">^19$</field>
     <description>The EventSystem service is disabled or attempting to start during Safe Mode</description>
     <mitre>
-      <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+      <id>T1031</id>
     </mitre>
     <options>no_full_log</options>
   </rule>
@@ -634,7 +634,7 @@
     <field name="win.system.eventID">^20$|^21$</field>
     <description>Volume Shadow Copy Service: COM+ database corrupted, writers will not receive events</description>
     <mitre>
-      <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+      <id>T1031</id>
     </mitre>
     <options>no_full_log</options>
   </rule>
@@ -679,7 +679,7 @@
     <field name="win.system.eventID">^4609$</field>
     <description>Bad return code detected during internal processing of the EventSystem service</description>
     <mitre>
-      <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+      <id>T1031</id>
     </mitre>
     <options>no_full_log</options>
   </rule>

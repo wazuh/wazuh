@@ -111,12 +111,14 @@ void test_DeletePID_success(void **state)
     (void) state;
     int ret;
 
+    struct stat stat_delete = { .st_mode = 0 };
+
     will_return(__wrap_isChroot, 1);
     expect_string(__wrap_unlink, file, "/var/run/test-2345.pid");
     will_return(__wrap_unlink, 0);
 
     expect_string(__wrap_stat, __file, "/var/run/test-2345.pid");
-    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, &stat_delete);
     will_return(__wrap_stat, 0);
 
     ret = DeletePID("test");
@@ -127,6 +129,7 @@ void test_DeletePID_success(void **state)
 void test_DeletePID_failure(void **state)
 {
     (void) state;
+    struct stat stat_delete = { .st_mode = 0 };
     int ret;
 
     will_return(__wrap_isChroot, 0);
@@ -134,7 +137,7 @@ void test_DeletePID_failure(void **state)
     will_return(__wrap_unlink, 1);
 
     expect_string(__wrap_stat, __file, "/var/ossec/var/run/test-2345.pid");
-    will_return(__wrap_stat, 0);
+    will_return(__wrap_stat, &stat_delete);
     will_return(__wrap_stat, 0);
 
     expect_string(__wrap__mferror, formatted_msg,

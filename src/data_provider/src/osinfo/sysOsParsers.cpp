@@ -151,7 +151,7 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
         {"VERSION_CODENAME", "os_codename"}
     };
     const auto ret {parseUnixFile(KEY_MAP, SEPARATOR, in, info)};
-    if (ret)
+    if (ret && info.find("os_version") != info.end())
     {
         findMajorMinorVersionInString(info["os_version"], info);
     }
