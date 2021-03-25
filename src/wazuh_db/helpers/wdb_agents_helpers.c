@@ -23,6 +23,10 @@ int wdb_agents_vuln_cve_insert(int id,
                                const char *version,
                                const char *architecture,
                                const char *cve,
+                               const char *reference,
+                               const char *type,
+                               const char *status,
+                               bool check_pkg_existance,
                                int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
@@ -43,6 +47,10 @@ int wdb_agents_vuln_cve_insert(int id,
     cJSON_AddStringToObject(data_in, "version", version);
     cJSON_AddStringToObject(data_in, "architecture", architecture);
     cJSON_AddStringToObject(data_in, "cve", cve);
+    cJSON_AddStringToObject(data_in, "reference", reference);
+    cJSON_AddStringToObject(data_in, "type", type);
+    cJSON_AddStringToObject(data_in, "status", status);
+    cJSON_AddBoolToObject(data_in, "check_pkg_existance", check_pkg_existance ? 1 : 0);
 
     data_in_str = cJSON_PrintUnformatted(data_in);
     os_malloc(WDBQUERY_SIZE, wdbquery);
@@ -124,9 +132,9 @@ int wdb_agents_vuln_cve_clear(int id,
 }
 
 int wdb_agents_vuln_cve_update_status(int id,
-                               const char *old_status,
-                               const char *new_status,
-                               int *sock) {
+                                      const char *old_status,
+                                      const char *new_status,
+                                      int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
