@@ -3928,7 +3928,7 @@ components:
       required: true
       schema:
         type: string
-        pattern: '^[\-\w]+$'
+        format: cdb_filename_path
     agents_list:
       in: query
       name: agents_list
@@ -5252,7 +5252,7 @@ components:
         type: array
         items:
           type: string
-          pattern: '^[\w\-]+\.xml(,[\w\-]+\.xml)*$'
+          format: xml_filename
     xml_filename_path:
       in: path
       name: filename
@@ -5260,7 +5260,7 @@ components:
       required: true
       schema:
         type: string
-        pattern: '^[\w\-]+\.xml$'
+        format: xml_filename_path
 
 
 tags:
@@ -11794,7 +11794,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
