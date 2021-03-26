@@ -18,7 +18,7 @@ static const char *agents_db_commands[] = {
     [WDB_AGENTS_VULN_CVE_UPDATE_STATUS] = "agent %d vuln_cve update_status %s"
 };
 
-int wdb_agents_vuln_cve_insert(int id,
+cJSON* wdb_agents_vuln_cve_insert(int id,
                                const char *name,
                                const char *version,
                                const char *architecture,
@@ -28,19 +28,17 @@ int wdb_agents_vuln_cve_insert(int id,
                                const char *status,
                                bool check_pkg_existance,
                                int *sock) {
-    int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
     char *wdbquery = NULL;
     char *wdboutput = NULL;
-    char *payload = NULL;
     int aux_sock = -1;
 
-    data_in = cJSON_CreateObject();
 
+    data_in = cJSON_CreateObject();
     if (!data_in) {
         mdebug1("Error creating data JSON for Wazuh DB.");
-        return OS_INVALID;
+        return NULL;
     }
 
     cJSON_AddStringToObject(data_in, "name", name);
@@ -50,41 +48,27 @@ int wdb_agents_vuln_cve_insert(int id,
     cJSON_AddStringToObject(data_in, "reference", reference);
     cJSON_AddStringToObject(data_in, "type", type);
     cJSON_AddStringToObject(data_in, "status", status);
-    cJSON_AddBoolToObject(data_in, "check_pkg_existance", check_pkg_existance ? 1 : 0);
+    cJSON_AddBoolToObject(data_in, "check_pkg_existance", check_pkg_existance);
 
     data_in_str = cJSON_PrintUnformatted(data_in);
     os_malloc(WDBQUERY_SIZE, wdbquery);
     snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVE_INSERT], id, data_in_str);
 
     os_malloc(WDBOUTPUT_SIZE, wdboutput);
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Agents DB (%d) Error in the response from socket", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
-            result = OS_INVALID;
-            break;
-        default:
-            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
-            result = OS_INVALID;
-    }
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
+    cJSON* result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     cJSON_Delete(data_in);
     os_free(data_in_str);
     os_free(wdbquery);
     os_free(wdboutput);
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    if (!result) {
+        merror("Agents DB (%d) Error querying Wazuh DB to insert vuln_cves", id);
+    }
 
     return result;
 }
