@@ -64,7 +64,7 @@ int wdb_agents_vuln_cves_clear(int id,
                               int *sock);
 
 /**
- * @brief Removes an entry from the vuln_cve table in the agent's database.
+ * @brief Removes an entry from the vuln_cves table in the agent's database.
  *
  * @param[in] id The agent ID.
  * @param[in] cve The cve of the vulnerability entry that should be removed.
@@ -72,13 +72,13 @@ int wdb_agents_vuln_cves_clear(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cve_remove_entry(int id,
+int wdb_agents_vuln_cves_remove_entry(int id,
                                      const char *cve,
                                      const char *reference,
                                      int *sock);
 
 /**
- * @brief Removes all the entries from the vuln_cve table in the agent's database that have the specified status.
+ * @brief Removes all the entries from the vuln_cves table in the agent's database that have the specified status.
  *
  * @param[in] id The agent ID.
  * @param[in] status The status of the vulnerabilities that should be removed.
