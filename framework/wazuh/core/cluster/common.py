@@ -20,6 +20,7 @@ import wazuh.core.cluster.utils
 import wazuh.core.results as wresults
 from wazuh import Wazuh
 from wazuh.core import common, exception
+from wazuh.rbac.orm import ResourceType
 
 
 class Response:
@@ -920,6 +921,8 @@ class WazuhJSONEncoder(json.JSONEncoder):
             return result
         elif isinstance(obj, (datetime.datetime, datetime.date)):
             return {'__wazuh_datetime__': obj.isoformat()}
+        elif isinstance(obj, ResourceType):
+            return {'__wazuh_enum_resourcetype__': obj.name}
 
         return json.JSONEncoder.default(self, obj)
 
@@ -952,6 +955,8 @@ def as_wazuh_object(dct: Dict):
             return getattr(wresults, wazuh_result['__class__']).decode_json(wazuh_result['__object__'])
         elif '__wazuh_datetime__' in dct:
             return datetime.datetime.fromisoformat(dct['__wazuh_datetime__'])
+        elif '__wazuh_enum_resourcetype__' in dct:
+            return getattr(ResourceType, dct['__wazuh_enum_resourcetype__'])
         return dct
 
     except (KeyError, AttributeError):
