@@ -45,7 +45,8 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
 
   # Default values definition
   SERVER_IP="MANAGER_IP"
-  NEWCONFIG="./ossec.conf.temp"
+  NEWCONFIG_AGENT="./agent.conf.temp"
+  NEWCONFIG_MANAGER="./manager.conf.temp"
   SYSCHECK="yes"
   ROOTCHECK="yes"
   SYSCOLLECTOR="yes"
@@ -56,23 +57,33 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
   RLOG="no" # syslog
   SLOG="yes" # remote
 
-  if [ -r "$NEWCONFIG" ]; then
-      rm "$NEWCONFIG"
+  if [ -r "$NEWCONFIG_AGENT" ]; then
+      rm "$NEWCONFIG_AGENT"
+  fi
+
+  if [ -r "$NEWCONFIG_MANAGER" ]; then
+    rm "$NEWCONFIG_MANAGER"
   fi
 
   if [ "$INSTYPE" = "server" ]; then
     WriteManager "no_localfiles"
+    cat "$NEWCONFIG_MANAGER"
   elif [ "$INSTYPE" = "agent" ]; then
     WriteAgent "no_localfiles"
+    cat "$NEWCONFIG_AGENT"
   elif [ "$INSTYPE" = "local" ]; then
     WriteLocal "no_localfiles"
+    cat "$NEWCONFIG_MANAGER"
+  elif [ "$INSTYPE" = "agent-server" ]; then
+    WriteAgentConfServer "no_localfiles"
+    cat "$NEWCONFIG_AGENT"
   else
     Use
     exit 1
   fi
 
-  cat "$NEWCONFIG"
-  rm "$NEWCONFIG"
+  rm "$NEWCONFIG_AGENT"
+  rm "$NEWCONFIG_MANAGER"
 
   exit 0
 else
