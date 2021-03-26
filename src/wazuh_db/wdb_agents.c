@@ -21,7 +21,7 @@ bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
 }
 
 bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference){
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_FIND_CVE);
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_FIND_CVE);
 
     if (stmt == NULL) {
         return OS_INVALID;
@@ -41,15 +41,15 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference){
     }
 }
 
-cJSON* wdb_agents_insert_vuln_cve(wdb_t *wdb,
-                               const char* name,
-                               const char* version,
-                               const char* architecture,
-                               const char* cve,
-                               const char* reference,
-                               const char* type,
-                               const char* status,
-                               bool check_pkg_existance) {
+cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
+                                   const char* name,
+                                   const char* version,
+                                   const char* architecture,
+                                   const char* cve,
+                                   const char* reference,
+                                   const char* type,
+                                   const char* status,
+                                   bool check_pkg_existance) {
 
     cJSON* result = cJSON_CreateObject();
     if (!result) {
@@ -67,7 +67,7 @@ cJSON* wdb_agents_insert_vuln_cve(wdb_t *wdb,
         cJSON_AddStringToObject(result, "status", "PKG_NOT_FOUND");
     }
     else {
-        sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVE_INSERT);
+        sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_INSERT);
 
         if (stmt) {
             sqlite3_bind_text(stmt, 1, name, -1, NULL);
