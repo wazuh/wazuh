@@ -1785,7 +1785,7 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format.
  * @param [out] output Response of the query.
- *  * @return 0 Success: response contains "ok".
+ * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
  int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* output);
