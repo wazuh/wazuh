@@ -39,7 +39,7 @@ typedef enum agents_db_access {
  *         If the action was completed successfully, 'status' contains 'SUCCESS' string.
  *         If check_pkg_existance is enabled and the package wasn't found 'status' contains 'PKG_NOT_FOUND'.
  *         On any error, 'status' contains 'ERROR' string.
- *
+ *         The cJSON object must be freed by the caller.
  */
 cJSON* wdb_agents_vuln_cve_insert(int id,
                                const char *name,

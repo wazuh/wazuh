@@ -51,14 +51,6 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
-#define INSERT_SUCCESS         1         // Insert new CVE successfully.
-#define INSERT_ERROR           -1        // Insert new CVE error.
-#define UPDATE_SUCCESS         2         // Update CVE successfully.
-#define UPDATE_ERROR           -2        // Update CVE error.
-#define PACKAGE_NOT_FOUND      3         // Skip insert or update.
-#define PACKAGE_ERROR          -3        // Skip insert or update due to error.
-#define CVE_ERROR              -4        // Skip insert or update due to error.
-
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -1764,7 +1756,7 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
 
 /**
  * @brief Function to parse the vuln_cve update action.
- * 
+ *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format.
  * @param [out] output Response of the query.
