@@ -421,9 +421,9 @@ void test_wdb_agents_vuln_cves_update_status_success(void **state){
     assert_int_equal(OS_SUCCESS, ret);
 }
 
-/* Tests wdb_agents_vuln_cve_remove_entry */
+/* Tests wdb_agents_vuln_cves_remove_entry */
 
-void test_wdb_agents_vuln_cve_remove_entry_error_json(void **state)
+void test_wdb_agents_vuln_cves_remove_entry_error_json(void **state)
 {
     int ret = 0;
     int id = 1;
@@ -434,12 +434,12 @@ void test_wdb_agents_vuln_cve_remove_entry_error_json(void **state)
     will_return(__wrap_cJSON_CreateObject, NULL);
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_agents_vuln_cve_remove_entry(id, cve, reference, NULL);
+    ret = wdb_agents_vuln_cves_remove_entry(id, cve, reference, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_agents_vuln_cve_remove_entry_error_socket(void **state){
+void test_wdb_agents_vuln_cves_remove_entry_error_socket(void **state){
     int ret = 0;
     int id = 1;
     const char *cve = "cve-xxxx-yyyy";
@@ -476,12 +476,12 @@ void test_wdb_agents_vuln_cve_remove_entry_error_socket(void **state){
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_agents_vuln_cve_remove_entry(id, cve, reference, NULL);
+    ret = wdb_agents_vuln_cves_remove_entry(id, cve, reference, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_agents_vuln_cve_remove_entry_error_sql_execution(void **state){
+void test_wdb_agents_vuln_cves_remove_entry_error_sql_execution(void **state){
     int ret = 0;
     int id = 1;
     const char *cve = "cve-xxxx-yyyy";
@@ -518,12 +518,12 @@ void test_wdb_agents_vuln_cve_remove_entry_error_sql_execution(void **state){
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_agents_vuln_cve_remove_entry(id, cve, reference, NULL);
+    ret = wdb_agents_vuln_cves_remove_entry(id, cve, reference, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_agents_vuln_cve_remove_entry_error_result(void **state){
+void test_wdb_agents_vuln_cves_remove_entry_error_result(void **state){
     int ret = 0;
     int id = 1;
     const char *cve = "cve-xxxx-yyyy";
@@ -561,12 +561,12 @@ void test_wdb_agents_vuln_cve_remove_entry_error_result(void **state){
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_agents_vuln_cve_remove_entry(id, cve, reference, NULL);
+    ret = wdb_agents_vuln_cves_remove_entry(id, cve, reference, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
 
-void test_wdb_agents_vuln_cve_remove_entry_success(void **state){
+void test_wdb_agents_vuln_cves_remove_entry_success(void **state){
     int ret = 0;
     int id = 1;
     const char *cve = "cve-xxxx-yyyy";
@@ -603,7 +603,7 @@ void test_wdb_agents_vuln_cve_remove_entry_success(void **state){
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_agents_vuln_cve_remove_entry(id, cve, reference, NULL);
+    ret = wdb_agents_vuln_cves_remove_entry(id, cve, reference, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -990,12 +990,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_agents_vuln_cve_remove_entry */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_remove_entry_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_remove_entry_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_remove_entry_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_remove_entry_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cve_remove_entry_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_agents_vuln_cves_remove_entry */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_agents_vuln_cves_remove_by_status */
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_by_status_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_by_status_error_wdb_query, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
