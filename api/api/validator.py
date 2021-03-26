@@ -17,7 +17,6 @@ _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.%]+(,[\w\-\.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 _boolean = re.compile(r'^true$|^false$')
-_cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
 _group_names = re.compile(r'^[A-Za-z0-9.\-_]+\b(?<!\ball)$')
@@ -33,6 +32,9 @@ _numbers = re.compile(r'^\d+$')
 _numbers_delete = re.compile(r'^\d+|all$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
+_cdb_filename_path = re.compile(r'^[\-\w]+$')
+_xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
+_xml_filename = re.compile(r'^[\w\-]+\.xml(,[\w\-]+\.xml)*$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
 _get_dirnames_path = re.compile(r'^(((etc|ruleset)\/(decoders|rules)[\w\-\/]*)|(etc\/lists[\w\-\/]*))$')
@@ -237,6 +239,21 @@ def format_numbers(value):
 @draft4_format_checker.checks("numbers_delete")
 def format_numbers_delete(value):
     return check_exp(value, _numbers_delete)
+
+
+@draft4_format_checker.checks("cdb_filename_path")
+def format_cdb_filename_path(value):
+    return check_exp(value, _cdb_filename_path)
+
+
+@draft4_format_checker.checks("xml_filename")
+def format_xml_filename(value):
+    return check_exp(value, _xml_filename)
+
+
+@draft4_format_checker.checks("xml_filename_path")
+def format_xml_filename_path(value):
+    return check_exp(value, _xml_filename_path)
 
 
 @draft4_format_checker.checks("path")

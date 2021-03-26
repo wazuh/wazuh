@@ -274,6 +274,9 @@ int local_start()
 
     atexit(stop_wmodules);
 
+    /* Send agent stopped message at exit */
+    atexit(send_agent_stopped_message);
+
     /* Start logcollector -- main process here */
     LogCollectorStart();
 

@@ -1011,8 +1011,8 @@ def test_agent_get_agents_overview_select(socket_mock, send_mock, select, status
 @pytest.mark.parametrize("search, totalItems", [
     ({'value': 'any', 'negation': 0}, 3),
     ({'value': 'any', 'negation': 1}, 6),
-    ({'value': '202', 'negation': 0}, 1),
-    ({'value': '202', 'negation': 1}, 8),
+    ({'value': 'Windows', 'negation': 0}, 3),
+    ({'value': 'Windows', 'negation': 1}, 6),
     ({'value': 'master', 'negation': 1}, 2),
     ({'value': '停', 'negation': 0}, 0)
 ])

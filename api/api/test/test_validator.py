@@ -186,6 +186,9 @@ def test_is_safe_path():
     ("12345", "numbers_or_empty"),
     ("", "numbers_or_empty"),
     ("group_name.test", "group_names"),
+    ("cdb_test", "cdb_filename_path"),
+    ("local_rules.xml", "xml_filename_path"),
+    ("local_rules.xml,test_rule.xml", "xml_filename"),
 ])
 def test_validation_json_ok(value, format):
     """Verify that each value is of the indicated format."""
@@ -217,6 +220,12 @@ def test_validation_json_ok(value, format):
     ("test_name test", "names_or_empty"),
     ("12345abc", "numbers_or_empty"),
     ("group_name.test ", "group_names"),
+    ("cdb_test../../test", "cdb_filename_path"),
+    ("cdb_test.test", "cdb_filename_path"),
+    ("local_rules../../.xml", "xml_filename_path"),
+    ("local_rules", "xml_filename_path"),
+    ("local_rules.xml,../test_rule.xml", "xml_filename"),
+    ("local_rules.xml,test_rule", "xml_filename"),
 ])
 def test_validation_json_ko(value, format):
     """Verify that each value is not of the indicated format."""

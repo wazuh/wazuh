@@ -36,6 +36,13 @@ typedef struct _OSList {
 
 OSList *OSList_Create(void);
 
+/**
+ * @brief Frees all resources associated with a list.
+ *
+ * @param list List to be destroyed.
+*/
+void OSList_Destroy(OSList *);
+
 int OSList_SetMaxSize(OSList *list, int max_size);
 int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *));
 
