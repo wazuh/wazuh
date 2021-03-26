@@ -24,7 +24,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_agents_insert_vuln_cves \
                         -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_agents_clear_vuln_cves -Wl,--wrap,wdb_open_global \
                         -Wl,--wrap,wdb_global_agent_exists  -Wl,--wrap,wdb_agents_update_status_vuln_cve -Wl,--wrap,wdb_agents_update_status_vuln_cves \
-                        ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,wdb_agents_remove_vuln_cves -Wl,--wrap,wdb_agents_remove_by_status_vuln_cves ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \
@@ -48,7 +48,10 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,-
                             ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_agents")
-list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,wdb_exec_stmt_silent  -Wl,--wrap,sqlite3_step")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_init_stmt_in_cache -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,wdb_exec_stmt_silent  -Wl,--wrap,sqlite3_step \
+                             -Wl,--wrap,wdb_exec_stmt -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,cJSON_Delete \
+                             -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_AddItemToObject \
+                             -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_GetObjectItem")
 
 
 list(APPEND wdb_tests_names "test_wdb_global_helpers")
@@ -68,8 +71,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
                              -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_Parse \
                              -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddNumberToObject \
                              -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_GetObjectItem \
-                             -Wl,--wrap,cJSON_Delete -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json \
-                             -Wl,--wrap,wdbc_query_parse ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,cJSON_ParseWithOpts -Wl,--wrap,cJSON_Delete -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result \
+                             -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_Duplicate -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
+                             ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb")
 list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
