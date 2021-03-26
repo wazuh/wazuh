@@ -45,9 +45,10 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_FIM_FIND_DATE_ENTRIES] = "SELECT full_path, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
     [WDB_STMT_FIM_GET_ATTRIBUTES] = "SELECT file, attributes from fim_entry WHERE attributes IS NOT '0';",
     [WDB_STMT_FIM_UPDATE_ATTRIBUTES] = "UPDATE fim_entry SET attributes = ? WHERE file = ?;",
-    [WDB_STMT_OSINFO_INSERT] = "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_OSINFO_INSERT2] = "INSERT OR REPLACE INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_OSINFO_INSERT] = "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, checksum, reference, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_OSINFO_INSERT2] = "INSERT OR REPLACE INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, checksum, reference, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_OSINFO_DEL] = "DELETE FROM sys_osinfo;",
+    [WDB_STMT_OSINFO_GET] = "SELECT reference, triaged FROM sys_osinfo;",
     [WDB_STMT_PROGRAM_INSERT] = "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_PROGRAM_INSERT2] = "INSERT OR REPLACE INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_PROGRAM_DEL] = "DELETE FROM sys_programs WHERE scan_id != ?;",
@@ -206,11 +207,13 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
-    [WDB_STMT_VULN_CVE_INSERT] = "INSERT OR REPLACE INTO vuln_cves (name, version, architecture, cve, reference, type, status) VALUES (?,?,?,?,?,?,?);",
-    [WDB_STMT_VULN_CVE_CLEAR] = "DELETE FROM vuln_cves;",
-    [WDB_STMT_VULN_CVE_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
-    [WDB_STMT_VULN_CVE_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
-    [WDB_STMT_VULN_CVE_FIND_CVE] = "SELECT 1 FROM vuln_cves WHERE cve = ? AND reference = ?;"
+    [WDB_STMT_VULN_CVES_INSERT] = "INSERT OR REPLACE INTO vuln_cves (name, version, architecture, cve, reference, type, status) VALUES (?,?,?,?,?,?,?);",
+    [WDB_STMT_VULN_CVES_CLEAR] = "DELETE FROM vuln_cves;",
+    [WDB_STMT_VULN_CVES_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
+    [WDB_STMT_VULN_CVES_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
+    [WDB_STMT_VULN_CVES_FIND_CVE] = "SELECT 1 FROM vuln_cves WHERE cve = ? AND reference = ?;"
+    [WDB_STMT_VULN_CVES_SELECT_BY_STATUS] = "SELECT * FROM vuln_cves WHERE status = ?;",
+    [WDB_STMT_VULN_CVES_DELETE_ENTRY] = "DELETE FROM vuln_cves WHERE cve = ? AND reference = ?;"
 };
 
 wdb_config wconfig;

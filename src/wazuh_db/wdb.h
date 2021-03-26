@@ -51,6 +51,10 @@
 #define AGENT_CS_ACTIVE          "active"
 #define AGENT_CS_DISCONNECTED    "disconnected"
 
+#define VULN_CVES_STATUS_VALID    "VALID"
+#define VULN_CVES_STATUS_PENDING  "PENDING"
+#define VULN_CVES_STATUS_OBSOLETE "OBSOLETE"
+
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,
     WDB_STMT_FIM_FIND_ENTRY,
@@ -65,6 +69,7 @@ typedef enum wdb_stmt {
     WDB_STMT_OSINFO_INSERT,
     WDB_STMT_OSINFO_INSERT2,
     WDB_STMT_OSINFO_DEL,
+    WDB_STMT_OSINFO_GET,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_INSERT2,
     WDB_STMT_PROGRAM_DEL,
@@ -223,11 +228,19 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
     WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
-    WDB_STMT_VULN_CVE_INSERT,
-    WDB_STMT_VULN_CVE_CLEAR,
-    WDB_STMT_VULN_CVE_UPDATE,
-    WDB_STMT_VULN_CVE_UPDATE_ALL,
+    WDB_STMT_VULN_CVES_INSERT,
+    WDB_STMT_VULN_CVES_CLEAR,
+    WDB_STMT_VULN_CVES_UPDATE,
+    WDB_STMT_VULN_CVES_UPDATE_ALL,
     WDB_STMT_VULN_CVE_FIND_CVE,
+    WDB_STMT_VULN_CVES_SELECT_BY_STATUS,
+    WDB_STMT_VULN_CVES_DELETE_ENTRY,
+    WDB_STMT_VULN_CVES_INSERT,
+    WDB_STMT_VULN_CVES_CLEAR,
+    WDB_STMT_VULN_CVES_UPDATE,
+    WDB_STMT_VULN_CVES_UPDATE_ALL,
+    WDB_STMT_VULN_CVES_SELECT_BY_STATUS,
+    WDB_STMT_VULN_CVES_DELETE_ENTRY,
     WDB_STMT_SIZE // This must be the last constant
 } wdb_stmt;
 
@@ -651,7 +664,7 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, in
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast, const char * checksum, const char * item_id, const bool replace);
 
 // Insert OS info tuple. Return 0 on success or -1 on error.
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged);
 
 // Save OS info into DB.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace);
@@ -1248,6 +1261,22 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 int wdb_journal_wal(sqlite3 *db);
 
 /**
+*  @brief Calculates SHA1 hash from a NULL terminated string array.
+*
+* @param [in] strings_to_hash NULL Terminated array with strings to hash
+* @param [out] hexdigest Result
+*/
+ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest);
+
+/**
+*  @brief Calculates SHA1 hash from a NULL terminated set of strings.
+*
+* @param [in] ... NULL Terminated list of strings
+* @param [out] hexdigest Result
+*/
+ int wdbi_strings_hash(os_sha1 hexdigest, ...);
+
+/**
  * @brief Function to get a MITRE technique's name.
  *
  * @param [in] wdb The MITRE struct database.
@@ -1737,7 +1766,7 @@ int wdb_parse_task_set_timeout(wdb_t* wdb, const cJSON *parameters, char* output
 int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output);
 
 /**
- * @brief Function to parse the vuln_cve requests.
+ * @brief Function to parse the vuln_cves requests.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the action and the data if needed.
@@ -1745,10 +1774,10 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output);
 
  /**
- * @brief Function to parse the vuln_cve insert action.
+ * @brief Function to parse the vuln_cves insert action.
  *
  * @param [in] wdb The global struct database.
  * @param [in] input String with the the data in json format.
@@ -1756,28 +1785,42 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_insert_vuln_cve(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output);
 
 /**
- * @brief Function to parse the vuln_cve clear action.
+ * @brief Function to parse the vuln_cves update status action.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the the data in json format.
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+ int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* output);
+
+ /**
+ * @brief Function to parse the vuln_cves remove action.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] input String with the the data in json format. It could receive a status to remove all the vulnerabilities
+ *                   whith that status, or the CVE and reference to remove a particular entry. Examples:
+ *                   - To remove by status: {"status":"OBSOLETE"}
+ *                   - To remove a specific entry: {"cve":"cve-xxxx-xxxx","reference":"refxxx"}
+ * @param [out] output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output);
+
+ /**
+ * @brief Function to parse the vuln_cves clear action.
  *
  * @param [in] wdb The global struct database.
  * @param [out] output Response of the query.
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_clear_vuln_cve(wdb_t* wdb, char* output);
-
-/**
- * @brief Function to parse the vuln_cve update action.
- *
- * @param [in] wdb The global struct database.
- * @param [in] input String with the the data in json format.
- * @param [out] output Response of the query.
- *  * @return 0 Success: response contains "ok".
- *        -1 On error: response contains "err" and an error description.
- */
- int wdb_parse_agents_vuln_cve_update_status(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_clear_vuln_cves(wdb_t* wdb, char* output);
 
 /**
  * Update old tasks with status in progress to status timeout
