@@ -421,20 +421,21 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 
     // Calculating OS reference
     os_sha1 hexdigest;
-    wdbi_sha_calculation(NULL, hexdigest, 13,
-                         architecture ? architecture : "",
-                         os_name ? os_name : "",
-                         os_version ? os_version : "",
-                         os_codename ? os_codename : "",
-                         os_major ? os_major : "",
-                         os_minor ? os_minor : "",
-                         os_patch ? os_patch : "",
-                         os_build ? os_build : "",
-                         os_platform ? os_platform : "",
-                         sysname ? sysname : "",
-                         release ? release : "",
-                         version ? version : "",
-                         os_release ? os_release : "");
+    wdbi_strings_hash(hexdigest,
+                      architecture ? architecture : "",
+                      os_name ? os_name : "",
+                      os_version ? os_version : "",
+                      os_codename ? os_codename : "",
+                      os_major ? os_major : "",
+                      os_minor ? os_minor : "",
+                      os_patch ? os_patch : "",
+                      os_build ? os_build : "",
+                      os_platform ? os_platform : "",
+                      sysname ? sysname : "",
+                      release ? release : "",
+                      version ? version : "",
+                      os_release ? os_release : "",
+                      NULL);
 
     // If there is a change in the OS, the triaged is set to 0
     triaged = reference && strcmp(hexdigest, reference) == 0 ? triaged : 0;
