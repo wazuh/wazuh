@@ -152,9 +152,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
                 goto fail;
             }
-            if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
         } else if (strcmp(node[i]->element, osrootcheck) == 0) {
             if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0)) {
                 goto fail;
