@@ -24,22 +24,22 @@ int wdb_agents_clear_vuln_cve(wdb_t *wdb);
 
 /**
  * @brief Function to check if a certain package exists.
- * 
+ *
  * @param [in] wdb The 'agents' struct database.
  * @param [in] reference The package reference.
- * @return Returns 1 if found, 0 if not, -1 on error.
+ * @return Returns TRUE if found, FALSE if not or error.
  */
-int wdb_agents_find_package(wdb_t *wdb, const char* reference);
+bool wdb_agents_find_package(wdb_t *wdb, const char* reference);
 
 /**
  * @brief Function to check if a certain cve exists.
- * 
+ *
  * @param [in] wdb The 'agents' struct database.
  * @param [in] cve The CVE id of the vulnerability.
  * @param [in] reference The package reference.
- * @return Returns 1 if found, 0 if not, -1 on error.
+ * @return Returns TRUE if found, FALSE if not or error.
  */
-int wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
+bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
 
 /**
  * @brief Function to insert a new entry into the agent vuln_cve table.
@@ -52,22 +52,23 @@ int wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
  * @param [in] reference The package reference.
  * @param [in] type The package type.
  * @param [in] status The vulnerability status.
- * @param [in] check_pkg_existance If 1, it enables a package existance verification in sys_programs table.
- * @return Returns 0 on success or -1 on error.
+ * @param [in] check_pkg_existance If TRUE, it enables a package existance verification in sys_programs table.
+ * @return Returns cJSON object with 'action': 'INSERT' | 'UPDATE'.
+ *                               and 'status': 'SUCCESS' | 'ERROR' | 'PKG_NOT_FOUND'
  */
-int wdb_agents_insert_vuln_cve(wdb_t *wdb, 
-                               const char* name, 
-                               const char* version, 
-                               const char* architecture, 
+cJSON* wdb_agents_insert_vuln_cve(wdb_t *wdb,
+                               const char* name,
+                               const char* version,
+                               const char* architecture,
                                const char* cve,
                                const char* reference,
                                const char* type,
                                const char* status,
-                               int check_pkg_existance);
+                               bool check_pkg_existance);
 
 /**
  * @brief Function to update the status field in agent database vuln_cve table.
- * 
+ *
  * @param [in] wdb The 'agents' struct database.
  * @param [in] old_status The status that is going to be updated. The '*' option changes all statuses.
  * @param [in] new_status The new status.
