@@ -22,6 +22,7 @@
 #include "buffer_op.h"
 #include <time.h>
 #include "wazuhdb_op.h"
+#include "wazuh_db/wdb.h"
 
 static int error_package = 0;
 static int prev_package_id = 0;
@@ -1337,6 +1338,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
                 error_package = 0;
             }
         }
+
         cJSON * scan_time = cJSON_GetObjectItem(logJSON, "timestamp");
         cJSON * format = cJSON_GetObjectItem(package, "format");
         cJSON * name = cJSON_GetObjectItem(package, "name");
@@ -1456,6 +1458,16 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
+
+        // The reference for packages is calculated with the name, version and architecture
+        os_sha1 hexdigest;
+        wdbi_strings_hash(hexdigest,
+                          name->valuestring ? name->valuestring : "",
+                          version->valuestring ? version->valuestring : "",
+                          architecture->valuestring ? architecture->valuestring : "",
+                          NULL);
+
+        wm_strcat(&msg, hexdigest, '|');
 
         char *message;
         if (wdbc_query_ex(socket, msg, response, OS_SIZE_6144) == 0) {
@@ -2035,5 +2047,3 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
     }
     return ret_val;
 }
-
-
