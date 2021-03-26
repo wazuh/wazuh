@@ -413,7 +413,7 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
 /**
  * @brief Sends log message about start up
  * */
-static void send_msg_on_startup(void){
+static void send_msg_on_startup(void) {
 
     char msg[OS_MAXSTR + 2] = { '\0' };
     char fmsg[OS_MAXSTR + 1] = { '\0' };
@@ -465,7 +465,7 @@ void send_agent_stopped_message() {
 /**
  * @brief Send log message about shutdown
  * */
-static void send_msg_on_shutdown(void){
+static void send_msg_on_shutdown(void) {
 
     char msg[OS_MAXSTR + 2] = { '\0' };
     char fmsg[OS_MAXSTR + 1] = { '\0' };
