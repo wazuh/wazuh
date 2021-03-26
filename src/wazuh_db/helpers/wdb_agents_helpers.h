@@ -21,7 +21,7 @@ typedef enum agents_db_access {
 } agents_db_access;
 
 /**
- * @brief Insert a CVE to the vuln_cve table in the agents database.
+ * @brief Insert or update a vulnerability to the vuln_cve table in the agents database.
  *
  * @param[in] id The agent ID.
  * @param[in] name The affected package name.
@@ -33,9 +33,15 @@ typedef enum agents_db_access {
  * @param[in] status The vulnerability status.
  * @param[in] check_pkg_existance If TRUE, it enables a package existance verification in sys_programs table.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns 0 on success or -1 on error.
+ * @return Returns cJSON object with 'action': 'INSERT' | 'UPDATE'.
+ *                               and 'status': 'SUCCESS' | 'ERROR' | 'PKG_NOT_FOUND'
+ *         If the vulnerability already exists in vuln_cve table, 'status' field will contain 'UPDATE' string. Otherwise, it contains 'INSERT'.
+ *         If the action was completed successfully, 'status' contains 'SUCCESS' string.
+ *         If check_pkg_existance is enabled and the package wasn't found 'status' contains 'PKG_NOT_FOUND'.
+ *         On any error, 'status' contains 'ERROR' string.
+ *
  */
-int wdb_agents_vuln_cve_insert(int id,
+cJSON* wdb_agents_vuln_cve_insert(int id,
                                const char *name,
                                const char *version,
                                const char *architecture,
@@ -56,9 +62,9 @@ int wdb_agents_vuln_cve_insert(int id,
 int wdb_agents_vuln_cve_clear(int id,
                               int *sock);
 
-/** 
- * @brief Updates all or a specific status from the vuln_cve table in the agents database. 
- *  
+/**
+ * @brief Updates all or a specific status from the vuln_cve table in the agents database.
+ *
  * @param[in] id The agent ID.
  * @param[in] old_status The status that is going to be updated. The '*' option changes all statuses.
  * @param[in] new_status The new status.
