@@ -13,6 +13,12 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include <os_net/os_net.h>
 
+/*
+ * These values ​​were taken from how libcurl looks for the paths at compilation time,
+ * here it is modified to be able to support the precompiled deps.
+ *
+ * https://github.com/curl/curl/blob/5930cb1c465ef5f0de6f1b91a843bb6f0bed1f23/acinclude.m4#L2182
+ */
 const char* certs_list[] = {
     "/etc/ssl/certs/ca-certificates.crt",       // Debian systems
     "/etc/pki/tls/certs/ca-bundle.crt",         // Redhat and Mandriva
