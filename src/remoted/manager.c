@@ -157,8 +157,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
         result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node?"syncreq":"synced", wdb_sock);
 
-        if (OS_SUCCESS != result)
+        if (OS_SUCCESS != result) {
             mwarn("Unable to save last keepalive and set connection status as active for agent: %s", key->id);
+        }
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
@@ -194,7 +195,32 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
-             }
+            } else {
+                /* Generate alert */
+                char srcmsg[OS_SIZE_256];
+                char msg[OS_SIZE_1024];
+
+                memset(srcmsg, '\0', OS_SIZE_256);
+                memset(msg, '\0', OS_SIZE_1024);
+
+                snprintf(srcmsg, OS_SIZE_256, "[%s] (%s) %s", key->id, key->name, key->ip->ip);
+                snprintf(msg, OS_SIZE_1024, AG_STOP_MSG, key->name, key->ip->ip);
+
+                /* Send stopped message */
+                if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
+                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+                    // Try to reconnect infinitely
+                    logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+                    minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+                    if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
+                        // Something went wrong sending a message after an immediate reconnection...
+                        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                    }
+                }
+            }
          } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s'", msg);

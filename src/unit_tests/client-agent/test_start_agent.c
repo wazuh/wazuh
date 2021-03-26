@@ -30,7 +30,6 @@
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern bool agent_ping_to_server(int server_id);
-extern void send_msg_on_shutdown(void);
 extern void send_agent_stopped_message();
 extern int _s_verify_counter;
 
@@ -506,46 +505,9 @@ static void test_agent_ping_to_server_udp_ok(void **state) {
 static void test_send_agent_stopped_message(void **state) {
 
     /* Sending the shutdown message */
-    will_return(__wrap_wnet_select, 1);
-    expect_any(__wrap_OS_RecvSecureTCP, sock);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent shutdown ");
-    expect_string(__wrap_send_msg, msg, "1:ossec:ossec: Agent stopped: 'agent0->any'.");
-    expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
-    will_return(__wrap_ReadSecMSG, "#!-agent ack ");
-    will_return(__wrap_ReadSecMSG, KS_VALID);
-
-    expect_string(__wrap__minfo, formatted_msg, "(4114): Agent disconnected from server.");
 
     send_agent_stopped_message();
-}
-
-static void test_send_agent_stopped_message_error(void **state) {
-
-    /* Decode error */
-    will_return(__wrap_wnet_select, 1);
-    expect_any(__wrap_OS_RecvSecureTCP, sock);
-    expect_any(__wrap_OS_RecvSecureTCP, size);
-    will_return(__wrap_OS_RecvSecureTCP, SERVER_WRONG_ACK);
-    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_WRONG_ACK));
-    expect_string(__wrap_send_msg, msg, "#!-agent shutdown ");
-    expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
-    will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
-    will_return(__wrap_ReadSecMSG, KS_CORRUPT);
-
-    expect_string(__wrap__mwarn, formatted_msg, "(1214): Problem receiving message from '(null)'.");
-
-    send_agent_stopped_message();
-}
-
-/* send_msg_on_shutdown */
-static void test_send_msg_on_shutdown(void **state) {
-
-    /* Shutdown message to server */
-    expect_string(__wrap_send_msg, msg, "1:ossec:ossec: Agent stopped: 'agent0->any'.");
-    send_msg_on_shutdown();
 }
 
 int main(void) {
@@ -561,8 +523,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_ok, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_ok, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message_error, setup_test, teardown_test),
-        cmocka_unit_test_setup_teardown(test_send_msg_on_shutdown, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

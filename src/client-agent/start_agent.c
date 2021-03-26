@@ -32,7 +32,6 @@ static void w_agentd_keys_init (void);
 static bool agent_handshake_to_server(int server_id, bool is_startup);
 static bool agent_ping_to_server(int server_id);
 static void send_msg_on_startup(void);
-static void send_msg_on_shutdown(void);
 
 /**
  * @brief Connects to a specified server
@@ -432,50 +431,10 @@ static void send_msg_on_startup(void) {
  * @brief Send agent stopped message to server before exit
  * */
 void send_agent_stopped_message() {
-    size_t msg_length;
-    ssize_t recv_b = 0;
+    char msg[OS_SIZE_32] = { '\0' };
 
-    char *tmp_msg;
-    char msg[OS_MAXSTR + 2] = { '\0' };
-    char buffer[OS_MAXSTR + 1] = { '\0' };
-    char cleartext[OS_MAXSTR + 1] = { '\0' };
-
-    snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_SHUTDOWN);
+    snprintf(msg, OS_SIZE_32, "%s%s", CONTROL_HEADER, HC_SHUTDOWN);
 
     /* Send shutdown message */
     send_msg(msg, -1);
-
-    /* Read until our reply comes back */
-    recv_b = receive_message(buffer, OS_MAXSTR);
-
-    if (recv_b > 0) {
-        if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
-            mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
-        }
-        else {
-            if (IsValidHeader(tmp_msg) && (strcmp(tmp_msg, HC_ACK) == 0)) {
-                minfo(AG_DISCONNECTED);
-                /* Send shutdown alert message */
-                send_msg_on_shutdown();
-            }
-        }
-    }
-}
-
-/**
- * @brief Send log message about shutdown
- * */
-static void send_msg_on_shutdown(void) {
-
-    char msg[OS_MAXSTR + 2] = { '\0' };
-    char fmsg[OS_MAXSTR + 1] = { '\0' };
-
-    /* Send log message about shutdown */
-    snprintf(msg, OS_MAXSTR, OS_AG_STOPPED,
-            keys.keyentries[0]->name,
-            keys.keyentries[0]->ip->ip);
-    os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
-            "ossec", msg);
-
-    send_msg(fmsg, -1);
 }
