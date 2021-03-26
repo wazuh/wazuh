@@ -83,6 +83,8 @@ void expect_cJSON_IsObject_call(int ret);
 
 cJSON * __wrap_cJSON_Parse(const char *value);
 
+cJSON * __wrap_cJSON_ParseWithOpts(const char *value, const char **return_parse_end, cJSON_bool require_null_terminated);
+
 extern cJSON * __real_cJSON_Parse(const char *value);
 
 char * __wrap_cJSON_PrintUnformatted(const cJSON *item);
