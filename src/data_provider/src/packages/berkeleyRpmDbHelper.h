@@ -75,13 +75,13 @@ class BerkeleyRpmDBReader final
         {
             auto bytes { reinterpret_cast<uint8_t *>(data.data) };
             std::vector<BerkeleyHeaderEntry> retVal;
-            constexpr auto byteSizeInt32{ sizeof(int32_t) };
+            constexpr auto BYTE_SIZE_INT32{ sizeof(int32_t) };
 
             if (data.size >= FIRST_ENTRY_OFFSET)
             {
                 const auto indexSize { Utils::toInt32BE(bytes) };
 
-                const auto dataSize { Utils::toInt32BE(bytes + byteSizeInt32) };
+                const auto dataSize { Utils::toInt32BE(bytes + BYTE_SIZE_INT32) };
 
                 const auto estimatedHeaderTagSize { FIRST_ENTRY_OFFSET + indexSize * ENTRY_SIZE + dataSize };
 
@@ -96,7 +96,7 @@ class BerkeleyRpmDBReader final
                     for (auto i = 0; i < indexSize; ++i)
                     {
                         const auto tag { Utils::toInt32BE(ucp) };
-                        ucp += byteSizeInt32;
+                        ucp += BYTE_SIZE_INT32;
 
                         const auto it
                         {
@@ -113,17 +113,17 @@ class BerkeleyRpmDBReader final
                             retVal[i].tag = it->second;
 
                             retVal[i].type = Utils::toInt32BE(ucp);
-                            ucp += byteSizeInt32;
+                            ucp += BYTE_SIZE_INT32;
 
                             retVal[i].offset = Utils::toInt32BE(ucp);
-                            ucp += byteSizeInt32;
+                            ucp += BYTE_SIZE_INT32;
 
                             retVal[i].count = Utils::toInt32BE(ucp);
-                            ucp += byteSizeInt32;
+                            ucp += BYTE_SIZE_INT32;
                         }
                         else
                         {
-                            ucp += ENTRY_SIZE - byteSizeInt32;
+                            ucp += ENTRY_SIZE - BYTE_SIZE_INT32;
                         }
                     }
                 }
