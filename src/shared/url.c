@@ -46,7 +46,7 @@ char const * find_cert_list() {
     return ret_val;
 }
 
-int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout){
+int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout) {
     CURL *curl;
     FILE *fp;
     CURLcode res;
@@ -54,7 +54,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     char errbuf[CURL_ERROR_SIZE];
     int old_mask;
 
-    if (curl){
+    if (curl) {
         char const *cert = find_cert_list();
 
         old_mask = umask(0006);
@@ -83,7 +83,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         }
 
         // Enable SSL check if url is HTTPS
-        if (!strncmp(url,"https",5)){
+        if (!strncmp(url,"https",5)) {
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
             if (NULL != cert) {
