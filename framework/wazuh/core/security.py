@@ -4,12 +4,13 @@
 
 import yaml
 
-import api.middlewares as middlewares
+from os import remove
 
+import api.middlewares as middlewares
 from api.authentication import change_secret
 from api.constants import SECURITY_CONFIG_PATH
 from wazuh import WazuhInternalError, WazuhError
-from wazuh.rbac.orm import RolesManager, TokenManager
+from wazuh.rbac.orm import RolesManager, TokenManager, DATABASE_FULL_PATH, check_database_integrity
 
 
 def update_security_conf(new_config):
@@ -93,4 +94,15 @@ def revoke_tokens():
     with TokenManager() as tm:
         tm.delete_all_rules()
 
+    return {'result': 'True'}
+
+
+def rbac_db_factory_reset():
+    """Reset the RBAC database to default values."""
+    try:
+        remove(DATABASE_FULL_PATH)
+    except IOError:
+        pass
+
+    check_database_integrity()
     return {'result': 'True'}

@@ -210,6 +210,17 @@ class Body(Model):
         return f_kwargs
 
     @classmethod
+    async def validate_kwargs(cls, kwargs):
+        try:
+            processed_kwargs = await cls.get_kwargs(kwargs)
+        except ProblemException as e:
+            raise WazuhError(10001, extra_message=e.detail)
+        missing_kwargs = set(processed_kwargs) - set(kwargs)
+        if missing_kwargs:
+            raise WazuhError(10002, extra_message='{}'.format(missing_kwargs))
+        return processed_kwargs
+
+    @classmethod
     def from_dict(cls, dikt):
         """Returns the dict as a model
 

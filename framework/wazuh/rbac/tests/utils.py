@@ -1,10 +1,8 @@
 import os
-from importlib import reload
 from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
 
 
 def create_memory_db(sql_file, session, test_data_path):
