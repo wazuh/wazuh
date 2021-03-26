@@ -259,7 +259,7 @@ start_service()
 {
 
     if [ $USE_JSON = false ]; then
-        echo "Starting $NAME $VERSION..."
+        echo "Starting Wazuh $VERSION..."
     fi
 
     TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1 | grep "ERROR")
@@ -505,7 +505,7 @@ stop_service()
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
-        echo "$NAME $VERSION Stopped"
+        echo "Wazuh $VERSION Stopped"
     fi
 }
 
