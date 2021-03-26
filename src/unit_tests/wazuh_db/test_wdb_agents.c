@@ -219,11 +219,9 @@ void test_wdb_agents_remove_by_status_vuln_cves_statement_init_fail(void **state
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_SELECT_BY_STATUS);
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
-
     ret = wdb_agents_remove_by_status_vuln_cves(data->wdb, status, &data->output);
 
-    assert_string_equal(data->output, "Cannot cache statement");
+    assert_null(data->output);
     assert_int_equal(ret, WDBC_ERROR);
 }
 
@@ -246,11 +244,11 @@ void test_wdb_agents_remove_by_status_vuln_cves_statement_bind_fail(void **state
 
     ret = wdb_agents_remove_by_status_vuln_cves(data->wdb, status, &data->output);
 
-    assert_string_equal(data->output, "Cannot bind sql statement");
+    assert_null(data->output);
     assert_int_equal(ret, WDBC_ERROR);
 }
 
-void test_wdb_agents_remove_by_status_vuln_cves_no_cves_for_detele(void **state)
+void test_wdb_agents_remove_by_status_vuln_cves_error_exec_stmt_sized(void **state)
 {
     int ret = -1;
     const char *status = "OBSOLETE";
@@ -264,14 +262,16 @@ void test_wdb_agents_remove_by_status_vuln_cves_no_cves_for_detele(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
 
-    // Executing statement
-    will_return(__wrap_wdb_exec_stmt, NULL);
-    expect_function_call(__wrap_cJSON_Delete);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_ERROR);
+    will_return(__wrap_wdb_exec_stmt_sized, NULL);
+    expect_string(__wrap__merror, formatted_msg, "Failed to retrieve vulnerabilities with status OBSOLETE from the database");
 
     ret = wdb_agents_remove_by_status_vuln_cves(data->wdb, status, &data->output);
 
-    assert_string_equal(data->output, "[]");
-    assert_int_equal(ret, WDBC_OK);
+    assert_null(data->output);
+    assert_int_equal(ret, WDBC_ERROR);
 }
 
 void test_wdb_agents_remove_by_status_vuln_cves_error_removing_cve(void **state)
@@ -300,12 +300,14 @@ void test_wdb_agents_remove_by_status_vuln_cves_error_removing_cve(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
 
-    // Executing statement
-    will_return(__wrap_wdb_exec_stmt, root);
-    will_return(__wrap_cJSON_GetObjectItem, str1);
-    will_return(__wrap_cJSON_GetObjectItem, str2);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
 
     // Removing vulnerability
+    will_return(__wrap_cJSON_GetObjectItem, str1);
+    will_return(__wrap_cJSON_GetObjectItem, str2);
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_DELETE_ENTRY);
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
     expect_string(__wrap__merror, formatted_msg, "Error removing vulnerability from the inventory database: cve-xxxx-yyyy");
@@ -314,7 +316,7 @@ void test_wdb_agents_remove_by_status_vuln_cves_error_removing_cve(void **state)
 
     ret = wdb_agents_remove_by_status_vuln_cves(data->wdb, status, &data->output);
 
-    assert_string_equal(data->output, "Error removing vulnerability from the inventory database:  cve-xxxx-yyyy");
+    assert_null(data->output);
     assert_int_equal(ret, WDBC_ERROR);
 
     __real_cJSON_Delete(root);
@@ -346,12 +348,14 @@ void test_wdb_agents_remove_by_status_vuln_cves_success(void **state)
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, status);
 
-    // Executing statement first time
-    will_return(__wrap_wdb_exec_stmt, root);
-    will_return(__wrap_cJSON_GetObjectItem, str1);
-    will_return(__wrap_cJSON_GetObjectItem, str2);
+    //Executing statement
+    expect_value(__wrap_wdb_exec_stmt_sized, max_size, WDB_MAX_RESPONSE_SIZE);
+    will_return(__wrap_wdb_exec_stmt_sized, SQLITE_DONE);
+    will_return(__wrap_wdb_exec_stmt_sized, root);
 
     // Removing vulnerability
+    will_return(__wrap_cJSON_GetObjectItem, str1);
+    will_return(__wrap_cJSON_GetObjectItem, str2);
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_DELETE_ENTRY);
     will_return(__wrap_wdb_init_stmt_in_cache, 1);
 
@@ -361,77 +365,12 @@ void test_wdb_agents_remove_by_status_vuln_cves_success(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, "ref-cve-xxxx-yyyy");
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    // Executing statement second time
-    will_return(__wrap_wdb_exec_stmt, root);
-    will_return(__wrap_cJSON_GetObjectItem, str1);
-    will_return(__wrap_cJSON_GetObjectItem, str2);
-
-    // Removing vulnerability
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_DELETE_ENTRY);
-    will_return(__wrap_wdb_init_stmt_in_cache, 1);
-
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "cve-xxxx-yyyy");
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "ref-cve-xxxx-yyyy");
-
-    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    // Executing statement third time
-    will_return(__wrap_wdb_exec_stmt, NULL);
     expect_function_call(__wrap_cJSON_Delete);
 
     ret = wdb_agents_remove_by_status_vuln_cves(data->wdb, status, &data->output);
 
-    assert_string_equal(data->output, "[{\"cve\":\"cve-xxxx-yyyy\",\"reference\":\"ref-cve-xxxx-yyyy\"},{\"cve\":\"cve-xxxx-yyyy\",\"reference\":\"ref-cve-xxxx-yyyy\"}]");
+    assert_string_equal(data->output, "[{\"cve\":\"cve-xxxx-yyyy\",\"reference\":\"ref-cve-xxxx-yyyy\"}]");
     assert_int_equal(ret, WDBC_OK);
-
-    __real_cJSON_Delete(root);
-}
-
-void test_wdb_agents_remove_by_status_vuln_cves_full(void **state)
-{
-    int ret = -1;
-    cJSON *root = NULL;
-    cJSON *row = NULL;
-    cJSON *str1 = NULL;
-    cJSON *str2 = NULL;
-    const char *status = "OBSOLETE";
-    test_struct_t *data  = (test_struct_t *)*state;
-
-    root = __real_cJSON_CreateArray();
-    row = __real_cJSON_CreateObject();
-    str1 = __real_cJSON_CreateString("cve-xxxx-yyyy");
-    __real_cJSON_AddItemToObject(row, "cve", str1);
-    str2 = __real_cJSON_CreateString("ref-cve-xxxx-yyyy");
-    __real_cJSON_AddItemToObject(row, "reference", str2);
-    __real_cJSON_AddItemToArray(root, row);
-    // Creating a cJSON array bigger than WDB_MAX_RESPONSE_SIZE
-    for(int i = 0; i < 2500; i++){
-        __real_cJSON_AddStringToObject(row,"test_field", "test_value");
-    }
-
-    // Preparing statement
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_SELECT_BY_STATUS);
-    will_return(__wrap_wdb_init_stmt_in_cache, 1);
-
-    will_return_count(__wrap_sqlite3_bind_text, SQLITE_OK, -1);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, status);
-
-    // Executing statement first time
-    will_return(__wrap_wdb_exec_stmt, root);
-    will_return(__wrap_cJSON_GetObjectItem, str1);
-    will_return(__wrap_cJSON_GetObjectItem, str2);
-    expect_function_call(__wrap_cJSON_Delete);
-
-    ret = wdb_agents_remove_by_status_vuln_cves(data->wdb, status, &data->output);
-
-    assert_string_equal(data->output, "[]");
-    assert_int_equal(ret, WDBC_DUE);
 
     __real_cJSON_Delete(root);
 }
@@ -483,10 +422,9 @@ int main()
         /* Tests wdb_agents_remove_by_status_vuln_cves */
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_by_status_vuln_cves_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_by_status_vuln_cves_statement_bind_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_remove_by_status_vuln_cves_no_cves_for_detele, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_remove_by_status_vuln_cves_error_exec_stmt_sized, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_by_status_vuln_cves_error_removing_cve, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_by_status_vuln_cves_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_remove_by_status_vuln_cves_full, test_setup, test_teardown),
         /* Tests wdb_agents_clear_vuln_cves */
         cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_success, test_setup, test_teardown),
