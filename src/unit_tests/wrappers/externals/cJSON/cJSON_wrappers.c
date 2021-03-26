@@ -125,6 +125,13 @@ cJSON * __wrap_cJSON_Parse(__attribute__ ((__unused__)) const char *value) {
     return mock_type(cJSON *);
 }
 
+cJSON * __wrap_cJSON_ParseWithOpts(__attribute__ ((__unused__)) const char *value,
+                                   const char **return_parse_end,
+                                   __attribute__ ((__unused__)) cJSON_bool require_null_terminated) {
+    *return_parse_end = NULL;
+    return mock_type(cJSON *);
+}
+
 char * __wrap_cJSON_PrintUnformatted(__attribute__ ((__unused__)) const cJSON *item) {
     return mock_type(char *);
 }
@@ -145,8 +152,8 @@ cJSON* __wrap_cJSON_Duplicate(__attribute__ ((__unused__)) const cJSON *item, __
     return mock_type(cJSON*);
 }
 
-cJSON* __wrap_cJSON_AddBoolToObject(__attribute__ ((__unused__)) cJSON * const object, 
-                                    __attribute__ ((__unused__))const char * const name, 
+cJSON* __wrap_cJSON_AddBoolToObject(__attribute__ ((__unused__)) cJSON * const object,
+                                    __attribute__ ((__unused__))const char * const name,
                                     __attribute__ ((__unused__))const cJSON_bool boolean) {
     return mock_type(cJSON *);
 }
