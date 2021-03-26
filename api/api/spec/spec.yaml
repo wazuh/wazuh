@@ -36,7 +36,7 @@ info:
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.2/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/5.0/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -538,7 +538,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -605,7 +605,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of request per minute reached"
             remediation: "This limit can be changed in security.yaml file. More information here:
-            https://documentation.wazuh.com/4.2/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/5.0/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -618,7 +618,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -2194,7 +2194,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.2/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/5.0/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_edps:
           type: number
@@ -5335,7 +5335,7 @@ paths:
                 api_version: "v5.0.0"
                 revision: '50000'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.2/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/5.0/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
 
@@ -15853,4 +15853,4 @@ paths:
 
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.2/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/5.0/user-manual/api/index.html'
