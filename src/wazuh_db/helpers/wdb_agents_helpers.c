@@ -133,7 +133,7 @@ int wdb_agents_vuln_cves_update_status(int id,
     return result;
 }
 
-int wdb_agents_vuln_cve_remove_entry(int id,
+int wdb_agents_vuln_cves_remove_entry(int id,
                                      const char *cve,
                                      const char *reference,
                                      int *sock) {
@@ -232,15 +232,20 @@ cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
                     mdebug2("JSON error near: %s", error);
                     wdb_res = WDBC_ERROR;
                 }
-                else if (!data_out) {
-                    data_out = cves;
-                }
                 else {
-                    cJSON *cve = NULL;
-                    cJSON_ArrayForEach(cve, cves) {
-                        cJSON_AddItemToArray(data_out, cJSON_Duplicate(cve, true));
+                    if (!data_out) {
+                        // The first call to Wazuh DB, we consider the query response as the response of the method.
+                        data_out = cves;
                     }
-                    cJSON_Delete(cves);
+                    else {
+                        // In case of having vulnerabilities returned by chunks, from the second call, all the subsequent calls
+                        // we will add the JSON response of the query to the JSON response of the query obtained in the first call.
+                        cJSON *cve = NULL;
+                        cJSON_ArrayForEach(cve, cves) {
+                            cJSON_AddItemToArray(data_out, cJSON_Duplicate(cve, true));
+                        }
+                        cJSON_Delete(cves);
+                    }
                 }
             }
             else {
