@@ -175,6 +175,7 @@ wdbc_result wdb_agents_remove_by_status_vuln_cves(wdb_t *wdb, const char* status
                     //Delete the vulnerability
                     if (OS_SUCCESS != wdb_agents_remove_vuln_cves(wdb, json_cve->valuestring, json_reference->valuestring)) {
                         merror("Error removing vulnerability from the inventory database: %s", json_cve->valuestring);
+                        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s %s", "Error removing vulnerability from the inventory database: ", json_cve->valuestring);
                         wdb_res = WDBC_ERROR;
                     }
                     else {
