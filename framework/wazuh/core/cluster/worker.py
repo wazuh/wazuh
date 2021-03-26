@@ -509,12 +509,10 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             n_files, merged_file = \
                 wazuh.core.cluster.cluster.merge_info(merge_type='agent-groups', files=extra_valid.keys(),
                                                       node_name=self.name)
-            if n_files:
-                files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
-                                               'cluster_item_key': 'queue/agent-groups/'}}
-                my_worker = SyncWorker(cmd=b'sync_e_w_m', files_to_sync=files_to_sync, files_metadata=files_to_sync,
-                                       logger=logger, worker=self)
-                await my_worker.sync()
+            files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
+                                           'cluster_item_key': 'queue/agent-groups/'}} if n_files else {}
+            await SyncWorker(cmd=b'sync_e_w_m', files_to_sync=files_to_sync, files_metadata=files_to_sync,
+                             logger=logger, worker=self).sync()
             after = time.time()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
 
