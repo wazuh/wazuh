@@ -66,10 +66,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
         chld_node = OS_GetElementsbyNode(xml, node[i]);
 
         /* Common configuration */
-		if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
-			if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
-				goto fail;
-			}
+        if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
+            if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
         } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
             if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
@@ -82,10 +82,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
 #if !defined(WIN32) && !defined(CLIENT)
         /* manager.conf configuration */
         } else if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
-			if (((modules & CGLOBAL) || (modules & CMAIL))
-					&& (Read_Global(chld_node, d1, d2) < 0)) {
-				goto fail;
-			}
+            if (((modules & CGLOBAL) || (modules & CMAIL))
+                    && (Read_Global(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
         } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {
             if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0)) {
                 goto fail;
@@ -139,23 +139,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osvulndet) == 0) {
-#if !defined(WIN32) && !defined(CLIENT)
             if ((modules & CWMODULE) && (Read_Vuln(xml, chld_node, d1, 1) < 0)) {
                 goto fail;
             }
-#else
-            mwarn("%s configuration is only set in the manager.", node[i]->element);
-#endif
         } else if (chld_node && (strcmp(node[i]->element, task_manager) == 0)) {
-#if !defined(WIN32) && !defined(CLIENT)
-			if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
-				goto fail;
-			}
-#else
-			mwarn("%s configuration is only set in the manager.", node[i]->element);
+            if ((modules & CWMODULE) && (Read_TaskManager(xml, node[i], d1) < 0)) {
+                goto fail;
+            }
 #endif
-#endif
-		/* agent.conf configuration */
+        /* agent.conf configuration */
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
                 goto fail;

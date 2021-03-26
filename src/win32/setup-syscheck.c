@@ -33,9 +33,9 @@ int main(int argc, char **argv)
         return (0);
     }
 
-    /* Check if Agent was installed already */
+    /* Check if WAZUH was installed already */
     if (!fileexist(AGENTCONF)) {
-        printf("%s: Agent not installed yet. Exiting.\n", argv[0]);
+        printf("%s: WAZUH not installed yet. Exiting.\n", argv[0]);
         return (0);
     }
 

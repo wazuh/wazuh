@@ -18,23 +18,11 @@
 
         [remote-syslog.template]
 
-        rootcheck.template
-
-        wodle-openscap.template
-
-        wodle-syscollector.template
-
-        syscheck.template
-
         global-ar.template
 
         ar-commands.template
 
         ar-definitions.template
-
-        localfile-logs*
-
-        localfile-commands.template
 
         rules.template
     </wazuh_config>
