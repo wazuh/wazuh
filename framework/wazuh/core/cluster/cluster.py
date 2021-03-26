@@ -201,14 +201,13 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                 continue
 
             # If 'all' files have been requested or entry is in the specified files list.
-            current_path = os.path.join(common.ossec_path, full_path)
+            current_path = os.path.join(common.wazuh_path, full_path)
             if entry in files or files == ["all"] and not path.isdir(current_path):
                 file_mod_time = os.path.getmtime(current_path)
 
                 try:
                     if file_mod_time == previous_status[full_path]['mod_time']:
-                        logger.debug(f"{full_path} has not changed its mtime since the last integrity process. "
-                                     f"Omitting...")
+                        # The current file has not changed its mtime since the last integrity process
                         walk_files[full_path] = previous_status[full_path]
                         continue
                 except KeyError:
