@@ -30,6 +30,7 @@
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
 extern bool agent_ping_to_server(int server_id);
+extern void send_agent_stopped_message();
 extern int _s_verify_counter;
 
 #ifndef TEST_WINAGENT
@@ -500,6 +501,14 @@ static void test_agent_ping_to_server_udp_ok(void **state) {
     assert_true(agent_ping_to_server(0));
 }
 
+/* send_agent_stopped_message */
+static void test_send_agent_stopped_message(void **state) {
+
+    /* Sending the shutdown message */
+    expect_string(__wrap_send_msg, msg, "#!-agent shutdown ");
+
+    send_agent_stopped_message();
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -513,6 +522,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_receive_invalid, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_ping_to_server_tcp_ok, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_agent_ping_to_server_udp_ok, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_send_agent_stopped_message, setup_test, teardown_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
