@@ -13,10 +13,32 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include <os_net/os_net.h>
 
+const char* certs_list[] = {
+    "/etc/ssl/certs/ca-certificates.crt",       // Debian systems
+    "/etc/pki/tls/certs/ca-bundle.crt",         // Redhat and Mandriva
+    "/usr/share/ssl/certs/ca-bundle.crt",       // RedHat
+    "/usr/local/share/certs/ca-root-nss.crt",   // FreeBSD
+    "/etc/ssl/cert.pem",                        // OpenBSD, FreeBSD, MacOS
+    NULL
+};
+
 struct MemoryStruct {
   char *memory;
   size_t size;
 };
+
+char const * find_cert_list() {
+    char const * ret_val = NULL;
+
+    for (size_t i = 0; NULL != certs_list[i]; ++i) {
+        if (-1 != FileSize(certs_list[i])) {
+            ret_val = certs_list[i];
+            break;
+        }
+    }
+
+    return ret_val;
+}
 
 int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout){
     CURL *curl;
@@ -27,6 +49,8 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     int old_mask;
 
     if (curl){
+        char const *cert = find_cert_list();
+
         old_mask = umask(0006);
         fp = fopen(dest,"wb");
         umask(old_mask);
@@ -53,9 +77,12 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         }
 
         // Enable SSL check if url is HTTPS
-        if(!strncmp(url,"https",5)){
+        if (!strncmp(url,"https",5)){
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+            if (NULL != cert) {
+                curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+            }
         }
 
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
@@ -269,6 +296,8 @@ char * wurl_http_get(const char * url) {
     chunk.size = 0;    /* no data at this point */
 
     if (curl){
+        char const *cert = find_cert_list();
+
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
@@ -277,6 +306,9 @@ char * wurl_http_get(const char * url) {
         if(!strncmp(url,"https",5)){
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
             curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+            if (NULL != cert) {
+                curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+            }
         }
 
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
