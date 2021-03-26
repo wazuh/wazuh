@@ -134,82 +134,50 @@ int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* referen
 }
 
 wdbc_result wdb_agents_remove_by_status_vuln_cves(wdb_t *wdb, const char* status, char **output) {
-    sqlite3_stmt* stmt = NULL;
-    unsigned response_size = 2; //Starts with "[]" size
-    wdbc_result wdb_res = WDBC_UNKNOWN;
+    wdbc_result wdb_res = WDBC_ERROR;
 
-    os_calloc(WDB_MAX_RESPONSE_SIZE, sizeof(char), *output);
-    char *response_aux = *output;
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_SELECT_BY_STATUS);
+
+    if (stmt == NULL) {
+        return wdb_res;
+    }
 
     //Prepare SQL query
-    if (stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_SELECT_BY_STATUS), !stmt) {
-        mdebug1("Cannot cache statement");
-        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot cache statement");
-        return WDBC_ERROR;
-    }
     if (sqlite3_bind_text(stmt, 1, status, -1, NULL) != SQLITE_OK) {
         merror("DB(%s) sqlite3_bind_text(): %s", wdb->id, sqlite3_errmsg(wdb->db));
-        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s", "Cannot bind sql statement");
-        return WDBC_ERROR;
+        return wdb_res;
     }
 
-    //Add array start
-    *response_aux++ = '[';
+    //Execute SQL query limited by size
+    int sql_status = SQLITE_ERROR;
+    cJSON* cves = wdb_exec_stmt_sized(stmt, WDB_MAX_RESPONSE_SIZE, &sql_status);
 
-    while (wdb_res == WDBC_UNKNOWN) {
-        //Get vulnerabilities info
-        cJSON* sql_vulns_response = wdb_exec_stmt(stmt);
+    if (SQLITE_DONE == sql_status) wdb_res = WDBC_OK;
+    else if (SQLITE_ROW == sql_status) wdb_res = WDBC_DUE;
+    else {
+        merror("Failed to retrieve vulnerabilities with status %s from the database", status);
+        return wdb_res;
+    }
 
-        if (sql_vulns_response && sql_vulns_response->child) {
-            cJSON* json_vuln = sql_vulns_response->child;
-            cJSON* json_cve = cJSON_GetObjectItem(json_vuln,"cve");
-            cJSON* json_reference = cJSON_GetObjectItem(json_vuln,"reference");
+    cJSON *cve = NULL;
+    cJSON_ArrayForEach(cve, cves) {
+        cJSON* json_cve_id = cJSON_GetObjectItem(cve,"cve");
+        cJSON* json_reference = cJSON_GetObjectItem(cve,"reference");
 
-            if (cJSON_IsString(json_cve) && cJSON_IsString(json_reference)) {
-                //Print vulnerability info
-                char *vuln_str = cJSON_PrintUnformatted(json_vuln);
-                unsigned vuln_len = strlen(vuln_str);
-
-                //Check if new vulnerability fits in response
-                if (response_size+vuln_len+1 < WDB_MAX_RESPONSE_SIZE) {
-                    //Delete the vulnerability
-                    if (OS_SUCCESS != wdb_agents_remove_vuln_cves(wdb, json_cve->valuestring, json_reference->valuestring)) {
-                        merror("Error removing vulnerability from the inventory database: %s", json_cve->valuestring);
-                        snprintf(*output, WDB_MAX_RESPONSE_SIZE, "%s %s", "Error removing vulnerability from the inventory database: ", json_cve->valuestring);
-                        wdb_res = WDBC_ERROR;
-                    }
-                    else {
-                        //Add new vulnerability
-                        memcpy(response_aux, vuln_str, vuln_len);
-                        response_aux+=vuln_len;
-                        //Add separator
-                        *response_aux++ = ',';
-                        //Save size
-                        response_size += vuln_len+1;
-                    }
-                }
-                else {
-                    //Pending vulnerabilities but buffer is full
-                    wdb_res = WDBC_DUE;
-                }
-                os_free(vuln_str);
+        if (cJSON_IsString(json_cve_id) && cJSON_IsString(json_reference)) {
+            //Delete the vulnerability
+            if (OS_SUCCESS != wdb_agents_remove_vuln_cves(wdb, json_cve_id->valuestring, json_reference->valuestring)) {
+                merror("Error removing vulnerability from the inventory database: %s", json_cve_id->valuestring);
+                cJSON_Delete(cves);
+                return WDBC_ERROR;
             }
         }
-        else {
-            //All vulnerabilities have been obtained
-            wdb_res = WDBC_OK;
-        }
-        cJSON_Delete(sql_vulns_response);
     }
 
-    if (wdb_res != WDBC_ERROR) {
-        if (response_size > 2) {
-            //Remove last ','
-            response_aux--;
-        }
-        //Add array end
-        *response_aux = ']';
-    }
+    //Printing the results
+    *output = cJSON_PrintUnformatted(cves);
+    cJSON_Delete(cves);
+
     return wdb_res;
 }
 
