@@ -73,8 +73,8 @@ int wdb_agents_vuln_cves_clear(int id,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_agents_vuln_cve_remove_entry(int id,
-                                     char *cve,
-                                     char *reference,
+                                     const char *cve,
+                                     const char *reference,
                                      int *sock);
 
 /**
@@ -85,8 +85,8 @@ int wdb_agents_vuln_cve_remove_entry(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns a pointer to a cJSON object that contains the information of all the vulnerabilities removed.
  */
-cJSON* wdb_agents_vuln_cve_remove_by_status(int id,
-                                            char *status,
+cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
+                                            const char *status,
                                             int *sock);
 
 /**

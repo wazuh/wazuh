@@ -134,8 +134,8 @@ int wdb_agents_vuln_cves_update_status(int id,
 }
 
 int wdb_agents_vuln_cve_remove_entry(int id,
-                                     char *cve,
-                                     char *reference,
+                                     const char *cve,
+                                     const char *reference,
                                      int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
@@ -193,7 +193,7 @@ int wdb_agents_vuln_cve_remove_entry(int id,
 }
 
 cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
-                                            char *status,
+                                            const char *status,
                                             int *sock) {
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -243,14 +243,17 @@ cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
                     cJSON_Delete(cves);
                 }
             }
+            else {
+                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
+            }
         }
         else {
+            mdebug1("Error removing vulnerabilities from the agent database.");
             wdb_res = WDBC_ERROR;
         }
     }
 
     if (WDBC_ERROR == wdb_res) {
-        mdebug1("Error removing vulnerabilities from the agent database.");
         cJSON_Delete(data_out);
     }
 
