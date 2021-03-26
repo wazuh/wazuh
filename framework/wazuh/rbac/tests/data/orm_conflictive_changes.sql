@@ -1,0 +1,16 @@
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+
+UPDATE policies SET id=120 WHERE id=1;
+UPDATE policies SET id=121 WHERE id=10;
+UPDATE policies SET id=122 WHERE id=20;
+
+INSERT INTO roles_policies VALUES(121, 100, 120, 0, '1970-01-01 00:00:00');
+INSERT INTO roles_policies VALUES(122, 100, 121, 1, '1970-01-01 00:00:00');
+INSERT INTO roles_policies VALUES(123, 100, 122, 2, '1970-01-01 00:00:00');
+
+INSERT INTO roles_policies VALUES(124, 101, 120, 0, '1970-01-01 00:00:00');
+INSERT INTO roles_policies VALUES(125, 101, 121, 1, '1970-01-01 00:00:00');
+INSERT INTO roles_policies VALUES(126, 101, 122, 2, '1970-01-01 00:00:00');
+
+COMMIT;
