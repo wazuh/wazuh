@@ -6190,11 +6190,11 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
 
         // Checking whether we should remove by status
         if (cJSON_IsString(status)) {
-            char* removed_cves = NULL;
+            char* remove_out_str = NULL;
 
-            wdbc_result wdb_res = wdb_agents_remove_by_status_vuln_cves(wdb, status->valuestring, &removed_cves);
-            snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], removed_cves);
-            os_free(removed_cves)
+            wdbc_result wdb_res = wdb_agents_remove_by_status_vuln_cves(wdb, status->valuestring, &remove_out_str);
+            snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], remove_out_str);
+            os_free(remove_out_str)
             ret = OS_SUCCESS;
         }
         // Checking whether we should remove a specific entry
