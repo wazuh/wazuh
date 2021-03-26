@@ -15,7 +15,7 @@ bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
     case SQLITE_DONE:
         return FALSE;
     default:
-        merror("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return FALSE;
     }
 }
@@ -36,7 +36,7 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference){
     case SQLITE_DONE:
         return FALSE;
     default:
-        merror("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
         return FALSE;
     }
 }
