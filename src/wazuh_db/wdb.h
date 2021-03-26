@@ -1257,19 +1257,22 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
  * @retval -1 On error.
  */
 int wdb_journal_wal(sqlite3 *db);
-// Calculates SHA1 hash from a NULL terminated string array or strings as parameters
 
 /**
-*  @brief Calculates SHA1 hash from a NULL terminated string array or strings as parameters.
-*
-* For example, wdbi_sha_calculation(array, hexdigest, 0)
-*              wdbi_sha_calculation(NULL, hexdigest, parameters_count, "first", "second", ...)
+*  @brief Calculates SHA1 hash from a NULL terminated string array.
 *
 * @param [in] strings_to_hash NULL Terminated array with strings to hash
-* @param [in] count Number of variable parameters sent
-* @param [out] hexdigest Final strings hashed
+* @param [out] hexdigest Result
 */
- int wdbi_sha_calculation(const char ** strings_to_hash, os_sha1 hexdigest, unsigned int count, ...);
+ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest);
+
+/**
+*  @brief Calculates SHA1 hash from a NULL terminated set of strings.
+*
+* @param [in] ... NULL Terminated list of strings
+* @param [out] hexdigest Result
+*/
+ int wdbi_strings_hash(os_sha1 hexdigest, ...);
 
 /**
  * @brief Function to get a MITRE technique's name.
