@@ -561,9 +561,14 @@ class WazuhException(Exception):
         # Logtest
         7000: {'message': 'Error trying to get logtest response'},
         7001: {'message': 'Error trying to read logtest session token',
-               'remediation': 'Make sure you introduce the token within the field "token"'}
+               'remediation': 'Make sure you introduce the token within the field "token"'},
 
         # > 9000: Authd
+
+        # 10000 CLI related
+        10000: {'message': 'Invalid CLI syntax'},
+        10001: {'message': 'Invalid field'},
+        10002: {'message': 'Missing fields'}
     }
 
     def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None, title=None,
