@@ -20,7 +20,7 @@ info:
 
     Login with USER and PASSWORD:
 
-    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate`
+    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate"
     ```json
     {
         "data": {
@@ -36,7 +36,7 @@ info:
     Change the token base duration:
 
     `curl -k -X PUT "https://<HOST_IP>:55000/security/config" -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
-    -d '{"auth_token_exp_timeout":"<NEW_EXPIRE_TIME_IN_SECONDS>"}'`
+    -d '{"auth_token_exp_timeout":<NEW_EXPIRE_TIME_IN_SECONDS>}'`
 
     <SecurityDefinitions />
 
