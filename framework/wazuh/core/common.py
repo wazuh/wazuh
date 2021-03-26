@@ -131,9 +131,9 @@ wdb_path = os.path.join(wazuh_path, 'queue', 'db')
 api_config_path = os.path.join(wazuh_path, 'api', 'configuration', 'api.yaml')
 database_path_agents = os.path.join(database_path, 'agents')
 os_pidfile = os.path.join('var', 'run')
-analysisd_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-analysisd.state')
-remoted_stats = os.path.join(ossec_path, 'var', 'run', 'wazuh-remoted.state')
-ar_conf_path = os.path.join(ossec_path, 'etc', 'shared', 'ar.conf')
+analysisd_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-analysisd.state')
+remoted_stats = os.path.join(wazuh_path, 'var', 'run', 'wazuh-remoted.state')
+ar_conf_path = os.path.join(wazuh_path, 'etc', 'shared', 'ar.conf')
 default_rbac_resources = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'rbac', 'default')
 
 # Ruleset
