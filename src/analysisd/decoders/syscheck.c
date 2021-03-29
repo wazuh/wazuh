@@ -44,9 +44,6 @@ static void InsertWhodata (const sk_sum_t * sum, _sdb *localsdb);
 // Compare the first common fields between sum strings
 static int SumCompare (const char *s1, const char *s2);
 
-// Check for exceed num of changes
-static int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf);
-
 // Send control message to wazuhdb
 static int fim_control_msg (char *key, time_t value, Eventinfo *lf, _sdb *sdb);
 
@@ -401,14 +398,8 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             if (*old_check_sum) {
                 // File modified
                 lf->event_type = FIM_MODIFIED;
-                changes = fim_check_changes(oldsum.changes, oldsum.date_alert, lf);
+                changes = 1;
                 sk_decode_sum(&oldsum, old_check_sum, NULL);
-
-                // Alert discarded, frequency exceeded
-                if (changes == -1) {
-                    mdebug1("Agent '%s' Alert discarded '%s' frequency exceeded", lf->agent_id, f_name);
-                    goto exit_ok;
-                }
             } else {
                 // File added
                 lf->event_type = FIM_ADDED;
@@ -471,9 +462,6 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                     goto exit_ok;
                 } else if(lf->time.tv_sec < end_scan) {
                     mdebug2("Agent '%s' Alert discarded, first scan (delayed event). File '%s'", lf->agent_id, f_name);
-                    goto exit_ok;
-                } else if(Config.syscheck_alert_new == 0) {
-                    mdebug2("Agent '%s' Alert discarded (alert_new_files = no). File '%s'", lf->agent_id, f_name);
                     goto exit_ok;
                 }
             }
@@ -853,26 +841,6 @@ int SumCompare(const char *s1, const char *s2) {
     size2 = ptr2 ? (size_t)(ptr2 - s2) : longs2;
 
     return size1 == size2 ? strncmp(s1, s2, size1) : 1;
-}
-
-int fim_check_changes (int saved_frequency, long saved_time, Eventinfo *lf) {
-    int freq = 1;
-
-    if (!Config.syscheck_auto_ignore) {
-        freq = 1;
-    } else {
-        if (lf->time.tv_sec - saved_time < Config.syscheck_ignore_time) {
-            if (saved_frequency >= Config.syscheck_ignore_frequency) {
-                // No send alert
-                freq = -1;
-            }
-            else {
-                freq = saved_frequency + 1;
-            }
-        }
-    }
-
-    return freq;
 }
 
 int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {

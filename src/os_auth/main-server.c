@@ -294,8 +294,8 @@ int main(int argc, char **argv)
         }
 
         // Return -1 if not configured
-        if (authd_read_config(DEFAULTCPATH) < 0) {
-            merror_exit(CONFIG_ERROR, DEFAULTCPATH);
+        if (authd_read_config(DEFAULTCPATH_MANAGER) < 0) {
+            merror_exit(CONFIG_ERROR, DEFAULTCPATH_MANAGER);
         }
 
         // Overwrite arguments

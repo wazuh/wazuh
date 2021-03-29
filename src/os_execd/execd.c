@@ -57,7 +57,7 @@ static void help_execd()
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH_AGENT);
     print_out(" ");
     exit(1);
 }
@@ -107,7 +107,8 @@ int main(int argc, char **argv)
     pthread_t wcom_thread;
 
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+
+    const char *cfg = DEFAULTCPATH_AGENT;
 
     /* Set the name */
     OS_SetName(ARGV0);

@@ -419,7 +419,7 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 
     os_calloc(1, sizeof(wlabel_t), labels);
 
-    if (ReadConfig(CLABELS, DEFAULTCPATH, &labels, NULL) < 0)
+    if (ReadConfig(CLABELS, DEFAULTCPATH_AGENT, &labels, NULL) < 0)
         goto end;
 
 #ifdef CLIENT

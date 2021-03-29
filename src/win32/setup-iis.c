@@ -192,9 +192,9 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Check if ossec was installed already */
+    /* Check if agent was installed already */
     if (!fileexist(AGENTCONF)) {
-        printf("%s: Unable to find ossec config: '%s'", argv[0], AGENTCONF);
+        printf("%s: Unable to find agent config: '%s'", argv[0], AGENTCONF);
         exit(0);
     }
 

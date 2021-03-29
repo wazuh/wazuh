@@ -59,18 +59,21 @@ int wm_config() {
         return OS_INVALID;
     }
 
-
-    // Read configuration: ossec.conf
-
-    if (ReadConfig(CWMODULE, DEFAULTCPATH, &wmodules, &agent_cfg) < 0) {
+#ifdef CLIENT
+    // Read configuration: agent.conf
+    if (ReadConfig(CWMODULE, DEFAULTCPATH_AGENT, &wmodules, &agent_cfg) < 0) {
         return -1;
     }
 
-#ifdef CLIENT
-    // Read configuration: agent.conf
+    // Read shared configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
+    // Read configuration: manager.conf
+    if (ReadConfig(CWMODULE, DEFAULTCPATH_MANAGER, &wmodules, &agent_cfg) < 0) {
+        return -1;
+    }
+
     wmodule *module;
     // The database module won't be available on agents
 

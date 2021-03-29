@@ -1088,7 +1088,11 @@ main()
         if [ "X$USER_OLD_NAME" != "XWazuh" ]; then
             echo " ====================================================================================="
             echo "  ${update_rev_newconf1}"
-            echo "  ${update_rev_newconf2}"
+            if [ "X$INSTYPE" = "Xagent" ]; then
+                echo "  ${update_rev_newconf3}"
+            else
+                echo "  ${update_rev_newconf2}"
+            fi
             echo " ====================================================================================="
             echo " "
         fi

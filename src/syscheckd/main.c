@@ -31,7 +31,7 @@ __attribute__((noreturn)) static void help_syscheckd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH_AGENT);
     print_out(" ");
     exit(1);
 }
@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     int c, r;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH_AGENT;
     gid_t gid;
     const char *group = GROUPGLOBAL;
 

@@ -52,7 +52,7 @@ static void help_dbd()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH_MANAGER);
     print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out(" ");
     print_out("  Database Support:");
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     const char *dir  = DEFAULTDIR;
     const char *user = MAILUSER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH_MANAGER;
 
     /* Database Structure */
     DBConfig db_config;

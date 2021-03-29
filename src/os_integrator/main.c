@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     char *dir  = DEFAULTDIR;
     char *user = MAILUSER;
     char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = DEFAULTCPATH_MANAGER;
 
     integrator_config = NULL;
 
