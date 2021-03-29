@@ -56,7 +56,7 @@ int wdb_agents_vuln_cves_insert(int id,
     snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_VULN_CVES_INSERT], id, data_in_str);
 
     os_malloc(WDBOUTPUT_SIZE, wdboutput);
-    cJSON* result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
+    cJSON* result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
 
     cJSON_Delete(data_in);
     os_free(data_in_str);
