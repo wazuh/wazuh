@@ -341,14 +341,14 @@ void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, ch
 }
 
 /**
- * @brief Send the message to the socket, if it fails, try reconnecting
+ * @brief Send the message to the socket. Tries to reconnect one time if the socket is not valid.
  *
  * @param socket Socket where the message will be sent.
  * @param queue_path Queue in case it is necessary to reconnect the socket
  * @param exec_msg Complete massage to be sent.
  * @return void.
  */
-void send_exec_msg(int *socket, char *queue_path, char *exec_msg) {
+void send_exec_msg(int *socket, const char *queue_path, const char *exec_msg) {
     if (*socket < 0) {
         if ((*socket = StartMQ(queue_path, WRITE, 1)) < 0) {
             merror(QUEUE_ERROR, queue_path, strerror(errno));

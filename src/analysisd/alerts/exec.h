@@ -23,6 +23,6 @@ void getActiveResponseInString(const Eventinfo *lf,
                                char *extra_args,
                                char *temp_msg);
 void get_exec_msg(const active_response *ar, char *agent_id, const char *temp_msg, char *exec_msg);
-void send_exec_msg(int *socket, char *queue_path, char *exec_msg);
+void send_exec_msg(int *socket, const char *queue_path, const char *exec_msg);
 
 #endif /* EXEC_H */
