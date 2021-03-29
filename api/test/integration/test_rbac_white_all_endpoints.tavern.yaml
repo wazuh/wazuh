@@ -2067,6 +2067,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
+
 ---
 test_name: DELETE /security/users
 
