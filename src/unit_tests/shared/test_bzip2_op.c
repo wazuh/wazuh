@@ -138,6 +138,8 @@ void test_bzip2_compress_BZ2_bzWrite(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Could not write bz2 file (-3)'testfile2': (0)-Success");
 
+    expect_value(__wrap_BZ2_bzWriteClose, f, 3);
+
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
     expect_value(__wrap_fclose, _File, 2);
@@ -174,6 +176,8 @@ void test_bzip2_compress_success(void **state) {
 
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
+
+    expect_value(__wrap_BZ2_bzWriteClose, f, 3);
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
@@ -295,6 +299,8 @@ void test_bzip2_uncompress_bzReadsuccess(void **state) {
 
     will_return(__wrap_fwrite, 0);
 
+    expect_value(__wrap_BZ2_bzReadClose, f, 3);
+
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
     expect_value(__wrap_fclose, _File, 2);
@@ -334,6 +340,8 @@ void test_bzip2_uncompress_bzReadfail(void **state) {
     will_return(__wrap_BZ2_bzRead, "");
     expect_string(__wrap__mdebug2, formatted_msg,
                   "BZ2_bzRead(-3)'testfile': (0)-Success");
+
+    expect_value(__wrap_BZ2_bzReadClose, f, 3);
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);

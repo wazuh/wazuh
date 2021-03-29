@@ -33,6 +33,12 @@ void __wrap_BZ2_bzWrite(int* bzerror,
                        void* buf,
                        int len);
 
+void __wrap_BZ2_bzWriteClose(int* bzerror,
+                               BZFILE* f,
+                               int abandon,
+                               unsigned int* nbytes_in,
+                               unsigned int* nbytes_out);
+
 BZFILE* __wrap_BZ2_bzWriteOpen(int* bzerror,
                                FILE* f,
                                int blockSize100k,
