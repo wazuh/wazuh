@@ -652,7 +652,6 @@ BUILD_SERVER+=wazuh-maild -
 BUILD_SERVER+=wazuh-csyslogd -
 BUILD_SERVER+=wazuh-agentlessd -
 BUILD_SERVER+=wazuh-execd -
-BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
 BUILD_SERVER+=wazuh-agentd
 BUILD_SERVER+=manage_agents
@@ -673,7 +672,6 @@ endif
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
-BUILD_AGENT+=wazuh-logcollector
 BUILD_AGENT+=wazuh-syscheckd
 BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
@@ -1512,7 +1510,7 @@ wazuh-execd: ${os_execd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 
-#### logcollectord ####
+#### logcollector ####
 
 os_logcollector_c := $(wildcard logcollector/*.c)
 os_logcollector_o := $(os_logcollector_c:.c=.o)
@@ -1524,8 +1522,6 @@ logcollector/%.o: logcollector/%.c
 logcollector/%-event.o: logcollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
 
-wazuh-logcollector: ${os_logcollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### remoted #########
 
@@ -1837,7 +1833,7 @@ wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${fo
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
-wazuh-modulesd: ${wmodulesd_o}
+wazuh-modulesd: ${wmodulesd_o} ${os_logcollector_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ### wazuh-framework ##
