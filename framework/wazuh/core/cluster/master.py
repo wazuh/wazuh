@@ -113,12 +113,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
         self.sync_extra_valid_free = True
         # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
-        self.integrity_check_status = {'date_start_master': "n/a", 'date_end_master': "n/a"}
-        self.integrity_sync_status = {'date_start_master': "n/a", 'tmp_date_start_master': "n/a",
-                                      'date_end_master': "n/a", 'total_extra_valid': 0,
+        default_date = datetime.fromtimestamp(0)
+        self.integrity_check_status = {'date_start_master': default_date, 'date_end_master': default_date}
+        self.integrity_sync_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
+                                      'date_end_master': default_date, 'total_extra_valid': 0,
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
-        self.sync_agent_info_status = {'date_start_master': "n/a", 'tmp_date_start_master': "n/a",
-                                       'date_end_master': "n/a", 'total_agentinfo': 0}
+        self.sync_agent_info_status = {'date_start_master': default_date, 'tmp_date_start_master': default_date,
+                                       'date_end_master': default_date, 'total_agentinfo': 0}
 
         # Variables which will be filled when the worker sends the hello request.
         self.version = ""
@@ -189,7 +190,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return cmd, json.dumps(res).encode()
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
-            return cmd, json.dumps(res, default=lambda o: o.__str__() if isinstance(o, datetime) else None).encode()
+            return cmd, json.dumps(res,
+                                   default=lambda o: "n/a" if isinstance(o, datetime) and o == datetime.fromtimestamp(0)
+                                   else (o.__str__() if isinstance(o, datetime) else None)
+                                   ).encode()
         elif command == b'sendsync':
             self.server.sendsync.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to SendSync requests queue'
@@ -276,7 +280,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         self.task_loggers = {'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync'),
-                             'Agent-info': self.setup_task_logger('Agent-info sync')}
+                             'Agent-info sync': self.setup_task_logger('Agent-info sync')}
 
         # Fill more information and check both name and version are correct.
         self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
@@ -435,7 +439,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger = self.logger
         if sync_type == b'sync_a_w_m_s':
             self.sync_agent_info_status['tmp_date_start_master'] = datetime.now()
-            logger = self.task_loggers['Agent-info']
+            logger = self.task_loggers['Agent-info sync']
 
         logger.info(f"Starting.")
         return b'ok', b'Started ' + sync_type
@@ -459,7 +463,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.sync_agent_info_status['date_start_master'] = self.sync_agent_info_status['tmp_date_start_master']
             self.sync_agent_info_status['date_end_master'] = datetime.now()
             self.sync_agent_info_status['total_agentinfo'] = size.decode()
-            self.task_loggers['Agent-info'].info("Finished in {:.3f}s ({} chunks received).".format(
+            self.task_loggers['Agent-info sync'].info("Finished in {:.3f}s ({} chunks received).".format(
                 (self.sync_agent_info_status['date_end_master'] - self.sync_agent_info_status['date_start_master'])
                     .total_seconds(),
                 size.decode()
@@ -557,7 +561,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_extra_valid_free = True
         self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master']
         self.integrity_sync_status['date_end_master'] = datetime.now()
-        logger.info("Finished in {}s.".format((self.integrity_sync_status['date_end_master'] -
+        logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
                                                self.integrity_sync_status['date_start_master'])
                                               .total_seconds()))
 
@@ -676,7 +680,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 if not worker_files_ko['extra_valid']:
                     self.integrity_sync_status['date_start_master'] = self.integrity_sync_status['tmp_date_start_master']
                     self.integrity_sync_status['date_end_master'] = datetime.now()
-                    logger.info("Finished in {}s.".format((self.integrity_sync_status['date_end_master'] -
+                    logger.info("Finished in {:.3f}s.".format((self.integrity_sync_status['date_end_master'] -
                                                            self.integrity_sync_status['date_start_master'])
                                                           .total_seconds()))
 
