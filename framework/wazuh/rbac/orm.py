@@ -2852,8 +2852,8 @@ def check_database_integrity():
                 logger.info(f'RBAC database migration required. '
                             f'Current version is {current_version} but it should be {expected_version}')
                 # From <= 4.1.x to 4.2.0
-                if (current_version == '0' or re.match(r'40[0-1][0-9].*', current_version)) \
-                        and re.match(r'402[0-9].*', expected_version):
+                if (current_version == '0' or re.match(r'40[0-2][0-9].*', current_version)) \
+                        and re.match(r'403[0-9].*', expected_version):
                     logger.info(f'Upgrading RBAC database to {expected_version} version')
                     # Remove tmp database if present
                     os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
