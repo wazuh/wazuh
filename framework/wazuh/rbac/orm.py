@@ -2684,7 +2684,8 @@ class DatabaseManager:
             with PoliciesManager(self.sessions[database]) as pm:
                 for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
                     for name, policy in payload['policies'].items():
-                        pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy, check_default=False)
+                        pm.add_policy(name=f'{d_policy_name}_{name}', resource_type=resource_type, policy=policy,
+                                      check_default=False)
 
         # Create the relationships
         with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
@@ -2780,7 +2781,7 @@ class DatabaseManager:
                                                    check_default=False)
                 # If the user's policy has the same body as an existing default policy it won't be inserted and its
                 # role-policy relationships will be linked to that default policy instead to replace it.
-                if status == SecurityError.ALREADY_EXIST:
+                if status == SecurityError.ALREADY_EXIST or status == SecurityError.CONSTRAINT_ERROR:
                     roles_policies = self.sessions[source].query(RolesPolicies).filter(
                         RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
                     new_policy_id = self.sessions[target].query(Policies).filter_by(
