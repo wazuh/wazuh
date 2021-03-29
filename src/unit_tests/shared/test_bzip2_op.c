@@ -102,6 +102,8 @@ void test_bzip2_compress_bzWriteOpen(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg,
                   "Could not open to write bz2 file (-3)'testfile2': (0)-Success");
 
+    expect_value(__wrap_BZ2_bzWriteClose, f, NULL);
+
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
     expect_value(__wrap_fclose, _File, 2);
@@ -258,6 +260,8 @@ void test_bzip2_uncompress_bzReadOpen(void **state) {
     will_return(__wrap_BZ2_bzReadOpen, NULL);
     expect_string(__wrap__mdebug2, formatted_msg,
                   "BZ2_bzReadOpen(-3)'testfile': (0)-Success");
+
+    expect_value(__wrap_BZ2_bzReadClose, f, NULL);
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
