@@ -450,58 +450,36 @@ int is_file(char *file_name)
     FILE    *fp = NULL;
     DIR     *dp = NULL;
 
-#ifndef WIN32
-    char *file_basename;
-
-    /* Get dir name */
-    file_basename = strrchr(file_name, '/');
-    if (!file_basename) {
+    if (!file_name) {
         mterror(ARGV0, "RK: Invalid file name: %s!", file_name);
-        return (0);
+        return ret;
     }
 
-    /* If file_basename == file_name, then the file
-     * only has one slash at the beginning
-     */
-    if (file_basename != file_name) {
-        /* Dir name and base name are now set */
-        *file_basename = '\0';
-        file_basename++;
-
-        /* Trying to open directory */
-        dp = opendir(file_basename);
-        if (dp) {
-            closedir(dp);
-            ret = 1;
-        } else if (errno == ENOTDIR) {
-            ret = 1;
-        }
-
-        file_basename--;
-        *file_basename = '/';
-    }
-
-#else
     dp = opendir(file_name);
     if (dp) {
         closedir(dp);
         ret = 1;
+#ifndef WIN32
+    } else if (errno == ENOTDIR) {
+        ret = 1;
+#endif
     }
-#endif /* WIN32 */
+
     /* Trying other calls */
     if ((stat(file_name, &statbuf) < 0) &&
 #ifndef WIN32
             (access(file_name, F_OK) < 0) &&
 #endif
             ((fp = fopen(file_name, "r")) == NULL)) {
-        return (ret);
+        return ret;
     }
 
     if (fp) {
+        ret = 1;
         fclose(fp);
     }
 
-    return (1);
+    return ret;
 }
 
 /* Delete the process list */
