@@ -20,9 +20,9 @@ from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
 
@@ -427,8 +427,13 @@ class Agent:
 
         return self.key
 
-    def reconnect(self) -> str:
+    def reconnect(self, wq: WazuhQueue) -> str:
         """Force reconnect to the manager.
+
+        Parameters
+        ----------
+        wq : WazuhQueue
+            WazuhQueue used for the active response message.
 
         Raises
         ------
@@ -447,15 +452,8 @@ class Agent:
         if self.status.lower() != 'active':
             raise WazuhError(1757)
 
-        # Check if agent has active-response enabled
-        agent_conf = self.getconfig('com', 'active-response', self.version)
-        if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhError(1750)
-
         # Send force reconnect message to the WazuhQueue
-        wq = WazuhQueue(common.ARQUEUE)
         ret_msg = wq.send_msg_to_agent(WazuhQueue.HC_FORCE_RECONNECT, self.id)
-        wq.close()
 
         return ret_msg
 
