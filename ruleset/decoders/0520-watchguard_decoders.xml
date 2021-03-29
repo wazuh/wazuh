@@ -118,6 +118,12 @@ Created by Simon. V
 
 <decoder name="watchguard-son">
   <parent>Watchguard</parent>
+  <regex type="pcre2">srcPostNAT=(\d+.\d+.\d+.\d+)</regex>
+  <order>srcPostNAT</order>
+</decoder>
+
+<decoder name="watchguard-son">
+  <parent>Watchguard</parent>
   <regex type="pcre2">src=(\S+)</regex>
   <order>srcip</order>
 </decoder>
