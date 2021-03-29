@@ -75,7 +75,7 @@ class SyncWorker:
         elif result == b'True':
             self.logger.debug("Permission to synchronize granted.")
         else:
-            self.logger.info("Master didn't grant permission to synchronize.")
+            self.logger.error("Master didn't grant permission to synchronize.")
             return
 
         # Start the synchronization process with the master and get a taskID.
