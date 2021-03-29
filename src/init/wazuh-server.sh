@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.2.0"
-REVISION="40200"
+VERSION="v4.3.0"
+REVISION="40300"
 TYPE="server"
 
 ###  Do not modify below here ###
@@ -259,7 +259,7 @@ start_service()
 {
 
     if [ $USE_JSON = false ]; then
-        echo "Starting $NAME $VERSION..."
+        echo "Starting Wazuh $VERSION..."
     fi
 
     TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1 | grep "ERROR")
@@ -505,7 +505,7 @@ stop_service()
     if [ $USE_JSON = true ]; then
         echo -n ']}'
     else
-        echo "$NAME $VERSION Stopped"
+        echo "Wazuh $VERSION Stopped"
     fi
 }
 

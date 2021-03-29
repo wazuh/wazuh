@@ -74,12 +74,13 @@ class BerkeleyRpmDBReader final
         {
             auto bytes { reinterpret_cast<uint8_t*>(data.data) };
             std::vector<BerkeleyHeaderEntry> retVal;
+            constexpr auto BYTE_SIZE_INT32{ sizeof(int32_t) };
 
             if (data.size >= FIRST_ENTRY_OFFSET)
             {
                 const auto indexSize { Utils::toInt32BE(bytes) };
 
-                const auto dataSize { Utils::toInt32BE(bytes + sizeof(int32_t)) };
+                const auto dataSize { Utils::toInt32BE(bytes + BYTE_SIZE_INT32) };
 
                 const auto estimatedHeaderTagSize { FIRST_ENTRY_OFFSET + indexSize* ENTRY_SIZE + dataSize };
 
@@ -89,13 +90,13 @@ class BerkeleyRpmDBReader final
 
                     retVal.resize(indexSize);
 
+                    auto ucp { reinterpret_cast<uint8_t*>(bytes) };
+
                     // Read all indexes
                     for (auto i = 0; i < indexSize; ++i)
                     {
-                        auto ucp { reinterpret_cast<uint8_t*>(bytes) };
-
                         const auto tag { Utils::toInt32BE(ucp) };
-                        ucp += sizeof(int32_t);
+                        ucp += BYTE_SIZE_INT32;
 
                         const auto it
                         {
@@ -112,16 +113,18 @@ class BerkeleyRpmDBReader final
                             retVal[i].tag = it->second;
 
                             retVal[i].type = Utils::toInt32BE(ucp);
-                            ucp += sizeof(int32_t);
+                            ucp += BYTE_SIZE_INT32;
 
                             retVal[i].offset = Utils::toInt32BE(ucp);
-                            ucp += sizeof(int32_t);
+                            ucp += BYTE_SIZE_INT32;
 
                             retVal[i].count = Utils::toInt32BE(ucp);
-                            ucp += sizeof(int32_t);
+                            ucp += BYTE_SIZE_INT32;
                         }
-
-                        bytes = &bytes[ENTRY_SIZE];
+                        else
+                        {
+                            ucp += ENTRY_SIZE - BYTE_SIZE_INT32;
+                        }
                     }
                 }
             }
