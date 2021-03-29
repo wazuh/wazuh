@@ -2056,7 +2056,7 @@ stages:
 test_name: PUT /security/users/{user_id}/run_as
 
 stages:
-  - name: Try to change the allow_run_as field from one user
+  - name: Try to change the allow_run_as field of a user
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/users/1/run_as"
