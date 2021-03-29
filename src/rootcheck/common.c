@@ -445,21 +445,13 @@ int isfile_ondir(const char *file, const char *dir)
  */
 int is_file(char *file_name)
 {
-    int ret = 0;
-    struct stat statbuf;
-    FILE *fp = NULL;
-    DIR *dp = NULL;
+    struct  stat statbuf;
+    int     ret = 0;
+    FILE    *fp = NULL;
+    DIR     *dp = NULL;
 
 #ifndef WIN32
-    char curr_dir[1024];
-    char *file_dirname;
     char *file_basename;
-
-    curr_dir[1023] = '\0';
-
-    if (!getcwd(curr_dir, 1022)) {
-        return (0);
-    }
 
     /* Get dir name */
     file_basename = strrchr(file_name, '/');
@@ -475,50 +467,18 @@ int is_file(char *file_name)
         /* Dir name and base name are now set */
         *file_basename = '\0';
         file_basename++;
-        file_dirname = file_name;
 
-        /* chdir test */
-        if (chdir(file_dirname) == 0) {
-            if (chdir(file_basename) == 0) {
-                ret = 1;
-            }
-            /* Check errno (if file exists, but it is not
-             * a directory.
-             */
-            else if (errno == ENOTDIR) {
-                ret = 1;
-            }
-
-            /* Trying open dir */
-            dp = opendir(file_basename);
-            if (dp) {
-                closedir(dp);
-                ret = 1;
-            } else if (errno == ENOTDIR) {
-                ret = 1;
-            }
-
-            /* Return to the previous directory */
-            if (chdir(curr_dir) == -1) {
-                mterror(ARGV0, CHDIR_ERROR, curr_dir, errno, strerror(errno));
-                return (0);
-            }
+        /* Trying to open directory */
+        dp = opendir(file_basename);
+        if (dp) {
+            closedir(dp);
+            ret = 1;
+        } else if (errno == ENOTDIR) {
+            ret = 1;
         }
 
         file_basename--;
         *file_basename = '/';
-    } else {
-        if (chdir(file_name) == 0) {
-            ret = 1;
-
-            /* Return to the previous directory */
-            if (chdir(curr_dir) == -1) {
-                mterror(ARGV0, CHDIR_ERROR, curr_dir, errno, strerror(errno));
-                return (0);
-            }
-        } else if (errno == ENOTDIR) {
-            ret = 1;
-        }
     }
 
 #else
@@ -529,7 +489,7 @@ int is_file(char *file_name)
     }
 #endif /* WIN32 */
     /* Trying other calls */
-    if ( (stat(file_name, &statbuf) < 0) &&
+    if ((stat(file_name, &statbuf) < 0) &&
 #ifndef WIN32
             (access(file_name, F_OK) < 0) &&
 #endif
