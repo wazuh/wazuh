@@ -2681,7 +2681,7 @@ class DatabaseManager:
         # Create default policies
         with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
             default_policies = yaml.safe_load(stream)
-            with PoliciesManager() as pm:
+            with PoliciesManager(self.sessions[database]) as pm:
                 for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
                     for name, policy in payload['policies'].items():
                         pm.add_policy(name=f'{d_policy_name}_{name}', policy=policy, check_default=False)
@@ -2874,7 +2874,9 @@ def check_database_integrity():
                     # Apply changes and replace database
                     db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
                     db_manager.close_sessions()
-                    safe_move(_tmp_db_file, DATABASE_FULL_PATH, permissions=0o640)
+                    safe_move(_tmp_db_file, DATABASE_FULL_PATH,
+                              ownership=(common.ossec_uid(), common.ossec_gid()),
+                              permissions=0o640)
                     logger.info(f'{DATABASE_FULL_PATH} database upgraded successfully.')
 
         # If database does not exists it means this is a fresh installation and must be created properly
