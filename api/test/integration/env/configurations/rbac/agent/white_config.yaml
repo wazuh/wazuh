@@ -23,12 +23,14 @@
   effect: allow
 
 - actions:
+  - agent:reconnect
   - agent:restart
   resources:
   - agent:id:*
   effect: allow
 
 - actions:
+  - agent:reconnect
   - agent:restart
   resources:
   - agent:group:group2

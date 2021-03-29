@@ -224,9 +224,6 @@ class WazuhException(Exception):
         1701: {'message': 'Agent does not exist',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents'
                },
-        1702: {'message': 'Unable to restart agent(s)',
-               'remediation': 'Please make sure the agent exists, it is active and it is not the manager (agent 000)'
-               },
         1703: {'message': 'Action not available for Manager (agent 000)',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents and make sure you select an agent other than 000'
                },
@@ -340,6 +337,9 @@ class WazuhException(Exception):
                'remediation': 'Please select another group or assign any agent to it'},
         1756: {'message': 'Upgrade procedure could not start. Agent already upgrading',
                'remediation': 'You can check the status of this task with the /agents/:agent_id/upgrade_result endpoint'
+               },
+        1757: {'message': 'Impossible to reconnect non-active agent',
+               'remediation': 'Please, make sure agent is active before attempting to reconnect'
                },
 
         # CDB List: 1800 - 1899
