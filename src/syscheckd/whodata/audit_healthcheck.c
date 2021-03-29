@@ -22,13 +22,12 @@ int audit_health_check(int audit_socket) {
     FILE *fp;
     audit_health_check_creation = 0;
     unsigned int timer = 10;
-    audit_health_check_creation = 0;
     char abs_path_healthcheck[PATH_MAX] = {'\0'};
     char abs_path_healthcheck_file[PATH_MAX] = {'\0'};
 
     w_mutex_init(&audit_hc_mutex, NULL);
 
-    // Audit needs an absolute path
+    // Audit needs an absolute path to add rules
     abspath(AUDIT_HEALTHCHECK_DIR, abs_path_healthcheck, PATH_MAX);
     abspath(AUDIT_HEALTHCHECK_FILE, abs_path_healthcheck_file, PATH_MAX);
 

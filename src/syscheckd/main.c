@@ -20,7 +20,7 @@
 // LCOV_EXCL_START
 
 /* Print help statement */
-__attribute__((noreturn)) static void help_syscheckd(char *home_path)
+__attribute__((noreturn)) static void help_syscheckd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -33,7 +33,6 @@ __attribute__((noreturn)) static void help_syscheckd(char *home_path)
     print_out("    -f          Run in foreground");
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
-    os_free(home_path);
     exit(1);
 }
 
@@ -58,7 +57,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_syscheckd(home_path);
+                help_syscheckd();
                 break;
             case 'd':
                 nowDebug();
@@ -77,7 +76,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_syscheckd(home_path);
+                help_syscheckd();
                 break;
         }
     }
@@ -86,6 +85,9 @@ int main(int argc, char **argv)
     if (chdir(home_path) == -1) {
         merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
 
     /* Check if the group given is valid */
     gid = Privsep_GetGroup(group);
@@ -100,8 +102,6 @@ int main(int argc, char **argv)
 
     /* Read internal options */
     read_internal(debug_level);
-
-    mdebug1(WAZUH_HOMEDIR, home_path);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {
@@ -143,8 +143,6 @@ int main(int argc, char **argv)
     } else {
         syscheck.rootcheck = 0;
     }
-
-    os_free(home_path);
 
     /* Exit if testing config */
     if (test_config) {

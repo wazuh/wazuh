@@ -20,7 +20,7 @@
 #define OSSEC_LDEFINES   "./local_internal_options.conf"
 #endif
 
-static char *_read_file(const char *high_name, const char *low_name, char *defines_file);
+static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
 
@@ -39,22 +39,19 @@ static unsigned int _netmasks[33];
  * format: high_name.low_name.
  * If return is not null, value must be freed
  */
-static char *_read_file(const char *high_name, const char *low_name, char *defines_file)
+static char *_read_file(const char *high_name, const char *low_name, const char *defines_file)
 {
     FILE *fp;
-    char def_file[OS_FLSIZE + 1];
     char buf[OS_SIZE_1024 + 1];
     char *buf_pt;
     char *tmp_buffer;
     char *ret;
     int i;
 
-    snprintf(def_file, OS_FLSIZE, "%s", defines_file);
-
-    fp = fopen(def_file, "r");
+    fp = fopen(defines_file, "r");
     if (!fp) {
         if (strcmp(defines_file, OSSEC_LDEFINES) != 0) {
-            merror(FOPEN_ERROR, def_file, errno, strerror(errno));
+            merror(FOPEN_ERROR, defines_file, errno, strerror(errno));
         }
         return (NULL);
     }
@@ -78,7 +75,7 @@ static char *_read_file(const char *high_name, const char *low_name, char *defin
         /* Messages not formatted correctly */
         buf_pt = strchr(buf, '.');
         if (!buf_pt) {
-            merror(FGETS_ERROR, def_file, buf);
+            merror(FGETS_ERROR, defines_file, buf);
             continue;
         }
 
@@ -94,7 +91,7 @@ static char *_read_file(const char *high_name, const char *low_name, char *defin
         /* Get the equal */
         buf_pt = strchr(buf_pt, '=');
         if (!buf_pt) {
-            merror(FGETS_ERROR, def_file, buf);
+            merror(FGETS_ERROR, defines_file, buf);
             continue;
         }
 

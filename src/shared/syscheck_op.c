@@ -63,7 +63,7 @@ void normalize_path(char * path) {
 int remove_empty_folders(const char *path) {
     assert(path != NULL);
 
-    char * DIFF_PATH = DIFF_DIR;
+    char DIFF_PATH[PATH_MAX] = DIFF_DIR;
     const char *c;
     char parent[PATH_MAX] = "\0";
     char ** subdir;
