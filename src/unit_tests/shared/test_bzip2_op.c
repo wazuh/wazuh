@@ -78,7 +78,7 @@ void test_bzip2_compress_secondfopenfail(void **state) {
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
-    
+
     ret = bzip2_compress(file1, file2);
     assert_int_equal(ret, -1);
 }
@@ -106,7 +106,7 @@ void test_bzip2_compress_bzWriteOpen(void **state) {
     will_return(__wrap_fclose, 1);
     expect_value(__wrap_fclose, _File, 2);
     will_return(__wrap_fclose, 1);
-    
+
     ret = bzip2_compress(file1, file2);
     assert_int_equal(ret, -1);
 }
@@ -147,48 +147,6 @@ void test_bzip2_compress_BZ2_bzWrite(void **state) {
     assert_int_equal(ret, -1);
 }
 
-void test_bzip2_compress_bzWriteClose64(void **state) {
-    int ret;
-    char *file1 = "testfile";
-    char *file2 = "testfile2";
-
-    expect_value(__wrap_fopen, path, file1);
-    expect_string(__wrap_fopen, mode, "rb");
-    will_return(__wrap_fopen, 1);
-
-    expect_value(__wrap_fopen, path, file2);
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, 2);
-
-    expect_value(__wrap_BZ2_bzWriteOpen, f, 2);
-    will_return(__wrap_BZ2_bzWriteOpen, BZ_OK);
-    will_return(__wrap_BZ2_bzWriteOpen, 3);
-
-    will_return(__wrap_fread, "teststring");
-    will_return(__wrap_fread, 10);
-
-    expect_value(__wrap_BZ2_bzWrite, f, 3);
-    expect_string(__wrap_BZ2_bzWrite, buf, "teststring");
-    expect_value(__wrap_BZ2_bzWrite, len, 10);
-    will_return(__wrap_BZ2_bzWrite, BZ_OK);
-
-    will_return(__wrap_fread, "");
-    will_return(__wrap_fread, 0);
-
-    expect_value(__wrap_BZ2_bzWriteClose64, f, 3);
-    will_return(__wrap_BZ2_bzWriteClose64, BZ_MEM_ERROR);
-    expect_string(__wrap__mdebug2, formatted_msg,
-                  "BZ2_bzWriteClose64(-3)'testfile2': (0)-Success");
-
-    expect_value(__wrap_fclose, _File, 1);
-    will_return(__wrap_fclose, 1);
-    expect_value(__wrap_fclose, _File, 2);
-    will_return(__wrap_fclose, 1);
-
-    ret = bzip2_compress(file1, file2);
-    assert_int_equal(ret, -1);
-}
-
 void test_bzip2_compress_success(void **state) {
     int ret;
     char *file1 = "testfile";
@@ -216,9 +174,6 @@ void test_bzip2_compress_success(void **state) {
 
     will_return(__wrap_fread, "");
     will_return(__wrap_fread, 0);
-
-    expect_value(__wrap_BZ2_bzWriteClose64, f, 3);
-    will_return(__wrap_BZ2_bzWriteClose64, BZ_OK);
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
@@ -397,7 +352,6 @@ int main(void) {
         cmocka_unit_test(test_bzip2_compress_secondfopenfail),
         cmocka_unit_test(test_bzip2_compress_bzWriteOpen),
         cmocka_unit_test(test_bzip2_compress_BZ2_bzWrite),
-        cmocka_unit_test(test_bzip2_compress_bzWriteClose64),
         cmocka_unit_test(test_bzip2_compress_success),
         cmocka_unit_test(test_bzip2_uncompress_nullfile),
         cmocka_unit_test(test_bzip2_uncompress_nullfilebz2),
