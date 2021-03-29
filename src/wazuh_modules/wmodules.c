@@ -65,7 +65,7 @@ int wm_config() {
         return -1;
     }
 
-    // Read configuration: agent.conf
+    // Read shared configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else

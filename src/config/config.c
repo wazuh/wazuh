@@ -21,36 +21,39 @@ static int read_main_elements(const OS_XML *xml, int modules,
                               void *d2)
 {
     int i = 0;
+#ifndef CLIENT
     const char *osglobal = "global";                    /* Server Config */
     const char *osrules = "ruleset";                    /* Server Config */
-    const char *ossyscheck = "syscheck";                /* Agent Config  */
-    const char *osrootcheck = "rootcheck";              /* Agent Config  */
     const char *osalerts = "alerts";                    /* Server Config */
     const char *osemailalerts = "email_alerts";         /* Server Config */
     const char *osdbd = "database_output";              /* Server Config */
     const char *oscsyslogd = "syslog_output";           /* Server Config */
     const char *oscagentless = "agentless";             /* Server Config */
-    const char *oslocalfile = "localfile";              /* Agent Config  */
-    const char *osremote = "remote";                    /* Agent Config  */
-    const char *osclient = "client";                    /* Agent Config  */
-    const char *osbuffer = "client_buffer";             /* Agent Buffer Config  */
-    const char *oscommand = "command";                  /* ? Config      */
+    const char *osremote = "remote";                    /* Server Config */
+    const char *oscommand = "command";                  /* Server Config */
     const char *osreports = "reports";                  /* Server Config */
     const char *osintegratord = "integration";          /* Server Config */
+    const char *osauthd = "auth";                       /* Authd Config */
+    const char *oscluster = "cluster";                  /* Cluster Config */
+    const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
+    const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
+    const char *task_manager = "task-manager";          /* Task Manager Module */
+#endif
+    const char *ossyscheck = "syscheck";                /* Agent Config  */
+    const char *osrootcheck = "rootcheck";              /* Agent Config  */
+    const char *oslocalfile = "localfile";              /* Agent Config  */
+    const char *osclient = "client";                    /* Agent Config  */
+    const char *osbuffer = "client_buffer";             /* Agent Buffer Config  */
     const char *osactive_response = "active-response";  /* Agent Config  */
     const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                    /* Labels Config */
-    const char *osauthd = "auth";                       /* Authd Config */
     const char *oslogging = "logging";                  /* Logging Config */
-    const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";                          /* Security Configuration Assessment */
-    const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
-    const char *wlogtest = "rule_test";                  /* Wazuh Logtest */
 
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
-    const char *task_manager = "task-manager";          /* Task Manager Module */
+
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
 #endif

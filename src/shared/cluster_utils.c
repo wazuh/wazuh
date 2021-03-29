@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#ifndef CLIENT
 #include "shared.h"
 #include "../config/config.h"
 #include "../config/global-config.h"
@@ -101,3 +102,4 @@ char *get_node_name(void) {
 
     return node_name;
 }
+#endif
