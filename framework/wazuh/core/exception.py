@@ -224,9 +224,6 @@ class WazuhException(Exception):
         1701: {'message': 'Agent does not exist',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents'
                },
-        1702: {'message': 'Unable to restart agent(s)',
-               'remediation': 'Please make sure the agent exists, it is active and it is not the manager (agent 000)'
-               },
         1703: {'message': 'Action not available for Manager (agent 000)',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents and make sure you select an agent other than 000'
                },

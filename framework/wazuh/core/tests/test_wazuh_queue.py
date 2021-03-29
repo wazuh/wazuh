@@ -132,12 +132,8 @@ def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
 
 
 @pytest.mark.parametrize('msg, agent_id, msg_type, expected_exception', [
-    ('test_msg', '000', 'ar-message', 1652),
     ('test_msg', '000', None, 1012),
-    ('syscheck restart', '001', None, 1601),
-    ('syscheck restart', None, None, 1601),
-    ('restart-ossec0', None, None, 1702),
-    ('force_reconnect', None, None, 1757)
+    ('syscheck restart', None, None, 1014),
 ])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=Exception)

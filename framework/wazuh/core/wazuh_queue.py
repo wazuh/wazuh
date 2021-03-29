@@ -109,14 +109,10 @@ class WazuhQueue:
 
         Raises
         ------
-        WazuhError(1652)
-            If it was unable to run the command.
         WazuhInternalError(1012)
             If the message was invalid to queue.
-        WazuhError(1601)
-            If it was unable to run the syscheck scan on the agent because it is a non active agent.
-        WazuhError(1702)
-            If it was unable to restart the agent.
+        WazuhError(1014)
+            If there was an error communicating with socket.
 
         Returns
         -------
@@ -160,7 +156,6 @@ class WazuhQueue:
             # Send message
             self._send(socket_msg.encode())
         except:
-            raise WazuhError(1702) if msg_is_restart else WazuhError(1601) if msg == WazuhQueue.HC_SK_RESTART else \
-                WazuhError(1757) if msg == WazuhQueue.HC_FORCE_RECONNECT else WazuhError(1652)
+            raise WazuhError(1014, extra_message=f": WazuhQueue socket with path {self.path}")
 
         return ret_msg
