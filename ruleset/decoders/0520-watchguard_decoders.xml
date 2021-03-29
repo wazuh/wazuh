@@ -34,7 +34,7 @@ Created by Simon. V
 
 <decoder name="watchguard-son">
   <parent>Watchguard</parent>
-  <regex type="pcre2">(\w+)@Firebox-DB.+from.(\d+.\d+.\d+.\d+).(.+$)</regex>
+  <regex type="pcre2">(\w+)@\S+.+from.(\d+.\d+.\d+.\d+).(.+$)</regex>
   <order>dstuser, srcip,  extra_data</order>
 </decoder>
 
