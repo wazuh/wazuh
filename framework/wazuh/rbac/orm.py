@@ -2850,34 +2850,31 @@ def check_database_integrity():
             # Check if an upgrade is required
             if int(current_version) < int(expected_version):
                 logger.info(f'RBAC database migration required. '
-                            f'Current version is {current_version} but it should be {expected_version}')
-                # From <= 4.1.x to 4.2.0
-                if (current_version == '0' or re.match(r'40[0-2][0-9].*', current_version)) \
-                        and re.match(r'403[0-9].*', expected_version):
-                    logger.info(f'Upgrading RBAC database to {expected_version} version')
-                    # Remove tmp database if present
-                    os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
+                            f'Current version is {current_version} but it should be {expected_version}.'
+                            f'Upgrading RBAC database to {expected_version} version')
+                # Remove tmp database if present
+                os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
 
-                    # Create new tmp database and populate it
-                    db_manager.connect(_tmp_db_file)
-                    db_manager.connect(DATABASE_FULL_PATH)
-                    db_manager.create_database(_tmp_db_file)
-                    set_permission(_tmp_db_file)
-                    db_manager.insert_data_from_yaml(_tmp_db_file)
+                # Create new tmp database and populate it
+                db_manager.connect(_tmp_db_file)
+                db_manager.connect(DATABASE_FULL_PATH)
+                db_manager.create_database(_tmp_db_file)
+                set_permission(_tmp_db_file)
+                db_manager.insert_data_from_yaml(_tmp_db_file)
 
-                    # Migrate data from old database
-                    db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=cloud_reserved_range,
-                                            to_id=max_id_reserved, resource_type=ResourceType.PROTECTED)
-                    db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=max_id_reserved + 1,
-                                            resource_type=ResourceType.USER)
+                # Migrate data from old database
+                db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=cloud_reserved_range,
+                                        to_id=max_id_reserved, resource_type=ResourceType.PROTECTED)
+                db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=max_id_reserved + 1,
+                                        resource_type=ResourceType.USER)
 
-                    # Apply changes and replace database
-                    db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
-                    db_manager.close_sessions()
-                    safe_move(_tmp_db_file, DATABASE_FULL_PATH,
-                              ownership=(common.ossec_uid(), common.ossec_gid()),
-                              permissions=0o640)
-                    logger.info(f'{DATABASE_FULL_PATH} database upgraded successfully.')
+                # Apply changes and replace database
+                db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
+                db_manager.close_sessions()
+                safe_move(_tmp_db_file, DATABASE_FULL_PATH,
+                          ownership=(common.ossec_uid(), common.ossec_gid()),
+                          permissions=0o640)
+                logger.info(f'{DATABASE_FULL_PATH} database upgraded successfully.')
 
         # If database does not exists it means this is a fresh installation and must be created properly
         else:
