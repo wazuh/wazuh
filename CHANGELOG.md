@@ -1,6 +1,19 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v5.0.0]
+
+### Added
+
+### Changed
+
+- The ruleset has been ported to the core repository, and the rules and decoders have been rename to the standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
+- The configuration options have been normalized according to the Wazuh standard.([#7380](https://github.com/wazuh/wazuh/pull/7380))
+
+### Fixed
+
+## Removed
+
 ## [v4.2.0]
 
 ### Added
@@ -94,7 +107,15 @@ All notable changes to this project will be documented in this file.
   - Removed `behind_proxy_server` option from configuration. ([#7006](https://github.com/wazuh/wazuh/issues/7006))
 
 
-## [v4.1.3]
+## [v4.1.4] - 2021-03-25
+
+### Fixed
+
+- **Cluster:**
+  - Fixed workers reconnection after restarting master node. Updated `asyncio.Task.all_tasks` method removed in Python 3.9. ([#8017](https://github.com/wazuh/wazuh/pull/8017))
+
+
+## [v4.1.3] - 2021-03-23
 
 ### Changed
 
