@@ -15,7 +15,7 @@ cd `dirname $0`
 Use()
 {
   echo " USE: ./gen_wazuh.sh conf install_type distribution version [installation_path]"
-  echo "   - install_type: manager, agent, local"
+  echo "   - install_type: manager, agent, local, agent-server"
   echo "   - distribution: rhel, debian, ubuntu, ..."
   echo "   - version: 6, 7, 16.04, ..."
   echo "   - installation_path (optional): changes the default path '/var/ossec' "
@@ -82,8 +82,13 @@ if [ "$1" = "conf" ] && [ "$#" -ge "4" ]; then
     exit 1
   fi
 
-  rm "$NEWCONFIG_AGENT"
-  rm "$NEWCONFIG_MANAGER"
+  if [ -r "$NEWCONFIG_AGENT" ]; then
+      rm "$NEWCONFIG_AGENT"
+  fi
+
+  if [ -r "$NEWCONFIG_MANAGER" ]; then
+      rm "$NEWCONFIG_MANAGER"
+  fi
 
   exit 0
 else

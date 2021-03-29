@@ -504,7 +504,7 @@ UpdateOldVersions()
             # New agent.conf by default
             ./gen_wazuh.sh conf "agent" $DIST_NAME $DIST_VER > $AGENT_CONF_FILE
             ./add_localfiles.sh $PREINSTALLEDDIR >> $AGENT_CONF_FILE
-            fi
+        fi
     fi
 
 }

@@ -242,7 +242,11 @@ void os_logging_config(){
         flags.log_plain = 1;
         flags.log_json = 0;
         OS_ClearXML(&xml);
+#ifdef CLIENT
+        merror_exit(XML_ERROR, chroot_flag ? WAZUHCONF_AGENT : DEFAULTCPATH_AGENT, xml.err, xml.err_line);
+#else
         merror_exit(XML_ERROR, chroot_flag ? WAZUHCONF_MANAGER : DEFAULTCPATH_MANAGER, xml.err, xml.err_line);
+#endif
     }
 
     logformat = OS_GetOneContentforElement(&xml, xmlf);
