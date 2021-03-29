@@ -2797,30 +2797,81 @@ class DatabaseManager:
         old_user_roles = get_data(UserRoles, UserRoles.user_id, UserRoles.role_id)
         with UserRolesManager(self.sessions[target]) as user_role_manager:
             for user_role in old_user_roles:
-                user_role_manager.add_role_to_user(user_id=user_role.user_id,
-                                                   role_id=user_role.role_id,
-                                                   position=user_role.level,
-                                                   created_at=user_role.created_at,
-                                                   force_admin=True)
+                user_id = user_role.user_id
+                role_id = user_role.role_id
+                try:
+                    # Look for the ID of a default resource from the old database in the new database using its name
+                    # This allows us to keep the relationship if the related default resource now has a different id
+                    if int(user_id) <= max_id_reserved:
+                        user_name = AuthenticationManager(self.sessions[source]).get_user_id(user_id=user_id)['username']
+                        user_id = AuthenticationManager(self.sessions[target]).get_user(username=user_name)['id']
+
+                    if int(role_id) <= max_id_reserved:
+                        role_name = RolesManager(self.sessions[source]).get_role_id(role_id=role_id)['name']
+                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+
+                    user_role_manager.add_role_to_user(user_id=user_id,
+                                                       role_id=role_id,
+                                                       position=user_role.level,
+                                                       created_at=user_role.created_at,
+                                                       force_admin=True)
+                except TypeError:
+                    # An exception will be raised if one of the resources are no longer present in any of the databases
+                    # and thus the relationship won't be added to the new database.
+                    pass
 
         # Role-Policies relationships
         old_roles_policies = get_data(RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id)
         with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
             for role_policy in old_roles_policies:
-                role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
-                                                       policy_id=role_policy.policy_id,
-                                                       position=role_policy.level,
-                                                       created_at=role_policy.created_at,
-                                                       force_admin=True)
+                role_id = role_policy.role_id
+                policy_id = role_policy.policy_id
+                try:
+                    # Look for the ID of a default resource from the old database in the new database using its name
+                    # This allows us to keep the relationship if the related default resource now has a different id
+                    if int(role_id) <= max_id_reserved:
+                        role_name = RolesManager(self.sessions[source]).get_role_id(role_id=role_id)['name']
+                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+
+                    if int(policy_id) <= max_id_reserved:
+                        policy_name = PoliciesManager(self.sessions[source]).get_policy_id(policy_id=policy_id)['name']
+                        policy_id = PoliciesManager(self.sessions[target]).get_policy(name=policy_name)['id']
+
+                    role_policy_manager.add_policy_to_role(role_id=role_id,
+                                                           policy_id=policy_id,
+                                                           position=role_policy.level,
+                                                           created_at=role_policy.created_at,
+                                                           force_admin=True)
+                except TypeError:
+                    # An exception will be raised if one of the resources are no longer present in any of the databases
+                    # and thus the relationship won't be added to the new database.
+                    pass
 
         # Role-Rules relationships
         old_roles_rules = get_data(RolesRules, RolesRules.role_id, RolesRules.rule_id)
         with RolesRulesManager(self.sessions[target]) as role_rule_manager:
             for role_rule in old_roles_rules:
-                role_rule_manager.add_rule_to_role(role_id=role_rule.role_id,
-                                                   rule_id=role_rule.rule_id,
-                                                   created_at=role_rule.created_at,
-                                                   force_admin=True)
+                role_id = role_rule.role_id
+                rule_id = role_rule.rule_id
+                try:
+                    # Look for the ID of a default resource from the old database in the new database using its name
+                    # This allows us to keep the relationship if the related default resource now has a different id
+                    if int(role_id) <= max_id_reserved:
+                        role_name = RolesManager(self.sessions[source]).get_role_id(role_id=role_id)['name']
+                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+
+                    if int(rule_id) <= max_id_reserved:
+                        rule_name = RulesManager(self.sessions[source]).get_rule(rule_id=rule_id)['name']
+                        rule_id = RulesManagers(self.sessions[target]).get_rule_by_name(rule_name=rule_name)['id']
+
+                    role_rule_manager.add_rule_to_role(role_id=role_id,
+                                                       rule_id=rule_id,
+                                                       created_at=role_rule.created_at,
+                                                       force_admin=True)
+                except TypeError:
+                    # An exception will be raised if one of the resources are no longer present in any of the databases
+                    # and thus the relationship won't be added to the new database.
+                    pass
 
     def rollback(self, database):
         """Abort any pending change for the current session."""
