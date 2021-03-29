@@ -804,7 +804,6 @@ InstallCommon()
         fi
     fi
 
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
