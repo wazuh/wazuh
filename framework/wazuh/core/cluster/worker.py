@@ -75,7 +75,7 @@ class SyncWorker:
         elif result == b'True':
             self.logger.debug("Permission to synchronize granted.")
         else:
-            self.logger.error('Master didnt grant permission to synchronize.')
+            self.logger.info("Master didn't grant permission to synchronize.")
             return
 
         # Start the synchronization process with the master and get a taskID.
@@ -279,12 +279,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # a log coming from the "Integrity" logger will look like this:
         # [Worker name] [Integrity] Log information
         # this way the same code can be shared among all sync tasks and logs will differentiate.
-        self.task_loggers = {'Agent-info': self.setup_task_logger('Agent-info sync'),
+        self.task_loggers = {'Agent-info sync': self.setup_task_logger('Agent-info sync'),
                              'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync')}
 
         self.integrity_check_status = {'date_end': 0.0}
-        self.integrity_sync_status = {'date_start': 0.0, 'date_end': 0.0, 'only_extra_valid': False}
+        self.integrity_sync_status = {'date_start': 0.0, 'date_end': 0.0}
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -471,7 +471,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
         and directly sent to the master's wazuh-db socket through 'sendsync' protocol.
         """
-        logger = self.task_loggers["Agent-info"]
+        logger = self.task_loggers["Agent-info sync"]
         wdb_conn = WazuhDBConnection()
         agent_info = RetrieveAndSendToMaster(worker=self, destination_daemon='wazuh-db', logger=logger,
                                              msg_format='global sync-agent-info-set {payload}', cmd=b'sync_a_w_m',
@@ -515,13 +515,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                              logger=logger, worker=self).sync()
             after = time.time()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
-
-            total_sync_time = after - self.integrity_sync_status['date_start']
-            if self.integrity_sync_status['date_end'] or self.integrity_sync_status['only_extra_valid']:
-                # If there are local files to update, print this log only if this task ended in the last place
-                # so 'Finished in' message is not duplicated.
-                logger.info(f"Finished in {total_sync_time:.3f}s.")
-            self.integrity_sync_status['date_end'] = total_sync_time
+            self.integrity_sync_status['date_end'] = after - self.integrity_sync_status['date_start']
+            logger.info(f"Finished in {self.integrity_sync_status['date_end']:.3f}s.")
 
         # If exception is raised during sync process, notify the master so it removes the file if received.
         except exception.WazuhException as e:
@@ -557,7 +552,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         received_filename = self.sync_tasks[name].filename
         try:
             logger = self.task_loggers['Integrity sync']
-            self.integrity_sync_status.update({'date_start': time.time(), 'date_end': 0.0, 'only_extra_valid': True})
+            self.integrity_sync_status['date_start'] = time.time()
             logger.info("Starting.")
 
             """
@@ -571,26 +566,20 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid']))
             )
 
-            # Send extra valid files to the master.
-            if ko_files['extra_valid']:
-                logger.debug("Master requires some worker files.")
-                if ko_files['shared'] or ko_files['missing'] or ko_files['extra']:
-                    self.integrity_sync_status['only_extra_valid'] = False
-                asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
-
             if ko_files['shared'] or ko_files['missing'] or ko_files['extra']:
                 # Update or remove files in this worker node according to their status (missing, extra or shared).
                 logger.debug("Worker does not meet integrity checks. Actions required.")
                 logger.debug("Updating local files: Start.")
                 self.update_master_files_in_worker(ko_files, zip_path)
                 logger.debug("Updating local files: End.")
+                self.integrity_sync_status['date_end'] = time.time() - self.integrity_sync_status['date_start']
 
-                total_sync_time = time.time() - self.integrity_sync_status['date_start']
-                if not ko_files['extra_valid'] or self.integrity_sync_status['date_end']:
-                    # If there are extra_valid files, print this log only if this task ended after the extra_valid task
-                    # so 'Finished in' message is not duplicated.
-                    logger.info(f"Finished in {total_sync_time:.3f}s.")
-                self.integrity_sync_status['date_end'] = total_sync_time
+            # Send extra valid files to the master.
+            if ko_files['extra_valid']:
+                logger.debug("Master requires some worker files.")
+                asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
+            else:
+                logger.info(f"Finished in {self.integrity_sync_status['date_end']:.3f}s.")
 
         finally:
             shutil.rmtree(zip_path)
@@ -634,7 +623,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         if not agent_ids_list:
             return  # the function doesn't make sense if there is no agents to remove
 
-        logger.info(f"Removing files from {len(agent_ids_list)} agents")
+        logger.debug(f"Removing files from {len(agent_ids_list)} agents")
         logger.debug(f"Agents to remove: {', '.join(agent_ids_list)}")
         # Remove agents in group of 500 elements (so wazuh-db socket is not saturated)
         for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 500), fillvalue='0'):
@@ -659,7 +648,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             ]))
             wdb_conn.run_wdb_command(query_to_execute)
 
-        logger.info("Agent files removed")
+        logger.debug("Agent files removed")
 
     @staticmethod
     def _check_removed_agents(new_client_keys_path: str, logger):
