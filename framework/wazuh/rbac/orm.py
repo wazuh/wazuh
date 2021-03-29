@@ -2718,24 +2718,23 @@ class DatabaseManager:
             self.sessions[database].commit()
 
     def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None):
-        """Get the resources from the "source" database filtering by IDs and insert them into the "target" database."""
-        def get_data(table, *args):
+        """Get the resources from the "source" database filtering by IDs and insert them into the "target" database.
+        This function will adapt the relationship between conflictive resources if needed."""
+
+        def get_data(table, col_a, col_b=None):
+            """Get the resources from the given table filtering up to 2 columns by the 'from_id' and 'to_id'
+            parameters."""
             result = list()
             try:
-                for column in args:
-                    if from_id and to_id:
-                        partial_result = self.sessions[source].query(table).filter(
-                            column.between(from_id, to_id)).order_by(column).all()
-                    elif from_id:
-                        partial_result = self.sessions[source].query(table).filter(
-                            column >= from_id).order_by(column).all()
-                    elif to_id:
-                        partial_result = self.sessions[source].query(table).filter(
-                            column <= to_id).order_by(column).all()
-                    else:
-                        partial_result = self.sessions[source].query(table).order_by(column).all()
-                    # We need to keep results sorted so intersection between partial_results must be resolved manually.
-                    result = partial_result if result == list() else [x for x in result if x in partial_result]
+                if from_id and to_id:
+                    condition = or_(col_a.between(from_id, to_id),
+                                    col_b.between(from_id, to_id)) if col_b else col_a.between(from_id, to_id)
+                elif from_id:
+                    condition = or_(col_a >= from_id, col_b >= from_id) if col_b else col_a >= from_id
+                elif to_id:
+                    condition = or_(col_a <= from_id, col_b <= from_id) if col_b else col_a <= from_id
+
+                result = self.sessions[source].query(table).filter(condition).order_by(col_a).all()
             except OperationalError:
                 # OperationalError will be raised if the database does not contain the specified table
                 pass
