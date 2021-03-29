@@ -185,7 +185,7 @@ async def test_SyncWorker(create_log, caplog):
 
     send_request_mock = KeyError(1)
     await check_message(mock=send_request_mock, expected_message=f"Error asking for permission: 1")
-    await check_message(mock=b'False', expected_message="Master didnt grant permission to synchronize.")
+    await check_message(mock=b'False', expected_message="Master didn't grant permission to synchronize.")
     await check_message(mock=b'True', expected_message="Zip file sent to master.")
 
     error = WazuhException(1001)
