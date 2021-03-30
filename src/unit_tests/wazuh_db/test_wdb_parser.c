@@ -920,12 +920,11 @@ void test_vuln_cves_update_status_constraint_error(void **state){
     os_strdup("update_status {\"old_status\":\"new_status\"}", query);
 
     // wdb_parse_agents_update_status_vuln_cves
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON data when updating status value."
-    " Not compliant with constraints defined in the database.");
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON data when updating CVE's status.");
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid JSON data, missing required fields");
+    assert_string_equal(data->output, "err Invalid JSON data, missing or wrong required fields");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
