@@ -6149,14 +6149,10 @@ int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* outp
     else {
         cJSON* old_status = cJSON_GetObjectItem(data, "old_status");
         cJSON* new_status = cJSON_GetObjectItem(data, "new_status");
-        // Required fields
-        if (!cJSON_IsString(old_status) || !cJSON_IsString(new_status)) {
-            mdebug1("Invalid vuln_cves JSON data when updating status value. Not compliant with constraints defined in the database.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
-        }
+        cJSON* type = cJSON_GetObjectItem(data, "type");
 
-        else {
-            ret = wdb_agents_update_status_vuln_cves(wdb, old_status->valuestring, new_status->valuestring);
+        if (cJSON_IsString(type) && cJSON_IsString(new_status) && !cJSON_IsString(old_status)) {
+            ret = wdb_agents_update_status_vuln_cves(wdb, NULL, new_status->valuestring, type->valuestring);
             if (OS_SUCCESS != ret) {
                 mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
@@ -6164,6 +6160,20 @@ int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* outp
             else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
             }
+        }
+        else if (cJSON_IsString(old_status) && cJSON_IsString(new_status) && !cJSON_IsString(type)) {
+            ret = wdb_agents_update_status_vuln_cves(wdb, old_status->valuestring, new_status->valuestring, NULL);
+            if (OS_SUCCESS != ret) {
+                mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
+                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
+            }
+            else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+            }
+        }
+        else {
+            mdebug1("Invalid vuln_cves JSON data when updating CVE's status.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing or wrong required fields");
         }
     }
 
