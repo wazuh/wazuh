@@ -209,6 +209,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_VULN_CVES_INSERT] = "INSERT OR IGNORE INTO vuln_cves (name, version, architecture, cve) VALUES(?,?,?,?);",
     [WDB_STMT_VULN_CVES_CLEAR] = "DELETE FROM vuln_cves;",
     [WDB_STMT_VULN_CVES_UPDATE] = "UPDATE vuln_cves SET status = ? WHERE status = ?;",
+    [WDB_STMT_VULN_CVES_UPDATE_BY_TYPE] = "UPDATE vuln_cves SET status = ? WHERE type = ?;",
     [WDB_STMT_VULN_CVES_UPDATE_ALL] = "UPDATE vuln_cves SET status = ?",
     [WDB_STMT_VULN_CVES_SELECT_BY_STATUS] = "SELECT * FROM vuln_cves WHERE status = ?;",
     [WDB_STMT_VULN_CVES_DELETE_ENTRY] = "DELETE FROM vuln_cves WHERE cve = ? AND reference = ?;"
