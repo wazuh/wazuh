@@ -103,4 +103,18 @@ int wdb_agents_vuln_cves_update_status(int id,
                                       const char *new_status,
                                       int *sock);
 
+/**
+ * @brief Updates CVEs' status from the vuln_cves table according their type (OS/PACKAGE).
+ *
+ * @param[in] id The agent ID.
+ * @param[in] type The type of vulnerability to update.
+ * @param[in] new_status The new status.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_agents_vuln_cves_update_status_by_type(int id,
+                                               const char *type,
+                                               const char *new_status,
+                                               int *sock);
+
 #endif
