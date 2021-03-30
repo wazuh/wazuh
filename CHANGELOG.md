@@ -18,9 +18,11 @@ All notable changes to this project will be documented in this file.
   - Added Vulnerability Detector reports to Wazuh DB to know which CVE’s affect an agent. ([#7731](https://github.com/wazuh/wazuh/issues/7731))
 
 - **API:**
-  - Added new endpoint to get agent stats from different components. ([#7128](https://github.com/wazuh/wazuh/issues/7128))
+  - Added new endpoint to get agent stats from different components. ([#7200](https://github.com/wazuh/wazuh/pull/7200))
   - Added new endpoint to modify users' allow_run_as flag. ([#7588](https://github.com/wazuh/wazuh/pull/7588))
-
+  - Added new endpoint to get vulnerabilities that affect an agent. ([#7647](https://github.com/wazuh/wazuh/pull/7647))
+  - Added API configuration validator. ([#7803](https://github.com/wazuh/wazuh/pull/7803))
+    
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
 
@@ -45,7 +47,8 @@ All notable changes to this project will be documented in this file.
   - Changed the `POST /groups` endpoint to specify the group name in a JSON body instead of in a query parameter. ([#6909](https://github.com/wazuh/wazuh/pull/6909))
   - Changed the `PUT /active-response` endpoint function to create messages with the new JSON format. ([#7312](https://github.com/wazuh/wazuh/pull/7312))
   - New parameters added to `DELETE /agents` endpoint and `older_than` field removed from response. ([#6366](https://github.com/wazuh/wazuh/issues/6366))
-
+  - Changed login security controller to avoid errors in Restful API reference links. ([#7909](https://github.com/wazuh/wazuh/pull/7909))
+    
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
 
@@ -84,6 +87,10 @@ All notable changes to this project will be documented in this file.
 
 - **API:**
   - Fixed wrong API messages returned when getting agents' upgrade results. ([#7587](https://github.com/wazuh/wazuh/pull/7587))
+  - Fixed wrong `user` string in API logs when receiving responses with status codes 308 or 404. ([#7709](https://github.com/wazuh/wazuh/pull/7709))
+  - Fixed API errors when cluster is disabled and node_type is worker. ([#7867](https://github.com/wazuh/wazuh/pull/7867))
+  - Fixed redundant paths and duplicated tests in API integration test mapping script. ([#7798](https://github.com/wazuh/wazuh/pull/7798))
+  - Fixed an API integration test case failing in test_rbac_white_all and added a test case for the enable/disable run_as endpoint.([8014](https://github.com/wazuh/wazuh/pull/8014))
 
 - **Ruleset:**
   - Fixed usb-storage-attached regex pattern to support blank spaces. ([#7837](https://github.com/wazuh/wazuh/issues/7837))
