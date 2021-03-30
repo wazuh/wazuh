@@ -22,8 +22,7 @@ from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
 from xml.dom.minidom import parseString
-from xml.etree import ElementTree as ET
-from xml.etree.ElementTree import fromstring
+from xml.etree import ElementTree
 
 import wazuh.core.results as results
 from api import configuration
@@ -737,7 +736,7 @@ def load_wazuh_xml(xml_path, data=None):
                '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
-    return fromstring(entities + '<root_tag>' + data + '</root_tag>')
+    return ElementTree.fromstring(entities + '<root_tag>' + data + '</root_tag>')
 
 
 class WazuhVersion:
@@ -1107,7 +1106,7 @@ class WazuhDBQuery(object):
         self.date_fields = date_fields
         self.extra_fields = extra_fields
         self.q = query
-        self.legacy_filters = filters
+        self.legacy_filters = filters.copy() if filters else filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
         self.rbac_negate = rbac_negate
@@ -1610,7 +1609,7 @@ def upload_file(content, path, check_xml_formula_values=True):
     def escape_formula_values(xml_string):
         """Prepend with a single quote possible formula injections."""
         formula_characters = ('=', '+', '-', '@')
-        et = ET.ElementTree(ET.fromstring(f'<root>{xml_string}</root>'))
+        et = ElementTree.ElementTree(ElementTree.fromstring(f'<root>{xml_string}</root>'))
         full_preprend, beginning_preprend = list(), list()
         for node in et.iter():
             if node.tag and node.tag.startswith(formula_characters):

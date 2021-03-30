@@ -55,20 +55,20 @@ static const char GENERIC_PATH [OS_SIZE_256] =        "c:\\file\\path";
 static const char COMPRESS_FOLDER_REG [OS_SIZE_256] = "queue/diff/registry/[x64] " KEY_NAME_HASHED "/" VALUE_NAME_HASHED;
 static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/c\\file\\path";
 static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/c\\file\\path/last-entry.gz";
-static const char TMP_FOLDER [OS_SIZE_256] =          "queue/diff/tmp";
 static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
 static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
 
 #else
 
 static const char GENERIC_PATH [OS_SIZE_256] =        "/path/to/file";
-static const char COMPRESS_FOLDER [OS_SIZE_256] =     "/var/ossec/queue/diff/local/path/to/file";
-static const char COMPRESS_FILE [OS_SIZE_256] =       "/var/ossec/queue/diff/local/path/to/file/last-entry.gz";
-static const char TMP_FOLDER [OS_SIZE_256] =          "/var/ossec/queue/diff/tmp";
-static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "/var/ossec/queue/diff/tmp/tmp-entry";
-static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "/var/ossec/queue/diff/tmp/tmp-entry.gz";
+static const char COMPRESS_FOLDER [OS_SIZE_256] =     "queue/diff/local/path/to/file";
+static const char COMPRESS_FILE [OS_SIZE_256] =       "queue/diff/local/path/to/file/last-entry.gz";
+static const char UNCOMPRESS_FILE [OS_SIZE_256] =     "queue/diff/tmp/tmp-entry";
+static const char COMPRESS_TMP_FILE [OS_SIZE_256] =   "queue/diff/tmp/tmp-entry.gz";
 
 #endif
+
+static const char TMP_FOLDER [OS_SIZE_256] =          "queue/diff/tmp";
 
 static char *syscheck_nodiff[] = {"c:\\file\\nodiff", "/path/to/ignore", NULL};
 
@@ -607,7 +607,7 @@ void test_initialize_file_diff_data(void **state) {
     assert_string_equal(diff->file_origin, GENERIC_PATH);
     assert_string_equal(diff->uncompress_file, UNCOMPRESS_FILE);
     assert_string_equal(diff->compress_tmp_file, COMPRESS_TMP_FILE);
-    assert_string_equal(diff->diff_file, "/var/ossec/queue/diff/tmp/diff-file");
+    assert_string_equal(diff->diff_file, "queue/diff/tmp/diff-file");
 }
 
 #endif // END TEST_AGENT and TEST_SERVER
@@ -625,7 +625,7 @@ void test_initialize_file_diff_data_too_long_path(void **state) {
     expect_abspath("queue/diff", 1);
 #else
     char path[PATH_MAX] = "/aa";
-    for (int i = 0; i < PATH_MAX - 37; i++) {
+    for (int i = 0; i < PATH_MAX - 26; i++) {
         strcat (path, "a");
     }
 
@@ -1741,9 +1741,9 @@ void test_fim_file_diff_nodiff(void **state) {
 
     expect_fim_diff_check_limits("/path/to/ignore", "aaa", 0);
 
-    expect_w_uncompress_gzfile("/var/ossec/queue/diff/local/path/to/ignore/last-entry.gz", UNCOMPRESS_FILE, NULL);
+    expect_w_uncompress_gzfile("queue/diff/local/path/to/ignore/last-entry.gz", UNCOMPRESS_FILE, NULL);
 
-    expect_FileSize("/var/ossec/queue/diff/local/path/to/ignore/last-entry.gz", 1024 * 1024);
+    expect_FileSize("queue/diff/local/path/to/ignore/last-entry.gz", 1024 * 1024);
 
     expect_fim_diff_create_compress_file("/path/to/ignore", COMPRESS_TMP_FILE, 0);
 
@@ -1768,7 +1768,7 @@ void test_fim_file_diff_generate_fail(void **state) {
 #ifndef TEST_WINAGENT
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
     gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED);
@@ -1815,7 +1815,7 @@ void test_fim_file_diff_generate_diff_str(void **state) {
 #ifndef TEST_WINAGENT
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     gen_diff_data_container->diff->uncompress_file = strdup("queue/diff/tmp/tmp-entry");
     gen_diff_data_container->diff->file_origin = strdup("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED);
@@ -1866,7 +1866,7 @@ void test_fim_file_diff_generate_diff_str_too_long(void **state) {
 
     gen_diff_data_container->diff->uncompress_file = strdup(UNCOMPRESS_FILE);
     gen_diff_data_container->diff->file_origin = strdup("/path/to/file/origin");
-    gen_diff_data_container->diff->diff_file = strdup("/var/ossec/queue/diff/tmp/diff-file");
+    gen_diff_data_container->diff->diff_file = strdup("queue/diff/tmp/diff-file");
 #else
     strcpy(gen_diff_data_container->strarray[0], "Comparing files start.txt and end.txt\r\n"
                                                  "Error diffs\r\n"
@@ -1932,7 +1932,7 @@ void test_fim_diff_process_delete_file_delete_error(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/c\\file\\path'");
 #else
-    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: '/var/ossec/queue/diff/local/path/to/file'");
+    expect_string(__wrap__merror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/path/to/file'");
 #endif
 
     int ret = fim_diff_process_delete_file(filename);
@@ -1947,7 +1947,7 @@ void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
 #ifdef TEST_WINAGENT
     expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/c\\file\\path', it does not exist.");
 #else
-    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder '/var/ossec/queue/diff/local/path/to/file', it does not exist.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/path/to/file', it does not exist.");
 #endif
 
     int ret = fim_diff_process_delete_file(filename);

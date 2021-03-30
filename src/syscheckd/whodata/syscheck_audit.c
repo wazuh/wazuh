@@ -18,13 +18,11 @@
 #include "audit_op.h"
 #include "string_op.h"
 
-#define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
-
 
 #ifndef WAZUH_UNIT_TESTING
 #define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
@@ -88,6 +86,8 @@ int set_auditd_config(void) {
 
     FILE *fp;
     char audit_path[50] = {0};
+    char buffer[PATH_MAX] = {'\0'};
+    char abs_path_socket[PATH_MAX] = {'\0'};
 
     // Check audisp version
     if (IsDir(PLUGINS_DIR_AUDIT_3) == 0) {
@@ -120,6 +120,9 @@ int set_auditd_config(void) {
 
     minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
+    abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+    abspath(AUDIT_SOCKET, abs_path_socket, PATH_MAX);
+
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
         merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
@@ -130,7 +133,7 @@ int set_auditd_config(void) {
     fprintf(fp, "direction = out\n");
     fprintf(fp, "path = builtin_af_unix\n");
     fprintf(fp, "type = builtin\n");
-    fprintf(fp, "args = 0640 %s\n", AUDIT_SOCKET);
+    fprintf(fp, "args = 0640 %s\n", abs_path_socket);
     fprintf(fp, "format = string\n");
 
     if (fclose(fp)) {
@@ -138,7 +141,7 @@ int set_auditd_config(void) {
         return -1;
     }
 
-    if (symlink(AUDIT_CONF_FILE, audit_path) < 0) {
+    if (symlink(buffer, audit_path) < 0) {
         switch (errno) {
         case EEXIST:
             if (unlink(audit_path) < 0) {
@@ -146,7 +149,7 @@ int set_auditd_config(void) {
                 return -1;
             }
 
-            if (symlink(AUDIT_CONF_FILE, audit_path) == 0) {
+            if (symlink(buffer, audit_path) == 0) {
                 break;
             }
 

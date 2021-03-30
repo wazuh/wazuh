@@ -825,13 +825,13 @@ void delete_sqlite(const char *id, const char *name)
     char path[512] = { '\0' };
 
     /* Delete related files */
-    snprintf(path, 511, "%s%s/agents/%s-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, 511, "%s/agents/%s-%s.db", WDB_DIR, id, name);
     unlink(path);
 
-    snprintf(path, 511, "%s%s/agents/%s-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, 511, "%s/agents/%s-%s.db-wal", WDB_DIR, id, name);
     unlink(path);
 
-    snprintf(path, 511, "%s%s/agents/%s-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, 511, "%s/agents/%s-%s.db-shm", WDB_DIR, id, name);
     unlink(path);
 }
 
