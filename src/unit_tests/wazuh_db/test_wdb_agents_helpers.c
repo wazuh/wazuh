@@ -345,6 +345,188 @@ void test_wdb_agents_vuln_cves_update_status_success(void **state){
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_agents_vuln_cves_update_status_by_type */
+
+void test_wdb_agents_vuln_cves_update_status_by_type_error_json(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *type = "OS";
+    const char *new_status = "PENDING";
+
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
+
+    ret = wdb_agents_vuln_cves_update_status_by_type(id, type, new_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_agents_vuln_cves_update_status_by_type_error_socket(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *type = "OS";
+    const char *new_status = "PENDING";
+    const char *json_str = NULL;
+    const char *response = "err";
+    char query_str[OS_SIZE_256];
+
+    os_strdup("{\"type\":\"OS\",\"new_status\":\"PENDING\"}", json_str);
+    snprintf(query_str, OS_SIZE_256, "agent 1 vuln_cves update_status %s", json_str);
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "type");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "OS");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "new_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "PENDING");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 vuln_cves update_status {\"type\":\"OS\",\"new_status\":\"PENDING\"}");
+
+    ret = wdb_agents_vuln_cves_update_status_by_type(id, type, new_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_agents_vuln_cves_update_status_by_type_error_sql_execution(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *type = "OS";
+    const char *new_status = "PENDING";
+    const char *json_str = NULL;
+    const char *response = "err";
+    char query_str[OS_SIZE_256];
+
+    os_strdup("{\"type\":\"OS\",\"new_status\":\"PENDING\"}", json_str);
+    snprintf(query_str, OS_SIZE_256, "agent 1 vuln_cves update_status %s", json_str);
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "type");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "OS");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "new_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "PENDING");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Cannot execute SQL query");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 vuln_cves update_status {\"type\":\"OS\",\"new_status\":\"PENDING\"}");
+
+    ret = wdb_agents_vuln_cves_update_status_by_type(id, type, new_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_agents_vuln_cves_update_status_by_type_error_result(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *type = "OS";
+    const char *new_status = "PENDING";
+    const char *json_str = NULL;
+    const char *response = "err";
+    char query_str[OS_SIZE_256];
+
+    os_strdup("{\"type\":\"OS\",\"new_status\":\"PENDING\"}", json_str);
+    snprintf(query_str, OS_SIZE_256, "agent 1 vuln_cves update_status %s", json_str);
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "type");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "OS");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "new_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "PENDING");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error reported in the result of the query");
+
+    ret = wdb_agents_vuln_cves_update_status_by_type(id, type, new_status, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_agents_vuln_cves_update_status_by_type_success(void **state){
+    int ret = 0;
+    int id = 1;
+    const char *type = "OS";
+    const char *new_status = "PENDING";
+    const char *json_str = NULL;
+    char query_str[OS_SIZE_256];
+    const char *response = "ok";
+
+    os_strdup("{\"type\":\"OS\",\"new_status\":\"PENDING\"}", json_str);
+    snprintf(query_str, OS_SIZE_256, "agent 1 vuln_cves update_status %s", json_str);
+
+    will_return(__wrap_cJSON_CreateObject, 1);
+    will_return_always(__wrap_cJSON_AddStringToObject, 1);
+
+    // Adding data to JSON
+    expect_string(__wrap_cJSON_AddStringToObject, name, "type");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "OS");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "new_status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "PENDING");
+
+    // Printing JSON
+    will_return(__wrap_cJSON_PrintUnformatted, json_str);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_agents_vuln_cves_update_status_by_type(id, type, new_status, NULL);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 /* Tests wdb_agents_vuln_cves_remove_entry */
 
 void test_wdb_agents_vuln_cves_remove_entry_error_json(void **state)
@@ -912,6 +1094,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_agents_vuln_cves_update_status_by_type*/
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_update_status_by_type_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_agents_vuln_cves_remove_entry */
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_remove_entry_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
