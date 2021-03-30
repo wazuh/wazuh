@@ -1502,7 +1502,7 @@ class PoliciesManager:
                             return SecurityError.INVALID
 
                     try:
-                        if not check_default:
+                        if not check_default and not policy_id:
                             policies = sorted([p.id for p in self.get_policies()]) or [0]
                             policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
 
@@ -2618,6 +2618,7 @@ class RolesRulesManager:
         delete_orphans(self.session)
         self.session.close()
 
+
 class DatabaseManager:
     def __init__(self):
         self.engines = dict()
@@ -2651,8 +2652,8 @@ class DatabaseManager:
     def insert_data_from_yaml(self, database: str, resource_type: ResourceType = ResourceType.DEFAULT):
         """Insert the default data from the yaml file to a database."""
         default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
-        # Create default users if they don't exist yet
 
+        # Create default users
         with open(os.path.join(default_path, "users.yaml"), 'r') as stream:
             default_users = yaml.safe_load(stream)
             with AuthenticationManager(self.sessions[database]) as auth:
@@ -2662,59 +2663,30 @@ class DatabaseManager:
                     auth.edit_run_as(user_id=auth.get_user(username=d_username)['id'],
                                      allow_run_as=payload['allow_run_as'])
 
-        # Create default roles if they don't exist yet
+        # Create default roles
         with open(os.path.join(default_path, "roles.yaml"), 'r') as stream:
             default_roles = yaml.safe_load(stream)
-
             with RolesManager(self.sessions[database]) as rm:
                 for d_role_name, payload in default_roles[next(iter(default_roles))].items():
                     rm.add_role(name=d_role_name, resource_type=resource_type, check_default=False)
 
+        # Create default rules
         with open(os.path.join(default_path, 'rules.yaml'), 'r') as stream:
             default_rules = yaml.safe_load(stream)
-
             with RulesManager(self.sessions[database]) as rum:
                 for d_rule_name, payload in default_rules[next(iter(default_rules))].items():
                     rum.add_rule(name=d_rule_name, rule=payload['rule'], resource_type=resource_type,
                                  check_default=False)
 
-        # Create default policies if they don't exist yet
+        # Create default policies
         with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
             default_policies = yaml.safe_load(stream)
-
             with PoliciesManager(self.sessions[database]) as pm:
                 for d_policy_name, payload in default_policies[next(iter(default_policies))].items():
                     for name, policy in payload['policies'].items():
-                        policy_name = f'{d_policy_name}_{name}'
-                        policy_result = pm.add_policy(name=policy_name, policy=policy, resource_type=resource_type,
-                                                      check_default=False)
-                        # Update policy if it exists
-                        if policy_result == SecurityError.ALREADY_EXIST:
-                            try:
-                                policy_id = pm.get_policy(policy_name)['id']
-                                if policy_id < max_id_reserved:
-                                    pm.update_policy(policy_id=policy_id, name=policy_name, policy=policy,
-                                                     resource_type=resource_type, check_default=False)
-                                else:
-                                    with RolesPoliciesManager() as rpm:
-                                        linked_roles = [role.id for role in
-                                                        rpm.get_all_roles_from_policy(policy_id=policy_id)]
-                                        new_positions = dict()
-                                        for role in linked_roles:
-                                            new_positions[role] = [p.id for p in
-                                                                   rpm.get_all_policies_from_role(role_id=role)] \
-                                                .index(policy_id)
+                        pm.add_policy(name=f'{d_policy_name}_{name}', resource_type=resource_type, policy=policy,
+                                      check_default=False)
 
-                                        pm.delete_policy(policy_id=policy_id)
-                                        pm.add_policy(name=policy_name, policy=policy, resource_type=resource_type,
-                                                      check_default=False)
-                                        policy_id = pm.get_policy(policy_name)['id']
-                                        for role, position in new_positions.items():
-                                            rpm.add_role_to_policy(policy_id=policy_id, role_id=role, position=position,
-                                                                   force_admin=True)
-
-                            except (KeyError, TypeError):
-                                pass
         # Create the relationships
         with open(os.path.join(default_path, "relationships.yaml"), 'r') as stream:
             default_relationships = yaml.safe_load(stream)
@@ -2734,8 +2706,7 @@ class DatabaseManager:
                     for d_policy_name in payload['policy_ids']:
                         for sub_name in default_policies[next(iter(default_policies))][d_policy_name]['policies'].keys():
                             rpm.add_policy_to_role(role_id=rm.get_role(name=d_role_name)['id'],
-                                                   policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')[
-                                                       'id'],
+                                                   policy_id=pm.get_policy(name=f'{d_policy_name}_{sub_name}')['id'],
                                                    force_admin=True)
 
             # Role-Rules relationships
@@ -2747,22 +2718,24 @@ class DatabaseManager:
 
             self.sessions[database].commit()
 
-    def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None,
-                     check_default: bool = True):
-        """Get the resources from the "source" database filtering by IDs and insert them into the "target" database."""
-        def get_data(table, *args):
+    def migrate_data(self, source, target, from_id: int = None, to_id: int = None, resource_type: ResourceType = None):
+        """Get the resources from the "source" database filtering by IDs and insert them into the "target" database.
+        This function will adapt the relationship between conflictive resources if needed."""
+
+        def get_data(table, col_a, col_b=None):
+            """Get the resources from the given table filtering up to 2 columns by the 'from_id' and 'to_id'
+            parameters."""
+            result = list()
             try:
-                if not from_id and not to_id:
-                    return self.sessions[source].query(table).all()
-                result = set()
-                for column in args:
-                    if from_id and to_id:
-                        partial_result = set(self.sessions[source].query(table).filter(column.between(from_id, to_id)).all())
-                    elif from_id:
-                        partial_result = set(self.sessions[source].query(table).filter(column >= from_id).all())
-                    elif to_id:
-                        partial_result = set(self.sessions[source].query(table).filter(column <= to_id).all())
-                    result = partial_result if result == set() else result.intersection(partial_result)
+                if from_id and to_id:
+                    condition = or_(col_a.between(from_id, to_id),
+                                    col_b.between(from_id, to_id)) if col_b else col_a.between(from_id, to_id)
+                elif from_id:
+                    condition = or_(col_a >= from_id, col_b >= from_id) if col_b else col_a >= from_id
+                elif to_id:
+                    condition = or_(col_a <= from_id, col_b <= from_id) if col_b else col_a <= from_id
+
+                result = self.sessions[source].query(table).filter(condition).order_by(col_a).all()
             except OperationalError:
                 # OperationalError will be raised if the database does not contain the specified table
                 pass
@@ -2777,9 +2750,8 @@ class DatabaseManager:
                                       user_id=user.id,
                                       hash_password=True,
                                       resource_type=resource_type,
-                                      check_default=check_default)
-                auth_manager.edit_run_as(user_id=auth_manager.get_user(username=d_username)['id'],
-                                         allow_run_as=payload['allow_run_as'])
+                                      check_default=False)
+                auth_manager.edit_run_as(user_id=user.id, allow_run_as=user.allow_run_as)
 
         old_roles = get_data(Roles, Roles.id)
         with RolesManager(self.sessions[target]) as role_manager:
@@ -2788,7 +2760,7 @@ class DatabaseManager:
                                       created_at=role.created_at,
                                       role_id=role.id,
                                       resource_type=resource_type,
-                                      check_default=check_default)
+                                      check_default=False)
 
         old_rules = get_data(Rules, Rules.id)
         with RulesManager(self.sessions[target]) as rule_manager:
@@ -2797,44 +2769,109 @@ class DatabaseManager:
                                       rule=json.loads(rule.rule),
                                       created_at=rule.created_at,
                                       rule_id=rule.id,
-                                      check_default=check_default)
+                                      check_default=False)
 
         old_policies = get_data(Policies, Policies.id)
         with PoliciesManager(self.sessions[target]) as policy_manager:
             for policy in old_policies:
-                policy_manager.add_policy(name=policy.name,
-                                          policy=json.loads(policy.policy),
-                                          created_at=policy.created_at,
-                                          policy_id=policy.id,
-                                          check_default=check_default)
+                status = policy_manager.add_policy(name=policy.name,
+                                                   policy=json.loads(policy.policy),
+                                                   created_at=policy.created_at,
+                                                   policy_id=policy.id,
+                                                   check_default=False)
+                # If the user's policy has the same body as an existing default policy it won't be inserted and its
+                # role-policy relationships will be linked to that default policy instead to replace it.
+                if status == SecurityError.ALREADY_EXIST or status == SecurityError.CONSTRAINT_ERROR:
+                    roles_policies = self.sessions[source].query(RolesPolicies).filter(
+                        RolesPolicies.policy_id == policy.id).order_by(RolesPolicies.id.asc()).all()
+                    new_policy_id = self.sessions[target].query(Policies).filter_by(
+                        policy=str(policy.policy)).first().id
+                    with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
+                        for role_policy in roles_policies:
+                            role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
+                                                                   policy_id=new_policy_id,
+                                                                   position=role_policy.level,
+                                                                   created_at=role_policy.created_at,
+                                                                   force_admin=True)
 
         old_user_roles = get_data(UserRoles, UserRoles.user_id, UserRoles.role_id)
         with UserRolesManager(self.sessions[target]) as user_role_manager:
             for user_role in old_user_roles:
-                user_role_manager.add_role_to_user(user_id=user_role.user_id,
-                                                   role_id=user_role.role_id,
-                                                   position=user_role.level,
-                                                   created_at=user_role.created_at,
-                                                   force_admin=True)
+                user_id = user_role.user_id
+                role_id = user_role.role_id
+                try:
+                    # Look for the ID of a default resource from the old database in the new database using its name
+                    # This allows us to keep the relationship if the related default resource now has a different id
+                    if int(user_id) <= max_id_reserved:
+                        user_name = AuthenticationManager(self.sessions[source]).get_user_id(user_id=user_id)['username']
+                        user_id = AuthenticationManager(self.sessions[target]).get_user(username=user_name)['id']
+
+                    if int(role_id) <= max_id_reserved:
+                        role_name = RolesManager(self.sessions[source]).get_role_id(role_id=role_id)['name']
+                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+
+                    user_role_manager.add_role_to_user(user_id=user_id,
+                                                       role_id=role_id,
+                                                       position=user_role.level,
+                                                       created_at=user_role.created_at,
+                                                       force_admin=True)
+                except TypeError:
+                    # An exception will be raised if one of the resources are no longer present in any of the databases
+                    # and thus the relationship won't be added to the new database.
+                    pass
 
         # Role-Policies relationships
         old_roles_policies = get_data(RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id)
         with RolesPoliciesManager(self.sessions[target]) as role_policy_manager:
             for role_policy in old_roles_policies:
-                role_policy_manager.add_policy_to_role(role_id=role_policy.role_id,
-                                                       policy_id=role_policy.policy_id,
-                                                       position=role_policy.level,
-                                                       created_at=role_policy.created_at,
-                                                       force_admin=True)
+                role_id = role_policy.role_id
+                policy_id = role_policy.policy_id
+                try:
+                    # Look for the ID of a default resource from the old database in the new database using its name
+                    # This allows us to keep the relationship if the related default resource now has a different id
+                    if int(role_id) <= max_id_reserved:
+                        role_name = RolesManager(self.sessions[source]).get_role_id(role_id=role_id)['name']
+                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+
+                    if int(policy_id) <= max_id_reserved:
+                        policy_name = PoliciesManager(self.sessions[source]).get_policy_id(policy_id=policy_id)['name']
+                        policy_id = PoliciesManager(self.sessions[target]).get_policy(name=policy_name)['id']
+
+                    role_policy_manager.add_policy_to_role(role_id=role_id,
+                                                           policy_id=policy_id,
+                                                           position=role_policy.level,
+                                                           created_at=role_policy.created_at,
+                                                           force_admin=True)
+                except TypeError:
+                    # An exception will be raised if one of the resources are no longer present in any of the databases
+                    # and thus the relationship won't be added to the new database.
+                    pass
 
         # Role-Rules relationships
         old_roles_rules = get_data(RolesRules, RolesRules.role_id, RolesRules.rule_id)
         with RolesRulesManager(self.sessions[target]) as role_rule_manager:
             for role_rule in old_roles_rules:
-                role_rule_manager.add_rule_to_role(role_id=role_rule.role_id,
-                                                   rule_id=role_rule.rule_id,
-                                                   created_at=role_rule.created_at,
-                                                   force_admin=True)
+                role_id = role_rule.role_id
+                rule_id = role_rule.rule_id
+                try:
+                    # Look for the ID of a default resource from the old database in the new database using its name
+                    # This allows us to keep the relationship if the related default resource now has a different id
+                    if int(role_id) <= max_id_reserved:
+                        role_name = RolesManager(self.sessions[source]).get_role_id(role_id=role_id)['name']
+                        role_id = RolesManager(self.sessions[target]).get_role(name=role_name)['id']
+
+                    if int(rule_id) <= max_id_reserved:
+                        rule_name = RulesManager(self.sessions[source]).get_rule(rule_id=rule_id)['name']
+                        rule_id = RulesManagers(self.sessions[target]).get_rule_by_name(rule_name=rule_name)['id']
+
+                    role_rule_manager.add_rule_to_role(role_id=role_id,
+                                                       rule_id=rule_id,
+                                                       created_at=role_rule.created_at,
+                                                       force_admin=True)
+                except TypeError:
+                    # An exception will be raised if one of the resources are no longer present in any of the databases
+                    # and thus the relationship won't be added to the new database.
+                    pass
 
     def rollback(self, database):
         """Abort any pending change for the current session."""
@@ -2864,35 +2901,31 @@ def check_database_integrity():
             # Check if an upgrade is required
             if int(current_version) < int(expected_version):
                 logger.info(f'RBAC database migration required. '
-                            f'Current version is {current_version} but it should be {expected_version}')
-                # From <= 4.1.x to 4.2.0
-                if (current_version == '0' or re.match(r'40[0-1][0-9].*', current_version)) \
-                        and re.match(r'402[0-9].*', expected_version):
-                    logger.info(f'Upgrading RBAC database to {expected_version} version')
-                    # Remove tmp database if present
-                    os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
+                            f'Current version is {current_version} but it should be {expected_version}.'
+                            f'Upgrading RBAC database to {expected_version} version')
+                # Remove tmp database if present
+                os.path.exists(_tmp_db_file) and os.remove(_tmp_db_file)
 
-                    # Create new tmp database and populate it
-                    db_manager.connect(_tmp_db_file)
-                    db_manager.connect(DATABASE_FULL_PATH)
-                    db_manager.create_database(_tmp_db_file)
-                    set_permission(_tmp_db_file)
-                    db_manager.insert_data_from_yaml(_tmp_db_file)
+                # Create new tmp database and populate it
+                db_manager.connect(_tmp_db_file)
+                db_manager.connect(DATABASE_FULL_PATH)
+                db_manager.create_database(_tmp_db_file)
+                set_permission(_tmp_db_file)
+                db_manager.insert_data_from_yaml(_tmp_db_file)
 
-                    # Migrate data from old database
-                    db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=cloud_reserved_range,
-                                            to_id=max_id_reserved, resource_type=ResourceType.PROTECTED,
-                                            check_default=False)
-                    db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=max_id_reserved + 1,
-                                            resource_type=ResourceType.USER)
+                # Migrate data from old database
+                db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=cloud_reserved_range,
+                                        to_id=max_id_reserved, resource_type=ResourceType.PROTECTED)
+                db_manager.migrate_data(source=DATABASE_FULL_PATH, target=_tmp_db_file, from_id=max_id_reserved + 1,
+                                        resource_type=ResourceType.USER)
 
-                    # Apply changes and replace database
-                    db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
-                    db_manager.close_sessions()
-                    # Create a backup file for development purposes and overwrite the old one
-                    safe_move(DATABASE_FULL_PATH, f'{DATABASE_FULL_PATH}.bkp', permissions=0o640)
-                    safe_move(_tmp_db_file, DATABASE_FULL_PATH, permissions=0o640)
-                    logger.info(f'{DATABASE_FULL_PATH} database upgraded successfully.')
+                # Apply changes and replace database
+                db_manager.set_database_version(_tmp_db_file, db_manager.get_api_revision())
+                db_manager.close_sessions()
+                safe_move(_tmp_db_file, DATABASE_FULL_PATH,
+                          ownership=(common.ossec_uid(), common.ossec_gid()),
+                          permissions=0o640)
+                logger.info(f'{DATABASE_FULL_PATH} database upgraded successfully.')
 
         # If database does not exists it means this is a fresh installation and must be created properly
         else:
