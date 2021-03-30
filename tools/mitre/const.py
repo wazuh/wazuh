@@ -19,6 +19,7 @@ MODIFIED_t= 'modified_time'
 MITRE_VERSION_t= 'mitre_version'
 REVOKED_BY_t= 'revoked_by'
 DEPRECATED_t= 'deprecated'
+TYPE_t= 'type'
 
 ### Metadata
 KEY_t= 'key'
@@ -54,6 +55,10 @@ SOURCE_ID_t= 'source_id'
 TARGET_ID_t= 'target_id'
 TACTIC_ID_t= 'tactic_id'
 TECH_ID_t= 'tech_id'
+
+### Use
+SOURCE_TYPE_t= 'source_type'
+TARGET_TYPE_t= 'target_type'
 
 ####### Relationships #######
 

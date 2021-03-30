@@ -262,6 +262,7 @@ class Aliases(Base):
 
     id = Column(const.ID_t, String, primary_key=True)
     alias = Column(const.ALIAS_t, String, primary_key=True)
+    type = Column(const.TYPE_t, String, nullable=False)
 
 
 class Contributors(Base):
@@ -275,6 +276,7 @@ class Contributors(Base):
 
     id = Column(const.ID_t, String, primary_key=True)
     contributor = Column(const.CONTRIBUTOR_t, String, primary_key=True)
+    type = Column(const.TYPE_t, String, nullable=False)
 
 
 class Platforms(Base):
@@ -288,6 +290,7 @@ class Platforms(Base):
 
     id = Column(const.ID_t, String, primary_key=True)
     platform = Column(const.PLATFORM_t, String, primary_key=True)
+    type = Column(const.TYPE_t, String, nullable=False)
 
 
 class References(Base):
@@ -307,6 +310,7 @@ class References(Base):
     external_id = Column(const.EXTERNAL_ID_t, String, default=None, nullable=True)
     url = Column(const.URL_t, String, primary_key=True)
     description = Column(const.DESCRIPTION_t, String, default=None, nullable=True)
+    type = Column(const.TYPE_t, String, nullable=False)
 
 
 class Mitigate(Base):
@@ -346,7 +350,9 @@ class Use(Base):
 
     id = Column(const.ID_t, String, primary_key=True)
     source_id = Column(const.SOURCE_ID_t, String, default=None, nullable=False)
+    source_type = Column(const.SOURCE_TYPE_t, String, nullable=False)
     target_id = Column(const.TARGET_ID_t, String, default=None, nullable=False)
+    target_type = Column(const.TARGET_TYPE_t, String, nullable=False)
     description = Column(const.DESCRIPTION_t, String, default=None)
     created_time = Column(const.CREATED_t, DateTime, default=None)
     modified_time = Column(const.MODIFIED_t, DateTime, default=None)
@@ -487,6 +493,8 @@ def parse_json_mitigate_use(data_object):
     row[const.ID_t] = data_object[const.ID_t]
     row[const.SOURCE_ID_t] = data_object[const.SOURCE_REF_j]
     row[const.TARGET_ID_t] = data_object[const.TARGET_REF_j]
+    row[const.SOURCE_TYPE_t] = get_type(row[const.SOURCE_ID_t])
+    row[const.TARGET_TYPE_t] = get_type(row[const.TARGET_ID_t])
 
     if data_object.get(const.DESCRIPTION_t):
         row[const.DESCRIPTION_t] = data_object[const.DESCRIPTION_t]
@@ -498,6 +506,21 @@ def parse_json_mitigate_use(data_object):
     return row
 
 
+def get_type(object_id):
+    type = ""
+    if object_id.startswith(const.MALWARE_j) or object_id.startswith(const.TOOL_j):
+        type = "software"
+    elif object_id.startswith(const.INTRUSION_SET_j):
+        type = "group"
+    elif object_id.startswith(const.TACTIC_j):
+        type = "tactic"
+    elif object_id.startswith(const.COURSE_OF_ACTION_j):
+        type = "mitigation"
+    elif object_id.startswith(const.ATTACK_PATTERN_j):
+        type = "technique"
+    return type
+
+
 def parse_common_tables(parent_id, data_object):
     # Alias
     if data_object.get(const.ALIASES_j):
@@ -505,6 +528,7 @@ def parse_common_tables(parent_id, data_object):
             row_alias = {}
             row_alias[const.ID_t] = parent_id
             row_alias[const.ALIAS_t] = alias
+            row_alias[const.TYPE_t] = get_type(row_alias[const.ID_t])
             alias_rows_list.append(row_alias)
 
     if data_object.get(const.ALIAS_j):
@@ -512,6 +536,7 @@ def parse_common_tables(parent_id, data_object):
             row_alias = {}
             row_alias[const.ID_t] = parent_id
             row_alias[const.ALIAS_t] = alias
+            row_alias[const.TYPE_t] = get_type(row_alias[const.ID_t])
             alias_rows_list.append(row_alias)
 
     # Contributor
@@ -520,6 +545,7 @@ def parse_common_tables(parent_id, data_object):
             row_contributor = {}
             row_contributor[const.ID_t] = parent_id
             row_contributor[const.CONTRIBUTOR_t] = contributor
+            row_contributor[const.TYPE_t] = get_type(row_contributor[const.ID_t])
             contributor_rows_list.append(row_contributor)
 
     # Platform
@@ -528,6 +554,7 @@ def parse_common_tables(parent_id, data_object):
             row_platform = {}
             row_platform[const.ID_t] = parent_id
             row_platform[const.PLATFORM_t] = platform
+            row_platform[const.TYPE_t] = get_type(row_platform[const.ID_t])
             platform_rows_list.append(row_platform)
 
     # External References
@@ -536,6 +563,7 @@ def parse_common_tables(parent_id, data_object):
             if reference.get(const.URL_j):
                 row_external_ref = parse_json_ext_references(reference)
                 row_external_ref[const.ID_t] = parent_id
+                row_external_ref[const.TYPE_t] = get_type(row_external_ref[const.ID_t])
                 external_reference_rows_list.append(row_external_ref)
 
 
