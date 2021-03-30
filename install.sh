@@ -1084,8 +1084,11 @@ main()
         fi
         echo ""
 
-        # If version < wazuh 1.2
-        if [ "X$USER_OLD_NAME" != "XWazuh" ]; then
+        # Only if the update is for a version lower than 5.0.0
+        USER_OLD_VERSION=`getPreinstalledVersion`
+        VERSIONv5="v5.0.0"
+
+        if [ "$USER_OLD_VERSION" \< "$VERSIONv5" ]; then
             echo " ====================================================================================="
             echo "  ${update_rev_newconf1}"
             if [ "X$INSTYPE" = "Xagent" ]; then
