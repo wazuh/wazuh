@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import create_engine
 
-from wazuh.rbac.tests.utils import init_db
+from wazuh.rbac.tests.utils import init_db, execute_sql_file
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -19,15 +19,14 @@ test_data_path = os.path.join(test_path, 'data')
 @pytest.fixture(scope='function')
 def orm_setup():
     with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
-        with patch('wazuh.rbac.orm.DATABASE_FULL_PATH', new='test_database'):
-            orm = init_db('schema_security_test.sql', test_data_path)
-            yield orm
-            orm.db_manager.close_sessions()
+        orm = init_db('schema_security_test.sql', test_data_path)
+        yield orm
+        orm.db_manager.close_sessions()
 
 
 def test_database_init(orm_setup):
     """Check users db is properly initialized"""
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             assert rm.get_role('wazuh') != orm_setup.SecurityError.ROLE_NOT_EXIST
 
@@ -38,7 +37,7 @@ def test_json_validator(orm_setup):
 
 def test_add_token(orm_setup):
     """Check token rule is added to database"""
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             users = {'newUser', 'newUser1'}
             roles = {'test', 'test1', 'test2'}
@@ -63,7 +62,7 @@ def test_add_token(orm_setup):
 def test_get_all_token_rules(orm_setup):
     """Check that rules are correctly created"""
     users, roles = test_add_token(orm_setup)
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             user_rules, role_rules, run_as_rules = tm.get_all_rules()
             for user in user_rules.keys():
@@ -77,7 +76,7 @@ def test_nbf_invalid(orm_setup):
     """Check if a user's token is valid by comparing the values with those stored in the database"""
     current_timestamp = int(time())
     users, roles = test_add_token(orm_setup)
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             for user in users:
                 assert not tm.is_token_valid(user_id=user, token_nbf_time=current_timestamp)
@@ -88,7 +87,7 @@ def test_nbf_invalid(orm_setup):
 def test_delete_all_rules(orm_setup):
     """Check that rules are correctly deleted"""
     test_add_token(orm_setup)
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             assert tm.delete_all_rules()
 
@@ -97,7 +96,7 @@ def test_delete_all_expired_rules(orm_setup):
     """Check that rules are correctly deleted"""
     with patch('wazuh.rbac.orm.time', return_value=0):
         test_add_token(orm_setup)
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.TokenManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as tm:
             user_list, role_list = tm.delete_all_expired_rules()
             assert len(user_list) > 0
@@ -106,7 +105,7 @@ def test_delete_all_expired_rules(orm_setup):
 
 def test_add_user(orm_setup):
     """Check user is added to database"""
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
             # New user
             am.add_user(username='newUser', password='testingA1!')
@@ -126,7 +125,7 @@ def test_add_user(orm_setup):
 
 def test_add_role(orm_setup):
     """Check role is added to database"""
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.RolesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rm:
             # New role
             rm.add_role('newRole')
@@ -144,7 +143,7 @@ def test_add_role(orm_setup):
 
 def test_add_policy(orm_setup):
     """Check policy is added to database"""
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as pm:
             policy = {
                 'actions': ['agents:update'],
@@ -179,7 +178,7 @@ def test_add_policy(orm_setup):
 
 def test_add_rule(orm_setup):
     """Check rules in the database"""
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.RulesManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as rum:
             # New rule
             rum.add_rule(name='test_rule', rule={'MATCH': {'admin': ['admin_role']}})
@@ -196,7 +195,7 @@ def test_add_rule(orm_setup):
 
 def test_get_user(orm_setup):
     """Check users in the database"""
-    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite://")):
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
         with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[orm_setup.DATABASE_FULL_PATH]) as am:
             users = am.get_users()
             assert users
@@ -869,3 +868,93 @@ def test_update_policy_from_role(orm_setup):
 
         assert not rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[0])
         assert rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1])
+
+
+def test_database_manager_migrate_data(orm_setup):
+    """Test the DatabaseManager migration functionality having conflicts between user and the default policies."""
+    source_db = orm_setup.DATABASE_FULL_PATH
+    target_db = f'{orm_setup.DATABASE_FULL_PATH}_new'
+
+    # Save the resources before attempting to modify the database to be able to compare the results later
+    user_list = orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[source_db]).get_users()
+    policy_list = orm_setup.PoliciesManager(orm_setup.db_manager.sessions[source_db]).get_policies()
+    role_list = orm_setup.RolesManager(orm_setup.db_manager.sessions[source_db]).get_roles()
+    rule_list = orm_setup.RulesManager(orm_setup.db_manager.sessions[source_db]).get_rules()
+
+    user_roles_dict = {}
+    roles_policies_dict = {}
+    roles_rules_dict = {}
+
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[source_db]) as roles_policies:
+        with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[source_db]) as roles_rules:
+            with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[source_db]) as user_roles:
+                for role in role_list:
+                    roles_policies_dict[role.id] = roles_policies.get_all_policies_from_role(role.id)
+                    roles_rules_dict[role.id] = roles_rules.get_all_rules_from_role(role.id)
+                    user_roles_dict[role.id] = user_roles.get_all_users_from_role(role.id)
+
+    # Alter the user and default resources
+    execute_sql_file('orm_conflictive_changes.sql', orm_setup.db_manager.sessions[source_db], test_data_path)
+
+    # Create a new database in memory
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
+        orm_setup.db_manager.connect(target_db)
+        orm_setup.db_manager.create_database(target_db)
+        orm_setup.db_manager.insert_data_from_yaml(target_db)
+
+        # Trigger the migration process from the old database to the new one
+        orm_setup.db_manager.migrate_data(source=source_db,
+                                          target=target_db,
+                                          from_id=orm_setup.max_id_reserved + 1,
+                                          resource_type=orm_setup.ResourceType.USER)
+
+    # Check the policies
+    with orm_setup.PoliciesManager(orm_setup.db_manager.sessions[target_db]) as new_policies:
+        assert len(policy_list) == len(new_policies.get_policies()), \
+            f'The database does not have the same number of policies.'
+
+        # Ensure none of the problematic user's policies are present in the new database
+        for policy_id in [120, 121, 122]:
+            assert new_policies.get_policy_id(policy_id=policy_id) == orm_setup.SecurityError.POLICY_NOT_EXIST, \
+                f'The policy {policy_id} should not be present after the migration.'
+
+    # Check the rules
+    with orm_setup.RulesManager(orm_setup.db_manager.sessions[target_db]) as new_rules:
+        assert len(rule_list) == len(new_rules.get_rules()), 'The number of rules does not match.'
+
+    # Check the roles
+    with orm_setup.RolesManager(orm_setup.db_manager.sessions[target_db]) as new_roles:
+        assert len(role_list) == len(new_roles.get_roles()), 'The number of roles does not match.'
+
+    # Check the users
+    with orm_setup.AuthenticationManager(orm_setup.db_manager.sessions[target_db]) as new_users:
+        assert len(user_list) == len(new_users.get_users()), 'The number of users does not match.'
+
+    # Check the relationships
+    with orm_setup.RolesPoliciesManager(orm_setup.db_manager.sessions[target_db]) as new_roles_policies:
+        with orm_setup.RolesRulesManager(orm_setup.db_manager.sessions[target_db]) as new_roles_rules:
+            with orm_setup.UserRolesManager(orm_setup.db_manager.sessions[target_db]) as new_user_roles:
+                for role in role_list:
+                    # Check roles-policies
+                    if role.id in [100, 101]:
+                        # Take into account 3 new policies were added to roles 100 and 101
+                        assert len(roles_policies_dict[role.id]) == \
+                               len(new_roles_policies.get_all_policies_from_role(role.id))-3, \
+                               f'Role {role.id} ({role.name}) has a different number of policies.'
+                        # Make sure the user's roles_policies relationships has been updated
+                        for old_policy_id, new_policy_id in [(120, 1), (121, 10), (122, 20)]:
+                            assert new_roles_policies.exist_role_policy(role_id=role.id, policy_id=old_policy_id) == \
+                                   orm_setup.SecurityError.POLICY_NOT_EXIST
+                            assert new_roles_policies.exist_role_policy(role_id=role.id, policy_id=new_policy_id)
+                    else:
+                        assert len(roles_policies_dict[role.id]) == \
+                               len(new_roles_policies.get_all_policies_from_role(role.id)), \
+                               f'Role {role.id} ({role.name}) has a different number of policies.'
+
+                    # Check roles-rules
+                    assert len(roles_rules_dict[role.id]) == len(new_roles_rules.get_all_rules_from_role(role.id)), \
+                        f'Role {role.id} ({role.name}) has a different number of rules.'
+
+                    # Check user-roles
+                    assert len(user_roles_dict[role.id]) == len(new_user_roles.get_all_users_from_role(role.id)), \
+                        f'User {user.id} ({user.name}) has a different number of roles.'
