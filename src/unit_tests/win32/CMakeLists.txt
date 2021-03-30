@@ -25,7 +25,7 @@ target_link_libraries(WIN32 ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 # Generate win32 tests
 list(APPEND win32_names "test_win_utils")
-list(APPEND win32_flags "-Wl,--wrap,__merror -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize \
+list(APPEND win32_flags "-Wl,--wrap,_merror -Wl,--wrap,cJSON_GetObjectItem -Wl,--wrap,cJSON_GetArraySize \
                         -Wl,--wrap,cJSON_GetArrayItem -Wl,--wrap,cJSON_GetStringValue -Wl,--wrap,time")
 
 list(LENGTH win32_names count)
