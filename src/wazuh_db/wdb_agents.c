@@ -1,5 +1,21 @@
 #include "wdb_agents.h"
 
+cJSON* wdb_agents_get_sys_osinfo(wdb_t *wdb){
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_OSINFO_GET);
+
+    if (stmt == NULL) {
+        return NULL;
+    }
+
+    cJSON* result = wdb_exec_stmt(stmt);
+
+    if (!result) {
+        mdebug1("wdb_exec_stmt(): %s", sqlite3_errmsg(wdb->db));
+    }
+
+    return result;
+}
+
 bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_PROGRAM_FIND);
 
