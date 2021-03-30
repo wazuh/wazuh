@@ -67,11 +67,14 @@ int __wrap_mkdir(const char *__path, __mode_t __mode) {
 }
 #endif
 
-#ifndef WIN32
-void expect_mkdir(const char *__path, __mode_t __mode, int ret) {
+#ifdef WIN32
+void expect_mkdir(const char *__path, int ret) {
+#elif defined(__MACH__)
+void expect_mkdir(const char *__path, mode_t __mode, int ret) {
     expect_value(__wrap_mkdir, __mode, __mode);
 #else
-void expect_mkdir(const char *__path, int ret) {
+void expect_mkdir(const char *__path, __mode_t __mode, int ret) {
+    expect_value(__wrap_mkdir, __mode, __mode);
 #endif
     expect_string(__wrap_mkdir, __path, __path);
     will_return(__wrap_mkdir, ret);
