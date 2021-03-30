@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wdb_agents.h"
 
 
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
@@ -376,8 +377,8 @@ int wdb_set_hotfix_metadata(wdb_t * wdb, const char * scan_id) {
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace) {
     int triaged = 0;
-    char* reference = NULL;
-    sqlite3_stmt *stmt_get = NULL;
+    char *reference = NULL;
+    cJSON *j_osinfo = NULL;
     sqlite3_stmt *stmt_del = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -386,29 +387,26 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     }
 
     // Getting old data to preserve triaged value
-    if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_GET) < 0) {
-        mdebug1("at wdb_osinfo_save(): cannot cache statement (%d)", WDB_STMT_OSINFO_GET);
+    if (j_osinfo = wdb_agents_get_sys_osinfo(wdb), !j_osinfo || !j_osinfo->child) {
+        merror("Retrieving old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 
-    stmt_get = wdb->stmt[WDB_STMT_OSINFO_GET];
-
-    switch (sqlite3_step(stmt_get)) {
-        case SQLITE_DONE:
-            // There is no previous data
-            break;
-        case SQLITE_ROW:
-            reference = (char*) sqlite3_column_text(stmt_get,0);
-            triaged = sqlite3_column_int(stmt_get, 1);
-            break;
-        default:
-            merror("Retrieving old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
-            return -1;
+    cJSON *j_triaged = cJSON_GetObjectItem(j_osinfo->child, "triaged");
+    cJSON *j_reference = cJSON_GetObjectItem(j_osinfo->child, "reference");
+    if (!cJSON_IsNumber(j_triaged) || !cJSON_IsString(j_reference)) {
+        merror("No information related to the triaged status of the OS");
+        return -1;
     }
+
+    triaged = j_triaged->valueint;
+    os_strdup(j_reference->valuestring, reference);
+    cJSON_Delete(j_osinfo);
 
     /* Delete old OS information before insert the new scan */
     if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
         mdebug1("at wdb_osinfo_save(): cannot cache statement (%d)", WDB_STMT_OSINFO_DEL);
+        os_free(reference);
         return -1;
     }
 
@@ -416,6 +414,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 
     if (sqlite3_step(stmt_del) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
+        os_free(reference);
         return -1;
     }
 
@@ -439,6 +438,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 
     // If there is a change in the OS, the triaged is set to 0
     triaged = reference && strcmp(hexdigest, reference) == 0 ? triaged : 0;
+    os_free(reference);
 
     if (wdb_osinfo_insert(wdb,
         scan_id,
