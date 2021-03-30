@@ -484,7 +484,7 @@ void rbtree_set_dispose(rb_tree * tree, void (*dispose)(void *)) {
 
 // Insert a key-value in the tree
 
-void * rbtree_insert(rb_tree * tree, const char * key, void * value) {
+rb_node *rbtree_insert(rb_tree *tree, const char *key, void *value) {
     assert(tree != NULL);
     assert(key != NULL);
 
@@ -514,7 +514,7 @@ void * rbtree_insert(rb_tree * tree, const char * key, void * value) {
     node->parent = parent;
     rb_balance_insert(tree, node);
 
-    return value;
+    return node;
 }
 
 // Update the value of an existing key

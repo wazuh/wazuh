@@ -65,7 +65,8 @@ add_library(fim_shared STATIC expect_run_check.c
                               expect_fim_diff_changes.c
                               db/expect_fim_db.c
                               db/expect_fim_db_files.c
-                              db/expect_fim_db_registries.c)
+                              db/expect_fim_db_registries.c
+                              utils.c)
 
 set_target_properties(fim_shared PROPERTIES LINKER_LANGUAGE C )
 
@@ -103,6 +104,11 @@ list(APPEND syscheckd_tests_flags "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRo
                                    -Wl,--wrap,getSyscheckInternalOptions -Wl,--wrap,fim_sync_push_msg \
                                    -Wl,--wrap,_mdebug1 -Wl,--wrap,getpid")
 
+# create_db.c tests
+add_executable(test_create_db test_create_db.c)
+
+target_compile_options(test_create_db PRIVATE "-Wall")
+
 set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 \
                           -Wl,--wrap,_mdebug2 -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
@@ -116,19 +122,24 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn
                           -Wl,--wrap,fim_db_process_missing_entry -Wl,--wrap,send_log_msg -Wl,--wrap,IsDir \
                           -Wl,--wrap,DirSize -Wl,--wrap,seechanges_get_diff_path -Wl,--wrap,stat \
                           -Wl,--wrap,fim_file_diff -Wl,--wrap,fim_diff_process_delete_file \
-                          -Wl,--wrap,fim_db_get_count_entries -Wl,--wrap,fim_db_get_path_from_pattern")
+                          -Wl,--wrap,fim_db_get_count_entries -Wl,--wrap,fim_db_get_path_from_pattern \
+                          -Wl,--wrap,fim_db_file_is_scanned -Wl,--wrap,fim_db_data_exists \
+                          -Wl,--wrap,fim_db_append_paths_from_inode")
 
-list(APPEND syscheckd_tests_names "test_create_db")
+target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
-                                     -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
-                                     -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
-                                     -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
-                                     -Wl,--wrap,get_UTC_modification_time")
+    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions -Wl,--wrap,getpid \
+                                          -Wl,--wrap=decode_win_permissions,--wrap=pthread_mutex_lock \
+                                          -Wl,--wrap=pthread_mutex_unlock,--wrap=w_get_file_attrs,--wrap=os_winreg_check \
+                                          -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
+                                          -Wl,--wrap,get_UTC_modification_time")
 else()
-  list(APPEND syscheckd_tests_flags "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
-                                     -Wl,--wrap,get_user")
+    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
+                                          -Wl,--wrap,get_user")
 endif()
+
+add_test(NAME test_create_db COMMAND test_create_db)
+
 
 set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,lstat -Wl,--wrap,stat,--wrap=_mdebug1 \
                            -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fwrite \

@@ -129,7 +129,7 @@ testconfig()
 # Start function
 start_service()
 {
-    echo "Starting $NAME $VERSION..."
+    echo "Starting Wazuh $VERSION..."
     checkpid;
 
     # Delete all files in temporary folder
@@ -246,7 +246,7 @@ stop_service()
         rm -f ${DIR}/var/run/${i}*.pid
      done
 
-    echo "$NAME $VERSION Stopped"
+    echo "Wazuh $VERSION Stopped"
 }
 
 info()

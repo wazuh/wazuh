@@ -364,13 +364,13 @@ void test_w_compress_gzfile_success(void **state){
 // w_uncompress_gzfile
 
 void test_w_uncompress_gzfile_lstat_fail(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, -1);
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
@@ -379,13 +379,13 @@ void test_w_uncompress_gzfile_lstat_fail(void **state) {
 }
 
 void test_w_uncompress_gzfile_fopen_fail(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -400,13 +400,13 @@ void test_w_uncompress_gzfile_fopen_fail(void **state) {
 }
 
 void test_w_uncompress_gzfile_gzopen_fail(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -428,13 +428,13 @@ void test_w_uncompress_gzfile_gzopen_fail(void **state) {
 }
 
 void test_w_uncompress_gzfile_first_read_fail(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -471,13 +471,13 @@ void test_w_uncompress_gzfile_first_read_fail(void **state) {
 }
 
 void test_w_uncompress_gzfile_first_read_success(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -520,13 +520,13 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
 }
 
 void test_w_uncompress_gzfile_success(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);

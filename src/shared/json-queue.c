@@ -140,7 +140,9 @@ cJSON * jqueue_parse_json(file_queue * queue) {
 
         if (queue->read_attempts < MAX_READ_ATTEMPTS) {
             if (current_pos >= 0) {
-                fseek(queue->fp, current_pos, SEEK_SET);
+                if (fseek(queue->fp, current_pos, SEEK_SET) != 0) {
+                    queue->flags = CRALERT_READ_FAILED;
+                }
             }
         } else {
             queue->read_attempts = 0;

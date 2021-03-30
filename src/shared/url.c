@@ -14,13 +14,40 @@
 #include <os_net/os_net.h>
 
 #ifndef WIN32
+/*
+ * These values ​​were taken from how libcurl looks for the paths at compilation time,
+ * here it is modified to be able to support the precompiled deps.
+ *
+ * https://github.com/curl/curl/blob/5930cb1c465ef5f0de6f1b91a843bb6f0bed1f23/acinclude.m4#L2182
+ */
+const char* certs_list[] = {
+    "/etc/ssl/certs/ca-certificates.crt",       // Debian systems
+    "/etc/pki/tls/certs/ca-bundle.crt",         // Redhat and Mandriva
+    "/usr/share/ssl/certs/ca-bundle.crt",       // RedHat
+    "/usr/local/share/certs/ca-root-nss.crt",   // FreeBSD
+    "/etc/ssl/cert.pem",                        // OpenBSD, FreeBSD, MacOS
+    NULL
+};
 
 struct MemoryStruct {
   char *memory;
   size_t size;
 };
 
-int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout){
+char const * find_cert_list() {
+    char const * ret_val = NULL;
+
+    for (size_t i = 0; NULL != certs_list[i]; ++i) {
+        if (-1 != FileSize(certs_list[i])) {
+            ret_val = certs_list[i];
+            break;
+        }
+    }
+
+    return ret_val;
+}
+
+int wurl_get(const char * url, const char * dest, const char * header, const char *data, const long timeout) {
     CURL *curl;
     FILE *fp;
     CURLcode res;
@@ -28,7 +55,9 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
     char errbuf[CURL_ERROR_SIZE];
     int old_mask;
 
-    if (curl){
+    if (curl) {
+        char const *cert = find_cert_list();
+
         old_mask = umask(0006);
         fp = fopen(dest,"wb");
         umask(old_mask);
@@ -37,31 +66,44 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
             curl_easy_cleanup(curl);
             return OS_FILERR;
         }
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+
+        res = curl_easy_setopt(curl, CURLOPT_URL, url);
+        res += curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+        res += curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
         if (header) {
             struct curl_slist *c_header = curl_slist_append(NULL, header);
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, c_header);
+            res += curl_easy_setopt(curl, CURLOPT_HTTPHEADER, c_header);
         }
 
         if (data) {
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+            res += curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
         }
 
         if (timeout) {
-            curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
+            res += curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
         }
 
         // Enable SSL check if url is HTTPS
-        if(!strncmp(url,"https",5)){
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+        if (!strncmp(url,"https",5)) {
+            res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+            if (NULL != cert) {
+                res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+            }
         }
 
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+        res += curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+        res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+
+        if (res != 0) {
+            mdebug1("Parameter setup error at CURL");
+            curl_easy_cleanup(curl);
+            fclose(fp);
+            unlink(dest);
+            return OS_CONNERR;
+        }
+
         res = curl_easy_perform(curl);
 
         switch(res) {
@@ -271,18 +313,31 @@ char * wurl_http_get(const char * url) {
     chunk.size = 0;    /* no data at this point */
 
     if (curl){
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
+        char const *cert = find_cert_list();
+
+        res = curl_easy_setopt(curl, CURLOPT_URL, url);
+        res += curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+        res += curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
 
         // Enable SSL check if url is HTTPS
         if(!strncmp(url,"https",5)){
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+            res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+            if (NULL != cert) {
+                res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
+            }
         }
 
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER,errbuf);
-        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+        res += curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+        res += curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+
+        if (res != 0) {
+            mdebug1("Parameter setup error at CURL");
+            curl_easy_cleanup(curl);
+            free(chunk.memory);
+            return NULL;
+        }
+
         res = curl_easy_perform(curl);
 
         if(res){

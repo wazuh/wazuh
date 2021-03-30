@@ -1654,11 +1654,9 @@ void test_RTCallBack_acquired_changes_null_dir(void **state) {
     will_return(__wrap_OSHash_Get, rt);
 
     expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
 
     expect_string(__wrap_fim_configuration_directory, path, "");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, -1);
 
     // Inside realtime_win32read
@@ -1691,11 +1689,9 @@ void test_RTCallBack_acquired_changes(void **state) {
     will_return(__wrap_OSHash_Get, rt);
 
     expect_string(__wrap_fim_configuration_directory, path, "C:\\a\\path\\file.test");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
 
     expect_string(__wrap_fim_configuration_directory, path, "c:\\a\\path\\file.test");
-    expect_string(__wrap_fim_configuration_directory, entry, "file");
     will_return(__wrap_fim_configuration_directory, 0);
 
     expect_string(__wrap_fim_realtime_event, file, "c:\\a\\path\\file.test");

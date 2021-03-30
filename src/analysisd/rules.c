@@ -2523,7 +2523,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->program_name, lf->program_name, NULL, NULL)
+        if (w_expression_match(rule->program_name, lf->program_name, NULL, rule_match)
             == rule->program_name->negate) {
             return (NULL);
         }
@@ -2535,7 +2535,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->id, lf->id, NULL, NULL) == rule->id->negate) {
+        if (w_expression_match(rule->id, lf->id, NULL, rule_match) == rule->id->negate) {
             return (NULL);
         }
     }
@@ -2546,7 +2546,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->system_name, lf->systemname, NULL, NULL)
+        if (w_expression_match(rule->system_name, lf->systemname, NULL, rule_match)
             == rule->system_name->negate) {
             return (NULL);
         }
@@ -2557,21 +2557,21 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         if (!lf->protocol) {
             return (NULL);
         }
-        if (w_expression_match(rule->protocol, lf->protocol, NULL, NULL) == rule->protocol->negate) {
+        if (w_expression_match(rule->protocol, lf->protocol, NULL, rule_match) == rule->protocol->negate) {
             return (NULL);
         }
     }
 
     /* Check if any word to match exists */
     if (rule->match) {
-        if (w_expression_match(rule->match, lf->log, NULL, NULL) == rule->match->negate) {
+        if (w_expression_match(rule->match, lf->log, NULL, rule_match) == rule->match->negate) {
             return (NULL);
         }
     }
 
     /* Check if exist any regex for this rule */
     if (rule->regex) {
-        bool matches = w_expression_match(rule->regex, lf->log, NULL, NULL);
+        bool matches = w_expression_match(rule->regex, lf->log, NULL, rule_match);
         if (matches == rule->regex->negate) {
             return NULL;
         }
@@ -2583,7 +2583,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->action, lf->action, NULL, NULL) == rule->action->negate) {
+        if (w_expression_match(rule->action, lf->action, NULL, rule_match) == rule->action->negate) {
             return (NULL);
         }
     }
@@ -2594,7 +2594,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->url, lf->url, NULL, NULL) == rule->url->negate) {
+        if (w_expression_match(rule->url, lf->url, NULL, rule_match) == rule->url->negate) {
             return (NULL);
         }
     }
@@ -2605,7 +2605,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return (NULL);
         }
 
-        if (w_expression_match(rule->location, lf->location, NULL, NULL) == rule->location->negate) {
+        if (w_expression_match(rule->location, lf->location, NULL, rule_match) == rule->location->negate) {
             return (NULL);
         }
     }
@@ -2617,7 +2617,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             return NULL;
         }
 
-        bool matches = w_expression_match(rule->fields[i]->regex, field, NULL, NULL);
+        bool matches = w_expression_match(rule->fields[i]->regex, field, NULL, rule_match);
         if (matches == rule->fields[i]->regex->negate) {
             return NULL;
         }
@@ -2631,7 +2631,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->srcip, lf->srcip, NULL, NULL) == rule->srcip->negate) {
+            if (w_expression_match(rule->srcip, lf->srcip, NULL, rule_match) == rule->srcip->negate) {
                 return (NULL);
             }
         }
@@ -2642,7 +2642,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->dstip, lf->dstip, NULL, NULL) == rule->dstip->negate) {
+            if (w_expression_match(rule->dstip, lf->dstip, NULL, rule_match) == rule->dstip->negate) {
                 return (NULL);
             }
         }
@@ -2652,7 +2652,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->srcport, lf->srcport, NULL, NULL) == rule->srcport->negate) {
+            if (w_expression_match(rule->srcport, lf->srcport, NULL, rule_match) == rule->srcport->negate) {
                 return (NULL);
             }
         }
@@ -2661,7 +2661,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->dstport, lf->dstport, NULL, NULL) == rule->dstport->negate) {
+            if (w_expression_match(rule->dstport, lf->dstport, NULL, rule_match) == rule->dstport->negate) {
                 return (NULL);
             }
         }
@@ -2679,11 +2679,11 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         /* Checking if exist any user to match */
         if (rule->user) {
             if (lf->dstuser) {
-                if (w_expression_match(rule->user, lf->dstuser, NULL, NULL) == rule->user->negate) {
+                if (w_expression_match(rule->user, lf->dstuser, NULL, rule_match) == rule->user->negate) {
                     return (NULL);
                 }
             } else if (lf->srcuser) {
-                if (w_expression_match(rule->user, lf->srcuser, NULL, NULL) == rule->user->negate) {
+                if (w_expression_match(rule->user, lf->srcuser, NULL, rule_match) == rule->user->negate) {
                     return (NULL);
                 }
             } else {
@@ -2698,7 +2698,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return NULL;
             }
 
-            if (w_expression_match(rule->srcgeoip, lf->srcgeoip, NULL, NULL) == rule->srcgeoip->negate) {
+            if (w_expression_match(rule->srcgeoip, lf->srcgeoip, NULL, rule_match) == rule->srcgeoip->negate) {
                 return NULL;
             }
         }
@@ -2709,7 +2709,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return NULL;
             }
 
-            if (w_expression_match(rule->dstgeoip, lf->dstgeoip, NULL, NULL) == rule->dstgeoip->negate) {
+            if (w_expression_match(rule->dstgeoip, lf->dstgeoip, NULL, rule_match) == rule->dstgeoip->negate) {
                 return NULL;
             }
         }
@@ -2741,7 +2741,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
             if (!lf->data) {
                 return (NULL);
             }
-            if (w_expression_match(rule->data, lf->data, NULL, NULL) == rule->data->negate) {
+            if (w_expression_match(rule->data, lf->data, NULL, rule_match) == rule->data->negate) {
                 return (NULL);
             }
         }
@@ -2752,7 +2752,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return(NULL);
             }
 
-            if (w_expression_match(rule->extra_data, lf->extra_data, NULL, NULL)
+            if (w_expression_match(rule->extra_data, lf->extra_data, NULL, rule_match)
                 == rule->extra_data->negate) {
                 return (NULL);
             }
@@ -2764,7 +2764,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->hostname, lf->hostname, NULL, NULL) == rule->hostname->negate) {
+            if (w_expression_match(rule->hostname, lf->hostname, NULL, rule_match) == rule->hostname->negate) {
                 return (NULL);
             }
         }
@@ -2775,7 +2775,7 @@ RuleInfo *OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                 return (NULL);
             }
 
-            if (w_expression_match(rule->status, lf->status, NULL, NULL) == rule->status->negate) {
+            if (w_expression_match(rule->status, lf->status, NULL, rule_match) == rule->status->negate) {
                 return (NULL);
             }
         }

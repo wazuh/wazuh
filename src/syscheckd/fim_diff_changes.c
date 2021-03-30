@@ -470,7 +470,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     diff->file_size = 0;
 
     if (syscheck.file_size_enabled) {
-        int it = fim_configuration_directory(filename, "file");
+        int it = fim_configuration_directory(filename);
         diff->size_limit = syscheck.diff_size_limit[it];
     }
 

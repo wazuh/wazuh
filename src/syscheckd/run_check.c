@@ -96,10 +96,13 @@ void fim_send_sync_msg(const char *location, const char * msg) {
 
 
 // Send a message related to syscheck change/addition
-void send_syscheck_msg(const char *msg)
-{
+void send_syscheck_msg(const cJSON *_msg) {
+    char *msg = cJSON_PrintUnformatted(_msg);
+
     mdebug2(FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
+
+    os_free(msg);
 
     if (syscheck.max_eps == 0) {
         return;
@@ -116,11 +119,9 @@ void send_syscheck_msg(const char *msg)
 // Send a scan info event
 void fim_send_scan_info(fim_scan_event event) {
     cJSON * json = fim_scan_info_json(event, time(NULL));
-    char * plain = cJSON_PrintUnformatted(json);
 
-    send_syscheck_msg(plain);
+    send_syscheck_msg(json);
 
-    free(plain);
     cJSON_Delete(json);
 }
 
@@ -341,8 +342,7 @@ void start_daemon()
 
         // If time elapsed is higher than the syscheck time, run syscheck time
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
-            fim_scan();
-            prev_time_sk = time(0);
+            prev_time_sk = fim_scan();
         }
         sleep(SYSCHECK_WAIT);
     }
@@ -595,7 +595,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     snprintf(path, PATH_MAX, "%s", syscheck.symbolic_links[i]);
                     fim_link_check_delete(i);
 
-                    int config = fim_configuration_directory(path, "file");
+                    int config = fim_configuration_directory(path);
 
                     if (config >= 0) {
                         fim_link_silent_scan(path, config);
@@ -727,7 +727,7 @@ STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
     int watch_conf;
 
     assert(watch_to_delete != NULL);
-    dir_conf = fim_configuration_directory(syscheck.symbolic_links[pos], "file");
+    dir_conf = fim_configuration_directory(syscheck.symbolic_links[pos]);
 
     if (dir_conf > -1) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
@@ -735,7 +735,7 @@ STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
         while(hash_node) {
             data = hash_node->data;
             if (data) {
-                watch_conf = fim_configuration_directory(data, "file");
+                watch_conf = fim_configuration_directory(data);
 
                 if (dir_conf == watch_conf) {
                     W_Vector_insert(watch_to_delete, hash_node->key);

@@ -646,6 +646,7 @@
 /* OSSEC alert messages */
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
+#define OS_AG_STOPPED   "ossec: Agent stopped: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
 #define OS_AG_REMOVED   "ossec: Agent removed: '%s'."
 
