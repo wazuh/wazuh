@@ -46,7 +46,7 @@ int __wrap_wm_vuldet_add_cve_node(cve_vuln_pkg *newPkg,
 }
 
 int __wrap_wm_vuldet_linux_nvd_vulnerabilities(__attribute__((unused)) sqlite3 *db,
-                                               __attribute__((unused)) agent_software *agent,
+                                               __attribute__((unused)) scan_agent *agent,
                                                __attribute__((unused)) OSHash *cve_table) {
     return mock();
 }
@@ -56,7 +56,7 @@ int __wrap_wm_vuldet_prepare() {
 }
 
 int __wrap_wm_vuldet_win_nvd_vulnerabilities(__attribute__((unused)) sqlite3 *db,
-                                             __attribute__((unused)) agent_software *agent,
+                                             __attribute__((unused)) scan_agent *agent,
                                              __attribute__((unused)) wm_vuldet_flags *flags) {
     return mock();
 }
