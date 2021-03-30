@@ -1037,7 +1037,7 @@ main()
     askForDelete
 
     # Configuring the system (based on the installation type)
-    if [ "X${update_only}" = "X" ]; then
+    if ([ "X${update_only}" = "X" ] || [ "X$breaking_upgrade" = "Xyes" ]); then
         if [ "X$INSTYPE" = "Xserver" ]; then
             ConfigureServer
         elif [ "X$INSTYPE" = "Xagent" ]; then
@@ -1084,11 +1084,8 @@ main()
         fi
         echo ""
 
-        # Only if the update is for a version lower than 5.0.0
-        USER_OLD_VERSION=`getPreinstalledVersion`
-        VERSIONv5="v5.0.0"
-
-        if [ "$USER_OLD_VERSION" \< "$VERSIONv5" ]; then
+        # Only if the update is a breaking change
+        if [ "X$breaking_upgrade" = "Xyes" ]; then
             echo " ====================================================================================="
             echo "  ${update_rev_newconf1}"
             if [ "X$INSTYPE" = "Xagent" ]; then
