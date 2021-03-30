@@ -941,6 +941,7 @@ void test_vuln_cves_update_status_command_error(void **state){
     will_return(__wrap_wdb_agents_update_status_vuln_cves, OS_INVALID);
     expect_string(__wrap_wdb_agents_update_status_vuln_cves, old_status, "valid");
     expect_string(__wrap_wdb_agents_update_status_vuln_cves, new_status, "obsolete");
+    expect_value(__wrap_wdb_agents_update_status_vuln_cves, type, NULL);
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
 
@@ -963,6 +964,51 @@ void test_vuln_cves_update_status_command_success(void **state){
     will_return(__wrap_wdb_agents_update_status_vuln_cves, OS_SUCCESS);
     expect_string(__wrap_wdb_agents_update_status_vuln_cves, old_status, "valid");
     expect_string(__wrap_wdb_agents_update_status_vuln_cves, new_status, "obsolete");
+    expect_value(__wrap_wdb_agents_update_status_vuln_cves, type, NULL);
+
+    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_vuln_cves_update_status_by_type_command_error(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("update_status {\"type\":\"PACKAGES\",\"new_status\":\"VALID\"}", query);
+
+    // wdb_parse_agents_update_status_vuln_cves
+    will_return(__wrap_wdb_agents_update_status_vuln_cves, OS_INVALID);
+    expect_string(__wrap_wdb_agents_update_status_vuln_cves, type, "PACKAGES");
+    expect_string(__wrap_wdb_agents_update_status_vuln_cves, new_status, "VALID");
+    expect_value(__wrap_wdb_agents_update_status_vuln_cves, old_status, NULL);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
+
+    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_vuln_cves_update_status_by_type_command_success(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("update_status {\"type\":\"PACKAGES\",\"new_status\":\"VALID\"}", query);
+
+    // wdb_parse_agents_update_status_vuln_cves
+    will_return(__wrap_wdb_agents_update_status_vuln_cves, OS_SUCCESS);
+    expect_string(__wrap_wdb_agents_update_status_vuln_cves, type, "PACKAGES");
+    expect_string(__wrap_wdb_agents_update_status_vuln_cves, new_status, "VALID");
+    expect_value(__wrap_wdb_agents_update_status_vuln_cves, old_status, NULL);
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
@@ -1170,6 +1216,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_constraint_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_command_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_command_success, test_setup, test_teardown),
+        // wdb_parse_agents_vuln_cves_update_status_by_type
+        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_success, test_setup, test_teardown),
         // wdb_parse_agents_remove_vuln_cves
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_remove_json_data_error, test_setup, test_teardown),
