@@ -468,6 +468,17 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state)
 
 /* Tests wdb_agents_update_status_vuln_cves*/
 
+void test_wdb_agents_update_status_vuln_cves_statement_parameter_fail(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* old_status = "pending";
+    const char* type = "OS";
+
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, NULL, type);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
 void test_wdb_agents_update_status_vuln_cves_statement_init_fail(void **state){
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -519,6 +530,42 @@ void test_wdb_agents_update_status_vuln_cves_success_all(void **state){
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
     ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status, NULL);
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
+void test_wdb_agents_update_status_vuln_cves_by_type_statement_init_fail(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* type = "OS";
+    const char* new_status = "pending";
+
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_UPDATE_BY_TYPE);
+
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, NULL, new_status, type);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_agents_update_status_vuln_cves_by_type_success(void **state){
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* type = "OS";
+    const char* new_status = "pending";
+
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_UPDATE_BY_TYPE);
+
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, new_status);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, type);
+
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, NULL, new_status, type);
+
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -794,9 +841,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_success_statement_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_success_pkg_found, test_setup, test_teardown),
         /* Tests wdb_agents_update_status_vuln_cves */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_statement_parameter_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_success_all, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_by_type_statement_init_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_by_type_success, test_setup, test_teardown),
         /* Tests wdb_agents_remove_vuln_cves */
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_vuln_cves_invalid_data, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_remove_vuln_cves_statement_init_fail, test_setup, test_teardown),
