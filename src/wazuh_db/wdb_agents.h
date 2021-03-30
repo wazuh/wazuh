@@ -15,7 +15,7 @@
 #include "wdb.h"
 
 /**
- * @brief Function to get all the OS information from the sys_osinfo table.
+ * @brief Function to clear whole data from agent vuln_cves table.
  *
  * @param [in] wdb The 'agents' struct database.
  * @return Returns cJSON object with the sys_osinfo database table information.
@@ -24,12 +24,12 @@
 cJSON* wdb_agents_get_sys_osinfo(wdb_t *wdb);
 
 /**
- * @brief Function to set the triaged column from the sys_osinfo table.
+ * @brief Function to clear whole data from agent vuln_cve table.
  *
  * @param [in] wdb The 'agents' struct database.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_set_sys_osinfo_triaged(wdb_t *wdb);
+int wdb_agents_clear_vuln_cve(wdb_t *wdb);
 
 /**
  * @brief Function to check if a certain package exists.
@@ -67,6 +67,7 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
  *         The cJSON object must be freed by the caller.
  */
 cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
+<<<<<<< HEAD
                                    const char* name,
                                    const char* version,
                                    const char* architecture,
@@ -74,7 +75,17 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                    const char* reference,
                                    const char* type,
                                    const char* status,
-                                   bool check_pkg_existence);
+                                   bool check_pkg_existance);
+=======
+                               const char* name,
+                               const char* version,
+                               const char* architecture,
+                               const char* cve,
+                               const char* reference,
+                               const char* type,
+                               const char* status,
+                               bool check_pkg_existance);
+>>>>>>> Implementing a Wazuh DB command to get the sys_osinfo information
 
 /**
  * @brief Function to update the status field in agent database vuln_cves table.
