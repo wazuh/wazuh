@@ -5,7 +5,7 @@
 # Syntax: make [ all | backup | install | restore | service ]
 
 OSSEC_GROUP       = ossec
-INSTALLDIR        = /var/ossec
+INSTALLDIR       ?= /var/ossec
 
 RM_FILE        = rm -f
 INSTALL_DIR    = install -o root -g ${OSSEC_GROUP} -m 0750 -d

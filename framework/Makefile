@@ -5,7 +5,7 @@
 # Syntax: make [ all | build | install | examples | clean ]
 
 OSSEC_GROUP       = ossec
-INSTALLDIR        = /var/ossec
+INSTALLDIR       ?= /var/ossec
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
