@@ -926,11 +926,7 @@ void test_wm_agent_upgrade_listen_messages_bind_error(void **state)
     will_return(__wrap_OS_BindUnixDomain, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-<<<<<<< HEAD
     expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket 'queue/ossec/upgrade': 'Operation not permitted'");
-=======
-    expect_string(__wrap__mterror, formatted_msg, "(8108): Unable to bind to socket '/queue/sockets/upgrade': 'Operation not permitted'");
->>>>>>> master
 
     wm_agent_upgrade_listen_messages(NULL);
 }
