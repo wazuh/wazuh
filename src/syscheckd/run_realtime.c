@@ -127,78 +127,77 @@ void realtime_process() {
 
     if (len < 0) {
         merror(FIM_ERROR_REALTIME_READ_BUFFER);
+        return;
     }
-    else if (len > 0) {
+
+    if (len == 0) {
+        // Nothing to do
+        return;
+    }
+
+    rb_tree * tree = rbtree_init();
+    for (size_t i = 0; i < (size_t) len; i += REALTIME_EVENT_SIZE + event->len) {
+        char wdchar[33];
+        char final_name[MAX_LINE + 1];
+        char *entry;
+        final_name[MAX_LINE] = '\0';
+        event = (struct inotify_event *) (void *) &buf[i];
+
+        if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
+            mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+            syscheck.realtime->queue_overflow = true;
+            send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+            continue;
+        }
+
+        snprintf(wdchar, 33, "%d", event->wd);
+
         w_mutex_lock(&syscheck.fim_realtime_mutex);
-        rb_tree * tree = rbtree_init();
+        // The configured paths can end at / or not, we must check it.
+        entry = (char *) OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
 
-        for (size_t i = 0; i < (size_t) len; i += REALTIME_EVENT_SIZE + event->len) {
-            event = (struct inotify_event *) (void *) &buf[i];
+        if (entry == NULL) {
+            w_mutex_unlock(&syscheck.fim_realtime_mutex);
+            continue;
+        }
 
-            if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
-                mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
-                syscheck.realtime->queue_overflow = true;
-                send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
-            }
-            else {
-                char wdchar[33];
-                char final_name[MAX_LINE + 1];
-                char *entry;
-
-                final_name[MAX_LINE] = '\0';
-
-                snprintf(wdchar, 33, "%d", event->wd);
-
-                // The configured paths can end at / or not, we must check it.
-                entry = (char *)OSHash_Get_ex(syscheck.realtime->dirtb, wdchar);
-
-                if (entry) {
-                    // Check file entries with realtime
-                    if (event->len == 0) {
-                        snprintf(final_name, MAX_LINE, "%s", entry);
-                    }
-                    else {
-                        // Check directories entries with realtime
-                        if (entry[strlen(entry) - 1] == PATH_SEP) {
-                            snprintf(final_name, MAX_LINE, "%s%s",
-                                    entry,
-                                    event->name);
-                        }
-                        else {
-                            snprintf(final_name, MAX_LINE, "%s/%s",
-                                    entry,
-                                    event->name);
-                        }
-                    }
-
-                    if (rbtree_insert(tree, final_name, NULL) == NULL) {
-                        mdebug2("Duplicate event in real-time buffer: %s", final_name);
-                    }
-
-                    switch(event->mask) {
-                    case IN_MOVE_SELF:
-                        delete_subdirectories_watches(entry);
-                        // fall through
-                    case IN_DELETE_SELF:
-                        mdebug2(FIM_INOTIFY_WATCH_DELETED, entry);
-                        free(OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar));
-
-                        break;
-                    }
-                }
+        // Check file entries with realtime
+        if (event->len == 0) {
+            snprintf(final_name, MAX_LINE, "%s", entry);
+        } else {
+            // Check directories entries with realtime
+            if (entry[strlen(entry) - 1] == PATH_SEP) {
+                snprintf(final_name, MAX_LINE, "%s%s", entry, event->name);
+            } else {
+                snprintf(final_name, MAX_LINE, "%s/%s", entry, event->name);
             }
         }
 
+        if (rbtree_insert(tree, final_name, NULL) == NULL) {
+            mdebug2("Duplicate event in real-time buffer: %s", final_name);
+        }
+
+        switch(event->mask) {
+        case IN_MOVE_SELF:
+            delete_subdirectories_watches(entry);
+            // fall through
+        case IN_DELETE_SELF:
+            mdebug2(FIM_INOTIFY_WATCH_DELETED, entry);
+            free(OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar));
+
+            break;
+        }
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
-        char ** paths = rbtree_keys(tree);
-
-        for (int i = 0; paths[i] != NULL; i++) {
-            fim_realtime_event(paths[i]);
-        }
-
-        free_strarray(paths);
-        rbtree_destroy(tree);
     }
+
+    char ** paths = rbtree_keys(tree);
+
+    for (int i = 0; paths[i] != NULL; i++) {
+        fim_realtime_event(paths[i]);
+    }
+
+    free_strarray(paths);
+    rbtree_destroy(tree);
 }
 
 int realtime_update_watch(const char *wd, const char *dir) {

@@ -647,11 +647,9 @@ void test_realtime_process_overflow(void **state) {
     will_return(__wrap_read, 21);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap_pthread_mutex_lock);
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     expect_string(__wrap_send_log_msg, msg, "ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     will_return(__wrap_send_log_msg, 1);
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     char **paths = NULL;
     paths = os_AddStrArray("/test", paths);
