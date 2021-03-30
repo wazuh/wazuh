@@ -30,10 +30,10 @@
 #undef ARGV0
 #define ARGV0 "agent-auth"
 
-static void help_agent_auth(void) __attribute__((noreturn));
+static void help_agent_auth(char * home_path) __attribute__((noreturn));
 
 /* Print help statement */
-static void help_agent_auth()
+static void help_agent_auth(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
@@ -45,7 +45,7 @@ static void help_agent_auth()
     print_out("    -t          Test configuration.");
 #ifndef WIN32
     print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chroot into (default: %s).", DEFAULTDIR);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s).", home_path);
 #endif
     print_out("    -m <addr>   Manager IP address.");
     print_out("    -p <port>   Manager port (default: %d).", DEFAULT_PORT);
@@ -60,6 +60,7 @@ static void help_agent_auth()
     print_out("    -I <IP>     Set the agent IP address.");
     print_out("    -i          Let the agent IP address be set by the manager connection.");
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -77,15 +78,21 @@ int main(int argc, char **argv)
     bio_err = 0;
     int debug_level = 0;
 
+    /* Set the name */
+    OS_SetName(ARGV0);
+
 #ifdef WIN32
     WSADATA wsaData;
 
     // Move to the directory where this executable lives in
     w_ch_exec_dir();
+#else
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 #endif
-
-    /* Set the name */
-    OS_SetName(ARGV0);
 
     while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:aI:i"
 #ifndef WIN32
@@ -97,7 +104,11 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_agent_auth();
+#ifndef WIN32
+                help_agent_auth(home_path);
+#else
+                help_agent_auth(NULL);
+#endif
                 break;
             case 'd':
                 debug_level = 1;
@@ -112,9 +123,9 @@ int main(int argc, char **argv)
                 break;
             case 'D':
                 if (!optarg) {
-                    merror_exit("-g needs an argument");
+                    merror_exit("-%c needs an argument", c);
                 }
-                mwarn(DEPRECATED_OPTION_WARN,"-D");
+                mwarn(DEPRECATED_OPTION_WARN, "-D", home_path);
                 break;
 #endif
             case 't':
@@ -190,7 +201,11 @@ int main(int argc, char **argv)
                 target_cfg->use_src_ip = 1;
                 break;
             default:
-                help_agent_auth();
+#ifndef WIN32
+                help_agent_auth(home_path);
+#else
+                help_agent_auth(NULL);
+#endif
                 break;
         }
     }
@@ -208,6 +223,11 @@ int main(int argc, char **argv)
         }
     }
 
+#ifndef WIN32
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
+#endif
+
     /* Exit here if test config is set */
     if (test_config) {
         exit(0);
@@ -217,9 +237,6 @@ int main(int argc, char **argv)
         merror("Options '-I' and '-i' are uncompatible.");
         exit(1);
     }
-
-    /* Start daemon */
-    mdebug1(STARTED_MSG);
 
 #ifndef WIN32
     /* Check if the user/group given are valid */
@@ -240,6 +257,7 @@ int main(int argc, char **argv)
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
     }
+
 #else
     /* Initialize Windows socket stuff */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
@@ -257,11 +275,11 @@ int main(int argc, char **argv)
     }
 
     w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg);
-    int ret = w_enrollment_request_key(cfg, server_address); 
-    
+    int ret = w_enrollment_request_key(cfg, server_address);
+
     w_enrollment_target_destroy(target_cfg);
     w_enrollment_cert_destroy(cert_cfg);
     w_enrollment_destroy(cfg);
-    
+
     exit((ret == 0) ? 0 : 1);
 }

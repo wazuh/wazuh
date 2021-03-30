@@ -18,7 +18,7 @@ int w_is_worker(void) {
     const char * xmlf[] = {"ossec_config", "cluster", NULL};
     const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
     const char * xmlf3[] = {"ossec_config", "cluster", "disabled", NULL};
-    const char *cfgfile = DEFAULTCPATH;
+    const char *cfgfile = OSSECCONF;
     int is_worker = OS_INVALID;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
@@ -63,7 +63,7 @@ int w_is_worker(void) {
 char *get_master_node(void) {
     OS_XML xml;
     const char * xmlf[] = {"ossec_config", "cluster", "nodes", "node", NULL};
-    const char *cfgfile = DEFAULTCPATH;
+    const char *cfgfile = OSSECCONF;
     char *master_node = NULL;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
@@ -84,7 +84,7 @@ char *get_master_node(void) {
 char *get_node_name(void) {
     OS_XML xml;
     const char * xmlf[] = {"ossec_config", "cluster", "node_name", NULL};
-    const char *cfgfile = DEFAULTCPATH;
+    const char *cfgfile = OSSECCONF;
     char *node_name = NULL;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {

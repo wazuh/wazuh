@@ -43,7 +43,7 @@ void test_queryid_error_socket(void **state)
     will_return(__wrap_wdbc_query_parse_json, -2);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket '/queue/db/wdb'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket 'queue/db/wdb'");
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
@@ -218,7 +218,7 @@ void test_querytactics_error_socket(void **state)
     will_return(__wrap_wdbc_query_parse_json, -2);
     will_return(__wrap_wdbc_query_parse_json, tactic_array);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket '/queue/db/wdb'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket 'queue/db/wdb'");
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
@@ -407,7 +407,7 @@ void test_queryname_error_socket(void **state) {
     will_return(__wrap_wdbc_query_parse_json, -2);
     will_return(__wrap_wdbc_query_parse_json, tactic_info_array);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket '/queue/db/wdb'");
+    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket 'queue/db/wdb'");
     expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 

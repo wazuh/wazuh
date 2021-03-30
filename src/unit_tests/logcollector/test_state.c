@@ -832,13 +832,13 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE_PATH);
+    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, NULL);
 
     expect_string(__wrap__merror, formatted_msg,
                   "(1103): Could not open file "
-                  "'/var/ossec/var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
+                  "'var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
 
     w_logcollector_state_dump();
 }
@@ -851,14 +851,14 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE_PATH);
+    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, (FILE *) 100);
     will_return(__wrap_fwrite, 0);
 
     expect_string(__wrap__merror, formatted_msg,
                   "(1110): Could not write file "
-                  "'/var/ossec/var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
+                  "'var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, (FILE *) 100);
     will_return(__wrap_fclose, 0);
@@ -874,7 +874,7 @@ void test_w_logcollector_state_dump_ok(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE_PATH);
+    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, (FILE *) 100);
     will_return(__wrap_fwrite, 1);
@@ -1022,7 +1022,7 @@ void test_w_logcollector_state_main_ok(void ** state) {
     will_return(__wrap_cJSON_Print, strdup("Test 123"));
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE_PATH);
+    expect_string(__wrap_fopen, path, LOGCOLLECTOR_STATE);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, (FILE *) 100);
     will_return(__wrap_fwrite, 1);

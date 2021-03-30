@@ -6,7 +6,7 @@
 #
 # Example:
 #
-# python mitredb.py -> install mitre.db in /var/ossec/var/db
+# python mitredb.py -> install mitre.db
 # python mitredb.py -d /other/directory/mitre.db  -> install mitre.db in other directory
 # python mitredb.py -h -> Help
 

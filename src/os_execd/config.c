@@ -210,11 +210,7 @@ cJSON *getClusterConfig(void) {
 
     cJSON *cluster_config_cJSON;
 
-    if (isChroot()) {
-        strcpy(sockname, CLUSTER_SOCK);
-    } else {
-        strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
-    }
+    strcpy(sockname, CLUSTER_SOCK);
 
     if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         switch (errno) {
