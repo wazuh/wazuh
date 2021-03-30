@@ -61,10 +61,6 @@ typedef struct realtime_process_data{
 static int setup_group(void **state) {
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
-
     test_mode = 0;
     Read_Syscheck_Config("test_syscheck.conf");
 

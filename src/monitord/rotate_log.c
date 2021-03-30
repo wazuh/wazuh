@@ -75,11 +75,11 @@ void w_rotate_log(int compress, int keep_log_days, int new_day, int rotate_json,
     strcpy(base_dir, "logs");
 #else
     // /var/ossec/logs/ossec.log
-    snprintf(old_path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    snprintf(old_path, PATH_MAX, "%s", LOGFILE);
     // /var/ossec/logs/ossec.json
-    snprintf(old_path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
-    // /var/ossec/logs/wazuh
-    snprintf(base_dir, PATH_MAX, "%s/logs/wazuh", isChroot() ? "" : DEFAULTDIR);
+    snprintf(old_path_json, PATH_MAX, "%s", LOGJSONFILE);
+    // /var/ossec/logs/ossec
+    snprintf(base_dir, PATH_MAX, "logs/wazuh");
 #endif
 
     os_snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
