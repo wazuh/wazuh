@@ -30,6 +30,8 @@ All notable changes to this project will be documented in this file.
 
 - **Core:**
   - Wazuh daemons have been renamed to a unified standard. ([#6912](https://github.com/wazuh/wazuh/pull/6912))
+  - Wazuh CLIs have been renamed to a unified standard. ([#6903](https://github.com/wazuh/wazuh/pull/6903))
+  - Wazuh internal directories have been renamed to a unified standard. ([#6920](https://github.com/wazuh/wazuh/pull/6920))
   - Prevent a condition in FIM that may lead to a memory error. ([#6759](https://github.com/wazuh/wazuh/pull/6759))
   - Let FIM switch to real-time mode for directories where who-data is not available (Audit in immutable mode). ([#6828](https://github.com/wazuh/wazuh/pull/6828))
   - Changed the Active Response protocol to receive messages in JSON format that include the full alert. ([#7317](https://github.com/wazuh/wazuh/pull/7317))
@@ -41,6 +43,10 @@ All notable changes to this project will be documented in this file.
   - Added the old implementation of Logtest as `wazuh-logtest-legacy`. ([#7807](https://github.com/wazuh/wazuh/pull/7807))
   - Improved the performance of Analysisd when running on multi-core hosts. ([#7974](https://github.com/wazuh/wazuh/pull/7974))
   - Agents now report the manager when they stop. That allows the manager to log an alert and immediately set their state to "disconnected". ([#8021](https://github.com/wazuh/wazuh/pull/8021))
+  - Wazuh building is now independent from the installation directory. ([#7327](https://github.com/wazuh/wazuh/pull/7327))
+  - The embedded python interpreter is provided in a preinstalled, portable package. ([#7327](https://github.com/wazuh/wazuh/pull/7327))
+  - Wazuh resources are now accessed by a relative path to the installation directory. ([#7327](https://github.com/wazuh/wazuh/pull/7327))
+
 
 - **API:**
   - Removed ruleset version from `GET /cluster/{node_id}/info` and `GET /manager/info` as it was deprecated. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
@@ -84,6 +90,8 @@ All notable changes to this project will be documented in this file.
   - Fixed a typo in the initial value for the hotfix scan ID in the agents' database schema. ([#7905](https://github.com/wazuh/wazuh/pull/7905))
   - Fixed a segmentation fault in Vulnerability Detector when parsing an unsupported package version format. ([#8003](https://github.com/wazuh/wazuh/pull/8003))
   - Fixed false positives in FIM when the inode of multiple files change, due to file inode collisions in the engine database. ([#7990](https://github.com/wazuh/wazuh/pull/7990))
+  - Fixed the error handling when wildcarded Redhat feeds are not found. ([#6932](https://github.com/wazuh/wazuh/pull/6932))
+  - Fixed the `equals` comparator for OVAL feeds in Vulnerability Detector. ([#7862](https://github.com/wazuh/wazuh/pull/7862))
 
 - **API:**
   - Fixed wrong API messages returned when getting agents' upgrade results. ([#7587](https://github.com/wazuh/wazuh/pull/7587))
@@ -94,6 +102,7 @@ All notable changes to this project will be documented in this file.
 
 - **Ruleset:**
   - Fixed usb-storage-attached regex pattern to support blank spaces. ([#7837](https://github.com/wazuh/wazuh/issues/7837))
+  - Fixed SCA checks for RHEL7 and CentOS 7. Thanks to J. Daniel Medeiros (@jdmedeiros). ([#7645](https://github.com/wazuh/wazuh/pull/7645))
 
 ### Removed
 
