@@ -13,11 +13,51 @@
 #include "wazuhdb_op.h"
 
 static const char *agents_db_commands[] = {
+    [WDB_AGENTS_SYS_OSINFO_GET] = "agent %d osinfo get",
     [WDB_AGENTS_VULN_CVES_INSERT] = "agent %d vuln_cves insert %s",
     [WDB_AGENTS_VULN_CVES_UPDATE_STATUS] = "agent %d vuln_cves update_status %s",
     [WDB_AGENTS_VULN_CVES_REMOVE] = "agent %d vuln_cves remove %s",
     [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %d vuln_cves clear"
 };
+
+int wdb_agents_sys_osinfo_check_triaged(int id,
+                                        int *sock) {
+    int triaged = 0;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    int aux_sock = -1;
+
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_SYS_OSINFO_GET], id);
+
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    cJSON* result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    if (!result || !result->child) {
+        merror("Agents DB (%d) Error querying Wazuh DB to get OS information", id);
+        triaged = -1;
+    }
+    else {
+        cJSON *j_triaged = cJSON_GetObjectItem(result->child, "triaged");
+        if (!cJSON_IsNumber(j_triaged)) {
+            merror("No information related to the triaged status of the OS");
+            triaged = -1;
+        }
+        else {
+            triaged = j_triaged->valueint;
+        }
+    }
+
+    os_free(wdbquery);
+    os_free(wdboutput);
+    cJSON_Delete(result);
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return triaged;
+}
 
 cJSON* wdb_agents_vuln_cves_insert(int id,
                                    const char *name,
