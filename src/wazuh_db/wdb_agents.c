@@ -94,21 +94,34 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
     return result;
 }
 
-int wdb_agents_update_status_vuln_cves(wdb_t *wdb, const char* old_status, const char* new_status) {
+int wdb_agents_update_status_vuln_cves(wdb_t *wdb, const char* old_status, const char* new_status, const char* type) {
+    sqlite3_stmt* stmt = NULL;
 
-    bool update_all = (strcmp(old_status, "*") == 0);
+    if (old_status) {
+        bool update_all = (strcmp(old_status, "*") == 0);
 
-    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, update_all ? WDB_STMT_VULN_CVES_UPDATE_ALL : WDB_STMT_VULN_CVES_UPDATE);
+        stmt = wdb_init_stmt_in_cache(wdb, update_all ? WDB_STMT_VULN_CVES_UPDATE_ALL : WDB_STMT_VULN_CVES_UPDATE);
 
-    if (stmt == NULL) {
-        return OS_INVALID;
+        if (stmt == NULL) {
+            return OS_INVALID;
+        }
+
+        if (update_all) {
+            sqlite3_bind_text(stmt, 1, new_status, -1, NULL);
+        } else {
+            sqlite3_bind_text(stmt, 1, new_status, -1, NULL);
+            sqlite3_bind_text(stmt, 2, old_status, -1, NULL);
+        }
     }
+    else {
+        stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_UPDATE_BY_TYPE);
 
-    if (update_all) {
+        if (stmt == NULL) {
+            return OS_INVALID;
+        }
+
         sqlite3_bind_text(stmt, 1, new_status, -1, NULL);
-    } else {
-        sqlite3_bind_text(stmt, 1, new_status, -1, NULL);
-        sqlite3_bind_text(stmt, 2, old_status, -1, NULL);
+        sqlite3_bind_text(stmt, 2, type, -1, NULL);
     }
 
     return wdb_exec_stmt_silent(stmt);
