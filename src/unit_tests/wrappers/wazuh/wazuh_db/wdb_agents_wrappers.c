@@ -33,9 +33,10 @@ cJSON* __wrap_wdb_agents_insert_vuln_cves(__attribute__((unused)) wdb_t *wdb,
     return mock_ptr_type(cJSON*);
 }
 
-int __wrap_wdb_agents_update_status_vuln_cves(__attribute__((unused)) wdb_t *wdb, const char* old_status, const char* new_status) {
+int __wrap_wdb_agents_update_status_vuln_cves(__attribute__((unused)) wdb_t *wdb, const char* old_status, const char* new_status, const char* type) {
     check_expected(old_status);
     check_expected(new_status);
+    check_expected(type);
     return mock();
 }
 
