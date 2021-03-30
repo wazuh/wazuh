@@ -24,14 +24,6 @@
 cJSON* wdb_agents_get_sys_osinfo(wdb_t *wdb);
 
 /**
- * @brief Function to clear whole data from agent vuln_cve table.
- *
- * @param [in] wdb The 'agents' struct database.
- * @return Returns 0 on success or -1 on error.
- */
-int wdb_agents_clear_vuln_cve(wdb_t *wdb);
-
-/**
  * @brief Function to check if a certain package exists.
  *
  * @param [in] wdb The 'agents' struct database.
