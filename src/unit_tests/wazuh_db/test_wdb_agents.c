@@ -477,7 +477,7 @@ void test_wdb_agents_update_status_vuln_cves_statement_init_fail(void **state){
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_UPDATE);
 
-    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status);
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status, NULL);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -499,7 +499,7 @@ void test_wdb_agents_update_status_vuln_cves_success(void **state){
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status);
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status, NULL);
     assert_int_equal(ret, OS_SUCCESS);
 }
 
@@ -518,7 +518,7 @@ void test_wdb_agents_update_status_vuln_cves_success_all(void **state){
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status);
+    ret = wdb_agents_update_status_vuln_cves(data->wdb, old_status, new_status, NULL);
     assert_int_equal(ret, OS_SUCCESS);
 }
 
