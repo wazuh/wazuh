@@ -28,13 +28,13 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 
     /* Invalid socket, reconnect */
     if (syslog_config->socket < 0) {
-        mdebug2("Resolving server hostname: %s", syslog_config->server);
-        resolveHostname(&syslog_config->server, 5);
+        resolve_hostname(&syslog_config->server, 5);
 
         syslog_config->socket = OS_ConnectUDP(syslog_config->port, get_ip_from_resolved_hostname(syslog_config->server), 0);
         if (syslog_config->socket < 0) {
             return (0);
         }
+        mdebug2(CSYSLOGD_SUCCESSFULLY_RECONNECT_SOCKET);
     }
 
     /* Clear the memory before insert */
@@ -429,13 +429,13 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, SyslogConfig *syslog_config) {
 
     /* Invalid socket, reconnect */
     if (syslog_config->socket < 0) {
-        mdebug2("Resolving server hostname: %s", syslog_config->server);
-        resolveHostname(&syslog_config->server, 5);
+        resolve_hostname(&syslog_config->server, 5);
 
         syslog_config->socket = OS_ConnectUDP(syslog_config->port, get_ip_from_resolved_hostname(syslog_config->server), 0);
         if (syslog_config->socket < 0) {
             return (0);
         }
+        mdebug2(CSYSLOGD_SUCCESSFULLY_RECONNECT_SOCKET);
     }
 
     mdebug2("OS_Alert_SendSyslog_JSON(): sending '%s'", msg);

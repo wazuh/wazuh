@@ -179,18 +179,18 @@ int w_del_plist(OSList *p_list)
     return (1);
 }
 
-void resolveHostname(char **hostname, int attempts) {
-
+void resolve_hostname(char **hostname, int attempts) {
     char *tmp_str;
     char *f_ip;
 
+    assert(hostname != NULL);
     if (OS_IsValidIP(*hostname, NULL) == 1) {
         return;
     }
 
     tmp_str = strchr(*hostname, '/');
     if (tmp_str) {
-        *tmp_str = '\0';
+        *tmp_str = '\0';   // LCOV_EXCL_LINE
     }
 
     f_ip = OS_GetHost(*hostname, attempts);
@@ -210,6 +210,7 @@ void resolveHostname(char **hostname, int attempts) {
 
 const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
     char *tmp_str;
+    assert(resolved_hostname != NULL);
 
     /* Check if we have a resolved_hostname or an IP */
     tmp_str = strchr(resolved_hostname, '/');
