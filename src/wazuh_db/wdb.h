@@ -844,6 +844,31 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 
 
 /**
+ * @brief Function to parse get operation over the sys_osinfo database table.
+ *
+ * @param wdb The Global struct database.
+ * @param output buffer output, on success responses are:
+ *        "ok <data>" -> If sql statement was processed.
+ *        "err <error_message>" -> If sql statement wasn't processed.
+ * @return -1 on error, and 0 on success.
+ */
+int wdb_parse_agents_get_sys_osinfo(wdb_t* wdb, char* output);
+
+
+/**
+ * @brief Function to parse set operation over the sys_osinfo database table.
+ *
+ * @param wdb The Global struct database.
+ * @param input buffer input
+ * @param output buffer output, on success responses are:
+ *        "ok" -> If sql statement was processed.
+ *        "err <error_message>" -> If sql statement wasn't processed.
+ * @return -1 on error, and 0 on success.
+ */
+int wdb_parse_agents_set_sys_osinfo(wdb_t * wdb, char * input, char * output);
+
+
+/**
  * @brief Function to parse generic dbsync message operation, and generate
  * a message to process in wazuh-db process.
  *
