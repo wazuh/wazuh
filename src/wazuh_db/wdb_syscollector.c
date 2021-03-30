@@ -395,7 +395,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
     cJSON *j_triaged = cJSON_GetObjectItem(j_osinfo->child, "triaged");
     cJSON *j_reference = cJSON_GetObjectItem(j_osinfo->child, "reference");
     if (!cJSON_IsNumber(j_triaged) || !cJSON_IsString(j_reference)) {
-        merror("No information related to the triaged status of the OS");
+        merror("No information related to the triaged status and reference of the OS");
         return -1;
     }
 
