@@ -65,9 +65,10 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
  * @param [in] wdb The 'agents' struct database.
  * @param [in] old_status The status that is going to be updated. The '*' option changes all statuses.
  * @param [in] new_status The new status.
+ * @param [in] type The type of vulnerability to update. Can not be used at the same time than old_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_update_status_vuln_cves(wdb_t *wdb, const char* old_status, const char* new_status);
+int wdb_agents_update_status_vuln_cves(wdb_t *wdb, const char* old_status, const char* new_status, const char* type);
 
 /**
  * @brief Function to remove vulnerabilities from the vuln_cves table by specifying the PK of the entry.
