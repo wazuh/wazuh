@@ -10,9 +10,6 @@
 #ifdef ENABLE_AUDIT
 #include "syscheck_audit.h"
 
-#define AUDIT_HEALTHCHECK_DIR DEFAULTDIR "/tmp"
-#define AUDIT_HEALTHCHECK_FILE AUDIT_HEALTHCHECK_DIR "/audit_hc"
-
 volatile int audit_health_check_creation;
 volatile int hc_thread_active;
 pthread_mutex_t audit_hc_mutex;
@@ -25,11 +22,16 @@ int audit_health_check(int audit_socket) {
     FILE *fp;
     audit_health_check_creation = 0;
     unsigned int timer = 10;
-    audit_health_check_creation = 0;
+    char abs_path_healthcheck[PATH_MAX] = {'\0'};
+    char abs_path_healthcheck_file[PATH_MAX] = {'\0'};
 
     w_mutex_init(&audit_hc_mutex, NULL);
 
-    retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, WHODATA_PERMS, AUDIT_HEALTHCHECK_KEY);
+    // Audit needs an absolute path to add rules
+    abspath(AUDIT_HEALTHCHECK_DIR, abs_path_healthcheck, PATH_MAX);
+    abspath(AUDIT_HEALTHCHECK_FILE, abs_path_healthcheck_file, PATH_MAX);
+
+    retval = audit_add_rule(abs_path_healthcheck, WHODATA_PERMS, AUDIT_HEALTHCHECK_KEY);
     if (retval <= 0 && retval != -EEXIST) {
         mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
         return -1;
@@ -49,7 +51,7 @@ int audit_health_check(int audit_socket) {
 
     // Generate open events until they get picked up
     do {
-        fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
+        fp = fopen(abs_path_healthcheck_file, "w");
 
         if (!fp) {
             mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
@@ -69,9 +71,9 @@ int audit_health_check(int audit_socket) {
     }
 
     // Delete that file
-    unlink(AUDIT_HEALTHCHECK_FILE);
+    unlink(abs_path_healthcheck_file);
 
-    if (audit_delete_rule(AUDIT_HEALTHCHECK_DIR, WHODATA_PERMS, AUDIT_HEALTHCHECK_KEY) <= 0) {
+    if (audit_delete_rule(abs_path_healthcheck, WHODATA_PERMS, AUDIT_HEALTHCHECK_KEY) <= 0) {
         mdebug1(FIM_HEALTHCHECK_CHECK_RULE); // LCOV_EXCL_LINE
     }
     hc_thread_active = 0;

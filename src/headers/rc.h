@@ -28,6 +28,7 @@
 #define FILE_UPDATE_HEADER  "up file "
 #define FILE_CLOSE_HEADER   "close file "
 #define HC_STARTUP          "agent startup "
+#define HC_SHUTDOWN         "agent shutdown "
 #define HC_ACK              "agent ack "
 #define HC_SK_DB_COMPLETED  "syscheck-db-completed"
 #define HC_SK_RESTART       "syscheck restart"

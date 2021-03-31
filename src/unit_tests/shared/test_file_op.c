@@ -18,6 +18,7 @@
 #include "../headers/file_op.h"
 #include "error_messages/error_messages.h"
 #include "../wrappers/common.h"
+#include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -36,6 +37,17 @@ static int teardown_group(void **state) {
     return 0;
 }
 
+#ifndef TEST_WINAGENT
+
+extern char * __real_getenv(const char *name);
+char * __wrap_getenv(const char *name) {
+    if (!test_mode) {
+        return __real_getenv(name);
+    }
+    check_expected(name);
+    return mock_type(char *);
+}
+
 void test_CreatePID_success(void **state)
 {
     (void) state;
@@ -44,9 +56,7 @@ void test_CreatePID_success(void **state)
 
     *state = content;
 
-    will_return(__wrap_isChroot, 1);
-
-    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, 1);
 
@@ -54,7 +64,7 @@ void test_CreatePID_success(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
     will_return(__wrap_chmod, 0);
 
     expect_value(__wrap_fclose, _File, 1);
@@ -69,9 +79,7 @@ void test_CreatePID_failure_chmod(void **state)
     (void) state;
     int ret;
 
-    will_return(__wrap_isChroot, 1);
-
-    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, 1);
 
@@ -79,10 +87,10 @@ void test_CreatePID_failure_chmod(void **state)
     expect_string(__wrap_fprintf, formatted_msg, "2345\n");
     will_return(__wrap_fprintf, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object '/var/run/test-2345.pid' due to [(0)-(Success)].");
+    expect_string(__wrap_chmod, path, "var/run/test-2345.pid");
+    will_return(__wrap_chmod, 1);
 
-    expect_string(__wrap_chmod, path, "/var/run/test-2345.pid");
-    will_return(__wrap_chmod, -1);
+    expect_string(__wrap__merror, formatted_msg, "(1127): Could not chmod object 'var/run/test-2345.pid' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
@@ -96,9 +104,7 @@ void test_CreatePID_failure_fopen(void **state)
     (void) state;
     int ret;
 
-    will_return(__wrap_isChroot, 1);
-
-    expect_string(__wrap_fopen, path, "/var/run/test-2345.pid");
+    expect_string(__wrap_fopen, path, "var/run/test-2345.pid");
     expect_string(__wrap_fopen, mode, "a");
     will_return(__wrap_fopen, NULL);
 
@@ -109,15 +115,14 @@ void test_CreatePID_failure_fopen(void **state)
 void test_DeletePID_success(void **state)
 {
     (void) state;
-    int ret;
+    int ret = 0;
 
     struct stat stat_delete = { .st_mode = 0 };
 
-    will_return(__wrap_isChroot, 1);
-    expect_string(__wrap_unlink, file, "/var/run/test-2345.pid");
+    expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
     will_return(__wrap_unlink, 0);
 
-    expect_string(__wrap_stat, __file, "/var/run/test-2345.pid");
+    expect_string(__wrap_stat, __file, "var/run/test-2345.pid");
     will_return(__wrap_stat, &stat_delete);
     will_return(__wrap_stat, 0);
 
@@ -129,19 +134,17 @@ void test_DeletePID_success(void **state)
 void test_DeletePID_failure(void **state)
 {
     (void) state;
+    int ret = 0;
     struct stat stat_delete = { .st_mode = 0 };
-    int ret;
 
-    will_return(__wrap_isChroot, 0);
-    expect_string(__wrap_unlink, file, "/var/ossec/var/run/test-2345.pid");
+    expect_string(__wrap_unlink, file, "var/run/test-2345.pid");
     will_return(__wrap_unlink, 1);
 
-    expect_string(__wrap_stat, __file, "/var/ossec/var/run/test-2345.pid");
+    expect_string(__wrap_stat, __file, "var/run/test-2345.pid");
     will_return(__wrap_stat, &stat_delete);
     will_return(__wrap_stat, 0);
 
-    expect_string(__wrap__mferror, formatted_msg,
-        "(1129): Could not unlink file '/var/ossec/var/run/test-2345.pid' due to [(0)-(Success)].");
+    expect_string(__wrap__mferror, formatted_msg, "(1129): Could not unlink file 'var/run/test-2345.pid' due to [(0)-(Success)].");
 
     ret = DeletePID("test");
     assert_int_equal(-1, ret);
@@ -230,6 +233,9 @@ void test_w_uncompress_bz2_gz_file_bz2(void **state) {
     expect_string(__wrap_fopen, path, "/test/file.bz2");
     expect_string(__wrap_fopen, mode, "rb");
     will_return(__wrap_fopen, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "The file '/test/file.bz2' was successfully uncompressed into '/test/file'");
+
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
@@ -358,13 +364,13 @@ void test_w_compress_gzfile_success(void **state){
 // w_uncompress_gzfile
 
 void test_w_uncompress_gzfile_lstat_fail(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, -1);
 
     ret = w_uncompress_gzfile(srcfile, dstfile);
@@ -373,13 +379,13 @@ void test_w_uncompress_gzfile_lstat_fail(void **state) {
 }
 
 void test_w_uncompress_gzfile_fopen_fail(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -394,13 +400,13 @@ void test_w_uncompress_gzfile_fopen_fail(void **state) {
 }
 
 void test_w_uncompress_gzfile_gzopen_fail(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -422,13 +428,13 @@ void test_w_uncompress_gzfile_gzopen_fail(void **state) {
 }
 
 void test_w_uncompress_gzfile_first_read_fail(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -465,13 +471,13 @@ void test_w_uncompress_gzfile_first_read_fail(void **state) {
 }
 
 void test_w_uncompress_gzfile_first_read_success(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -514,13 +520,13 @@ void test_w_uncompress_gzfile_first_read_success(void **state) {
 }
 
 void test_w_uncompress_gzfile_success(void **state) {
-
     int ret;
+    struct stat buf = { .st_mode = S_IFREG };
     char *srcfile = "testfile.gz";
     char *dstfile = "testfiledst";
 
     expect_string(__wrap_lstat, filename, srcfile);
-    will_return(__wrap_lstat, S_IFREG);
+    will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 
     expect_string(__wrap_fopen, path, dstfile);
@@ -549,6 +555,144 @@ void test_w_uncompress_gzfile_success(void **state) {
     assert_int_equal(ret, 0);
 
 }
+
+// w_homedir
+
+void test_w_homedir_first_attempt(void **state)
+{
+    char *argv0 = "/usr/share/wazuh/bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, argv0);
+
+    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    val = w_homedir(argv0);
+    assert_string_equal(val, "/usr/share/wazuh");
+    free(val);
+}
+
+void test_w_homedir_second_attempt(void **state)
+{
+    char *argv0 = "/usr/share/wazuh/bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, argv0);
+
+    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    val = w_homedir(argv0);
+    assert_string_equal(val, "/usr/share/wazuh");
+    free(val);
+}
+
+void test_w_homedir_third_attempt(void **state)
+{
+    char *argv0 = "/usr/share/wazuh/bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, argv0);
+
+    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    val = w_homedir(argv0);
+    assert_string_equal(val, "/usr/share/wazuh");
+    free(val);
+}
+
+void test_w_homedir_check_argv0(void **state)
+{
+    char *argv0 = "/usr/share/wazuh/bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, NULL);
+
+    expect_string(__wrap_realpath, path, argv0);
+    will_return(__wrap_realpath, argv0);
+
+    expect_string(__wrap_stat, __file, "/usr/share/wazuh");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    val = w_homedir(argv0);
+    assert_string_equal(val, "/usr/share/wazuh");
+    free(val);
+}
+
+void test_w_homedir_env_var(void **state)
+{
+    char *val = NULL;
+    char *argv0 = "bin/test";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, "/proc/curproc/file");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, "/proc/self/path/a.out");
+    will_return(__wrap_realpath, NULL);
+    expect_string(__wrap_realpath, path, argv0);
+    will_return(__wrap_realpath, NULL);
+
+    expect_string(__wrap_getenv, name, WAZUH_HOME_ENV);
+    will_return(__wrap_getenv, "/home/wazuh");
+
+    expect_string(__wrap_stat, __file, "/home/wazuh");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, 0);
+
+    val = w_homedir(argv0);
+    assert_string_equal(val, "/home/wazuh");
+    free(val);
+}
+
+void test_w_homedir_stat_fail(void **state)
+{
+    char *argv0 = "/fake/dir/bin";
+    struct stat stat_buf = { .st_mode = 0040000 }; // S_IFDIR
+    char *val = NULL;
+
+    expect_string(__wrap_realpath, path, "/proc/self/exe");
+    will_return(__wrap_realpath, argv0);
+
+    expect_string(__wrap_stat, __file, "/fake/dir");
+    will_return(__wrap_stat, &stat_buf);
+    will_return(__wrap_stat, -1);
+
+    expect_string(__wrap__merror_exit, formatted_msg, "(1108): Unable to find Wazuh install directory. Export it to WAZUH_HOME environment variable.");
+
+    val = w_homedir(argv0);
+    assert_null(val);
+}
+#endif
 
 void test_get_file_content(void **state)
 {
@@ -671,8 +815,13 @@ int main(void) {
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_fail),
         cmocka_unit_test(test_w_uncompress_gzfile_first_read_success),
         cmocka_unit_test(test_w_uncompress_gzfile_success),
-        // w_get_file_content
-        cmocka_unit_test(test_get_file_content),
+        // w_homedir
+        cmocka_unit_test(test_w_homedir_first_attempt),
+        cmocka_unit_test(test_w_homedir_second_attempt),
+        cmocka_unit_test(test_w_homedir_third_attempt),
+        cmocka_unit_test(test_w_homedir_check_argv0),
+        cmocka_unit_test(test_w_homedir_env_var),
+        cmocka_unit_test(test_w_homedir_stat_fail),
 #else
         cmocka_unit_test(test_get_UTC_modification_time_success),
         cmocka_unit_test(test_get_UTC_modification_time_fail_get_handle),

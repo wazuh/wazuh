@@ -256,52 +256,52 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
             assert (failed_item.message == 'Agent does not exist' for failed_item in agent_keys.failed_items.keys())
 
 
-@pytest.mark.parametrize('agent_list, older_than, remove_msg, error_code, expected_items', [
-    (['001', '002', '003'], "1s", 'Agent was successfully deleted', None, ['001', '002', '003']),
-    (['000'], "1s", None, 1703, []),
-    (['001', '500'], "1s", 'Agent was successfully deleted', 1701, ['001']),
-    (['001', '002'], "1s", WazuhException(1700), 1700, []),
+@pytest.mark.parametrize('agent_list, filters, q, error_code, expected_items', [
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s'}, None, None, full_agent_list[1:]),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-0'}, None, 1731, ['001', '002']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-1'}, None, 1731, ['006', '008']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'group': 'group-2'}, None, 1731, ['007', '008']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'registerIP': 'any'}, None, 1731,
+     ['001', '003', '004', '006', '007', '008']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'ip': '172.17.0.202'}, None, 1731, ['001']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'name': 'agent-6'}, None, 1731, ['006']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v3.6.2'}, None, 1731, ['002']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'manager': 'master'}, None, 1731,
+     ['001', '002', '005', '006', '007', '008']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'os.name': 'ubuntu'}, None, 1731,
+     ['001', '002', '005', '006', '007', '008']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'os.version': '16.04.1 LTS'}, None, 1731, ['002']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'os.platform': 'centos'}, None, 1731, []),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s'}, 'manager=master;registerIP!=any', 1731, ['002', '005']),
+    (['000'], {'status': 'all', 'older_than': '1s'}, None, 1703, []),
+    (['001', '500'], {'status': 'all', 'older_than': '1s'}, None, 1701, ['001']),
 ])
 @patch('wazuh.agent.Agent.remove')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, older_than, remove_msg, error_code, expected_items):
+def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, filters, q, error_code, expected_items):
     """Test `delete_agents` function from agent module.
 
     Parameters
     ----------
     agent_list : List of str
         List of agent ID's.
-    remove_msg : str
-        String message to be returned by mocked 'remove' function.
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    q : str
+        Defines query to filter in DB.
     error_code : int
         The expected error code.
     expected_items : List of str
         List of expected agent ID's returned by
     """
-    mock_remove.side_effect = remove_msg
-    result = delete_agents(agent_list, status='all', older_than=older_than)
+    result = delete_agents(agent_list, filters=filters, q=q)
     assert result.affected_items == sorted(expected_items), \
         f'"Affected_items" does not match. Should be "{result.affected_items}".'
     if result.failed_items:
         assert next(iter(result.failed_items)).code == error_code
-    assert result['older_than'] == older_than
-
-
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_delete_agents_different_status(socket_mock, send_mock):
-    """Test `delete_agents` function from agent module.
-
-    It will force a failed item due to agent not eligible (different status).
-    """
-    result = delete_agents(['001', '002'], status='active')
-    assert result.affected_items == [], f'"Affected_items" does not match. Should be empty.'
-    assert result.failed_items
-    for failed_item in result.failed_items:
-        assert failed_item.code == 1731
-        assert 'Agent is not eligible for removal: The agent has a status different to \'active\'' \
-               in failed_item.message
 
 
 @pytest.mark.parametrize('name, agent_id, key', [
