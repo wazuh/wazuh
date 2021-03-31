@@ -133,7 +133,7 @@ test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 
 stages:
 
-  - name: Try tp get Request-Agent-Client for agent 004 (Denied)
+  - name: Try to get Request-Agent-Client for agent 004 (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/004/config/agent/client"
@@ -144,7 +144,6 @@ stages:
       <<: *permission_denied
 
   - name: Get Request-Agent-Client for agent 003 (Allowed)
-    delay_before: !float "{active_reponse_delay}"
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/003/config/agent/client"
@@ -1304,7 +1303,6 @@ stages:
                 - '002'
           total_affected_items: 1
           total_failed_items: 2
-    delay_after: !float "{restart_delay}"
 
   - name: Try to assign all agents to group1 (Partially allowed, user agnostic)
     request:
@@ -1344,7 +1342,6 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
-    delay_after: !float "{restart_delay}"
 
   - name: Try to update group3 configuration (Denied)
     request:
