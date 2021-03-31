@@ -39,7 +39,7 @@ static int test_setup(void **state) {
     return 0;
 }
 
-static int test_teardown(void **state){
+static int test_teardown(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     os_free(data->output);
     os_free(data->wdb->id);
@@ -51,7 +51,7 @@ static int test_teardown(void **state){
 
 /* Tests wdb_agents_find_package */
 
-void test_wdb_agents_find_package_statement_init_fail(void **state){
+void test_wdb_agents_find_package_statement_init_fail(void **state) {
     bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
@@ -64,7 +64,7 @@ void test_wdb_agents_find_package_statement_init_fail(void **state){
     assert_false(ret);
 }
 
-void test_wdb_agents_find_package_success_row(void **state){
+void test_wdb_agents_find_package_success_row(void **state) {
     bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
@@ -83,7 +83,7 @@ void test_wdb_agents_find_package_success_row(void **state){
     assert_true(ret);
 }
 
-void test_wdb_agents_find_package_success_done(void **state){
+void test_wdb_agents_find_package_success_done(void **state) {
     bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
@@ -102,7 +102,7 @@ void test_wdb_agents_find_package_success_done(void **state){
     assert_false(ret);
 }
 
-void test_wdb_agents_find_package_error(void **state){
+void test_wdb_agents_find_package_error(void **state) {
     bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
@@ -115,7 +115,7 @@ void test_wdb_agents_find_package_error(void **state){
     expect_string(__wrap_sqlite3_bind_text, buffer, reference);
 
     expect_sqlite3_step_call(SQLITE_ERROR);
-    
+
     will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
 
@@ -126,7 +126,7 @@ void test_wdb_agents_find_package_error(void **state){
 
 /* Tests wdb_agents_find_cve */
 
-void test_wdb_agents_find_cve_statement_init_fail(void **state){
+void test_wdb_agents_find_cve_statement_init_fail(void **state) {
     bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* cve = "CVE-2021-1200";
@@ -140,7 +140,7 @@ void test_wdb_agents_find_cve_statement_init_fail(void **state){
     assert_false(ret);
 }
 
-void test_wdb_agents_find_cve_success_row(void **state){
+void test_wdb_agents_find_cve_success_row(void **state) {
     bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* cve = "CVE-2021-1200";
@@ -162,7 +162,7 @@ void test_wdb_agents_find_cve_success_row(void **state){
     assert_true(ret);
 }
 
-void test_wdb_agents_find_cve_success_done(void **state){
+void test_wdb_agents_find_cve_success_done(void **state) {
     bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* cve = "CVE-2021-1200";
@@ -184,7 +184,7 @@ void test_wdb_agents_find_cve_success_done(void **state){
     assert_false(ret);
 }
 
-void test_wdb_agents_find_cve_error(void **state){
+void test_wdb_agents_find_cve_error(void **state) {
     bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* cve = "CVE-2021-1200";
@@ -211,8 +211,7 @@ void test_wdb_agents_find_cve_error(void **state){
 
 /* Tests wdb_agents_insert_vuln_cves */
 
-void test_wdb_agents_insert_vuln_cves_error_json(void **state)
-{
+void test_wdb_agents_insert_vuln_cves_error_json(void **state) {
     cJSON *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* name = "package";
@@ -231,8 +230,7 @@ void test_wdb_agents_insert_vuln_cves_error_json(void **state)
     assert_null(ret);
 }
 
-void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state)
-{
+void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state) {
     cJSON *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* name = "package";
@@ -245,10 +243,10 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state)
     bool check_pkg_existance = true;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
-    
+
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    
+
     will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, cve);
@@ -278,8 +276,7 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state)
     assert_ptr_equal(1, ret);
 }
 
-void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state)
-{
+void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state) {
     cJSON *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* name = "package";
@@ -292,10 +289,10 @@ void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state)
     bool check_pkg_existance = true;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
-    
+
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    
+
     will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, cve);
@@ -328,8 +325,7 @@ void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state)
     assert_ptr_equal(1, ret);
 }
 
-void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state)
-{
+void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) {
     cJSON *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* name = "package";
@@ -342,10 +338,10 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state)
     bool check_pkg_existance = true;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
-    
+
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    
+
     will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, cve);
@@ -399,8 +395,7 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state)
 }
 
 
-void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state)
-{
+void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     cJSON *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* name = "package";
@@ -413,10 +408,10 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state)
     bool check_pkg_existance = true;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
-    
+
     expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    
+
     will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, cve);
@@ -468,7 +463,7 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state)
 
 /* Tests wdb_agents_update_status_vuln_cves*/
 
-void test_wdb_agents_update_status_vuln_cves_statement_parameter_fail(void **state){
+void test_wdb_agents_update_status_vuln_cves_statement_parameter_fail(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "pending";
@@ -479,7 +474,7 @@ void test_wdb_agents_update_status_vuln_cves_statement_parameter_fail(void **sta
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_update_status_vuln_cves_statement_init_fail(void **state){
+void test_wdb_agents_update_status_vuln_cves_statement_init_fail(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "valid";
@@ -493,7 +488,7 @@ void test_wdb_agents_update_status_vuln_cves_statement_init_fail(void **state){
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_update_status_vuln_cves_success(void **state){
+void test_wdb_agents_update_status_vuln_cves_success(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "valid";
@@ -514,7 +509,7 @@ void test_wdb_agents_update_status_vuln_cves_success(void **state){
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-void test_wdb_agents_update_status_vuln_cves_success_all(void **state){
+void test_wdb_agents_update_status_vuln_cves_success_all(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* old_status = "*";
@@ -533,7 +528,7 @@ void test_wdb_agents_update_status_vuln_cves_success_all(void **state){
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-void test_wdb_agents_update_status_vuln_cves_by_type_statement_init_fail(void **state){
+void test_wdb_agents_update_status_vuln_cves_by_type_statement_init_fail(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* type = "OS";
@@ -547,7 +542,7 @@ void test_wdb_agents_update_status_vuln_cves_by_type_statement_init_fail(void **
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_update_status_vuln_cves_by_type_success(void **state){
+void test_wdb_agents_update_status_vuln_cves_by_type_success(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* type = "OS";
@@ -571,8 +566,7 @@ void test_wdb_agents_update_status_vuln_cves_by_type_success(void **state){
 
 /* Tests wdb_agents_remove_vuln_cves */
 
-void test_wdb_agents_remove_vuln_cves_invalid_data(void **state)
-{
+void test_wdb_agents_remove_vuln_cves_invalid_data(void **state) {
     int ret = -1;
     const char *cve = NULL;
     const char *reference = NULL;
@@ -585,8 +579,7 @@ void test_wdb_agents_remove_vuln_cves_invalid_data(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_remove_vuln_cves_statement_init_fail(void **state)
-{
+void test_wdb_agents_remove_vuln_cves_statement_init_fail(void **state) {
     int ret = -1;
     const char *cve = "cve-xxxx-yyyy";
     const char *reference = "ref-cve-xxxx-yyyy";
@@ -600,8 +593,7 @@ void test_wdb_agents_remove_vuln_cves_statement_init_fail(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_remove_vuln_cves_success(void **state)
-{
+void test_wdb_agents_remove_vuln_cves_success(void **state) {
     int ret = -1;
     const char *cve = "cve-xxxx-yyyy";
     const char *reference = "ref-cve-xxxx-yyyy";
@@ -625,8 +617,7 @@ void test_wdb_agents_remove_vuln_cves_success(void **state)
 
 /* Tests wdb_agents_remove_by_status_vuln_cves */
 
-void test_wdb_agents_remove_by_status_vuln_cves_statement_init_fail(void **state)
-{
+void test_wdb_agents_remove_by_status_vuln_cves_statement_init_fail(void **state) {
     int ret = -1;
     const char *status = "OBSOLETE";
     test_struct_t *data  = (test_struct_t *)*state;
@@ -641,8 +632,7 @@ void test_wdb_agents_remove_by_status_vuln_cves_statement_init_fail(void **state
     assert_int_equal(ret, WDBC_ERROR);
 }
 
-void test_wdb_agents_remove_by_status_vuln_cves_statement_bind_fail(void **state)
-{
+void test_wdb_agents_remove_by_status_vuln_cves_statement_bind_fail(void **state) {
     int ret = -1;
     const char *status = "OBSOLETE";
     test_struct_t *data  = (test_struct_t *)*state;
@@ -664,8 +654,7 @@ void test_wdb_agents_remove_by_status_vuln_cves_statement_bind_fail(void **state
     assert_int_equal(ret, WDBC_ERROR);
 }
 
-void test_wdb_agents_remove_by_status_vuln_cves_error_exec_stmt_sized(void **state)
-{
+void test_wdb_agents_remove_by_status_vuln_cves_error_exec_stmt_sized(void **state) {
     int ret = -1;
     const char *status = "OBSOLETE";
     test_struct_t *data  = (test_struct_t *)*state;
@@ -690,8 +679,7 @@ void test_wdb_agents_remove_by_status_vuln_cves_error_exec_stmt_sized(void **sta
     assert_int_equal(ret, WDBC_ERROR);
 }
 
-void test_wdb_agents_remove_by_status_vuln_cves_error_removing_cve(void **state)
-{
+void test_wdb_agents_remove_by_status_vuln_cves_error_removing_cve(void **state) {
     int ret = -1;
     cJSON *root = NULL;
     cJSON *row = NULL;
@@ -738,8 +726,7 @@ void test_wdb_agents_remove_by_status_vuln_cves_error_removing_cve(void **state)
     __real_cJSON_Delete(root);
 }
 
-void test_wdb_agents_remove_by_status_vuln_cves_success(void **state)
-{
+void test_wdb_agents_remove_by_status_vuln_cves_success(void **state) {
     int ret = -1;
     cJSON *root = NULL;
     cJSON *row = NULL;
@@ -793,8 +780,7 @@ void test_wdb_agents_remove_by_status_vuln_cves_success(void **state)
 
 /* Tests wdb_agents_clear_vuln_cves */
 
-void test_wdb_agents_clear_vuln_cves_statement_init_fail(void **state)
-{
+void test_wdb_agents_clear_vuln_cves_statement_init_fail(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
 
@@ -806,8 +792,7 @@ void test_wdb_agents_clear_vuln_cves_statement_init_fail(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wdb_agents_clear_vuln_cves_success(void **state)
-{
+void test_wdb_agents_clear_vuln_cves_success(void **state) {
     int ret = -1;
     test_struct_t *data  = (test_struct_t *)*state;
 
