@@ -35,7 +35,6 @@ cJSON* wdb_agents_vuln_cves_insert(int id,
     char *wdboutput = NULL;
     int aux_sock = -1;
 
-
     data_in = cJSON_CreateObject();
     if (!data_in) {
         mdebug1("Error creating data JSON for Wazuh DB.");
@@ -75,9 +74,9 @@ cJSON* wdb_agents_vuln_cves_insert(int id,
 }
 
 int wdb_agents_vuln_cves_update_status(int id,
-                               const char *old_status,
-                               const char *new_status,
-                               int *sock) {
+                                       const char *old_status,
+                                       const char *new_status,
+                                       int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -134,9 +133,9 @@ int wdb_agents_vuln_cves_update_status(int id,
 }
 
 int wdb_agents_vuln_cves_remove_entry(int id,
-                                     const char *cve,
-                                     const char *reference,
-                                     int *sock) {
+                                      const char *cve,
+                                      const char *reference,
+                                      int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -193,8 +192,8 @@ int wdb_agents_vuln_cves_remove_entry(int id,
 }
 
 cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
-                                            const char *status,
-                                            int *sock) {
+                                             const char *status,
+                                             int *sock) {
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
     char *wdbquery = NULL;
@@ -275,7 +274,7 @@ cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
 }
 
 int wdb_agents_vuln_cves_clear(int id,
-                              int *sock) {
+                               int *sock) {
     int result = 0;
     char *wdbquery = NULL;
     char *wdboutput = NULL;
