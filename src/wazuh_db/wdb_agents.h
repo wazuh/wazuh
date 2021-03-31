@@ -49,15 +49,15 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
  *                               and 'status': 'SUCCESS' | 'ERROR' | 'PKG_NOT_FOUND'
  *         The cJSON object must be freed by the caller.
  */
-cJSON* wdb_agents_insert_vuln_cve(wdb_t *wdb,
-                               const char* name,
-                               const char* version,
-                               const char* architecture,
-                               const char* cve,
-                               const char* reference,
-                               const char* type,
-                               const char* status,
-                               bool check_pkg_existance);
+cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
+                                   const char* name,
+                                   const char* version,
+                                   const char* architecture,
+                                   const char* cve,
+                                   const char* reference,
+                                   const char* type,
+                                   const char* status,
+                                   bool check_pkg_existance);
 
 /**
  * @brief Function to update the status field in agent database vuln_cves table.

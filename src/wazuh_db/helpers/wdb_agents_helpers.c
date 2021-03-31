@@ -19,16 +19,16 @@ static const char *agents_db_commands[] = {
     [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %d vuln_cves clear"
 };
 
-int wdb_agents_vuln_cves_insert(int id,
-                               const char *name,
-                               const char *version,
-                               const char *architecture,
-                               const char *cve,
-                               const char *reference,
-                               const char *type,
-                               const char *status,
-                               bool check_pkg_existance,
-                               int *sock) {
+cJSON* wdb_agents_vuln_cves_insert(int id,
+                                   const char *name,
+                                   const char *version,
+                                   const char *architecture,
+                                   const char *cve,
+                                   const char *reference,
+                                   const char *type,
+                                   const char *status,
+                                   bool check_pkg_existance,
+                                   int *sock) {
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
     char *wdbquery = NULL;
