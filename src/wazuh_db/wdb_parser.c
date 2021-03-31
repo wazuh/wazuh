@@ -6147,22 +6147,12 @@ int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* outp
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
     }
     else {
-        cJSON* old_status = cJSON_GetObjectItem(data, "old_status");
-        cJSON* new_status = cJSON_GetObjectItem(data, "new_status");
-        cJSON* type = cJSON_GetObjectItem(data, "type");
+        const char *old_status = cJSON_GetStringValue(cJSON_GetObjectItem(data, "old_status"));
+        const char *new_status = cJSON_GetStringValue(cJSON_GetObjectItem(data, "new_status"));
+        const char *type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
 
-        if (cJSON_IsString(type) && cJSON_IsString(new_status) && !cJSON_IsString(old_status)) {
-            ret = wdb_agents_update_status_vuln_cves(wdb, NULL, new_status->valuestring, type->valuestring);
-            if (OS_SUCCESS != ret) {
-                mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
-                snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
-            }
-            else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
-        }
-        else if (cJSON_IsString(old_status) && cJSON_IsString(new_status) && !cJSON_IsString(type)) {
-            ret = wdb_agents_update_status_vuln_cves(wdb, old_status->valuestring, new_status->valuestring, NULL);
+        if (new_status && ((type && !old_status) || (!type && old_status) )) {
+            ret = wdb_agents_update_status_vuln_cves(wdb, old_status, new_status, type);
             if (OS_SUCCESS != ret) {
                 mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
