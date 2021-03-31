@@ -24,12 +24,6 @@
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 
-#ifndef WAZUH_UNIT_TESTING
-#define audit_thread_status() ((mode == READING_MODE && audit_thread_active) || \
-                                (mode == HEALTHCHECK_MODE && hc_thread_active))
-#else
-#define audit_thread_status() FOREVER()
-#endif
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -42,7 +36,7 @@ unsigned int count_reload_retries;
 //This variable controls if the the modification of the rule is made by syscheck.
 
 volatile int audit_db_consistency_flag = 0;
-volatile int audit_thread_active;
+atomic_int_t audit_thread_active = ATOMIC_INT_INITIALIZER(0);
 
 #ifdef ENABLE_AUDIT
 typedef struct _audit_data_s {
@@ -281,8 +275,9 @@ int audit_init(void) {
     w_cond_init(&audit_db_consistency, NULL);
     w_create_thread(audit_main, &audit_data);
     w_mutex_lock(&audit_mutex);
-    while (!audit_thread_active)
+    while (atomic_int_get(&audit_thread_active) == 0) {
         w_cond_wait(&audit_thread_started, &audit_mutex);
+    }
     w_mutex_unlock(&audit_mutex);
     return 1;
 
@@ -304,10 +299,11 @@ void *audit_main(audit_data_t *audit_data) {
     char *path = NULL;
     directory_t *dir_it = NULL;
     count_reload_retries = 0;
-    audit_thread_active = 0;
+    atomic_int_set(&audit_thread_active,0);
+
 
     w_mutex_lock(&audit_mutex);
-    audit_thread_active = 1;
+    atomic_int_set(&audit_thread_active, 1);
     w_cond_signal(&audit_thread_started);
 
     while (!audit_db_consistency_flag) {
@@ -324,7 +320,7 @@ void *audit_main(audit_data_t *audit_data) {
     minfo(FIM_WHODATA_STARTED);
 
     // Read events
-    audit_read_events(&audit_data->socket, READING_MODE);
+    audit_read_events(&audit_data->socket, &audit_thread_active);
 
     // Auditd is not runnig or socket closed.
     mdebug1(FIM_AUDIT_THREAD_STOPED);
@@ -360,7 +356,7 @@ void *audit_main(audit_data_t *audit_data) {
 // LCOV_EXCL_STOP
 
 
-void audit_read_events(int *audit_sock, int mode) {
+void audit_read_events(int *audit_sock, atomic_int_t *running) {
     size_t byteRead;
     char * cache;
     char * cache_id = NULL;
@@ -379,7 +375,7 @@ void audit_read_events(int *audit_sock, int mode) {
     os_malloc(BUF_SIZE * sizeof(char), buffer);
     os_malloc(BUF_SIZE, cache);
 
-    while (audit_thread_status()) {
+    while (atomic_int_get(running)) {
         FD_ZERO(&fdset);
         FD_SET(*audit_sock, &fdset);
 
@@ -402,8 +398,7 @@ void audit_read_events(int *audit_sock, int mode) {
             continue;
 
         default:
-            if ((mode == READING_MODE && !audit_thread_active) ||
-                (mode == HEALTHCHECK_MODE && !hc_thread_active)) {
+            if (atomic_int_get(running) == 0) {
                 continue;
             }
 

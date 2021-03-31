@@ -245,7 +245,7 @@ void clean_rules(void) {
 
     w_mutex_lock(&rules_mutex);
 
-    audit_thread_active = 0;
+    atomic_int_set(&audit_thread_active, 0);
     mdebug2(FIM_AUDIT_DELETE_RULE);
 
     for (node = OSList_GetFirstNode(whodata_directories); node != NULL;
@@ -274,7 +274,7 @@ int fim_audit_rules_init() {
 
 void *audit_reload_thread() {
     sleep(RELOAD_RULES_INTERVAL);
-    while (audit_thread_active) {
+    while (atomic_int_get(&audit_thread_active) == 1) {
         fim_audit_reload_rules();
 
         sleep(RELOAD_RULES_INTERVAL);

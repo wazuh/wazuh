@@ -10,20 +10,20 @@
 #ifdef ENABLE_AUDIT
 #include "syscheck_audit.h"
 
-volatile int audit_health_check_creation;
-volatile int hc_thread_active;
+atomic_int_t audit_health_check_creation = ATOMIC_INT_INITIALIZER(0);
+atomic_int_t hc_thread_active = ATOMIC_INT_INITIALIZER(0);
+
 pthread_mutex_t audit_hc_mutex;
 pthread_cond_t audit_hc_started;
 
 
 // Audit healthcheck before starting the main thread
 int audit_health_check(int audit_socket) {
-    int retval;
-    FILE *fp;
-    audit_health_check_creation = 0;
+    int retval = -1;
     unsigned int timer = 10;
     char abs_path_healthcheck[PATH_MAX] = {'\0'};
     char abs_path_healthcheck_file[PATH_MAX] = {'\0'};
+    FILE *fp = NULL;
 
     w_mutex_init(&audit_hc_mutex, NULL);
 
@@ -45,8 +45,10 @@ int audit_health_check(int audit_socket) {
     w_create_thread(audit_healthcheck_thread, &audit_socket);
 
     w_mutex_lock(&audit_hc_mutex);
-    while (!hc_thread_active)
+    while (atomic_int_get(&hc_thread_active) == 0) {
         w_cond_wait(&audit_hc_started, &audit_hc_mutex);
+    }
+
     w_mutex_unlock(&audit_hc_mutex);
 
     // Generate open events until they get picked up
@@ -60,9 +62,10 @@ int audit_health_check(int audit_socket) {
         }
 
         sleep(1);
-    } while (!audit_health_check_creation && --timer > 0);
+    } while (atomic_int_get(&audit_health_check_creation) == 0 && --timer > 0);
 
-    if (!audit_health_check_creation) {
+    if (atomic_int_get(&audit_health_check_creation) == 0) {
+        // The healthcheck creation event hasn't been triggered
         mdebug1(FIM_HEALTHCHECK_CREATE_ERROR);
         retval = -1;
     } else {
@@ -76,8 +79,7 @@ int audit_health_check(int audit_socket) {
     if (audit_delete_rule(abs_path_healthcheck, WHODATA_PERMS, AUDIT_HEALTHCHECK_KEY) <= 0) {
         mdebug1(FIM_HEALTHCHECK_CHECK_RULE); // LCOV_EXCL_LINE
     }
-    hc_thread_active = 0;
-
+    atomic_int_set(&hc_thread_active, 0);
     return retval;
 }
 
@@ -85,13 +87,13 @@ int audit_health_check(int audit_socket) {
 void *audit_healthcheck_thread(int *audit_sock) {
 
     w_mutex_lock(&audit_hc_mutex);
-    hc_thread_active = 1;
+    atomic_int_set(&hc_thread_active, 1);
     w_cond_signal(&audit_hc_started);
     w_mutex_unlock(&audit_hc_mutex);
 
     mdebug2(FIM_HEALTHCHECK_THREAD_ACTIVE);
 
-    audit_read_events(audit_sock, HEALTHCHECK_MODE);
+    audit_read_events(audit_sock, &hc_thread_active);
 
     mdebug2(FIM_HEALTHCHECK_THREAD_FINISHED);
 
