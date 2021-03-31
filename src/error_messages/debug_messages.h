@@ -287,7 +287,7 @@
 #define MOD_TASK_TASKS_DB_ERROR_IN_QUERY    "(8208): Tasks DB Error reported in the result of the query, message: '%s'"
 #define MOD_TASK_TASKS_DB_ERROR_EXECUTE     "(8209): Tasks DB Cannot execute SQL query: err database '%s/%s.db'"
 
-/* cyslogd messages */
-#define CSYSLOGD_SUCCESSFULLY_RECONNECT_SOCKET    "(8300): Successfully reconnection to csyslogd socket."
+/* Generic messages */
+#define SUCCESSFULLY_RECONNECTED_SOCKET     "(8300): Successfully reconnected to '%s'"
 
 #endif /* DEBUG_MESSAGES_H */

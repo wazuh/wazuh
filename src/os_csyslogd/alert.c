@@ -19,8 +19,7 @@
  * Returns 1 on success or 0 on error
  */
 
-int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
-{
+int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config) {
     char *tstamp;
     char *hostname;
     char syslog_msg[OS_MAXSTR];
@@ -34,7 +33,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         if (syslog_config->socket < 0) {
             return (0);
         }
-        mdebug2(CSYSLOGD_SUCCESSFULLY_RECONNECT_SOCKET);
+        mdebug2(SUCCESSFULLY_RECONNECTED_SOCKET, syslog_config->server);
     }
 
     /* Clear the memory before insert */
@@ -311,7 +310,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         field_add_truncated(syslog_msg, OS_SIZE_61440, " message=\"%s\"", al_data->log[0], 2 );
     }
 
-    OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg);
+    if (OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg) != 0) {
+        OS_CloseSocket(syslog_config->socket);
+        syslog_config->socket = -1;
+        merror(ERROR_SENDING_MSG, syslog_config->server);
+    }
+
     return (1);
 }
 
@@ -435,11 +439,15 @@ int OS_Alert_SendSyslog_JSON(cJSON *json_data, SyslogConfig *syslog_config) {
         if (syslog_config->socket < 0) {
             return (0);
         }
-        mdebug2(CSYSLOGD_SUCCESSFULLY_RECONNECT_SOCKET);
+        mdebug2(SUCCESSFULLY_RECONNECTED_SOCKET, syslog_config->server);
     }
 
     mdebug2("OS_Alert_SendSyslog_JSON(): sending '%s'", msg);
-    OS_SendUDPbySize(syslog_config->socket, strlen(msg), msg);
+    if (OS_SendUDPbySize(syslog_config->socket, strlen(msg), msg) != 0) {
+        OS_CloseSocket(syslog_config->socket);
+        syslog_config->socket = -1;
+        merror(ERROR_SENDING_MSG, syslog_config->server);
+    }
     free(string);
 
     return 1;
