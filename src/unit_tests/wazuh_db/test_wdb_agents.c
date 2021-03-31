@@ -49,38 +49,326 @@ static int test_teardown(void **state){
     return 0;
 }
 
-/* Tests wdb_agents_insert_vuln_cves */
+/* Tests wdb_agents_find_package */
 
-void test_wdb_agents_insert_vuln_cves_statement_init_fail(void **state)
-{
-    int ret = -1;
+void test_wdb_agents_find_package_statement_init_fail(void **state){
+    bool ret = FALSE;
     test_struct_t *data  = (test_struct_t *)*state;
-    const char* name = "package";
-    const char* version = "4.0";
-    const char* architecture = "x86";
-    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
 
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_PROGRAM_FIND);
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_INSERT);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve);
+    ret = wdb_agents_find_package(data->wdb, reference);
 
-    assert_int_equal(ret, OS_INVALID);
+    assert_false(ret);
 }
 
-void test_wdb_agents_insert_vuln_cves_success(void **state)
+void test_wdb_agents_find_package_success_row(void **state){
+    bool ret = FALSE;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_PROGRAM_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_ROW);
+
+    ret = wdb_agents_find_package(data->wdb, reference);
+
+    assert_true(ret);
+}
+
+void test_wdb_agents_find_package_success_done(void **state){
+    bool ret = FALSE;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_PROGRAM_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    ret = wdb_agents_find_package(data->wdb, reference);
+
+    assert_false(ret);
+}
+
+void test_wdb_agents_find_package_error(void **state){
+    bool ret = FALSE;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_PROGRAM_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_ERROR);
+    
+    will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
+
+    ret = wdb_agents_find_package(data->wdb, reference);
+
+    assert_false(ret);
+}
+
+/* Tests wdb_agents_find_cve */
+
+void test_wdb_agents_find_cve_statement_init_fail(void **state){
+    bool ret = FALSE;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    ret = wdb_agents_find_cve(data->wdb, cve, reference);
+
+    assert_false(ret);
+}
+
+void test_wdb_agents_find_cve_success_row(void **state){
+    bool ret = FALSE;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_ROW);
+
+    ret = wdb_agents_find_cve(data->wdb, cve, reference);
+
+    assert_true(ret);
+}
+
+void test_wdb_agents_find_cve_success_done(void **state){
+    bool ret = FALSE;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    ret = wdb_agents_find_cve(data->wdb, cve, reference);
+
+    assert_false(ret);
+}
+
+void test_wdb_agents_find_cve_error(void **state){
+    bool ret = FALSE;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_ERROR);
+
+    will_return(__wrap_sqlite3_errmsg, "test_sql_no_done");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): test_sql_no_done");
+
+    ret = wdb_agents_find_cve(data->wdb, cve, reference);
+
+    assert_false(ret);
+}
+
+/* Tests wdb_agents_insert_vuln_cves */
+
+void test_wdb_agents_insert_vuln_cves_error_json(void **state)
 {
-    int ret = -1;
+    cJSON *ret = NULL;
     test_struct_t *data  = (test_struct_t *)*state;
     const char* name = "package";
     const char* version = "4.0";
     const char* architecture = "x86";
     const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+    const char* type = "PACKAGE";
+    const char* status = "VALID";
+    bool check_pkg_existance = true;
 
+    will_return(__wrap_cJSON_CreateObject, NULL);
+
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+
+    assert_null(ret);
+}
+
+void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state)
+{
+    cJSON *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* name = "package";
+    const char* version = "4.0";
+    const char* architecture = "x86";
+    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+    const char* type = "PACKAGE";
+    const char* status = "VALID";
+    bool check_pkg_existance = true;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
     will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_INSERT);
-
+    
     will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_ROW);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "action");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "UPDATE");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_PROGRAM_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "PKG_NOT_FOUND");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+
+    assert_ptr_equal(1, ret);
+}
+
+void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state)
+{
+    cJSON *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* name = "package";
+    const char* version = "4.0";
+    const char* architecture = "x86";
+    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+    const char* type = "PACKAGE";
+    const char* status = "VALID";
+    bool check_pkg_existance = true;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "action");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "INSERT");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_PROGRAM_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_ROW);
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_INSERT);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+
+    assert_ptr_equal(1, ret);
+}
+
+void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state)
+{
+    cJSON *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* name = "package";
+    const char* version = "4.0";
+    const char* architecture = "x86";
+    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+    const char* type = "PACKAGE";
+    const char* status = "VALID";
+    bool check_pkg_existance = true;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "action");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "INSERT");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_PROGRAM_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_ROW);
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_INSERT);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
     expect_string(__wrap_sqlite3_bind_text, buffer, name);
     expect_value(__wrap_sqlite3_bind_text, pos, 2);
@@ -89,12 +377,93 @@ void test_wdb_agents_insert_vuln_cves_success(void **state)
     expect_string(__wrap_sqlite3_bind_text, buffer, architecture);
     expect_value(__wrap_sqlite3_bind_text, pos, 4);
     expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, type);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, status);
+
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "Exec statement error ERROR MESSAGE");
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+
+    assert_ptr_equal(1, ret);
+}
+
+
+void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state)
+{
+    cJSON *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+    const char* name = "package";
+    const char* version = "4.0";
+    const char* architecture = "x86";
+    const char* cve = "CVE-2021-1200";
+    const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
+    const char* type = "PACKAGE";
+    const char* status = "VALID";
+    bool check_pkg_existance = true;
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
+    
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_FIND_CVE);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+    
+    will_return_count(__wrap_sqlite3_bind_text, OS_SUCCESS, -1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_DONE);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "action");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "INSERT");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_PROGRAM_FIND);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+
+    expect_sqlite3_step_call(SQLITE_ROW);
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_VULN_CVES_INSERT);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1); //Returning any value
+
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, name);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, version);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, architecture);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, cve);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, reference);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, type);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, status);
 
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve);
+    expect_string(__wrap_cJSON_AddStringToObject, name, "status");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    assert_int_equal(ret, OS_SUCCESS);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+
+    assert_ptr_equal(1, ret);
 }
 
 /* Tests wdb_agents_update_status_vuln_cves*/
@@ -408,9 +777,22 @@ void test_wdb_agents_clear_vuln_cves_success(void **state)
 int main()
 {
     const struct CMUnitTest tests[] = {
+        /* Tests wdb_agents_find_package */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_find_package_statement_init_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_find_package_success_row, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_find_package_success_done, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_find_package_error, test_setup, test_teardown),
+        /* Tests wdb_agents_find_cve */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_find_cve_statement_init_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_find_cve_success_row, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_find_cve_success_done, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_find_cve_error, test_setup, test_teardown),
         /* Tests wdb_agents_insert_vuln_cves */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_statement_init_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_error_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_success_pkg_not_found, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_success_statement_init_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_success_statement_exec_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_insert_vuln_cves_success_pkg_found, test_setup, test_teardown),
         /* Tests wdb_agents_update_status_vuln_cves */
         cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_update_status_vuln_cves_success, test_setup, test_teardown),
