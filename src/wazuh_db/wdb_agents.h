@@ -15,7 +15,7 @@
 #include "wdb.h"
 
 /**
- * @brief Function to clear whole data from agent vuln_cves table.
+ * @brief Function to get all the OS information from the sys_osinfo table.
  *
  * @param [in] wdb The 'agents' struct database.
  * @return Returns cJSON object with the sys_osinfo database table information.
@@ -59,7 +59,6 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
  *         The cJSON object must be freed by the caller.
  */
 cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
-<<<<<<< HEAD
                                    const char* name,
                                    const char* version,
                                    const char* architecture,
@@ -68,16 +67,6 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                    const char* type,
                                    const char* status,
                                    bool check_pkg_existance);
-=======
-                               const char* name,
-                               const char* version,
-                               const char* architecture,
-                               const char* cve,
-                               const char* reference,
-                               const char* type,
-                               const char* status,
-                               bool check_pkg_existance);
->>>>>>> Implementing a Wazuh DB command to get the sys_osinfo information
 
 /**
  * @brief Function to update the status field in agent database vuln_cves table.
