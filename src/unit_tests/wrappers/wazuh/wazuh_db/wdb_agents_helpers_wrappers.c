@@ -19,12 +19,20 @@ int __wrap_wdb_agents_vuln_cves_insert(int id,
                                       const char *version,
                                       const char *architecture,
                                       const char *cve,
+                                      const char *reference,
+                                      const char *type,
+                                      const char *status,
+                                      bool check_pkg_existance,
                                       __attribute__((unused)) int *sock) {
     check_expected(id);
     check_expected(name);
     check_expected(version);
     check_expected(architecture);
     check_expected(cve);
+    check_expected(reference);
+    check_expected(type);
+    check_expected(status);
+    check_expected(check_pkg_existance);
     return mock_type(int);
 }
 
