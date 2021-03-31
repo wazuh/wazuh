@@ -79,7 +79,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGJSONFILE : DEFAULTDIR LOGJSONFILE, sizeof(logfile) - 1);
+        strncpy(logfile, LOGJSONFILE, sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -145,7 +145,7 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 #ifndef WIN32
         int oldmask;
 
-        strncpy(logfile, isChroot() ? LOGFILE : DEFAULTDIR LOGFILE, sizeof(logfile) - 1);
+        strncpy(logfile, LOGFILE, sizeof(logfile) - 1);
         logfile[sizeof(logfile) - 1] = '\0';
 
         if (!IsFile(logfile)) {
@@ -235,17 +235,17 @@ void os_logging_config(){
 
     pid = (int)getpid();
 #ifdef CLIENT
-    if (OS_ReadXML(chroot_flag ? WAZUHCONF_AGENT : DEFAULTCPATH_AGENT, &xml) < 0) {
+    if (OS_ReadXML(WAZUHCONF_AGENT, &xml) < 0) {
 #else
-    if (OS_ReadXML(chroot_flag ? WAZUHCONF_MANAGER : DEFAULTCPATH_MANAGER, &xml) < 0) {
+    if (OS_ReadXML(WAZUHCONF_MANAGER, &xml) < 0) {
 #endif
         flags.log_plain = 1;
         flags.log_json = 0;
         OS_ClearXML(&xml);
 #ifdef CLIENT
-        merror_exit(XML_ERROR, chroot_flag ? WAZUHCONF_AGENT : DEFAULTCPATH_AGENT, xml.err, xml.err_line);
+        merror_exit(XML_ERROR, WAZUHCONF_AGENT, xml.err, xml.err_line);
 #else
-        merror_exit(XML_ERROR, chroot_flag ? WAZUHCONF_MANAGER : DEFAULTCPATH_MANAGER, xml.err, xml.err_line);
+        merror_exit(XML_ERROR, WAZUHCONF_MANAGER, xml.err, xml.err_line);
 #endif
     }
 

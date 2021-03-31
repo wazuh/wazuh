@@ -314,7 +314,7 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
     char dir[OS_FLSIZE + 1];
     sqlite3 *db;
 
-    snprintf(dir, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id_agent, name);
+    snprintf(dir, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id_agent, name);
 
     if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
         mdebug1("No SQLite database found for agent '%s', creating.", name);
@@ -1146,7 +1146,7 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
 int wdb_remove_database(const char * agent_id) {
     char path[PATH_MAX];
 
-    snprintf(path, PATH_MAX, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, agent_id);
+    snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, agent_id);
     int result = unlink(path);
 
     if (result == -1) {

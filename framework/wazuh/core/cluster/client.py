@@ -11,7 +11,7 @@ from typing import Tuple, Dict, List
 import uvloop
 
 from wazuh.core.cluster import common
-from wazuh.core.cluster.utils import context_tag, context_subtag
+from wazuh.core.cluster.utils import context_tag
 
 
 class AbstractClientManager:
@@ -57,7 +57,6 @@ class AbstractClientManager:
         self.tag = tag
         # Modify filter tags with context vars.
         context_tag.set(self.tag)
-        context_subtag.set("Main")
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None

@@ -51,9 +51,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
-
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
-
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
 #endif

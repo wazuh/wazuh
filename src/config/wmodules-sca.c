@@ -107,7 +107,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     #ifdef WIN32
     sprintf(ruleset_path, "%s\\", SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN);
     #else
-    sprintf(ruleset_path, "%s/", DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR);
+    sprintf(ruleset_path, "%s/", SECURITY_CONFIGURATION_ASSESSMENT_DIR);
     #endif
 
     DIR *ruleset_dir = opendir(ruleset_path);
@@ -260,29 +260,29 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
                     /* full path resolution */
                     char relative_path[PATH_MAX] = {0};
-                    const int ruleset_path_len = sprintf(relative_path, "%s", ruleset_path);
-                    strncat(relative_path, children[j]->content, PATH_MAX - ruleset_path_len);
-
                     char realpath_buffer[PATH_MAX] = {0};
+
+                    snprintf(relative_path, PATH_MAX, "%s", children[j]->content);
+
                     #ifdef WIN32
-                    if (children[j]->content[1] && children[j]->content[2]) {
-                        if ((children[j]->content[1] == ':') || (children[j]->content[0] == '\\' && children[j]->content[1] == '\\')) {
-                            sprintf(realpath_buffer,"%s", children[j]->content);
+                    if (relative_path[1] && relative_path[2]) {
+                        if ((relative_path[1] == ':') || (relative_path[0] == '\\' && relative_path[1] == '\\')) {
+                            sprintf(realpath_buffer,"%s", relative_path);
                         } else {
                             const int path_length = GetFullPathName(relative_path, PATH_MAX, realpath_buffer, NULL);
                             if (!path_length) {
-                                mwarn("File '%s' not found.", children[j]->content);
+                                mwarn("File '%s' not found.", relative_path);
                                 continue;
                             }
                         }
                     }
                     #else
-                    if(children[j]->content[0] == '/') {
-                        sprintf(realpath_buffer,"%s", children[j]->content);
+                    if(relative_path[0] == '/') {
+                        sprintf(realpath_buffer,"%s", relative_path);
                     } else {
                         const char * const realpath_buffer_ref = realpath(relative_path, realpath_buffer);
                         if (!realpath_buffer_ref) {
-                            mwarn("File '%s' not found.", children[j]->content);
+                            mwarn("File '%s' not found.", relative_path);
                             continue;
                         }
                     }

@@ -1934,24 +1934,24 @@ void * w_output_thread(void * args){
             if (result != 0) {
                 if (result != 1) {
 #ifdef CLIENT
-                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
-                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQPATH);
+                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
                 }
                 // Retry to connect infinitely.
-                logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS);
+                logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-                minfo("Successfully reconnected to '%s'", DEFAULTQPATH);
+                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
 
                 if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
                     result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
                     if (result != 1) {
 #ifdef CLIENT
-                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
 #else
-                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQPATH);
+                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
 #endif
                     }
                     result = 1;
@@ -2593,11 +2593,11 @@ STATIC void w_initialize_file_status() {
     /* Read json file to load last read positions */
     FILE * fd = NULL;
 
-    if (fd = fopen(LOCALFILE_STATUS_PATH, "r"), fd != NULL) {
+    if (fd = fopen(LOCALFILE_STATUS, "r"), fd != NULL) {
         char str[OS_MAXSTR] = {0};
 
         if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
-            merror(FREAD_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+            merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
             clearerr(fd);
         } else {
             cJSON * global_json = cJSON_Parse(str);
@@ -2607,7 +2607,7 @@ STATIC void w_initialize_file_status() {
 
         fclose(fd);
     } else if (errno != ENOENT) {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
 }
 
@@ -2621,14 +2621,14 @@ STATIC void w_save_file_status() {
     FILE * fd = NULL;
     size_t size_str = strlen(str);
 
-    if (fd = wfopen(LOCALFILE_STATUS_PATH, "w"), fd != NULL) {
+    if (fd = wfopen(LOCALFILE_STATUS, "w"), fd != NULL) {
         if (fwrite(str, 1, size_str, fd) == 0) {
-            merror(FWRITE_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+            merror(FWRITE_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
             clearerr(fd);
         }
         fclose(fd);
     } else {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
 
     os_free(str);

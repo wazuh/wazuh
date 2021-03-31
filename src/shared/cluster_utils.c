@@ -19,7 +19,7 @@ int w_is_worker(void) {
     const char * xmlf[] = {"wazuh_config", "cluster", NULL};
     const char * xmlf2[] = {"wazuh_config", "cluster", "node_type", NULL};
     const char * xmlf3[] = {"wazuh_config", "cluster", "disabled", NULL};
-    const char *cfgfile = DEFAULTCPATH_MANAGER;
+    const char *cfgfile = WAZUHCONF_MANAGER;
     int is_worker = OS_INVALID;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
@@ -64,7 +64,7 @@ int w_is_worker(void) {
 char *get_master_node(void) {
     OS_XML xml;
     const char * xmlf[] = {"wazuh_config", "cluster", "nodes", "node", NULL};
-    const char *cfgfile = DEFAULTCPATH_MANAGER;
+    const char *cfgfile = WAZUHCONF_MANAGER;
     char *master_node = NULL;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
@@ -85,7 +85,7 @@ char *get_master_node(void) {
 char *get_node_name(void) {
     OS_XML xml;
     const char * xmlf[] = {"wazuh_config", "cluster", "node_name", NULL};
-    const char *cfgfile = DEFAULTCPATH_MANAGER;
+    const char *cfgfile = WAZUHCONF_MANAGER;
     char *node_name = NULL;
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
