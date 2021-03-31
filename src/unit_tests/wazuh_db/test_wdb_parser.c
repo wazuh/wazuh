@@ -151,7 +151,6 @@ void test_clean_old_entries_ok(void **state) {
     os_free(query);
 }
 
-
 void test_scan_info_update_noarg(void **state) {
     int ret;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -799,7 +798,7 @@ void test_vuln_cves_missing_action(void **state) {
 }
 
 void test_vuln_cves_insert_syntax_error(void **state) {
-    int ret = -1;
+    int ret = OS_INVALID;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
@@ -818,7 +817,7 @@ void test_vuln_cves_insert_syntax_error(void **state) {
 }
 
 void test_vuln_cves_insert_constraint_error(void **state) {
-    int ret = -1;
+    int ret = OS_INVALID;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
@@ -837,49 +836,61 @@ void test_vuln_cves_insert_constraint_error(void **state) {
 }
 
 void test_vuln_cves_insert_command_error(void **state) {
-    int ret = -1;
+    int ret = OS_INVALID;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\"}", query);
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", query);
 
     // wdb_parse_agents_insert_vuln_cves
-    will_return(__wrap_wdb_agents_insert_vuln_cves, OS_INVALID);
     expect_string(__wrap_wdb_agents_insert_vuln_cves, name, "package");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, version, "2.2");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, architecture, "x86");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, cve, "CVE-2021-1500");
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves insert command; SQL err: ERROR MESSAGE");
+    expect_string(__wrap_wdb_agents_insert_vuln_cves, reference, "8549fd9faf9b124635298e9311ccf672c2ad05d1");
+    expect_string(__wrap_wdb_agents_insert_vuln_cves, type, "PACKAGE");
+    expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existance, true);
+    will_return(__wrap_wdb_agents_insert_vuln_cves, NULL);
+
+    //will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error inserting vulnerability in vuln_cves.");
+    //expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Cannot execute vuln_cves insert command; SQL err: ERROR MESSAGE");
+    assert_string_equal(data->output, "err Error inserting vulnerability in vuln_cves.");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
 }
 
 void test_vuln_cves_insert_command_success(void **state) {
-    int ret = -1;
+    int ret = OS_INVALID;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
+    cJSON *test = NULL;
 
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\"}", query);
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", query);
+    test = cJSON_CreateObject();
 
     // wdb_parse_agents_insert_vuln_cves
-    will_return(__wrap_wdb_agents_insert_vuln_cves, OS_SUCCESS);
     expect_string(__wrap_wdb_agents_insert_vuln_cves, name, "package");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, version, "2.2");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, architecture, "x86");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, cve, "CVE-2021-1500");
+    expect_string(__wrap_wdb_agents_insert_vuln_cves, reference, "8549fd9faf9b124635298e9311ccf672c2ad05d1");
+    expect_string(__wrap_wdb_agents_insert_vuln_cves, type, "PACKAGE");
+    expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existance, true);
+    will_return(__wrap_wdb_agents_insert_vuln_cves, test);
+
+    will_return(__wrap_cJSON_PrintUnformatted, query);
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok");
+    assert_string_equal(data->output, "ok insert");
     assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
 }
 
 void test_vuln_cves_update_status_syntax_error(void **state){
