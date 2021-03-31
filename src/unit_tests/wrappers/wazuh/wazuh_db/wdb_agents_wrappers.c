@@ -13,10 +13,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-cJSON* __wrap_wdb_agents_insert_vuln_cves(__attribute__((unused)) wdb_t *wdb, 
-                                          const char* name, 
-                                          const char* version, 
-                                          const char* architecture, 
+cJSON* __wrap_wdb_agents_insert_vuln_cves(__attribute__((unused)) wdb_t *wdb,
+                                          const char* name,
+                                          const char* version,
+                                          const char* architecture,
                                           const char* cve,
                                           const char* reference,
                                           const char* type,
