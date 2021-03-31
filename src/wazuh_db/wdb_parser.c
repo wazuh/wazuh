@@ -6147,16 +6147,12 @@ int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* outp
         snprintf(output, OS_MAXSTR + 1, "err Invalid JSON syntax, near '%.32s'", input);
     }
     else {
-        cJSON* old_status = cJSON_GetObjectItem(data, "old_status");
-        cJSON* new_status = cJSON_GetObjectItem(data, "new_status");
-        // Required fields
-        if (!cJSON_IsString(old_status) || !cJSON_IsString(new_status)) {
-            mdebug1("Invalid vuln_cves JSON data when updating status value. Not compliant with constraints defined in the database.");
-            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
-        }
+        const char *old_status = cJSON_GetStringValue(cJSON_GetObjectItem(data, "old_status"));
+        const char *new_status = cJSON_GetStringValue(cJSON_GetObjectItem(data, "new_status"));
+        const char *type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
 
-        else {
-            ret = wdb_agents_update_status_vuln_cves(wdb, old_status->valuestring, new_status->valuestring);
+        if (new_status && ((type && !old_status) || (!type && old_status) )) {
+            ret = wdb_agents_update_status_vuln_cves(wdb, old_status, new_status, type);
             if (OS_SUCCESS != ret) {
                 mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
@@ -6164,6 +6160,10 @@ int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* outp
             else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
             }
+        }
+        else {
+            mdebug1("Invalid vuln_cves JSON data when updating CVE's status.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing or wrong required fields");
         }
     }
 
