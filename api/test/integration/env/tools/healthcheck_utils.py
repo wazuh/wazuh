@@ -1,6 +1,7 @@
 import os
 import re
 import socket
+import time
 from datetime import datetime
 
 
@@ -38,7 +39,14 @@ def get_agent_health_base():
         t1 = get_timestamp(output_agent_restart[-2])
         t2 = get_timestamp(output_agent_connection[-2])
 
-        return 0 if t2 > t1 else 1
+        if t2 > t1:
+            # Wait to avoid the worst case:
+            # +10 seconds for the agent to report the worker
+            # +10 seconds for the worker to report master
+            # After this time, the agent appears as active in the master node
+            time.sleep(20)
+            return 0
+
     return 1
 
 
