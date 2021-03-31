@@ -10,6 +10,8 @@
 
 #include "shared.h"
 
+#ifndef WIN32
+
 /* Helper functions */
 static void l_print_out(const char *msg, ...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 static void *_os_report_sort_compare(void *d1, void *d2) __attribute__((nonnull));
@@ -745,3 +747,4 @@ int os_report_configfilter(const char *filter_by, const char *filter_value,
 
     return 0;
 }
+#endif

@@ -217,7 +217,7 @@ testconfig()
 
 start_service()
 {
-    echo "Starting $NAME $VERSION..."
+    echo "Starting Wazuh $VERSION..."
     TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1)
     echo $TEST
 
@@ -346,7 +346,7 @@ stop_service()
         echo "Stopping sub agent directory (for hybrid mode)"
         ${DIR}/ossec-agent/bin/wazuh-control stop
     fi
-    echo "$NAME $VERSION Stopped"
+    echo "Wazuh $VERSION Stopped"
 }
 
 info()

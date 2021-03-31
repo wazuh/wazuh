@@ -65,9 +65,9 @@ void * fim_run_integrity(void * args) {
 #endif
         gettime(&end);
 
-        mdebug2("Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
-
         struct timespec timeout = { .tv_sec = time(NULL) + sync_interval };
+
+        mdebug2("Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
 
         // Get messages until timeout
         char * msg;
