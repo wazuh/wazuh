@@ -853,9 +853,7 @@ void test_vuln_cves_insert_command_error(void **state) {
     expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existance, true);
     will_return(__wrap_wdb_agents_insert_vuln_cves, NULL);
 
-    //will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Error inserting vulnerability in vuln_cves.");
-    //expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
