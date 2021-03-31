@@ -1462,9 +1462,9 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         // The reference for packages is calculated with the name, version and architecture
         os_sha1 hexdigest;
         wdbi_strings_hash(hexdigest,
-                          name->valuestring ? name->valuestring : "",
-                          version->valuestring ? version->valuestring : "",
-                          architecture->valuestring ? architecture->valuestring : "",
+                          name && name->valuestring ? name->valuestring : "",
+                          version && version->valuestring ? version->valuestring : "",
+                          architecture && architecture->valuestring ? architecture->valuestring : "",
                           NULL);
 
         wm_strcat(&msg, hexdigest, '|');
