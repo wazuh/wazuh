@@ -429,7 +429,6 @@ stages:
           affected_items:
             - 'group3'
           total_affected_items: 1
-    delay_after: !float "{global_db_delay}"
 
   # DELETE /groups (invalid groups_list)
   - name: Delete group3
@@ -500,6 +499,7 @@ stages:
                 - 'default'
           total_affected_items: 1
           total_failed_items: 1
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /groups
   - name: Delete all groups (group2)
@@ -732,6 +732,7 @@ stages:
           affected_items:
             - '005'
           total_affected_items: 1
+    delay_after: !float "{global_db_delay}"
 
   # DELETE /agents
   - name: Delete agents ip=any and q=id<11
@@ -798,6 +799,7 @@ stages:
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
+    delay_after: !float "{global_db_delay}"
 
     # DELETE /agents
   - name: Delete all agents (006,007,008)
