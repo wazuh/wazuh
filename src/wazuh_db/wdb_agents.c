@@ -4,7 +4,7 @@ bool wdb_agents_find_package(wdb_t *wdb, const char* reference){
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_PROGRAM_FIND);
 
     if (stmt == NULL) {
-        return OS_INVALID;
+        return FALSE;
     }
 
     sqlite3_bind_text(stmt, 1, reference, -1, NULL);
@@ -24,7 +24,7 @@ bool wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference){
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_FIND_CVE);
 
     if (stmt == NULL) {
-        return OS_INVALID;
+        return FALSE;
     }
 
     sqlite3_bind_text(stmt, 1, cve, -1, NULL);
@@ -87,7 +87,6 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
             }
         }
         else {
-            mdebug1("Cannot cache statement");
             cJSON_AddStringToObject(result, "status", "ERROR");
         }
     }
