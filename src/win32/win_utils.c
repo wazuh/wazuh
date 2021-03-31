@@ -404,7 +404,7 @@ char *get_agent_ip()
         }
     }
 
-    if(agent_ip[0]=='\0'){
+    if (agent_ip[0] == '\0') {
         last_update = 0;
     }
 
