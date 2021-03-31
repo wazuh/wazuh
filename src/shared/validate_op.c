@@ -42,27 +42,16 @@ static unsigned int _netmasks[33];
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file)
 {
     FILE *fp;
-    char def_file[OS_FLSIZE + 1];
     char buf[OS_SIZE_1024 + 1];
     char *buf_pt;
     char *tmp_buffer;
     char *ret;
     int i;
 
-#ifndef WIN32
-    if (isChroot()) {
-        snprintf(def_file, OS_FLSIZE, "%s", defines_file);
-    } else {
-        snprintf(def_file, OS_FLSIZE, "%s%s", DEFAULTDIR, defines_file);
-    }
-#else
-    snprintf(def_file, OS_FLSIZE, "%s", defines_file);
-#endif
-
-    fp = fopen(def_file, "r");
+    fp = fopen(defines_file, "r");
     if (!fp) {
         if (strcmp(defines_file, OSSEC_LDEFINES) != 0) {
-            merror(FOPEN_ERROR, def_file, errno, strerror(errno));
+            merror(FOPEN_ERROR, defines_file, errno, strerror(errno));
         }
         return (NULL);
     }
@@ -86,7 +75,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Messages not formatted correctly */
         buf_pt = strchr(buf, '.');
         if (!buf_pt) {
-            merror(FGETS_ERROR, def_file, buf);
+            merror(FGETS_ERROR, defines_file, buf);
             continue;
         }
 
@@ -102,7 +91,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
         /* Get the equal */
         buf_pt = strchr(buf_pt, '=');
         if (!buf_pt) {
-            merror(FGETS_ERROR, def_file, buf);
+            merror(FGETS_ERROR, defines_file, buf);
             continue;
         }
 

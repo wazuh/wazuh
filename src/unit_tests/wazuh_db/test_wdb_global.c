@@ -718,6 +718,72 @@ void test_wdb_global_sync_agent_info_get_full(void **state)
     assert_int_equal(result, WDBC_DUE);
 }
 
+void test_wdb_global_sync_agent_info_get_size_limit(void **state)
+{
+    int result = 0;
+    int last_agent_id = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *output = NULL;
+    cJSON *json_output = NULL;
+    cJSON *root = NULL;
+    cJSON *json_agent = NULL;
+    int agent_id = 10000;
+
+    root = cJSON_CreateArray();
+    json_agent = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json_agent, "id", agent_id);
+    // Creating a cJSON array of WDB_MAX_RESPONSE_SIZE
+    for(int i = 0; i < 8126; i++){
+        cJSON_AddStringToObject(json_agent,"a", "b");
+    }
+    cJSON_AddItemToArray(root, json_agent);
+
+    will_return_count(__wrap_wdb_begin2, 1, -1);
+    will_return_count(__wrap_wdb_stmt_cache, 1, -1);
+
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, last_agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    // Required for wdb_get_agent_labels()
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    // Required for wdb_global_set_sync_status()
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "synced");
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 2);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+
+    // Mocking one valid agent
+    will_return(__wrap_wdb_exec_stmt, root);
+    expect_function_call_any(__wrap_cJSON_Delete);
+
+    // Required for wdb_get_agent_labels()
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    will_return(__wrap_sqlite3_errmsg, "SQL MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): SQL MESSAGE");
+
+    // Required for wdb_global_set_sync_status()
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    // No more agents
+    will_return(__wrap_wdb_exec_stmt, NULL);
+
+    result = wdb_global_sync_agent_info_get(data->wdb, &last_agent_id, &output);
+    assert_int_equal(result, WDBC_OK);
+
+    os_free(output);
+    __real_cJSON_Delete(json_output);
+    __real_cJSON_Delete(root);
+}
+
 /* Tests wdb_global_sync_agent_info_set */
 
 void test_wdb_global_sync_agent_info_set_transaction_fail(void **state)
@@ -5324,6 +5390,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_get_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_get_sync_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_get_full, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_get_size_limit, test_setup, test_teardown),
         /* Tests wdb_global_sync_agent_info_set */
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_set_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_sync_agent_info_set_cache_fail, test_setup, test_teardown),
