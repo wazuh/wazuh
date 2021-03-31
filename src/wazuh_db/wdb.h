@@ -813,8 +813,8 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
  * 1. delete: Deletes pm table
  * 2. save: Inserts the entry or updates if it already exists
  * @param wdb Database of an agent
- * @param input buffer input
- * @param output buffer output, on success responses are:
+ * @param input Buffer input
+ * @param output Buffer output, on success responses are:
  *        "ok 0" -> If entry was deleted
  *        "ok 1" -> If entry was updated
  *        "ok 2" -> If entry was inserted
@@ -848,7 +848,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
  * @brief Function to parse get operation over the sys_osinfo database table.
  *
  * @param wdb The Global struct database.
- * @param output buffer output, on success responses are:
+ * @param output Buffer output, on success responses are:
  *        "ok <data>" -> If sql statement was processed.
  *        "err <error_message>" -> If sql statement wasn't processed.
  * @return -1 on error, and 0 on success.
@@ -860,8 +860,8 @@ int wdb_parse_agents_get_sys_osinfo(wdb_t* wdb, char* output);
  * @brief Function to parse set operation over the sys_osinfo database table.
  *
  * @param wdb The Global struct database.
- * @param input buffer input
- * @param output buffer output, on success responses are:
+ * @param input Buffer input
+ * @param output Buffer output, on success responses are:
  *        "ok" -> If sql statement was processed.
  *        "err <error_message>" -> If sql statement wasn't processed.
  * @return -1 on error, and 0 on success.
@@ -874,8 +874,8 @@ int wdb_parse_agents_set_sys_osinfo(wdb_t * wdb, char * input, char * output);
  * a message to process in wazuh-db process.
  *
  * @param wdb The Global struct database.
- * @param input buffer input
- * @param output buffer output, on success responses are:
+ * @param input Buffer input
+ * @param output Buffer output, on success responses are:
  *        "ok" -> If entry was processed
  *        "error" -> If entry wasn't processed.
  * @return -1 on error, and 0 on success.
