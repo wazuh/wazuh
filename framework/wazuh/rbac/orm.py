@@ -2640,11 +2640,6 @@ class DatabaseManager:
         """Create database structure using the metadata."""
         _Base.metadata.create_all(self.engines[database])
 
-    @staticmethod
-    def get_api_revision():
-        """Get the current API revision from the Spec.yaml."""
-        return common.load_spec()['info']['x-revision']
-
     def get_database_version(self, database):
         """Get the current revision of a given database."""
         return str(self.sessions[database].execute('pragma user_version').first()[0])

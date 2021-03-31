@@ -115,6 +115,9 @@ def start(foreground, root, config_file):
         os.chown(DATABASE_FULL_PATH, common.ossec_uid(), common.ossec_gid())
         os.chmod(DATABASE_FULL_PATH, 0o640)
 
+    # Save the Wazuh revision into memory before dropping privileges to use it in future calls
+    common.get_wazuh_revision()
+
     # Drop privileges to ossec
     if not root:
         if api_conf['drop_privileges']:
@@ -129,9 +132,6 @@ def start(foreground, root, config_file):
         pyDaemonModule.create_pid('wazuh-apid', os.getpid())
     else:
         print(f"Starting API in foreground")
-
-    # Load the SPEC file into memory to use as a reference for future calls
-    common.load_spec()
 
     # Check RBAC database integrity in Master node only if cluster is enabled
     if get_node().get('type') == 'master' if not read_cluster_config()['disabled'] else True:
