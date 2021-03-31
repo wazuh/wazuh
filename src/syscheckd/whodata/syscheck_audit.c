@@ -301,7 +301,6 @@ void *audit_main(audit_data_t *audit_data) {
     count_reload_retries = 0;
     atomic_int_set(&audit_thread_active,0);
 
-
     w_mutex_lock(&audit_mutex);
     atomic_int_set(&audit_thread_active, 1);
     w_cond_signal(&audit_thread_started);

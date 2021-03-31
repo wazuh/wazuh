@@ -18,7 +18,7 @@
 
 #define ATOMIC_INT_INITIALIZER(v) { .data = v, .mutex = PTHREAD_MUTEX_INITIALIZER}
 
-typedef struct _atomic_int_t {
+typedef struct atomic_int_s {
     int data;
     pthread_mutex_t mutex;
 } atomic_int_t;
@@ -26,7 +26,7 @@ typedef struct _atomic_int_t {
 /**
  * @brief Thread safe function that gets the the value of an atomic int.
  *
- * @param atomic atomic int structure to get the data value.
+ * @param atomic atomic_int_t structure to get the data value.
  * @return int A copy of the atomic_int value.
  */
 int atomic_int_get(atomic_int_t *atomic);
@@ -39,5 +39,20 @@ int atomic_int_get(atomic_int_t *atomic);
  */
 void atomic_int_set(atomic_int_t *atomic, int value);
 
+/**
+ * @brief Thread safe functions that increments the value of an atomic int.
+ *
+ * @param atomic atomic_int_t structure that is used.
+ * @return The value of the atomic int (incremented)
+ */
+int atomic_int_inc(atomic_int_t *atomic);
+
+/**
+ * @brief Thread safe functions that decrements the value of an atomic int.
+ *
+ * @param atomic atomic_int_t structure that is used.
+ * @return The value of the atomic int (decremented)
+ */
+int atomic_int_dec(atomic_int_t *atomic);
 
 #endif // ATOMIC_H
