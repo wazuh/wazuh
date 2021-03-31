@@ -2939,7 +2939,7 @@ int wdb_parse_osinfo(wdb_t* wdb, char* input, char* output) {
     }
     else if (strcmp(next, "set") == 0) {
         result = wdb_parse_agents_set_sys_osinfo(wdb, tail, output);
-    }else {
+    } else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid sys_osinfo action: %s", next);
     }
 
