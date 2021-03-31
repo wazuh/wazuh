@@ -869,10 +869,11 @@ void test_vuln_cves_insert_command_success(void **state) {
     int ret = OS_INVALID;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
-    cJSON *test = NULL;
-
     os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", query);
-    test = cJSON_CreateObject();
+    char *result = NULL;
+    os_strdup("[{\"test\":\"TEST\"}]", result);
+
+    cJSON *test =  cJSON_CreateObject();
 
     // wdb_parse_agents_insert_vuln_cves
     expect_string(__wrap_wdb_agents_insert_vuln_cves, name, "package");
@@ -884,13 +885,14 @@ void test_vuln_cves_insert_command_success(void **state) {
     expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
     expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existance, true);
     will_return(__wrap_wdb_agents_insert_vuln_cves, test);
-
-    will_return(__wrap_cJSON_PrintUnformatted, query);
+    will_return(__wrap_cJSON_PrintUnformatted, result);
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok insert");
+    assert_string_equal(data->output, "ok [{\"test\":\"TEST\"}]");
     assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
 }
 
 void test_vuln_cves_update_status_syntax_error(void **state){
