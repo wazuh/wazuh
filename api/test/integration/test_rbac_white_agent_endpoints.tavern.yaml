@@ -1430,7 +1430,6 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-        content-type: "application/xml"
     response:
       status_code: 200
       json:
