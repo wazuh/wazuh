@@ -14,6 +14,7 @@ from os import listdir, path
 from platform import platform
 from shutil import rmtree
 from time import time
+import codecs
 
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
@@ -609,7 +610,7 @@ class Agent:
         # Update client.keys file and release the lock only if there are no other pending changes
         if not pending_client_keys_update:
             # Write temporary client.keys file
-            f_keys_temp = '{0}.tmp'.format(common.client_keys)
+            f_keys_temp = '{0}.tmp.{1}'.format(common.client_keys, codecs.encode(urandom(5), 'hex').decode())
             with open(f_keys_temp, 'a') as f_kt:
                 client_keys_entries.append('')
                 f_kt.writelines('\n'.join(client_keys_entries))
@@ -882,7 +883,7 @@ class Agent:
             agent_id = str(last_id + 1).zfill(3)
 
         # Write temporary client.keys file
-        f_keys_temp = '{0}.tmp'.format(common.client_keys)
+        f_keys_temp = '{0}.tmp.{1}'.format(common.client_keys, codecs.encode(urandom(5), 'hex').decode())
         with open(f_keys_temp, 'a') as f_kt:
             client_keys_entries.append('')
             f_kt.writelines('\n'.join(client_keys_entries))
