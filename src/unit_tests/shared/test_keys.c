@@ -18,7 +18,7 @@
 #include "headers/sec.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
+#include "../wrappers/wazuh/shared/rbtree_op_wrappers.h"
 
 int OS_IsAllowedID(keystore *keys, const char *id);
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);
@@ -51,15 +51,15 @@ void test_OS_IsAllowedID_entry_NULL(void **state)
 
     keystore *keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
-    keys->keyhash_id = (OSHash*)1;
+    keys->keytree_id = (rb_tree*)1;
 
     keyentry * data = NULL;
 
     const char * id = "12345";
 
-    expect_value(__wrap_OSHash_Get, self, keys->keyhash_id);
-    expect_string(__wrap_OSHash_Get, key, id);
-    will_return(__wrap_OSHash_Get, data);
+    expect_value(__wrap_rbtree_get, tree, keys->keytree_id);
+    expect_string(__wrap_rbtree_get, key, id);
+    will_return(__wrap_rbtree_get, data);
 
     int ret = OS_IsAllowedID(keys, id);
 
@@ -75,7 +75,7 @@ void test_OS_IsAllowedID_entry_OK(void **state)
 
     keystore *keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
-    keys->keyhash_id = (OSHash*)1;
+    keys->keytree_id = (rb_tree*)1;
 
     keyentry * data = NULL;
     os_calloc(1, sizeof(keyentry), data);
@@ -83,9 +83,9 @@ void test_OS_IsAllowedID_entry_OK(void **state)
 
     const char * id = "12345";
 
-    expect_value(__wrap_OSHash_Get, self, keys->keyhash_id);
-    expect_string(__wrap_OSHash_Get, key, id);
-    will_return(__wrap_OSHash_Get, data);
+    expect_value(__wrap_rbtree_get, tree, keys->keytree_id);
+    expect_string(__wrap_rbtree_get, key, id);
+    will_return(__wrap_rbtree_get, data);
 
     int ret = OS_IsAllowedID(keys, id);
 
@@ -105,15 +105,15 @@ void test_w_get_agent_net_protocol_from_keystore_key_NULL(void **state)
     //test_OS_IsAllowedID_entry_NULL
     keystore *keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
-    keys->keyhash_id = (OSHash*)1;
+    keys->keytree_id = (rb_tree*)1;
 
     keyentry * data = NULL;
 
     const char * id = "12345";
 
-    expect_value(__wrap_OSHash_Get, self, keys->keyhash_id);
-    expect_string(__wrap_OSHash_Get, key, id);
-    will_return(__wrap_OSHash_Get, data);
+    expect_value(__wrap_rbtree_get, tree, keys->keytree_id);
+    expect_string(__wrap_rbtree_get, key, id);
+    will_return(__wrap_rbtree_get, data);
 
     int ret = w_get_agent_net_protocol_from_keystore(keys, id);
 
@@ -130,7 +130,7 @@ void test_w_get_agent_net_protocol_from_keystore_OK(void **state)
     //test_OS_IsAllowedID_entry_OK
     keystore *keys = NULL;
     os_calloc(1, sizeof(keystore), keys);
-    keys->keyhash_id = (OSHash*)1;
+    keys->keytree_id = (rb_tree*)1;
     os_calloc(1, sizeof(keyentry *), keys->keyentries);
     os_calloc(1, sizeof(keyentry), keys->keyentries[0]);
     keys->keyentries[0]->net_protocol = 1;
@@ -141,9 +141,9 @@ void test_w_get_agent_net_protocol_from_keystore_OK(void **state)
 
     const char * id = "12345";
 
-    expect_value(__wrap_OSHash_Get, self, keys->keyhash_id);
-    expect_string(__wrap_OSHash_Get, key, id);
-    will_return(__wrap_OSHash_Get, data);
+    expect_value(__wrap_rbtree_get, tree, keys->keytree_id);
+    expect_string(__wrap_rbtree_get, key, id);
+    will_return(__wrap_rbtree_get, data);
 
     int ret = w_get_agent_net_protocol_from_keystore(keys, id);
 
