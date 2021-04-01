@@ -15,6 +15,15 @@
 #include "wdb.h"
 
 /**
+ * @brief Function to get all the OS information from the sys_osinfo table.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @return Returns cJSON object with the sys_osinfo database table information.
+ *         The cJSON object must be freed by the caller.
+ */
+cJSON* wdb_agents_get_sys_osinfo(wdb_t *wdb);
+
+/**
  * @brief Function to check if a certain package exists.
  *
  * @param [in] wdb The 'agents' struct database.

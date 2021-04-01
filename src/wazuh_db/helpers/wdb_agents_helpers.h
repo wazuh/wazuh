@@ -15,11 +15,22 @@
 #include "../wdb.h"
 
 typedef enum agents_db_access {
+    WDB_AGENTS_SYS_OSINFO_GET,
     WDB_AGENTS_VULN_CVES_INSERT,
     WDB_AGENTS_VULN_CVES_CLEAR,
     WDB_AGENTS_VULN_CVES_REMOVE,
     WDB_AGENTS_VULN_CVES_UPDATE_STATUS
 } agents_db_access;
+
+/**
+ * @brief Checks the triaged status in the sys_osinfo table of the specified agent's database.
+ *
+ * @param[in] id The agent ID.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns 1 if triaged, 0 if not triaged or -1 on error.
+ */
+int wdb_agents_sys_osinfo_check_triaged(int id,
+                                        int *sock);
 
 /**
  * @brief Insert or update a vulnerability to the vuln_cves table in the agents database.
