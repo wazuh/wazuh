@@ -55,6 +55,8 @@ cJSON * __wrap_cJSON_CreateObject(void);
 
 cJSON * __wrap_cJSON_CreateNumber(double num);
 
+extern cJSON * __real_cJSON_CreateNumber(double num);
+
 cJSON * __wrap_cJSON_CreateString(const char *string);
 
 extern cJSON * __real_cJSON_CreateString(const char *string);
