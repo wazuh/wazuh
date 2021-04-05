@@ -15,7 +15,6 @@
 #include "decoders/decoder.h"
 
 typedef enum syscheck_event_t { FIM_ADDED, FIM_MODIFIED, FIM_READDED, FIM_DELETED } syscheck_event_t;
-extern const char *SYSCHECK_EVENT_STRINGS[];
 typedef struct _EventNode EventNode;
 
 

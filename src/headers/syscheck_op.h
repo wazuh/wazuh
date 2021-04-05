@@ -11,6 +11,8 @@
 #ifndef SYSCHECK_OP_H
 #define SYSCHECK_OP_H
 
+extern const char *SYSCHECK_EVENT_STRINGS[];
+
 #ifndef WIN32
 
 #include <sys/types.h>

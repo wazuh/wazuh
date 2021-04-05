@@ -23,13 +23,6 @@ int alert_only;
 
 time_t current_time = 0;
 
-const char *SYSCHECK_EVENT_STRINGS[] = {
-    [FIM_ADDED] = "added",
-    [FIM_MODIFIED] = "modified",
-    [FIM_READDED] = "readded",
-    [FIM_DELETED] = "deleted"
-};
-
 size_t field_offset[] = {
     offsetof(Eventinfo, srcip),
     offsetof(Eventinfo, id),

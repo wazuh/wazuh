@@ -10,6 +10,13 @@
 
 #include "syscheck_op.h"
 
+const char *SYSCHECK_EVENT_STRINGS[] = {
+    [FIM_ADDED] = "added",
+    [FIM_MODIFIED] = "modified",
+    [FIM_READDED] = "readded",
+    [FIM_DELETED] = "deleted"
+};
+
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
 extern void mock_assert(const int result, const char* const expression,
