@@ -67,7 +67,7 @@ def get_user_me(token):
                   post_proc_kwargs={'exclude_codes': [5001]})
 def get_users(user_ids: list = None, offset: int = 0, limit: int = common.database_limit, sort_by: dict = None,
               sort_ascending: bool = True, search_text: str = None,
-              complementary_search: bool = False, search_in_fields: list = None):
+              complementary_search: bool = False, search_in_fields: list = None, resource_type=None):
     """Get the information of a specified user
 
     Parameters
@@ -88,6 +88,8 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
         Find items without the text to search
     search_in_fields : list
         Fields to search in
+    resource_type : str
+        Filter elements by the specified resource type (default, protected or user)
 
     Returns
     -------
@@ -105,7 +107,7 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, resource_type=resource_type)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -326,7 +328,8 @@ def remove_users(user_ids, resource_type: ResourceType = ResourceType.USER) -> A
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002]})
 def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None,
+              resource_type=None):
     """Returns information from all system roles, does not return information from its associated policies
 
     :param role_ids: List of roles ids (None for all roles)
@@ -337,6 +340,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
     :param search_text: Text to search
     :param complementary_search: Find items without the text to search
     :param search_in_fields: Fields to search in
+    :param resource_type : Filter elements by the specified resource type (default, protected or user)
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_items = list()
@@ -354,7 +358,7 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, resource_type=resource_type)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -523,7 +527,8 @@ def update_role(role_id=None, name=None, resource_type: ResourceType = None) -> 
 @expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007]})
 def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
-                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None,
+                 resource_type=None):
     """Returns the information of a certain policy
 
     :param policy_ids: ID of the policy on which the information will be collected (All for all policies)
@@ -534,6 +539,7 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
     :param search_text: Text to search
     :param complementary_search: Find items without the text to search
     :param search_in_fields: Fields to search in
+    :param resource_type: Filter elements by the specified resource type (default, protected or user)
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     result = AffectedItemsWazuhResult(none_msg='No policy was returned',
@@ -551,7 +557,7 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, resource_type=resource_type)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -730,7 +736,8 @@ def update_policy(policy_id=None, name=None, policy=None, resource_type: Resourc
 @expose_resources(actions=['security:read'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022]})
 def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None,
+              resource_type=None):
     """Return information from all the security rules. It does not return information from its associated roles.
 
     :param rule_ids: List of rule ids (None for all rules)
@@ -741,6 +748,7 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
     :param search_text: Text to search
     :param complementary_search: Find items without the text to search
     :param search_in_fields: Fields to search in
+    :param resource_type : Filter elements by the specified resource type (default, protected or user)
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_items = list()
@@ -759,7 +767,7 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, resource_type=resource_type)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

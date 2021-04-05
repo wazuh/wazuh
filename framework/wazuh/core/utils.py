@@ -105,7 +105,8 @@ def execute(command):
 
 
 def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
-                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None):
+                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None,
+                  resource_type=None):
     """ Process a Wazuh framework data array
 
     :param array: Array to process
@@ -120,6 +121,7 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     :param limit: Maximum number of elements to return
     :param q: Query to filter by
     :param required_fields: Required fields that must appear in the response
+    :param resource_type: Type of the resource to filter by
     :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
     if not array:
@@ -140,6 +142,9 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     elif sort_by:
         array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
                            allowed_sort_fields=allowed_sort_fields)
+
+    if resource_type:
+        array = filter_by_resource_type(array, resource_type)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
@@ -343,6 +348,24 @@ def select_array(array, select=None, required_fields=None):
     if not result_list:
         raise WazuhError(1724, "{}".format(', '.join(select)))
     return result_list
+
+
+def filter_by_resource_type(array: typing.List, resource_type: str) -> typing.List:
+    """Filter a list of dictionaries to return only the elements that match with the specified resource_type value.
+
+     Parameters
+     ----------
+     array : list
+         Array of elements. It contains all the results without any filter.
+     resource_type: str
+         The resource_type to filter by.
+
+     Returns
+     -------
+     result_list : list
+         Filtered array of dicts with only the selected (and required) fields as keys.
+     """
+    return [x for x in array if x['resource_type'] == resource_type]
 
 
 _filemode_table = (

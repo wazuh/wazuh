@@ -179,7 +179,7 @@ async def logout_user(request, pretty=False, wait_for_complete=False):
 
 
 async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
-                    offset=0, limit=None, search=None, sort=None):
+                    offset=0, limit=None, search=None, sort=None, resource_type=None):
     """Returns information from all system roles.
 
     Parameters
@@ -200,6 +200,8 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
+    resource_type : str, optional
+        Filter elements by the specified resource type (default, protected or user)
 
     Returns
     -------
@@ -209,7 +211,8 @@ async def get_users(request, user_ids: list = None, pretty=False, wait_for_compl
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None}
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'resource_type': resource_type}
 
     dapi = DistributedAPI(f=security.get_users,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -359,7 +362,8 @@ async def delete_users(request, user_ids: list = None, pretty=False, wait_for_co
 
 
 async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                    offset: int = 0, limit: int = None, search: str = None, sort: str = None,
+                    resource_type: str = None):
     """
 
     Parameters
@@ -380,6 +384,8 @@ async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_f
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
+    resource_type : str, optional
+        Filter elements by the specified resource type (default, protected or user)
 
     Returns
     -------
@@ -389,8 +395,8 @@ async def get_roles(request, role_ids: list = None, pretty: bool = False, wait_f
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
-                }
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'resource_type': resource_type}
 
     dapi = DistributedAPI(f=security.get_roles,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -506,7 +512,8 @@ async def update_role(request, role_id: int, pretty: bool = False, wait_for_comp
 
 
 async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                    offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                    offset: int = 0, limit: int = None, search: str = None, sort: str = None,
+                    resource_type: str = None):
     """Get information about the security rules in the system.
 
     Parameters
@@ -527,6 +534,8 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
+    resource_type : str, optional
+        Filter elements by the specified resource type (default, protected or user)
 
     Returns
     -------
@@ -536,8 +545,8 @@ async def get_rules(request, rule_ids: list = None, pretty: bool = False, wait_f
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
-                }
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'resource_type': resource_type}
 
     dapi = DistributedAPI(f=security.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -653,7 +662,8 @@ async def remove_rules(request, rule_ids: list = None, pretty: bool = False, wai
 
 
 async def get_policies(request, policy_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
-                       offset: int = 0, limit: int = None, search: str = None, sort: str = None):
+                       offset: int = 0, limit: int = None, search: str = None, sort: str = None,
+                       resource_type: str = None):
     """Returns information from all system policies.
 
     Parameters
@@ -674,6 +684,8 @@ async def get_policies(request, policy_ids: list = None, pretty: bool = False, w
     sort : str, optional
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order
+    resource_type : str, optional
+        Filter elements by the specified resource type (default, protected or user)
 
     Returns
     -------
@@ -683,8 +695,8 @@ async def get_policies(request, policy_ids: list = None, pretty: bool = False, w
                 'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
-                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None
-                }
+                'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+                'resource_type': resource_type}
 
     dapi = DistributedAPI(f=security.get_policies,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

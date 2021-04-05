@@ -5279,7 +5279,16 @@ components:
       schema:
         type: string
         format: xml_filename_path
-
+    resource_type:
+      in: query
+      name: resource_type
+      description: "Filter by process resource type"
+      schema:
+        type: string
+        enum:
+          - 'default'
+          - 'protected'
+          - 'user'
 
 tags:
   - name: API Info
@@ -14363,6 +14372,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/resource_type'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
@@ -14623,6 +14633,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/resource_type'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
@@ -14854,6 +14865,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/resource_type'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
@@ -15084,6 +15096,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/resource_type'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
