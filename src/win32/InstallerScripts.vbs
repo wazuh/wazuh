@@ -68,9 +68,23 @@ If Not objFSO.fileExists(home_dir & "client.keys") Then
 
 End If
 
+' rename ossec.conf to ossec.conf.backup
 If objFSO.fileExists(home_dir & "ossec.conf") Then
     objFSO.MoveFile home_dir & "ossec.conf" , home_dir & "ossec.conf.backup"
 End If
+
+' remove ossec.log and ossec.json
+If objFSO.fileExists(home_dir & "logs\ossec.log") Then
+    objSFO.DeleteFile(home_dir & "logs\ossec.log")
+End If
+If objFSO.fileExists(home_dir & "logs\ossec.json") Then
+    objSFO.DeleteFile(home_dir & "logs\ossec.json")
+End If
+
+' remove all files folders from /logs/wazuh/*
+objSFO.DeleteFile(home_dir & "logs\wazuh\*"), TRUE
+
+' rm -rfv $LOG_WAZUH_FOLDER
 
 If objFSO.fileExists(home_dir & "agent.conf") Then
     ' Reading agent.conf file
