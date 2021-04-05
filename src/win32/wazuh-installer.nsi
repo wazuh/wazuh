@@ -258,14 +258,14 @@ Section "Wazuh Agent (required)" MainSec
     ; create log file
     LogInstall:
         ClearErrors
-        IfFileExists "$INSTDIR\ossec.log" LogComplete
-        FileOpen $0 "$INSTDIR\ossec.log" w
+        IfFileExists "$INSTDIR\wazuh.log" LogComplete
+        FileOpen $0 "$INSTDIR\wazuh.log" w
         FileClose $0
         IfErrors LogError LogComplete
     LogError:
         MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
-            Failure creating the ossec.log file.$\r$\n$\r$\n\
-            File:$\r$\n$\r$\n$INSTDIR\ossec.log$\r$\n$\r$\n\
+            Failure creating the wazuh.log file.$\r$\n$\r$\n\
+            File:$\r$\n$\r$\n$INSTDIR\wazuh.log$\r$\n$\r$\n\
             Click Abort to stop the installation,$\r$\n\
             Retry to try again, or$\r$\n\
             Ignore to skip this file." /SD IDABORT IDIGNORE LogComplete IDRETRY LogInstall
