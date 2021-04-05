@@ -1,0 +1,12 @@
+# Security Configuration Assessment
+# CIS Checks for PostgreSQL 13
+# Copyright (C) 2015-2021, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# Center for Internet Security Benchmark for PostgreSQL 13 Benchmark v1.0.0 - 02-26-2021
+
