@@ -340,11 +340,7 @@ int wdb_parse(char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                if (wdb_parse_osinfo(wdb, next, output) == 0){
-                    mdebug2("Updated 'sys_osinfo' table for agent '%s'", sagent_id);
-                } else {
-                    merror("Unable to update 'sys_osinfo' table for agent '%s'", sagent_id);
-                }
+                result = wdb_parse_osinfo(wdb, next, output);
             }
         } else if (strcmp(query, "hardware") == 0) {
             if (!next) {
@@ -2925,7 +2921,7 @@ int wdb_parse_osinfo(wdb_t* wdb, char* input, char* output) {
     next = strtok_r(input, delim, &tail);
 
     if (!next){
-        snprintf(output, OS_MAXSTR + 1, "err Missing sys_osinfo action");
+        snprintf(output, OS_MAXSTR + 1, "err Missing osinfo action");
     }
     else if (strcmp(next, "get") == 0) {
         result = wdb_parse_agents_get_sys_osinfo(wdb, output);
@@ -2933,7 +2929,7 @@ int wdb_parse_osinfo(wdb_t* wdb, char* input, char* output) {
     else if (strcmp(next, "set") == 0) {
         result = wdb_parse_agents_set_sys_osinfo(wdb, tail, output);
     } else {
-        snprintf(output, OS_MAXSTR + 1, "err Invalid sys_osinfo action: %s", next);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid osinfo action: %s", next);
     }
 
     return result;
@@ -3003,155 +2999,155 @@ int wdb_parse_agents_set_sys_osinfo(wdb_t * wdb, char * input, char * output) {
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", scan_time);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", scan_time);
-        return -1;
-    }
-
     if (!strcmp(scan_time, "NULL"))
         scan_time = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     hostname = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", hostname);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", hostname);
-        return -1;
-    }
-
     if (!strcmp(hostname, "NULL"))
         hostname = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     architecture = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", architecture);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", architecture);
-        return -1;
-    }
-
     if (!strcmp(architecture, "NULL"))
         architecture = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     os_name = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", os_name);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_name);
-        return -1;
-    }
-
     if (!strcmp(os_name, "NULL"))
         os_name = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     os_version = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", os_version);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_version);
-        return -1;
-    }
-
     if (!strcmp(os_version, "NULL"))
         os_version = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     os_codename = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", os_codename);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_codename);
-        return -1;
-    }
-
     if (!strcmp(os_codename, "NULL"))
         os_codename = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     os_major = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", os_major);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_major);
-        return -1;
-    }
-
     if (!strcmp(os_major, "NULL"))
         os_major = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     os_minor = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", os_minor);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_minor);
-        return -1;
-    }
-
     if (!strcmp(os_minor, "NULL"))
         os_minor = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     os_build = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", os_build);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_build);
-        return -1;
-    }
-
     if (!strcmp(os_build, "NULL"))
         os_build = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     os_platform = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", os_platform);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", os_platform);
-        return -1;
-    }
-
     if (!strcmp(os_platform, "NULL"))
         os_platform = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     sysname = curr;
     *next++ = '\0';
     curr = next;
 
-    if (next = strchr(curr, '|'), !next) {
-        mdebug1("Invalid OS info query syntax.");
-        mdebug2("OS info query: %s", sysname);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", sysname);
-        return -1;
-    }
-
     if (!strcmp(sysname, "NULL"))
         sysname = NULL;
+
+    if (next = strchr(curr, '|'), !next) {
+        mdebug1("Invalid OS info query syntax.");
+        mdebug2("OS info query: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", curr);
+        return -1;
+    }
 
     release = curr;
     *next++ = '\0';
