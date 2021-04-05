@@ -1679,8 +1679,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_osinfo_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_invalid_action, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_missing_action, test_setup, test_teardown),
+        // osinfo get
         cmocka_unit_test_setup_teardown(test_osinfo_get_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_get_success, test_setup, test_teardown),
+        // osinfo set
         cmocka_unit_test_setup_teardown(test_osinfo_set_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_scan_id, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_scan_time, test_setup, test_teardown),
