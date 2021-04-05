@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_syscollector_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 
 #include "os_err.h"
@@ -740,7 +741,479 @@ void test_wdb_parse_rootcheck_save_update_insert_success(void **state)
     os_free(query);
 }
 
-/* vuln_cves Tests */
+/* Tests osinfo */
+
+void test_osinfo_syntax_error(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("agent 000 osinfo", query);
+
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: osinfo");
+
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid DB query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "DB(000) query error near: osinfo");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid DB query syntax, near 'osinfo'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_invalid_action(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("agent 000 osinfo invalid", query);
+    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
+    will_return(__wrap_wdb_open_agent2, (wdb_t*)1); // Returning any value
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: osinfo invalid");
+
+    ret = wdb_parse(query, data->output);
+
+    assert_string_equal(data->output, "err Invalid osinfo action: invalid");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_missing_action(void **state) {
+    int ret = -1;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("", query);
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Missing osinfo action");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_get_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("get", query);
+
+    // wdb_agents_get_sys_osinfo
+    will_return(__wrap_wdb_agents_get_sys_osinfo, NULL);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot get sys_osinfo database table information; SQL err: ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_get_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+    char *result = NULL;
+
+    os_strdup("get", query);
+    os_strdup("{}", result);
+    cJSON *test =  cJSON_CreateObject();
+
+    // wdb_agents_get_sys_osinfo
+    will_return(__wrap_wdb_agents_get_sys_osinfo, test);
+    will_return(__wrap_cJSON_PrintUnformatted, result);
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok {}");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_scan_id(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set ", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_scan_time(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_hostname(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_architecture(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_os_name(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_os_version(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_os_codename(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_os_major(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_os_minor(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_os_build(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_os_platform(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_sysname(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_release(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_version(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|sysname|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_no_os_release(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|sysname|NULL|NULL|", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_error_saving(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|sysname|release|NULL|NULL|NULL", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap_wdb_osinfo_save, scan_id, "scan_id");
+    expect_string(__wrap_wdb_osinfo_save, scan_time, "scan_time");
+    expect_string(__wrap_wdb_osinfo_save, hostname, "hostname");
+    expect_string(__wrap_wdb_osinfo_save, architecture, "architecture");
+    expect_string(__wrap_wdb_osinfo_save, os_name, "os_name");
+    expect_string(__wrap_wdb_osinfo_save, os_version, "os_version");
+    expect_string(__wrap_wdb_osinfo_save, os_codename, "os_codename");
+    expect_string(__wrap_wdb_osinfo_save, os_major, "os_major");
+    expect_string(__wrap_wdb_osinfo_save, os_minor, "os_minor");
+    expect_string(__wrap_wdb_osinfo_save, os_build, "os_build");
+    expect_string(__wrap_wdb_osinfo_save, os_platform, "os_platform");
+    expect_string(__wrap_wdb_osinfo_save, sysname, "sysname");
+    expect_string(__wrap_wdb_osinfo_save, release, "release");
+    expect_string(__wrap_wdb_osinfo_save, checksum, "legacy");
+    expect_value(__wrap_wdb_osinfo_save, replace, FALSE);
+    will_return(__wrap_wdb_osinfo_save, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot save OS information.");
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot save OS information.");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+
+    os_strdup("set scan_id|scan_time|hostname|architecture|os_name|os_version|os_codename|os_major|os_minor|os_build|os_platform|sysname|release|version|os_release|os_patch", query);
+
+    // wdb_parse_agents_set_sys_osinfo
+    expect_string(__wrap_wdb_osinfo_save, scan_id, "scan_id");
+    expect_string(__wrap_wdb_osinfo_save, scan_time, "scan_time");
+    expect_string(__wrap_wdb_osinfo_save, hostname, "hostname");
+    expect_string(__wrap_wdb_osinfo_save, architecture, "architecture");
+    expect_string(__wrap_wdb_osinfo_save, os_name, "os_name");
+    expect_string(__wrap_wdb_osinfo_save, os_version, "os_version");
+    expect_string(__wrap_wdb_osinfo_save, os_codename, "os_codename");
+    expect_string(__wrap_wdb_osinfo_save, os_major, "os_major");
+    expect_string(__wrap_wdb_osinfo_save, os_minor, "os_minor");
+    expect_string(__wrap_wdb_osinfo_save, os_patch, "os_patch");
+    expect_string(__wrap_wdb_osinfo_save, os_build, "os_build");
+    expect_string(__wrap_wdb_osinfo_save, os_platform, "os_platform");
+    expect_string(__wrap_wdb_osinfo_save, sysname, "sysname");
+    expect_string(__wrap_wdb_osinfo_save, release, "release");
+    expect_string(__wrap_wdb_osinfo_save, version, "version");
+    expect_string(__wrap_wdb_osinfo_save, os_release, "os_release");
+    expect_string(__wrap_wdb_osinfo_save, checksum, "legacy");
+    expect_value(__wrap_wdb_osinfo_save, replace, FALSE);
+    will_return(__wrap_wdb_osinfo_save, OS_SUCCESS);
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+/* Tests vuln_cves */
 
 void test_vuln_cves_syntax_error(void **state) {
     int ret = -1;
@@ -1202,6 +1675,30 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_cache_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_save_update_insert_success, test_setup, test_teardown),
+        /* Tests osinfo */
+        cmocka_unit_test_setup_teardown(test_osinfo_syntax_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_invalid_action, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_missing_action, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_get_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_get_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_scan_id, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_scan_time, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_hostname, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_architecture, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_name, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_version, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_codename, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_major, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_minor, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_build, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_platform, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_sysname, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_release, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_version, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_release, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_error_saving, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_success, test_setup, test_teardown),
         /* Tests vuln_cves */
         cmocka_unit_test_setup_teardown(test_vuln_cves_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_invalid_action, test_setup, test_teardown),
