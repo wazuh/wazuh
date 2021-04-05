@@ -13,6 +13,10 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+cJSON* __wrap_wdb_agents_get_sys_osinfo(__attribute__((unused)) wdb_t *wdb) {
+    return mock_ptr_type(cJSON*);
+}
+
 cJSON* __wrap_wdb_agents_insert_vuln_cves(__attribute__((unused)) wdb_t *wdb,
                                           const char* name,
                                           const char* version,
