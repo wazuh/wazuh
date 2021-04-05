@@ -115,7 +115,7 @@ getPreinstalledDirByType()
     # Checking for Darwin
     if [ "X${NUNAME}" = "XDarwin" ]; then
         if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
-            PREINSTALLEDDIR=`sed -n 's/^ *//; s/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
+            PREINSTALLEDDIR=`sed -n 's/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else
@@ -423,11 +423,23 @@ UpdateOldVersions()
     # Update versions previous to Wazuh 5.0.0, which is a breaking change
     if [ "X$1" = "Xyes" ]; then
 
-        OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
-        OSSEC_CONF_FILE_BACKUP="$PREINSTALLEDDIR/etc/ossec.conf.backup"
+        echo "Renaming and deleting old files..."
+
+        CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
+        CONF_FILE_BACKUP="$PREINSTALLEDDIR/etc/ossec.conf.backup"
+        LOG_FILE="$PREINSTALLEDDIR/logs/ossec.log"
+        JSON_FILE="$PREINSTALLEDDIR/logs/ossec.json"
+        LOG_WAZUH_FOLDER="$PREINSTALLEDDIR/logs/wazuh/*"
 
         # rename ossec.conf to ossec.conf.backup
-        mv $OSSEC_CONF_FILE $OSSEC_CONF_FILE_BACKUP
+        mv $CONF_FILE $CONF_FILE_BACKUP
+
+        # remove ossec.log and ossec.json
+        rm -v $LOG_FILE
+        rm -v $JSON_FILE
+
+        # remove all files folders from /logs/wazuh/*
+        rm -rfv $LOG_WAZUH_FOLDER
 
         # If it is Wazuh 2.0 or newer, exit
         if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
