@@ -74,7 +74,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,strerror \
                              -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_GetObjectItem \
                              -Wl,--wrap,cJSON_ParseWithOpts -Wl,--wrap,cJSON_Delete -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result \
                              -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_Duplicate -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
-                             -Wl,--wrap,cJSON_AddBoolToObject ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,cJSON_AddBoolToObject -Wl,--wrap,cJSON_CreateNumber ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb")
 list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
