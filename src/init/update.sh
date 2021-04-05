@@ -430,6 +430,7 @@ UpdateOldVersions()
         LOG_FILE="$PREINSTALLEDDIR/logs/ossec.log"
         JSON_FILE="$PREINSTALLEDDIR/logs/ossec.json"
         LOG_WAZUH_FOLDER="$PREINSTALLEDDIR/logs/wazuh/*"
+        LOG_OSSEC_FOLDER="$PREINSTALLEDDIR/logs/ossec/*"
 
         # rename ossec.conf to ossec.conf.backup
         mv $CONF_FILE $CONF_FILE_BACKUP
@@ -438,8 +439,13 @@ UpdateOldVersions()
         rm -v $LOG_FILE
         rm -v $JSON_FILE
 
-        # remove all files folders from /logs/wazuh/*
-        rm -rfv $LOG_WAZUH_FOLDER
+        # remove all files and folders from /logs/wazuh/* or /logs/ossec/*
+        if [ -f $LOG_WAZUH_FOLDER ]; then
+            rm -rfv $LOG_WAZUH_FOLDER
+        fi
+        if [ -f $LOG_OSSEC_FOLDER ]; then
+            rm -rfv $LOG_OSSEC_FOLDER
+        fi
 
         # If it is Wazuh 2.0 or newer, exit
         if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
