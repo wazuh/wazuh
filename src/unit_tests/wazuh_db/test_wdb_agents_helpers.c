@@ -38,6 +38,83 @@ int teardown_wdb_agents_helpers(void **state) {
     return 0;
 }
 
+/* Tests wdb_agents_sys_osinfo_check_triaged */
+
+void test_wdb_agents_sys_osinfo_check_triaged_error_wdb_query(void ** state)
+{
+    int ret = 0;
+    int id = 1;
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, NULL);
+
+    // Handling result
+    expect_string(__wrap__merror, formatted_msg, "Agents DB (1) Error querying Wazuh DB to get OS information");
+
+    //Cleaning  memory
+    expect_function_call(__wrap_cJSON_Delete);
+
+    ret = wdb_agents_sys_osinfo_check_triaged(id, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_agents_sys_osinfo_check_triaged_error_no_info(void ** state)
+{
+    int ret = 0;
+    int id = 1;
+
+    cJSON *root = __real_cJSON_CreateArray();
+    cJSON *row = __real_cJSON_CreateObject();
+    cJSON *triaged = __real_cJSON_CreateNumber(1);
+    __real_cJSON_AddItemToObject(row, "dummy_data", triaged);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    // Handling result
+    expect_string(__wrap__merror, formatted_msg, "No information related to the triaged status of the OS");
+
+    //Cleaning  memory
+    expect_function_call(__wrap_cJSON_Delete);
+
+    ret = wdb_agents_sys_osinfo_check_triaged(id, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+
+    __real_cJSON_Delete(root);
+}
+
+void test_wdb_agents_sys_osinfo_check_triaged_success(void ** state)
+{
+    int ret = 0;
+    int id = 1;
+
+    cJSON *root = __real_cJSON_CreateArray();
+    cJSON *row = __real_cJSON_CreateObject();
+    cJSON *triaged = __real_cJSON_CreateNumber(1);
+    __real_cJSON_AddItemToObject(row, "triaged", triaged);
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+    will_return(__wrap_cJSON_GetObjectItem, triaged);
+
+    //Cleaning  memory
+    expect_function_call(__wrap_cJSON_Delete);
+
+    ret = wdb_agents_sys_osinfo_check_triaged(id, NULL);
+
+    assert_int_equal(1, ret);
+
+    __real_cJSON_Delete(root);
+}
+
 /* Tests wdb_agents_vuln_cves_insert */
 
 void test_wdb_agents_vuln_cves_insert_error_json(void **state)
@@ -75,7 +152,7 @@ void test_wdb_agents_vuln_cves_insert_error_sql_execution(void **state)
     const char *status = "VALID";
     bool check_pkg_existance = true;
 
-    const char *json_str = NULL; 
+    const char *json_str = NULL;
     os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", json_str);
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -129,7 +206,7 @@ void test_wdb_agents_vuln_cves_insert_success(void **state)
     const char *status = "VALID";
     bool check_pkg_existance = true;
 
-    const char *json_str = NULL; 
+    const char *json_str = NULL;
     os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", json_str);
 
     will_return(__wrap_cJSON_CreateObject, 1);
@@ -1084,6 +1161,10 @@ int main()
 {
     const struct CMUnitTest tests[] =
     {
+        /* Tests wdb_agents_sys_osinfo_check_triaged */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_check_triaged_error_wdb_query, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_check_triaged_error_no_info, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_check_triaged_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_agents_vuln_cves_insert*/
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_insert_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_insert_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
