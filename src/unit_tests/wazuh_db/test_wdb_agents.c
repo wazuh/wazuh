@@ -49,6 +49,50 @@ static int test_teardown(void **state) {
     return 0;
 }
 
+/* Tests wdb_agents_get_sys_osinfo */
+
+void test_wdb_agents_get_sys_osinfo_statement_init_fail(void **state) {
+    cJSON *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_OSINFO_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    ret = wdb_agents_get_sys_osinfo(data->wdb);
+
+    assert_null(ret);
+}
+
+void test_wdb_agents_get_sys_osinfo_exec_stmt_fail(void **state) {
+    cJSON *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_OSINFO_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+
+    will_return(__wrap_wdb_exec_stmt, NULL);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "wdb_exec_stmt(): ERROR MESSAGE");
+
+    ret = wdb_agents_get_sys_osinfo(data->wdb);
+
+    assert_null(ret);
+}
+
+void test_wdb_agents_get_sys_osinfo_success(void **state) {
+    cJSON *ret = NULL;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_OSINFO_GET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+
+    will_return(__wrap_wdb_exec_stmt, (cJSON*)1);
+
+    ret = wdb_agents_get_sys_osinfo(data->wdb);
+
+    assert_ptr_equal(ret, (cJSON*)1);
+}
+
 /* Tests wdb_agents_find_package */
 
 void test_wdb_agents_find_package_statement_init_fail(void **state) {
@@ -809,6 +853,10 @@ void test_wdb_agents_clear_vuln_cves_success(void **state) {
 int main()
 {
     const struct CMUnitTest tests[] = {
+        /* Tests wdb_agents_get_sys_osinfo */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_sys_osinfo_statement_init_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_sys_osinfo_exec_stmt_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_get_sys_osinfo_success, test_setup, test_teardown),
         /* Tests wdb_agents_find_package */
         cmocka_unit_test_setup_teardown(test_wdb_agents_find_package_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_find_package_success_row, test_setup, test_teardown),
