@@ -824,7 +824,7 @@ void test_osinfo_get_success(void **state) {
     char *result = NULL;
 
     os_strdup("get", query);
-    os_strdup("{}", result);
+    os_strdup("[]", result);
     cJSON *test =  cJSON_CreateObject();
 
     // wdb_agents_get_sys_osinfo
@@ -833,7 +833,7 @@ void test_osinfo_get_success(void **state) {
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "ok {}");
+    assert_string_equal(data->output, "ok []");
     assert_int_equal(ret, OS_SUCCESS);
 
     os_free(query);
@@ -848,11 +848,10 @@ void test_osinfo_set_error(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -867,11 +866,10 @@ void test_osinfo_set_error_no_scan_id(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -886,11 +884,10 @@ void test_osinfo_set_error_no_scan_time(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -905,11 +902,10 @@ void test_osinfo_set_error_no_hostname(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -924,11 +920,10 @@ void test_osinfo_set_error_no_architecture(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -943,11 +938,10 @@ void test_osinfo_set_error_no_os_name(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -962,11 +956,10 @@ void test_osinfo_set_error_no_os_version(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -981,11 +974,10 @@ void test_osinfo_set_error_no_os_codename(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1000,11 +992,10 @@ void test_osinfo_set_error_no_os_major(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1019,11 +1010,10 @@ void test_osinfo_set_error_no_os_minor(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1038,11 +1028,10 @@ void test_osinfo_set_error_no_os_build(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1057,11 +1046,10 @@ void test_osinfo_set_error_no_os_platform(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1076,11 +1064,10 @@ void test_osinfo_set_error_no_sysname(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1095,11 +1082,10 @@ void test_osinfo_set_error_no_release(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1114,11 +1100,10 @@ void test_osinfo_set_error_no_version(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
@@ -1133,11 +1118,10 @@ void test_osinfo_set_error_no_os_release(void **state) {
 
     // wdb_parse_agents_set_sys_osinfo
     expect_string(__wrap__mdebug1, formatted_msg, "Invalid OS info query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "OS info query: ");
 
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
-    assert_string_equal(data->output, "err Invalid OS info query syntax, near ''");
+    assert_string_equal(data->output, "err Invalid OS info query syntax");
     assert_int_equal(ret, OS_INVALID);
 
     os_free(query);
