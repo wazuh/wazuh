@@ -19,6 +19,13 @@ policy:
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
+variables:
+  $user: user # must be granted pg_read_all_settings
+  $host: localhost
+  $db: postgres
+  $log_directory: some_dir
+  $log_pattern: some_pattern
+
 requirements: asdf
 
 checks:
@@ -44,15 +51,8 @@ checks:
     rules:
       - "c: systemctl get-default | systemctl list-dependencies $default_tmp | grep -i postgres -> r:.+"
 
-# 1.3 Ensure Data Cluster Initialized Successfully (Automated)
-  - id: 24001
-    title: Ensure Data Cluster Initialized Successfully
-    description: First time installs of PostgreSQL requires the instantiation of the database cluster. A
-      database cluster is a collection of databases that are managed by a single server instance.
-    rationale:
-
 # 3 Logging Monitoring And Auditing
-# 3.1.2 Ensure the log destinations are set correctly (Automated)
+# 3.1.2 Ensure the log destinations are set correctly (Automated) --TODO--
   - id: 24002
     title: Ensure the log destinations are set correctly
     description: PostgreSQL supports several methods for logging server messages, including stderr,
@@ -69,3 +69,112 @@ checks:
       ----------------
       t
       (1 row)"
+
+# 3.1.3 Ensure the logging collector is enabled (Automated)
+  - id: 24003
+    title: Ensure the logging collector is enabled
+    description: The logging collector is a background process that captures log messages sent to stderr
+      and redirects them into log files. The logging_collector setting must be enabled in order
+      for this process to run. It can only be set at server start.
+    rationale: "The logging collector approach is often more useful than logging to syslog, since some
+      types of messages might not appear in syslog output. One common example is dynamiclinker failure message; another may be error messages produced by scripts such as
+      archive_command.
+      Note: This setting must be enabled when log_destination is either stderr or csvlog and
+      for certain other logging parameters to take effect."
+    remediation: "Execute the following SQL statement(s) to remediate this setting:
+      postgres=# alter system set logging_collector = 'on';
+      ALTER SYSTEM
+      26 | Page
+      Unfortunately, this setting can only be changed at server (re)start. As root, restart the
+      PostgreSQL service for this change to take effect:
+      # whoami
+      root
+      # systemctl restart postgresql-13
+      # systemctl status postgresql-13|grep 'ago$'
+      Active: active (running) since <date>; 1s ago"
+    compliance:
+      - cis: ["3.1.3"]
+      - cis_csc: ["6.2", "6.3"]
+    references:
+      - https://www.postgresql.org/docs/current/runtime-config-logging.html
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show logging_collector" -> r:^ on$'
+
+# 3.1.4 Ensure the log file destination directory is set correctly (Automated)
+  - id: 24004
+    title: Ensure the log file destination directory is set correctly
+    description: The log_directory setting specifies the destination directory for log files when
+      log_destination is stderr or csvlog. It can be specified as relative to the cluster data
+      directory ($PGDATA) or as an absolute path. log_directory should be set according to your
+      organization's logging policy.
+    rationale: If log_directory is not set, it is interpreted as the absolute path '/' and PostgreSQL will
+      attempt to write its logs there (and typically fail due to a lack of permissions to that
+      directory). This parameter should be set to direct the logs into the appropriate directory
+      location as defined by your organization's logging policy.
+    remediation: "Execute the following SQL statement(s) to remediate this setting:
+      postgres=# alter system set log_directory='/var/log/postgres';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      28 | Page
+      t
+      (1 row)
+      postgres=# show log_directory;
+      log_directory
+      ---------------
+      /var/log/postgres
+      (1 row)
+      Note: The use of /var/log/postgres, above, is an example. This should be set to an
+      appropriate path as defined by your organization's logging requirements. Having said that,
+      it is a good idea to have the logs outside of your PGDATA directory so that they are not
+      included by things like pg_basebackup or pgBackRest."
+    compliance:
+      - cis: ["3.1.4"]
+      - cis_csc: ["6.2", "6.3"]
+    references:
+      - https://www.postgresql.org/docs/current/runtime-config-logging.html
+    conditions: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_directory" | grep $log_directory -> r:.+'
+
+# 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
+  - id: 24005
+    title: Ensure the filename pattern for log files is set correctly
+    description: The log_filename setting specifies the filename pattern for log files. The value for
+      log_filename should match your organization's logging policy.
+      The value is treated as a strftime pattern, so %-escapes can be used to specify timevarying filenames. The supported %-escapes are similar to those listed in the Open Group's
+      strftime specification. If you specify a filename without escapes, you should plan to use a
+      log rotation utility to avoid eventually filling the partition that contains log_directory. If
+      there are any time-zone-dependent %-escapes, the computation is done in the zone
+      specified by log_timezone. Also, the system's strftime is not used directly, so platformspecific (nonstandard) extensions do not work.
+      If CSV-format output is enabled in log_destination, .csv will be appended to the log
+      filename. (If log_filename ends in .log, the suffix is replaced instead.)
+    rationale: If log_filename is not set, then the value of log_directory is appended to an empty string
+      try to write to a directory instead of a file.
+    remediation: "Execute the following SQL statement(s) to remediate this setting:
+      postgres=# alter system set log_filename='postgresql-%Y%m%d.log';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+      postgres=# show log_filename;
+      log_filename
+      -------------------
+      postgresql-%Y%m%d.log
+      (1 row)
+      Note: In this example, a new logfile will be created for each day (e.g. postgresql20180901.log)"
+    compliance:
+      - cis: ["3.1.5"]
+      - cis_csc: ["6.2", "6.3"]
+    references:
+      - https://man7.org/linux/man-pages/man3/strftime.3.html
+      - https://www.postgresql.org/docs/current/runtime-config-logging.html
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_filename" | grep $log_filename -> r:.+'
+
+# 3.1.6 Ensure the log file permissions are set correctly (Automated)
