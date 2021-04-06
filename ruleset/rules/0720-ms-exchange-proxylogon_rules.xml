@@ -35,7 +35,7 @@ Exploitation can be identified by searching for log entries where the Authentica
 https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-servers/
 -->
     <rule id="61646" level="12">
-        <regex type="pcre2">(,,[^,]*,ServerInfo~[^,]*/[^,]*)</regex>
+        <regex type="pcre2">,,[^,]*,ServerInfo~[^,]*/[^,]*</regex>
         <description>Server-side request forgery (SSRF) vulnerability exploitation</description>
     </rule>
 
