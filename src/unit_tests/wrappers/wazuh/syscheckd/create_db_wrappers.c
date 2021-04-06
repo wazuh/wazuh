@@ -22,10 +22,8 @@ void __wrap_fim_checker(char *path,
     check_expected(report);
 }
 
-int __wrap_fim_configuration_directory(const char *path,
-                                       const char *entry) {
+int __wrap_fim_configuration_directory(const char *path) {
     check_expected(path);
-    check_expected(entry);
     return mock();
 }
 
@@ -71,9 +69,8 @@ void expect_fim_checker_call(const char *path, int w_evt, int report) {
     expect_value(__wrap_fim_checker, report, report);
 }
 
-void expect_fim_configuration_directory_call(const char *path, const char *file, int ret) {
+void expect_fim_configuration_directory_call(const char *path, int ret) {
     expect_string(__wrap_fim_configuration_directory, path, path);
-    expect_string(__wrap_fim_configuration_directory, entry, file);
     will_return(__wrap_fim_configuration_directory, ret);
 }
 

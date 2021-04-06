@@ -116,7 +116,7 @@ void test_interval_execution(void **state) {
     module_data->scan_config.interval = 60; // 1min
     module_data->scan_config.month_interval = false;
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);
 

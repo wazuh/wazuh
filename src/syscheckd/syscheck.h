@@ -20,7 +20,13 @@
 /* Notify list size */
 #define NOTIFY_LIST_SIZE    32
 
+/* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
+#define AUDIT_SOCKET                "queue/sockets/audit"
+#define AUDIT_CONF_FILE             "etc/af_wazuh.conf"
+#define AUDIT_HEALTHCHECK_DIR       "tmp"
+#define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
+#define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
 
 #ifdef WIN32
 #define FIM_REGULAR _S_IFREG
@@ -46,6 +52,13 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
+typedef enum {
+    FIM_FILE_UPDATED,
+    FIM_FILE_DELETED,
+    FIM_FILE_ADDED_PATHS,
+    FIM_FILE_ERROR
+} fim_sanitize_state_t;
+
 typedef enum fim_state_db {
     FIM_STATE_DB_EMPTY,
     FIM_STATE_DB_NORMAL,
@@ -58,7 +71,7 @@ typedef struct fim_element {
     struct stat statbuf;
     int index;
     int configuration;
-    int mode;
+    fim_event_mode mode;
 } fim_element;
 
 typedef struct fim_tmp_file {
@@ -144,8 +157,9 @@ void read_internal(int debug_level);
 /**
  * @brief Performs an integrity monitoring scan
  *
+ * @return A timestamp taken as soons as the scan ends.
  */
-void fim_scan();
+time_t fim_scan();
 
 /**
  * @brief Stop scanning files for one second if the max number of files scanned has been reached.
@@ -181,9 +195,8 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
  * @param [in] item FIM item
  * @param [in] w_evt Whodata event
  * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
- * @return 0 on success, -1 on failure
  */
-int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report);
+void fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report);
 
 /**
  * @brief Process FIM realtime event
@@ -213,10 +226,9 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
  * @brief Search the position of the path in directories array
  *
  * @param path Path to seek in the directories array
- * @param entry "file", for file checking or "registry" for registry checking
  * @return Returns the position of the path in the directories array, -1 if the path is not found
  */
-int fim_configuration_directory(const char *path, const char *entry);
+int fim_configuration_directory(const char *path);
 
 /**
  * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
@@ -235,7 +247,7 @@ int fim_check_depth(const char *path, int dir_position);
  *
  * @return A fim_file_data structure with the data from the file
  */
-fim_file_data * fim_get_data(const char *file_name, fim_element *item);
+fim_file_data * fim_get_data(const char *file_name, const fim_element *item);
 
 /**
  * @brief Initialize a fim_file_data structure
@@ -305,7 +317,7 @@ cJSON *fim_json_event(const char *file_name,
                       int pos,
                       unsigned int type,
                       fim_event_mode mode,
-                      whodata_evt *w_evt,
+                      const whodata_evt *w_evt,
                       const char *diff);
 
 /**
@@ -321,13 +333,6 @@ void free_file_data(fim_file_data *data);
  * @param entry Entry to be deallocated.
  */
 void free_entry(fim_entry * entry);
-
-/**
- * @brief Frees the memory of a FIM inode data structure
- *
- * @param [out] data The FIM inode data to be freed
- */
-void free_inode_data(fim_inode_data **data);
 
 /**
  * @brief Start real time monitoring
@@ -384,7 +389,7 @@ void free_whodata_event(whodata_evt *w_evt);
  *
  * @param msg The message to be sent
  */
-void send_syscheck_msg(const char *msg) __attribute__((nonnull));
+void send_syscheck_msg(const cJSON *msg) __attribute__((nonnull));
 
 /**
  * @brief Send a data synchronization control message

@@ -560,6 +560,30 @@ def test_agent_get_key_ko(socket_mock, send_mock):
         agent.get_key()
 
 
+@patch('wazuh.core.agent.WazuhQueue.send_msg_to_agent')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_reconnect(socket_mock, send_mock, mock_send_msg):
+    """Test if method reconnect calls send_msg method with correct params."""
+    agent_id = '000'
+    agent = Agent(agent_id)
+    agent.reconnect(WazuhQueue(common.ARQUEUE))
+
+    # Assert send_msg method is called with correct params
+    mock_send_msg.assert_called_with(WazuhQueue.HC_FORCE_RECONNECT, agent_id)
+
+
+@patch('wazuh.core.agent.WazuhQueue')
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
+    """Test if method reconnect raises exception."""
+    # Assert exception is raised when status of agent is not 'active'
+    with pytest.raises(WazuhError, match='.* 1757 .*'):
+        agent = Agent(3)
+        agent.reconnect(mock_queue)
+
+
 @patch('wazuh.core.agent.WazuhQueue')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
@@ -1011,8 +1035,8 @@ def test_agent_get_agents_overview_select(socket_mock, send_mock, select, status
 @pytest.mark.parametrize("search, totalItems", [
     ({'value': 'any', 'negation': 0}, 3),
     ({'value': 'any', 'negation': 1}, 6),
-    ({'value': '202', 'negation': 0}, 1),
-    ({'value': '202', 'negation': 1}, 8),
+    ({'value': 'Windows', 'negation': 0}, 3),
+    ({'value': 'Windows', 'negation': 1}, 6),
     ({'value': 'master', 'negation': 1}, 2),
     ({'value': '停', 'negation': 0}, 0)
 ])

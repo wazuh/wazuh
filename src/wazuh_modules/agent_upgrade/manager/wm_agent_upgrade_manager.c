@@ -87,9 +87,9 @@ void wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_con
 STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) {
 
     // Initialize socket
-    int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+    int sock = OS_BindUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
     if (sock < 0) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK_PATH, strerror(errno));
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, WM_UPGRADE_SOCK, strerror(errno));
         return;
     }
 

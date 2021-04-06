@@ -141,7 +141,6 @@ void test_wdb_create_agent_db_error_opening_dest_profile(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
@@ -165,7 +164,6 @@ void test_wdb_create_agent_db_error_writing_profile(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -195,7 +193,6 @@ void test_wdb_create_agent_db_error_getting_ids(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -233,7 +230,6 @@ void test_wdb_create_agent_db_error_changing_owner(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -276,7 +272,6 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -322,7 +317,6 @@ void test_wdb_create_agent_db_success(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -611,7 +605,6 @@ void test_wdb_insert_agent_success(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -663,10 +656,8 @@ void test_wdb_insert_agent_success_keep_date(void **state)
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
     const char *response = "ok";
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -729,7 +720,6 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -2167,7 +2157,6 @@ void test_wdb_remove_agent_db_error_removing_db(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_INVALID);
 
@@ -2182,7 +2171,6 @@ void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    will_return_always(__wrap_isChroot, 0);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
 
@@ -2207,7 +2195,6 @@ void test_wdb_remove_agent_db_success(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    will_return_always(__wrap_isChroot, 0);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
@@ -2451,7 +2438,6 @@ void test_wdb_remove_agent_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Removing DB files
-    will_return_always(__wrap_isChroot, 0);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
@@ -3955,7 +3941,7 @@ void test_wdb_update_groups_error_json(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to update groups.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -4016,7 +4002,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
     // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4066,7 +4052,7 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4100,9 +4086,9 @@ void test_wdb_update_groups_error_adding_new_groups(void **state) {
     // Adding new groups
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory '/var/ossec/etc/shared': error.");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory 'etc/shared': error.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4140,7 +4126,7 @@ void test_wdb_update_groups_success(void **state) {
     // Adding new groups
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, dir_ent);
-    expect_string(__wrap_IsDir, file, "/var/ossec/etc/shared/test_group");
+    expect_string(__wrap_IsDir, file, "etc/shared/test_group");
     will_return(__wrap_IsDir, 0);
 
     //// Call to wdb_find_group
@@ -4167,7 +4153,7 @@ void test_wdb_update_groups_success(void **state) {
 
     will_return(__wrap_readdir, NULL);
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 
@@ -4298,10 +4284,8 @@ void test_get_agent_date_added_error_open_file(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -4314,10 +4298,8 @@ void test_get_agent_date_added_error_no_data(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -4337,10 +4319,8 @@ void test_get_agent_date_added_error_no_date(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -4360,10 +4340,8 @@ void test_get_agent_date_added_error_invalid_date(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -4371,7 +4349,7 @@ void test_get_agent_date_added_error_invalid_date(void **state) {
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "001 agent1 any 2020:01:01 01-01-01");
 
-    expect_string(__wrap__merror, formatted_msg, "Invalid date format in file '/queue/agents-timestamp' for agent '1'");
+    expect_string(__wrap__merror, formatted_msg, "Invalid date format in file 'queue/agents-timestamp' for agent '1'");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
@@ -4387,10 +4365,8 @@ void test_get_agent_date_added_success(void **state) {
     struct tm test_time;
     time_t date_returned = 0;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
