@@ -79,13 +79,12 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         objSFO.DeleteFile(home_dir & "ossec.log")
     End If
 
-    ' remove all files and folders from /logs/wazuh/* or /logs/ossec/*
-    If objFSO.folderExists(home_dir & "logs\wazuh") Then
-        objSFO.DeleteFile(home_dir & "logs\wazuh\*"), TRUE
+    ' remove all files and folders from /logs/*
+    If objFSO.folderExists(home_dir & "logs\") Then
+        objSFO.DeleteFolder(home_dir & "logs")
+        objSFO.CreateFolder(home_dir & "logs")
     End If
-    If objFSO.folderExists(home_dir & "logs\ossec") Then
-        objSFO.DeleteFile(home_dir & "logs\ossec\*"), TRUE
-    End If
+
 End If
 
 If objFSO.fileExists(home_dir & "agent.conf") Then
