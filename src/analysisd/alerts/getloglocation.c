@@ -125,12 +125,12 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
     // Create the logfile name
 
     if (rotate) {
-        snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, ++(*counter), ext);
+        snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/wazuh-%s-%02d-%.3d.%s", logdir, year, month, tag, day, ++(*counter), ext);
     } else {
-        snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d.%s", logdir, year, month, tag, day, ext);
+        snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/wazuh-%s-%02d.%s", logdir, year, month, tag, day, ext);
 
         // While this file is bigger than maximum or there is a next file
-        for (*counter = 0; snprintf(next, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, *counter + 1, ext), !IsFile(next) || (Config.max_output_size && FileSize(path) > Config.max_output_size); (*counter)++) {
+        for (*counter = 0; snprintf(next, OS_FLSIZE + 1, "%s/%d/%s/wazuh-%s-%02d-%.3d.%s", logdir, year, month, tag, day, *counter + 1, ext), !IsFile(next) || (Config.max_output_size && FileSize(path) > Config.max_output_size); (*counter)++) {
             strncpy(path, next, OS_FLSIZE);
             path[OS_FLSIZE] = '\0';
         }
