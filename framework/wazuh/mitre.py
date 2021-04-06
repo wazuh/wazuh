@@ -23,8 +23,7 @@ def get_metadata() -> Dict:
     Metadata of MITRE's db
     """
     result = AffectedItemsWazuhResult(none_msg='No metadata information was returned',
-                                      some_msg='Some metadata information was not returned',
-                                      all_msg='All specified metadata information was returned')
+                                      all_msg='Metadata information was returned')
 
     db_query = WazuhDBQueryMitre(table="metadata")
     data = db_query.run()
