@@ -106,7 +106,7 @@ STATIC int wm_task_manager_init(wm_task_manager *task_config) {
     w_create_thread(wm_task_manager_clean_tasks, task_config);
 
     /* Set the queue */
-    if (sock = OS_BindUnixDomain(DEFAULTDIR TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(TASK_QUEUE, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         mterror(WM_TASK_MANAGER_LOGTAG, MOD_TASK_CREATE_SOCK_ERROR, TASK_QUEUE, strerror(errno)); // LCOV_EXCL_LINE
         pthread_exit(NULL);
     }

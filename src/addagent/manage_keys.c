@@ -56,7 +56,7 @@ int k_import(const char *cmdimport)
 {
     FILE *fp;
     const char *user_input;
-    char auth_file[] = AUTH_FILE;
+    char auth_file[] = KEYS_FILE;
     char *keys_file = basename_ex(auth_file);
     char *b64_dec;
 
@@ -241,17 +241,17 @@ int k_extract(const char *cmdextract, int json_output)
     }
 
     /* Try to open the auth file */
-    fp = fopen(AUTH_FILE, "r");
+    fp = fopen(KEYS_FILE, "r");
     if (!fp) {
         if (json_output) {
             char buffer[1024];
-            snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", AUTH_FILE, errno, strerror(errno));
+            snprintf(buffer, 1023, "Could not open file '%s' due to [(%d)-(%s)]", KEYS_FILE, errno, strerror(errno));
             cJSON_AddNumberToObject(json_root, "error", 71);
             cJSON_AddStringToObject(json_root, "message", buffer);
             printf("%s", cJSON_PrintUnformatted(json_root));
             exit(1);
         } else
-            merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+            merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
     }
 
     if (fsetpos(fp, &fp_pos)) {
@@ -342,9 +342,9 @@ int k_bulkload(const char *cmdbulk)
     }
 
     /* Check if we can open the auth_file */
-    fp = fopen(AUTH_FILE, "a");
+    fp = fopen(KEYS_FILE, "a");
     if (!fp) {
-        merror_exit(FOPEN_ERROR, AUTH_FILE, errno, strerror(errno));
+        merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
     }
     fclose(fp);
 
@@ -369,8 +369,8 @@ int k_bulkload(const char *cmdbulk)
         strncpy(name, trimwhitespace(token), FILE_SIZE - 1);
 
 #ifndef WIN32
-        if (chmod(AUTH_FILE, 0640) == -1) {
-            merror_exit(CHMOD_ERROR, AUTH_FILE, errno, strerror(errno));
+        if (chmod(KEYS_FILE, 0640) == -1) {
+            merror_exit(CHMOD_ERROR, KEYS_FILE, errno, strerror(errno));
         }
 #endif
 
@@ -440,13 +440,13 @@ int k_bulkload(const char *cmdbulk)
             time3 = time(0);
             rand2 = os_random();
 
-            fp = fopen(AUTH_FILE, "a");
+            fp = fopen(KEYS_FILE, "a");
             if (!fp) {
                 merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
             }
 #ifndef WIN32
-            if (chmod(AUTH_FILE, 0640) == -1) {
-                merror_exit(CHMOD_ERROR, AUTH_FILE, errno, strerror(errno));
+            if (chmod(KEYS_FILE, 0640) == -1) {
+                merror_exit(CHMOD_ERROR, KEYS_FILE, errno, strerror(errno));
             }
 #endif
 

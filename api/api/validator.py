@@ -17,7 +17,6 @@ _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.%]+(,[\w\-\.%]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 _boolean = re.compile(r'^true$|^false$')
-_cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
 _group_names = re.compile(r'^[A-Za-z0-9.\-_]+\b(?<!\ball)$')
@@ -33,6 +32,9 @@ _numbers = re.compile(r'^\d+$')
 _numbers_delete = re.compile(r'^\d+|all$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
+_cdb_filename_path = re.compile(r'^[\-\w]+$')
+_xml_filename_path = re.compile(r'^[\w\-]+\.xml$')
+_xml_filename = re.compile(r'^[\w\-]+\.xml(,[\w\-]+\.xml)*$')
 _query_param = re.compile(r"^(?:[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)(?:(?:;|,)[\w\.\-]+(?:=|!=|<|>|~)[\w\.\- ]+)*$")
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
 _get_dirnames_path = re.compile(r'^(((etc|ruleset)\/(decoders|rules)[\w\-\/]*)|(etc\/lists[\w\-\/]*))$')
@@ -172,38 +174,23 @@ def allowed_fields(filters: Dict) -> List:
     return [field for field in filters]
 
 
-def is_safe_path(path: str, basedir: str = common.wazuh_path, follow_symlinks: bool = True) -> bool:
+def is_safe_path(path: str, basedir: str = common.wazuh_path, relative: bool = True) -> bool:
     """
     Checks if a path is correct
     :param path: Path to be checked
     :param basedir: Wazuh installation directory
-    :param follow_symlinks: True if path is relative, False if it is absolute
+    :param relative: True if path is relative, False if it is absolute
     :return: True if path is correct, False otherwise
     """
     # Protect path
     if './' in path or '../' in path:
         return False
 
-    # Resolve symbolic links
-    if follow_symlinks:
-        full_path = common.wazuh_path + path
-        return os.path.realpath(full_path).startswith(basedir)
+    # Resolve symbolic links if present
+    full_path = os.path.realpath(os.path.join(basedir, path.lstrip("/")) if relative else path)
+    full_basedir = os.path.abspath(basedir)
 
-    return os.path.abspath(path).startswith(basedir)
-
-
-def is_wazuh_path(path: str, basedir: str = common.wazuh_path) -> bool:
-    """
-    Check if an absolute path is inside Wazuh installation directory
-    :param path: Path to be checked
-    :param basedir: Wazuh installation directory
-    :return: True if path is correct, False otherwise
-    """
-    # Protect path
-    if './' in path or '../' in path:
-        return False
-
-    return os.path.abspath(path).startswith(basedir)
+    return os.path.commonpath([full_path, full_basedir]) == full_basedir
 
 
 @draft4_format_checker.checks("alphanumeric")
@@ -254,6 +241,21 @@ def format_numbers_delete(value):
     return check_exp(value, _numbers_delete)
 
 
+@draft4_format_checker.checks("cdb_filename_path")
+def format_cdb_filename_path(value):
+    return check_exp(value, _cdb_filename_path)
+
+
+@draft4_format_checker.checks("xml_filename")
+def format_xml_filename(value):
+    return check_exp(value, _xml_filename)
+
+
+@draft4_format_checker.checks("xml_filename_path")
+def format_xml_filename_path(value):
+    return check_exp(value, _xml_filename_path)
+
+
 @draft4_format_checker.checks("path")
 def format_path(value):
     if not is_safe_path(value):
@@ -263,7 +265,7 @@ def format_path(value):
 
 @draft4_format_checker.checks("wazuh_path")
 def format_wazuh_path(value):
-    if not is_wazuh_path(value):
+    if not is_safe_path(value, relative=False):
         return False
     return check_exp(value, _paths)
 

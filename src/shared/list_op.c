@@ -38,6 +38,20 @@ OSList *OSList_Create()
     return (my_list);
 }
 
+void OSList_Destroy(OSList *list) {
+    if (!list) {
+        return;
+    }
+
+    OSList_CleanNodes(list);
+
+    w_rwlock_destroy(&list->wr_mutex);
+    w_mutex_destroy(&list->mutex);
+    free(list);
+
+    return;
+}
+
 /* Set the maximum number of elements in the list
  * Returns 0 on error or 1 on success
  */
@@ -336,7 +350,7 @@ void *OSList_AddData(OSList *list, void *data)
 }
 
 void OSList_CleanNodes(OSList *list) {
-    if (list == NULL || list->free_data_function == NULL) {
+    if (list == NULL) {
         return;
     }
 
@@ -348,7 +362,9 @@ void OSList_CleanNodes(OSList *list) {
     while(list->first_node != NULL) {
         aux_node = list->first_node;
         list->first_node = aux_node->next;
-        list->free_data_function(aux_node->data);
+        if (list->free_data_function != NULL) {
+            list->free_data_function(aux_node->data);
+        }
         free(aux_node);
     }
 

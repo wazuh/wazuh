@@ -20,11 +20,6 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
                              const char **prts_str, int flags) __attribute__((nonnull(1, 2)));
 
 
-/* Compare an already compiled regular expression with
- * a not NULL string.
- * Returns the end of the string on success or NULL on error.
- * The error code is set on reg->error.
- */
 const char *OSRegex_Execute(const char *str, OSRegex *reg)
 {
     return OSRegex_Execute_ex(str, reg, NULL);
@@ -37,8 +32,9 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
     regex_dynamic_size *str_sizes;
     const char *ret;
     int i;
+    const bool external_context = (regex_match != NULL) ? true : false;
 
-    if (regex_match) {
+    if (external_context) {
         sub_strings = &regex_match->sub_strings;
         prts_str = &regex_match->prts_str;
         str_sizes = &regex_match->d_size;
@@ -48,7 +44,7 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
         str_sizes = &reg->d_size;
     }
 
-    if (regex_match) {
+    if (external_context) {
         if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size) {
             if (!*sub_strings) {
                 os_calloc(1, reg->d_size.sub_strings_size, *sub_strings);
@@ -61,7 +57,7 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
     }
     w_FreeArray(*sub_strings);
 
-    if (regex_match && prts_str) {
+    if (external_context && prts_str) {
         if (str_sizes->prts_str_alloc_size < reg->d_size.prts_str_alloc_size) {
             os_realloc(*prts_str, reg->d_size.prts_str_alloc_size, *prts_str);
             memset((void*)*prts_str + str_sizes->prts_str_alloc_size, 0, reg->d_size.prts_str_alloc_size - str_sizes->prts_str_alloc_size);
@@ -87,13 +83,14 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
             }
         }
     }
-    w_mutex_lock((pthread_mutex_t *)&reg->mutex);
 
     /* The string can't be NULL */
     if (str == NULL) {
-        reg->error = OS_REGEX_STR_NULL;
-        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
-        return (0);
+        return (NULL);
+    }
+
+    if (!external_context) {
+        w_mutex_lock((pthread_mutex_t *)&reg->mutex);
     }
 
     /* If we need the sub strings */
@@ -116,13 +113,17 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
                 while ((*prts_str)[i][j] && (*prts_str)[i][j + 1]) {
                     size_t length = (size_t) ((*prts_str)[i][j + 1] - (*prts_str)[i][j]);
                     if (*sub_strings == NULL) {
-                        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+                        if (!external_context) {
+                            w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+                        }
                         return (NULL);
                     }
                     (*sub_strings)[k] = (char *) malloc((length + 1) * sizeof(char));
                     if (!(*sub_strings)[k]) {
                         w_FreeArray(*sub_strings);
-                        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+                        if (!external_context) {
+                            w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+                        }
                         return (NULL);
                     }
                     strncpy((*sub_strings)[k], (*prts_str)[i][j], length);
@@ -136,12 +137,16 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
                     /* Go two by two */
                     j += 2;
                 }
-                w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+                if (!external_context) {
+                    w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+                }
                 return (ret);
             }
             i++;
         }
-        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+        if (!external_context) {
+            w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+        }
         return (0);
     }
 
@@ -150,12 +155,16 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
     /* Loop on all sub patterns */
     for (i = 0; reg->patterns[i]; i++) {
         if ((ret = _OS_Regex(reg->patterns[i], str, NULL, NULL, reg->flags[i]))) {
-            w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+            if (!external_context) {
+                w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+            }
             return (ret);
         }
     }
 
-    w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+    if (!external_context) {
+        w_mutex_unlock((pthread_mutex_t *)&reg->mutex);
+    }
     return (NULL);
 }
 

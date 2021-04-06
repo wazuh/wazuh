@@ -148,7 +148,7 @@ void test_interval_execution(void **state) {
         will_return(__wrap_wm_sendmsg, 0);
     }
 
-    expect_string(__wrap_StartMQ, path, DEFAULTQPATH);
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);
 
