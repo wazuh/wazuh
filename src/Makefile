@@ -13,6 +13,7 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
+uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
@@ -38,8 +39,8 @@ EXTERNAL_LIBPCRE2=external/libpcre2/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
-EXTERNAL_PACMAN=external/pacman-5.2.2/
-EXTERNAL_LIBARCHIVE=external/libarchive-3.5.1/
+EXTERNAL_PACMAN=external/pacman/
+EXTERNAL_LIBARCHIVE=external/libarchive/
 endif
 # XXX Becareful NO EXTRA Spaces here
 PG_CONFIG?=pg_config
@@ -811,7 +812,7 @@ LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
 ifneq (${TARGET},winagent)
-EXTERNAL_LIBS += $(MSGPACK_LIB)
+EXTERNAL_LIBS += $(MSGPACK_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
 ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
@@ -820,7 +821,7 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
 
-EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
 endif
 endif
 ifeq (${uname_S},Darwin)
@@ -1071,15 +1072,18 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-DEPS_VERSION = 13
+DEPS_VERSION = 14
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
 cpu_arch := ${uname_P}
-ifneq (,$(filter ${cpu_arch},unknown Unknown))
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
+endif
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
+	cpu_arch := ${uname_P}
 endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 PRECOMPILED_ARCH := /amd64
@@ -1122,19 +1126,6 @@ EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
 .PHONY: deps
 deps: $(EXTERNAL_TAR)
-
-# This is provisional until libarchive and pacman packages are available in the DEPS repository
-external/libarchive.tar.gz:
-	$(CURL) $@ https://www.libarchive.org/downloads/libarchive-3.5.1.tar.gz
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
-
-external/pacman.tar.gz:
-	$(CURL) $@ https://sources.archlinux.org/other/pacman/pacman-5.2.2.tar.gz
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
 
 external/$(CPYTHON).tar.gz:
 # Python interpreter
@@ -2189,11 +2180,11 @@ ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && ${MAKE} realclean
 endif
 
-ifneq ($(wildcard external/libarchive-3.5.1/Makefile),)
+ifneq ($(wildcard external/libarchive/Makefile),)
 	cd ${EXTERNAL_LIBARCHIVE} && ${MAKE} clean
 endif
 
-ifneq ($(wildcard external/pacman-5.2.2/lib/libalpm/libalpm.a),)
+ifneq ($(wildcard external/pacman/lib/libalpm/libalpm.a),)
 	rm $(EXTERNAL_PACMAN)lib/libalpm/libalpm.a
 endif
 endif
