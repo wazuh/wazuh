@@ -1451,6 +1451,99 @@ stages:
     delay_after: !float "{restart_delay}"
 
 ---
+test_name: PUT /agents/reconnect
+
+stages:
+
+  - name: Try to reconnect non existing agent (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "997"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '997'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  - name: Try to reconnect agent 010 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "010"
+    response:
+      <<: *permission_denied
+
+  - name: Try to reconnect a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "000,001,002,004"
+        wait_for_complete: true  # Prevent error code 500
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '004'
+          failed_items:
+            - error:
+                code: 1701
+              id:
+                - '001'
+            - error:
+                code: 1703
+              id:
+                - '000'
+            - error:
+                code: 4000
+              id:
+                - '002'
+          total_affected_items: 1
+          total_failed_items: 3
+    delay_after: !float "{reconnect_delay}"
+
+  - name: Try to reconnect all agents (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '004'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{reconnect_delay}"
+
+---
 test_name: PUT /agents/restart
 
 stages:
