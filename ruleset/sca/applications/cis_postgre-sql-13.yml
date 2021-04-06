@@ -31,6 +31,7 @@ variables:
   $log_rotation_size: some_log_rotation_size # 0
   $syslog_facility: some_syslog_facility # local0
   $syslog_ident: some_name # postgres
+  $log_timezone: some_time_zone #  server's timezone in the Operating System
 
 requirements: --TODO--
 
@@ -556,3 +557,381 @@ checks:
       - 'c:psql -U $user -h $host $db -c "show debug_print_rewritten" -> r:^ off$'
 
 # 3.1.16 Ensure 'debug_print_plan' is disabled (Automated)
+  - id: 24016
+    title: Ensure 'debug_print_plan' is disabled
+    description: >
+      The debug_print_plan setting enables printing the execution plan for each executed query.
+      These messages are emitted at the LOG message level. Unless directed otherwise by your
+      organization's logging policy, it is recommended this setting be disabled by setting it to off.
+    rationale: >
+      Enabling any of the DEBUG printing variables may cause the logging of sensitive information
+      that would otherwise be omitted based on the configuration of the other logging settings.
+    remediation: |
+      Execute the following SQL statement(s) to disable this setting:
+      postgres=# alter system set debug_print_plan = 'off';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.16"]
+      - cis_csc: ["6", "5.1"]
+    references:
+      - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show debug_print_plan" -> r:^ off$'
+
+# 3.1.17 Ensure 'debug_pretty_print' is enabled (Automated)
+  - id: 24017
+    title: Ensure 'debug_pretty_print' is enabled
+    description: >
+      Enabling debug_pretty_print indents the messages produced by debug_print_parse,
+      debug_print_rewritten, or debug_print_plan making them significantly easier to read.
+    rationale: >
+      If this setting is disabled, the "compact" format is used instead, significantly reducing
+      readability of the DEBUG statement log messages.
+    remediation: |
+      Execute the following SQL statement(s) to enable this setting:
+      postgres=# alter system set debug_pretty_print = 'on';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.17"]
+      - cis_csc: ["6", "6.3"]
+    references:
+      - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show debug_pretty_print" -> r:^ on$'
+
+# 3.1.18 Ensure 'log_connections' is enabled (Automated)
+  - id: 24018
+    title: Ensure 'log_connections' is enabled
+    description: >
+      Enabling the log_connections setting causes each attempted connection to the server to
+      be logged, as well as successful completion of client authentication. This parameter cannot
+      be changed after session start.
+    rationale: >
+      PostgreSQL does not maintain an internal record of attempted connections to the database
+      for later auditing. It is only by enabling the logging of these attempts that one can
+      determine if unexpected attempts are being made.
+
+      Note that enabling this without also enabling log_disconnections provides little value.
+      Generally, you would enable/disable the pair together.
+    remediation: |
+      Execute the following SQL statement(s) to enable this setting:
+      postgres=# alter system set log_connections = 'on';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.18"]
+      - cis_csc: ["6", "6.3"]
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_connections" -> r:^ on$'
+
+# 3.1.19 Ensure 'log_disconnections' is enabled (Automated)
+  - id: 24019
+    description: >
+      Enabling the log_disconnections setting logs the end of each session, including session
+      duration. This parameter cannot be changed after session start.
+    rationale: >
+      PostgreSQL does not maintain the beginning or ending of a connection internally for later
+      review. It is only by enabling the logging of these that one can examine connections for
+      failed attempts, 'over long' duration, or other anomalies.
+
+      Note that enabling this without also enabling log_connections provides little value.
+      Generally, you would enable/disable the pair together
+    remediation: |
+      Execute the following SQL statement(s) to enable this setting:
+      postgres=# alter system set log_disconnections = 'on';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.19"]
+      - cis_csc: ["6", "6.3"]
+    references:
+      - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_disconnections" -> r:^ on$'
+
+# 3.1.20 Ensure 'log_error_verbosity' is set correctly (Automated)
+  - id: 24020
+    title: Ensure 'log_error_verbosity' is set correctly
+    description: >
+      The log_error_verbosity setting specifies the verbosity (amount of detail) of logged
+      messages.
+    rationale: >
+      If this is not set to the correct value, too many details or too few details may be logged.
+    remediation: |
+      Execute the following SQL statement(s) as superuser to remediate this setting (in this example, to verbose):
+      postgres=# alter system set log_error_verbosity = 'verbose';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.20"]
+      - cis: ["6", "6.3"]
+    references:
+      - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_error_verbosity" -> r:^ verbose$'
+
+# 3.1.21 Ensure 'log_hostname' is set correctly (Automated)
+  - id: 24021
+    title: Ensure 'log_hostname' is set correctly
+    description: >
+      Enabling the log_hostname setting causes the hostname of the connecting host to be logged
+      in addition to the host's IP address for connection log messages. Disabling the setting
+      causes only the connecting host's IP address to be logged, and not the hostname. Unless
+      your organization's logging policy requires hostname logging, it is best to disable this
+      setting so as not to incur the overhead of DNS resolution for each statement that is logged.
+    rationale: >
+      Depending on your hostname resolution setup, enabling this setting might impose a nonnegligible performance penalty. Additionally, the IP addresses that are logged can be
+      resolved to their DNS names when reviewing the logs (unless dynamic host names are
+      being used as part of your DHCP setup).
+    remediation: |
+      Execute the following SQL statement(s) to remediate this setting (in this example, to off):
+      postgres=# alter system set log_hostname='off';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.21"]
+      - cis: ["6", "5.1"]
+    references:
+      - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_hostname" -> r:^ off$'
+
+# 3.1.22 Ensure 'log_line_prefix' is set correctly (Automated)
+  - id: 24022
+    title: Ensure 'log_line_prefix' is set correctly
+    description: >
+      The log_line_prefix setting specifies a printf-style string that is prefixed to each log line.
+      If blank, no prefix is used. You should configure this as recommended by the pgBadger
+      development team unless directed otherwise by your organization's logging policy.
+
+      % characters begin "escape sequences" that are replaced with status information as
+      outlined below. Unrecognized escapes are ignored. Other characters are copied straight to
+      the log line. Some escapes are only recognized by session processes and will be treated as
+      empty by background processes such as the main server process. Status information may
+      be aligned either left or right by specifying a numeric literal after the % and before the
+      option. A negative value will cause the status information to be padded on the right with
+      spaces to give it a minimum width, whereas a positive value will pad on the left. Padding
+      can be useful to aid human readability in log files.
+    rationale: >
+      Properly setting log_line_prefix allows for adding additional information to each log
+      entry (such as the user, or the database). Said information may then be of use in auditing or
+      security reviews.
+    remediation: |
+      Execute the following SQL statement(s) to remediate this setting:
+      postgres=# alter system set log_line_prefix = '%m [%p]: [%l-1]
+      db=%d,user=%u,app=%a,client=%h';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.22"]
+      - cis: ["6", "6.3"]
+    references:
+      - https://pgbadger.darold.net/
+      - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_disconnections" -> r:%m [%p]: [%l-1] db=%d,user=%u,app=%a,client=%h'
+
+# 3.1.23 Ensure 'log_statement' is set correctly (Automated)
+  - id: 24023
+    title: Ensure 'log_statement' is set correctly
+    description: >
+      The log_statement setting specifies the types of SQL statements that are logged.
+      It is recommended this be set to ddl unless otherwise directed by your organization's
+      logging policy.
+    rationale: >
+      Setting log_statement to align with your organization's security and logging policies
+      facilitates later auditing and review of database activities.
+    remediation: |
+      Execute the following SQL statement(s) as superuser to remediate this setting:
+      postgres=# alter system set log_statement='ddl';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.23"]
+      - cis: ["6", "6.3"]
+    references:
+      - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+    condition: none
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_statement" -> r:^ none$'
+
+# 3.1.24 Ensure 'log_timezone' is set correctly (Automated)
+  - id: 24024
+    title: Ensure 'log_timezone' is set correctly
+    description: >
+      The log_timezone setting specifies the time zone to use in timestamps within log messages.
+      This value is cluster-wide, so that all sessions will report timestamps consistently. Unless
+      directed otherwise by your organization's logging policy, set this to either GMT or UTC.
+    rationale: >
+      Log entry timestamps should be configured for an appropriate time zone as defined by
+      your organization's logging policy to ensure a lack of confusion around when a logged
+      event occurred.
+
+      Note that this setting affects only the timestamps present in the logs. It does not affect the
+      time zone in use by the database itself (for example, select now()), nor does it affect the
+      host's time zone.
+    remediation: |
+      Execute the following SQL statement(s) to remediate this setting:
+      postgres=# alter system set log_timezone = 'GMT';
+      ALTER SYSTEM
+      postgres=# select pg_reload_conf();
+      pg_reload_conf
+      ----------------
+      72 | Page
+      t
+      (1 row)
+    compliance:
+      - cis: ["3.1.24"]
+      - cis: ["6", "6.3"]
+    references:
+      - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+      - https://en.wikipedia.org/wiki/Time_zone
+    condition: any
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_timezone" -> r:^ GMT$'
+      - 'c:psql -U $user -h $host $db -c "show log_timezone" -> r:^ UTC$'
+      - 'c:psql -U $user -h $host $db -c "show log_timezone" | grep $log_timezone -> r:\.+'
+
+# 3.2 Ensure the PostgreSQL Audit Extension (pgAudit) is enabled (Automated)
+  - id: 24025
+    title: Ensure the PostgreSQL Audit Extension (pgAudit) is enabled
+    description: >
+      The PostgreSQL Audit Extension (pgAudit) provides detailed session and/or object audit
+      logging via the standard PostgreSQL logging facility. The goal of pgAudit is to provide
+      PostgreSQL users with the capability to produce audit logs often required to comply with
+      government, financial, or ISO certifications.
+    rationale: >
+      Basic statement logging can be provided by the standard logging facility with
+      log_statement = all. This is acceptable for monitoring and other uses but does not
+      provide the level of detail generally required for an audit. It is not enough to have a list of
+      all the operations performed against the database, it must also be possible to find
+      particular statements that are of interest to an auditor. The standard logging facility shows
+      what the user requested, while pgAudit focuses on the details of what happened while the
+      database was satisfying the request.
+
+      When logging SELECT and DML statements, pgAudit can be configured to log a separate entry
+      for each relation referenced in a statement. No parsing is required to find all statements
+      that touch a particular table. In fact, the goal is that the statement text is provided primarily
+      for deep forensics and should not be required for an audit.
+    remediation: |
+      To install and enable pgAudit, simply install the appropriate rpm from the PGDG repo:
+      # whoami
+      root
+      pgauditlogtofile_96.x86_64 : PostgreSQL Audit Log To File Extension
+      [root@centos8 ~]# dnf -y install pgaudit15_13
+      Last metadata expiration check: 0:24:09 ago on Mon 14 Dec 2020 06:59:52 PM
+      UTC.
+      Dependencies resolved.
+      =============================================================================
+      Package Architecture Version Repository Size
+      =============================================================================
+      Installing:
+      pgaudit15_13 x86_64 1.5.0-1.rhel8 pgdg13 52 k
+      Transaction Summary
+      =============================================================================
+      Install 1 Package
+      Total download size: 52 k
+      Installed size: 93 k
+      Downloading Packages:
+      pgaudit15_13-1.5.0-1.rhel8.x86_64.rpm 54 kB/s | 52 kB 00:00
+      -----------------------------------------------------------------------------
+      Total 54 kB/s | 52 kB 00:00
+      75 | Page
+      Running transaction check
+      Transaction check succeeded.
+      Running transaction test
+      Transaction test succeeded.
+      Running transaction
+      Preparing : 1/1
+      Installing : pgaudit15_13-1.5.0-1.rhel8.x86_64 1/1
+      Running scriptlet: pgaudit15_13-1.5.0-1.rhel8.x86_64 1/1
+      Verifying : pgaudit15_13-1.5.0-1.rhel8.x86_64 1/1
+      Installed:
+      pgaudit15_13-1.5.0-1.rhel8.x86_64
+      Complete!
+      pgAudit is now installed and ready to be configured. Next, we need to alter the postgresql.conf configuration file to:
+      • enable pgAudit as an extension in the shared_preload_libraries parameter
+      • indicate which classes of statements we want to log via the pgaudit.log parameter
+      and, finally, restart the PostgreSQL service:
+      $ vi ${PGDATA}/postgresql.conf
+      Find the shared_preload_libraries entry, and add 'pgaudit' to it (preserving any existing entries):
+      shared_preload_libraries = 'pgaudit'
+      OR
+      shared_preload_libraries = 'pgaudit,somethingelse'
+      Now, add a new pgaudit-specific entry:
+      # for this example we are logging the ddl and write operations
+      pgaudit.log='ddl,write'
+      Restart the PostgreSQL server for changes to take affect:
+      # whoami
+      root
+      # systemctl restart postgresql-13
+      # systemctl status postgresql-13|grep 'ago$'
+      Active: active (running) since [date] 10s ago
+    compliance:
+      - cis: ["3.2"]
+      - cis: ["6", "6.2"]
+    references:
+      - https://www.pgaudit.org/
+    condition: all
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show shared_preload_libraries" -> r:pgaudit'
+
+# 4 User Access and Authorization
+#
+  - id: 2402
+    title:
+    description: >
+
+    rationale: >
+
+    remediation: |
+
+    compliance:
+      - cis: ["3."]
+      - cis: ["6", "6."]
+    references:
+      -
+    condition: any
+    rules:
+      - 'c:psql -U $user -h $host $db -c "show log_timezone" -> r:^ GMT$'
