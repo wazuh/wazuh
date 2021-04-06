@@ -494,7 +494,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     cJSON *json_path;
-    char *path, *arch, *value_name, *full_path, *item_type;
+    char *path, *arch, *value_name, *full_path, *item_type, *item_version;
     if (!wdb) {
         merror("WDB object cannot be null.");
         return -1;
@@ -512,6 +512,13 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
 
     if (!cJSON_IsNumber(timestamp)) {
         merror("DB(%s) fim/save request with no timestamp path argument.", wdb->id);
+        return -1;
+    }
+
+    item_version = cJSON_GetStringValue(cJSON_GetObjectItem(data, "version"));
+
+    if (item_version == NULL) {
+        merror("DB(%s) fim/save request with no version attribute.", wdb->id);
         return -1;
     }
 
@@ -538,7 +545,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         item_type = "registry_key";
     } else if (strncmp(item_type, "registry_", 9) == 0) {
         int full_path_length;
-        char *path_escaped = wstr_replace(path, ":", "::");
+        char *path_escaped = wstr_replace(path, ":", "\\:");
 
         arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
 
@@ -565,7 +572,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 return -1;
             }
 
-            value_name_escaped = wstr_replace(value_name, ":", "::");
+            value_name_escaped = wstr_replace(value_name, ":", "\\:");
 
             full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
 

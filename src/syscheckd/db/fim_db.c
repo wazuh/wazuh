@@ -299,9 +299,12 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
 // LCOV_EXCL_STOP
 #else
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
-    char *full_path, *key_path, *value_name;
+    char *full_path = NULL;
+    char *key_path = NULL;
+    char *value_name = NULL;
+    char *finder = NULL;
     int arch;
-    fim_entry *entry;
+    fim_entry *entry = NULL;
 
     if (type == FIM_TYPE_FILE) {
         return fim_db_get_path(fim_sql, path);
@@ -313,16 +316,23 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     value_name = full_path;
 
     // Find where the key ends and the value starts
-    while ((value_name = strchr(value_name, ':'))) {
-        if (value_name[1] != ':') {
-            *value_name = '\0';
-            value_name++;
+    while ((finder = strchr(value_name, ':'))) {
+        if (*(finder - 1) != '\\') {
             break;
         }
-        value_name += 2;
+        value_name = finder + 1;
     }
 
-    key_path = wstr_replace(full_path, "::", ":");
+    if (finder == NULL) {
+        mdebug1("Separator ':' was not found in %s", full_path);
+        free(full_path);
+        return NULL;
+    }
+
+    *finder = '\0';
+
+    value_name = filter_special_chars(finder + 1);
+    key_path = filter_special_chars(full_path);
 
     os_calloc(1, sizeof(fim_entry), entry);
     entry->type = FIM_TYPE_REGISTRY;
@@ -342,8 +352,6 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     }
 
     free(key_path);
-
-    value_name = wstr_replace(value_name, "::", ":");
     free(full_path);
 
     entry->registry_entry.value = fim_db_get_registry_data(fim_sql, entry->registry_entry.key->id, value_name);

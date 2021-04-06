@@ -40,6 +40,7 @@ char * dbsync_check_msg(const char * component, dbsync_msg msg, long id, const c
     cJSON * data = cJSON_CreateObject();
     cJSON_AddItemToObject(root, "data", data);
     cJSON_AddNumberToObject(data, "id", id);
+    cJSON_AddStringToObject(data, "version", "2.0");
 
     if (msg != INTEGRITY_CLEAR) {
         assert(start != NULL);
@@ -68,6 +69,7 @@ char * dbsync_state_msg(const char * component, cJSON * data) {
     cJSON * root = cJSON_CreateObject();
     cJSON_AddStringToObject(root, "component", component);
     cJSON_AddStringToObject(root, "type", "state");
+    cJSON_AddStringToObject(data, "version", "2.0");
     cJSON_AddItemToObject(root, "data", data);
 
     char * msg = cJSON_PrintUnformatted(root);
