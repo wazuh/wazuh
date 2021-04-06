@@ -75,6 +75,11 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         objSFO.DeleteFile(home_dir & "ossec.log")
     End If
 
+    ' remove ossec.json
+    If objFSO.fileExists(home_dir & "ossec.json") Then
+        objSFO.DeleteFile(home_dir & "ossec.json")
+    End If
+
     ' remove all files and folders from /logs/*
     If objFSO.folderExists(home_dir & "logs\") Then
         objSFO.DeleteFolder(home_dir & "logs")
