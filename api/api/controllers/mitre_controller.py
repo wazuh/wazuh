@@ -100,7 +100,10 @@ async def get_techniques(request, technique_ids=None, pretty=False, wait_for_com
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+async def get_techniques():
+    """TODO
+    """
+    # TODO
 
 
 async def get_mitigations():
