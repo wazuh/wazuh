@@ -14394,10 +14394,12 @@ paths:
                         allow_run_as: true
                         roles:
                           - 2
+                        resource_type: "default"
                       - id: 4
                         username: guest
                         allow_run_as: false
                         roles: []
+                        resource_type: "default"
                       - id: 5
                         username: normal
                         allow_run_as: false
@@ -14405,15 +14407,18 @@ paths:
                           - 4
                           - 5
                           - 6
+                        resource_type: "default"
                       - id: 6
                         username: ossec
                         allow_run_as: true
                         roles:
                           - 2
                           - 5
+                        resource_type: "default"
                       - username: python
                         allow_run_as: true
                         roles: []
+                        resource_type: "default"
                       - id: 7
                         username: rbac
                         allow_run_as: false
@@ -14421,15 +14426,18 @@ paths:
                           - 3
                           - 4
                           - 5
+                        resource_type: "default"
                       - id: 1
                         username: wazuh
                         allow_run_as: true
                         roles:
                           - 1
+                        resource_type: "default"
                       - id: 2
                         username: wazuh-wui
                         allow_run_as: true
                         roles: []
+                        resource_type: "default"
                     failed_items: []
                     total_affected_items: 8
                     total_failed_items: 0
@@ -14658,6 +14666,7 @@ paths:
                         - 1
                       rules:
                         - 1
+                      resource_type: "default"
                     - id: 2
                       name: 'normal_user'
                       policies:
@@ -14667,6 +14676,7 @@ paths:
                         - 3
                       rules:
                         - 3
+                      resource_type: "default"
                   total_affected_items: 2
                 message: "All specified roles were returned"
                 error: 0
@@ -14888,11 +14898,13 @@ paths:
                         FIND:
                           r'^auth[a-zA-Z]+$':
                             - "administrator"
+                      resource_type: "default"
                     - id: 2
                       name: "limit_access_rule"
                       rule:
                         MATCH:
                           privileges: 'limit_access'
+                      resource_type: "default"
                   total_affected_items: 2
                 message: "All specified security rules were returned"
                 error: 0
@@ -15121,6 +15133,7 @@ paths:
                         effect: allow
                         resources:
                           - "*:*"
+                      resource_type: "default"
                     - id: 2
                       name: test_i
                       policy:
@@ -15131,6 +15144,7 @@ paths:
                           - agent:id:004
                           - agent:id:005
                           - agent:id:006
+                      resource_type: "default"
                   total_affected_items: 2
                 message: "All specified policies were returned"
                 error: 0
