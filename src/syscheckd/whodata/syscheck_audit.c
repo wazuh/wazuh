@@ -241,20 +241,16 @@ void audit_create_rules_file() {
 
     // Create symlink to audit rules file
     if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
-        switch (errno) {
-        case EEXIST:
-            if (unlink(AUDIT_RULES_LINK) < 0) {
-                merror(UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
-                return;
-            }
-
-            if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) == 0) {
-                break;
-            }
-
-        // Fallthrough
-        default:
-            merror(LINK_ERROR, AUDIT_RULES_LINK, AUDIT_RULES_FILE, errno, strerror(errno));
+        if (errno != EEXIST) {
+            merror(LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
+            return;
+        }
+        if (unlink(AUDIT_RULES_LINK) < 0) {
+            merror(UNLINK_ERROR, AUDIT_RULES_LINK, errno, strerror(errno));
+            return;
+        }
+        if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
+            merror(LINK_ERROR, AUDIT_RULES_LINK, abs_rules_file_path, errno, strerror(errno));
             return;
         }
     }
@@ -266,6 +262,15 @@ void audit_rules_to_realtime() {
     char *real_path = NULL;
     int found;
 
+    // Initialize audit_rule_list
+    int auditd_fd = audit_open();
+    int res = audit_get_rule_list(auditd_fd);
+    audit_close(auditd_fd);
+
+    if (!res) {
+        merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
+    }
+
     for (int i = 0; syscheck.dir[i] != NULL; i++) {
         if ((syscheck.opts[i] & WHODATA_ACTIVE) == 0) {
             continue;
@@ -274,21 +279,15 @@ void audit_rules_to_realtime() {
         found = 0;
         real_path = fim_get_real_path(i);
 
-        // Initialize audit_rule_list
-        int auditd_fd = audit_open();
-        int res = audit_get_rule_list(auditd_fd);
-        audit_close(auditd_fd);
-        if (!res) {
-            merror(FIM_ERROR_WHODATA_READ_RULE); // LCOV_EXCL_LINE
+        if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1) {
+            free(real_path);
+            continue;
         }
 
-        if (search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY) == 1) {
-            found = 1;
-        } else {
-            for (int j = 0; syscheck.audit_key[j]; j++) {
-                if (search_audit_rule(real_path, WHODATA_PERMS, syscheck.audit_key[j]) == 1) {
-                    found = 1;
-                }
+        for (int j = 0; syscheck.audit_key[j]; j++) {
+            if (search_audit_rule(real_path, WHODATA_PERMS, syscheck.audit_key[j]) == 1) {
+                found = 1;
+                break;
             }
         }
 
