@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+from typing import Union
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
@@ -183,6 +184,39 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
 
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def reconnect_agents(request, pretty: bool = False, wait_for_complete: bool = False,
+                           agents_list: Union[list, str] = '*') -> web.Response:
+    """Force reconnect all agents or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool
+        Disable timeout response. Default `False`
+    agents_list : Union[list, str]
+        List of agent IDs. All possible values from 000 onwards. Default `*`
+
+    Returns
+    -------
+    Response
+    """
+    f_kwargs = {'agent_list': agents_list}
+
+    dapi = DistributedAPI(f=agent.reconnect_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          broadcasting=agents_list == '*',
+                          logger=logger
+                          )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
