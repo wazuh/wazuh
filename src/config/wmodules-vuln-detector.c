@@ -424,7 +424,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_IGNORE_TIME)){
-            mwarn("Detected deprecated tag <%s> at module '%s'.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name);
+            mwarn("The <%s> tag at module '%s' is deprecated for version newer than 4.3.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name);
         } else if (!strcmp(nodes[i]->element, XML_MIN_FULL_SCAN_INTERVAL)) {
             if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->min_full_scan_interval)) {
                 merror("Invalid min_full_scan_interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
