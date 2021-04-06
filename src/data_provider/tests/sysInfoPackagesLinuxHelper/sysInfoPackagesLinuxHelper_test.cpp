@@ -292,7 +292,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
     spDataThirdGroup.get()->next    = spDataFourthGroup.get();
     spDataFourthGroup.get()->data   = const_cast<char *>("lorem");
     spDataFourthGroup.get()->next   = NULL;
-    
+
     spData->isize                   = 0;
     spData->installdate             = 0;
     spData->name                    = NULL;
