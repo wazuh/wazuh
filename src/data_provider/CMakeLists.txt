@@ -46,8 +46,8 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
-include_directories(${SRC_FOLDER}/external/pacman-5.2.2/lib/libalpm/)
-include_directories(${SRC_FOLDER}/external/libarchive-3.5.1/libarchive/)
+include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
 
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
@@ -56,8 +56,8 @@ link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
-link_directories(${SRC_FOLDER}/external/pacman-5.2.2/lib/libalpm/)
-link_directories(${SRC_FOLDER}/external/libarchive-3.5.1/.libs/)
+link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -78,7 +78,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
       "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
       "${CMAKE_SOURCE_DIR}/src/*CommonBSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/packages/*Mac.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/packagesLinuxParserHelper.h"
       "${CMAKE_SOURCE_DIR}/src/network/*BSD.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")

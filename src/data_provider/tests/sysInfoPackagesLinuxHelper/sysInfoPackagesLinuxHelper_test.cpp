@@ -274,6 +274,41 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     EXPECT_EQ("Standalone web browser from mozilla.org", jsPackageInfo["description"]);
 }
 
+TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
+{
+    const std::unique_ptr<__alpm_list_t>    spMock{new struct __alpm_list_t};
+    const std::unique_ptr<__alpm_pkg_t>     spData{new struct __alpm_pkg_t};
+    const std::unique_ptr<__alpm_handle_t>  spDataHandle{new struct __alpm_handle_t};
+    const std::unique_ptr<__alpm_list_t>    spDataFirstGroup{new struct __alpm_list_t};
+    const std::unique_ptr<__alpm_list_t>    spDataSecondGroup{new struct __alpm_list_t};
+    const std::unique_ptr<__alpm_list_t>    spDataThirdGroup{new struct __alpm_list_t};
+    const std::unique_ptr<__alpm_list_t>    spDataFourthGroup{new struct __alpm_list_t};
+
+    spDataFirstGroup.get()->data    = const_cast<char *>("Wazuh");
+    spDataFirstGroup.get()->next    = spDataSecondGroup.get();
+    spDataSecondGroup.get()->data   = const_cast<char *>("test");
+    spDataSecondGroup.get()->next   = spDataThirdGroup.get();
+    spDataThirdGroup.get()->data    = const_cast<char *>("Arch");
+    spDataThirdGroup.get()->next    = spDataFourthGroup.get();
+    spDataFourthGroup.get()->data   = const_cast<char *>("lorem");
+    spDataFourthGroup.get()->next   = NULL;
+    
+    spData->isize                   = 0;
+    spData->installdate             = 0;
+    spData->name                    = NULL;
+    spData->version                 = NULL;
+    spData->arch                    = NULL;
+    spData->desc                    = NULL;
+    spData->handle                  = spDataHandle.get();
+    spData->groups                  = spDataFirstGroup.get();
+    spMock->data                    = spData.get();
+    spData->ops                     = &default_pkg_ops;
+
+    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(spMock.get()) };
+    EXPECT_FALSE(jsPackageInfo.empty());
+    EXPECT_EQ("Wazuh-test-Arch-lorem", jsPackageInfo["groups"]);
+}
+
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
 {
     const std::unique_ptr<__alpm_list_t>    spMock{new struct __alpm_list_t};
