@@ -52,12 +52,8 @@ class WazuhDBConnection:
         sql_first_index = 2 if query_elements[0] == 'agent' else 1
 
         if query_elements[0] == 'mitre':
-            input_val_errors = [
-                (query_elements[sql_first_index] == 'sql',
-                 'Incorrect WDB request type'),
-                (query_elements[2] == 'select',
-                 'Wrong SQL query for Mitre database')
-            ]
+            # TODO
+            pass
         elif query_elements[sql_first_index] == 'rootcheck':
             input_val_errors = [
                 (query_elements[sql_first_index+1] == 'delete' or query_elements[sql_first_index+1] == 'save',

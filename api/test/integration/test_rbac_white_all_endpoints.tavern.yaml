@@ -1771,7 +1771,7 @@ stages:
 test_name: GET /mitre
 
 stages:
-  - name: Try to get MITRE attacks
+  - name: Try to get MITRE techniques
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/mitre"
