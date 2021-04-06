@@ -13,6 +13,7 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
+uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
@@ -811,7 +812,7 @@ LIBPCRE2_LIB = $(EXTERNAL_LIBPCRE2).libs/libpcre2-8.a
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
 
 ifneq (${TARGET},winagent)
-EXTERNAL_LIBS += $(MSGPACK_LIB)
+EXTERNAL_LIBS += $(MSGPACK_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
 ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
@@ -820,7 +821,7 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
 
-EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
 endif
 endif
 ifeq (${uname_S},Darwin)
@@ -1071,15 +1072,18 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 CURL := curl -so
-DEPS_VERSION = 13
+DEPS_VERSION = 14
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
 cpu_arch := ${uname_P}
-ifneq (,$(filter ${cpu_arch},unknown Unknown))
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
+endif
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
+	cpu_arch := ${uname_M}
 endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 PRECOMPILED_ARCH := /amd64
