@@ -234,6 +234,80 @@ stages:
         error: !anyint
         data:
           total_affected_items: 0
+
+  # GET /security/roles
+  - name: Try to show the roles of the system with a non-existent search
+    request:
+      <<: *all_roles_request
+      params:
+        search: notexist
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          total_affected_items: 0
+
+# GET /security/roles
+  - name: Try to show the default roles only
+    request:
+      <<: *all_roles_request
+      params:
+        resource_type: default
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              name: !anystr
+              policies: !anything
+              rules: !anything
+              users: !anything
+              resource_type: default
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /security/roles
+  - name: Try to show the protected roles only when there is no protected roles available
+    request:
+      <<: *all_roles_request
+      params:
+        resource_type: protected
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /security/roles
+  - name: Try to show the user-created roles only
+    request:
+      <<: *all_roles_request
+      params:
+        resource_type: user
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              name: !anystr
+              policies: !anything
+              rules: !anything
+              users: !anything
+              resource_type: user
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
 ---
 test_name: GET /security/policies
 
@@ -427,6 +501,62 @@ stages:
         error: !anyint
         data:
           total_affected_items: 0
+
+  # GET /security/policies
+  - name: Try to show the default policies only
+    request:
+      <<: *all_policies_request
+      params:
+        resource_type: default
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              name: !anystr
+              policy: !anything
+              resource_type: default
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /security/policies
+  - name: Try to show the protected policies only when there is no protected policies available
+    request:
+      <<: *all_policies_request
+      params:
+        resource_type: protected
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /security/policies
+  - name: Try to show the user-created policies only
+    request:
+      <<: *all_policies_request
+      params:
+        resource_type: user
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              name: !anystr
+              policy: !anything
+              resource_type: user
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
 ---
 test_name: GET /security/rules
@@ -661,6 +791,64 @@ stages:
         error: !anyint
         data:
           total_affected_items: 0
+
+  # GET /security/rules
+  - name: Try to show the default rules only
+    request:
+      <<: *all_rules_request
+      params:
+        resource_type: default
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              name: !anystr
+              rule: !anything
+              roles: !anything
+              resource_type: default
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /security/rules
+  - name: Try to show the protected rules only when there is no protected rules available
+    request:
+      <<: *all_rules_request
+      params:
+        resource_type: protected
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /security/rules
+  - name: Try to show the user-created rules only
+    request:
+      <<: *all_rules_request
+      params:
+        resource_type: user
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              name: !anystr
+              rule: !anything
+              roles: !anything
+              resource_type: user
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
 
 ---
 test_name: GET /security/roles
@@ -1050,6 +1238,61 @@ stages:
                 - 10001
           total_affected_items: 2
           total_failed_items: 2
+
+# GET /security/users
+  - name: Try to show the default users only
+    request:
+      <<: *all_users_request
+      params:
+        resource_type: default
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              username: !anystr
+              resource_type: default
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /security/users
+  - name: Try to show the protected users only when there is no protected users available
+    request:
+      <<: *all_users_request
+      params:
+        resource_type: protected
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  # GET /security/users
+  - name: Try to show the user-created users only
+    request:
+      <<: *all_users_request
+      params:
+        resource_type: user
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - id: !anyint
+              username: !anystr
+              resource_type: user
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
 ---
 test_name: GET /security/users/?search
 
