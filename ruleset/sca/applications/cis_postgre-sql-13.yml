@@ -131,7 +131,7 @@ checks:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show logging_collector" -> r:^ on$'
+      - 'c:psql -U $user -h $host $db -c "SHOW logging_collector" -> r:^ on$'
 
 # 3.1.4 Ensure the log file destination directory is set correctly (Automated)
   - id: 24004
@@ -165,7 +165,7 @@ checks:
 
       (1 row)
 
-      postgres=# show log_directory;
+      postgres=# SHOW log_directory;
 
       log_directory
 
@@ -186,7 +186,7 @@ checks:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     conditions: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_directory" | grep $log_directory -> r:\.+'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_directory" | grep $log_directory -> r:\.+'
 
 # 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
   - id: 24005
@@ -213,7 +213,7 @@ checks:
       ----------------
       t
       (1 row)
-      postgres=# show log_filename;
+      postgres=# SHOW log_filename;
       log_filename
       -------------------
       postgresql-%Y%m%d.log
@@ -227,7 +227,7 @@ checks:
       - https://www.postgresql.org/docs/current/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_filename" | grep $log_filename -> r:\.+'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_filename" | grep $log_filename -> r:\.+'
 
 # 3.1.6 Ensure the log file permissions are set correctly (Automated)
   - id: 24006
@@ -255,7 +255,7 @@ checks:
       ----------------
       t
       (1 row)
-      postgres=# show log_file_mode;
+      postgres=# SHOW log_file_mode;
       log_file_mode
       ---------------
       0600
@@ -267,7 +267,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_file_mode" | grep $log_file_mode -> r:\.+'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_file_mode" | grep $log_file_mode -> r:\.+'
 
 # 3.1.7 Ensure 'log_truncate_on_rotation' is enabled (Automated)
   - id: 24007
@@ -304,7 +304,7 @@ checks:
       ----------------
       t
       (1 row)
-      postgres=# show log_truncate_on_rotation;
+      postgres=# SHOW log_truncate_on_rotation;
       log_truncate_on_rotation
       --------------------------
       on
@@ -314,7 +314,7 @@ checks:
       - cis_csc: ["6.3", "6.4"]
     condition: all
     rules:
-        - 'c:psql -U $user -h $host $db -c "show log_truncate_on_rotation" -> r:^ on$'
+        - 'c:psql -U $user -h $host $db -c "SHOW log_truncate_on_rotation" -> r:^ on$'
 
 # 3.1.8 Ensure the maximum log file lifetime is set correctly (Automated)
   - id: 24008
@@ -343,7 +343,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_rotation_age" | grep $log_rotation_age -> r:\.+'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_rotation_age" | grep $log_rotation_age -> r:\.+'
 
 # 3.1.9 Ensure the maximum log file size is set correctly (Automated)
   - id: 24009
@@ -371,7 +371,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_rotation_size" | grep $log_rotation_size -> r:\.+'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_rotation_size" | grep $log_rotation_size -> r:\.+'
 
 # 3.1.10 Ensure the correct syslog facility is selected (Manual)
   - id: 24010
@@ -462,7 +462,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_min_messages" -> r:^ ERROR$|^ LOG$|^ FATAL$|^ PANIC$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_min_messages" -> r:^ ERROR$|^ LOG$|^ FATAL$|^ PANIC$'
 
 # 3.1.13 Ensure the correct SQL statements generating errors are recorded (Automated)
   - id: 24013
@@ -496,7 +496,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_min_error_statement" -> r:^ LOG$|^ FATAL$|^ PANIC$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_min_error_statement" -> r:^ LOG$|^ FATAL$|^ PANIC$'
 
 # 3.1.14 Ensure 'debug_print_parse' is disabled (Automated)
   - id: 24014
@@ -639,7 +639,7 @@ checks:
       - cis_csc: ["6", "6.3"]
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_connections" -> r:^ on$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_connections" -> r:^ on$'
 
 # 3.1.19 Ensure 'log_disconnections' is enabled (Automated)
   - id: 24019
@@ -669,7 +669,7 @@ checks:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_disconnections" -> r:^ on$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_disconnections" -> r:^ on$'
 
 # 3.1.20 Ensure 'log_error_verbosity' is set correctly (Automated)
   - id: 24020
@@ -690,12 +690,12 @@ checks:
       (1 row)
     compliance:
       - cis: ["3.1.20"]
-      - cis: ["6", "6.3"]
+      - cis_csc: ["6", "6.3"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_error_verbosity" -> r:^ verbose$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_error_verbosity" -> r:^ verbose$'
 
 # 3.1.21 Ensure 'log_hostname' is set correctly (Automated)
   - id: 24021
@@ -721,12 +721,12 @@ checks:
       (1 row)
     compliance:
       - cis: ["3.1.21"]
-      - cis: ["6", "5.1"]
+      - cis_csc: ["6", "5.1"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_hostname" -> r:^ off$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_hostname" -> r:^ off$'
 
 # 3.1.22 Ensure 'log_line_prefix' is set correctly (Automated)
   - id: 24022
@@ -760,13 +760,13 @@ checks:
       (1 row)
     compliance:
       - cis: ["3.1.22"]
-      - cis: ["6", "6.3"]
+      - cis_csc: ["6", "6.3"]
     references:
       - https://pgbadger.darold.net/
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_disconnections" -> r:%m [%p]: [%l-1] db=%d,user=%u,app=%a,client=%h'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_disconnections" -> r:%m [%p]: [%l-1] db=%d,user=%u,app=%a,client=%h'
 
 # 3.1.23 Ensure 'log_statement' is set correctly (Automated)
   - id: 24023
@@ -789,12 +789,12 @@ checks:
       (1 row)
     compliance:
       - cis: ["3.1.23"]
-      - cis: ["6", "6.3"]
+      - cis_csc: ["6", "6.3"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_statement" -> r:^ none$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_statement" -> r:^ none$'
 
 # 3.1.24 Ensure 'log_timezone' is set correctly (Automated)
   - id: 24024
@@ -823,15 +823,15 @@ checks:
       (1 row)
     compliance:
       - cis: ["3.1.24"]
-      - cis: ["6", "6.3"]
+      - cis_csc: ["6", "6.3"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
       - https://en.wikipedia.org/wiki/Time_zone
     condition: any
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_timezone" -> r:^ GMT$'
-      - 'c:psql -U $user -h $host $db -c "show log_timezone" -> r:^ UTC$'
-      - 'c:psql -U $user -h $host $db -c "show log_timezone" | grep $log_timezone -> r:\.+'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_timezone" -> r:^ GMT$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_timezone" -> r:^ UTC$'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_timezone" | grep $log_timezone -> r:\.+'
 
 # 3.2 Ensure the PostgreSQL Audit Extension (pgAudit) is enabled (Automated)
   - id: 24025
@@ -918,20 +918,136 @@ checks:
       - 'c:psql -U $user -h $host $db -c "show shared_preload_libraries" -> r:pgaudit'
 
 # 4 User Access and Authorization
-#
-  - id: 2402
-    title:
+# 4.5 Use pg_permission extension to audit object permissions (Automated)
+  - id: 24026
+    title: Use pg_permission extension to audit object permissions
     description: >
-
+      Using a PostgreSQL extension called pg_permissions it is possible to declare which DB
+      users should have which permissions on a given object and generate a report showing
+      compliance/deviation.
     rationale: >
-
-    remediation: |
+      Auditing permissions in a PostgreSQL database can be intimidating given the default
+      manner in which permissions are presented. The pg_permissions extension greatly
+      simplifies this presentation and allows the user to declare what permissions should exist
+      and then report on differences from that ideal.
 
     compliance:
-      - cis: ["3."]
-      - cis: ["6", "6."]
+      - cis: ["4.5"]
+      - cis_csc: ["5.1"]
     references:
-      -
-    condition: any
+      - https://github.com/cybertec-postgresql/pg_permission
+    condition: none
     rules:
-      - 'c:psql -U $user -h $host $db -c "show log_timezone" -> r:^ GMT$'
+      - 'c:psql -U $user -h $host $db -c "select * from pg_available_extensions where name ='pg_permissions';" -> r:(0 rows)'
+
+# 4.7 Ensure the set_user extension is installed (Automated)
+  - id: 24027
+    title: Ensure the set_user extension is installed
+    description: >
+      PostgreSQL access to the superuser database role must be controlled and audited to
+      prevent unauthorized access.
+    rationale: >
+      Even when reducing and limiting the access to the superuser role as described earlier in
+      this benchmark, it is still difficult to determine who accessed the superuser role and what
+      actions were taken using that role. As such, it is ideal to prevent anyone from logging in as
+      the superuser and forcing them to escalate their role. This model is used at the OS level by
+      the use of sudo and should be emulated in the database. The set_user extension allows for
+      this setup.
+
+    compliance:
+      - cis: ["4.7"]
+      - cis_csc: ["5.1", "5.8", "4.3"]
+    references:
+      - https://github.com/pgaudit/set_user
+    condition: none
+    rules:
+      - 'c:psql -U $user -h $host $db -c "select * from pg_available_extensions where name = 'set_user';" -> r:(0 rows)'
+
+# 6 PostgreSQL Settings
+# 6.8 Ensure SSL is enabled and configured correctly (Automated)
+  - id: 24028
+    title: Ensure SSL is enabled and configured correctly
+    description: >
+      SSL on a PostgreSQL server should be enabled (set to on) and configured to encrypt TCP
+      traffic to and from the server.
+    rationale: >
+      If SSL is not enabled and configured correctly, this increases the risk of data being
+      compromised in transit.
+
+    compliance:
+      - cis: ["6.8"]
+      - cis_csc: ["14.2", "14.4"]
+    references:
+      - https://www.postgresql.org/docs/current/static/ssl-tcp.html
+      - http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-52r1.pdf
+      - https://www.postgresql.org/docs/current/static/libpq-ssl.html
+    condition: none
+    rules:
+      - 'c:psql -U $user -h $host $db -c "SHOW ssl" -> r:^ off$'
+
+# 8 Special Configuration Considerations
+# 8.3 Ensure the backup and restore tool, 'pgBackRest', is installed and configured (Automated)
+  - id: 24029
+    title: Ensure the backup and restore tool, 'pgBackRest', is installed and configured
+    description: >
+      pgBackRest aims to be a simple, reliable backup and restore system that can seamlessly
+      scale up to the largest databases and workloads. Instead of relying on traditional backup
+      tools like tar and rsync, pgBackRest implements all backup features internally and uses a
+      custom protocol for communicating with remote systems. Removing reliance on tar and
+      rsync allows for better solutions to database-specific backup challenges. The custom
+      remote protocol allows for more flexibility and limits the types of connections that are
+      required to perform a backup which increases security.
+    rationale: >
+      The native PostgreSQL backup facility pg_dump provides adequate logical backup
+      operations but does not provide for Point In Time Recovery (PITR). The PostgreSQL facility
+      pg_basebackup performs physical backup of the database files and does provide for PITR,
+      but it is constrained by single threading. Both of these methodologies are standard in the
+      PostgreSQL ecosystem and appropriate for particular backup/recovery needs. pgBackRest
+      offers another option with much more robust features and flexibility.
+      pgBackRest is open-source software developed to perform efficient backups on PostgreSQL
+      databases that measure in tens of terabytes and greater. It supports per file checksums,
+      compression, partial/failed backup resume, high-performance parallel transfer,
+      asynchronous archiving, tablespaces, expiration, full/differential/incremental,
+      local/remote operation via SSH, hard-linking, restore, backup encryption, and more.
+      pgBackRest is written in C and Perl and does not depend on rsync or tar but instead
+      performs its own deltas which gives it maximum flexibility. Finally, pgBackRest provides an
+      easy-to-use internal repository listing backup details accessible via the pgbackrest info
+      command.
+    remediation: >
+      pgBackRest is not installed nor configured for PostgreSQL by default, but instead is
+      maintained as a GitHub project. Fortunately, it is a part of the PGDG repository and can be
+      easily installed:
+
+      $ whoami
+
+      root
+
+      $ dnf -y install pgbackrest
+
+      [snip]
+
+      Installed:
+
+      pgbackrest-2.31-1.rhel8.x86_64
+
+      Complete!
+
+      Once installed, pgBackRest must be configured for things like stanza name, backup
+      location, retention policy, logging, etc. Please consult the configuration guide.
+      If employing pgBackRest for your backup/recovery solution, ensure the repository, base
+      backups, and WAL archives are stored on a reliable file system separate from the database
+      server. Further, the external storage system where backups resided should have limited
+      access to only those system administrators as necessary. Finally, as with any
+      backup/recovery solution, stringent testing must be conducted. A backup is only good if
+      it can be restored successfully.
+    compliance:
+      - cis: ["8.3"]
+      - cis_csc: ["10", "10.1", "10.2"]
+    references:
+      - https://pgbackrest.org/
+      - https://github.com/pgbackrest/pgbackrest
+      - https://www.postgresql.org/docs/current/static/app-pgdump.html
+      - https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
+    condition: none
+    rules:
+      - 'c:pgbackrest -> -bash: pgbackrest: command not found'
