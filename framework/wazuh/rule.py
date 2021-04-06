@@ -39,7 +39,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     :param hipaa: Filters the rules by hipaa requirement.
     :param nist_800_53: Filters the rules by nist_800_53 requirement.
     :param tsc: Filters the rules by tsc requirement.
-    :param mitre: Filters the rules by mitre attack ID.
+    :param mitre: Filters the rules by mitre technique ID.
     :param relative_dirname: Filters the relative dirname.
     :param filename: List of filenames to filter by.
     :param level: Filters the rules by level. level=2 or level=2-5.
