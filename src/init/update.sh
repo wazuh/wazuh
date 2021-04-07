@@ -427,19 +427,15 @@ UpdateOldVersions()
 
         OSSEC_LOG_FILE="$PREINSTALLEDDIR/logs/ossec.log"
         OSSEC_JSON_FILE="$PREINSTALLEDDIR/logs/ossec.json"
-        LOG_WAZUH_FOLDER="$PREINSTALLEDDIR/logs/wazuh/*"
-        LOG_OSSEC_FOLDER="$PREINSTALLEDDIR/logs/ossec/*"
+        LOG_WAZUH_FOLDER="$PREINSTALLEDDIR/logs/wazuh"
 
         # remove ossec.log and ossec.json
         rm -v $OSSEC_LOG_FILE
         rm -v $OSSEC_JSON_FILE
 
-        # remove all files and folders from /logs/wazuh/* or /logs/ossec/*
-        if [ -f $LOG_WAZUH_FOLDER ]; then
-            rm -rfv $LOG_WAZUH_FOLDER
-        fi
-        if [ -f $LOG_OSSEC_FOLDER ]; then
-            rm -rfv $LOG_OSSEC_FOLDER
+        # remove all files and folders from /logs/wazuh/*
+        if [ -d $LOG_WAZUH_FOLDER ]; then
+            rm -rfv $LOG_WAZUH_FOLDER/*
         fi
 
         # If it is Wazuh 2.0 or newer, exit
