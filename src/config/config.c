@@ -38,7 +38,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osbuffer = "client_buffer";             /* Agent Buffer Config  */
     const char *oscommand = "command";                  /* ? Config      */
     const char *osintegratord = "integration";          /* Server Config */
-    const char *osactive_response = "active-response";  /* Agent Config  */
     const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                    /* Labels Config */
     const char *oslogging = "logging";                  /* Logging Config */

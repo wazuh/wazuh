@@ -98,7 +98,7 @@ STATIC void execd_shutdown(int sig)
 #ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
 #endif
-int main(int argc, char **argv)
+int mains(int argc, char **argv)
 {
     int c;
     int test_config = 0, run_foreground = 0;

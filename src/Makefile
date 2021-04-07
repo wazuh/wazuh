@@ -660,7 +660,7 @@ settings:
 BUILD_SERVER+=wazuh-maild -
 BUILD_SERVER+=wazuh-csyslogd -
 BUILD_SERVER+=wazuh-agentlessd -
-BUILD_SERVER+=wazuh-execd -
+#BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
 BUILD_SERVER+=wazuh-agentd
@@ -682,7 +682,7 @@ BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
 BUILD_AGENT+=wazuh-logcollector
 BUILD_AGENT+=wazuh-syscheckd
-BUILD_AGENT+=wazuh-execd
+#BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
@@ -1378,7 +1378,7 @@ wmodules_o := $(wmodules_c:.c=.o)
 wazuh_modules/%.o: wazuh_modules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-wmodules_dep := ${wmodules_o} ${wdblib_o}
+wmodules_dep := ${os_execd_o} ${wmodules_o} ${wdblib_o}
 
 ifeq (${uname_S},HP-UX)
 	wmodules_dep := ${wmodules_dep} ${config_o}
