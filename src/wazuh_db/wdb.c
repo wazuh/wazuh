@@ -900,9 +900,14 @@ void wdb_close_old() {
     for (node = db_pool_begin; node && db_pool_size > wconfig.open_db_limit; node = next) {
         next = node->next;
 
+        w_mutex_lock(&node->mutex);
+
         if (node->refcount == 0 && !node->transaction) {
+            w_mutex_unlock(&node->mutex);
             mdebug2("Closing database for agent %s", node->id);
             wdb_close(node, FALSE);
+        } else {
+            w_mutex_unlock(&node->mutex);
         }
     }
 
@@ -1042,6 +1047,8 @@ int wdb_close(wdb_t * wdb, bool commit) {
     int result;
     int i;
 
+    w_mutex_lock(&wdb->mutex);
+
     if (wdb->refcount == 0) {
         if (wdb->transaction && commit) {
             wdb_commit2(wdb);
@@ -1067,6 +1074,7 @@ int wdb_close(wdb_t * wdb, bool commit) {
         }
 
         result = sqlite3_close_v2(wdb->db);
+        w_mutex_unlock(&wdb->mutex);
 
         if (result == SQLITE_OK) {
             wdb_pool_remove(wdb);
@@ -1077,6 +1085,7 @@ int wdb_close(wdb_t * wdb, bool commit) {
             return -1;
         }
     } else {
+        w_mutex_unlock(&wdb->mutex);
         mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->id, wdb->refcount);
         return -1;
     }
