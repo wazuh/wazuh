@@ -76,7 +76,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                    const char* reference,
                                    const char* type,
                                    const char* status,
-                                   bool check_pkg_existance) {
+                                   bool check_pkg_existence) {
 
     cJSON* result = cJSON_CreateObject();
     if (!result) {
@@ -90,7 +90,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
         cJSON_AddStringToObject(result, "action", "INSERT");
     }
 
-    if (check_pkg_existance && !wdb_agents_find_package(wdb, reference)) {
+    if (check_pkg_existence && !wdb_agents_find_package(wdb, reference)) {
         cJSON_AddStringToObject(result, "status", "PKG_NOT_FOUND");
     }
     else {

@@ -1297,7 +1297,7 @@ void test_vuln_cves_insert_command_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
 
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", query);
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", query);
 
     // wdb_parse_agents_insert_vuln_cves
     expect_string(__wrap_wdb_agents_insert_vuln_cves, name, "package");
@@ -1307,7 +1307,7 @@ void test_vuln_cves_insert_command_error(void **state) {
     expect_string(__wrap_wdb_agents_insert_vuln_cves, reference, "8549fd9faf9b124635298e9311ccf672c2ad05d1");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, type, "PACKAGE");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existance, true);
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existence, true);
     will_return(__wrap_wdb_agents_insert_vuln_cves, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error inserting vulnerability in vuln_cves.");
@@ -1324,7 +1324,7 @@ void test_vuln_cves_insert_command_success(void **state) {
     int ret = OS_INVALID;
     test_struct_t *data  = (test_struct_t *)*state;
     char *query = NULL;
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", query);
+    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\",\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", query);
     char *result = NULL;
     os_strdup("[{\"test\":\"TEST\"}]", result);
 
@@ -1338,7 +1338,7 @@ void test_vuln_cves_insert_command_success(void **state) {
     expect_string(__wrap_wdb_agents_insert_vuln_cves, reference, "8549fd9faf9b124635298e9311ccf672c2ad05d1");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, type, "PACKAGE");
     expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existance, true);
+    expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existence, true);
     will_return(__wrap_wdb_agents_insert_vuln_cves, test);
     will_return(__wrap_cJSON_PrintUnformatted, result);
 

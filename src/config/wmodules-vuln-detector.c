@@ -360,8 +360,8 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
     vuldet->flags.permissive_patch_scan = 0;
     vuldet->flags.enabled = 1;
     vuldet->min_full_scan_interval = VU_DEF_MIN_FULL_SCAN_INTERVAL;
-    vuldet->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
-    vuldet->agents_software = NULL;
+    vuldet->scan_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
+    vuldet->scan_agents = NULL;
     cur_wmodule->context = &WM_VULNDETECTOR_CONTEXT;
     cur_wmodule->tag = strdup(cur_wmodule->context->name);
     cur_wmodule->data = vuldet;
@@ -395,7 +395,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->detection_interval)) {
+            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->scan_interval)) {
                 merror("Invalid interval at module '%s'", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
