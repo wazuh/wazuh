@@ -28,7 +28,7 @@
 <!--
 Sample: 2021-04-06T14:54:34.255Z,61d2c86f-f9bb-456d-88c0-3529172510ac,15,0,847,30,,Ecp,192.168.0.60,/ecp/lkO.js,,FBA,False,,,ServerInfo~Admin@WIN-03FGEGKLSPR:444/ecp/DDI/DDIService.svc/GetList?reqId=1615583487987&schema=VirtualDirectory&msExchEcpCanary=Sw7TsEblh0O9yAO2zOMLYYjmrzSe-tgIeEyMoR9keCLkC8uBhZ54ExFEhXKulvSv9x5C62ymOnE.&a=,Mozilla/5.0,192.168.0.127,WIN-03FGEGKLSPR,200,200,,POST,Proxy,win-03fgegklspr,41.42.31996.000,CrossRegion,X-BEResource-Cookie,,,,159,598,1,,0,0,,0,,0,,0,0,6375,0,0,1,0,6378,0,0,0,6380,0,6378,1,2,2,6380,,,CorrelationID=<empty>;BeginRequest=2021-04-06T14:54:27.880Z;ProxyState-Run=None;BeginGetRequestStream=2021-04-06T14:54:27.880Z;OnRequestStreamReady=2021-04-06T14:54:27.880Z;BeginGetResponse=2021-04-06T14:54:27.880Z;OnResponseReady=2021-04-06T14:54:34.255Z;EndGetResponse=2021-04-06T14:54:34.255Z;ProxyState-Complete=ProxyResponseData;,
 
-CVE-2021-26855 exploitation can be detected via the following Exchange HttpProxy logs:
+CVE-2021-26855 (ProxyLogon) exploitation can be detected via the following Exchange HttpProxy logs:
 These logs are located in the following directory: %PROGRAMFILES%\Microsoft\Exchange Server\V15\Logging\HttpProxy
 Exploitation can be identified by searching for log entries where the AuthenticatedUser is empty and the AnchorMailbox contains the pattern of ServerInfo~*/*
 
@@ -36,7 +36,7 @@ https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-se
 -->
     <rule id="61646" level="12">
         <regex type="pcre2">,,[^,]*,ServerInfo~[^,]*/[^,]*</regex>
-        <description>Server-side request forgery (SSRF) vulnerability exploitation</description>
+        <description>Possible ProxyLogon vulnerability exploitation</description>
     </rule>
 
 </group>
