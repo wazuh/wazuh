@@ -6108,16 +6108,16 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
         cJSON* j_reference = cJSON_GetObjectItem(data, "reference");
         cJSON* j_type = cJSON_GetObjectItem(data, "type");
         cJSON* j_status = cJSON_GetObjectItem(data, "status");
-        cJSON* j_check_pkg_existance = cJSON_GetObjectItem(data, "check_pkg_existance");
+        cJSON* j_check_pkg_existence = cJSON_GetObjectItem(data, "check_pkg_existence");
         // Required fields
         if (!cJSON_IsString(j_name) || !cJSON_IsString(j_version) || !cJSON_IsString(j_architecture) ||!cJSON_IsString(j_cve) ||
-            !cJSON_IsString(j_reference) || !cJSON_IsString(j_type) || !cJSON_IsString(j_status) ||!cJSON_IsBool(j_check_pkg_existance)) {
+            !cJSON_IsString(j_reference) || !cJSON_IsString(j_type) || !cJSON_IsString(j_status) ||!cJSON_IsBool(j_check_pkg_existence)) {
             mdebug1("Invalid vuln_cves JSON data when inserting vulnerable package. Not compliant with constraints defined in the database.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid JSON data, missing required fields");
         }
         else {
             cJSON* result = wdb_agents_insert_vuln_cves(wdb, j_name->valuestring, j_version->valuestring, j_architecture->valuestring, j_cve->valuestring,
-                                            j_reference->valuestring, j_type->valuestring, j_status->valuestring, (bool)j_check_pkg_existance->valueint);
+                                            j_reference->valuestring, j_type->valuestring, j_status->valuestring, (bool)j_check_pkg_existence->valueint);
 
             if (result) {
                 char *out = cJSON_PrintUnformatted(result);

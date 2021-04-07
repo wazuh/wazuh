@@ -67,7 +67,7 @@ cJSON* wdb_agents_vuln_cves_insert(int id,
                                    const char *reference,
                                    const char *type,
                                    const char *status,
-                                   bool check_pkg_existance,
+                                   bool check_pkg_existence,
                                    int *sock) {
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -88,7 +88,7 @@ cJSON* wdb_agents_vuln_cves_insert(int id,
     cJSON_AddStringToObject(data_in, "reference", reference);
     cJSON_AddStringToObject(data_in, "type", type);
     cJSON_AddStringToObject(data_in, "status", status);
-    cJSON_AddBoolToObject(data_in, "check_pkg_existance", check_pkg_existance);
+    cJSON_AddBoolToObject(data_in, "check_pkg_existence", check_pkg_existence);
 
     data_in_str = cJSON_PrintUnformatted(data_in);
     os_malloc(WDBQUERY_SIZE, wdbquery);
