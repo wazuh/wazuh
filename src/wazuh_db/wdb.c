@@ -846,6 +846,25 @@ void wdb_pool_remove(wdb_t * wdb) {
     }
 }
 
+// Duplicate the database pool
+wdb_t * wdb_pool_copy() {
+    wdb_t *copy = NULL;
+    wdb_t *last;
+
+    for (wdb_t *i = db_pool_begin; i != NULL; i = i->next) {
+        wdb_t * t = wdb_init(NULL, i->id);
+
+        if (copy == NULL) {
+            copy = last = t;
+        } else {
+            last->next = t;
+            last = t;
+        }
+    }
+
+    return copy;
+}
+
 void wdb_close_all() {
     wdb_t * node;
 
@@ -866,10 +885,23 @@ void wdb_close_all() {
 
 void wdb_commit_old() {
     wdb_t * node;
+    wdb_t * next;
 
     w_mutex_lock(&pool_mutex);
+    wdb_t *copy = wdb_pool_copy();
+    w_mutex_unlock(&pool_mutex);
 
-    for (node = db_pool_begin; node; node = node->next) {
+    for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
+        next = i->next;
+
+        w_mutex_lock(&pool_mutex);
+        node = (wdb_t *)OSHash_Get(open_dbs, i->id);
+
+        if (node == NULL) {
+            w_mutex_unlock(&pool_mutex);
+            continue;
+        }
+
         w_mutex_lock(&node->mutex);
         time_t cur_time = time(NULL);
 
@@ -886,9 +918,8 @@ void wdb_commit_old() {
         }
 
         w_mutex_unlock(&node->mutex);
+        w_mutex_unlock(&pool_mutex);
     }
-
-    w_mutex_unlock(&pool_mutex);
 }
 
 void wdb_close_old() {
@@ -896,9 +927,19 @@ void wdb_close_old() {
     wdb_t * next;
 
     w_mutex_lock(&pool_mutex);
+    wdb_t *copy = wdb_pool_copy();
+    w_mutex_unlock(&pool_mutex);
 
-    for (node = db_pool_begin; node && db_pool_size > wconfig.open_db_limit; node = next) {
-        next = node->next;
+    for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
+        next = i->next;
+
+        w_mutex_lock(&pool_mutex);
+        node = (wdb_t *)OSHash_Get(open_dbs, i->id);
+
+        if (node == NULL || db_pool_size <= wconfig.open_db_limit) {
+            w_mutex_unlock(&pool_mutex);
+            continue;
+        }
 
         w_mutex_lock(&node->mutex);
 
@@ -909,9 +950,9 @@ void wdb_close_old() {
         } else {
             w_mutex_unlock(&node->mutex);
         }
-    }
 
-    w_mutex_unlock(&pool_mutex);
+        w_mutex_unlock(&pool_mutex);
+    }
 }
 
 int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
