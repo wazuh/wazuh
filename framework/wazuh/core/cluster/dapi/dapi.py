@@ -31,6 +31,8 @@ from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
+threadpool = ThreadPoolExecutor()
+
 
 class DistributedAPI:
     """Represents a distributed API request."""
@@ -100,7 +102,6 @@ class DistributedAPI:
 
         self.local_clients = []
         self.local_client_arg = local_client_arg
-        self.threadpool = ThreadPoolExecutor(max_workers=1)
 
     def debug_log(self, message):
         """Use debug or debug2 depending on the log type.
@@ -242,15 +243,12 @@ class DistributedAPI:
             if self.local_client_arg is not None:
                 lc = local_client.LocalClient()
                 self.f_kwargs[self.local_client_arg] = lc
-            else:
-                lc = None
 
             if self.is_async:
                 task = run_local()
             else:
                 loop = asyncio.get_running_loop()
-                task = loop.run_in_executor(self.threadpool, run_local)
-
+                task = loop.run_in_executor(threadpool, run_local)
             try:
                 data = await asyncio.wait_for(task, timeout=timeout)
             except asyncio.TimeoutError:

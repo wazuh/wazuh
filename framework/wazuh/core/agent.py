@@ -6,6 +6,8 @@ import copy
 import fcntl
 import hashlib
 import ipaddress
+import tempfile
+import threading
 from base64 import b64encode
 from datetime import date, datetime
 from json import dumps, loads
@@ -20,11 +22,15 @@ from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, safe_move
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON
 from wazuh.core.wdb import WazuhDBConnection
+
+mutex = threading.Lock()
+lock_file = None
+lock_acquired = False
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -359,8 +365,6 @@ class Agent:
         self.manager = None
         self.node_name = None
         self.registerIP = ip
-        self.lock_file = None
-        self.lock_acquired = False
 
         # If the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -379,15 +383,21 @@ class Agent:
         return dictionary
 
     def _acquire_client_keys_lock(self):
-        self.lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')
-        fcntl.lockf(self.lock_file, fcntl.LOCK_EX)
-        self.lock_acquired = True
+        mutex.acquire()
+        global lock_file
+        lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')
+        fcntl.lockf(lock_file, fcntl.LOCK_EX)
+        global lock_acquired
+        lock_acquired = True
 
     def _release_client_keys_lock(self):
-        fcntl.lockf(self.lock_file, fcntl.LOCK_UN)
-        self.lock_file.close()
-        self.lock_file = None
-        self.lock_acquired = False
+        global lock_file
+        fcntl.lockf(lock_file, fcntl.LOCK_UN)
+        lock_file is not None and lock_file.close()
+        lock_file = None
+        global lock_acquired
+        mutex.release()
+        lock_acquired = False
 
     def load_info_from_db(self, select=None):
         """Gets attributes of existing agent.
@@ -466,16 +476,23 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
-        if use_only_authd:
+        try:
+            if use_only_authd:
+                if not is_authd_running:
+                    raise WazuhInternalError(1726)
+
             if not is_authd_running:
-                raise WazuhInternalError(1726)
-
-        if not is_authd_running:
-            data = self._remove_manual(backup, purge)
-        else:
-            data = self._remove_authd(purge)
-
-        return data
+                data = self._remove_manual(backup, purge)
+            else:
+                data = self._remove_authd(purge)
+            return data
+        except WazuhException as e:
+            raise e
+        except Exception as e:
+            raise WazuhError(1757, extra_message=str(e))
+        finally:
+            if lock_acquired:
+                self._release_client_keys_lock()
 
     def _remove_authd(self, purge=False):
         """Deletes the agent.
@@ -503,15 +520,8 @@ class Agent:
         self.load_info_from_db()
 
         client_keys_entries = []
-        # Check if id exists in client.keys
-        if self.lock_acquired:
-            # If the lock is already acquired there is a client.keys file change in progress as part of a registration
-            # and the void entry will be written there instead of here.
-            pending_client_keys_update = True
-        else:
-            pending_client_keys_update = False
-            self._acquire_client_keys_lock()
 
+        self._acquire_client_keys_lock()
         try:
             agent_found = False
             with open(common.client_keys) as f_k:
@@ -542,21 +552,38 @@ class Agent:
         if not agent_found:
             raise WazuhResourceNotFound(1701, extra_message=self.id)
 
+        self.delete_agent_files(self.id, self.name, self.registerIP, backup=backup)
+
+        # Write temporary client.keys file
+        handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
+        with open(handle, 'a') as f_kt:
+            client_keys_entries.append('')
+            f_kt.writelines('\n'.join(client_keys_entries))
+
+        # Overwrite client.keys
+        f_keys_st = stat(common.client_keys)
+        safe_move(output, common.client_keys, permissions=f_keys_st.st_mode)
+        self._release_client_keys_lock()
+
+        return 'Agent was successfully deleted'
+
+    @staticmethod
+    def delete_agent_files(agent_id, agent_name, agent_register_ip, backup=True):
         # Tell wazuh-db to delete agent database
-        wdb_backend_conn = WazuhDBBackend(self.id).connect_to_db()
-        wdb_backend_conn.delete_agents_db([self.id])
+        wdb_backend_conn = WazuhDBBackend(agent_id).connect_to_db()
+        wdb_backend_conn.delete_agents_db([agent_id])
 
         # Remove agent from groups
         try:
             wdb_conn = WazuhDBConnection()
-            wdb_conn.run_wdb_command(f'global sql DELETE FROM belongs WHERE id_agent = {self.id}')
+            wdb_conn.run_wdb_command(f'global sql DELETE FROM belongs WHERE id_agent = {agent_id}')
         except Exception as e:
             raise WazuhInternalError(1747, extra_message=str(e))
 
         # Clean up agent files
         try:
             # Remove rid file
-            rids_file = path.join(common.wazuh_path, 'queue/rids', self.id)
+            rids_file = path.join(common.wazuh_path, 'queue/rids', agent_id)
             if path.exists(rids_file):
                 remove(rids_file)
 
@@ -565,7 +592,7 @@ class Agent:
                 # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
                 date_part = date.today().strftime('%Y/%b/%d')
                 main_agent_backup_dir = path.join(common.backup_path,
-                                                  f'agents/{date_part}/{self.id}-{self.name}-{self.registerIP}')
+                                                  f'agents/{date_part}/{agent_id}-{agent_name}-{agent_register_ip}')
                 agent_backup_dir = main_agent_backup_dir
 
                 not_agent_dir = True
@@ -583,15 +610,13 @@ class Agent:
 
             # Move agent file
             agent_files = [
-                ('{0}/queue/agent-info/{1}-{2}'.format(common.wazuh_path, self.name, self.registerIP),
-                 '{0}/agent-info'.format(agent_backup_dir)),
-                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.wazuh_path, self.name, self.registerIP),
+                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.wazuh_path, agent_name, agent_register_ip),
                  '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.wazuh_path, self.id),
+                ('{0}/queue/agent-groups/{1}'.format(common.wazuh_path, agent_id),
                  '{0}/agent-group'.format(agent_backup_dir)),
-                ('{}/var/db/agents/{}-{}.db'.format(common.wazuh_path, self.name, self.id),
+                ('{}/var/db/agents/{}-{}.db'.format(common.wazuh_path, agent_name, agent_id),
                  '{}/var_db'.format(agent_backup_dir)),
-                ('{}/queue/diff/{}'.format(common.wazuh_path, self.name), '{}/diff'.format(agent_backup_dir))
+                ('{}/queue/diff/{}'.format(common.wazuh_path, agent_name), '{}/diff'.format(agent_backup_dir))
             ]
 
             for agent_file, backup_file in agent_files:
@@ -605,22 +630,6 @@ class Agent:
                         safe_move(agent_file, backup_file, permissions=0o660)
         except Exception as e:
             raise WazuhInternalError(1748, extra_message=str(e))
-
-        # Update client.keys file and release the lock only if there are no other pending changes
-        if not pending_client_keys_update:
-            # Write temporary client.keys file
-            f_keys_temp = '{0}.tmp'.format(common.client_keys)
-            with open(f_keys_temp, 'a') as f_kt:
-                client_keys_entries.append('')
-                f_kt.writelines('\n'.join(client_keys_entries))
-
-            # Overwrite client.keys
-            f_keys_st = stat(common.client_keys)
-            safe_move(f_keys_temp, common.client_keys, permissions=f_keys_st.st_mode)
-
-            self._release_client_keys_lock()
-
-        return 'Agent was successfully deleted'
 
     def _add(self, name, ip, id=None, key=None, force=-1, use_only_authd=False):
         """Add an agent to Wazuh.
@@ -686,7 +695,7 @@ class Agent:
         except Exception as e:
             raise WazuhError(1725, extra_message=str(e))
         finally:
-            if self.lock_acquired:
+            if lock_acquired:
                 self._release_client_keys_lock()
 
     def _add_authd(self, name, ip, id=None, key=None, force=-1):
@@ -861,7 +870,7 @@ class Agent:
                         if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
                             # Call _remove_manual directly since we are already in _add_manual and will handle releasing
                             # the lock properly when complete.
-                            Agent(entry_id)._remove_manual(backup=True)
+                            self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
                             # We add a void entry since remove_agent will not update client.keys with a change in
                             # progress
                             client_keys_entries.append(
@@ -882,17 +891,16 @@ class Agent:
             agent_id = str(last_id + 1).zfill(3)
 
         # Write temporary client.keys file
-        f_keys_temp = '{0}.tmp'.format(common.client_keys)
-        with open(f_keys_temp, 'a') as f_kt:
+        handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
+        with open(handle, 'a') as f_kt:
             client_keys_entries.append('')
             f_kt.writelines('\n'.join(client_keys_entries))
             f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
 
         # Overwrite client.keys
         f_keys_st = stat(common.client_keys)
-        safe_move(f_keys_temp, common.client_keys, permissions=f_keys_st.st_mode)
+        safe_move(output, common.client_keys, permissions=f_keys_st.st_mode)
         self._release_client_keys_lock()
-
         self.id = agent_id
         self.internal_key = agent_key
         self.key = self.compute_key()
