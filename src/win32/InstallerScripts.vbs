@@ -67,9 +67,9 @@ If Not objFSO.fileExists(home_dir & "client.keys") Then
     objFSO.CreateTextFile(home_dir & "client.keys")
 End If
 
-' If ossec.conf exists, it means Wazuh version < 5.0.0
 If objFSO.fileExists(home_dir & "ossec.conf") Then
 
+    ' If ossec.conf exists, it means Wazuh version < 5.0.0
     ' remove ossec.log
     If objFSO.fileExists(home_dir & "ossec.log") Then
         objSFO.DeleteFile(home_dir & "ossec.log")
@@ -86,9 +86,6 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
         objSFO.CreateFolder(home_dir & "logs")
     End If
 
-End If
-
-If objFSO.fileExists(home_dir & "ossec.conf") Then
     ' Reading ossec.conf file
     Const ForReading = 1
     Set objFile = objFSO.OpenTextFile(home_dir & "ossec.conf", ForReading)
