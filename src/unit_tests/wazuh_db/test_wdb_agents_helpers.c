@@ -128,13 +128,13 @@ void test_wdb_agents_vuln_cves_insert_error_json(void **state)
     const char *reference = "69ac04fa9b4a0dcfccd7c2237b366e501b678cc7";
     const char *type = "PACKAGE";
     const char *status = "VALID";
-    bool check_pkg_existance = true;
+    bool check_pkg_existence = true;
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Error creating data JSON for Wazuh DB.");
 
-    ret = wdb_agents_vuln_cves_insert(id, name, version, architecture, cve, reference, type, status, check_pkg_existance, NULL);
+    ret = wdb_agents_vuln_cves_insert(id, name, version, architecture, cve, reference, type, status, check_pkg_existence, NULL);
 
     assert_null(ret);
 }
@@ -150,10 +150,10 @@ void test_wdb_agents_vuln_cves_insert_error_sql_execution(void **state)
     const char *reference = "69ac04fa9b4a0dcfccd7c2237b366e501b678cc7";
     const char *type = "PACKAGE";
     const char *status = "VALID";
-    bool check_pkg_existance = true;
+    bool check_pkg_existence = true;
 
     const char *json_str = NULL;
-    os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", json_str);
+    os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", json_str);
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -188,7 +188,7 @@ void test_wdb_agents_vuln_cves_insert_error_sql_execution(void **state)
     // Handling result
     expect_string(__wrap__merror, formatted_msg, "Agents DB (1) Error querying Wazuh DB to insert vuln_cves");
 
-    ret = wdb_agents_vuln_cves_insert(id, name, version, architecture, cve, reference, type, status, check_pkg_existance, NULL);
+    ret = wdb_agents_vuln_cves_insert(id, name, version, architecture, cve, reference, type, status, check_pkg_existence, NULL);
 
     assert_null(ret);
 }
@@ -204,10 +204,10 @@ void test_wdb_agents_vuln_cves_insert_success(void **state)
     const char *reference = "69ac04fa9b4a0dcfccd7c2237b366e501b678cc7";
     const char *type = "PACKAGE";
     const char *status = "VALID";
-    bool check_pkg_existance = true;
+    bool check_pkg_existence = true;
 
     const char *json_str = NULL;
-    os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existance\":true}", json_str);
+    os_strdup("{\"name\":\"test_package\",\"version\":\"1.0\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1001\",\"reference\":\"69ac04fa9b4a0dcfccd7c2237b366e501b678cc7\",\"type\":\"PACKAGE\",\"status\":\"VALID\",\"check_pkg_existence\":true}", json_str);
 
     will_return(__wrap_cJSON_CreateObject, 1);
     will_return_always(__wrap_cJSON_AddStringToObject, 1);
@@ -239,7 +239,7 @@ void test_wdb_agents_vuln_cves_insert_success(void **state)
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_agents_vuln_cves_insert(id, name, version, architecture, cve, reference, type, status, check_pkg_existance, NULL);
+    ret = wdb_agents_vuln_cves_insert(id, name, version, architecture, cve, reference, type, status, check_pkg_existence, NULL);
 
     assert_ptr_equal(1, ret);
 }
