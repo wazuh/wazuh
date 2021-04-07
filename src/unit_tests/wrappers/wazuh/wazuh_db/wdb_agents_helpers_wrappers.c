@@ -22,7 +22,7 @@ int __wrap_wdb_agents_vuln_cves_insert(int id,
                                       const char *reference,
                                       const char *type,
                                       const char *status,
-                                      bool check_pkg_existance,
+                                      bool check_pkg_existence,
                                       __attribute__((unused)) int *sock) {
     check_expected(id);
     check_expected(name);
@@ -32,7 +32,7 @@ int __wrap_wdb_agents_vuln_cves_insert(int id,
     check_expected(reference);
     check_expected(type);
     check_expected(status);
-    check_expected(check_pkg_existance);
+    check_expected(check_pkg_existence);
     return mock_type(int);
 }
 
