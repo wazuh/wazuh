@@ -52,4 +52,15 @@ admin’s credentials.
         <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-27065)</description>
     </rule>
 
+<!--
+CVE-2021-26858 exploitation can be detected via the Exchange log files:
+C:\Program Files\Microsoft\Exchange Server\V15\Logging\OABGeneratorLog
+Files should only be downloaded to the %PROGRAMFILES%\Microsoft\Exchange Server\V15\ClientAccess\OAB\Temp directory
+In case of exploitation, files are downloaded to other directories (UNC or local paths)
+-->
+    <rule id="62648" level="12">
+        <match>Download failed and temporary file</match>
+        <regex type="pcre2" negate="yes">[A-Z]:\\Program Files( \(x86\))?\\Microsoft\\Exchange Server\\V15\\ClientAccess\\OAB\\Temp</regex>
+        <description>MS Exchange - Possible post-authentication arbitrary file write vulnerability exploitation (CVE-2021-26858)</description>
+    </rule>
 </group>
