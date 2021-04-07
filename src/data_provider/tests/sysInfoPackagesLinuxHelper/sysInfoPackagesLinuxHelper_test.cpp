@@ -240,10 +240,10 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
 {
-    const auto spMock       {std::make_unique<__alpm_list_t>()};
-    const auto spData       {std::make_unique<__alpm_pkg_t>()};
-    const auto spDataHandle {std::make_unique<__alpm_handle_t>()};
-    const auto spDataGroups {std::make_unique<__alpm_list_t>()};
+    __alpm_list_t  mock;
+    __alpm_pkg_t   data;
+    const auto     spDataHandle {std::make_unique<__alpm_handle_t>()};
+    const auto     spDataGroups {std::make_unique<__alpm_list_t>()};
 
     constexpr auto PKG_GROUP    {"wazuh"};
     constexpr auto PKG_ARCH     {"x86_64"};
@@ -251,20 +251,20 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     constexpr auto PKG_DESC     {"Standalone web browser from mozilla.org"};
     constexpr auto PKG_VERSION  {"86.0-2"};
 
-    spData->handle        = spDataHandle.get();
-    spData->groups        = spDataGroups.get();
-    spData->isize         = 1;
-    spData->installdate   = 0;
-    spData->groups->next  = nullptr;
-    spData->name          = const_cast<char *>(PKG_NAME);
-    spData->groups->data  = const_cast<char *>(PKG_GROUP);
-    spData->version       = const_cast<char *>(PKG_VERSION);
-    spData->arch          = const_cast<char *>(PKG_ARCH);
-    spData->desc          = const_cast<char *>(PKG_DESC);
-    spMock->data          = spData.get();
-    spData->ops           = &default_pkg_ops;
+    data.handle        = spDataHandle.get();
+    data.groups        = spDataGroups.get();
+    data.isize         = 1;
+    data.installdate   = 0;
+    data.groups->next  = nullptr;
+    data.name          = const_cast<char *>(PKG_NAME);
+    data.groups->data  = const_cast<char *>(PKG_GROUP);
+    data.version       = const_cast<char *>(PKG_VERSION);
+    data.arch          = const_cast<char *>(PKG_ARCH);
+    data.desc          = const_cast<char *>(PKG_DESC);
+    mock.data          = &data;
+    data.ops           = &default_pkg_ops;
 
-    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(spMock.get()) };
+    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(&mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ(PKG_NAME, jsPackageInfo["name"]);
     EXPECT_EQ(1, jsPackageInfo["size"]);
@@ -279,13 +279,13 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
 {
-    const auto spMock            {std::make_unique<__alpm_list_t>()};
-    const auto spData            {std::make_unique<__alpm_pkg_t>()};
-    const auto spDataHandle      {std::make_unique<__alpm_handle_t>()};
-    const auto spDataFirstGroup  {std::make_unique<__alpm_list_t>()};
-    const auto spDataSecondGroup {std::make_unique<__alpm_list_t>()};
-    const auto spDataThirdGroup  {std::make_unique<__alpm_list_t>()};
-    const auto spDataFourthGroup {std::make_unique<__alpm_list_t>()};
+    __alpm_list_t   mock;
+    __alpm_pkg_t    data;
+    const auto      spDataHandle      {std::make_unique<__alpm_handle_t>()};
+    const auto      spDataFirstGroup  {std::make_unique<__alpm_list_t>()};
+    const auto      spDataSecondGroup {std::make_unique<__alpm_list_t>()};
+    const auto      spDataThirdGroup  {std::make_unique<__alpm_list_t>()};
+    const auto      spDataFourthGroup {std::make_unique<__alpm_list_t>()};
 
     spDataFirstGroup.get()->data    = const_cast<char *>("Wazuh");
     spDataFirstGroup.get()->next    = spDataSecondGroup.get();
@@ -296,43 +296,43 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
     spDataFourthGroup.get()->data   = const_cast<char *>("lorem");
     spDataFourthGroup.get()->next   = nullptr;
 
-    spData->isize                   = 0;
-    spData->installdate             = 0;
-    spData->name                    = nullptr;
-    spData->version                 = nullptr;
-    spData->arch                    = nullptr;
-    spData->desc                    = nullptr;
-    spData->handle                  = spDataHandle.get();
-    spData->groups                  = spDataFirstGroup.get();
-    spMock->data                    = spData.get();
-    spData->ops                     = &default_pkg_ops;
+    data.isize                   = 0;
+    data.installdate             = 0;
+    data.name                    = nullptr;
+    data.version                 = nullptr;
+    data.arch                    = nullptr;
+    data.desc                    = nullptr;
+    data.handle                  = spDataHandle.get();
+    data.groups                  = spDataFirstGroup.get();
+    mock.data                    = &data;
+    data.ops                     = &default_pkg_ops;
 
-    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(spMock.get()) };
+    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(&mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("Wazuh-test-Arch-lorem", jsPackageInfo["groups"]);
 }
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
 {
-    const auto spMock       {std::make_unique<__alpm_list_t>()};
-    const auto spData       {std::make_unique<__alpm_pkg_t>()};
-    const auto spDataHandle {std::make_unique<__alpm_handle_t>()};
-    const auto spDataGroups {std::make_unique<__alpm_list_t>()};
+    __alpm_list_t   mock;
+    __alpm_pkg_t    data;
+    const auto      spDataHandle {std::make_unique<__alpm_handle_t>()};
+    const auto      spDataGroups {std::make_unique<__alpm_list_t>()};
 
-    spData->handle        = spDataHandle.get();
-    spData->groups        = spDataGroups.get();
-    spData->isize         = 0;
-    spData->installdate   = 0;
-    spData->groups->next  = nullptr;
-    spData->name          = nullptr;
-    spData->groups->data  = nullptr;
-    spData->version       = nullptr;
-    spData->arch          = nullptr;
-    spData->desc          = nullptr;
-    spMock->data          = spData.get();
-    spData->ops           = &default_pkg_ops;
+    data.handle        = spDataHandle.get();
+    data.groups        = spDataGroups.get();
+    data.isize         = 0;
+    data.installdate   = 0;
+    data.groups->next  = nullptr;
+    data.name          = nullptr;
+    data.groups->data  = nullptr;
+    data.version       = nullptr;
+    data.arch          = nullptr;
+    data.desc          = nullptr;
+    mock.data          = &data;
+    data.ops           = &default_pkg_ops;
 
-    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(spMock.get()) };
+    const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(&mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
