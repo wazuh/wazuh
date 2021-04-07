@@ -265,11 +265,11 @@ void test_wdb_agents_insert_vuln_cves_error_json(void **state) {
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
-    bool check_pkg_existance = true;
+    bool check_pkg_existence = true;
 
     will_return(__wrap_cJSON_CreateObject, NULL);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
 
     assert_null(ret);
 }
@@ -284,7 +284,7 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state) {
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
-    bool check_pkg_existance = true;
+    bool check_pkg_existence = true;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -315,7 +315,7 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_not_found(void **state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, "PKG_NOT_FOUND");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
 
     assert_ptr_equal(1, ret);
 }
@@ -330,7 +330,7 @@ void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state) 
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
-    bool check_pkg_existance = true;
+    bool check_pkg_existence = true;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -364,7 +364,7 @@ void test_wdb_agents_insert_vuln_cves_success_statement_init_fail(void **state) 
     expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
 
     assert_ptr_equal(1, ret);
 }
@@ -379,7 +379,7 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) 
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
-    bool check_pkg_existance = true;
+    bool check_pkg_existence = true;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -433,7 +433,7 @@ void test_wdb_agents_insert_vuln_cves_success_statement_exec_fail(void **state) 
     expect_string(__wrap_cJSON_AddStringToObject, string, "ERROR");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
 
     assert_ptr_equal(1, ret);
 }
@@ -449,7 +449,7 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     const char* reference = "1c979289c63e6225fea818ff9ca83d9d0d25c46a";
     const char* type = "PACKAGE";
     const char* status = "VALID";
-    bool check_pkg_existance = true;
+    bool check_pkg_existence = true;
 
     will_return(__wrap_cJSON_CreateObject, (cJSON *)1);
 
@@ -500,7 +500,7 @@ void test_wdb_agents_insert_vuln_cves_success_pkg_found(void **state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, "SUCCESS");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
 
-    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existance);
+    ret = wdb_agents_insert_vuln_cves(data->wdb, name, version, architecture, cve, reference, type, status, check_pkg_existence);
 
     assert_ptr_equal(1, ret);
 }
