@@ -356,10 +356,13 @@ CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check
 
 CREATE TABLE IF NOT EXISTS vuln_metadata (
     LAST_PARTIAL_SCAN INTEGER,
-    LAST_FULL_SCAN INTEGER
+    LAST_FULL_SCAN INTEGER,
+    HOTFIX_SCAN_ID TEXT
 );
-
-INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN) VALUES (0, 0);
+INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN, HOTFIX_SCAN_ID)
+    SELECT '0', '0', '0' WHERE NOT EXISTS (
+        SELECT * FROM vuln_metadata
+    );
 
 CREATE TABLE IF NOT EXISTS sync_info (
     component TEXT PRIMARY KEY,
