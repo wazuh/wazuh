@@ -283,16 +283,19 @@ class Handler(asyncio.Protocol):
             Whether a message was parsed or not.
         """
         if self.in_buffer:
-            if self.in_msg.received == 0:
+            if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len:
                 # A new message has been received. Both header and payload must be processed.
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
-            else:
+                return True
+            elif self.in_msg.received != 0:
                 # The previous message has not been completely received yet. No header to parse, just payload.
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
-            return True
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -488,7 +491,7 @@ class Handler(asyncio.Protocol):
         message : bytes
             Received data.
         """
-        self.in_buffer = message
+        self.in_buffer += message
         for command, counter, payload in self.get_messages():
             # If the message is the response of a previously sent request.
             if counter in self.box:
