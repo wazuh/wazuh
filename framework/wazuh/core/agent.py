@@ -476,15 +476,15 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
-        try:
-            if use_only_authd:
-                if not is_authd_running:
-                    raise WazuhInternalError(1726)
+        if use_only_authd and not is_authd_running:
+            raise WazuhInternalError(1726)
 
+        try:
             if not is_authd_running:
                 data = self._remove_manual(backup, purge)
             else:
                 data = self._remove_authd(purge)
+
             return data
         except WazuhException as e:
             raise e
@@ -681,9 +681,8 @@ class Agent:
         manager_status = get_manager_status()
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
-        if use_only_authd:
-            if not is_authd_running:
-                raise WazuhInternalError(1726)
+        if use_only_authd and not is_authd_running:
+            raise WazuhInternalError(1726)
 
         try:
             if not is_authd_running:

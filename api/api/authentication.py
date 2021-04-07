@@ -3,10 +3,10 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import copy
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from secrets import token_urlsafe
 from shutil import chown
 from time import time
