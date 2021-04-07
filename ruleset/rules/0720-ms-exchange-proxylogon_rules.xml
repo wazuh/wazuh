@@ -84,5 +84,12 @@ to exploit.
         <field name="win.system.message">System.InvalidCastException</field>
         <description>MS Exchange - Possible deserialization exploitation (CVE-2021-26857)</description>
     </rule>
+
+    <rule id="61644" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName">powershell.exe|powershell_ISE.exe</field>
+        <field name="win.eventdata.commandLine">Add-PSSnapin\s+Microsoft.Exchange.Powershell.Snapin</field>
+        <description>Powershell initializing MS Exchange snapin. Possible mailbox data exportation</description>
+    </rule>
 </group>
 
