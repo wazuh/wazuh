@@ -63,4 +63,26 @@ In case of exploitation, files are downloaded to other directories (UNC or local
         <regex type="pcre2" negate="yes">[A-Z]:\\Program Files( \(x86\))?\\Microsoft\\Exchange Server\\V15\\ClientAccess\\OAB\\Temp</regex>
         <description>MS Exchange - Possible post-authentication arbitrary file write vulnerability exploitation (CVE-2021-26858)</description>
     </rule>
+
+
+<!--
+CVE-2021-26857 is an insecure deserialization vulnerability in the Unified Messaging service. Insecure deserialization
+is where untrusted user-controllable data is deserialized by a program. Exploiting this vulnerability gave HAFNIUM the
+ability to run code as SYSTEM on the Exchange server. This requires administrator permission or another vulnerability
+to exploit.
+-->
+    <rule id="61648" level="0">
+        <if_sid>60602</if_sid>
+        <field name="win.system.providerName">^MSExchange Unified Messaging$</field>
+        <options>no_full_log</options>
+        <description>Filtering MSExchange Unified Message error events</description>
+    </rule>
+
+
+    <rule id="61649" level="12">
+        <if_sid>61648</if_sid>
+        <field name="win.system.message">System.InvalidCastException</field>
+        <description>MS Exchange - Possible deserialization exploitation (CVE-2021-26857)</description>
+    </rule>
 </group>
+
