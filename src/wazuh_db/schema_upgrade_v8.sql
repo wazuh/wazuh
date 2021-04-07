@@ -28,7 +28,17 @@ CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
 CREATE INDEX IF NOT EXISTS cve_type ON vuln_cves (type);
 CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
-UPDATE vuln_metadata SET LAST_SCAN = '0';
+DROP TABLE IF EXISTS vuln_cves;
+
+CREATE TABLE IF NOT EXISTS vuln_metadata (
+    LAST_PARTIAL_SCAN INTEGER,
+    LAST_FULL_SCAN INTEGER,
+    HOTFIX_SCAN_ID TEXT
+);
+INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN, HOTFIX_SCAN_ID)
+    SELECT '0', '0', '0' WHERE NOT EXISTS (
+        SELECT * FROM vuln_metadata
+    );
 
 CREATE TRIGGER obsolete_vulnerabilities
     AFTER DELETE ON sys_programs
