@@ -36,7 +36,7 @@ https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-se
 -->
     <rule id="61646" level="12">
         <regex type="pcre2">,,[^,]*,ServerInfo~[^,]*/[^,]*</regex>
-        <description>Possible ProxyLogon vulnerability exploitation</description>
+        <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-26855)</description>
     </rule>
 
 <!--
