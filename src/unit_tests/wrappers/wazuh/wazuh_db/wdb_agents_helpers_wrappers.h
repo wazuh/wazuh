@@ -21,7 +21,7 @@ int __wrap_wdb_agents_vuln_cves_insert(int id,
                                       const char *reference,
                                       const char *type,
                                       const char *status,
-                                      bool check_pkg_existance,
+                                      bool check_pkg_existence,
                                       __attribute__((unused)) int *sock);
 
 int __wrap_wdb_agents_vuln_cves_clear(int id,
