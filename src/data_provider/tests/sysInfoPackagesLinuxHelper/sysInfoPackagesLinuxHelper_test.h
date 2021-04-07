@@ -13,9 +13,6 @@
 
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include <alpm.h>
-#include <package.h>
-#include <handle.h>
 
 class SysInfoPackagesLinuxHelperTest : public ::testing::Test 
 {

@@ -160,20 +160,20 @@ namespace PackageLinuxHelper
         return ret;
     }
 
-    static nlohmann::json parsePacman(const alpm_list_t *item)
+    static nlohmann::json parsePacman(const alpm_list_t *pItem)
     {
-        alpm_pkg_t* pkg{reinterpret_cast<alpm_pkg_t*>(item->data)};
+        const auto pArchPkg{reinterpret_cast<alpm_pkg_t*>(pItem->data)};
         nlohmann::json packageInfo;
         std::string groups;
-        auto alpmWrapper
+        static const auto alpmWrapper
         {
             [] (auto pkgData) { return pkgData ? pkgData : ""; }
         };
 
-        packageInfo["name"]         = alpmWrapper(alpm_pkg_get_name(pkg));
-        packageInfo["size"]         = alpm_pkg_get_isize(pkg);
-        packageInfo["install_time"] = Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pkg)));
-        for (auto group{alpm_pkg_get_groups(pkg)}; group; group = alpm_list_next(group))
+        packageInfo["name"]         = alpmWrapper(alpm_pkg_get_name(pArchPkg));
+        packageInfo["size"]         = alpm_pkg_get_isize(pArchPkg);
+        packageInfo["install_time"] = Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pArchPkg)));
+        for (auto group{alpm_pkg_get_groups(pArchPkg)}; group; group = alpm_list_next(group))
         {
             if (group->data)
             {
@@ -183,11 +183,11 @@ namespace PackageLinuxHelper
         }
         groups = groups.empty() ? "" : groups.substr(0, groups.size()-1);
         packageInfo["groups"]       = groups;
-        packageInfo["version"]      = alpmWrapper(alpm_pkg_get_version(pkg));
-        packageInfo["architecture"] = alpmWrapper(alpm_pkg_get_arch(pkg));
+        packageInfo["version"]      = alpmWrapper(alpm_pkg_get_version(pArchPkg));
+        packageInfo["architecture"] = alpmWrapper(alpm_pkg_get_arch(pArchPkg));
         packageInfo["format"]       = "pacman";
         packageInfo["vendor"]       = "";
-        packageInfo["description"]  = alpmWrapper(alpm_pkg_get_desc(pkg));
+        packageInfo["description"]  = alpmWrapper(alpm_pkg_get_desc(pArchPkg));
         return packageInfo;
     }
 };

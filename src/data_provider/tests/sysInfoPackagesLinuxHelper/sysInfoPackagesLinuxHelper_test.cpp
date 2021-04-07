@@ -11,6 +11,9 @@
 
 #include "sysInfoPackagesLinuxHelper_test.h"
 #include "packages/packagesLinuxParserHelper.h"
+#include <alpm.h>
+#include <package.h>
+#include <handle.h>
 
 using ::testing::_;
 using ::testing::Return;
@@ -237,10 +240,10 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
 {
-    const std::unique_ptr<__alpm_list_t>    spMock{new struct __alpm_list_t};
-    const std::unique_ptr<__alpm_pkg_t>     spData{new struct __alpm_pkg_t};
-    const std::unique_ptr<__alpm_handle_t>  spDataHandle{new struct __alpm_handle_t};
-    const std::unique_ptr<__alpm_list_t>    spDataGroups{new struct __alpm_list_t};
+    const auto spMock       {std::make_unique<__alpm_list_t>()};
+    const auto spData       {std::make_unique<__alpm_pkg_t>()};
+    const auto spDataHandle {std::make_unique<__alpm_handle_t>()};
+    const auto spDataGroups {std::make_unique<__alpm_list_t>()};
 
     constexpr auto PKG_GROUP    {"wazuh"};
     constexpr auto PKG_ARCH     {"x86_64"};
@@ -252,7 +255,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     spData->groups        = spDataGroups.get();
     spData->isize         = 1;
     spData->installdate   = 0;
-    spData->groups->next  = NULL;
+    spData->groups->next  = nullptr;
     spData->name          = const_cast<char *>(PKG_NAME);
     spData->groups->data  = const_cast<char *>(PKG_GROUP);
     spData->version       = const_cast<char *>(PKG_VERSION);
@@ -263,26 +266,26 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
 
     const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(spMock.get()) };
     EXPECT_FALSE(jsPackageInfo.empty());
-    EXPECT_EQ("firefox", jsPackageInfo["name"]);
+    EXPECT_EQ(PKG_NAME, jsPackageInfo["name"]);
     EXPECT_EQ(1, jsPackageInfo["size"]);
     EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["install_time"]);
-    EXPECT_EQ("wazuh", jsPackageInfo["groups"]);
-    EXPECT_EQ("86.0-2", jsPackageInfo["version"]);
-    EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
+    EXPECT_EQ(PKG_GROUP, jsPackageInfo["groups"]);
+    EXPECT_EQ(PKG_VERSION, jsPackageInfo["version"]);
+    EXPECT_EQ(PKG_ARCH, jsPackageInfo["architecture"]);
     EXPECT_EQ("pacman", jsPackageInfo["format"]);
     EXPECT_EQ("", jsPackageInfo["vendor"]);
-    EXPECT_EQ("Standalone web browser from mozilla.org", jsPackageInfo["description"]);
+    EXPECT_EQ(PKG_DESC, jsPackageInfo["description"]);
 }
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
 {
-    const std::unique_ptr<__alpm_list_t>    spMock{new struct __alpm_list_t};
-    const std::unique_ptr<__alpm_pkg_t>     spData{new struct __alpm_pkg_t};
-    const std::unique_ptr<__alpm_handle_t>  spDataHandle{new struct __alpm_handle_t};
-    const std::unique_ptr<__alpm_list_t>    spDataFirstGroup{new struct __alpm_list_t};
-    const std::unique_ptr<__alpm_list_t>    spDataSecondGroup{new struct __alpm_list_t};
-    const std::unique_ptr<__alpm_list_t>    spDataThirdGroup{new struct __alpm_list_t};
-    const std::unique_ptr<__alpm_list_t>    spDataFourthGroup{new struct __alpm_list_t};
+    const auto spMock            {std::make_unique<__alpm_list_t>()};
+    const auto spData            {std::make_unique<__alpm_pkg_t>()};
+    const auto spDataHandle      {std::make_unique<__alpm_handle_t>()};
+    const auto spDataFirstGroup  {std::make_unique<__alpm_list_t>()};
+    const auto spDataSecondGroup {std::make_unique<__alpm_list_t>()};
+    const auto spDataThirdGroup  {std::make_unique<__alpm_list_t>()};
+    const auto spDataFourthGroup {std::make_unique<__alpm_list_t>()};
 
     spDataFirstGroup.get()->data    = const_cast<char *>("Wazuh");
     spDataFirstGroup.get()->next    = spDataSecondGroup.get();
@@ -291,14 +294,14 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
     spDataThirdGroup.get()->data    = const_cast<char *>("Arch");
     spDataThirdGroup.get()->next    = spDataFourthGroup.get();
     spDataFourthGroup.get()->data   = const_cast<char *>("lorem");
-    spDataFourthGroup.get()->next   = NULL;
+    spDataFourthGroup.get()->next   = nullptr;
 
     spData->isize                   = 0;
     spData->installdate             = 0;
-    spData->name                    = NULL;
-    spData->version                 = NULL;
-    spData->arch                    = NULL;
-    spData->desc                    = NULL;
+    spData->name                    = nullptr;
+    spData->version                 = nullptr;
+    spData->arch                    = nullptr;
+    spData->desc                    = nullptr;
     spData->handle                  = spDataHandle.get();
     spData->groups                  = spDataFirstGroup.get();
     spMock->data                    = spData.get();
@@ -311,21 +314,21 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
 {
-    const std::unique_ptr<__alpm_list_t>    spMock{new struct __alpm_list_t};
-    const std::unique_ptr<__alpm_pkg_t>     spData{new struct __alpm_pkg_t};
-    const std::unique_ptr<__alpm_handle_t>  spDataHandle{new struct __alpm_handle_t};
-    const std::unique_ptr<__alpm_list_t>    spDataGroups{new struct __alpm_list_t};
+    const auto spMock       {std::make_unique<__alpm_list_t>()};
+    const auto spData       {std::make_unique<__alpm_pkg_t>()};
+    const auto spDataHandle {std::make_unique<__alpm_handle_t>()};
+    const auto spDataGroups {std::make_unique<__alpm_list_t>()};
 
     spData->handle        = spDataHandle.get();
     spData->groups        = spDataGroups.get();
     spData->isize         = 0;
     spData->installdate   = 0;
-    spData->groups->next  = NULL;
-    spData->name          = NULL;
-    spData->groups->data  = NULL;
-    spData->version       = NULL;
-    spData->arch          = NULL;
-    spData->desc          = NULL;
+    spData->groups->next  = nullptr;
+    spData->name          = nullptr;
+    spData->groups->data  = nullptr;
+    spData->version       = nullptr;
+    spData->arch          = nullptr;
+    spData->desc          = nullptr;
     spMock->data          = spData.get();
     spData->ops           = &default_pkg_ops;
 

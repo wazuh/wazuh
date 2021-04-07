@@ -23,7 +23,8 @@ target_link_libraries(sysInfoPackagesLinuxHelper_unit_test
     sqlite3
     alpm
     archive
-    wazuhext
+    ssl
+    crypto
     cjson
     proc
     dl
