@@ -25,7 +25,7 @@ cJSON* __wrap_wdb_agents_insert_vuln_cves(__attribute__((unused)) wdb_t *wdb,
                                           const char* reference,
                                           const char* type,
                                           const char* status,
-                                          bool check_pkg_existance) {
+                                          bool check_pkg_existence) {
     check_expected(name);
     check_expected(version);
     check_expected(architecture);
@@ -33,7 +33,7 @@ cJSON* __wrap_wdb_agents_insert_vuln_cves(__attribute__((unused)) wdb_t *wdb,
     check_expected(reference);
     check_expected(type);
     check_expected(status);
-    check_expected(check_pkg_existance);
+    check_expected(check_pkg_existence);
     return mock_ptr_type(cJSON*);
 }
 
