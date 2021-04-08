@@ -10,7 +10,7 @@ from unittest.mock import mock_open
 from unittest.mock import patch, MagicMock
 from xml.etree.ElementTree import fromstring
 
-from wazuh.core.common import ossec_conf
+from wazuh.core.common import manager_conf
 
 import pytest
 
@@ -398,7 +398,7 @@ def test_write_ossec_conf():
     content = "New config"
     with patch('wazuh.core.configuration.open', mock_open()) as mocked_file:
         configuration.write_ossec_conf(new_conf=content)
-        mocked_file.assert_called_once_with(ossec_conf, 'w')
+        mocked_file.assert_called_once_with(manager_conf, 'w')
         mocked_file().writelines.assert_called_once_with(content)
 
 

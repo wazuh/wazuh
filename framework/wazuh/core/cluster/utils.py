@@ -25,7 +25,7 @@ logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.wazuh_path, "var/run/.api_execq_lock")
 
 
-def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
+def read_cluster_config(config_file=common.manager_conf) -> typing.Dict:
     """Read cluster configuration from ossec.conf.
 
     If some fields are missing in the ossec.conf cluster configuration, they are replaced
@@ -212,7 +212,7 @@ def get_cluster_items():
 
 
 @lru_cache()
-def read_config(config_file=common.ossec_conf):
+def read_config(config_file=common.manager_conf):
     """Get the cluster configuration.
 
     Parameters

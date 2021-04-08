@@ -466,7 +466,7 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
+def get_ossec_conf(section=None, field=None, conf_file=common.manager_conf):
     """
     Returns ossec.conf (manager) as dictionary.
 
@@ -820,7 +820,7 @@ def write_ossec_conf(new_conf: str):
         The new configuration to be applied.
     """
     try:
-        with open(common.ossec_conf, 'w') as f:
+        with open(common.manager_conf, 'w') as f:
             f.writelines(new_conf)
     except Exception:
         raise WazuhError(1126)
