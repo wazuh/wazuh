@@ -715,33 +715,39 @@ def remove_user_role(user_id, role_ids):
     :param role_ids: List of role ids
     :return User-Roles information
     """
-    username = get_username(user_id=user_id)
-    result = AffectedItemsWazuhResult(none_msg=f'No role was unlinked from user {username}',
-                                      some_msg=f'Some roles were not unlinked from user {username}',
-                                      all_msg=f'All roles were unlinked from user {username}')
-    success = False
-    with UserRolesManager() as urm:
-        for role_id in role_ids:
-            user_role = urm.remove_role_in_user(user_id=int(user_id[0]), role_id=role_id)
-            if user_role == SecurityError.INVALID:
-                result.add_failed_item(id_=int(role_id), error=WazuhError(4016))
-            elif user_role == SecurityError.ROLE_NOT_EXIST:
-                result.add_failed_item(id_=int(role_id), error=WazuhError(4002))
-            elif user_role == SecurityError.USER_NOT_EXIST:
-                result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5001))
-                break
-            elif user_role == SecurityError.ADMIN_RESOURCES:
-                result.add_failed_item(id_=int(user_id[0]), error=WazuhError(4008))
-            else:
-                success = True
-                result.total_affected_items += 1
-        if success:
-            with AuthenticationManager() as auth:
-                result.affected_items.append(auth.get_user_id(int(user_id[0])))
-            result.affected_items.sort(key=str)
-            invalid_users_tokens(users=user_id)
 
-    return result
+    try:
+        username = get_username(user_id=user_id)
+        result = AffectedItemsWazuhResult(none_msg=f'No role was unlinked from user {username}',
+                                          some_msg=f'Some roles were not unlinked from user {username}',
+                                          all_msg=f'All roles were unlinked from user {username}')
+        success = False
+        with UserRolesManager() as urm:
+            for role_id in role_ids:
+                user_role = urm.remove_role_in_user(user_id=int(user_id[0]), role_id=role_id)
+                if user_role == SecurityError.INVALID:
+                    result.add_failed_item(id_=int(role_id), error=WazuhError(4016))
+                elif user_role == SecurityError.ROLE_NOT_EXIST:
+                    result.add_failed_item(id_=int(role_id), error=WazuhError(4002))
+                elif user_role == SecurityError.USER_NOT_EXIST:
+                    result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5001))
+                    break
+                elif user_role == SecurityError.ADMIN_RESOURCES:
+                    result.add_failed_item(id_=int(user_id[0]), error=WazuhError(4008))
+                else:
+                    success = True
+                    result.total_affected_items += 1
+            if success:
+                with AuthenticationManager() as auth:
+                    result.affected_items.append(auth.get_user_id(int(user_id[0])))
+                result.affected_items.sort(key=str)
+                invalid_users_tokens(users=user_id)
+
+        return result
+
+    except:
+
+        raise WazuhError(5001)
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
