@@ -4,6 +4,7 @@
   -  Updated by Wazuh, Inc.
   -  Copyright (C) 2015-2021, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+  Based on https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-servers/
 -->
 
 <group name="ms,exchange,">
@@ -31,8 +32,6 @@ Sample: 2021-04-06T14:54:34.255Z,61d2c86f-f9bb-456d-88c0-3529172510ac,15,0,847,3
 CVE-2021-26855 (ProxyLogon) exploitation can be detected via the following Exchange HttpProxy logs:
 These logs are located in the following directory: %PROGRAMFILES%\Microsoft\Exchange Server\V15\Logging\HttpProxy
 Exploitation can be identified by searching for log entries where the AuthenticatedUser is empty and the AnchorMailbox contains the pattern of ServerInfo~*/*
-
-https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-servers/
 -->
     <rule id="61646" level="12">
         <regex type="pcre2">,,[^,]*,ServerInfo~[^,]*/[^,]*</regex>
@@ -78,7 +77,6 @@ to exploit.
         <description>Filtering MSExchange Unified Message error events</description>
     </rule>
 
-
     <rule id="61649" level="12">
         <if_sid>61648</if_sid>
         <field name="win.system.message">System.InvalidCastException</field>
@@ -87,9 +85,17 @@ to exploit.
 
     <rule id="61644" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="win.eventdata.originalFileName">powershell.exe|powershell_ISE.exe</field>
+        <field name="win.eventdata.originalFileName">cmd.exe|powershell.exe|powershell_ISE.exe</field>
         <field name="win.eventdata.commandLine">Add-PSSnapin\s+Microsoft.Exchange.Powershell.Snapin</field>
         <description>Powershell initializing MS Exchange snapin. Possible mailbox data dump</description>
     </rule>
+
+    <rule id="61645" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="win.eventdata.originalFileName">powershell.exe|powershell_ISE.exe</field>
+        <field name="win.eventdata.commandLine" type="pcre2">\$client = New-Object System\.Net\.Sockets\.TCPClient</field>
+        <description>Possible Nishang Invoke-PowerShellTcpOneLine reverse shell script execution</description>
+    </rule>
+
 </group>
 
