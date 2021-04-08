@@ -223,7 +223,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             /* We don't accept remote commands from the manager - just in case */
             if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {
                 merror("Remote commands are not accepted from the manager. "
-                       "Ignoring it on the agent.conf");
+                       "Ignoring it on the shared.conf");
 
                 logf[pl].file = NULL;
                 logf[pl].ffile = NULL;
@@ -595,7 +595,7 @@ int Test_Localfile(const char * path){
     int fail = 0;
     logreader_config test_localfile = { .agent_cfg = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CLOCALFILE | CSOCKET, path, &test_localfile, NULL) < 0) {
+    if (ReadConfig(CSHARED_CONFIG | CLOCALFILE | CSOCKET, path, &test_localfile, NULL) < 0) {
         merror(RCONFIG_ERROR,"Localfile", path);
         fail = 1;
     }

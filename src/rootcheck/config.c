@@ -27,8 +27,8 @@ int Read_Rootcheck_Config(const char *cfgfile)
 
 #ifdef CLIENT
     /* Read shared config */
-    modules |= CAGENT_CONFIG;
-    ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL);
+    modules |= CSHARED_CONFIG;
+    ReadConfig(modules, SHAREDCONFIG, &rootcheck, NULL);
 #endif
 
     switch (rootcheck.disabled) {

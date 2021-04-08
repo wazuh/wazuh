@@ -95,8 +95,8 @@ int Read_Syscheck_Config(const char *cfgfile)
     mdebug1(FIM_CLIENT_CONFIGURATION, cfgfile);
 
     /* Read shared config */
-    modules |= CAGENT_CONFIG;
-    ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
+    modules |= CSHARED_CONFIG;
+    ReadConfig(modules, SHAREDCONFIG, &syscheck, NULL);
 #endif
 
     // Check directories options to determine whether to start the whodata thread or not

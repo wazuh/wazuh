@@ -101,7 +101,7 @@ int Test_Labels(const char * path) {
     int fail = 0;
     wlabel_t *test_labels = NULL;
 
-    if (ReadConfig(CAGENT_CONFIG | CLABELS, path, &test_labels, NULL) < 0) {
+    if (ReadConfig(CSHARED_CONFIG | CLABELS, path, &test_labels, NULL) < 0) {
         merror(RCONFIG_ERROR,"Labels", path);
         fail = 1;
     } else {

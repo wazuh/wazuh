@@ -536,8 +536,8 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
         /* Get each group of the multi-group */
         group = strtok_r(multi_group, delim, &save_ptr);
 
-        /* Delete agent.conf from multi group before appending to it */
-        snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"agent.conf");
+        /* Delete shared.conf from multi group before appending to it */
+        snprintf(agent_conf_multi_path,PATH_MAX + 1,"%s/%s/%s",MULTIGROUPS_DIR,hash_multigroup,"shared.conf");
         unlink(agent_conf_multi_path);
 
         while( group != NULL ) {
@@ -588,9 +588,9 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
                    ignored = 1;
                 }
                 if (!ignored) {
-                    /* If the file is agent.conf, append */
-                    if (strcmp(files[i],"agent.conf") == 0) {
-                        snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
+                    /* If the file is shared.conf, append */
+                    if (strcmp(files[i],"shared.conf") == 0) {
+                        snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/shared.conf -->\n",group);
                         w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message,1);
                     }
                     else {
