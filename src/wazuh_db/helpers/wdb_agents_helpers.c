@@ -21,8 +21,8 @@ static const char *agents_db_commands[] = {
     [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %d vuln_cves clear"
 };
 
-cJSON* wdb_get_agent_sys_osinfo(int id,
-                          int *sock) {
+cJSON* wdb_agents_sys_osinfo_get(int id,
+                                 int *sock) {
     char *wdbquery = NULL;
     char *wdboutput = NULL;
     int aux_sock = -1;
@@ -36,7 +36,6 @@ cJSON* wdb_get_agent_sys_osinfo(int id,
     if (!result || !result->child) {
         merror("Agents DB (%d) Error querying Wazuh DB to get OS information", id);
         cJSON_Delete(result);
-        result = NULL;
     }
 
     os_free(wdbquery);
@@ -45,48 +44,6 @@ cJSON* wdb_get_agent_sys_osinfo(int id,
     if (!sock) {
         wdbc_close(&aux_sock);
     }
-
-    return result;
-}
-
-int wdb_set_agent_sys_osinfo_triaged(int id,
-                               int *sock) {
-    int result = 0;
-    char *wdbquery = NULL;
-    char *wdboutput = NULL;
-    char *payload = NULL;
-    int aux_sock = -1;
-
-    os_malloc(WDBQUERY_SIZE, wdbquery);
-    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED], id);
-
-    os_malloc(WDBOUTPUT_SIZE, wdboutput);
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Agents DB (%d) Error in the response from socket", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
-            result = OS_INVALID;
-            break;
-        default:
-            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
-            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
-            result = OS_INVALID;
-    }
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    os_free(wdbquery);
-    os_free(wdboutput);
 
     return result;
 }
