@@ -217,6 +217,8 @@
 #define LOCALFILE_REGEX "(1967): Syntax error on multiline_regex: '%s'"
 #define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
 #define FAIL_SHA1_GEN   "(1969): Failure to generate the SHA1 hash from file '%s'"
+#define DUP_OSLOG       "(1969): Can't add more than one oslog block."
+#define INV_OSLOG       "(1970): Invalid Oslog configuration. 'location' and 'log_format' must be both set to 'oslog'."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
