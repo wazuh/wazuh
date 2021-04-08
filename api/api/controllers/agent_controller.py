@@ -835,7 +835,7 @@ async def post_group(request, pretty=False, wait_for_complete=False):
 
 
 async def get_group_config(request, group_id, pretty=False, wait_for_complete=False, offset=0, limit=database_limit):
-    """Get group configuration defined in the `agent.conf` file.
+    """Get group configuration defined in the `shared.conf` file.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response

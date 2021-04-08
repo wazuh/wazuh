@@ -437,13 +437,13 @@ def test_agent_get_group_files(group_list):
         List of groups to get their files.
     """
     result = get_group_files(group_list=group_list)
-    # Assert 'items' contains agent.conf, merged.mg and ar.conf and 'hash' is not empty
+    # Assert 'items' contains shared.conf, merged.mg and ar.conf and 'hash' is not empty
     if result.total_failed_items != 0:
         assert list(result.failed_items.keys())[0].code == 1710
     else:
         assert result.total_affected_items == 3
         assert set(item['filename'] for item in result.affected_items).difference(
-            set(['agent.conf', 'merged.mg', 'ar.conf'])) == set()
+            set(['shared.conf', 'merged.mg', 'ar.conf'])) == set()
         for item in result.affected_items:
             assert item['hash']
 
@@ -1148,7 +1148,7 @@ def test_agent_get_agents_sync_group_exceptions(socket_mock, send_mock, agent_li
 
 
 @pytest.mark.parametrize('filename, group_list', [
-    ('agent.conf', ['default'])
+    ('shared.conf', ['default'])
 ])
 @patch('wazuh.core.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.core.common.shared_path', new=test_shared_path)

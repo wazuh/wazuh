@@ -1335,7 +1335,7 @@ components:
           $ref: '#/components/schemas/AgentStatus'
         configSum:
           type: string
-          description: "MD5 checksum of the group configuration file (agent.conf)"
+          description: "MD5 checksum of the group configuration file (shared.conf)"
         group:
           type: array
           description: "List of groups the agent belongs to"
@@ -1409,7 +1409,7 @@ components:
         configSum:
           type: string
           format: hash
-          description: "MD5 checksum of the group configuration file (agent.conf)"
+          description: "MD5 checksum of the group configuration file (shared.conf)"
 
     AgentGroupDeleted:
       type: object
@@ -6683,7 +6683,7 @@ paths:
       tags:
         - Groups
       summary: "Get group configuration"
-      description: "Return the group configuration defined in the `agent.conf` file"
+      description: "Return the group configuration defined in the `shared.conf` file"
       operationId: api.controllers.agent_controller.get_group_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
@@ -6829,7 +6829,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - filename: agent.conf
+                    - filename: shared.conf
                       hash: ab73af41699f13fdd81903b5f23d8d00
                     - filename: ar.conf
                       hash: 76d8be9b97d8eae4c239e530ee7e71c8

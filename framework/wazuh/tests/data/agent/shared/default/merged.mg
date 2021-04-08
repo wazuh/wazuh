@@ -6,7 +6,7 @@ restart-wazuh0 - restart-ossec.sh - 0
 restart-wazuh0 - restart-ossec.cmd - 0
 restart-wazuh0 - restart-wazuh - 0
 restart-wazuh0 - restart-wazuh.exe - 0
-!76 agent.conf
+!76 shared.conf
 <agent_config>
 
   <!-- Shared agent configuration here -->

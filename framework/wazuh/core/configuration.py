@@ -274,7 +274,7 @@ def _ossecconf2json(xml_conf):
 
 def _agentconf2json(xml_conf):
     """
-    Returns agent.conf in JSON from xml
+    Returns shared.conf in JSON from xml
     """
 
     final_json = []
@@ -505,11 +505,11 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='shared.conf', return_format=None):
     """
-    Returns agent.conf as dictionary.
+    Returns shared.conf as dictionary.
 
-    :return: agent.conf as dictionary.
+    :return: shared.conf as dictionary.
     """
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -520,7 +520,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
     try:
         # Read RAW file
-        if filename == 'agent.conf' and return_format and 'xml' == return_format.lower():
+        if filename == 'shared.conf' and return_format and 'xml' == return_format.lower():
             with open(agent_conf, 'r') as xml_data:
                 data = xml_data.read()
                 return data
@@ -538,15 +538,15 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
 def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.database_limit, filename=None):
     """
-    Returns agent.conf as dictionary.
+    Returns shared.conf as dictionary.
 
-    :return: agent.conf as dictionary.
+    :return: shared.conf as dictionary.
     """
     # Check if a multigroup_id is provided and it exists
     if multigroup_id and not os_path.exists(os_path.join(common.multi_groups_path, multigroup_id)) or not multigroup_id:
         raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
 
-    agent_conf_name = filename if filename else 'agent.conf'
+    agent_conf_name = filename if filename else 'shared.conf'
     agent_conf = os_path.join(common.multi_groups_path, multigroup_id, agent_conf_name)
 
     if not os_path.exists(agent_conf):
@@ -594,7 +594,7 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
         else:
             raise WazuhError(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
-        if filename == "agent.conf":
+        if filename == "shared.conf":
             data = get_agent_conf(group_id, limit=None, filename=filename, return_format=return_format)
         elif filename == "rootkit_files.txt":
             data = _rootkit_files2json(file_path)
@@ -718,7 +718,7 @@ def upload_group_configuration(group_id, file_content):
 
         # move temporary file to group folder
         try:
-            new_conf_path = os_path.join(common.shared_path, group_id, "agent.conf")
+            new_conf_path = os_path.join(common.shared_path, group_id, "shared.conf")
             safe_move(tmp_file_path, new_conf_path, permissions=0o660)
         except Exception as e:
             raise WazuhInternalError(1016, extra_message=str(e))
@@ -731,7 +731,7 @@ def upload_group_configuration(group_id, file_content):
         raise e
 
 
-def upload_group_file(group_id, file_data, file_name='agent.conf'):
+def upload_group_file(group_id, file_data, file_name='shared.conf'):
     """
     Updates a group file
     :param group_id: Group to update
@@ -743,7 +743,7 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
-    if file_name == 'agent.conf':
+    if file_name == 'shared.conf':
         if len(file_data) == 0:
             raise WazuhError(1112)
 

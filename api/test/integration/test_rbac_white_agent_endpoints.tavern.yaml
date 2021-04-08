@@ -447,7 +447,7 @@ stages:
        error: 0
        data:
          affected_items:
-           - filename: agent.conf
+           - filename: shared.conf
              hash: !anystr
            - filename: ar.conf
              hash: !anystr
@@ -463,7 +463,7 @@ stages:
  - name: Try get one file of a group (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/shared.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -473,7 +473,7 @@ stages:
  - name: Try get one file of a group (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/shared.conf/json"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -491,7 +491,7 @@ stages:
  - name: Try get one file of a group (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/agent.conf/xml"
+     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/shared.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -501,7 +501,7 @@ stages:
  - name: Try get one file of a group (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group2/files/agent.conf/xml"
+     url: "{protocol:s}://{host:s}:{port:d}/groups/group2/files/shared.conf/xml"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
