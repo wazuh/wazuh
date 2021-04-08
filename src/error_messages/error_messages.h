@@ -382,7 +382,7 @@
 #define VU_WDB_LASTSCAN_ERROR       "(5565): Could not update the last scan for agent '%.3d'"
 #define VU_AGENT_NOT_INITIALIZED    "(5566): The agent structure is not initialized."
 #define VU_DB_NOT_INITIALIZED       "(5567): The DB is not initialized."
-#define VU_OSINFOLNX_ERROR          "(5568): Couldn't get the OS information of the agent '%.3d'"
+#define VU_OSINFOLNX_ERROR          "(5568): Invalid OS information of the agent '%.3d'"
 #define VU_GET_PACKAGES_ERROR       "(5569): Couldn't get the packages of the agent '%.3d'"
 #define VU_GET_PACKAGES_VULN_ERROR  "(5570): Couldn't get from the NVD the '%s' vulnerabilities of the package '%s'"
 #define VU_GET_PACKAGES_DEP_ERROR   "(5571): Couldn't get from the NVD the '%s' dependencies of the package with ID '%d'"
