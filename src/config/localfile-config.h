@@ -29,6 +29,7 @@
 #include "labels_op.h"
 #include "expression.h"
 #include "os_xml/os_xml.h"
+#include "exec_op.h"
 
 extern int maximum_files;
 extern int total_files;
@@ -99,6 +100,18 @@ typedef struct {
     int64_t offset_last_read;  ///< absolut file offset of last complete multiline log processed
 } w_multiline_config_t;
 
+/**
+ * @brief An instance of w_oslog_config_t represents a OSlog (ULS) and its state
+ */
+typedef struct {
+    char * ctxt_buffer;         ///< store current read when os log is in process
+    int64_t offset_last_read;   ///< absolut stream offset of last complete log processed
+    char * last_timestamp_read; ///< timestamp of last log queued (Used for only feature event)
+    wfd_t * log_wfd;            ///< `log stream` IPC connector
+    /** Indicates if `log stream` is currently running. if not running, localfiles with oslog format will be ignored */
+    bool oslog_running;
+} w_oslog_config_t;
+
 /* Logreader config */
 typedef struct _logreader {
     off_t size;
@@ -119,7 +132,8 @@ typedef struct _logreader {
     char *ffile;
     char *file;
     char *logformat;
-    w_multiline_config_t * multiline;
+    w_multiline_config_t * multiline; ///< Multiline regex config & state
+    w_oslog_config_t * oslog;         ///< oslog config & state
     long linecount;
     char *djb_program_name;
     char *command;

@@ -359,6 +359,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
 //ifdef Darwin
             } else if (strcmp(logf[pl].logformat, OSLOG) == 0) {
+                os_calloc(1, sizeof(w_oslog_config_t), logf[pl].oslog);
 //endif Darwin
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
