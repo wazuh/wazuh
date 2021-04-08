@@ -24,14 +24,15 @@ typedef enum agents_db_access {
 } agents_db_access;
 
 /**
- * @brief Checks the triaged status in the sys_osinfo table of the specified agent's database.
+ * @brief Gets the sys_osinfo table data of the specified agent's database.
  *
  * @param[in] id The agent ID.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns 1 if triaged, 0 if not triaged or -1 on error.
+ * @return Returns cJSON object with the sys_osinfo table information. Null in case of error.
+ *                 The cJSON object must be freed by the caller.
  */
-int wdb_agents_sys_osinfo_check_triaged(int id,
-                                        int *sock);
+cJSON* wdb_agents_sys_osinfo_get(int id,
+                                 int *sock);
 
 /**
  * @brief Sets the triaged status in the sys_osinfo table of the specified agent's database.
