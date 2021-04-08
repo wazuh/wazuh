@@ -2170,7 +2170,7 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_key(void **state) {
     expect_fim_db_get_registry_key(&data);
 
     entry =
-    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key");
+    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\key:");
 
     *state = entry;
 
@@ -2190,7 +2190,7 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_key_fail_to_get_key(void *
     expect_fim_db_get_registry_key_fail(&data);
 
     entry =
-    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key:value");
+    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\key:value");
 
     *state = entry;
 
@@ -2206,7 +2206,7 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data(voi
     expect_fim_db_get_registry_data_fail("some:value", key_data.id);
 
     entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY,
-                                           "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key:some::value");
+                                           "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\key:some\\:value");
 
     *state = entry;
 
@@ -2223,7 +2223,7 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_value_success(void **state
     expect_fim_db_get_registry_data("some:value", key_data.id, &value_data);
 
     entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY,
-                                           "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key:some::value");
+                                           "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\key:some\\:value");
 
     *state = entry;
 
