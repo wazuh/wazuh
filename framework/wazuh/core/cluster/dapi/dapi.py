@@ -398,7 +398,7 @@ class DistributedAPI:
             wresults.AbstractWazuhResult or exception.WazuhException
             """
             node_name, agent_list = node_name
-            if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
+            if node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
                 if agent_list:
@@ -467,6 +467,23 @@ class DistributedAPI:
             allowed_nodes = wresults.AffectedItemsWazuhResult()
             allowed_nodes.affected_items = list(nodes)
             allowed_nodes.total_affected_items = len(allowed_nodes.affected_items)
+
+        indexes_to_delete = set()
+        myself_index = None
+        for i, node in enumerate(valid_nodes):
+            if node[0] == 'unknown' or node[0] == '':
+                indexes_to_delete.add(i)
+            if node[0] == self.node_info['node']:
+                myself_index = i
+
+        if myself_index is None and indexes_to_delete:
+            valid_nodes.append((self.node_info['node'], list()))
+            for index in indexes_to_delete:
+                valid_nodes[-1][1].extend(valid_nodes[index][1])
+        elif myself_index and indexes_to_delete:
+            valid_nodes[myself_index][1].extend(valid_nodes[index][1] for index in indexes_to_delete)
+        valid_nodes = [node for i, node in enumerate(valid_nodes) if i not in indexes_to_delete]
+
         response = await asyncio.shield(asyncio.gather(*[forward(node) for node in valid_nodes]))
 
         if allowed_nodes.total_affected_items > 1:
