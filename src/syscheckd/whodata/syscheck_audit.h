@@ -15,6 +15,14 @@
 #include "../syscheck.h"
 #include "audit_op.h"
 
+#define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
+#define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
+#define PLUGINS_DIR_AUDIT_2         "/etc/audisp/plugins.d"
+#define PLUGINS_DIR_AUDIT_3         "/etc/audit/plugins.d"
+#define AUDIT_CONF_LINK             "af_wazuh.conf"
+#define BUF_SIZE OS_MAXSTR
+#define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
+
 #define WHODATA_PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"

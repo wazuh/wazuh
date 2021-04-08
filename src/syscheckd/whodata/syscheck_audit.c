@@ -237,7 +237,7 @@ void audit_create_rules_file() {
     }
 
     char abs_rules_file_path[PATH_MAX] = {'\0'};
-    abspath(AUDIT_RULES_FILE, buffer, PATH_MAX);
+    abspath(AUDIT_RULES_FILE, abs_rules_file_path, PATH_MAX);
 
     // Create symlink to audit rules file
     if (symlink(abs_rules_file_path, AUDIT_RULES_LINK) < 0) {
