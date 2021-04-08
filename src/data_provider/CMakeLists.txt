@@ -58,6 +58,7 @@ link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
+link_directories(${SRC_FOLDER}/external/openssl/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
