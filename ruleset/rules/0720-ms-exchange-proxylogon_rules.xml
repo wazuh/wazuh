@@ -17,6 +17,9 @@
         <field name="win.eventdata.parentImage">\\UMWorkerProcess.exe</field>
         <field name="win.eventdata.originalFileName" negate="yes">werfault.exe|wermgr.exe</field>
         <description>UMWorkerProcess.exe spawned unexpected processes. Possible malicious activity</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
     </rule>
 
     <rule id="61645" level="12">
@@ -24,6 +27,9 @@
         <field name="win.eventdata.image">\\UMWorkerProcess.exe</field>
         <field name="win.eventdata.targetFilename" negate="yes">CacheCleanup.bin$|.txt$|.log$|.cfg$|cleanup.bin$</field>
         <description>UMWorkerProcess.exe spawned creating abnormal files. Possible malicious activity</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
     </rule>
 
 <!--
@@ -36,6 +42,9 @@ Exploitation can be identified by searching for log entries where the Authentica
     <rule id="61646" level="12">
         <regex type="pcre2">,,[^,]*,ServerInfo~[^,]*/[^,]*</regex>
         <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-26855)</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
     </rule>
 
 <!--
@@ -49,6 +58,9 @@ admin’s credentials.
     <rule id="61647" level="12">
         <regex type="pcre2">Set-.+VirtualDirectory.+?Url.+\<\w+.*\>.*?\<\/\w+\>.+?VirtualDirectory</regex>
         <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-27065)</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
     </rule>
 
 <!--
@@ -61,6 +73,9 @@ In case of exploitation, files are downloaded to other directories (UNC or local
         <match>Download failed and temporary file</match>
         <regex type="pcre2" negate="yes">[A-Z]:\\Program Files( \(x86\))?\\Microsoft\\Exchange Server\\V15\\ClientAccess\\OAB\\Temp</regex>
         <description>MS Exchange - Possible post-authentication arbitrary file write vulnerability exploitation (CVE-2021-26858)</description>
+        <mitre>
+        <id>T1210</id>
+        </mitre>
     </rule>
 
 
@@ -81,6 +96,9 @@ to exploit.
         <if_sid>61648</if_sid>
         <field name="win.system.message">System.InvalidCastException</field>
         <description>MS Exchange - Possible deserialization exploitation (CVE-2021-26857)</description>
+        <mitre>
+        <id>T1068</id>
+        </mitre>
     </rule>
 
     <rule id="61644" level="12">
@@ -88,6 +106,10 @@ to exploit.
         <field name="win.eventdata.originalFileName">cmd.exe|powershell.exe|powershell_ISE.exe</field>
         <field name="win.eventdata.commandLine">Add-PSSnapin\s+Microsoft.Exchange.Powershell.Snapin</field>
         <description>Powershell initializing MS Exchange snapin. Possible mailbox data dump</description>
+        <mitre>
+        <id>T1114</id>
+        <id>T1059</id>
+        </mitre>
     </rule>
 
     <rule id="61645" level="12">
@@ -95,6 +117,11 @@ to exploit.
         <field name="win.eventdata.originalFileName">powershell.exe|powershell_ISE.exe</field>
         <field name="win.eventdata.commandLine" type="pcre2">\$client = New-Object System\.Net\.Sockets\.TCPClient</field>
         <description>Possible Nishang Invoke-PowerShellTcpOneLine reverse shell script execution</description>
+        <mitre>
+        <id>T1210</id>
+        <id>T1588</id>
+        <id>T1059</id>
+        </mitre>
     </rule>
 
 </group>
