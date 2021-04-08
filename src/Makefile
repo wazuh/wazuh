@@ -1335,7 +1335,11 @@ wmodules_o := $(wmodules_c:.c=.o)
 wazuh_modules/%.o: wazuh_modules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-wmodules_dep := ${wmodules_o} ${wdblib_o}
+logcollector_c := $(wildcard logcollector/*.c)
+logcollector_o := $(logcollector_c:.c=.o)
+logcollector_eventchannel_o := $(logcollector_c:.c=-event.o)
+
+wmodules_dep := ${wmodules_o} ${wdblib_o} $(logcollector_o)
 
 ifeq (${uname_S},HP-UX)
 	wmodules_dep := ${wmodules_dep} ${config_o}
@@ -1511,10 +1515,6 @@ wazuh-execd: ${os_execd_o}
 
 
 #### logcollector ####
-
-os_logcollector_c := $(wildcard logcollector/*.c)
-os_logcollector_o := $(os_logcollector_c:.c=.o)
-os_logcollector_eventchannel_o := $(os_logcollector_c:.c=-event.o)
 
 logcollector/%.o: logcollector/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
@@ -1833,7 +1833,7 @@ wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${fo
 wmodulesd_c := wazuh_modules/main.c
 wmodulesd_o := $(wmodulesd_c:.c=.o)
 
-wazuh-modulesd: ${wmodulesd_o} ${os_logcollector_o}
+wazuh-modulesd: ${wmodulesd_o} ${logcollector_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 ### wazuh-framework ##
@@ -2029,10 +2029,10 @@ win32_ui_o := $(win32_ui_c:.c=.o)
 win32/ui/%.o: win32/ui/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
 
-win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o ${syscheck_o} ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${logcollector_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} -o $@
 
-win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
+win32/wazuh-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o $(filter-out syscheckd/main-event.o, ${syscheck_eventchannel_o}) ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${logcollector_eventchannel_o}) ${os_execd_o} monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${SYSINFO_LIB} -o $@
 
 win32/manage_agents.exe: win32/win_service_rk.o ${addagent_o}
@@ -2128,7 +2128,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_dbd_o}
 	rm -f ${os_agentlessd_o}
 	rm -f ${os_execd_o}
-	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
+	rm -f ${logcollector_o} ${logcollector_eventchannel_o}
 	rm -f ${remoted_o}
 	rm -f ${report_o}
 	rm -f ${client_agent_o}

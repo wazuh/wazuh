@@ -9,14 +9,11 @@
  */
 
 #include "shared.h"
-#include "localfile-config.h"
-#include "config.h"
+#include "wazuh_modules/wmodules.h"
 
-int maximum_files;
-int current_files;
-int total_files;
-
-
+int maximum_files = 0;
+int current_files = 0;
+int total_files = 0;
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -46,8 +43,61 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logreader_config *log_config;
     size_t labels_z=0;
     label_flags_t flags;
+    wm_logcollector_t *logcollector = NULL;
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
 
-    log_config = (logreader_config *)d1;
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        wmodule *cur_wmodule_exists = *wmodules;
+        int found = 0;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,LOGCOLLECTOR_WM_NAME) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    found = 1;
+                    break;
+                }
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+
+        if(!found) {
+            while (cur_wmodule->next) {
+                cur_wmodule = cur_wmodule->next;
+            }
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+            cur_wmodule->context = &WM_LOGCOLLECTOR_CONTEXT;
+            cur_wmodule->tag = LOGCOLLECTOR_WM_NAME;
+        }
+    } else {
+        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+        cur_wmodule->context = &WM_LOGCOLLECTOR_CONTEXT;
+        cur_wmodule->tag = LOGCOLLECTOR_WM_NAME;
+    }
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    if (NULL == cur_wmodule->data) {
+        os_calloc(1, sizeof(wm_logcollector_t), logcollector);
+        /* Reading the internal options */
+        int ret = OS_SUCCESS;
+        if (ret = wm_logcollector_read(logcollector), OS_SUCCESS != ret) {
+            os_free(logcollector);
+            return ret;
+        }
+        cur_wmodule->data = logcollector;
+    } else {
+        logcollector = cur_wmodule->data;
+    }
+
+    log_config = &logcollector->log_config;
 
     if (maximum_files && current_files >= maximum_files) {
         mwarn(FILE_LIMIT, maximum_files);

@@ -97,7 +97,12 @@ int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
 int state_interval;
+int accept_remote;
+
 OSHash * msg_queues_table;
+#ifndef WIN32
+rlim_t nofile;
+#endif
 
 ///< To asociate the path, the position to read, and the hash key of lines read.
 OSHash * files_status;
@@ -137,6 +142,32 @@ void LogCollectorStart()
     IT_control f_control = 0;
     IT_control duplicates_removed = 0;
     logreader *current;
+
+    /* No file available to monitor -- continue */
+    if (logff == NULL) {
+        os_calloc(2, sizeof(logreader), logff);
+        logff[0].file = NULL;
+        logff[0].ffile = NULL;
+        logff[0].logformat = NULL;
+        logff[0].fp = NULL;
+        logff[1].file = NULL;
+        logff[1].logformat = NULL;
+
+        minfo(NO_FILE);
+    }
+
+    /* No sockets defined */
+    if (logsk == NULL) {
+        os_calloc(2, sizeof(logsocket), logsk);
+        logsk[0].name = NULL;
+        logsk[0].location = NULL;
+        logsk[0].mode = 0;
+        logsk[0].prefix = NULL;
+        logsk[1].name = NULL;
+        logsk[1].location = NULL;
+        logsk[1].mode = 0;
+        logsk[1].prefix = NULL;
+    }
 
     /* Create store data */
     excluded_files = OSHash_Create();
@@ -1838,7 +1869,6 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
         if (msg) {
             os_strdup(file, file_cpy);
             result = w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
-
             if (result < 0) {
                 w_logcollector_state_update_target(file,targets[i].log_socket->name, true);
             }
