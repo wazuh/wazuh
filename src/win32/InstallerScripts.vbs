@@ -86,22 +86,18 @@ End If
 ' If ossec.conf exists, it means Wazuh version < 5.0.0
 If objFSO.fileExists(home_dir & "ossec.conf") Then
 
-    ' If ossec.conf exists, it means Wazuh version < 5.0.0
-    ' remove ossec.log
-    If objFSO.fileExists(home_dir & "ossec.log") Then
-        objSFO.DeleteFile(home_dir & "ossec.log")
-    End If
+	If objFSO.fileExists(home_dir & "ossec.log") Then
+    		objFSO.DeleteFile(home_dir & "ossec.log")
+	End If
 
-    ' remove ossec.json
-    If objFSO.fileExists(home_dir & "ossec.json") Then
-        objSFO.DeleteFile(home_dir & "ossec.json")
-    End If
+	If objFSO.fileExists(home_dir & "ossec.json") Then
+    		objFSO.DeleteFile(home_dir & "ossec.json")
+	End If
 
-    ' remove all files and folders from /logs/*
-    If objFSO.folderExists(home_dir & "logs\") Then
-        objSFO.DeleteFolder(home_dir & "logs")
-        objSFO.CreateFolder(home_dir & "logs")
-    End If
+	If objFSO.folderExists(home_dir & "logs\") Then
+    		objFSO.DeleteFolder(home_dir & "logs")
+		objFSO.CreateFolder(home_dir & "logs")
+	End If
 
 End If
 
