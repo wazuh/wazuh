@@ -398,20 +398,23 @@ class DistributedAPI:
             wresults.AbstractWazuhResult or exception.WazuhException
             """
             node_name, agent_list = node_name
-            if agent_list:
-                self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
             if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
+                if agent_list:
+                    self.f_kwargs['agent_id' if 'agent_id' in self.f_kwargs else 'agent_list'] = agent_list
                 result = await self.distribute_function()
             else:
                 if 'tmp_file' in self.f_kwargs:
                     await self.send_tmp_file(node_name)
                 client = self.get_client()
                 try:
+                    kcopy = deepcopy(self.to_dict())
+                    if agent_list:
+                        kcopy['f_kwargs']['agent_id' if 'agent_id' in kcopy['f_kwargs'] else 'agent_list'] = agent_list
                     result = json.loads(await client.execute(b'dapi_forward',
                                                              "{} {}".format(node_name,
-                                                                            json.dumps(self.to_dict(),
+                                                                            json.dumps(kcopy,
                                                                                        cls=c_common.WazuhJSONEncoder)
                                                                             ).encode(),
                                                              self.wait_for_complete),
