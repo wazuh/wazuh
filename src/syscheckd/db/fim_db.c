@@ -433,7 +433,8 @@ void fim_db_check_transaction(fdb_t *fim_sql) {
             }
 
             // Updating timestamp only after a successful transaction end
-            mdebug1("Database transaction completed.");
+            mdebug2("Database transaction completed.");
+
             fim_sql->transaction.last_commit = now;
         }
 

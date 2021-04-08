@@ -54,7 +54,7 @@ void * fim_run_integrity(void * args) {
     while (1) {
         bool sync_successful = true;
 
-        mdebug1("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
+        mdebug2("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
 
         gettime(&start);
         fim_sync_checksum(FIM_TYPE_FILE, &syscheck.fim_entry_mutex);
@@ -89,7 +89,7 @@ void * fim_run_integrity(void * args) {
         }
         else {
             // Duplicate for every failure
-            mdebug1("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
+            mdebug2("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
             sync_interval *= 2;
             sync_interval = (sync_interval < syscheck.max_sync_interval) ? sync_interval : syscheck.max_sync_interval;
         }

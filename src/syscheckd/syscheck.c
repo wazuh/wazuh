@@ -186,7 +186,7 @@ int Start_win32_Syscheck() {
             minfo(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
 
             if (dir_it->tag != NULL) {
-                mdebug1(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
+                mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
             }
 
             // Print diff file size limit

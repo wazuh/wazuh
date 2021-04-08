@@ -106,7 +106,7 @@ int fim_add_inotify_watch(const char *dir, const directory_t *configuration) {
                     os_free(data);
                 }
 
-                mdebug1(FIM_REALTIME_NEWDIRECTORY, dir);
+                mdebug2(FIM_REALTIME_NEWDIRECTORY, dir);
             }
             else {
                 if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
@@ -316,7 +316,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
             merror(FIM_ERROR_INOTIFY_ADD_MAX_REACHED, dir, new_wd, errno);
             return -1;
         } else if (errno == ENOENT) {
-            mdebug1("Removing watch on non existent directory '%s'", dir);
+            mdebug2("Removing watch on non existent directory '%s'", dir);
             inotify_rm_watch(syscheck.realtime->fd, old_wd);
             free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
             return 0;
@@ -342,7 +342,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
             merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
         }
 
-        mdebug1(FIM_REALTIME_NEWDIRECTORY, data);
+        mdebug2(FIM_REALTIME_NEWDIRECTORY, data);
     } else if (retval = OSHash_Update_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
         merror("Unable to update 'dirtb'. Directory not found: '%s'", data);
         os_free(data);
@@ -477,7 +477,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     if(rtlocald->watch_status == FIM_RT_HANDLE_CLOSED) {
         rtlocald = OSHash_Delete_ex(syscheck.realtime->dirtb, wdchar);
         free_win32rtfim_data(rtlocald);
-        mdebug1(FIM_REALTIME_CALLBACK, wdchar);
+        mdebug2(FIM_REALTIME_CALLBACK, wdchar);
         w_mutex_unlock(&syscheck.fim_realtime_mutex);
         w_rwlock_unlock(&syscheck.directories_lock);
         return;
@@ -625,7 +625,7 @@ int realtime_adddir(const char *dir, directory_t *configuration) {
             configuration->dirs_status.object_type = WD_STATUS_FILE_TYPE;
             configuration->dirs_status.status |= WD_STATUS_EXISTS;
         } else {
-            mdebug1(FIM_WARN_REALTIME_OPENFAIL, dir);
+            mdebug2(FIM_WARN_REALTIME_OPENFAIL, dir);
 
             configuration->dirs_status.object_type = WD_STATUS_UNK_TYPE;
             configuration->dirs_status.status &= ~WD_STATUS_EXISTS;

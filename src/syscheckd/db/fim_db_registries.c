@@ -459,7 +459,7 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
         }
 
         if (count >= syscheck.file_limit) {
-            mdebug1("Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
+            mdebug2("Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
                     data->name);
             return FIMDB_FULL;
         }
@@ -489,7 +489,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
         }
 
         if (count >= syscheck.file_limit) {
-            mdebug1("Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
+            mdebug2("Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
                     registry_arch[entry->arch], entry->path);
             return FIMDB_FULL;
         }

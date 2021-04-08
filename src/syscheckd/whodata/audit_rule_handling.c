@@ -121,17 +121,17 @@ int fim_rules_initial_load() {
         // The rule is not in audit_rule_list
         case 0:
             if (retval = audit_add_rule(directory, WHODATA_PERMS, AUDIT_KEY), retval > 0) {
-                mdebug1(FIM_AUDIT_NEWRULE, directory);
+                mdebug2(FIM_AUDIT_NEWRULE, directory);
                 rules_added++;
             } else if (retval != -EEXIST) {
                 mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
             } else {
-                mdebug1(FIM_AUDIT_ALREADY_ADDED, directory);
+                mdebug2(FIM_AUDIT_ALREADY_ADDED, directory);
             }
             break;
 
         case 1:
-            mdebug1(FIM_AUDIT_RULEDUP, directory);
+            mdebug2(FIM_AUDIT_RULEDUP, directory);
             break;
 
         default:
@@ -188,19 +188,19 @@ void fim_audit_reload_rules() {
                 if (!reported) {
                     merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory->path, syscheck.max_audit_entries);
                 } else {
-                    mdebug1(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory->path, syscheck.max_audit_entries);
+                    mdebug2(FIM_ERROR_WHODATA_MAXNUM_WATCHES, directory->path, syscheck.max_audit_entries);
                 }
                 reported = 1;
                 break;
             }
 
             if (retval = audit_add_rule(directory->path, WHODATA_PERMS, AUDIT_KEY), retval > 0) {
-                mdebug1(FIM_AUDIT_NEWRULE, directory->path);
+                mdebug2(FIM_AUDIT_NEWRULE, directory->path);
                 rules_added++;
             } else if (retval != -EEXIST) {
                 mdebug1(FIM_WARN_WHODATA_ADD_RULE, directory->path);
             } else {
-                mdebug1(FIM_AUDIT_ALREADY_ADDED, directory->path);
+                mdebug2(FIM_AUDIT_ALREADY_ADDED, directory->path);
             }
 
             break;
@@ -214,7 +214,7 @@ void fim_audit_reload_rules() {
                 node = OSList_GetCurrentlyNode(whodata_directories);
                 continue;
             } else {
-                mdebug1(FIM_AUDIT_RULEDUP, directory->path);
+                mdebug2(FIM_AUDIT_RULEDUP, directory->path);
             }
             break;
 
