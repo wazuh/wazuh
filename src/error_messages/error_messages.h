@@ -216,6 +216,8 @@
 #define DUP_FILE_INODE  "(1966): Inode for file '%s' already found. Skipping it."
 #define LOCALFILE_REGEX "(1967): Syntax error on multiline_regex: '%s'"
 #define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
+#define DUP_OSLOG       "(1969): Can't add more than one oslog block."
+#define INV_OSLOG       "(1970): Invalid Oslog configuration. 'location' and 'log_format' must be both set to 'oslog'."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

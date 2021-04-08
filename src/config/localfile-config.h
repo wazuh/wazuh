@@ -13,6 +13,7 @@
 
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
+#define OSLOG        "oslog"
 #define MULTI_LINE_REGEX              "multi-line-regex"
 #define MULTI_LINE_REGEX_TIMEOUT      5
 #define MULTI_LINE_REGEX_MAX_TIMEOUT  120
@@ -127,6 +128,8 @@ typedef struct _logreader {
     char future;
     long diff_max_size;
     char *query;
+    char *query_type;   ///< Filtering by type in oslog
+    char *query_level;  ///< Filtering by level in oslog
     int filter_binary;
     int ucs2;
     outformat ** out_format;
@@ -156,6 +159,7 @@ typedef struct _logreader_glob {
 typedef struct _logreader_config {
     int agent_cfg;
     int accept_remote;
+    unsigned int oslog_count;
     logreader_glob *globs;
     logreader *config;
     logsocket *socket_list;
