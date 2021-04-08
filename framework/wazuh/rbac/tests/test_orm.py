@@ -873,6 +873,149 @@ def test_update_policy_from_role(orm_setup):
         assert rpm.exist_role_policy(role_id=roles_ids[0], policy_id=policies_ids[-1])
 
 
+def test_database_manager_close_sessions(orm_setup):
+    """Check the DatabaseManager.close_sessions functionality."""
+    session_names = ['session1', 'session2', 'session3']
+    db = orm_setup.DatabaseManager()
+
+    # Create some sessions and populate them without committing
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
+        for name in session_names:
+            db.connect(name)
+            db.create_database(name)
+            assert len(db.engines[name].table_names()) > 0
+
+    db.close_sessions()
+
+    # Check no tables are present in those session after being closed as they weren't committed
+    for name in session_names:
+        assert len(db.engines[name].table_names()) == 0
+
+
+def test_database_manager_connect(orm_setup):
+    """Check the DatabaseManager.connect functionality."""
+    session_names = ['session1', 'session2', 'session3']
+    db = orm_setup.DatabaseManager()
+
+    # Create some sessions and check if the binding is valid after invoking the connect function
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")) as mock_create:
+        for name in session_names:
+            db.connect(name)
+            mock_create.assert_called_with(f'sqlite:///{name}', echo=False)
+            assert db.sessions[name].bind == db.engines[name]
+
+    assert len(db.engines) == len(session_names)
+    assert len(db.sessions) == len(session_names)
+
+
+def test_database_manager_create_database(orm_setup):
+    """Check the DatabaseManager.create_database functionality."""
+    db = orm_setup.DatabaseManager()
+    session_name = "test"
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")) as mock_create:
+        db.connect(session_name)
+        assert len(db.engines[session_name].table_names()) == 0
+        db.create_database("test")
+        assert len(db.engines[session_name].table_names()) > 0
+
+
+def test_database_manager_get_database_version(orm_setup):
+    """Check the DatabaseManager.get_database_version functionality."""
+    # Create a new database in memory
+    db = orm_setup.DatabaseManager()
+    session_name = "test"
+
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
+        db.connect(session_name)
+
+    # Manually set the version value for the new database
+    version = '1000'
+    db.sessions[session_name].execute(f'pragma user_version={version}')
+
+    # Check the value returned by get_database_version is the expected one
+    assert db.get_database_version(session_name) == version
+
+
+def test_database_manager_insert_data_from_yaml(orm_setup):
+    """Check the DatabaseManager.insert_data_from_yaml functionality."""
+    def get_resources(filename):
+        """Get the list of resources (rules, roles or users) present in the yaml file specified."""
+        resource_list = list()
+        with open(os.path.join(default_path, filename)) as f:
+            contents = safe_load(f)
+            for _, resource_names in contents.items():
+                for element in resource_names:
+                    resource_list.append(element)
+        return resource_list
+
+    def get_policies(filename, policy=None):
+        """Get the list of policies present in the yaml file or get the full name of the policies for a given policy."""
+        resource_list = list()
+        with open(os.path.join(default_path, filename)) as f:
+            contents = safe_load(f)
+            if policy:
+                for default, _ in contents.items():
+                    for key in contents[default][policy]['policies'].keys():
+                        resource_list.append(f'{policy}_{key}')
+            else:
+                for default, resources in contents.items():
+                    for resource in resources:
+                        for key in contents[default][resource]['policies'].keys():
+                            resource_list.append(f'{resource}_{key}')
+            return resource_list
+
+    def get_relationships(filename):
+        """Get the relationships between resources from the yaml file specified."""
+        _user_roles = dict()
+        _roles_policies = dict()
+        _roles_rules = dict()
+        with open(os.path.join(default_path, filename)) as f:
+            contents = safe_load(f)
+            for username, roles in contents['relationships']['users'].items():
+                _user_roles[username] = roles['role_ids']
+            for _role, relationships in contents['relationships']['roles'].items():
+                _roles_policies[_role] = list()
+                [_roles_policies[_role].extend(get_policies('policies.yaml', policy=x)) for x in relationships['policy_ids']]
+                _roles_rules[_role] = relationships['rule_ids']
+        return _user_roles, _roles_policies, _roles_rules
+
+    db_name = "testdb"
+
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
+        orm_setup.db_manager.connect(db_name)
+        orm_setup.db_manager.create_database(db_name)
+
+    orm_setup.db_manager.insert_data_from_yaml(db_name)
+    session = orm_setup.db_manager.sessions[db_name]
+
+    assert len(orm_setup.AuthenticationManager(session).get_users()) == len(get_resources('users.yaml')), \
+        'The number of users does not match.'
+    assert len(orm_setup.RolesManager(session).get_roles()) == len(get_resources('roles.yaml')), \
+        'The number of roles does not match.'
+    assert len(orm_setup.RulesManager(session).get_rules()) == len(get_resources('rules.yaml')), \
+        'The number of rules does not match.'
+    assert len(orm_setup.PoliciesManager(session).get_policies()) == len(get_policies('policies.yaml')), \
+        'The number of policies does not match.'
+
+    user_roles, roles_policies, roles_rules = get_relationships('relationships.yaml')
+    print(user_roles)
+    with orm_setup.RolesPoliciesManager(session) as rpm:
+        with orm_setup.RolesRulesManager(session) as rrm:
+            with orm_setup.UserRolesManager(session) as urm:
+                for user in orm_setup.AuthenticationManager(session).get_users():
+                    assert len(urm.get_all_roles_from_user(user['user_id'])) == len(user_roles[user['username']]), \
+                        f'The number of roles assigned to user "{user["username"]}" does not match.\n' \
+                        f'Here is the list: {urm.get_all_roles_from_user(user["username"])}'
+                for role in orm_setup.RolesManager(session).get_roles():
+                    print(f'ROL: {role.name}, USERS: {urm.get_all_users_from_role(role.id)}')
+                    assert len(rpm.get_all_policies_from_role(role.id)) == len(roles_policies[role.name]), \
+                        f'The number of policies assigned to the role "{role.name}" does not match.\n' \
+                        f'Here is the list: {[x.name for x in rpm.get_all_policies_from_role(role.id)]}'
+                    assert len(rrm.get_all_rules_from_role(role.id)) == len(roles_rules[role.name]), \
+                        f'The number of rules assigned to the role "{role.name}" does not match.\n' \
+                        f'Here is the list: {[x.name for x in rrm.get_all_rules_from_role(role.id)]}'
+
+
 def test_database_manager_migrate_data(orm_setup):
     """Test the DatabaseManager migration functionality having conflicts between user and the default policies."""
     source_db = orm_setup.DATABASE_FULL_PATH
@@ -960,4 +1103,43 @@ def test_database_manager_migrate_data(orm_setup):
 
                     # Check user-roles
                     assert len(user_roles_dict[role.id]) == len(new_user_roles.get_all_users_from_role(role.id)), \
-                        f'User {user.id} ({user.name}) has a different number of roles.'
+                        f'Role {role.id} ({role.name}) has a different number of users.'
+
+
+def test_database_manager_rollback(orm_setup):
+    """Check the DatabaseManager.rollback functionality."""
+    session_names = ['session1', 'session2']
+    db = orm_setup.DatabaseManager()
+
+    # Create some sessions and populate them without committing
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
+        for name in session_names:
+            db.connect(name)
+            db.create_database(name)
+            db.sessions[name].add(orm_setup.User(username="test", password="test"))
+
+    # Check the user IS present in the first database before the rollback
+    assert db.sessions[session_names[0]].query(orm_setup.User).filter_by(username="test").first() is not None
+
+    db.rollback(session_names[0])
+
+    # Check the user is NOT present in the first database after the rollback
+    assert db.sessions[session_names[0]].query(orm_setup.User).filter_by(username="test").first() is None
+
+    # Check the user IS still present in the second database
+    assert db.sessions[session_names[1]].query(orm_setup.User).filter_by(username="test").first() is not None
+
+
+def test_database_manager_set_database_version(orm_setup):
+    """Check the DatabaseManager.set_database_version functionality."""
+    # Create a new database in memory
+    db = orm_setup.DatabaseManager()
+    session_name = "test"
+    with patch('wazuh.rbac.orm.create_engine', return_value=create_engine("sqlite:///:memory:")):
+        db.connect(session_name)
+
+    version = '1000'
+    db.set_database_version(session_name, 100)
+
+    # Check the value returned by get_database_version is the expected one
+    assert db.get_database_version(session_name) == version
