@@ -52,6 +52,7 @@
 #define VU_AGENT_SOFTWARE_REQ "(5437): Collecting agent '%.3d' software."
 #define VU_AG_FULL_SCAN       "(5438): A full scan will be run on agent '%.3d'"
 #define VU_AG_PART_SCAN       "(5439): A partial scan will be run on agent '%.3d'"
+#define VU_AG_FULL_SCAN       "(5438): A full scan will be run on agent '%.3d'"
 #define VU_NO_PACKAGE_SCAN    "(5440): The package inventory of the agent '%.3d' is not available, but a hotfix analysis will be launched."
 #define VU_SOCKET_RETRY       "(5441): Unable to connect to socket '%s'. Waiting '%d' seconds."
 #define VU_NO_HOTFIX_AVAIL    "(5442): It is not possible to perform a hotfix scan on agent '%.3d'"
@@ -93,6 +94,7 @@
 #define VU_UNS_OS             "(5485): Agent '%.3d' has an unsupported OS: '%s'"
 #define VU_PACKAGE_TP_SOURCE  "(5486): Discarded package '%s' from a third-party source ('%s') for agent '%.3d'"
 #define VU_ERROR_CMP_VER      "(5487): Unknown relation '%s' between versions '%s' and '%s' for package '%s'"
+#define VU_AG_BASELINE_SCAN   "(5488): A baseline scan will be run on agent '%.3d'"
 
 /* File integrity monitoring debug messages */
 #define FIM_DIFF_SKIPPED                    "(6200): Diff execution skipped for containing insecure characters."

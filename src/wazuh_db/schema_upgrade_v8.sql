@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
 CREATE INDEX IF NOT EXISTS cve_type ON vuln_cves (type);
 CREATE INDEX IF NOT EXISTS cve_status ON vuln_cves (status);
 
-DROP TABLE IF EXISTS vuln_cves;
+DROP TABLE IF EXISTS vuln_metadata;
 
 CREATE TABLE IF NOT EXISTS vuln_metadata (
     LAST_PARTIAL_SCAN INTEGER,
