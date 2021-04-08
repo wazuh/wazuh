@@ -259,9 +259,9 @@ def _conf2json(src_xml, dst_json):
         _insert_section(dst_json, section_name, section_json)
 
 
-def _ossecconf2json(xml_conf):
+def _managerconf2json(xml_conf):
     """
-    Returns ossec.conf in JSON from xml
+    Returns manager.conf in JSON from xml
     """
     final_json = {}
 
@@ -272,7 +272,7 @@ def _ossecconf2json(xml_conf):
     return final_json
 
 
-def _agentconf2json(xml_conf):
+def _sharedconf2json(xml_conf):
     """
     Returns shared.conf in JSON from xml
     """
@@ -466,21 +466,21 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.manager_conf):
+def get_manager_conf(section=None, field=None, conf_file=common.manager_conf):
     """
-    Returns ossec.conf (manager) as dictionary.
+    Returns manager.conf as dictionary.
 
     :param section: Filters by section (i.e. rules).
     :param field: Filters by field in section (i.e. included).
     :param conf_file: Path of the configuration file to read.
-    :return: ossec.conf (manager) as dictionary.
+    :return: manager.conf as dictionary.
     """
     try:
         # Read XML
         xml_data = load_wazuh_xml(conf_file)
 
         # Parse XML to JSON
-        data = _ossecconf2json(xml_data)
+        data = _managerconf2json(xml_data)
     except Exception as e:
         raise WazuhError(1101, extra_message=str(e))
 
@@ -810,9 +810,9 @@ def get_active_configuration(agent_id, component, configuration):
                          extra_message='{0}:{1}'.format(component, configuration))
 
 
-def write_ossec_conf(new_conf: str):
+def write_manager_conf(new_conf: str):
     """
-    Replace the current wazuh configuration (ossec.conf) with the provided configuration.
+    Replace the current wazuh configuration (manager.conf) with the provided configuration.
 
     Parameters
     ----------

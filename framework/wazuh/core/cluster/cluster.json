@@ -79,7 +79,8 @@
 
         "excluded_files": [
             "ar.conf",
-            "ossec.conf"
+            "manager.conf",
+            "agent.conf"
         ],
 
         "excluded_extensions": [

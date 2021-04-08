@@ -34,15 +34,15 @@ def test_read_cluster_config():
     config = utils.read_cluster_config()
     assert config == default_cluster_config
 
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', side_effect=WazuhError(1001)):
+    with patch('wazuh.core.cluster.utils.get_manager_conf', side_effect=WazuhError(1001)):
         with pytest.raises(WazuhError, match='.* 3006 .*'):
             utils.read_cluster_config()
 
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', side_effect=KeyError(1)):
+    with patch('wazuh.core.cluster.utils.get_manager_conf', side_effect=KeyError(1)):
         with pytest.raises(WazuhError, match='.* 3006 .*'):
             utils.read_cluster_config()
 
-    with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value={'cluster': default_cluster_config}):
+    with patch('wazuh.core.cluster.utils.get_manager_conf', return_value={'cluster': default_cluster_config}):
         utils.read_config.cache_clear()
         default_cluster_config.pop('hidden')
         default_cluster_config['disabled'] = 'no'
@@ -140,7 +140,7 @@ def test_get_cluster_items():
                                                         'recursive': True, 'restart': False,
                                                         'remove_subdirs_if_empty': False, 'extra_valid': True,
                                                         'description': 'agents group configuration'},
-                               'excluded_files': ['ar.conf', 'ossec.conf'],
+                               'excluded_files': ['ar.conf', 'manager.conf', 'agent.conf'],
                                'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
                      'intervals': {'worker': {'sync_integrity': 9, 'sync_files': 10, 'keep_alive': 60,
                                               'connection_retry': 10, 'max_failed_keepalive_attempts': 2},

@@ -130,18 +130,18 @@ def test_get_logs_summary():
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
-        "'/var/ossec/etc/ossec.conf'.")
+        "'/var/ossec/etc/manager.conf'.")
 ])
 @patch('wazuh.core.manager.open')
 @patch('wazuh.core.manager.fcntl')
 @patch("wazuh.core.manager.exists", return_value=True)
 @patch("wazuh.core.manager.remove", return_value=True)
-def test_validate_ossec_conf(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
+def test_validate_manager_conf(mock_remove, mock_exists, mock_fcntl, mock_open, error_flag, error_msg):
     with patch('socket.socket') as sock:
         # Mock sock response
         json_response = json.dumps({'error': 0, 'message': ""}).encode()
         sock.return_value.recv.return_value = json_response
-        result = validate_ossec_conf()
+        result = validate_manager_conf()
 
         assert result == {'status': 'OK'}
         assert mock_fcntl.lockf.call_count == 2
@@ -157,42 +157,42 @@ def test_validation_ko(mosck_exists, mock_lockf, mock_open):
     # Remove api_socket raise OSError
     with patch('wazuh.core.manager.remove', side_effect=OSError):
         with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-            validate_ossec_conf()
+            validate_manager_conf()
 
     with patch('wazuh.core.manager.remove'):
         # Socket creation raise socket.error
         with patch('socket.socket', side_effect=socket.error):
             with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
-                validate_ossec_conf()
+                validate_manager_conf()
 
         with patch('socket.socket.bind'):
             # Socket connection raise socket.error
             with patch('socket.socket.connect', side_effect=socket.error):
                 with pytest.raises(WazuhInternalError, match='.* 1013 .*'):
-                    validate_ossec_conf()
+                    validate_manager_conf()
 
             # execq_socket_path not exists
             with patch("wazuh.core.manager.exists", return_value=False):
                  with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
-                    validate_ossec_conf()
+                    validate_manager_conf()
 
             with patch('socket.socket.connect'):
                 # Socket send raise socket.error
                 with patch('socket.socket.send', side_effect=socket.error):
                     with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                        validate_ossec_conf()
+                        validate_manager_conf()
 
                 with patch('socket.socket.send'):
                     # Socket recv raise socket.error
                     with patch('socket.socket.recv', side_effect=socket.timeout):
                         with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
-                            validate_ossec_conf()
+                            validate_manager_conf()
 
                     # _parse_execd_output raise KeyError
                     with patch('socket.socket.recv'):
                         with patch('wazuh.core.manager.parse_execd_output', side_effect=KeyError):
                             with pytest.raises(WazuhInternalError, match='.* 1904 .*'):
-                                validate_ossec_conf()
+                                validate_manager_conf()
 
 
 @pytest.mark.parametrize('error_flag, error_msg', [
@@ -201,7 +201,7 @@ def test_validation_ko(mosck_exists, mock_lockf, mock_open):
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
-        "'/var/ossec/etc/ossec.conf'.")
+        "'/var/ossec/etc/manager.conf'.")
 ])
 def test_parse_execd_output(error_flag, error_msg):
     """Test parse_execd_output function works and returns expected message.

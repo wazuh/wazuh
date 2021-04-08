@@ -196,7 +196,7 @@ def test_restart_ko_socket(mock_exist, mock_fcntl, mock_open):
         "Unspecified key"),
     (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
         "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
-        "'/var/ossec/etc/ossec.conf'.")
+        "'/var/ossec/etc/manager.conf'.")
 ])
 @patch('wazuh.core.manager.open')
 @patch('wazuh.core.manager.fcntl')
@@ -298,9 +298,9 @@ def test_get_config_ko():
 
 
 @pytest.mark.parametrize('raw', [True, False])
-def test_read_ossec_conf(raw):
-    """Tests read_ossec_conf() function works as expected"""
-    result = read_ossec_conf(raw=raw)
+def test_read_manager_conf(raw):
+    """Tests read_manager_conf() function works as expected"""
+    result = read_manager_conf(raw=raw)
 
     if raw:
         assert isinstance(result, str), 'No expected result type'
@@ -309,9 +309,9 @@ def test_read_ossec_conf(raw):
         assert result.render()['data']['total_failed_items'] == 0
 
 
-def test_read_ossec_con_ko():
-    """Tests read_ossec_conf() function returns an error"""
-    result = read_ossec_conf(section='test')
+def test_read_manager_con_ko():
+    """Tests read_manager_conf() function returns an error"""
+    result = read_manager_conf(section='test')
 
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
@@ -325,16 +325,16 @@ def test_get_basic_info(mock_open):
     assert result.render()['data']['total_failed_items'] == 0
 
 
-@patch('wazuh.manager.validate_ossec_conf', return_value={'status': 'OK'})
-@patch('wazuh.manager.write_ossec_conf')
+@patch('wazuh.manager.validate_manager_conf', return_value={'status': 'OK'})
+@patch('wazuh.manager.write_manager_conf')
 @patch('wazuh.manager.validate_wazuh_xml')
 @patch('wazuh.manager.copyfile')
 @patch('wazuh.manager.exists', return_value=True)
 @patch('wazuh.manager.remove')
 @patch('wazuh.manager.safe_move')
-def test_update_ossec_conf(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock):
-    """Test update_ossec_conf works as expected."""
-    result = update_ossec_conf(new_conf="placeholder config")
+def test_update_manager_conf(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock):
+    """Test update_manager_conf works as expected."""
+    result = update_manager_conf(new_conf="placeholder config")
     write_mock.assert_called_once()
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['total_failed_items'] == 0
@@ -345,17 +345,17 @@ def test_update_ossec_conf(move_mock, remove_mock, exists_mock, copy_mock, prett
     None,
     "invalid configuration"
 ])
-@patch('wazuh.manager.validate_ossec_conf')
-@patch('wazuh.manager.write_ossec_conf')
+@patch('wazuh.manager.validate_manager_conf')
+@patch('wazuh.manager.write_manager_conf')
 @patch('wazuh.manager.validate_wazuh_xml')
 @patch('wazuh.manager.copyfile')
 @patch('wazuh.manager.exists', return_value=True)
 @patch('wazuh.manager.remove')
 @patch('wazuh.manager.safe_move')
-def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock, new_conf):
-    """Test update_ossec_conf() function return an error and restore the configuration if the provided configuration
+def test_update_manager_conf_ko(move_mock, remove_mock, exists_mock, copy_mock, prettify_mock, write_mock, validate_mock, new_conf):
+    """Test update_manager_conf() function return an error and restore the configuration if the provided configuration
     is not valid."""
-    result = update_ossec_conf(new_conf=new_conf)
+    result = update_manager_conf(new_conf=new_conf)
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
     move_mock.assert_called_once()

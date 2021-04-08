@@ -206,7 +206,7 @@ class AbstractServer:
         concurrency_test : int
             Number of requests to do in the concurrency test.
         configuration : dict
-            ossec.conf cluster configuration.
+            manager.conf cluster configuration.
         cluster_items : dict
             cluster.json cluster internal configuration.
         enable_ssl : bool
