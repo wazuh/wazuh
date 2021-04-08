@@ -272,8 +272,8 @@ class WazuhException(Exception):
         1725: {'message': 'Error registering a new agent',
                'remediation': 'Please check all data fields and try again'
                },
-        1726: {'message': 'Ossec authd is not running',
-               'remediation': f'Please, visit our documentation to get more information: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html#registering-the-wazuh-agent-using-simple-registration-service'
+        1726: {'message': 'Ossec authd is not running and API use_only_authd is enabled',
+               'remediation': f'Please enable authd or change the API use_only_authd configuration'
                },
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
@@ -341,6 +341,10 @@ class WazuhException(Exception):
                },
         1757: {'message': 'Error deleting an agent',
                'remediation': 'Please check all data fields and try again'
+               },
+        1758: {'message': 'Tried to release an already unlocked client.keys thread lock',
+               },
+        1759: {'message': 'Timeout acquiring client.keys lock, another thread or process might be blocking it',
                },
 
         # CDB List: 1800 - 1899

@@ -10,6 +10,7 @@ import tempfile
 import threading
 from base64 import b64encode
 from datetime import date, datetime
+from functools import lru_cache
 from json import dumps, loads
 from os import chown, chmod, makedirs, urandom, stat, remove
 from os import listdir, path
@@ -19,7 +20,7 @@ from time import time
 
 from wazuh.core import common, configuration, stats
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.cluster.utils import get_manager_status
+from wazuh.core.cluster.utils import get_manager_status, get_cluster_items
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import chmod_r, WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
@@ -382,22 +383,31 @@ class Agent:
 
         return dictionary
 
-    def _acquire_client_keys_lock(self):
-        mutex.acquire()
-        global lock_file
-        lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')
-        fcntl.lockf(lock_file, fcntl.LOCK_EX)
-        global lock_acquired
-        lock_acquired = True
+    @staticmethod
+    def _acquire_client_keys_lock(timeout=get_cluster_items()['intervals']['communication']['timeout_api_exe']-1):
+        if mutex.acquire(timeout=timeout):
+            global lock_file
+            lock_file = open("{}/var/run/.api_lock".format(common.wazuh_path), 'a+')
+            fcntl.lockf(lock_file, fcntl.LOCK_EX)
+            global lock_acquired
+            lock_acquired = True
+            return True
 
-    def _release_client_keys_lock(self):
+        return False
+
+    @staticmethod
+    def _release_client_keys_lock():
         global lock_file
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file is not None and lock_file.close()
         lock_file = None
         global lock_acquired
-        mutex.release()
-        lock_acquired = False
+        try:
+            mutex.release()
+        except RuntimeError:
+            raise WazuhInternalError(1758)
+        finally:
+            lock_acquired = False
 
     def load_info_from_db(self, select=None):
         """Gets attributes of existing agent.
@@ -477,7 +487,7 @@ class Agent:
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd and not is_authd_running:
-            raise WazuhInternalError(1726)
+            raise WazuhError(1726)
 
         try:
             if not is_authd_running:
@@ -489,10 +499,7 @@ class Agent:
         except WazuhException as e:
             raise e
         except Exception as e:
-            raise WazuhError(1757, extra_message=str(e))
-        finally:
-            if lock_acquired:
-                self._release_client_keys_lock()
+            raise WazuhInternalError(1757, extra_message=str(e))
 
     def _remove_authd(self, purge=False):
         """Deletes the agent.
@@ -521,7 +528,10 @@ class Agent:
 
         client_keys_entries = []
 
-        self._acquire_client_keys_lock()
+        # Try to acquire client keys lock
+        if not Agent._acquire_client_keys_lock():
+            raise WazuhInternalError(1759)
+
         try:
             agent_found = False
             with open(common.client_keys) as f_k:
@@ -546,24 +556,27 @@ class Agent:
                                     '{0} !{1} {2} {3}'.format(entry_id, entry_name, entry_ip, entry_key))
                         else:
                             client_keys_entries.append(line)
+
+            if not agent_found:
+                raise WazuhResourceNotFound(1701, extra_message=self.id)
+
+            self.delete_agent_files(self.id, self.name, self.registerIP, backup=backup)
+
+            # Write temporary client.keys file
+            handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
+            with open(handle, 'a') as f_kt:
+                client_keys_entries.append('')
+                f_kt.writelines('\n'.join(client_keys_entries))
+
+            # Overwrite client.keys
+            f_keys_st = stat(common.client_keys)
+            safe_move(output, common.client_keys, permissions=f_keys_st.st_mode)
+        except WazuhResourceNotFound as e:
+            raise e
         except Exception as e:
             raise WazuhInternalError(1746, extra_message=str(e))
-
-        if not agent_found:
-            raise WazuhResourceNotFound(1701, extra_message=self.id)
-
-        self.delete_agent_files(self.id, self.name, self.registerIP, backup=backup)
-
-        # Write temporary client.keys file
-        handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
-        with open(handle, 'a') as f_kt:
-            client_keys_entries.append('')
-            f_kt.writelines('\n'.join(client_keys_entries))
-
-        # Overwrite client.keys
-        f_keys_st = stat(common.client_keys)
-        safe_move(output, common.client_keys, permissions=f_keys_st.st_mode)
-        self._release_client_keys_lock()
+        finally:
+            Agent._release_client_keys_lock()
 
         return 'Agent was successfully deleted'
 
@@ -656,7 +669,7 @@ class Agent:
         ------
         WazuhError(1706)
             If there is an agent with the same IP or the IP is invalid.
-        WazuhError(1725)
+        WazuhInternalError(1725)
             If there was an error registering a new agent.
         WazuhError(1726)
             If authd is not running.
@@ -682,7 +695,7 @@ class Agent:
         is_authd_running = 'wazuh-authd' in manager_status and manager_status['wazuh-authd'] == 'running'
 
         if use_only_authd and not is_authd_running:
-            raise WazuhInternalError(1726)
+            raise WazuhError(1726)
 
         try:
             if not is_authd_running:
@@ -692,10 +705,7 @@ class Agent:
         except WazuhException as e:
             raise e
         except Exception as e:
-            raise WazuhError(1725, extra_message=str(e))
-        finally:
-            if lock_acquired:
-                self._release_client_keys_lock()
+            raise WazuhInternalError(1725, extra_message=str(e))
 
     def _add_authd(self, name, ip, id=None, key=None, force=-1):
         """Add an agent to Wazuh using authd.
@@ -823,11 +833,10 @@ class Agent:
         force = int(force)
 
         # Check manager name
-        wdb_conn = WazuhDBConnection()
-        manager_name = wdb_conn.execute("global sql SELECT name FROM agent WHERE (id = 0)")[0]['name']
+        manager_name = get_manager_name()
 
         if name == manager_name:
-            raise WazuhError(1705, extra_message=name)
+            raise WazuhError(1705, extra_message=f"Agent 000 (manager) has name {name}")
 
         # Never allow duplication or replacement of an agent id. Check before running through the client.keys to avoid
         # deleting an entry with duplicate name or ip and then find out that the id was already present
@@ -837,69 +846,72 @@ class Agent:
         client_keys_entries = []
         # Check if ip or name exist in client.keys
         last_id = 0
-        self._acquire_client_keys_lock()
-        with open(common.client_keys) as f_k:
-            for line in f_k.readlines():
-                line = line.rstrip()
-                if line:
-                    if not line.startswith('#') and not line.startswith(' '):
-                        try:
-                            entry_id, entry_name, entry_ip, entry_key = line.split(' ')
-                        except ValueError:
-                            # Bad entries will be ignored and not rewritten to the new file
-                            continue
-                    else:
-                        # Ignore void entries, but preserve them
-                        client_keys_entries.append(line)
-                        continue
 
-                    # Update last_id with highest seen value
-                    if int(entry_id) > last_id:
-                        last_id = int(entry_id)
+        # Try to acquire client keys lock
+        if not Agent._acquire_client_keys_lock():
+            raise WazuhInternalError(1759)
 
-                    # Ignore void entries, but preserve them
-                    if entry_name.startswith('#') or entry_name.startswith('!'):
-                        client_keys_entries.append(line)
-                        continue
-
-                    # Detect entries with duplicate name or ip
-                    if name == entry_name or (ip != 'any' and ip == entry_ip):
-                        # If force is non-negative then we check to remove the agent using value of force as the max age
-                        # in seconds
-                        if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
-                            # Call _remove_manual directly since we are already in _add_manual and will handle releasing
-                            # the lock properly when complete.
-                            self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
-                            # We add a void entry since remove_agent will not update client.keys with a change in
-                            # progress
-                            client_keys_entries.append(
-                                '{0} !{1} {2} {3}'.format(entry_id, entry_name, entry_ip, entry_key))
+        try:
+            with open(common.client_keys) as f_k:
+                for line in f_k.readlines():
+                    line = line.rstrip()
+                    if line:
+                        if not line.startswith('#') and not line.startswith(' '):
+                            try:
+                                entry_id, entry_name, entry_ip, entry_key = line.split(' ')
+                            except ValueError:
+                                # Bad entries will be ignored and not rewritten to the new file
+                                continue
                         else:
-                            # If force is negative or the agent is not older than the max age we raise an error based
-                            # on the duplicate field.
-                            if name == entry_name:
-                                raise WazuhError(1705, extra_message=name)
+                            # Ignore void entries, but preserve them
+                            client_keys_entries.append(line)
+                            continue
+
+                        # Update last_id with highest seen value
+                        if int(entry_id) > last_id:
+                            last_id = int(entry_id)
+
+                        # Ignore void entries, but preserve them
+                        if entry_name.startswith('#') or entry_name.startswith('!'):
+                            client_keys_entries.append(line)
+                            continue
+
+                        # Detect entries with duplicate name or ip
+                        if name == entry_name or (ip != 'any' and ip == entry_ip):
+                            # If force is non-negative then we check to remove the agent using value of force as the max age
+                            # in seconds
+                            if force >= 0 and Agent.check_if_delete_agent(entry_id, force):
+                                self.delete_agent_files(entry_id, entry_name, entry_ip, backup=True)
+                                # We add a void entry
+                                client_keys_entries.append(
+                                    '{0} !{1} {2} {3}'.format(entry_id, entry_name, entry_ip, entry_key))
                             else:
-                                raise WazuhError(1706, extra_message=ip)
-                    else:
-                        # Preserve the entry if it is not a duplicate
-                        client_keys_entries.append(line)
+                                # If force is negative or the agent is not older than the max age we raise an error based
+                                # on the duplicate field.
+                                if name == entry_name:
+                                    raise WazuhError(1705, extra_message=name)
+                                else:
+                                    raise WazuhError(1706, extra_message=ip)
+                        else:
+                            # Preserve the entry if it is not a duplicate
+                            client_keys_entries.append(line)
 
-        # If id not specified then create a new id 1 greater than the last id created.
-        if not agent_id:
-            agent_id = str(last_id + 1).zfill(3)
+            # If id not specified then create a new id 1 greater than the last id created.
+            if not agent_id:
+                agent_id = str(last_id + 1).zfill(3)
 
-        # Write temporary client.keys file
-        handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
-        with open(handle, 'a') as f_kt:
-            client_keys_entries.append('')
-            f_kt.writelines('\n'.join(client_keys_entries))
-            f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
+            # Write temporary client.keys file
+            handle, output = tempfile.mkstemp(prefix=common.client_keys, suffix=".tmp")
+            with open(handle, 'a') as f_kt:
+                client_keys_entries.append('')
+                f_kt.writelines('\n'.join(client_keys_entries))
+                f_kt.write('{0} {1} {2} {3}\n'.format(agent_id, name, ip, agent_key))
 
-        # Overwrite client.keys
-        f_keys_st = stat(common.client_keys)
-        safe_move(output, common.client_keys, permissions=f_keys_st.st_mode)
-        self._release_client_keys_lock()
+            # Overwrite client.keys
+            f_keys_st = stat(common.client_keys)
+            safe_move(output, common.client_keys, permissions=f_keys_st.st_mode)
+        finally:
+            Agent._release_client_keys_lock()
         self.id = agent_id
         self.internal_key = agent_key
         self.key = self.compute_key()
@@ -1294,6 +1306,16 @@ def expand_group(group_name):
                 pass
 
     return agents_ids & get_agents_info()
+
+
+@lru_cache()
+def get_manager_name():
+    """This function read the manager name from global.db"""
+    wdb_conn = WazuhDBConnection()
+    manager_name = wdb_conn.execute("global sql SELECT name FROM agent WHERE (id = 0)")[0]['name']
+    wdb_conn.close()
+
+    return manager_name
 
 
 def get_rbac_filters(system_resources=None, permitted_resources=None, filters=None):
