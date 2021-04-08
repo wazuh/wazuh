@@ -2052,7 +2052,7 @@ components:
           items:
             type: object
 
-        #Wodle sections inside WazuhConfiguration(ossec.conf)
+        # Wodle sections inside WazuhConfiguration(agent.conf)
         agent-key-polling:
           type: object
         aws-s3:
@@ -8283,7 +8283,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
       requestBody:
-        description: "Content of the ossec.conf to be uploaded"
+        description: "Content of the manager.conf to be uploaded"
         required: true
         content:
           application/octet-stream:
@@ -9710,7 +9710,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
-        description: "Content of the ossec.conf to be uploaded"
+        description: "Content of the manager.conf to be uploaded"
         required: true
         content:
           application/octet-stream:
@@ -11780,7 +11780,7 @@ paths:
       tags:
         - Decoders
       summary: "List decoders"
-      description: "Return information about all decoders included in ossec.conf. This information include decoder's
+      description: "Return information about all decoders included in manager.conf. This information include decoder's
       route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoder_controller.get_decoders
       x-rbac-actions:
@@ -11800,7 +11800,7 @@ paths:
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
         '200':
-          description: "List of decoders included in ossec.conf"
+          description: "List of decoders included in manager.conf"
           content:
             application/json:
               schema:

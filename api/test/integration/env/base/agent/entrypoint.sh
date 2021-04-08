@@ -3,14 +3,14 @@
 # Apply test.keys
 cp /tmp/configuration_files/test.keys /var/ossec/etc/test.keys
 
-# Remove ossec_4.x in agents with version 3.x
+# Remove agent_4.x in agents with version 3.x
 if [ "$3" == "agent_old" ]; then
-  rm /tmp/configuration_files/ossec_4.x.conf
+  rm /tmp/configuration_files/agent_4.x.conf
 fi
 
-# Modify ossec.conf
+# Modify agent.conf
 for conf_file in /tmp/configuration_files/*.conf; do
-  python3 /tools/xml_parser.py /var/ossec/etc/ossec.conf $conf_file
+  python3 /tools/xml_parser.py /var/ossec/etc/agent.conf $conf_file
 done
 
 sed -n "/$2 /p" /var/ossec/etc/test.keys > /var/ossec/etc/client.keys
