@@ -8,6 +8,7 @@
  */
 
 #include "state.h"
+#include "logcollector.h"
 #include "shared.h"
 
 #ifdef WAZUH_UNIT_TESTING
@@ -110,11 +111,11 @@ STATIC void w_logcollector_state_dump() {
 
     if (lc_state_file = fopen(LOGCOLLECTOR_STATE_PATH, "w"), lc_state_file != NULL) {
         if (fwrite(lc_state_str, sizeof(char), len + 1, lc_state_file) < 1) {
-            merror(FWRITE_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
+            mterror(WM_LOGCOLLECTOR_LOGTAG, FWRITE_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
         }
         fclose(lc_state_file);
     } else {
-        merror(FOPEN_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
+        mterror(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
     }
 
     os_free(lc_state_str);
@@ -218,7 +219,7 @@ void _w_logcollector_state_update_file(w_lc_state_storage_t * state, char * fpat
             }
             os_free(data->targets);
             os_free(data);
-            merror(HUPDATE_ERROR, fpath, LOGCOLLECTOR_STATE_DESCRIPTION);
+            mterror(WM_LOGCOLLECTOR_LOGTAG, HUPDATE_ERROR, fpath, LOGCOLLECTOR_STATE_DESCRIPTION);
         }
     }
 }
@@ -264,7 +265,7 @@ void _w_logcollector_state_update_target(w_lc_state_storage_t * state, char * fp
             }
             os_free(data->targets);
             os_free(data);
-            merror(HUPDATE_ERROR, fpath, LOGCOLLECTOR_STATE_DESCRIPTION);
+            mterror(WM_LOGCOLLECTOR_LOGTAG, HUPDATE_ERROR, fpath, LOGCOLLECTOR_STATE_DESCRIPTION);
         }
     }
 }

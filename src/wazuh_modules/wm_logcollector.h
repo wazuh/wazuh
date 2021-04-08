@@ -17,8 +17,6 @@
 
 extern const wm_context WM_LOGCOLLECTOR_CONTEXT;     // Context
 
-#define WM_LOGCOLLECTOR_LOGTAG ARGV0 ":logcollector" // Tag for log messages
-
 typedef struct wm_logcollector_t {
     int accept_remote;
     int loop_timeout;

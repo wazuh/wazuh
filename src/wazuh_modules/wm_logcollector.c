@@ -51,7 +51,7 @@ void* wm_logcollector_main(wm_logcollector_t *data) {
     struct rlimit rlimit = { data->nofile, data->nofile };
 
     if (setrlimit(RLIMIT_NOFILE, &rlimit) < 0) {
-        merror("Could not set resource limit for file descriptors to %d: %s (%d)", (int)data->nofile, strerror(errno), errno);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, "Could not set resource limit for file descriptors to %d: %s (%d)", (int)data->nofile, strerror(errno), errno);
     }
 #endif
 

@@ -17,7 +17,7 @@
 
 /* Send pgsql message and check the return code */
 static void __send_pgsql_msg(logreader *lf, int drop_it, char *buffer) {
-    mdebug2("Reading PostgreSQL message: '%s'", buffer);
+    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Reading PostgreSQL message: '%s'", buffer);
     if (drop_it == 0) {
         w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, POSTGRESQL_MQ);
     }
@@ -150,6 +150,6 @@ void *read_postgresql_log(logreader *lf, int *rc, int drop_it) {
     current_position = w_ftell(lf->fp);
     w_update_file_status(lf->file, current_position, &context);
 
-    mdebug2("Read %d lines from %s", lines, lf->file);
+    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

@@ -1517,10 +1517,10 @@ wazuh-execd: ${os_execd_o}
 #### logcollector ####
 
 logcollector/%.o: logcollector/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-modulesd\" -c $^ -o $@
 
 logcollector/%-event.o: logcollector/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-modulesd\" -c $^ -o $@
 
 
 #### remoted #########

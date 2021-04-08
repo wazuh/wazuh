@@ -130,7 +130,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
-        mdebug2("Reading mysql messages: '%s'", buffer);
+        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Reading mysql messages: '%s'", buffer);
 
         /* Send message to queue */
         if (drop_it == 0) {
@@ -141,6 +141,6 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     current_position = w_ftell(lf->fp);
     w_update_file_status(lf->file, current_position, &context);
 
-    mdebug2("Read %d lines from %s", lines, lf->file);
+    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

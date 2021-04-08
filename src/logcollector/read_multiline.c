@@ -52,7 +52,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
             if ((int64_t)strlen(str) != rbytes - 1)
             {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
+                mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(str), FTELL_INT64 rbytes - 1);
                 continue;
             }
         }
@@ -66,7 +66,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
             __ms = 1;
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
-            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
+            mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
             if(current_position >= 0) {
                 w_fseek(lf->fp, current_position, SEEK_SET);
             }
@@ -98,7 +98,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
         /* Send message to queue */
         if (drop_it == 0) {
-            mdebug2("Reading message: '%.*s'%s", sample_log_length, buffer, strlen(buffer) > (size_t)sample_log_length ? "..." : "");
+            mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Reading message: '%.*s'%s", sample_log_length, buffer, strlen(buffer) > (size_t)sample_log_length ? "..." : "");
             w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
 
@@ -108,10 +108,10 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         /* Incorrect message size */
         if (__ms) {
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                mterror(WM_LOGCOLLECTOR_LOGTAG, "Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
+                mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Large message size from file '%s' (length = " FTELL_TT "): '%.*s'...", lf->file, FTELL_INT64 rbytes, sample_log_length, str);
             }
 
             for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
@@ -137,6 +137,6 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
 
     w_update_file_status(lf->file, current_position, &context);
 
-    mdebug2("Read %d lines from %s", lines, lf->file);
+    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

@@ -71,7 +71,7 @@ int init_djbmultilog(logreader *lf) {
     os_strdup(djbp_name + 1, lf->djb_program_name);
     tmp_str[0] = '/';
 
-    minfo("Using program name '%s' for DJB multilog file: '%s'.",
+    mtinfo(WM_LOGCOLLECTOR_LOGTAG, "Using program name '%s' for DJB multilog file: '%s'.",
             lf->djb_program_name, lf->file);
 
     return (1);
@@ -166,11 +166,11 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
         }
 
         else {
-            mdebug2("Invalid DJB log: '%s'", str);
+            mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Invalid DJB log: '%s'", str);
             continue;
         }
 
-        mdebug2("Reading DJB multilog message: '%s'", buffer);
+        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Reading DJB multilog message: '%s'", buffer);
 
         /* Send message to queue */
         if (drop_it == 0) {
@@ -181,6 +181,6 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     current_position = w_ftell(lf->fp);
     w_update_file_status(lf->file, current_position, &context);
 
-    mdebug2("Read %d lines from %s", lines, lf->file);
+    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Read %d lines from %s", lines, lf->file);
     return (NULL);
 }

@@ -23,11 +23,11 @@ void *read_command(logreader *lf, int *rc, int drop_it) {
     str[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    mdebug2("Running command '%s'", lf->command);
+    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Running command '%s'", lf->command);
 
     cmd_output = popen(lf->command, "r");
     if (!cmd_output) {
-        merror("Unable to execute command: '%s'.",
+        mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to execute command: '%s'.",
                lf->command);
 
         lf->command = NULL;
@@ -58,7 +58,7 @@ void *read_command(logreader *lf, int *rc, int drop_it) {
             continue;
         }
 
-        mdebug2("Reading command message: '%s'", str);
+        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Reading command message: '%s'", str);
 
         /* Send message to queue */
         if (drop_it == 0) {
@@ -70,6 +70,6 @@ void *read_command(logreader *lf, int *rc, int drop_it) {
 
     pclose(cmd_output);
 
-    mdebug2("Read %d lines from command '%s'", lines, lf->command);
+    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Read %d lines from command '%s'", lines, lf->command);
     return (NULL);
 }

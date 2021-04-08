@@ -11,6 +11,10 @@
 #ifndef LOGREADER_H
 #define LOGREADER_H
 
+#ifndef ARGV0
+#define ARGV0 "wazuh-modulesd"
+#endif
+
 #define N_MIN_INPUT_THREADS 1
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
@@ -31,6 +35,8 @@
 #define OS_LOGCOLLECTOR_JSON_PATH       "path"
 #define OS_LOGCOLLECTOR_JSON_HASH       "hash"
 #define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
+
+#define WM_LOGCOLLECTOR_LOGTAG ARGV0 ":logcollector" // Tag for log messages
 
 #include "shared.h"
 #include "config/localfile-config.h"

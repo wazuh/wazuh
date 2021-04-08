@@ -77,7 +77,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
             if ((int64_t)strlen(buffer) != rbytes - 1)
             {
-                mdebug2("Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(buffer), FTELL_INT64 rbytes - 1);
+                mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Line in '%s' contains some zero-bytes (valid=" FTELL_TT " / total=" FTELL_TT "). Dropping line.", lf->file, FTELL_INT64 strlen(buffer), FTELL_INT64 rbytes - 1);
                 continue;
             }
         } else {
@@ -98,10 +98,10 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                     }
                 }
             } else if (feof(lf->fp)) {
-                mdebug2("Message not complete. Trying again: '%s'", buffer);
+                mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Message not complete. Trying again: '%s'", buffer);
 
                 if (fseek(lf->fp, offset, SEEK_SET) < 0) {
-                   merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
+                   mterror(WM_LOGCOLLECTOR_LOGTAG, FSEEK_ERROR, lf->file, errno, strerror(errno));
                    break;
                }
             }
@@ -112,7 +112,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         // Extract header: "type=\.* msg=audit(\d+.\d+:\d+):"
 
         if (strncmp(buffer, "type=", 5) || !((id = strstr(buffer + 5, "msg=audit(")) && (p = strstr(id += 10, "): ")))) {
-            merror("Discarding audit message because of invalid syntax.");
+            mterror(WM_LOGCOLLECTOR_LOGTAG, "Discarding audit message because of invalid syntax.");
             break;
         }
 
@@ -130,7 +130,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         } else {
             // The header is the same: store
             if (icache == MAX_CACHE)
-                merror("Discarding audit message because cache is full.");
+                mterror(WM_LOGCOLLECTOR_LOGTAG, "Discarding audit message because cache is full.");
             else
                 cache[icache++] = strdup(buffer);
         }
@@ -141,6 +141,6 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
     w_update_file_status(lf->file, offset, &context);
 
-    mdebug2("Read %d lines from %s", lines, lf->file);
+    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Read %d lines from %s", lines, lf->file);
     return NULL;
 }
