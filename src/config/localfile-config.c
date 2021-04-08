@@ -33,6 +33,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_future = "only-future-events";
     const char *xml_localfile_max_size_attr = "max-size";
     const char *xml_localfile_query = "query";
+    const char *xml_localfile_query_type_attr = "type";
+    const char *xml_localfile_query_level_attr = "level";
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
@@ -121,6 +123,31 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
+//ifdef Darwin
+            const char * type_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_type_attr);
+            if(type_attr) {
+                if ((strcmp(node[i]->content, "activity") != 0) &&
+                    (strcmp(node[i]->content, "log") != 0) &&
+                    (strcmp(node[i]->content, "trace") != 0)) {
+                    /* Invalid type query */
+                        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, type_attr, \
+                        xml_localfile_query_type_attr, xml_localfile_query);
+                }
+                os_strdup(node[i]->content, logf[pl].query_type);
+            }
+
+            const char * level_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_level_attr);
+            if(level_attr) {
+                if ((strcmp(node[i]->content, "default") != 0) &&
+                    (strcmp(node[i]->content, "info") != 0) &&
+                    (strcmp(node[i]->content, "debug") != 0)) {
+                    /* Invalid level query */
+                        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, level_attr, \
+                        xml_localfile_query_level_attr, xml_localfile_query);
+                }
+                os_strdup(node[i]->content, logf[pl].query_type);
+            }
+//endif Darwin
             os_strdup(node[i]->content, logf[pl].query);
         } else if (strcmp(node[i]->element, xml_localfile_target) == 0) {
             // Count number of targets
@@ -275,6 +302,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
 #endif
+//ifdef Darwin
+            if (strcmp(node[i]->content, OSLOG) == 0) {
+                if (++log_config->oslog_count > 1) {
+                    merror(DUP_OSLOG);
+                    return (OS_INVALID);
+                }
+            }
+//endif Darwin
             os_strdup(node[i]->content, logf[pl].file);
         } else if (strcasecmp(node[i]->element, xml_localfile_logformat) == 0) {
             os_strdup(node[i]->content, logf[pl].logformat);
@@ -322,6 +357,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
+//ifdef Darwin
+            } else if (strcmp(logf[pl].logformat, OSLOG) == 0) {
+//endif Darwin
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -429,7 +467,16 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         merror(MISS_LOG_FORMAT);
         return (OS_INVALID);
     }
-
+//ifdef Darwin
+    /* Verify oslog config*/
+    if (strcmp(logf[pl].logformat, OSLOG) == 0) {
+        if (strcmp(logf[pl].file, OSLOG) != 0) {
+            /* Invalid oslog */
+            merror(INV_OSLOG);
+            return (OS_INVALID);
+        }
+    }
+//endif Darwin
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
 
