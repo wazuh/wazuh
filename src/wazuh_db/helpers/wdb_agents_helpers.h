@@ -45,6 +45,16 @@ int wdb_set_agent_sys_osinfo_triaged(int id,
                                int *sock);
 
 /**
+ * @brief Sets the triaged status in the sys_osinfo table of the specified agent's database.
+ *
+ * @param[in] id The agent ID.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_agents_sys_osinfo_set_triaged(int id,
+                                      int *sock);
+
+/**
  * @brief Insert or update a vulnerability to the vuln_cves table in the agents database.
  *
  * @param[in] id The agent ID.
