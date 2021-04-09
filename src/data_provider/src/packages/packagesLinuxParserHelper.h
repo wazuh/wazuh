@@ -186,7 +186,7 @@ namespace PackageLinuxHelper
         packageInfo["version"]      = alpmWrapper(alpm_pkg_get_version(pArchPkg));
         packageInfo["architecture"] = alpmWrapper(alpm_pkg_get_arch(pArchPkg));
         packageInfo["format"]       = "pacman";
-        packageInfo["vendor"]       = "";
+        packageInfo["vendor"]       = "Arch Linux";
         packageInfo["description"]  = alpmWrapper(alpm_pkg_get_desc(pArchPkg));
         return packageInfo;
     }

@@ -240,10 +240,10 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
 {
-    __alpm_list_t  mock;
-    __alpm_pkg_t   data;
-    const auto     spDataHandle {std::make_unique<__alpm_handle_t>()};
-    const auto     spDataGroups {std::make_unique<__alpm_list_t>()};
+    __alpm_list_t   mock        {};
+    __alpm_pkg_t    data        {};
+    __alpm_handle_t dataHandle  {};
+    __alpm_list_t   dataGroups  {};
 
     constexpr auto PKG_GROUP    {"wazuh"};
     constexpr auto PKG_ARCH     {"x86_64"};
@@ -251,8 +251,8 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     constexpr auto PKG_DESC     {"Standalone web browser from mozilla.org"};
     constexpr auto PKG_VERSION  {"86.0-2"};
 
-    data.handle        = spDataHandle.get();
-    data.groups        = spDataGroups.get();
+    data.handle        = &dataHandle;
+    data.groups        = &dataGroups;
     data.isize         = 1;
     data.installdate   = 0;
     data.groups->next  = nullptr;
@@ -273,39 +273,39 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     EXPECT_EQ(PKG_VERSION, jsPackageInfo["version"]);
     EXPECT_EQ(PKG_ARCH, jsPackageInfo["architecture"]);
     EXPECT_EQ("pacman", jsPackageInfo["format"]);
-    EXPECT_EQ("", jsPackageInfo["vendor"]);
+    EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
     EXPECT_EQ(PKG_DESC, jsPackageInfo["description"]);
 }
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
 {
-    __alpm_list_t   mock;
-    __alpm_pkg_t    data;
-    const auto      spDataHandle      {std::make_unique<__alpm_handle_t>()};
-    const auto      spDataFirstGroup  {std::make_unique<__alpm_list_t>()};
-    const auto      spDataSecondGroup {std::make_unique<__alpm_list_t>()};
-    const auto      spDataThirdGroup  {std::make_unique<__alpm_list_t>()};
-    const auto      spDataFourthGroup {std::make_unique<__alpm_list_t>()};
+    __alpm_list_t   mock            {};
+    __alpm_pkg_t    data            {};
+    __alpm_handle_t dataHandle      {};
+    __alpm_list_t   dataFirstGroup  {};
+    __alpm_list_t   dataSecondGroup {};
+    __alpm_list_t   dataThirdGroup  {};
+    __alpm_list_t   dataFourthGroup {};
 
-    spDataFirstGroup.get()->data    = const_cast<char *>("Wazuh");
-    spDataFirstGroup.get()->next    = spDataSecondGroup.get();
-    spDataSecondGroup.get()->data   = const_cast<char *>("test");
-    spDataSecondGroup.get()->next   = spDataThirdGroup.get();
-    spDataThirdGroup.get()->data    = const_cast<char *>("Arch");
-    spDataThirdGroup.get()->next    = spDataFourthGroup.get();
-    spDataFourthGroup.get()->data   = const_cast<char *>("lorem");
-    spDataFourthGroup.get()->next   = nullptr;
+    dataFirstGroup.data    = const_cast<char *>("Wazuh");
+    dataFirstGroup.next    = &dataSecondGroup;
+    dataSecondGroup.data   = const_cast<char *>("test");
+    dataSecondGroup.next   = &dataThirdGroup;
+    dataThirdGroup.data    = const_cast<char *>("Arch");
+    dataThirdGroup.next    = &dataFourthGroup;
+    dataFourthGroup.data   = const_cast<char *>("lorem");
+    dataFourthGroup.next   = nullptr;
 
-    data.isize                   = 0;
-    data.installdate             = 0;
-    data.name                    = nullptr;
-    data.version                 = nullptr;
-    data.arch                    = nullptr;
-    data.desc                    = nullptr;
-    data.handle                  = spDataHandle.get();
-    data.groups                  = spDataFirstGroup.get();
-    mock.data                    = &data;
-    data.ops                     = &default_pkg_ops;
+    data.isize             = 0;
+    data.installdate       = 0;
+    data.name              = nullptr;
+    data.version           = nullptr;
+    data.arch              = nullptr;
+    data.desc              = nullptr;
+    data.handle            = &dataHandle;
+    data.groups            = &dataFirstGroup;
+    mock.data              = &data;
+    data.ops               = &default_pkg_ops;
 
     const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(&mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
@@ -314,13 +314,13 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
 {
-    __alpm_list_t   mock;
-    __alpm_pkg_t    data;
-    const auto      spDataHandle {std::make_unique<__alpm_handle_t>()};
-    const auto      spDataGroups {std::make_unique<__alpm_list_t>()};
+    __alpm_list_t   mock        {};
+    __alpm_pkg_t    data        {};
+    __alpm_handle_t dataHandle  {};
+    __alpm_list_t   dataGroups  {};
 
-    data.handle        = spDataHandle.get();
-    data.groups        = spDataGroups.get();
+    data.handle        = &dataHandle;
+    data.groups        = &dataGroups;
     data.isize         = 0;
     data.installdate   = 0;
     data.groups->next  = nullptr;
@@ -341,6 +341,6 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
     EXPECT_EQ("", jsPackageInfo["version"]);
     EXPECT_EQ("", jsPackageInfo["architecture"]);
     EXPECT_EQ("pacman", jsPackageInfo["format"]);
-    EXPECT_EQ("", jsPackageInfo["vendor"]);
+    EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
     EXPECT_EQ("", jsPackageInfo["description"]);
 }
