@@ -132,8 +132,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     /* Invalid type query */
                         mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, type_attr, \
                         xml_localfile_query_type_attr, xml_localfile_query);
-                }
+                } else {
                 os_strdup(node[i]->content, logf[pl].query_type);
+                }
             }
 
             const char * level_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_level_attr);
@@ -144,8 +145,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     /* Invalid level query */
                         mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, level_attr, \
                         xml_localfile_query_level_attr, xml_localfile_query);
+                } else {
+                    os_strdup(node[i]->content, logf[pl].query_level);
                 }
-                os_strdup(node[i]->content, logf[pl].query_type);
             }
 //endif Darwin
             os_strdup(node[i]->content, logf[pl].query);
@@ -302,14 +304,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
             }
 #endif
-//ifdef Darwin
-            if (strcmp(node[i]->content, OSLOG) == 0) {
-                if (++log_config->oslog_count > 1) {
-                    merror(DUP_OSLOG);
-                    return (OS_INVALID);
-                }
-            }
-//endif Darwin
             os_strdup(node[i]->content, logf[pl].file);
         } else if (strcasecmp(node[i]->element, xml_localfile_logformat) == 0) {
             os_strdup(node[i]->content, logf[pl].logformat);
@@ -359,6 +353,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
 //ifdef Darwin
             } else if (strcmp(logf[pl].logformat, OSLOG) == 0) {
+                log_config->oslog_count++;
                 os_calloc(1, sizeof(w_oslog_config_t), logf[pl].oslog);
 //endif Darwin
             } else {
@@ -470,12 +465,15 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 //ifdef Darwin
     /* Verify oslog config*/
-    if (strcmp(logf[pl].logformat, OSLOG) == 0) {
-        if (strcmp(logf[pl].file, OSLOG) != 0) {
+    if (log_config->oslog_count > 1) {
+        merror(DUP_OSLOG);
+        return (OS_INVALID);
+    }
+
+    if (strcmp(logf[pl].logformat, OSLOG) == 0 && strcmp(logf[pl].file, OSLOG) != 0) {
             /* Invalid oslog */
             merror(INV_OSLOG);
             return (OS_INVALID);
-        }
     }
 //endif Darwin
     /* Verify Multiline Regex Config */
