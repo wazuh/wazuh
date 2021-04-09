@@ -142,8 +142,8 @@ typedef struct _logreader {
     char future;
     long diff_max_size;
     char *query;
-    char *query_type;   ///< Filtering by type in oslog
-    char *query_level;  ///< Filtering by level in oslog
+    char * query_type;   ///< Filtering by type in oslog
+    char * query_level;  ///< Filtering by level in oslog
     int filter_binary;
     int ucs2;
     outformat ** out_format;
