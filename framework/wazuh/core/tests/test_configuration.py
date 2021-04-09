@@ -90,11 +90,11 @@ def test_read_option():
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
 
-def test_agentconf2json():
+def test_wazuhconf2json():
     xml_conf = configuration.load_wazuh_xml(
-        os.path.join(parent_directory, tmp_path, 'configuration/default/agent1.conf'))
+        os.path.join(parent_directory, tmp_path, 'configuration/default/shared1.conf'))
 
-    assert configuration._agentconf2json(xml_conf=xml_conf)[0]['filters'] == {'name': 'agent_name'}
+    assert configuration._wazuhconf2json(xml_conf=xml_conf)[0]['filters'] == {'name': 'agent_name'}
 
 
 def test_rcl2json():
@@ -178,7 +178,7 @@ def test_get_agent_conf():
                 assert isinstance(configuration.get_agent_conf(group_id='default'), dict)
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        assert configuration.get_agent_conf(group_id='default', filename='agent1.conf')['total_affected_items'] == 1
+        assert configuration.get_agent_conf(group_id='default', filename='shared1.conf')['total_affected_items'] == 1
 
 
 def test_get_agent_conf_multigroup():

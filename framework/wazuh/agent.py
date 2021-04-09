@@ -507,7 +507,7 @@ def create_group(group_id):
         raise WazuhError(1711, extra_message=group_id)
 
     # Create group in /etc/shared
-    group_def_path = path.join(common.shared_path, 'agent-template.conf')
+    group_def_path = path.join(common.shared_path, 'shared-template.conf')
     try:
         mkdir_with_mode(group_path)
         copyfile(group_def_path, path.join(group_path, 'shared.conf'))

@@ -259,9 +259,9 @@ def _conf2json(src_xml, dst_json):
         _insert_section(dst_json, section_name, section_json)
 
 
-def _managerconf2json(xml_conf):
+def _wazuhconf2json(xml_conf):
     """
-    Returns manager.conf in JSON from xml
+    Returns manager.conf or agent.conf in JSON from xml
     """
     final_json = {}
 
@@ -480,7 +480,7 @@ def get_manager_conf(section=None, field=None, conf_file=common.manager_conf):
         xml_data = load_wazuh_xml(conf_file)
 
         # Parse XML to JSON
-        data = _managerconf2json(xml_data)
+        data = _wazuhconf2json(xml_data)
     except Exception as e:
         raise WazuhError(1101, extra_message=str(e))
 
@@ -529,7 +529,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
             # Read XML
             xml_data = load_wazuh_xml(agent_conf)
 
-            data = _agentconf2json(xml_data)
+            data = _wazuhconf2json(xml_data)
     except Exception as e:
         raise WazuhError(1101, str(e))
 
@@ -557,7 +557,7 @@ def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.databas
         xml_data = load_wazuh_xml(agent_conf)
 
         # Parse XML to JSON
-        data = _agentconf2json(xml_data)
+        data = _wazuhconf2json(xml_data)
     except Exception:
         raise WazuhError(1101)
 
