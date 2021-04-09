@@ -14,6 +14,7 @@
 
 static const char *agents_db_commands[] = {
     [WDB_AGENTS_SYS_OSINFO_GET] = "agent %d osinfo get",
+    [WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED] = "agent %d osinfo set_triaged",
     [WDB_AGENTS_VULN_CVES_INSERT] = "agent %d vuln_cves insert %s",
     [WDB_AGENTS_VULN_CVES_UPDATE_STATUS] = "agent %d vuln_cves update_status %s",
     [WDB_AGENTS_VULN_CVES_REMOVE] = "agent %d vuln_cves remove %s",
@@ -57,6 +58,48 @@ int wdb_agents_sys_osinfo_check_triaged(int id,
     }
 
     return triaged;
+}
+
+int wdb_agents_sys_osinfo_set_triaged(int id,
+                                      int *sock) {
+    int result = 0;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED], id);
+
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Agents DB (%d) Error in the response from socket", id);
+            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            result = OS_INVALID;
+            break;
+        default:
+            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
+            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            result = OS_INVALID;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    os_free(wdbquery);
+    os_free(wdboutput);
+
+    return result;
 }
 
 cJSON* wdb_agents_vuln_cves_insert(int id,
