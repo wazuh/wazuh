@@ -14,6 +14,7 @@
 #include "wazuh_db/wdb.h"
 
 cJSON* __wrap_wdb_agents_get_sys_osinfo(wdb_t *wdb);
+int __wrap_wdb_agents_set_sys_osinfo_triaged(wdb_t *wdb);
 cJSON* __wrap_wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                           const char* name,
                                           const char* version,
