@@ -21,6 +21,8 @@
 #include "sec.h"
 
 #define FD_LIST_INIT_VALUE 1024
+#define REMOTED_MSG_HEADER "1:" ARGV0 ":"
+#define AG_STOP_MSG REMOTED_MSG_HEADER OS_AG_STOPPED
 
 /* Pending data structure */
 

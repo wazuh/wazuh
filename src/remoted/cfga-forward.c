@@ -20,7 +20,7 @@ void *SCFGA_Forward(__attribute__((unused)) void *arg)
 {
     int cfgarq = 0;
     char *agent_id;
-    const char * path = isChroot() ? CFGARQUEUE : DEFAULTDIR CFGARQUEUE;
+    const char * path = CFGARQUEUE;
 
     char msg[OS_SIZE_4096 + 1];
 

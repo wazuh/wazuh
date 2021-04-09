@@ -85,7 +85,13 @@ void wm_gcp_run(const wm_gcp *data) {
     // Create arguments
     mtdebug2(WM_GCP_LOGTAG, "Create argument list");
 
-    wm_strcat(&command, WM_GCP_SCRIPT_PATH, '\0');
+    char * script = NULL;
+    os_calloc(PATH_MAX, sizeof(char), script);
+
+    snprintf(script, PATH_MAX, "%s", WM_GCP_SCRIPT_PATH);
+
+    wm_strcat(&command, script, '\0');
+    os_free(script);
 
     if (data->project_id) {
         wm_strcat(&command, "--project", ' ');

@@ -13,18 +13,19 @@
 #include "shared.h"
 #include "file-queue.h"
 
+#ifndef WIN32
 static void file_sleep(void);
 static void GetFile_Queue(file_queue *fileq) __attribute__((nonnull));
 static int Handle_Queue(file_queue *fileq, int flags) __attribute__((nonnull));
+
 /* To translate between month (int) to month (char) */
 static const char *(s_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
                                  };
 
 
-static void file_sleep()
-{
-#ifndef WIN32
+static void file_sleep() {
+
     struct timeval fp_timeout;
 
     fp_timeout.tv_sec = FQ_TIMEOUT;
@@ -32,11 +33,6 @@ static void file_sleep()
 
     /* Wait for the select timeout */
     select(0, NULL, NULL, NULL, &fp_timeout);
-
-#else
-    /* Windows does not like select that way */
-    Sleep((FQ_TIMEOUT + 2) * 1000);
-#endif
 
     return;
 }
@@ -48,7 +44,7 @@ static void GetFile_Queue(file_queue *fileq)
     fileq->file_name[0] = '\0';
     fileq->file_name[MAX_FQUEUE] = '\0';
 
-    snprintf(fileq->file_name, MAX_FQUEUE, fileq->flags & CRALERT_FP_SET ? "<stdin>" : isChroot() ? ALERTS_DAILY : DEFAULTDIR ALERTS_DAILY);
+    snprintf(fileq->file_name, MAX_FQUEUE, "%s", fileq->flags & CRALERT_FP_SET ? "<stdin>" : ALERTS_DAILY);
 }
 
 /* Re Handle the file queue */
@@ -179,3 +175,4 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int tim
     /* Return NULL if timeout expires */
     return (NULL);
 }
+#endif

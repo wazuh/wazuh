@@ -35,7 +35,7 @@
 #define FIM_REG_OPEN                            "(6920): Unable to open registry key: '%s' arch: '%s'."
 #define FIM_WARN_FILE_REALTIME                  "(6921): Unable to configure real-time option for file: '%s'"
 #define FIM_PATH_NOT_OPEN                       "(6922): Cannot open '%s': %s"
-#define FIM_WARN_SKIP_EVENT                     "(6923): Unable to process file '%s'"
+
 #define FIM_AUDIT_NORUNNING                     "(6924): Who-data engine cannot start because Auditd is not running."
 #define FIM_INVALID_OPTION_SKIP                 "(6925): Invalid option '%s' for attribute '%s'. The paths '%s' will not be monitored."
 #define FIM_WARN_WHODATA_ADD_RULE               "(6926): Unable to add audit rule for '%s'"
