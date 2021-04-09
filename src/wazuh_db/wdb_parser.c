@@ -2935,11 +2935,26 @@ int wdb_parse_osinfo(wdb_t* wdb, char* input, char* output) {
     }
     else if (strcmp(next, "set") == 0) {
         result = wdb_parse_agents_set_sys_osinfo(wdb, tail, output);
-    } else {
+    }
+    else if (strcmp(next, "set_triaged") == 0) {
+        result = wdb_parse_agents_set_sys_osinfo_triaged(wdb, output);
+    }
+    else {
         snprintf(output, OS_MAXSTR + 1, "err Invalid osinfo action: %s", next);
     }
 
     return result;
+}
+
+int wdb_parse_agents_set_sys_osinfo_triaged(wdb_t* wdb, char* output) {
+    int ret = wdb_agents_set_sys_osinfo_triaged(wdb);
+    if (OS_SUCCESS != ret) {
+        snprintf(output, OS_MAXSTR + 1, "err Cannot set sys_osinfo as triaged; SQL err: %s", sqlite3_errmsg(wdb->db));
+    }
+    else {
+        snprintf(output, OS_MAXSTR + 1, "ok");
+    }
+    return ret;
 }
 
 int wdb_parse_agents_get_sys_osinfo(wdb_t* wdb, char* output) {
