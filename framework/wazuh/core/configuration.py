@@ -529,7 +529,7 @@ def get_shared_conf(group_id=None, offset=0, limit=common.database_limit, filena
             # Read XML
             xml_data = load_wazuh_xml(shared_conf)
 
-            data = _wazuhconf2json(xml_data)
+            data = _sharedconf2json(xml_data)
     except Exception as e:
         raise WazuhError(1101, str(e))
 
@@ -557,7 +557,7 @@ def get_shared_conf_multigroup(multigroup_id=None, offset=0, limit=common.databa
         xml_data = load_wazuh_xml(shared_conf)
 
         # Parse XML to JSON
-        data = _wazuhconf2json(xml_data)
+        data = _sharedconf2json(xml_data)
     except Exception:
         raise WazuhError(1101)
 

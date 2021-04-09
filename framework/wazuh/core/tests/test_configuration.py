@@ -90,11 +90,11 @@ def test_read_option():
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
 
-def test_wazuhconf2json():
+def test_sharedconf2json():
     xml_conf = configuration.load_wazuh_xml(
         os.path.join(parent_directory, tmp_path, 'configuration/default/shared1.conf'))
 
-    assert configuration._wazuhconf2json(xml_conf=xml_conf)[0]['filters'] == {'name': 'agent_name'}
+    assert configuration._sharedconf2json(xml_conf=xml_conf)[0]['filters'] == {'name': 'agent_name'}
 
 
 def test_rcl2json():
@@ -164,38 +164,38 @@ def test_get_manager_conf():
     )['integration'][0]['node'] == 'wazuh-worker'
 
 
-def test_get_agent_conf():
+def test_get_shared_conf():
     with pytest.raises(WazuhError, match=".* 1710 .*"):
-        configuration.get_agent_conf(group_id='noexists')
+        configuration.get_shared_conf(group_id='noexists')
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1006 .*"):
-            configuration.get_agent_conf(group_id='default', filename='noexists.conf')
+            configuration.get_shared_conf(group_id='default', filename='noexists.conf')
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
             with pytest.raises(WazuhError, match=".* 1101 .*"):
-                assert isinstance(configuration.get_agent_conf(group_id='default'), dict)
+                assert isinstance(configuration.get_shared_conf(group_id='default'), dict)
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        assert configuration.get_agent_conf(group_id='default', filename='shared1.conf')['total_affected_items'] == 1
+        assert configuration.get_shared_conf(group_id='default', filename='shared1.conf')['total_affected_items'] == 1
 
 
-def test_get_agent_conf_multigroup():
+def test_get_shared_conf_multigroup():
     with pytest.raises(WazuhError, match=".* 1710 .*"):
-        configuration.get_agent_conf_multigroup()
+        configuration.get_shared_conf_multigroup()
 
     with patch('wazuh.core.common.multi_groups_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1006 .*"):
-            configuration.get_agent_conf_multigroup(multigroup_id='multigroup', filename='noexists.conf')
+            configuration.get_shared_conf_multigroup(multigroup_id='multigroup', filename='noexists.conf')
 
     with patch('wazuh.core.common.multi_groups_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
             with pytest.raises(WazuhError, match=".* 1101 .*"):
-                configuration.get_agent_conf_multigroup(multigroup_id='multigroup')
+                configuration.get_shared_conf_multigroup(multigroup_id='multigroup')
 
     with patch('wazuh.core.common.multi_groups_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        result = configuration.get_agent_conf_multigroup(multigroup_id='multigroup')
+        result = configuration.get_shared_conf_multigroup(multigroup_id='multigroup')
         assert set(result.keys()) == {'totalItems', 'items'}
 
 
@@ -315,7 +315,7 @@ def test_upload_group_file(mock_safe_move, mock_open):
                 with patch('wazuh.core.utils.chmod', side_effect=None):
                     assert configuration.upload_group_file('default',
                                                            "<agent_config>new_config</agent_config>", 'shared.conf') == \
-                           'Agent configuration was successfully updated'
+                           'Shared configuration was successfully updated'
 
     with patch('wazuh.core.common.shared_path', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1111 .*"):
