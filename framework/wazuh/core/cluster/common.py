@@ -110,6 +110,66 @@ class InBuffer:
         return data[len_data:]
 
 
+class ReceiveStringTask:
+    """
+    Implement an asyncio task but including a name or ID for it.
+    """
+
+    def __init__(self, wazuh_common, logger, task_id):
+        """Class constructor.
+
+        Parameters
+        ----------
+        wazuh_common : WazuhCommon object
+            The WazuhCommon object that creates this one.
+        logger : Logger object
+            Logger to use during the receiving process.
+        task_id : bytes
+            Pre-defined task_id for the task object.
+        """
+        self.wazuh_common = wazuh_common
+        self.coro = self.set_up_coro()
+        self.name = task_id
+        self.task = asyncio.create_task(self.coro(self.name))
+        self.task.add_done_callback(self.done_callback)
+        self.filename = ''
+        self.logger = logger
+
+    def __str__(self) -> str:
+        """Magic method str.
+
+        Returns
+        -------
+        str
+            Task name.
+        """
+        return self.name.decode()
+
+    def set_up_coro(self) -> Callable:
+        """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
+
+        Raises
+        -------
+        NotImplementedError
+            If the method is not implemented.
+        """
+        raise NotImplementedError
+
+    def done_callback(self, future=None):
+        """Function to call when the task is finished.
+
+        Remove string and task_name (if exist) from sync_tasks dict. If task was not cancelled, raise stored exception.
+        """
+        if self.name in self.wazuh_common.in_str:
+            del self.wazuh_common.in_str[self.name]
+        if self.name in self.wazuh_common.sync_tasks:
+            del self.wazuh_common.sync_tasks[self.name]
+        if not self.task.cancelled():
+            task_exc = self.task.exception()
+            if task_exc:
+                self.logger.error(task_exc)
+
+
 class ReceiveFileTask:
     """
     Implement an asyncio task but including a name or ID for it.
@@ -783,7 +843,7 @@ class WazuhCommon:
         """
         raise NotImplementedError
 
-    def setup_receive_file(self, ReceiveTaskClass: Callable):
+    def setup_receive_file(self, ReceiveTaskClass: Callable, data: bytes = None):
         """Create ReceiveTaskClass object and add it to sync_tasks dict.
 
         Returns
@@ -793,7 +853,10 @@ class WazuhCommon:
         bytes
             Task ID.
         """
-        my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag))
+        if data:
+            my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag), data)
+        else:
+            my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag))
         self.sync_tasks[my_task.name] = my_task
         return b'ok', str(my_task).encode()
 
