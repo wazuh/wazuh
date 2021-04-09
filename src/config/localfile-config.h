@@ -22,6 +22,17 @@
 #define DIFF_DEFAULT_SIZE 10 * 1024 * 1024
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
 
+/* oslog configurations */
+#define OSLOG_LEVEL_DEFAULT_STR "default"  ///< Represents the lowest loggin level in oslog
+#define OSLOG_LEVEL_INFO_STR    "info"     ///< Represents the intermediate loggin level in oslog
+#define OSLOG_LEVEL_DEBUG_STR   "debug"    ///< Represents the highest loggin level in oslog
+#define OSLOG_TYPE_ACTIVITY_STR "activity" ///< Is used to filter by `activity` logs
+#define OSLOG_TYPE_LOG_STR      "log"      ///< Is used to filter by `log` logs
+#define OSLOG_TYPE_TRACE_STR    "trace"    ///< Is used to filter by `trace` logs
+#define OSLOG_TYPE_ACTIVITY     (0x1 << 0) ///< Flag used to filter by `activity` logs
+#define OSLOG_TYPE_LOG          (0x1 << 1) ///< Flag used to filter by `log` logs
+#define OSLOG_TYPE_TRACE        (0x1 << 2) ///< Flag used to filter by `trace` logs
+
 #include <pthread.h>
 
 /* For ino_t */
@@ -105,11 +116,11 @@ typedef struct {
  */
 typedef struct {
     char * ctxt_buffer;         ///< store current read when os log is in process
-    int64_t offset_last_read;   ///< absolut stream offset of last complete log processed
-    char * last_timestamp_read; ///< timestamp of last log queued (Used for only feature event)
+    int64_t last_read_offset;   ///< absolut stream offset of last complete log processed
+    char * last_read_timestamp; ///< timestamp of last log queued (Used for only feature event)
     wfd_t * log_wfd;            ///< `log stream` IPC connector
     /** Indicates if `log stream` is currently running. if not running, localfiles with oslog format will be ignored */
-    bool oslog_running;
+    bool is_oslog_running;
 } w_oslog_config_t;
 
 /* Logreader config */
@@ -142,7 +153,7 @@ typedef struct _logreader {
     char future;
     long diff_max_size;
     char *query;
-    char * query_type;   ///< Filtering by type in oslog
+    int query_type;      ///< Filtering by type in oslog
     char * query_level;  ///< Filtering by level in oslog
     int filter_binary;
     int ucs2;
