@@ -50,6 +50,8 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
     dapi = DistributedAPI(**dapi_kwargs)
     try:
         raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+        if expected_error:
+            assert False, f'Expected exception not generated: {expected_error}'
     except ProblemException as e:
         if expected_error:
             assert e.ext['code'] == expected_error
@@ -326,17 +328,17 @@ def test_DistributedAPI_get_solver_node(mock_cluster_status, mock_agents_overvie
             with patch('wazuh.agent.get_agents_in_group', return_value=expected):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'group_id': 'default'}, 'nodes': ['master']}
-                raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1755)
+                raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             expected.affected_items = []
             with patch('wazuh.agent.get_agents_in_group', return_value=expected):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                                'f_kwargs': {'group_id': 'noexist'}, 'nodes': ['master']}
-                raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1755)
+                raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
                            'f_kwargs': {'node_list': '*'}, 'broadcasting': True, 'nodes': ['master']}
-            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1755)
+            raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
 
 @pytest.mark.parametrize('api_request', [

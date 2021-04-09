@@ -3,10 +3,10 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-import concurrent.futures
 import copy
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from secrets import token_urlsafe
 from shutil import chown
 from time import time
@@ -23,7 +23,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager, Roles
 from wazuh.rbac.preprocessor import optimize_resources
 
-pool = concurrent.futures.ThreadPoolExecutor()
+pool = ThreadPoolExecutor()
 
 
 def check_user_master(user, password):
@@ -66,7 +66,7 @@ def check_user(user, password, required_scopes=None):
                           f_kwargs={'user': user, 'password': password},
                           request_type='local_master',
                           is_async=False,
-                          wait_for_complete=True,
+                          wait_for_complete=False,
                           logger=logging.getLogger('wazuh-api')
                           )
     data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
@@ -136,7 +136,7 @@ def generate_token(user_id=None, data=None, run_as=False):
     dapi = DistributedAPI(f=get_security_conf,
                           request_type='local_master',
                           is_async=False,
-                          wait_for_complete=True,
+                          wait_for_complete=False,
                           logger=logging.getLogger('wazuh-api')
                           )
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
@@ -219,7 +219,7 @@ def decode_token(token):
                                         'run_as': payload['run_as']},
                               request_type='local_master',
                               is_async=False,
-                              wait_for_complete=True,
+                              wait_for_complete=False,
                               logger=logging.getLogger('wazuh-api')
                               )
         data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
@@ -233,7 +233,7 @@ def decode_token(token):
         dapi = DistributedAPI(f=get_security_conf,
                               request_type='local_master',
                               is_async=False,
-                              wait_for_complete=True,
+                              wait_for_complete=False,
                               logger=logging.getLogger('wazuh-api')
                               )
         result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
