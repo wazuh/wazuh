@@ -28,7 +28,7 @@ with patch('wazuh.core.common.ossec_uid'):
             get_agents_keys, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
-            restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node
+            restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents
         from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
@@ -115,11 +115,42 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     (['000'], [], 1703),
     (['001', '500'], ['001'], 1701)
 ])
+@patch('wazuh.core.agent.Agent.reconnect')
+@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconnect_mock, agent_list, expected_items,
+                                error_code):
+    """Test `reconnect_agents` function from agent module.
+
+    Parameters
+    ----------
+    agent_list : List of str
+        List of agent ID's.
+    expected_items : List of str
+        List of expected agent ID's returned by 'reconnect_agents'.
+    error_code : int
+        The expected error code.
+    """
+    result = reconnect_agents(agent_list)
+    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
+    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
+    if result.failed_items:
+        code = next(iter(result.failed_items.keys())).code
+        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
+
+
+@pytest.mark.parametrize('agent_list, expected_items, error_code', [
+    (['001', '002'], ['001', '002'], None),
+    (['000'], [], 1703),
+    (['001', '500'], ['001'], 1701)
+])
 @patch('wazuh.core.agent.Agent.restart')
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list, expected_items, error_code):
+def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list, expected_items,
+                              error_code):
     """Test `restart_agents` function from agent module.
 
     Parameters
@@ -147,7 +178,8 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, restart_
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list, expected_items,
+def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, restart_mock, agent_list,
+                                      expected_items,
                                       error_code):
     """Test `restart_agents_by_node` function from agent module.
 
@@ -373,7 +405,8 @@ def test_agent_get_agent_groups(socket_mock, send_mock, group_list, expected_res
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_agent_groups_exceptions(socket_mock, send_mock, mock_get_groups, db_global, system_groups, error_code):
+def test_agent_get_agent_groups_exceptions(socket_mock, send_mock, mock_get_groups, db_global, system_groups,
+                                           error_code):
     """Test `get_agent_groups` function from agent module raises the expected exceptions if an invalid 'global.db' path
     or group is specified.
 
@@ -973,17 +1006,17 @@ def test_agent_get_upgrade_result(agent_list):
     """
     with patch('wazuh.agent.core_upgrade_agents') as core_upgrade_agents_mock:
         core_upgrade_agents_mock.return_value = {'error': 0,
-                                                  'data': [
-                                                      {'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1,
-                                                       'module': 'upgrade_module', 'command': 'upgrade',
-                                                       'status': 'upgraded', 'create_time': '2020/09/23 10:39:53',
-                                                       'update_time': '2020/09/23 10:54:53'},
-                                                      {'error': 0, 'message': 'Success', 'agent': 2, 'task_id': 2,
-                                                       'module': 'upgrade_module', 'command': 'upgrade',
-                                                       'status': 'Legacy upgrade: ...',
-                                                       'create_time': '2020/09/23 11:24:27',
-                                                       'update_time': '2020/09/23 11:24:47'},
-                                                      {'error': 7, 'message': 'No task in DB', 'agent': 3}],
+                                                 'data': [
+                                                     {'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1,
+                                                      'module': 'upgrade_module', 'command': 'upgrade',
+                                                      'status': 'upgraded', 'create_time': '2020/09/23 10:39:53',
+                                                      'update_time': '2020/09/23 10:54:53'},
+                                                     {'error': 0, 'message': 'Success', 'agent': 2, 'task_id': 2,
+                                                      'module': 'upgrade_module', 'command': 'upgrade',
+                                                      'status': 'Legacy upgrade: ...',
+                                                      'create_time': '2020/09/23 11:24:27',
+                                                      'update_time': '2020/09/23 11:24:47'},
+                                                     {'error': 7, 'message': 'No task in DB', 'agent': 3}],
                                                  'message': 'Success'}
 
         result = get_upgrade_result(agent_list=agent_list)

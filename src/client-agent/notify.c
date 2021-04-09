@@ -117,6 +117,20 @@ void run_notify()
     }
 #endif
 
+    /* Check if the agent has to be reconnected */
+    if (agt->force_reconnect_interval && (curr_time - last_connection_time) >= agt->force_reconnect_interval) {
+        /* Set lock and wait for it */
+        minfo("Wazuh Agent will be reconnected because of force reconnect interval");
+        os_setwait();
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+
+        /* Send sync message */
+        start_agent(0);
+
+        os_delwait();
+        w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+    }
+
     /* Check if time has elapsed */
     if ((curr_time - g_saved_time) < agt->notify_time) {
         return;

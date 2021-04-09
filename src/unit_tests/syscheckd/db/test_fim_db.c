@@ -2182,6 +2182,21 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_key(void **state) {
     assert_null(entry->registry_entry.value);
 }
 
+void test_fim_db_get_entry_from_sync_msg_get_registry_key_fail_to_get_key(void **state) {
+    fdb_t fim_sql;
+    fim_registry_key data = DEFAULT_REGISTRY_KEY;
+    fim_entry *entry;
+
+    expect_fim_db_get_registry_key_fail(&data);
+
+    entry =
+    fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, "[x64] HKEY_LOCAL_MACHINE\\software\\some::\\key:value");
+
+    *state = entry;
+
+    assert_null(entry);
+}
+
 void test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data(void **state) {
     fdb_t fim_sql;
     fim_registry_key key_data = DEFAULT_REGISTRY_KEY;
@@ -2362,6 +2377,7 @@ int main(void) {
         // fim_db_get_entry_from_sync_msg
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_file, teardown_fim_entry),
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_key, teardown_fim_entry),
+        cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_key_fail_to_get_key, teardown_fim_entry),
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data, teardown_fim_entry),
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_value_success, teardown_fim_entry),
 #endif
