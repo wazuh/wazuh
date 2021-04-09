@@ -23,6 +23,7 @@
  * @param[in] ar Active Response information.
  * @param[in] extra_args Extra arguments escaped.
  * @param[out] temp_msg Message in JSON format.
+ * @pre temp_msg is OS_MAXSTR + 1 or more bytes long.
  */
 void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, char *extra_args, char *temp_msg)
 {
@@ -73,7 +74,8 @@ void getActiveResponseInJSON(const Eventinfo *lf, const active_response *ar, cha
     cJSON_AddItemToObject(_object, "alert", json_alert);
 
     msg = cJSON_PrintUnformatted(message);
-    strcpy(temp_msg, msg);
+    strncpy(temp_msg, msg, OS_MAXSTR);
+    temp_msg[OS_MAXSTR] = '\0';
     os_free(msg);
 
     // Clean up Memory
