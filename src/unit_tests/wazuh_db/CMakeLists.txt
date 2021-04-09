@@ -25,7 +25,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_agents_clear_vuln_cves -Wl,--wrap,wdb_open_global \
                         -Wl,--wrap,wdb_global_agent_exists  -Wl,--wrap,wdb_agents_update_status_vuln_cve -Wl,--wrap,wdb_agents_update_status_vuln_cves \
                         -Wl,--wrap,wdb_agents_remove_vuln_cves -Wl,--wrap,wdb_agents_remove_by_status_vuln_cves  -Wl,--wrap,cJSON_PrintUnformatted \
-                        -Wl,--wrap,wdb_agents_get_sys_osinfo -Wl,--wrap,wdb_osinfo_save ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,wdb_agents_get_sys_osinfo -Wl,--wrap,wdb_agents_set_sys_osinfo_triaged -Wl,--wrap,wdb_osinfo_save ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global_parser")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg \
