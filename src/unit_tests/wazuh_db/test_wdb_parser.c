@@ -9,6 +9,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_syscollector_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_agents_wrappers.h"
 
 #include "os_err.h"
 #include "wazuh_db/wdb.h"
@@ -834,6 +835,41 @@ void test_osinfo_get_success(void **state) {
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
     assert_string_equal(data->output, "ok []");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_osinfo_set_triaged_error(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+    os_strdup("set_triaged", query);
+
+    // wdb_agents_set_sys_osinfo_triaged
+    will_return(__wrap_wdb_agents_set_sys_osinfo_triaged, OS_INVALID);
+    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot set sys_osinfo as triaged; SQL err: ERROR MESSAGE");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_osinfo_set_triaged_success(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char *query = NULL;
+    os_strdup("set_triaged", query);
+
+    // wdb_agents_get_sys_osinfo
+    will_return(__wrap_wdb_agents_set_sys_osinfo_triaged, OS_SUCCESS);
+
+    ret = wdb_parse_osinfo(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
 
     os_free(query);
@@ -1666,6 +1702,9 @@ int main()
         // osinfo get
         cmocka_unit_test_setup_teardown(test_osinfo_get_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_get_success, test_setup, test_teardown),
+        // osinfo set_triaged
+        cmocka_unit_test_setup_teardown(test_osinfo_set_triaged_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_osinfo_set_triaged_success, test_setup, test_teardown),
         // osinfo set
         cmocka_unit_test_setup_teardown(test_osinfo_set_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_scan_id, test_setup, test_teardown),
