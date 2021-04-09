@@ -41,3 +41,11 @@ int __wrap_wdb_agents_vuln_cves_clear(int id,
     check_expected(id);
     return mock_type(int);
 }
+
+cJSON* __wrap_wdb_agents_vuln_cves_remove_by_status(int id,
+                                                    const char *status,
+                                                    __attribute__((unused)) int *sock) {
+    check_expected(id);
+    check_expected(status);
+    return mock_ptr_type(cJSON*);
+}
