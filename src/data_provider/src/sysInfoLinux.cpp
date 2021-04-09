@@ -208,25 +208,22 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100*memFree/ramTotal);
 }
 
-static nlohmann::json getRpmInfo()
+static void getRpmInfo(nlohmann::json& packages)
 {
-    nlohmann::json ret;
-    BerkeleyRpmDBReader db(std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE));
+    BerkeleyRpmDBReader db {std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE)};
 
-    for (std::string row = db.getNext() ; !row.empty() ; row = db.getNext())
+    for (std::string row{db.getNext()}; !row.empty() ; row = db.getNext())
     {
         const auto& package{ PackageLinuxHelper::parseRpm(row) };
         if (!package.empty())
         {
-            ret.push_back(package);
+            packages.push_back(package);
         }
     }
-    return ret;
 }
 
-static nlohmann::json getDpkgInfo(const std::string& fileName)
+static void getDpkgInfo(const std::string& fileName, nlohmann::json& packages)
 {
-    nlohmann::json ret;
     std::fstream file{fileName, std::ios_base::in};
     if (file.is_open())
     {
@@ -250,11 +247,49 @@ static nlohmann::json getDpkgInfo(const std::string& fileName)
             const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
             if (!packageInfo.empty())
             {
-                ret.push_back(packageInfo);
+                packages.push_back(packageInfo);
             }
         }
     }
-    return ret;
+}
+
+struct AlmpDeleter final
+{
+    void operator()(alpm_handle_t* pArchHandle)
+    {
+        alpm_release(pArchHandle);
+    }
+};
+
+static void getPacmanInfo(const std::string& libPath, nlohmann::json& packages)
+{
+    constexpr auto ROOT_PATH {"/"};
+    alpm_errno_t err {ALPM_ERR_OK};
+    auto pArchHandle {alpm_initialize(ROOT_PATH, libPath.c_str(), &err)};
+    if (!pArchHandle)
+    {
+        throw std::runtime_error
+        {
+            std::string{"alpm_initialize failure: "} + alpm_strerror(err)
+        };
+    }
+    const std::unique_ptr<alpm_handle_t, AlmpDeleter> spDbHandle{pArchHandle};
+    auto pDbLocal {alpm_get_localdb(spDbHandle.get())};
+    if (!pDbLocal)
+    {
+        throw std::runtime_error
+        {
+            std::string{"alpm_get_localdb failure: "} + alpm_strerror(alpm_errno(spDbHandle.get()))
+        };
+    }
+    for (auto pArchItem{alpm_db_get_pkgcache(pDbLocal)}; pArchItem; pArchItem = alpm_list_next(pArchItem))
+    {
+        const auto& packageInfo{ PackageLinuxHelper::parsePacman(pArchItem) };
+        if (!packageInfo.empty())
+        {
+            packages.push_back(packageInfo);
+        }
+    }
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -262,11 +297,15 @@ nlohmann::json SysInfo::getPackages() const
     nlohmann::json packages;
     if (Utils::existsDir(DPKG_PATH))
     {
-        packages = getDpkgInfo(DPKG_STATUS_PATH);
+        getDpkgInfo(DPKG_STATUS_PATH, packages);
     }
-    else if (Utils::existsDir(RPM_PATH))
+    if (Utils::existsDir(PACMAN_PATH))
     {
-        packages = getRpmInfo();
+        getPacmanInfo(PACMAN_PATH, packages);
+    }
+    if (Utils::existsDir(RPM_PATH))
+    {
+        getRpmInfo(packages);
     }
     return packages;
 }
