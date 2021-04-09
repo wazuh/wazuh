@@ -91,16 +91,58 @@ int wdb_set_agent_sys_osinfo_triaged(int id,
     return result;
 }
 
-cJSON* wdb_insert_vuln_cves(int id,
-                            const char *name,
-                            const char *version,
-                            const char *architecture,
-                            const char *cve,
-                            const char *reference,
-                            const char *type,
-                            const char *status,
-                            bool check_pkg_existence,
-                            int *sock) {
+int wdb_agents_sys_osinfo_set_triaged(int id,
+                                      int *sock) {
+    int result = 0;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
+    char *payload = NULL;
+    int aux_sock = -1;
+
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, agents_db_commands[WDB_AGENTS_SYS_OSINFO_SET_TRIAGGED], id);
+
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    switch (result) {
+        case OS_SUCCESS:
+            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
+                mdebug1("Agents DB (%d) Error reported in the result of the query", id);
+                result = OS_INVALID;
+            }
+            break;
+        case OS_INVALID:
+            mdebug1("Agents DB (%d) Error in the response from socket", id);
+            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            result = OS_INVALID;
+            break;
+        default:
+            mdebug1("Agents DB (%d) Cannot execute SQL query", id);
+            mdebug2("Agents DB (%d) SQL query: %s", id, wdbquery);
+            result = OS_INVALID;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    os_free(wdbquery);
+    os_free(wdboutput);
+
+    return result;
+}
+
+cJSON* wdb_agents_vuln_cves_insert(int id,
+                                   const char *name,
+                                   const char *version,
+                                   const char *architecture,
+                                   const char *cve,
+                                   const char *reference,
+                                   const char *type,
+                                   const char *status,
+                                   bool check_pkg_existence,
+                                   int *sock) {
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
     char *wdbquery = NULL;
