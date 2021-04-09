@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy, deepcopy
 from functools import reduce
 from operator import or_
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, List
 
 from sqlalchemy.exc import OperationalError
 
@@ -440,6 +440,39 @@ class DistributedAPI:
             return result if isinstance(result, (wresults.AbstractWazuhResult, exception.WazuhException)) \
                 else wresults.WazuhResult(result)
 
+        async def clean_valid_nodes(nodes_to_clean: List[Tuple]) -> List[Tuple]:
+            """Clean nodes response to forward only to real nodes in a single petition for each one.
+    
+            Parameters
+            ----------
+            nodes_to_clean : list
+                List of nodes to clean.
+    
+            Returns
+            -------
+            list
+                Cleaned list of nodes.
+            """
+            # We run through the list of nodes to find unknown and '' entries
+            indexes_to_delete = set()
+            myself_index = None
+            for i, node in enumerate(nodes_to_clean):
+                if node[0] == 'unknown' or node[0] == '' or node[0] is None:
+                    indexes_to_delete.add(i)
+                if node[0] == self.node_info['node']:
+                    myself_index = i
+
+            # We add found entries to local node and remove them from the list of tuples
+            if myself_index is None and indexes_to_delete:
+                nodes_to_clean.append((self.node_info['node'], list()))
+                for index in indexes_to_delete:
+                    nodes_to_clean[-1][1].extend(nodes_to_clean[index][1])
+            elif myself_index is not None and indexes_to_delete:
+                for index in indexes_to_delete:
+                    nodes_to_clean[myself_index][1].extend(nodes_to_clean[index][1])
+
+            return [node for i, node in enumerate(nodes_to_clean) if i not in indexes_to_delete]
+
         # get the node(s) who has all available information to answer the request.
         nodes = await self.get_solver_node()
         self.from_cluster = True
@@ -468,23 +501,9 @@ class DistributedAPI:
             allowed_nodes.affected_items = list(nodes)
             allowed_nodes.total_affected_items = len(allowed_nodes.affected_items)
 
-        indexes_to_delete = set()
-        myself_index = None
-        for i, node in enumerate(valid_nodes):
-            if node[0] == 'unknown' or node[0] == '':
-                indexes_to_delete.add(i)
-            if node[0] == self.node_info['node']:
-                myself_index = i
+        cleaned_valid_nodes = await clean_valid_nodes(valid_nodes)
 
-        if myself_index is None and indexes_to_delete:
-            valid_nodes.append((self.node_info['node'], list()))
-            for index in indexes_to_delete:
-                valid_nodes[-1][1].extend(valid_nodes[index][1])
-        elif myself_index and indexes_to_delete:
-            valid_nodes[myself_index][1].extend(valid_nodes[index][1] for index in indexes_to_delete)
-        valid_nodes = [node for i, node in enumerate(valid_nodes) if i not in indexes_to_delete]
-
-        response = await asyncio.shield(asyncio.gather(*[forward(node) for node in valid_nodes]))
+        response = await asyncio.shield(asyncio.gather(*[forward(node) for node in cleaned_valid_nodes]))
 
         if allowed_nodes.total_affected_items > 1:
             response = reduce(or_, response)
