@@ -74,7 +74,7 @@ class WazuhException(Exception):
                'remediation': 'Please, ensure file content has correct XML'
                },
         1114: "Wazuh syntax error",
-        1115: {'message': 'Error executing verify-agent-conf',
+        1115: {'message': 'Error executing verify-shared-conf',
                'remediation': 'Please, check your configuration file and try again'
                },
         1116: {'message': "Requested component configuration does not exist",
