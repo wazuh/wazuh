@@ -12,11 +12,23 @@
 #include "localfile-config.h"
 #include "config.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 int maximum_files;
 int current_files;
 int total_files;
 
-
+/**
+ * @brief gets the type filter from the type attribute
+ * @param content type attribute string
+ * @return returns the configuration flags: activity, trace and/or log
+ */
+STATIC int w_logcollector_get_oslog_type(const char * content);
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -126,22 +138,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 //ifdef Darwin
             const char * type_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_type_attr);
             if(type_attr) {
-                if ((strcmp(node[i]->content, "activity") != 0) &&
-                    (strcmp(node[i]->content, "log") != 0) &&
-                    (strcmp(node[i]->content, "trace") != 0)) {
-                    /* Invalid type query */
-                        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, type_attr, \
-                        xml_localfile_query_type_attr, xml_localfile_query);
-                } else {
-                os_strdup(node[i]->content, logf[pl].query_type);
-                }
+                logf[pl].query_type = w_logcollector_get_oslog_type(type_attr);
             }
 
             const char * level_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_level_attr);
             if(level_attr) {
-                if ((strcmp(node[i]->content, "default") != 0) &&
-                    (strcmp(node[i]->content, "info") != 0) &&
-                    (strcmp(node[i]->content, "debug") != 0)) {
+                if ((strcmp(node[i]->content, OSLOG_LEVEL_DEFAULT_STR) != 0) &&
+                    (strcmp(node[i]->content, OSLOG_LEVEL_INFO_STR) != 0) &&
+                    (strcmp(node[i]->content, OSLOG_LEVEL_DEBUG_STR) != 0)) {
                     /* Invalid level query */
                         mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, level_attr, \
                         xml_localfile_query_level_attr, xml_localfile_query);
@@ -856,4 +860,40 @@ const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type)
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     const char * const match_str[ML_MATCH_MAX] = {"start", "all", "end"};
     return match_str[match_type];
+}
+
+STATIC int w_logcollector_get_oslog_type(const char * content) {
+
+    const size_t MAX_ARRAY_SIZE = 64;
+    const char * XML_LOCALFILE_QUERY_TYPE_ATTR = "type";
+    const char * XML_LOCALFILE_QUERY = "query";
+    size_t current = 0;
+    int retval = 0;
+
+    char ** type_arr = OS_StrBreak(',', content, MAX_ARRAY_SIZE);
+
+    if (type_arr) {
+        while (type_arr[current]) {
+            char * word = &(type_arr[current])[strspn(type_arr[current], " ")];
+            word[strcspn(word, " ")] = '\0';
+
+            if (strcasecmp(word, OSLOG_TYPE_ACTIVITY_STR) == 0) {
+                retval |= OSLOG_TYPE_ACTIVITY;
+            } else if (strcasecmp(word, OSLOG_TYPE_LOG_STR) == 0) {
+                retval |= OSLOG_TYPE_LOG;
+            } else if (strcasecmp(word, OSLOG_TYPE_TRACE_STR) == 0) {
+                retval |= OSLOG_TYPE_TRACE;
+            } else if (strcasecmp(word, "") != 0) {
+                mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, word, XML_LOCALFILE_QUERY_TYPE_ATTR, XML_LOCALFILE_QUERY);
+            }
+
+            os_free(type_arr[current]);
+            current++;
+        }
+
+        os_free(type_arr);
+
+    }
+
+    return retval;
 }
