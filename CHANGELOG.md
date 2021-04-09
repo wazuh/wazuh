@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
   - Added new endpoint to modify users' allow_run_as flag. ([#7588](https://github.com/wazuh/wazuh/pull/7588))
   - Added new endpoint to get vulnerabilities that affect an agent. ([#7647](https://github.com/wazuh/wazuh/pull/7647))
   - Added API configuration validator. ([#7803](https://github.com/wazuh/wazuh/pull/7803))
+  - Added the capability to disable the max_request_per_minute API configuration option using 0 as value. ([#8115](https://github.com/wazuh/wazuh/pull/8115))
     
 - **Ruleset:**
   - Added support for UFW firewall to decoders. ([#7100](https://github.com/wazuh/wazuh/pull/7100))
@@ -54,10 +55,9 @@ All notable changes to this project will be documented in this file.
   - Changed the `PUT /active-response` endpoint function to create messages with the new JSON format. ([#7312](https://github.com/wazuh/wazuh/pull/7312))
   - New parameters added to `DELETE /agents` endpoint and `older_than` field removed from response. ([#6366](https://github.com/wazuh/wazuh/issues/6366))
   - Changed login security controller to avoid errors in Restful API reference links. ([#7909](https://github.com/wazuh/wazuh/pull/7909))
-    
-- **Framework:**
-  - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
-
+  - Changed the PUT /agents/group/{group_id}/restart response format when there are no agents assigned to the group. ([#8123](https://github.com/wazuh/wazuh/pull/8123))
+  - Agent keys used when adding agents are now obscured in the API log. ([#8149](https://github.com/wazuh/wazuh/pull/8149))
+  
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
   - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
@@ -99,6 +99,7 @@ All notable changes to this project will be documented in this file.
   - Fixed API errors when cluster is disabled and node_type is worker. ([#7867](https://github.com/wazuh/wazuh/pull/7867))
   - Fixed redundant paths and duplicated tests in API integration test mapping script. ([#7798](https://github.com/wazuh/wazuh/pull/7798))
   - Fixed an API integration test case failing in test_rbac_white_all and added a test case for the enable/disable run_as endpoint.([8014](https://github.com/wazuh/wazuh/pull/8014))
+  - Fixed a thread race condition when adding or deleting agents without authd ([8148](https://github.com/wazuh/wazuh/pull/8148))
 
 - **Ruleset:**
   - Fixed usb-storage-attached regex pattern to support blank spaces. ([#7837](https://github.com/wazuh/wazuh/issues/7837))
@@ -114,6 +115,8 @@ All notable changes to this project will be documented in this file.
   - Removed the `allow_run_as` parameter from endpoints `POST /security/users` and `PUT /security/users/{user_id}`. ([#7588](https://github.com/wazuh/wazuh/pull/7588))
   - Removed `behind_proxy_server` option from configuration. ([#7006](https://github.com/wazuh/wazuh/issues/7006))
 
+- **Framework:**
+  - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
 
 ## [v4.1.4] - 2021-03-25
 
