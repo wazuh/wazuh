@@ -23,6 +23,7 @@ const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type)
 unsigned int w_get_attr_timeout(xml_node * node);
 w_multiline_replace_type_t w_get_attr_replace(xml_node * node);
 w_multiline_match_type_t w_get_attr_match(xml_node * node);
+int w_logcollector_get_oslog_type(const char * content);
 
 /* setup/teardown */
 
@@ -344,6 +345,69 @@ void test_w_get_attr_match_end(void ** state) {
     assert_int_equal(expect_retval, retval);
 }
 
+/*  w_logcollector_get_oslog_type  */
+void test_w_logcollector_get_oslog_type_content_NULL(void ** state) {
+    const char * content = NULL;
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, 0);
+}
+
+void test_w_logcollector_get_oslog_type_content_empty(void ** state) {
+    const char * content = "";
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, 0);
+}
+
+void test_w_logcollector_get_oslog_type_content_ignore_values(void ** state) {
+    const char * content = "  hello, ,world  ";
+
+    expect_string(__wrap__mwarn, formatted_msg, "(8000): Invalid value 'hello' for attribute 'type' in 'query' option."\
+                  " Default value will be used.");
+
+    expect_string(__wrap__mwarn, formatted_msg, "(8000): Invalid value 'world' for attribute 'type' in 'query' option."\
+                  " Default value will be used.");
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, 0);
+}
+
+void test_w_logcollector_get_oslog_type_content_activity(void ** state) {
+    const char * content = " activity ";
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, OSLOG_TYPE_ACTIVITY);
+}
+
+void test_w_logcollector_get_oslog_type_content_log(void ** state) {
+    const char * content = "log ";
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, OSLOG_TYPE_LOG);
+}
+
+void test_w_logcollector_get_oslog_type_content_trace(void ** state) {
+    const char * content = " trace, ";
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, OSLOG_TYPE_TRACE);
+}
+
+void test_w_logcollector_get_oslog_type_content_trace_activity(void ** state) {
+    const char * content = " trace, activity,,";
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, OSLOG_TYPE_TRACE | OSLOG_TYPE_ACTIVITY);
+}
+
+void test_w_logcollector_get_oslog_type_content_trace_log_activity(void ** state) {
+    const char * content = " trace, ,activity,,log ";
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, OSLOG_TYPE_TRACE | OSLOG_TYPE_ACTIVITY | OSLOG_TYPE_LOG);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Tests replace_char
@@ -376,6 +440,15 @@ int main(void) {
         cmocka_unit_test(test_w_get_attr_match_all),
         cmocka_unit_test(test_w_get_attr_match_end),
         cmocka_unit_test(test_w_get_attr_match_invalid),
+        // Tests w_logcollector_get_oslog_type
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_NULL),
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_empty),
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_ignore_values),
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_activity),
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_log),
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_trace),
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_trace_activity),
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_trace_log_activity),
 
     };
 
