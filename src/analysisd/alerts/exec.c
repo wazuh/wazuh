@@ -123,7 +123,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                     if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
                         agt_version = json_agt_version->valuestring;
                     } else {
-                        merror("Failed to get agent '%d' version.", id_array[i]);
+                        mdebug2("Failed to get agent '%d' version.", id_array[i]);
                         labels_free(agt_labels);
                         cJSON_Delete(json_agt_info);
                         continue;
@@ -202,7 +202,7 @@ void OS_Exec(int execq, int *arq, const Eventinfo *lf, const active_response *ar
                 if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
                     agt_version = json_agt_version->valuestring;
                 } else {
-                    merror("Failed to get agent '%d' version.", agt_id);
+                    mdebug2("Failed to get agent '%d' version.", agt_id);
                     labels_free(agt_labels);
                     cJSON_Delete(json_agt_info);
                     goto cleanup;
