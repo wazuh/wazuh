@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS vuln_metadata (
     HOTFIX_SCAN_ID TEXT
 );
 INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN, HOTFIX_SCAN_ID)
-    SELECT '0', '0', '0' WHERE NOT EXISTS (
+    SELECT 0, 0, '0' WHERE NOT EXISTS (
         SELECT * FROM vuln_metadata
     );
 
