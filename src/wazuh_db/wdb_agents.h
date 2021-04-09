@@ -24,6 +24,14 @@
 cJSON* wdb_agents_get_sys_osinfo(wdb_t *wdb);
 
 /**
+ * @brief Function to set the triaged column from the sys_osinfo table.
+ *
+ * @param [in] wdb The 'agents' struct database.
+ * @return Returns 0 on success or -1 on error.
+ */
+int wdb_agents_set_sys_osinfo_triaged(wdb_t *wdb);
+
+/**
  * @brief Function to check if a certain package exists.
  *
  * @param [in] wdb The 'agents' struct database.
