@@ -49,6 +49,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_OSINFO_INSERT2] = "INSERT OR REPLACE INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, checksum, reference, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_OSINFO_DEL] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_OSINFO_GET] = "SELECT * FROM sys_osinfo;",
+    [WDB_STMT_OSINFO_SET_TRIAGED] = "UPDATE sys_osinfo SET TRIAGED = 1;",
     [WDB_STMT_PROGRAM_INSERT] = "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_PROGRAM_INSERT2] = "INSERT OR REPLACE INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_PROGRAM_DEL] = "DELETE FROM sys_programs WHERE scan_id != ?;",
