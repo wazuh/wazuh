@@ -17,6 +17,10 @@ cJSON* __wrap_wdb_agents_get_sys_osinfo(__attribute__((unused)) wdb_t *wdb) {
     return mock_ptr_type(cJSON*);
 }
 
+int __wrap_wdb_agents_set_sys_osinfo_triaged(__attribute__((unused)) wdb_t *wdb) {
+    return mock();
+}
+
 cJSON* __wrap_wdb_agents_insert_vuln_cves(__attribute__((unused)) wdb_t *wdb,
                                           const char* name,
                                           const char* version,

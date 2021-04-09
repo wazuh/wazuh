@@ -1157,6 +1157,105 @@ void test_wdb_agents_vuln_cves_clear_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
+/* Tests wdb_agents_sys_osinfo_set_triaged */
+
+void test_wdb_agents_sys_osinfo_set_triaged_error_socket(void **state)
+{
+    int ret = 0;
+    int id = 1;
+
+    const char *query_str = "agent 1 osinfo set_triaged";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_INVALID);
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error in the response from socket");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 osinfo set_triaged");
+
+    ret = wdb_agents_sys_osinfo_set_triaged(id, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_agents_sys_osinfo_set_triaged_error_sql_execution(void **state)
+{
+    int ret = 0;
+    int id = 1;
+
+    const char *query_str = "agent 1 osinfo set_triaged";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, -100); // Returning any error
+
+    // Handling result
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Cannot execute SQL query");
+    expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 osinfo set_triaged");
+
+    ret = wdb_agents_sys_osinfo_set_triaged(id, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_agents_sys_osinfo_set_triaged_error_result(void **state)
+{
+    int ret = 0;
+    int id = 1;
+
+    const char *query_str = "agent 1 osinfo set_triaged";
+    const char *response = "err";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
+    expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error reported in the result of the query");
+
+    ret = wdb_agents_sys_osinfo_set_triaged(id, NULL);
+
+    assert_int_equal(OS_INVALID, ret);
+}
+
+void test_wdb_agents_sys_osinfo_set_triaged_success(void **state)
+{
+    int ret = 0;
+    int id = 1;
+
+    const char *query_str = "agent 1 osinfo set_triaged";
+    const char *response = "ok";
+
+    // Calling Wazuh DB
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query_str);
+    expect_value(__wrap_wdbc_query_ex, len, WDBOUTPUT_SIZE);
+    will_return(__wrap_wdbc_query_ex, response);
+    will_return(__wrap_wdbc_query_ex, OS_SUCCESS);
+
+    // Parsing Wazuh DB result
+    expect_any(__wrap_wdbc_parse_result, result);
+    will_return(__wrap_wdbc_parse_result, WDBC_OK);
+
+    ret = wdb_agents_sys_osinfo_set_triaged(id, NULL);
+
+    assert_int_equal(OS_SUCCESS, ret);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] =
@@ -1199,6 +1298,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_clear_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_clear_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_clear_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_agents_sys_osinfo_set_triaged*/
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_set_triaged_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_set_triaged_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_set_triaged_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_set_triaged_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
