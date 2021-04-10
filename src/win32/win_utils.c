@@ -221,7 +221,7 @@ int local_start()
     wmodule * cur_module;
     if (!wm_config() && !wm_check()) {
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-            w_create_thread(NULL,
+            cur_module->thread = (unsigned int)w_create_thread(NULL,
                             0,
                             (LPTHREAD_START_ROUTINE)cur_module->context->start,
                             cur_module->data,
@@ -233,7 +233,7 @@ int local_start()
     atexit(stop_wmodules);
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        pthread_join(cur_module->thread, NULL);
+        WaitForSingleObject((HANDLE)cur_module->thread, INFINITE);
     }
 
     if (sysinfo_module){

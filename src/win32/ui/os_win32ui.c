@@ -387,10 +387,8 @@ int WINAPI WinMain(HINSTANCE hInstance, __attribute__((unused))HINSTANCE hPrevIn
         __attribute__((unused))LPSTR lpCmdLine, __attribute__((unused))int nCmdShow)
 {
     WSADATA wsaData;
-
     /* Start Winsock -- for name resolution */
     WSAStartup(MAKEWORD(2, 0), &wsaData);
-
     /* Initialize config */
     init_config();
 
