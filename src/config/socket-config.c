@@ -53,12 +53,12 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             os_calloc(1, sizeof(wmodule), cur_wmodule->next);
             cur_wmodule = cur_wmodule->next;
             cur_wmodule->context = &WM_LOGCOLLECTOR_CONTEXT;
-            cur_wmodule->tag = LOGCOLLECTOR_WM_NAME;
+            cur_wmodule->tag = strdup(LOGCOLLECTOR_WM_NAME);
         }
     } else {
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
         cur_wmodule->context = &WM_LOGCOLLECTOR_CONTEXT;
-        cur_wmodule->tag = LOGCOLLECTOR_WM_NAME;
+        cur_wmodule->tag = strdup(LOGCOLLECTOR_WM_NAME);
     }
 
     if (!cur_wmodule) {
