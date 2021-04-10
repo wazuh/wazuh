@@ -559,13 +559,13 @@ void win_read_vista_sec()
 
     /* Vista security */
     fp = fopen("vista_sec.txt", "r");
-    if (!fp) merror_exit("Unable to read vista security descriptions.");
+    if (!fp) mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "Unable to read vista security descriptions.");
 
     /* Creating the hash */
     vista_sec_id_hash = OSHash_Create();
     if (!vista_sec_id_hash) {
         fclose(fp);
-        merror_exit("Unable to read vista security descriptions.");
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "Unable to read vista security descriptions.");
     }
 
     /* Read the whole file and add it to memory */

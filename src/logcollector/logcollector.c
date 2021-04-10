@@ -172,13 +172,13 @@ void LogCollectorStart()
     /* Create store data */
     excluded_files = OSHash_Create();
     if (!excluded_files) {
-        merror_exit(LIST_ERROR);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, LIST_ERROR);
     }
 
     /* Create store for binaries data */
     excluded_binaries = OSHash_Create();
     if (!excluded_binaries) {
-        merror_exit(LIST_ERROR);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, LIST_ERROR);
     }
 
     /* Initialize status file struct (files_status) and set w_save_file_status at the process exit */
@@ -449,14 +449,14 @@ void LogCollectorStart()
             excluded_files = OSHash_Create();
 
             if (!excluded_files) {
-                merror_exit(LIST_ERROR);
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, LIST_ERROR);
             }
 
             OSHash_Free(excluded_binaries);
             excluded_binaries = OSHash_Create();
 
             if (!excluded_binaries) {
-                merror_exit(LIST_ERROR);
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, LIST_ERROR);
             }
 
             f_free_excluded = 0;
@@ -905,7 +905,7 @@ int update_fname(int i, int j)
     lfile[OS_FLSIZE] = '\0';
     ret = strftime(lfile, OS_FLSIZE, lf->ffile, &tm_result);
     if (ret == 0) {
-        merror_exit(PARSE_ERROR, lf->ffile);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, PARSE_ERROR, lf->ffile);
     }
 
     /* Update the filename */
@@ -1192,7 +1192,7 @@ void set_read(logreader *current, int i, int j) {
         if (update_fname(i, j)) {
             handle_file(i, j, 1, 1);
         } else {
-            merror_exit(PARSE_ERROR, current->ffile);
+            mterror_exit(WM_LOGCOLLECTOR_LOGTAG, PARSE_ERROR, current->ffile);
         }
 
     } else {
@@ -1432,7 +1432,7 @@ static void check_pattern_expand_excluded() {
                     result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
 
                     if (result) {
-                        merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
+                        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR,g.gl_pathv[glob_offset]);
                     } else {
 
                         /* Add the excluded file to the hash table */
@@ -1662,7 +1662,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                     result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j]);
                 }
                 if (result) {
-                    merror_exit(REM_ERROR, current->file);
+                    mterror_exit(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR, current->file);
                 } else {
                     mtdebug1(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                 }
@@ -1748,7 +1748,7 @@ static void set_sockets() {
                 }
             }
             if (found != 0) {
-                merror_exit("Socket '%s' for '%s' is not defined.", current->target[j], file);
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "Socket '%s' for '%s' is not defined.", current->target[j], file);
             } else {
                 current->log_target[j].log_socket = &logsk[k];
                 w_msg_hash_queues_add_entry(logsk[k].name);
@@ -1825,7 +1825,7 @@ void w_msg_hash_queues_init(){
     msg_queues_table = OSHash_Create();
 
     if(!msg_queues_table){
-        merror_exit("Failed to create hash table for queue threads");
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "Failed to create hash table for queue threads");
     }
 
     OSHash_SetFreeDataPointer(msg_queues_table, (void (*)(void *))free_msg_queue);
@@ -2085,7 +2085,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
             int_error++;
 
             if (int_error >= 5) {
-                merror_exit(SYSTEM_ERROR);
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, SYSTEM_ERROR);
             }
             continue;
         }
@@ -2413,7 +2413,7 @@ static void check_text_only() {
                 }
 
                 if (result) {
-                    merror_exit(REM_ERROR, file_name);
+                    mterror_exit(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR, file_name);
                 } else {
                     mtdebug2(WM_LOGCOLLECTOR_LOGTAG, NON_TEXT_FILE, file_name);
                     mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
@@ -2545,7 +2545,7 @@ static void check_pattern_expand_excluded() {
                         }
 
                         if (result) {
-                            merror_exit(REM_ERROR,full_path);
+                            mterror_exit(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR,full_path);
                         } else {
 
                             /* Add the excluded file to the hash table */
@@ -2611,11 +2611,11 @@ STATIC void w_initialize_file_status() {
 
     /* Initialize hash table to associate paths and read position */
     if (files_status = OSHash_Create(), files_status == NULL) {
-        merror_exit(HCREATE_ERROR, files_status_name);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, HCREATE_ERROR, files_status_name);
     }
 
     if (OSHash_setSize(files_status, LOCALFILES_TABLE_SIZE) == 0) {
-        merror_exit(HSETSIZE_ERROR, files_status_name);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, HSETSIZE_ERROR, files_status_name);
     }
 
     OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free);
@@ -2637,7 +2637,7 @@ STATIC void w_initialize_file_status() {
 
         fclose(fd);
     } else if (errno != ENOENT) {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
     }
 }
 
@@ -2658,7 +2658,7 @@ STATIC void w_save_file_status() {
         }
         fclose(fd);
     } else {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, LOCALFILE_STATUS_PATH, errno, strerror(errno));
     }
 
     os_free(str);

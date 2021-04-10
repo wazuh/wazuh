@@ -132,10 +132,10 @@ void w_logcollector_state_init(w_lc_state_type_t state_type, bool state_file_ena
         g_lc_states_global->start = time(NULL);
 
         if (g_lc_states_global->states = OSHash_Create(), g_lc_states_global->states == NULL) {
-            merror_exit(HCREATE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
+            mterror_exit(WM_LOGCOLLECTOR_LOGTAG, HCREATE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
         }
         if (OSHash_setSize(g_lc_states_global->states, LOGCOLLECTOR_STATE_FILES_MAX) == 0) {
-            merror_exit(HSETSIZE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
+            mterror_exit(WM_LOGCOLLECTOR_LOGTAG, HSETSIZE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
         }
     }
 
@@ -147,11 +147,11 @@ void w_logcollector_state_init(w_lc_state_type_t state_type, bool state_file_ena
         g_lc_states_interval->start = time(NULL);
 
         if (g_lc_states_interval->states = OSHash_Create(), g_lc_states_interval->states == NULL) {
-            merror_exit(HCREATE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
+            mterror_exit(WM_LOGCOLLECTOR_LOGTAG, HCREATE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
         }
 
         if (OSHash_setSize(g_lc_states_interval->states, LOGCOLLECTOR_STATE_FILES_MAX) == 0) {
-            merror_exit(HSETSIZE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
+            mterror_exit(WM_LOGCOLLECTOR_LOGTAG, HSETSIZE_ERROR, LOGCOLLECTOR_STATE_DESCRIPTION);
         }
     }
 

@@ -133,7 +133,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At lccom_main(): select(): %s", strerror(errno));
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "At lccom_main(): select(): %s", strerror(errno));
             }
 
             continue;

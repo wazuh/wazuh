@@ -192,7 +192,8 @@ void test_w_set_to_pos_fseek_error(void ** state) {
     expect_value(__wrap_w_fseek, pos, 0);
     will_return(__wrap_w_fseek, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
@@ -370,7 +371,8 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     expect_string(__wrap_wfopen, __modes, "w");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_save_file_status();
 
@@ -431,7 +433,8 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     will_return(__wrap_fwrite, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1110): Could not write file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
@@ -799,7 +802,8 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     expect_string(__wrap_OSHash_Add_ex, key, file);
     will_return(__wrap_OSHash_Add_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1298): Failure to add 'test' to 'file_status' hash table");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1298): Failure to add 'test' to 'file_status' hash table");
 
     w_load_files_status(global_json);
 
@@ -909,7 +913,8 @@ void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'file_status' hash table");
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1296): Unable to create a 'file_status' hash table");
 
     will_return(__wrap_OSHash_setSize, 1);
 
@@ -920,7 +925,8 @@ void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -934,7 +940,8 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
 
     will_return(__wrap_OSHash_setSize, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'file_status' hash table");
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1297): Unable to set size of 'file_status' hash table");
 
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
@@ -943,7 +950,8 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -964,7 +972,8 @@ void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -988,7 +997,8 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     will_return(__wrap_fread, "test");
     will_return(__wrap_fread, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1115): Could not read from file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1115): Could not read from file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
@@ -1220,7 +1230,8 @@ void test_w_set_to_last_line_read_fstat_fail(void ** state) {
     will_return(__wrap_fstat, 0);
     will_return(__wrap_fstat, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1118): Could not retrieve information of file 'test' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1118): Could not retrieve information of file 'test' due to [(0)-(Success)].");
 
 
     int ret = w_set_to_last_line_read(lf);
@@ -1262,7 +1273,8 @@ void test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "Failure to generate the SHA1 hash from file 'test'");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "Failure to generate the SHA1 hash from file 'test'");
 
     int ret = w_set_to_last_line_read(lf);
 
@@ -1312,7 +1324,8 @@ void test_w_set_to_last_line_read_diferent_file(void ** state) {
     expect_value(__wrap_w_fseek, pos, 0);
     will_return(__wrap_w_fseek, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
@@ -1367,7 +1380,8 @@ void test_w_set_to_last_line_read_same_file(void ** state) {
     expect_value(__wrap_w_fseek, pos, 1);
     will_return(__wrap_w_fseek, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
@@ -1422,7 +1436,8 @@ void test_w_set_to_last_line_read_same_file_rotate(void ** state) {
     expect_value(__wrap_w_fseek, pos, 0);
     will_return(__wrap_w_fseek, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1116): Could not set position in file 'test' due to [(0)-(Success)].");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 1);
@@ -1496,7 +1511,8 @@ void test_w_set_to_last_line_read_update_hash_node_error(void ** state) {
 
     will_return(__wrap_OSHash_Update_ex, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1299): Failure to update 'test' to 'file_status' hash table");
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1299): Failure to update 'test' to 'file_status' hash table");
 
     int ret = w_set_to_last_line_read(lf);
 
