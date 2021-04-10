@@ -245,7 +245,7 @@ static int cpu_cores;
 
 /* Print help statement */
 __attribute__((noreturn))
-static void help_analysisd(void)
+static void help_analysisd(char * home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -258,29 +258,37 @@ static void help_analysisd(void)
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
-    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
+#ifndef TESTRULE
 #ifdef WAZUH_UNIT_TESTING
 __attribute((weak))
 #endif
 int main(int argc, char **argv)
+#else
+__attribute__((noreturn))
+int main_analysisd(int argc, char **argv)
+#endif
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int debug_level = 0;
-    const char *dir = DEFAULTDIR;
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
 
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
 
     thishour = 0;
     today = 0;
@@ -290,7 +298,6 @@ int main(int argc, char **argv)
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
-    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
 #ifdef LIBGEOIP_ENABLED
     geoipdb = NULL;
@@ -303,7 +310,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -328,7 +335,7 @@ int main(int argc, char **argv)
                 if (!optarg) {
                     merror_exit("-D needs an argument");
                 }
-                dir = optarg;
+                snprintf(home_path, PATH_MAX, "%s", optarg);
                 break;
             case 'c':
                 if (!optarg) {
@@ -340,11 +347,18 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_analysisd();
+                help_analysisd(home_path);
                 break;
         }
 
     }
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+
+    sys_debug_level = getDefine_Int("analysisd", "debug", 0, 2);
 
     /* Check current debug_level
      * Command line setting takes precedence
@@ -358,8 +372,9 @@ int main(int argc, char **argv)
         }
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     /* Start daemon */
-    mdebug1(STARTED_MSG);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
     srandom_init();
@@ -478,8 +493,8 @@ int main(int argc, char **argv)
     }
 
     /* Chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (Privsep_Chroot(home_path) < 0) {
+        merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
     }
     nowChroot();
 
@@ -732,7 +747,8 @@ int main(int argc, char **argv)
     }
 
     /* Verbose message */
-    mdebug1(PRIVSEP_MSG, dir, user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -808,8 +824,13 @@ int main(int argc, char **argv)
 }
 
 /* Main function. Receives the messages(events) and analyze them all */
+#ifndef TESTRULE
 __attribute__((noreturn))
 void OS_ReadMSG(int m_queue)
+#else
+__attribute__((noreturn))
+void OS_ReadMSG_analysisd(int m_queue)
+#endif
 {
     Eventinfo *lf = NULL;
     int i;

@@ -14,9 +14,10 @@ variables:
   pass: wazuh
   basic_auth: dGVzdGluZzp3YXp1aA== # b64 encoded user:pass, update if user or pass changes
   basic_auth_context: d2F6dWgtd3VpOndhenVoLXd1aQ== # b64 encoded user:pass, update if user or pass changes
-  login_endpoint: /security/user/authenticate
+  login_endpoint: security/user/authenticate
 
   # delays
+  reconnect_delay: 15
   restart_delay: 30
   restart_delay_cluster: 120
   upgrade_delay: 45

@@ -80,8 +80,8 @@ void* wm_logcollector_main(wm_logcollector_t *data) {
     wm_logcollector_log_config(data);
 
     /* Start the queue */
-    if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+    if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     LogCollectorStart();

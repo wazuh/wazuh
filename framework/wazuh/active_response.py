@@ -5,7 +5,7 @@
 from wazuh.core import active_response, common
 from wazuh.core.agent import get_agents_info
 from wazuh.core.exception import WazuhException, WazuhError, WazuhResourceNotFound
-from wazuh.core.ossec_queue import OssecQueue
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.decorators import expose_resources
 
@@ -39,7 +39,7 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
                                       none_msg='AR command was not sent to any agent'
                                       )
     if agent_list:
-        oq = OssecQueue(common.ARQUEUE)
+        wq = WazuhQueue(common.ARQUEUE)
         system_agents = get_agents_info()
         for agent_id in agent_list:
             try:
@@ -47,11 +47,11 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
                     raise WazuhResourceNotFound(1701)
                 if agent_id == "000":
                     raise WazuhError(1703)
-                active_response.send_ar_message(agent_id, oq, command, arguments, custom, alert)
+                active_response.send_ar_message(agent_id, wq, command, arguments, custom, alert)
                 result.affected_items.append(agent_id)
                 result.total_affected_items += 1
             except WazuhException as e:
                 result.add_failed_item(id_=agent_id, error=e)
-        oq.close()
+        wq.close()
 
     return result

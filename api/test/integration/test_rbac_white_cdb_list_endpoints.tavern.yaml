@@ -132,7 +132,7 @@ stages:
 test_name: PUT /lists/files/{filename}
 
 stages:
-  - name: Try to overwrite security-eventchannel (deny)
+  - name: Try to overwrite security-eventchannel (indirectly denied deletion)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/lists/files/security-eventchannel"

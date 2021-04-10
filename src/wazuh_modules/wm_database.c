@@ -12,7 +12,7 @@
 #include "wmodules.h"
 #include "sec.h"
 #include "remoted_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
 
@@ -80,6 +80,9 @@ static void wm_sync_agents();
 // Clean dangling database files
 static void wm_clean_dangling_db();
 
+// Clean dangling group files
+void wm_clean_dangling_groups();
+
 static void wm_sync_multi_groups(const char *dirname);
 
 #endif // LOCAL
@@ -106,7 +109,7 @@ void* wm_database_main(wm_database *data) {
 
     // Reset template. Basically, remove queue/db/.template.db
     char path_template[PATH_MAX + 1];
-    snprintf(path_template, sizeof(path_template), "%s/%s/%s", DEFAULTDIR, WDB_DIR, WDB_PROF_NAME);
+    snprintf(path_template, sizeof(path_template), "%s/%s", WDB_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template db file removed: %s", path_template);
 
@@ -116,6 +119,7 @@ void* wm_database_main(wm_database *data) {
     }
 
 #ifndef LOCAL
+    wm_clean_dangling_groups();
     wm_clean_dangling_db();
 #endif
 
@@ -130,7 +134,7 @@ void* wm_database_main(wm_database *data) {
             path = wm_inotify_pop();
 
 #ifndef LOCAL
-            if (!strcmp(path, KEYSFILE_PATH)) {
+            if (!strcmp(path, KEYS_FILE)) {
                 wm_sync_agents();
             } else
 #endif // !LOCAL
@@ -164,8 +168,8 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_scan_directory(DEFAULTDIR GROUPS_DIR);
-                wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+                wm_scan_directory(GROUPS_DIR);
+                wm_sync_multi_groups(SHAREDCFG_DIR);
             }
 #endif
             gettime(&spec1);
@@ -200,17 +204,7 @@ void wm_sync_manager() {
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
     /* Get node name of the manager in cluster */
-    const char *(xml_node[]) = {"wazuh_config", "cluster", "node_name", NULL};
-
-    OS_XML xml;
-
-    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
-        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
-    }
-
-    manager_data->node_name = OS_GetOneContentforElement(&xml, xml_node);
-
-    OS_ClearXML(&xml);
+    manager_data->node_name = get_node_name();
 
     if ((os_uname = strdup(getuname()))) {
         char *ptr;
@@ -241,7 +235,7 @@ void wm_check_agents() {
     static ino_t inode = 0;
     struct stat buffer;
 
-    if (stat(KEYSFILE_PATH, &buffer) < 0) {
+    if (stat(KEYS_FILE, &buffer) < 0) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't get client.keys stat: %s.", strerror(errno));
     } else {
         if (buffer.st_mtime != timestamp || buffer.st_ino != inode) {
@@ -332,7 +326,7 @@ void wm_clean_dangling_db() {
     struct dirent * dirent = NULL;
     DIR * dir;
 
-    snprintf(dirname, sizeof(dirname), "%s%s/agents", isChroot() ? "/" : "", WDB_DIR);
+    snprintf(dirname, sizeof(dirname), "%s/agents", WDB_DIR);
     mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", dirname);
 
     if (!(dir = opendir(dirname))) {
@@ -346,21 +340,68 @@ void wm_clean_dangling_db() {
                 *end = 0;
 
                 if (name = wdb_get_agent_name(atoi(dirent->d_name), &wdb_wmdb_sock), name) {
-                    // Agent found: OK
-                    free(name);
-                } else {
-                    *end = '-';
+                    if (*name == '\0') {
+                        // Agent not found.
+                        *end = '-';
 
-                    if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
-                        mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
-                        if (remove(path) < 0) {
-                            mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                        if (snprintf(path, sizeof(path), "%s/%s", dirname, dirent->d_name) < (int)sizeof(path)) {
+                            mtwarn(WM_DATABASE_LOGTAG, "Removing dangling DB file: '%s'", path);
+                            if (remove(path) < 0) {
+                                mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
+                            }
                         }
                     }
+
+                    free(name);
                 }
             } else {
                 mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", dirname, dirent->d_name);
             }
+        }
+    }
+
+    closedir(dir);
+}
+
+// Clean dangling group files
+void wm_clean_dangling_groups() {
+    char path[PATH_MAX];
+    char * name;
+    int agent_id;
+    struct dirent * dirent = NULL;
+    DIR * dir;
+
+    mtdebug1(WM_DATABASE_LOGTAG, "Cleaning directory '%s'.", GROUPS_DIR);
+    dir = opendir(GROUPS_DIR);
+
+    if (dir == NULL) {
+        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", GROUPS_DIR, strerror(errno));
+        return;
+    }
+
+    while ((dirent = readdir(dir)) != NULL) {
+        if (dirent->d_name[0] != '.') {
+            os_snprintf(path, sizeof(path), GROUPS_DIR "/%s", dirent->d_name);
+            agent_id = atoi(dirent->d_name);
+
+            if (agent_id <= 0) {
+                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", GROUPS_DIR, dirent->d_name);
+                continue;
+            }
+
+            name = wdb_get_agent_name(agent_id, &wdb_wmdb_sock);
+
+            if (name == NULL) {
+                mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", agent_id);
+                continue;
+            }
+
+            if (*name == '\0') {
+                mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", dirent->d_name);
+                unlink(path);
+            }
+
+            free(name);
         }
     }
 
@@ -400,7 +441,7 @@ int wm_sync_shared_group(const char *fname) {
     DIR *dp;
     clock_t clock0 = clock();
 
-    snprintf(path,PATH_MAX, "%s/%s",DEFAULTDIR SHAREDCFG_DIR,fname);
+    snprintf(path,PATH_MAX, "%s/%s",SHAREDCFG_DIR, fname);
 
     dp = opendir(path);
 
@@ -443,6 +484,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     int result = 0;
     int id_agent = -1;
     int type;
+    char * name;
 
     mtdebug2(WM_DATABASE_LOGTAG, "Synchronizing file '%s/%s'", dirname, fname);
 
@@ -451,9 +493,9 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     }
 
-    if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
+    if (!strcmp(dirname, GROUPS_DIR)) {
         type = WDB_GROUPS;
-    } else if (!strcmp(dirname, DEFAULTDIR SHAREDCFG_DIR)) {
+    } else if (!strcmp(dirname, SHAREDCFG_DIR)) {
         type = WDB_SHARED_GROUPS;
     } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
@@ -463,11 +505,26 @@ int wm_sync_file(const char *dirname, const char *fname) {
     switch (type) {
     case WDB_GROUPS:
         id_agent = atoi(fname);
-        if (id_agent < 0) {
+        if (id_agent <= 0) {
             mterror(WM_DATABASE_LOGTAG, "Couldn't extract agent ID from file %s/%s", dirname, fname);
             return -1;
         }
 
+        name = wdb_get_agent_name(id_agent, &wdb_wmdb_sock);
+
+        if (name == NULL) {
+            mterror(WM_DATABASE_LOGTAG, "Couldn't query the name of the agent %d to database", id_agent);
+            return -1;
+        }
+
+        if (*name == '\0') {
+            mtdebug2(WM_DATABASE_LOGTAG, "Deleting dangling group file '%s'.", fname);
+            unlink(path);
+            free(name);
+            return -1;
+        }
+
+        free(name);
         result = wm_sync_agent_group(id_agent, fname);
         break;
 
@@ -617,7 +674,7 @@ void wm_inotify_setup(wm_database * data) {
 
 #ifndef LOCAL
 
-    char keysfile_path[] = KEYSFILE_PATH;
+    char keysfile_path[PATH_MAX] = KEYS_FILE;
     char * keysfile_dir = dirname(keysfile_path);
 
     if (data->sync_agents) {
@@ -626,18 +683,18 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
 
-        if ((wd_groups = inotify_add_watch(inotify_fd, DEFAULTDIR GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
+        if ((wd_groups = inotify_add_watch(inotify_fd, GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
 
-        if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
+        if ((wd_shared_groups = inotify_add_watch(inotify_fd, SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
         wm_sync_agents();
-        wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+        wm_sync_multi_groups(SHAREDCFG_DIR);
         wdb_agent_belongs_first_time(&wdb_wmdb_sock);
     }
 
@@ -647,7 +704,7 @@ void wm_inotify_setup(wm_database * data) {
 // Real time inotify reader thread
 static void * wm_inotify_start(__attribute__((unused)) void * args) {
     char buffer[IN_BUFFER_SIZE];
-    char keysfile_dir[] = KEYSFILE_PATH;
+    char keysfile_dir[PATH_MAX] = KEYS_FILE;
     char * keysfile;
     struct inotify_event *event;
     char * dirname = NULL;
@@ -696,9 +753,9 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                         continue;
                     }
                 } else if (event->wd == wd_groups) {
-                    dirname = DEFAULTDIR GROUPS_DIR;
+                    dirname = GROUPS_DIR;
                 } else if (event->wd == wd_shared_groups) {
-                    dirname = DEFAULTDIR SHAREDCFG_DIR;
+                    dirname = SHAREDCFG_DIR;
                 } else
 #endif
                 if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {

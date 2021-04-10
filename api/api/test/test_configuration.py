@@ -11,23 +11,25 @@ from api import configuration, api_exception
 from wazuh.core import common
 
 custom_api_configuration = {
-    "host": "127.0.1.1",
-    "port": 1000,
-    "behind_proxy_server": False,
+    "host": "0.0.0.0",
+    "port": 55000,
+    "use_only_authd": False,
+    "drop_privileges": True,
+    "experimental_features": False,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
         "cert": "api/configuration/ssl/server.crt",
         "use_ca": False,
         "ca": "api/configuration/ssl/ca.crt",
-        "ssl_cipher": "TLSv1.1"
+        "ssl_cipher": "TLSv1.2"
     },
     "logs": {
-        "level": "DEBUG",
-        "path": "/api/logs/wazuhapi.log"
+        "level": "info",
+        "path": "logs/api.log"
     },
     "cors": {
-        "enabled": True,
+        "enabled": False,
         "source_route": "*",
         "expose_headers": "*",
         "allow_headers": "*",
@@ -35,11 +37,23 @@ custom_api_configuration = {
     },
     "cache": {
         "enabled": True,
-        "time": 5
+        "time": 0.750
     },
-    "use_only_authd": False,
-    "drop_privileges": True,
-    "experimental_features": False
+    "access": {
+        "max_login_attempts": 50,
+        "block_time": 300,
+        "max_request_per_minute": 300
+    },
+    "remote_commands": {
+        "localfile": {
+            "enabled": True,
+            "exceptions": []
+        },
+        "wodle_command": {
+            "enabled": True,
+            "exceptions": []
+        }
+    }
 }
 
 custom_incomplete_configuration = {
@@ -74,7 +88,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         m.return_value = copy.deepcopy(read_config)
         config = configuration.read_yaml_config()
         for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
-            config[section][subsection] = config[section][subsection].replace(common.ossec_path+'/', '')
+            config[section][subsection] = config[section][subsection].replace(common.wazuh_path+'/', '')
 
         check_config_values(config, {}, read_config)
 
@@ -82,15 +96,52 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         check_config_values(config, read_config, configuration.default_api_configuration)
 
 
+@pytest.mark.parametrize('config', [
+    {'invalid_key': 'value'},
+    {'host': 1234},
+    {'port': 'invalid_type'},
+    {'use_only_authd': 'invalid_type'},
+    {'drop_privileges': 'invalid_type'},
+    {'experimental_features': 'invalid_type'},
+    {'https': {'enabled': 'invalid_type'}},
+    {'https': {'key': 12345}},
+    {'https': {'cert': 12345}},
+    {'https': {'use_ca': 12345}},
+    {'https': {'ca': 12345}},
+    {'https': {'ssl_cipher': 12345}},
+    {'https': {'invalid_subkey': 'value'}},
+    {'logs': {'level': 12345}},
+    {'logs': {'path': 12345}},
+    {'logs': {'invalid_subkey': 'value'}},
+    {'cors': {'enabled': 'invalid_type'}},
+    {'cors': {'source_route': 12345}},
+    {'cors': {'expose_headers': 12345}},
+    {'cors': {'allow_headers': 12345}},
+    {'cors': {'allow_credentials': 12345}},
+    {'cors': {'invalid_subkey': 'value'}},
+    {'cache': {'enabled': 'invalid_type'}},
+    {'cache': {'time': 'invalid_type'}},
+    {'cache': {'invalid_subkey': 'value'}},
+    {'access': {'max_login_attempts': 'invalid_type'}},
+    {'access': {'block_time': 'invalid_type'}},
+    {'access': {'max_request_per_minute': 'invalid_type'}},
+    {'access': {'invalid_subkey': 'invalid_type'}},
+    {'remote_commands': {'localfile': {'enabled': 'invalid_type'}}},
+    {'remote_commands': {'localfile': {'exceptions': [0, 1, 2]}}},
+    {'remote_commands': {'localfile': {'invalid_subkey': 'invalid_type'}}},
+    {'remote_commands': {'wodle_command': {'enabled': 'invalid_type'}}},
+    {'remote_commands': {'wodle_command': {'exceptions': [0, 1, 2]}}},
+    {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
+])
 @patch('os.path.exists', return_value=True)
-def test_read_wrong_configuration(mock_exists):
+def test_read_wrong_configuration(mock_exists, config):
     """Verify that expected exceptions are raised when incorrect configuration"""
     with patch('api.configuration.yaml.safe_load') as m:
         with pytest.raises(api_exception.APIError, match=r'\b2004\b'):
             configuration.read_yaml_config()
 
         with patch('builtins.open'):
-            m.return_value = {'marta': 'yay'}
+            m.return_value = config
             with pytest.raises(api_exception.APIError, match=r'\b2000\b'):
                 configuration.read_yaml_config()
 

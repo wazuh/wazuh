@@ -13,7 +13,7 @@ file(GLOB SYS_NORMALIZER_SRC
 
 add_definitions(-DWAZUH_UNIT_TESTING)
 
-add_executable(sys_normalizer_unit_test 
+add_executable(sys_normalizer_unit_test
     ${SYS_NORMALIZER_UNIT_TEST_SRC}
     ${SYS_NORMALIZER_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

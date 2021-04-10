@@ -53,7 +53,7 @@ TEST_F(SysInfoPortTest, Test_SPEC_Data)
     EXPECT_CALL(*mock, state()).Times(1).WillOnce(Return("9"));
     EXPECT_CALL(*mock, pid()).Times(1).WillOnce(Return(10));
     EXPECT_CALL(*mock, processName()).Times(1).WillOnce(Return("11"));
-    
+
     EXPECT_NO_THROW(std::make_unique<PortImpl>(mock)->buildPortData(port));
     EXPECT_EQ("1",port.at("protocol").get_ref<const std::string&>());
     EXPECT_EQ("2",port.at("local_ip").get_ref<const std::string&>());
@@ -65,5 +65,5 @@ TEST_F(SysInfoPortTest, Test_SPEC_Data)
     EXPECT_EQ(8,port.at("inode").get<int32_t>());
     EXPECT_EQ("9",port.at("state").get_ref<const std::string&>());
     EXPECT_EQ(10,port.at("pid").get<int32_t>());
-    EXPECT_EQ("11",port.at("process_name").get_ref<const std::string&>());
+    EXPECT_EQ("11",port.at("process").get_ref<const std::string&>());
 }

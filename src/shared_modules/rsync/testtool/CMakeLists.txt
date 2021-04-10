@@ -12,7 +12,11 @@ if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14 -pthread")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -std=c++14 -pthread")
+
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")
+endif(FSANITIZE)
 
 add_executable(rsync_test_tool
                "${CMAKE_SOURCE_DIR}/testtool/main.cpp"

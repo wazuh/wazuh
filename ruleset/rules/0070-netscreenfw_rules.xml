@@ -87,7 +87,7 @@
     <id>^00767</id>
     <description>Netscreen firewall: configuration changed.</description>
     <mitre>
-      <id technique="Impair Defenses: Disable or Modify System Firewall" tactic="Defense Evasion" tacticID="TA0005">T1562.004</id>
+      <id>T1089</id>
     </mitre>
     <group>config_changed,pci_dss_1.1.1,gpg13_4.12,gdpr_IV_35.7.d,hipaa_164.312.a.1,nist_800_53_CM.3,nist_800_53_CM.5,tsc_CC8.1,</group>
   </rule>

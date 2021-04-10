@@ -180,11 +180,13 @@ Mar 23 15:04:52 manager kernel: [62828.333722] usb 1-1: New USB device found, id
 Mar 23 15:05:23 manager kernel: usb 1-1: USB disconnect, device number 2
 Mar 23 15:05:23 manager kernel: [62859.373865] usb 1-1: USB disconnect, device number 2
 
+Mar 15 23:14:34 manager kernel: [ 195.634715] usb 1-1: New USB device found, idVendor=0bda, idProduct=568a, bcdDevice=65.10
+Mar 15 23:14:34 manager kernel: [ 290.678326] usb 1-1: USB disconnect, device number 2
 -->
 <decoder name="usb-storage-attached">
     <parent>kernel</parent>
-    <prematch offset="after_parent">^usb|^[\S+] usb</prematch>
-    <regex offset="after_parent">^(usb) |^[\S+] (usb)</regex>
+    <prematch offset="after_parent">^usb|^[\s*\S+] usb</prematch>
+    <regex offset="after_parent">^(usb) |^[\s*\S+] (usb)</regex>
     <order>id</order>
 </decoder>
 

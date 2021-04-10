@@ -13,6 +13,8 @@
 #include "authd-config.h"
 #include "config.h"
 
+#ifndef WIN32
+
 static short eval_bool(const char *str);
 
 int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
@@ -38,8 +40,8 @@ int Read_Authd(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     char manager_cert[OS_SIZE_1024];
     char manager_key[OS_SIZE_1024];
 
-    snprintf(manager_cert, OS_SIZE_1024 - 1, "%s/etc/sslmanager.cert", DEFAULTDIR);
-    snprintf(manager_key, OS_SIZE_1024 - 1, "%s/etc/sslmanager.key", DEFAULTDIR);
+    snprintf(manager_cert, OS_SIZE_1024 - 1, "etc/sslmanager.cert");
+    snprintf(manager_key, OS_SIZE_1024 - 1, "etc/sslmanager.key");
 
     // config->flags.disabled = AD_CONF_UNPARSED;
     /* If authd is defined, enable it by default */
@@ -179,3 +181,4 @@ short eval_bool(const char *str) {
         return OS_INVALID;
     }
 }
+#endif

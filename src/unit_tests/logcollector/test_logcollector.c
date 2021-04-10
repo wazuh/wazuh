@@ -367,13 +367,12 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
     expect_string(__wrap_wfopen, __modes, "w");
     will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
-    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
-
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
     w_save_file_status();
 
     os_free(data);
@@ -427,14 +426,14 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
     expect_string(__wrap_wfopen, __modes, "w");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fwrite, 0);
 
     expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "(1110): Could not write file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
@@ -495,7 +494,7 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, __filename, "/var/ossec/queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, __filename, "queue/logcollector/file_status.json");
     expect_string(__wrap_wfopen, __modes, "w");
     will_return(__wrap_wfopen, "test");
 
@@ -570,6 +569,7 @@ void test_w_load_files_status_no_file(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -583,7 +583,7 @@ void test_w_load_files_status_no_file(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, -1);
 
     w_load_files_status(global_json);
@@ -596,6 +596,7 @@ void test_w_load_files_status_hash_NULL(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -609,7 +610,7 @@ void test_w_load_files_status_hash_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -625,6 +626,7 @@ void test_w_load_files_status_hash_str_NULL(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -638,7 +640,7 @@ void test_w_load_files_status_hash_str_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -656,6 +658,7 @@ void test_w_load_files_status_offset_NULL(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -669,7 +672,7 @@ void test_w_load_files_status_offset_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -690,6 +693,7 @@ void test_w_load_files_status_offset_str_NULL(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -703,7 +707,7 @@ void test_w_load_files_status_offset_str_NULL(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -726,6 +730,7 @@ void test_w_load_files_status_invalid_offset(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -739,7 +744,7 @@ void test_w_load_files_status_invalid_offset(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -764,6 +769,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     int mode = OS_BINARY;
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -777,7 +783,7 @@ void test_w_load_files_status_update_add_fail(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -817,6 +823,7 @@ void test_w_load_files_status_update_fail(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     int mode = OS_BINARY;
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -830,7 +837,7 @@ void test_w_load_files_status_update_fail(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -867,6 +874,7 @@ void test_w_load_files_status_OK(void ** state) {
     cJSON *global_json = (cJSON*)1;
 
     int mode = OS_BINARY;
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -880,7 +888,7 @@ void test_w_load_files_status_OK(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash
@@ -921,12 +929,12 @@ void test_w_initialize_file_status_OSHash_Create_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
     expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
-    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -946,12 +954,12 @@ void test_w_initialize_file_status_OSHash_setSize_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
     expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
-    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -968,12 +976,12 @@ void test_w_initialize_file_status_fopen_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, NULL);
 
     expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
-    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     w_initialize_file_status();
 
@@ -990,7 +998,7 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, "test");
 
@@ -998,7 +1006,7 @@ void test_w_initialize_file_status_fread_fail(void ** state) {
     will_return(__wrap_fread, 0);
 
     expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "(1115): Could not read from file '/var/ossec/queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__mterror, formatted_msg, "(1115): Could not read from file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
 
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
@@ -1023,7 +1031,7 @@ void test_w_initialize_file_status_OK(void ** state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 1);
 
-    expect_string(__wrap_fopen, path, LOCALFILE_STATUS_PATH);
+    expect_string(__wrap_fopen, path, LOCALFILE_STATUS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, "test");
 
@@ -1032,6 +1040,7 @@ void test_w_initialize_file_status_OK(void ** state) {
 
     //w_load_files_status
     char * file = "test";
+    struct stat stat_buf = { .st_mode = 0040000 };
 
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
@@ -1045,7 +1054,7 @@ void test_w_initialize_file_status_OK(void ** state) {
     will_return(__wrap_cJSON_GetStringValue, "test");
 
     expect_string(__wrap_stat, __file, file);
-    will_return(__wrap_stat, 0040000);
+    will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, 0);
 
     //Hash

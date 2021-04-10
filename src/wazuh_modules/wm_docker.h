@@ -14,7 +14,7 @@
 #ifndef WIN32
 
 #define WM_DOCKER_LOGTAG ARGV0 ":docker-listener"
-#define WM_DOCKER_SCRIPT_PATH WM_DEFAULT_DIR "/docker/DockerListener"
+#define WM_DOCKER_SCRIPT_PATH  "wodles/docker/DockerListener"
 
 #define WM_DOCKER_DEF_INTERVAL 60
 

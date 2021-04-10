@@ -17,7 +17,7 @@ file(GLOB DBSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
     "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/*.cpp")
 
-add_executable(rsync_implementation_unit_test 
+add_executable(rsync_implementation_unit_test
     ${INTERFACE_UNITTEST_SRC}
     ${DBSYNC_IMP_SRC} )
 
@@ -40,7 +40,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         -static-libgcc -static-libstdc++
     )
 else()
-    target_link_libraries(rsync_implementation_unit_test 
+    target_link_libraries(rsync_implementation_unit_test
         debug gtestd
         debug gmockd
         debug gtest_maind

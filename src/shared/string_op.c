@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "string.h"
 #include "../os_regex/os_regex.h"
+#include "string_op.h"
 
 #ifdef WIN32
 #ifdef EVENTCHANNEL_SUPPORT
@@ -738,25 +739,73 @@ long w_parse_time(const char * string) {
     switch (*end) {
     case '\0':
         break;
+    case 'w':
+        seconds *= W_WEEK_SECONDS;
+        break;
     case 'd':
-        seconds *= 86400;
+        seconds *= W_DAY_SECONDS;
         break;
     case 'h':
-        seconds *= 3600;
+        seconds *= W_HOUR_SECONDS;
         break;
     case 'm':
-        seconds *= 60;
+        seconds *= W_MINUTE_SECONDS;
         break;
     case 's':
-        break;
-    case 'w':
-        seconds *= 604800;
         break;
     default:
         return -1;
     }
 
     return seconds >= 0 ? seconds : -1;
+}
+
+// Get time unit from seconds
+
+char*  w_seconds_to_time_unit(long seconds, bool long_format) {
+
+    if (seconds < 0) {
+        return "invalid";
+    }
+    else if (seconds >= W_WEEK_SECONDS) {
+        return long_format ? W_WEEKS_L : W_WEEKS_S ;
+    }
+    else if (seconds >= W_DAY_SECONDS) {
+        return long_format ? W_DAYS_L : W_DAYS_S ;
+    }
+    else if (seconds >= W_HOUR_SECONDS) {
+        return long_format ? W_HOURS_L : W_HOURS_S ;
+    }
+    else if (seconds >= W_MINUTE_SECONDS) {
+       return long_format ? W_MINUTES_L : W_MINUTES_S ;
+    }
+    else {
+       return long_format ? W_SECONDS_L : W_SECONDS_S ;
+    }
+}
+
+// Get time value from seconds
+
+long w_seconds_to_time_value(long seconds) {
+    
+    if(seconds < 0) {
+        return -1;
+    }
+    else if (seconds >= W_WEEK_SECONDS) {
+        return seconds/W_WEEK_SECONDS;
+    }
+    else if (seconds >= W_DAY_SECONDS) {
+        return seconds/W_DAY_SECONDS;
+    }
+    else if (seconds >= W_HOUR_SECONDS) {
+        return seconds/W_HOUR_SECONDS;
+    }
+    else if (seconds >= W_MINUTE_SECONDS) {
+        return seconds/W_MINUTE_SECONDS;
+    }
+    else {
+        return seconds;
+    }
 }
 
 char* decode_hex_buffer_2_ascii_buffer(const char * const encoded_buffer, const size_t buffer_size)

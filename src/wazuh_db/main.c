@@ -28,7 +28,8 @@ static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static volatile int running = 1;
 rlim_t nofile;
 
-int main(int argc, char ** argv) {
+int main(int argc, char ** argv)
+{
     int test_config = 0;
     int run_foreground = 0;
     int i;
@@ -40,6 +41,12 @@ int main(int argc, char ** argv) {
     pthread_t thread_up;
 
     OS_SetName(ARGV0);
+
+    // Define current working directory
+    char * home_path = w_homedir(argv[0]);
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 
     // Get options
 
@@ -91,6 +98,8 @@ int main(int argc, char ** argv) {
         }
     }
 
+    mdebug1(WAZUH_HOMEDIR, home_path);
+
     if (test_config) {
         exit(0);
     }
@@ -100,8 +109,6 @@ int main(int argc, char ** argv) {
     open_dbs = OSHash_Create();
     if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
-    mdebug1(STARTED_MSG);
-
     if (!run_foreground) {
         goDaemon();
         nowDaemon();
@@ -110,7 +117,7 @@ int main(int argc, char ** argv) {
     // Reset template. Basically, remove queue/db/.template.db
     // The prefix is needed here, because we are not yet chrooted
     char path_template[OS_FLSIZE + 1];
-    snprintf(path_template, sizeof(path_template), "%s/%s/%s", DEFAULTDIR, WDB2_DIR, WDB_PROF_NAME);
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", home_path, WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed: %s", path_template);
 
@@ -137,14 +144,16 @@ int main(int argc, char ** argv) {
 
         // Change root
 
-        if (Privsep_Chroot(DEFAULTDIR) < 0) {
-            merror_exit(CHROOT_ERROR, DEFAULTDIR, errno, strerror(errno));
+        if (Privsep_Chroot(home_path) < 0) {
+            merror_exit(CHROOT_ERROR, home_path, errno, strerror(errno));
         }
 
         if (Privsep_SetUser(uid) < 0) {
             merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
         }
     }
+
+    os_free(home_path);
 
     // Signal manipulation
 
@@ -224,7 +233,7 @@ int main(int argc, char ** argv) {
     return EXIT_SUCCESS;
 
 failure:
-    free(worker_pool);
+    os_free(worker_pool);
     return EXIT_FAILURE;
 }
 
@@ -405,7 +414,7 @@ void * run_up(__attribute__((unused)) void * args) {
         return NULL;
     }
 
-    while ((db = readdir(fd)) != NULL) {
+    while ((db = readdir(fd)) != NULL && running) {
         if ((strcmp(db->d_name, ".") == 0) ||
             (strcmp(db->d_name, "..") == 0) ||
             (strcmp(db->d_name, ".template.db") == 0) ||
@@ -429,6 +438,8 @@ void * run_up(__attribute__((unused)) void * args) {
         wdb = wdb_open_agent2(atoi(entry));
         wdb_leave(wdb);
         free(entry);
+
+        sleep(1);
     }
 
     os_free(db_folder);

@@ -119,7 +119,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
 
     mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR LC_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(LC_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", LC_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
