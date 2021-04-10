@@ -16,6 +16,7 @@ default_policies:
           - agent:read
           - agent:delete
           - agent:modify_group
+          - agent:reconnect
           - agent:restart
           - agent:upgrade
         resources:
@@ -69,6 +70,7 @@ default_policies:
           - security:read_config
           - security:update_config
           - security:revoke
+          - security:edit_run_as
         resources:
           - '*:*:*'
         effect: allow
@@ -91,6 +93,7 @@ default_policies:
         actions:
           - security:create_user
           - security:revoke
+          - security:edit_run_as
         resources:
           - '*:*:*'
         effect: allow
@@ -101,6 +104,16 @@ default_policies:
           - security:delete
         resources:
           - user:id:*
+        effect: allow
+
+  users_modify_run_as:
+    description: Allow changing the allow_run_as value of the users.
+    policies:
+      flag:
+        actions:
+          - security:edit_run_as
+        resources:
+          - '*:*:*'
         effect: allow
 
   ciscat_read:
@@ -329,4 +342,14 @@ default_policies:
           - task:status
         resources:
           - '*:*:*'
+        effect: allow
+
+  vulnerability_read:
+    description: Allow reading agents' vulnerabilities information.
+    policies:
+      vulnerability:
+        actions:
+          - vulnerability:read
+        resources:
+          - agent:id:*
         effect: allow

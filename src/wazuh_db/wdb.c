@@ -169,42 +169,44 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_TASK_DELETE_TASK] = "DELETE FROM TASKS WHERE TASK_ID = ?;",
     [WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE TASKS SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "' AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
-    [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? ORDER BY pid;",
-    [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ?;",
+    [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY pid;",
+    [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE] = "DELETE FROM sys_processes WHERE pid > ? AND pid < ?;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR] = "DELETE FROM sys_processes;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_programs WHERE item_id BETWEEN ? and ? ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND] = "DELETE FROM sys_programs WHERE item_id < ? OR item_id > ?;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_programs WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
+    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND] = "DELETE FROM sys_programs WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE] = "DELETE FROM sys_programs WHERE item_id > ? AND item_id < ?;",
     [WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR] = "DELETE FROM sys_programs;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hotfixes WHERE hotfix BETWEEN ? and ? ORDER BY hotfix;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND] = "DELETE FROM sys_hotfixes WHERE hotfix < ? OR hotfix > ?;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hotfixes WHERE hotfix BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
+    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND] = "DELETE FROM sys_hotfixes WHERE hotfix < ? OR hotfix > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE] = "DELETE FROM sys_hotfixes WHERE hotfix > ? AND hotfix < ?;",
     [WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR] = "DELETE FROM sys_hotfixes;",
-    [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_ports WHERE item_id BETWEEN ? and ? ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_AROUND] = "DELETE FROM sys_ports WHERE item_id < ? OR item_id > ?;",
+    [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_ports WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id ;",
+    [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_AROUND] = "DELETE FROM sys_ports WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_RANGE] = "DELETE FROM sys_ports WHERE item_id > ? AND item_id < ?;",
     [WDB_STMT_SYSCOLLECTOR_PORTS_CLEAR] = "DELETE FROM sys_ports;",
-    [WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netproto WHERE item_id BETWEEN ? and ? ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_AROUND] = "DELETE FROM sys_netproto WHERE item_id < ? OR item_id > ?;",
+    [WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netproto WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id ;",
+    [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_AROUND] = "DELETE FROM sys_netproto WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_RANGE] = "DELETE FROM sys_netproto WHERE item_id > ? AND item_id < ?;",
     [WDB_STMT_SYSCOLLECTOR_NETPROTO_CLEAR] = "DELETE FROM sys_netproto;",
-    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netaddr WHERE item_id BETWEEN ? and ? ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND] = "DELETE FROM sys_netaddr WHERE item_id < ? OR item_id > ?;",
+    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netaddr WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
+    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND] = "DELETE FROM sys_netaddr WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_RANGE] = "DELETE FROM sys_netaddr WHERE item_id > ? AND item_id < ?;",
     [WDB_STMT_SYSCOLLECTOR_NETADDRESS_CLEAR] = "DELETE FROM sys_netaddr;",
-    [WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netiface WHERE item_id BETWEEN ? and ? ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND] = "DELETE FROM sys_netiface WHERE item_id < ? OR item_id > ?;",
+    [WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netiface WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
+    [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND] = "DELETE FROM sys_netiface WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE] = "DELETE FROM sys_netiface WHERE item_id > ? AND item_id < ?;",
     [WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR] = "DELETE FROM sys_netiface;",
-    [WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hwinfo WHERE board_serial BETWEEN ? and ? ORDER BY board_serial;",
-    [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND] = "DELETE FROM sys_hwinfo WHERE board_serial < ? OR board_serial > ?;",
+    [WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hwinfo WHERE board_serial BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY board_serial;",
+    [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND] = "DELETE FROM sys_hwinfo WHERE board_serial < ? OR board_serial > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE] = "DELETE FROM sys_hwinfo WHERE board_serial > ? AND board_serial < ?;",
     [WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR] = "DELETE FROM sys_hwinfo;",
-    [WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_osinfo WHERE os_name BETWEEN ? and ? ORDER BY os_name;",
-    [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ?;",
+    [WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_osinfo WHERE os_name BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY os_name;",
+    [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ? OR checksum = 'legacy' OR checksum = '';",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
+    [WDB_STMT_VULN_CVE_INSERT] = "INSERT OR IGNORE INTO vuln_cves (name, version, architecture, cve) VALUES(?,?,?,?);",
+    [WDB_STMT_VULN_CVE_CLEAR] = "DELETE FROM vuln_cves;"
 };
 
 wdb_config wconfig;
@@ -312,7 +314,7 @@ sqlite3* wdb_open_agent(int id_agent, const char *name) {
     char dir[OS_FLSIZE + 1];
     sqlite3 *db;
 
-    snprintf(dir, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id_agent, name);
+    snprintf(dir, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id_agent, name);
 
     if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READWRITE, NULL)) {
         mdebug1("No SQLite database found for agent '%s', creating.", name);
@@ -844,6 +846,25 @@ void wdb_pool_remove(wdb_t * wdb) {
     }
 }
 
+// Duplicate the database pool
+wdb_t * wdb_pool_copy() {
+    wdb_t *copy = NULL;
+    wdb_t *last;
+
+    for (wdb_t *i = db_pool_begin; i != NULL; i = i->next) {
+        wdb_t * t = wdb_init(NULL, i->id);
+
+        if (copy == NULL) {
+            copy = last = t;
+        } else {
+            last->next = t;
+            last = t;
+        }
+    }
+
+    return copy;
+}
+
 void wdb_close_all() {
     wdb_t * node;
 
@@ -864,10 +885,23 @@ void wdb_close_all() {
 
 void wdb_commit_old() {
     wdb_t * node;
+    wdb_t * next;
 
     w_mutex_lock(&pool_mutex);
+    wdb_t *copy = wdb_pool_copy();
+    w_mutex_unlock(&pool_mutex);
 
-    for (node = db_pool_begin; node; node = node->next) {
+    for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
+        next = i->next;
+
+        w_mutex_lock(&pool_mutex);
+        node = (wdb_t *)OSHash_Get(open_dbs, i->id);
+
+        if (node == NULL) {
+            w_mutex_unlock(&pool_mutex);
+            continue;
+        }
+
         w_mutex_lock(&node->mutex);
         time_t cur_time = time(NULL);
 
@@ -884,9 +918,8 @@ void wdb_commit_old() {
         }
 
         w_mutex_unlock(&node->mutex);
+        w_mutex_unlock(&pool_mutex);
     }
-
-    w_mutex_unlock(&pool_mutex);
 }
 
 void wdb_close_old() {
@@ -894,17 +927,44 @@ void wdb_close_old() {
     wdb_t * next;
 
     w_mutex_lock(&pool_mutex);
+    wdb_t *copy = wdb_pool_copy();
+    w_mutex_unlock(&pool_mutex);
 
-    for (node = db_pool_begin; node && db_pool_size > wconfig.open_db_limit; node = next) {
-        next = node->next;
+    for (wdb_t *i = copy; i != NULL; wdb_destroy(i), i = next) {
+        next = i->next;
+
+        w_mutex_lock(&pool_mutex);
+        node = (wdb_t *)OSHash_Get(open_dbs, i->id);
+
+        if (node == NULL || db_pool_size <= wconfig.open_db_limit) {
+            w_mutex_unlock(&pool_mutex);
+            continue;
+        }
+
+        w_mutex_lock(&node->mutex);
 
         if (node->refcount == 0 && !node->transaction) {
+            w_mutex_unlock(&node->mutex);
             mdebug2("Closing database for agent %s", node->id);
             wdb_close(node, FALSE);
+        } else {
+            w_mutex_unlock(&node->mutex);
         }
-    }
 
-    w_mutex_unlock(&pool_mutex);
+        w_mutex_unlock(&pool_mutex);
+    }
+}
+
+int wdb_exec_stmt_silent(sqlite3_stmt* stmt) {
+    switch (wdb_step(stmt)) {
+    case SQLITE_ROW:
+    case SQLITE_DONE:
+        return OS_SUCCESS;
+        break;
+    default:
+        mdebug1("SQL statement execution failed");
+        return OS_INVALID;
+    }
 }
 
 cJSON* wdb_exec_row_stmt(sqlite3_stmt * stmt, int* status) {
@@ -1028,6 +1088,8 @@ int wdb_close(wdb_t * wdb, bool commit) {
     int result;
     int i;
 
+    w_mutex_lock(&wdb->mutex);
+
     if (wdb->refcount == 0) {
         if (wdb->transaction && commit) {
             wdb_commit2(wdb);
@@ -1053,6 +1115,7 @@ int wdb_close(wdb_t * wdb, bool commit) {
         }
 
         result = sqlite3_close_v2(wdb->db);
+        w_mutex_unlock(&wdb->mutex);
 
         if (result == SQLITE_OK) {
             wdb_pool_remove(wdb);
@@ -1063,6 +1126,7 @@ int wdb_close(wdb_t * wdb, bool commit) {
             return -1;
         }
     } else {
+        w_mutex_unlock(&wdb->mutex);
         mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->id, wdb->refcount);
         return -1;
     }
@@ -1132,7 +1196,7 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
 int wdb_remove_database(const char * agent_id) {
     char path[PATH_MAX];
 
-    snprintf(path, PATH_MAX, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, agent_id);
+    snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, agent_id);
     int result = unlink(path);
 
     if (result == -1) {
@@ -1254,4 +1318,18 @@ void wdb_free_agent_info_data(agent_info_data *agent_data) {
         }
         os_free(agent_data);
     }
+}
+
+sqlite3_stmt* wdb_init_stmt_in_cache(wdb_t* wdb, wdb_stmt statement_index){
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return NULL;
+    }
+
+    if (wdb_stmt_cache(wdb, statement_index) < 0) {
+        mdebug1("Cannot cache statement");
+        return NULL;
+    }
+
+    return wdb->stmt[statement_index];
 }

@@ -38,6 +38,20 @@ OSList *OSList_Create()
     return (my_list);
 }
 
+void OSList_Destroy(OSList *list) {
+    if (!list) {
+        return;
+    }
+
+    OSList_CleanNodes(list);
+
+    w_rwlock_destroy(&list->wr_mutex);
+    w_mutex_destroy(&list->mutex);
+    free(list);
+
+    return;
+}
+
 /* Set the maximum number of elements in the list
  * Returns 0 on error or 1 on success
  */
@@ -333,4 +347,59 @@ void *OSList_AddData(OSList *list, void *data)
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 
     return ret;
+}
+
+void OSList_CleanNodes(OSList *list) {
+    if (list == NULL) {
+        return;
+    }
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    OSListNode *aux_node = NULL;
+
+    while(list->first_node != NULL) {
+        aux_node = list->first_node;
+        list->first_node = aux_node->next;
+        if (list->free_data_function != NULL) {
+            list->free_data_function(aux_node->data);
+        }
+        free(aux_node);
+    }
+
+    list->last_node = NULL;
+    list->cur_node = NULL;
+    list->first_node = NULL;
+
+    list->currently_size = 0;
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
+}
+
+void OSList_CleanOnlyNodes(OSList *list) {
+    if (list == NULL) {
+        return;
+    }
+
+    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
+    w_mutex_lock((pthread_mutex_t *)&list->mutex);
+
+    OSListNode *aux_node = NULL;
+
+    while(list->first_node != NULL) {
+        aux_node = list->first_node;
+        list->first_node = aux_node->next;
+        os_free(aux_node);
+    }
+
+    list->last_node = NULL;
+    list->cur_node = NULL;
+    list->first_node = NULL;
+
+    list->currently_size = 0;
+
+    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
+    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
 }
