@@ -127,6 +127,113 @@ static pthread_rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
+// todo : move these defines where they belong
+#define PREDICATE_OPT_STR_LEN           16  ///< This value is due to: "--predicate '()'"
+#define TYPE_OPT_STR_LEN                7   ///< This value is due to: "--type "
+#define LEVEL_OPT_STR_LEN               8   ///< This value is due to: "--level "
+
+#define OSLOG_TYPE_ACTIVITY_STR_LEN     8   ///< This value is due to: "activity"
+#define OSLOG_TYPE_LOG_STR_LEN          3   ///< This value is due to: "log"
+#define OSLOG_TYPE_TRACE_STR_LEN        5   ///< This value is due to: "trace"
+
+// todo: move this function
+void w_logcollector_create_oslog_env(logreader * current) {
+    char * log_stream_args = NULL;  ///< This variable gathers the `log stream`'s arguments
+    char * predicate_aux = NULL;    ///< This variable contains the `log stream`'s query substring
+    char * type_aux = NULL;         ///< This variable contains the `log stream`'s type substring
+    char * level_aux = NULL;        ///< This variable contains the `log stream`'s level substring
+    size_t log_stream_args_len = 0; ///< This variable contains the `log stream`'s args total lenght
+    size_t level_str_len = 0;
+    size_t predicate_str_len = 0;
+    size_t type_str_len = 0;
+
+    // Log Stream's Predicate composition
+    if(current->query != NULL) {
+        const size_t QUERY_STR_LEN = strlen(current->query);
+        if(QUERY_STR_LEN > 0) {
+            // todo: check basic query logic as parenthesis balance and such
+            predicate_str_len = PREDICATE_OPT_STR_LEN + QUERY_STR_LEN + 1;
+            os_malloc(predicate_str_len, predicate_aux);
+            snprintf(predicate_aux, predicate_str_len, "--predicate '(%s)'", current->query);
+        }
+    }
+
+    // Log Stream's Type composition
+    if(current->query_type != 0) {
+        switch(current->query_type) {
+        case OSLOG_TYPE_ACTIVITY:
+            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_ACTIVITY_STR_LEN + 1;
+            os_malloc(type_str_len, type_aux);
+            snprintf(type_aux, type_str_len, "--type %s", OSLOG_TYPE_ACTIVITY_STR);
+            break;
+        case OSLOG_TYPE_LOG:
+            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_LOG_STR_LEN + 1;
+            os_malloc(type_str_len, type_aux);
+            snprintf(type_aux, type_str_len, "--type %s", OSLOG_TYPE_LOG_STR);
+            break;
+        case OSLOG_TYPE_TRACE:
+            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_TRACE_STR_LEN + 1;
+            os_malloc(type_str_len, type_aux);
+            snprintf(type_aux, type_str_len, "--type %s", OSLOG_TYPE_TRACE_STR);
+            break;
+        case OSLOG_TYPE_ACTIVITY|OSLOG_TYPE_LOG:
+            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_ACTIVITY_STR_LEN + 1
+                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_LOG_STR_LEN + 1;
+            os_malloc(type_str_len, type_aux);
+            snprintf(type_aux, type_str_len, "--type %s --type %s", OSLOG_TYPE_ACTIVITY_STR, OSLOG_TYPE_LOG_STR);
+            break;
+        case OSLOG_TYPE_ACTIVITY|OSLOG_TYPE_TRACE:
+            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_ACTIVITY_STR_LEN + 1
+                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_TRACE_STR_LEN + 1;
+            os_malloc(type_str_len, type_aux);
+            snprintf(type_aux, type_str_len, "--type %s --type %s", OSLOG_TYPE_ACTIVITY_STR, OSLOG_TYPE_TRACE_STR);
+            break;
+        case OSLOG_TYPE_LOG|OSLOG_TYPE_TRACE:
+            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_LOG_STR_LEN + 1
+                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_TRACE_STR_LEN + 1;
+            os_malloc(type_str_len, type_aux);
+            snprintf(type_aux, type_str_len, "--type %s --type %s", OSLOG_TYPE_LOG_STR, OSLOG_TYPE_TRACE_STR);
+            break;
+        case OSLOG_TYPE_ACTIVITY|OSLOG_TYPE_LOG|OSLOG_TYPE_TRACE:
+            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_ACTIVITY_STR_LEN + 1
+                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_LOG_STR_LEN + 1
+                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_TRACE_STR_LEN + 1;
+            os_malloc(type_str_len, type_aux);
+            snprintf(type_aux, type_str_len, "--type %s --type %s --type %s",
+                                                        OSLOG_TYPE_ACTIVITY_STR, 
+                                                        OSLOG_TYPE_LOG_STR, 
+                                                        OSLOG_TYPE_TRACE_STR);
+            break;
+        default:
+            merror("Default case should not be reached.");
+            // todo: do handle the default case?
+        }
+    }
+
+    // Log Stream's Level composition
+    if(current->query_level != NULL) {
+        const size_t LEVEL_ATTR_STR_LEN = strlen(current->query_level);
+        if(LEVEL_ATTR_STR_LEN > 0) {
+            level_str_len = LEVEL_OPT_STR_LEN + LEVEL_ATTR_STR_LEN + 1;
+            os_malloc(level_str_len, level_aux);
+            snprintf(level_aux, level_str_len, "--level %s", current->query_level);
+        }
+    }
+
+    log_stream_args_len = level_str_len + type_str_len + predicate_str_len;
+    if(log_stream_args_len > 0) {
+        os_malloc(log_stream_args_len, log_stream_args);
+        snprintf(log_stream_args, log_stream_args_len, "%s %s %s", level_aux, type_aux, predicate_aux);
+    }
+
+    minfo("Monitoring MacOS' logs with: 'log stream %s'", log_stream_args);
+    current->file = NULL;
+    os_free(predicate_aux);
+    os_free(type_aux);
+    os_free(level_aux);
+    os_free(log_stream_args);
+}
+
 /* Handle file management */
 void LogCollectorStart()
 {
@@ -331,7 +438,15 @@ void LogCollectorStart()
                 merror("Missing command argument. Ignoring it.");
             }
         }
-
+//ifdef Darwin
+        else if (strcmp(current->logformat, OSLOG) == 0) {
+            if(current->oslog == NULL) {
+                merror("OSLog structure was not previously allocated"); // todo: do the proper handling, or not, of this
+            } else {
+                w_logcollector_create_oslog_env(current);
+            }
+        }
+//endif Darwin
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
