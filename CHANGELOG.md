@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
   - Added RBAC database upgrade and integrity checks. ([#6963](https://github.com/wazuh/wazuh/pull/6963))
   - Added CLI to manage RBAC protected resources. ([#6672](https://github.com/wazuh/wazuh/issues/6672))
 
+
 ### Changed
 
 - **Core:**
@@ -68,12 +69,7 @@ All notable changes to this project will be documented in this file.
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
   - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
-<<<<<<< HEAD
-  
-=======
 
-
->>>>>>> [Framework] RBAC database migration procedure (#6963)
 ### Fixed
 
 - **Cluster:**
