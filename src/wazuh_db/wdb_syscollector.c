@@ -350,36 +350,6 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 }
 
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
-int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace) {
-    int triaged = 0;
-    char *reference = NULL;
-    cJSON *j_osinfo = NULL;
-    sqlite3_stmt *stmt_del = NULL;
-
-    if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_osinfo_save(): cannot begin transaction");
-        return -1;
-    }
-
-    // Getting old data to preserve triaged value
-    if (j_osinfo = wdb_agents_get_sys_osinfo(wdb), !j_osinfo) {
-        merror("Retrieving old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    stmt = wdb->stmt[WDB_STMT_SET_HOTFIX_MET];
-
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE) {
-        merror("Could not set the hotfix metadata: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
-    return 0;
-}
-
-// Function to save OS info into the DB. Return 0 on success or -1 on error.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * checksum, const bool replace) {
     int triaged = 0;
     char *reference = NULL;
