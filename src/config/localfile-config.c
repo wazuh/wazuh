@@ -137,17 +137,17 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
 //ifdef Darwin
             const char * type_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_type_attr);
-            if(type_attr) {
+            if (type_attr) {
                 logf[pl].query_type = w_logcollector_get_oslog_type(type_attr);
             }
 
             const char * level_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_level_attr);
-            if(level_attr) {
+            if (level_attr) {
                 if ((strcmp(node[i]->content, OSLOG_LEVEL_DEFAULT_STR) != 0) &&
                     (strcmp(node[i]->content, OSLOG_LEVEL_INFO_STR) != 0) &&
                     (strcmp(node[i]->content, OSLOG_LEVEL_DEBUG_STR) != 0)) {
                     /* Invalid level query */
-                        mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, level_attr, \
+                    mwarn(LOGCOLLECTOR_INV_VALUE_IGNORE, level_attr,
                         xml_localfile_query_level_attr, xml_localfile_query);
                 } else {
                     os_strdup(node[i]->content, logf[pl].query_level);
@@ -475,9 +475,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 
     if (strcmp(logf[pl].logformat, OSLOG) == 0 && strcmp(logf[pl].file, OSLOG) != 0) {
-            /* Invalid oslog */
-            merror(INV_OSLOG);
-            return (OS_INVALID);
+        /* Invalid oslog */
+        merror(INV_OSLOG);
+        return (OS_INVALID);
     }
 //endif Darwin
     /* Verify Multiline Regex Config */
@@ -874,17 +874,21 @@ STATIC int w_logcollector_get_oslog_type(const char * content) {
 
     if (type_arr) {
         while (type_arr[current]) {
-            char * word = &(type_arr[current])[strspn(type_arr[current], " ")];
-            word[strcspn(word, " ")] = '\0';
+            char * config_str = &(type_arr[current])[strspn(type_arr[current], " ")];
+            int num_words = w_word_counter(config_str);
 
-            if (strcasecmp(word, OSLOG_TYPE_ACTIVITY_STR) == 0) {
+            if (num_words == 1) {
+                config_str[strcspn(config_str, " ")] = '\0';
+            }
+
+            if (strcasecmp(config_str, OSLOG_TYPE_ACTIVITY_STR) == 0) {
                 retval |= OSLOG_TYPE_ACTIVITY;
-            } else if (strcasecmp(word, OSLOG_TYPE_LOG_STR) == 0) {
+            } else if (strcasecmp(config_str, OSLOG_TYPE_LOG_STR) == 0) {
                 retval |= OSLOG_TYPE_LOG;
-            } else if (strcasecmp(word, OSLOG_TYPE_TRACE_STR) == 0) {
+            } else if (strcasecmp(config_str, OSLOG_TYPE_TRACE_STR) == 0) {
                 retval |= OSLOG_TYPE_TRACE;
-            } else if (strcasecmp(word, "") != 0) {
-                mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, word, XML_LOCALFILE_QUERY_TYPE_ATTR, XML_LOCALFILE_QUERY);
+            } else if (strcasecmp(config_str, "") != 0) {
+                mwarn(LOGCOLLECTOR_INV_VALUE_IGNORE, config_str, XML_LOCALFILE_QUERY_TYPE_ATTR, XML_LOCALFILE_QUERY);
             }
 
             os_free(type_arr[current]);

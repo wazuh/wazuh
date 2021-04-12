@@ -91,6 +91,8 @@
                                                 " Will be ignored."
 #define LOGCOLLECTOR_MULTILINE_AGE_TIMEOUT      "(8002): 'age' cannot be less than 'timeout' in multiline_regex option."\
                                                 " 'age' will be ignored."
+#define LOGCOLLECTOR_INV_VALUE_IGNORE           "(8003): Invalid value '%s' for attribute '%s' in '%s' option. " \
+                                                "Attribute will be ignored."
 
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."
