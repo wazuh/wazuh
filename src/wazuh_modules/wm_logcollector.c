@@ -95,6 +95,7 @@ void* wm_logcollector_main(wm_logcollector_t *data) {
 }
 
 void wm_logcollector_destroy(wm_logcollector_t *data) {
+    Free_Localfile(&data->log_config);
     os_free(data);
 }
 
@@ -104,4 +105,123 @@ cJSON *wm_logcollector_dump(__attribute__((unused)) const wm_logcollector_t *dat
     cJSON_AddItemToObject(root,"SocketConfig",getSocketConfig());
     cJSON_AddItemToObject(root,"LogcollectorInternalOptions",getLogcollectorInternalOptions());
     return root;
+}
+
+void Free_Localfile(logreader_config * config){
+    int i, j;
+
+    if (config) {
+        if (config->config) {
+            for (i = 0; config->config[i].file; i++) {
+                Free_Logreader(&config->config[i]);
+            }
+
+            free(config->config);
+        }
+
+        if (config->socket_list) {
+            for (i = 0; config->socket_list[i].name; i++) {
+                free(config->socket_list[i].name);
+                free(config->socket_list[i].location);
+                free(config->socket_list[i].prefix);
+            }
+
+            free(config->socket_list);
+        }
+
+        if (config->globs) {
+            for (i = 0; config->globs[i].gpath; i++) {
+                if (config->globs[i].gfiles->file) {
+                    Free_Logreader(config->globs[i].gfiles);
+                    for (j = 1; config->globs[i].gfiles[j].file; j++) {
+                        free(config->globs[i].gfiles[j].file);
+                    }
+                }
+                free(config->globs[i].gfiles);
+            }
+
+            free(config->globs);
+        }
+    }
+}
+
+void Free_Logreader(logreader * logf) {
+    int i;
+
+    if (logf) {
+        free(logf->ffile);
+        free(logf->file);
+        free(logf->logformat);
+        free(logf->djb_program_name);
+        free(logf->alias);
+        free(logf->query);
+        free(logf->exclude);
+
+        if (logf->target) {
+            for (i = 0; logf->target[i]; i++) {
+                free(logf->target[i]);
+            }
+
+            free(logf->target);
+        }
+
+        free(logf->log_target);
+
+        labels_free(logf->labels);
+
+        if (logf->fp) {
+            fclose(logf->fp);
+        }
+
+        if (logf->out_format) {
+            for (i = 0; logf->out_format[i]; ++i) {
+                free(logf->out_format[i]->target);
+                free(logf->out_format[i]->format);
+                free(logf->out_format[i]);
+            }
+
+            free(logf->out_format);
+        }
+    }
+}
+
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf) {
+    if (*logf) {
+        int size = 0;
+        int x;
+        while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) {
+            size++;
+        }
+        if (i < size) {
+            if (fr) {
+                Free_Logreader(&(*logf)[i]);
+            } else {
+                free((*logf)[i].file);
+                if((*logf)[i].fp) {
+                    fclose((*logf)[i].fp);
+                }
+            #ifdef WIN32
+                if ((*logf)[i].h && (*logf)[i].h != INVALID_HANDLE_VALUE) {
+                    CloseHandle((*logf)[i].h);
+                }
+            #endif
+            }
+
+            for (x = i; x < size; x++) {
+                memcpy(&(*logf)[x], &(*logf)[x + 1], sizeof(logreader));
+            }
+
+            if (!size)
+                size = 1;
+            os_realloc(*logf, size*sizeof(logreader), *logf);
+
+            if(gl && globf) {
+                (*globf).num_files--;
+            }
+
+            current_files--;
+            return 0;
+        }
+    }
+    return (OS_INVALID);
 }
