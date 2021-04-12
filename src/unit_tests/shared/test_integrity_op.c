@@ -85,7 +85,7 @@ void test_dbsync_state_msg(void **state)
     char *ret;
     cJSON *data = cJSON_CreateObject();
     cJSON_AddStringToObject(data, "test", "test");
-    char json[128] = "{\"component\":\"wazuh-testing\",\"type\":\"state\",\"data\":{\"test\":\"test\",\"version\":\"2.0\"}}";
+    char json[128] = "{\"component\":\"wazuh-testing\",\"type\":\"state\",\"data\":{\"test\":\"test\"}}";
 
     ret = dbsync_state_msg("wazuh-testing", data);
     *state = ret;

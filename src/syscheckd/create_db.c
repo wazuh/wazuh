@@ -1259,6 +1259,8 @@ cJSON *fim_json_event(const char *file_name,
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", file_name);
+    cJSON_AddStringToObject(data, "version", "2.0");
+
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
     cJSON_AddNumberToObject(data, "timestamp", new_data->last_event);
