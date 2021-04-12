@@ -82,6 +82,13 @@ STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
  */
 STATIC int w_update_hash_node(char * path, int64_t pos);
 
+/**
+ * @brief Creates the environment for collecting logs on MacOS Systems
+ * @param logreader with "log stream"'s input arguments and w_oslog_config_t structure to be set
+ * @return
+ */
+STATIC void w_logcollector_create_oslog_env(logreader * current);
+
 /* Global variables */
 int loop_timeout;
 int logr_queue;
@@ -126,113 +133,6 @@ static pthread_rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
-
-// todo : move these defines where they belong
-#define PREDICATE_OPT_STR_LEN           16  ///< This value is due to: "--predicate '()'"
-#define TYPE_OPT_STR_LEN                7   ///< This value is due to: "--type "
-#define LEVEL_OPT_STR_LEN               8   ///< This value is due to: "--level "
-
-#define OSLOG_TYPE_ACTIVITY_STR_LEN     8   ///< This value is due to: "activity"
-#define OSLOG_TYPE_LOG_STR_LEN          3   ///< This value is due to: "log"
-#define OSLOG_TYPE_TRACE_STR_LEN        5   ///< This value is due to: "trace"
-
-// todo: move this function
-void w_logcollector_create_oslog_env(logreader * current) {
-    char * log_stream_args = NULL;  ///< This variable gathers the `log stream`'s arguments
-    char * predicate_aux = NULL;    ///< This variable contains the `log stream`'s query substring
-    char * type_aux = NULL;         ///< This variable contains the `log stream`'s type substring
-    char * level_aux = NULL;        ///< This variable contains the `log stream`'s level substring
-    size_t log_stream_args_len = 0; ///< This variable contains the `log stream`'s args total lenght
-    size_t level_str_len = 0;
-    size_t predicate_str_len = 0;
-    size_t type_str_len = 0;
-
-    // Log Stream's Predicate composition
-    if(current->query != NULL) {
-        const size_t QUERY_STR_LEN = strlen(current->query);
-        if(QUERY_STR_LEN > 0) {
-            // todo: check basic query logic as parenthesis balance and such
-            predicate_str_len = PREDICATE_OPT_STR_LEN + QUERY_STR_LEN + 1;
-            os_malloc(predicate_str_len, predicate_aux);
-            snprintf(predicate_aux, predicate_str_len, "--predicate '(%s)'", current->query);
-        }
-    }
-
-    // Log Stream's Type composition
-    if(current->query_type != 0) {
-        switch(current->query_type) {
-        case OSLOG_TYPE_ACTIVITY:
-            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_ACTIVITY_STR_LEN + 1;
-            os_malloc(type_str_len, type_aux);
-            snprintf(type_aux, type_str_len, "--type %s", OSLOG_TYPE_ACTIVITY_STR);
-            break;
-        case OSLOG_TYPE_LOG:
-            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_LOG_STR_LEN + 1;
-            os_malloc(type_str_len, type_aux);
-            snprintf(type_aux, type_str_len, "--type %s", OSLOG_TYPE_LOG_STR);
-            break;
-        case OSLOG_TYPE_TRACE:
-            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_TRACE_STR_LEN + 1;
-            os_malloc(type_str_len, type_aux);
-            snprintf(type_aux, type_str_len, "--type %s", OSLOG_TYPE_TRACE_STR);
-            break;
-        case OSLOG_TYPE_ACTIVITY|OSLOG_TYPE_LOG:
-            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_ACTIVITY_STR_LEN + 1
-                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_LOG_STR_LEN + 1;
-            os_malloc(type_str_len, type_aux);
-            snprintf(type_aux, type_str_len, "--type %s --type %s", OSLOG_TYPE_ACTIVITY_STR, OSLOG_TYPE_LOG_STR);
-            break;
-        case OSLOG_TYPE_ACTIVITY|OSLOG_TYPE_TRACE:
-            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_ACTIVITY_STR_LEN + 1
-                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_TRACE_STR_LEN + 1;
-            os_malloc(type_str_len, type_aux);
-            snprintf(type_aux, type_str_len, "--type %s --type %s", OSLOG_TYPE_ACTIVITY_STR, OSLOG_TYPE_TRACE_STR);
-            break;
-        case OSLOG_TYPE_LOG|OSLOG_TYPE_TRACE:
-            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_LOG_STR_LEN + 1
-                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_TRACE_STR_LEN + 1;
-            os_malloc(type_str_len, type_aux);
-            snprintf(type_aux, type_str_len, "--type %s --type %s", OSLOG_TYPE_LOG_STR, OSLOG_TYPE_TRACE_STR);
-            break;
-        case OSLOG_TYPE_ACTIVITY|OSLOG_TYPE_LOG|OSLOG_TYPE_TRACE:
-            type_str_len = TYPE_OPT_STR_LEN + OSLOG_TYPE_ACTIVITY_STR_LEN + 1
-                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_LOG_STR_LEN + 1
-                                + TYPE_OPT_STR_LEN + OSLOG_TYPE_TRACE_STR_LEN + 1;
-            os_malloc(type_str_len, type_aux);
-            snprintf(type_aux, type_str_len, "--type %s --type %s --type %s",
-                                                        OSLOG_TYPE_ACTIVITY_STR, 
-                                                        OSLOG_TYPE_LOG_STR, 
-                                                        OSLOG_TYPE_TRACE_STR);
-            break;
-        default:
-            merror("Default case should not be reached.");
-            // todo: do handle the default case?
-        }
-    }
-
-    // Log Stream's Level composition
-    if(current->query_level != NULL) {
-        const size_t LEVEL_ATTR_STR_LEN = strlen(current->query_level);
-        if(LEVEL_ATTR_STR_LEN > 0) {
-            level_str_len = LEVEL_OPT_STR_LEN + LEVEL_ATTR_STR_LEN + 1;
-            os_malloc(level_str_len, level_aux);
-            snprintf(level_aux, level_str_len, "--level %s", current->query_level);
-        }
-    }
-
-    log_stream_args_len = level_str_len + type_str_len + predicate_str_len;
-    if(log_stream_args_len > 0) {
-        os_malloc(log_stream_args_len, log_stream_args);
-        snprintf(log_stream_args, log_stream_args_len, "%s %s %s", level_aux, type_aux, predicate_aux);
-    }
-
-    minfo("Monitoring MacOS' logs with: 'log stream %s'", log_stream_args);
-    current->file = NULL;
-    os_free(predicate_aux);
-    os_free(type_aux);
-    os_free(level_aux);
-    os_free(log_stream_args);
-}
 
 /* Handle file management */
 void LogCollectorStart()
@@ -2995,4 +2895,92 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
         *context = data->context;
     }
     return true;
+}
+
+void w_logcollector_create_oslog_env(logreader * current) {
+    char ** log_cmd_args = NULL;
+    size_t log_cmd_args_idx = 0;
+    
+    os_malloc(LOG_CMD_ARGS_SIZE, log_cmd_args);
+    bzero(log_cmd_args,LOG_CMD_ARGS_SIZE);
+
+    os_malloc(LOG_CMD_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+    strncpy(log_cmd_args[log_cmd_args_idx], LOG_CMD_STR, LOG_CMD_STR_LEN);
+    log_cmd_args_idx++;
+
+    os_malloc(LOG_STREAM_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+    strncpy(log_cmd_args[log_cmd_args_idx], LOG_STREAM_OPT_STR, LOG_STREAM_OPT_STR_LEN);
+    log_cmd_args_idx++;
+
+    // Log Stream's Predicate composition
+    if(current->query != NULL) {
+        const size_t QUERY_STR_LEN = strlen(current->query);
+        if(QUERY_STR_LEN > 0) {
+            // todo: check basic query logic as parenthesis balance and such
+            os_malloc(PREDICATE_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], PREDICATE_OPT_STR, PREDICATE_OPT_STR_LEN);
+            log_cmd_args_idx++;
+
+            os_malloc(QUERY_STR_LEN + 2 + 1, log_cmd_args[log_cmd_args_idx]); // The "2" is due to the added chars ''
+            snprintf(log_cmd_args[log_cmd_args_idx], QUERY_STR_LEN + 2 + 1, "'%s'", current->query);
+            log_cmd_args_idx++;
+        }
+    }
+
+    // Log Stream's Type composition
+    if(current->query_type != 0) {
+        if(current->query_type & OSLOG_TYPE_ACTIVITY) {
+            os_malloc(TYPE_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], TYPE_OPT_STR, TYPE_OPT_STR_LEN);
+            log_cmd_args_idx++;
+            
+            os_malloc(OSLOG_TYPE_ACTIVITY_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], OSLOG_TYPE_ACTIVITY_STR, OSLOG_TYPE_ACTIVITY_STR_LEN);
+            log_cmd_args_idx++;
+        }
+        if(current->query_type & OSLOG_TYPE_LOG) {
+            os_malloc(TYPE_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], TYPE_OPT_STR, TYPE_OPT_STR_LEN);
+            log_cmd_args_idx++;
+            
+            os_malloc(OSLOG_TYPE_LOG_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], OSLOG_TYPE_LOG_STR, OSLOG_TYPE_LOG_STR_LEN);
+            log_cmd_args_idx++;
+        }
+        if(current->query_type & OSLOG_TYPE_TRACE) {
+            os_malloc(TYPE_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], TYPE_OPT_STR, TYPE_OPT_STR_LEN);
+            log_cmd_args_idx++;
+            
+            os_malloc(OSLOG_TYPE_TRACE_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], OSLOG_TYPE_TRACE_STR, OSLOG_TYPE_TRACE_STR_LEN);
+            log_cmd_args_idx++;
+        }
+    }
+
+    // Log Stream's Level composition
+    if(current->query_level != NULL) {
+        const size_t LEVEL_ATTR_STR_LEN = strlen(current->query_level);
+        if(LEVEL_ATTR_STR_LEN > 0) {
+            os_malloc(LEVEL_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], LEVEL_OPT_STR, LEVEL_OPT_STR_LEN);
+            log_cmd_args_idx++;
+
+            os_malloc(LEVEL_ATTR_STR_LEN + 1, log_cmd_args[log_cmd_args_idx]);
+            strncpy(log_cmd_args[log_cmd_args_idx], current->query_level, LEVEL_ATTR_STR_LEN + 1);
+            log_cmd_args_idx++;
+        }
+    }
+
+    minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_cmd_args));
+
+    // todo: is this correctly called?
+    // current->oslog->log_wfd = wpopenv(*log_cmd_args,log_cmd_args,0);
+
+    current->file = NULL;
+
+    for(log_cmd_args_idx = 0; log_cmd_args[log_cmd_args_idx] != NULL; log_cmd_args_idx++) {
+        os_free(log_cmd_args[log_cmd_args_idx]);
+    }
+    os_free(log_cmd_args);
 }

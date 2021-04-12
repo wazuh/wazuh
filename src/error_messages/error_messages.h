@@ -219,6 +219,7 @@
 #define FAIL_SHA1_GEN   "(1969): Failure to generate the SHA1 hash from file '%s'"
 #define DUP_OSLOG       "(1969): Can't add more than one oslog block."
 #define INV_OSLOG       "(1970): Invalid Oslog configuration. Attributes 'location' and 'log_format' must be both set to 'oslog'."
+#define LOG_STREAM_INFO "(1971): Monitoring MacOS logs with: %s %s %s %s %s %s %s %s %s %s %s %s"
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
