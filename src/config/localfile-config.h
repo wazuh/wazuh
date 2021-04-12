@@ -23,15 +23,40 @@
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
 
 /* oslog configurations */
+#define LOG_CMD_STR                     "log"           ///< It is the name of the command used to collect macos' logs
+#define LOG_CMD_STR_LEN                 3+1             ///< This value is due to: "log"
+#define LOG_STREAM_OPT_STR              "stream"        ///< "stream" is the mode in which the "log" command is running
+#define LOG_STREAM_OPT_STR_LEN          6+1             ///< This value is due to: "stream"
+
+#define PREDICATE_OPT_STR               "--predicate"   ///< This precedes the "query" filter to be used by "log stream"
+#define PREDICATE_OPT_STR_LEN           11+1            ///< This value is due to: "--predicate"
+#define TYPE_OPT_STR                    "--type"        ///< This precedes a "type" filter to be used by "log stream"
+#define TYPE_OPT_STR_LEN                6+1             ///< This value is due to: "--type "
+#define LEVEL_OPT_STR                   "--level"       ///< This precedes the "level" filter to be used by "log stream"
+#define LEVEL_OPT_STR_LEN               7+1             ///< This value is due to: "--level "
+
 #define OSLOG_LEVEL_DEFAULT_STR "default"  ///< Represents the lowest loggin level in oslog
 #define OSLOG_LEVEL_INFO_STR    "info"     ///< Represents the intermediate loggin level in oslog
 #define OSLOG_LEVEL_DEBUG_STR   "debug"    ///< Represents the highest loggin level in oslog
 #define OSLOG_TYPE_ACTIVITY_STR "activity" ///< Is used to filter by `activity` logs
+#define OSLOG_TYPE_ACTIVITY_STR_LEN     8+1             ///< This value is due to: "activity"
 #define OSLOG_TYPE_LOG_STR      "log"      ///< Is used to filter by `log` logs
+#define OSLOG_TYPE_LOG_STR_LEN          3+1             ///< This value is due to: "log"
 #define OSLOG_TYPE_TRACE_STR    "trace"    ///< Is used to filter by `trace` logs
+#define OSLOG_TYPE_TRACE_STR_LEN        5+1             ///< This value is due to: "trace"
 #define OSLOG_TYPE_ACTIVITY     (0x1 << 0) ///< Flag used to filter by `activity` logs
 #define OSLOG_TYPE_LOG          (0x1 << 1) ///< Flag used to filter by `log` logs
 #define OSLOG_TYPE_TRACE        (0x1 << 2) ///< Flag used to filter by `trace` logs
+
+#define MAX_LOG_CMD_ARGS                12              ///< This value takes into account the largest case of use
+
+#define LOG_CMD_ARGS_SIZE               (sizeof(char *) * (MAX_LOG_CMD_ARGS + 1))   ///<  It is used to allocate memory
+
+/** This macro is used for logging the full "log stream" command with its arguments **/
+#define GET_LOG_STREAM_PARAMS(x)    x[0]?x[0]:"", x[1]?x[1]:"", x[2]?x[2]:"",\
+                                    x[3]?x[3]:"", x[4]?x[4]:"", x[5]?x[5]:"",\
+                                    x[6]?x[6]:"", x[7]?x[7]:"", x[8]?x[8]:"",\
+                                    x[9]?x[9]:"", x[10]?x[10]:"", x[11]?x[11]:""
 
 #include <pthread.h>
 
