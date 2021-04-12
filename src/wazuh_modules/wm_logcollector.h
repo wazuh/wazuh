@@ -40,4 +40,13 @@ typedef struct wm_logcollector_t {
 // Parse Internal configuration
 int wm_logcollector_read(wm_logcollector_t *wmlogcollector);
 
+/* Frees the Logcollector config struct  */
+void Free_Localfile(logreader_config * config);
+
+/* Frees a localfile  */
+void Free_Logreader(logreader * config);
+
+/* Removes a specific localfile of an array */
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
+
 #endif //_WM_LOGCOLLECTOR

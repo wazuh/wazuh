@@ -157,8 +157,6 @@ int verify_agent_conf(const char * path) {
         return -1;
     } else if (Test_Rootcheck(path) < 0) {
         return -1;
-    } else if (Test_Localfile(path) < 0) {
-        return -1;
     } else if (Test_Client(path) < 0) {
         return -1;
     } else if (Test_ClientBuffer(path) < 0) {

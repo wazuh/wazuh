@@ -161,15 +161,6 @@ typedef struct _logreader_config {
     logsocket *socket_list;
 } logreader_config;
 
-/* Frees the Logcollector config struct  */
-void Free_Localfile(logreader_config * config);
-
-/* Frees a localfile  */
-void Free_Logreader(logreader * config);
-
-/* Removes a specific localfile of an array */
-int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
-
 /**
  * @brief Get match attribute for multiline regex 
  * @param node node to find match value
