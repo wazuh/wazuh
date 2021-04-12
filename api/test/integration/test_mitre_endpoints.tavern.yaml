@@ -1,0 +1,29 @@
+---
+test_name: GET /mitre/metadata
+
+marks:
+  - base_tests
+
+stages:
+
+  # GET /mitre/metadata
+  - name: Request MITRE metadata
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/metadata"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - key: db_version
+              value: !anystr
+            - key: mitre_version
+              value: !anystr
+          total_affected_items: 2
+          total_failed_items: 0
+          failed_items: [ ]
