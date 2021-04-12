@@ -31,7 +31,7 @@ async def get_metadata(request, pretty=False, wait_for_complete=False):
 
     dapi = DistributedAPI(f=mitre_metadata,
                           f_kwargs={},
-                          request_type='local_master',
+                          request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,

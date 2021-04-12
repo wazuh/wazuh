@@ -7,7 +7,7 @@ marks:
 stages:
 
   # GET /mitre/metadata
-  - name: Request MITRE metadata
+  - name: Request MITRE metadata (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/mitre/metadata"
