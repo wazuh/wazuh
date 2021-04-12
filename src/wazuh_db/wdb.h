@@ -73,6 +73,7 @@ typedef enum wdb_stmt {
     WDB_STMT_OSINFO_INSERT2,
     WDB_STMT_OSINFO_DEL,
     WDB_STMT_OSINFO_GET,
+    WDB_STMT_OSINFO_SET_TRIAGED,
     WDB_STMT_PROGRAM_INSERT,
     WDB_STMT_PROGRAM_INSERT2,
     WDB_STMT_PROGRAM_DEL,
@@ -860,6 +861,18 @@ int wdb_parse_agents_get_sys_osinfo(wdb_t* wdb, char* output);
  * @return -1 on error, and 0 on success.
  */
 int wdb_parse_agents_set_sys_osinfo(wdb_t * wdb, char * input, char * output);
+
+
+/**
+ * @brief Function to parse set triaged over the sys_osinfo database table.
+ *
+ * @param wdb The Global struct database.
+ * @param output Buffer output, on success responses are:
+ *        "ok" -> If sql statement was processed.
+ *        "err <error_message>" -> If sql statement wasn't processed.
+ * @return -1 on error, and 0 on success.
+ */
+int wdb_parse_agents_set_sys_osinfo_triaged(wdb_t* wdb, char* output);
 
 
 /**
