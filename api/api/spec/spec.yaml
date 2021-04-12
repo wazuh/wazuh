@@ -5233,7 +5233,7 @@ components:
     resource_list:
       in: query
       name: resource
-      description: List of current RBAC's resources.
+      description: "List of current RBAC's resources"
       schema:
         type: string
         enum:
@@ -5265,7 +5265,7 @@ components:
     xml_filename:
       in: query
       name: filename
-      description: "Filter by filename of one or more rule or decoder files."
+      description: "Filter by filename of one or more rule or decoder files"
       schema:
         type: array
         items:
@@ -5274,7 +5274,7 @@ components:
     xml_filename_path:
       in: path
       name: filename
-      description: "Filename (rule or decoder) to download/upload/edit file."
+      description: "Filename (rule or decoder) to download/upload/edit file"
       required: true
       schema:
         type: string
@@ -5282,7 +5282,7 @@ components:
     resource_type:
       in: query
       name: resource_type
-      description: "Filter by process resource type"
+      description: "Filter by RBAC security resource protection level"
       schema:
         type: string
         enum:

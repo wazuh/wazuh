@@ -178,9 +178,10 @@ async def logout_user(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_users(request, user_ids: list = None, pretty=False, wait_for_complete=False,
-                    offset=0, limit=None, search=None, sort=None, resource_type=None):
-    """Returns information from all system roles.
+async def get_users(request, user_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                    offset: int = 0, limit: int = None, search: str = None, sort: str = None,
+                    resource_type: str = None):
+    """Return information from all system roles.
 
     Parameters
     ----------

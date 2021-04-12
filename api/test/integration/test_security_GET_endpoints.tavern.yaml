@@ -20,7 +20,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &roles
             - id: !anyint
@@ -42,7 +42,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *roles
@@ -63,7 +63,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_role_id}"
@@ -78,7 +78,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - <<: *roles
@@ -102,7 +102,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *roles
@@ -124,7 +124,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_role_id}"
@@ -141,7 +141,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
@@ -159,7 +159,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *roles
@@ -174,7 +174,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *roles
@@ -199,7 +199,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -231,7 +231,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -244,7 +244,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -257,7 +257,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: !anyint
@@ -279,7 +279,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -295,7 +295,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: !anyint
@@ -307,6 +307,15 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+
+  # GET /security/roles
+  - name: Provide an invalid resource_type value
+    request:
+      <<: *all_roles_request
+      params:
+        resource_type: invalid
+    response:
+      status_code: 400
 
 ---
 test_name: GET /security/policies
@@ -327,7 +336,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &policies
             - id: !anyint
@@ -345,7 +354,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *policies
@@ -366,7 +375,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_policy_id}"
@@ -381,7 +390,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
@@ -404,7 +413,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *policies
@@ -420,7 +429,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
@@ -434,7 +443,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *policies
@@ -453,7 +462,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 2
 
@@ -466,7 +475,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -498,7 +507,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -511,7 +520,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: !anyint
@@ -531,7 +540,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -547,7 +556,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: !anyint
@@ -577,7 +586,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &rules
             - id: !anyint
@@ -598,7 +607,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -619,7 +628,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_rule_id}"
@@ -634,7 +643,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - <<: *rules
@@ -658,7 +667,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -680,7 +689,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_rule_id}"
@@ -697,7 +706,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
@@ -715,7 +724,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -730,7 +739,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -756,7 +765,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -788,7 +797,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -801,7 +810,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: !anyint
@@ -822,7 +831,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -838,7 +847,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: !anyint
@@ -864,7 +873,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *roles
@@ -880,7 +889,7 @@ stages:
     response:
       status_code: 200
       json: &response_error
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -904,7 +913,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -919,7 +928,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - <<: *rules
@@ -944,7 +953,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *policies
@@ -996,7 +1005,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 1
@@ -1068,7 +1077,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 99
@@ -1098,7 +1107,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data: !anything
         message: !anystr
 
@@ -1115,7 +1124,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &user
             - id: !anyint
@@ -1130,7 +1139,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *user
@@ -1161,7 +1170,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -1180,7 +1189,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
           affected_items: []
           failed_items:
@@ -1200,7 +1209,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - id: 1
@@ -1223,7 +1232,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 1
@@ -1248,7 +1257,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: !anyint
@@ -1267,7 +1276,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: []
           failed_items: []
@@ -1283,7 +1292,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: !anyint
@@ -1312,7 +1321,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - username: "{field}"
@@ -1328,7 +1337,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 99
@@ -1386,7 +1395,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 2
@@ -1451,7 +1460,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 100
@@ -1520,7 +1529,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 100
@@ -1569,7 +1578,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 1
@@ -1597,7 +1606,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           active-response:command:
             description: !anystr
@@ -1620,7 +1629,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           rules:read:
             description: !anystr
@@ -1649,7 +1658,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           "*:*":
             description: 'Resource applied in functions acting on resources that do not yet exist in the system.
@@ -1683,7 +1692,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           agent:id:
             description: Reference agents via agent ID (i.e. agent:id:001)
@@ -1703,7 +1712,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           auth_token_exp_timeout: !anyint
           rbac_mode: !anystr
