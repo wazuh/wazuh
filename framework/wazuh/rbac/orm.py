@@ -1504,7 +1504,7 @@ class PoliciesManager:
                     try:
                         if not check_default and not policy_id:
                             policies = sorted([p.id for p in self.get_policies()]) or [0]
-                            policy_id = max(filter(lambda x: not (x > cloud_reserved_range), policies)) + 1
+                            policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
 
                         elif check_default and \
                                 self.session.query(Policies).order_by(desc(Policies.id)

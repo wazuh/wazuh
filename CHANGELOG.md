@@ -80,7 +80,7 @@ All notable changes to this project will be documented in this file.
   - Fixed a bug in FIM that produced wrong alerts when the file limit was reached. ([#6802](https://github.com/wazuh/wazuh/pull/6802))
   - Fixed a bug in Analysisd that reserved the static decoder field name "command" but never used it. ([#7105](https://github.com/wazuh/wazuh/pull/7105))
   - Fixed evaluation of fields in the tag `<description>` of rules. ([#7073](https://github.com/wazuh/wazuh/pull/7073))
-  - Fixed bugs in FIM that caused symbolic links to not work correctly. ([#6789](https://github.com/wazuh/wazuh/pull/6789))
+  - Fixed bugs in FIM that caused symbolic links to not work correctly. ([#6789](https://github.com/wazuh/wazuh/pull/6789))
   - Fixed path validation in FIM configuration. ([#7018](https://github.com/wazuh/wazuh/pull/7018))
   - Fixed a bug in the "ignore" option on FIM where realtive paths were not resolved. ([#7018](https://github.com/wazuh/wazuh/pull/7018))
   - Fixed a bug in FIM that wrongly detected that the file limit had been reached. ([#7268](https://github.com/wazuh/wazuh/pull/7268))

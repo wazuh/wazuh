@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
 
 
 def execute_sql_file(sql_file, session, test_data_path):
