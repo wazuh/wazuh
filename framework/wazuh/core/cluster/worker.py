@@ -147,13 +147,15 @@ class SyncWazuhdb:
             Command to set data in master's wazuh-db.
         logger : Logger object
             Logger to use during synchronization process.
+        data_retriever : Callable
+            Function to be called to obtain chunks of data. It must return a list of chunks.
         """
+        self.logger = logger
+        self.worker = worker
         self.cmd = cmd
         self.get_data_command = get_data_command
         self.set_data_command = set_data_command
         self.data_retriever = data_retriever
-        self.logger = logger
-        self.worker = worker
 
     async def sync(self):
         """
