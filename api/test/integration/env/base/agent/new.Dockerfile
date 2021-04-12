@@ -9,4 +9,4 @@ RUN /wazuh/install.sh
 
 COPY base/agent/entrypoint.sh /scripts/entrypoint.sh
 
-HEALTHCHECK --retries=30 --interval=10s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck/healthcheck.py || exit 1
+HEALTHCHECK --retries=300 --interval=1s --timeout=30s --start-period=30s CMD /usr/bin/python3 /tmp/healthcheck/healthcheck.py || exit 1

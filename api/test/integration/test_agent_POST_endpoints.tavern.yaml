@@ -88,7 +88,6 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
-    delay_after: !float "{global_db_delay}"
 
     # POST /agents
   - name: Create agent with an specific IP
@@ -159,7 +158,6 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: POST /agents (no IP)
@@ -220,7 +218,6 @@ stages:
       status_code: 200
       json:
         message: !anystr
-    delay_after: !float "{global_db_delay}"
 
     # POST /groups
   - name: Try to create a group that already exists
@@ -361,7 +358,6 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
-    delay_after: !float "{global_db_delay}"
 
     # POST /agents/insert
   - name: Create a new agent using a manual IP
@@ -437,7 +433,6 @@ stages:
       status_code: 200
       json:
         <<: *agent_create_response
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: POST /agents/insert/quick
