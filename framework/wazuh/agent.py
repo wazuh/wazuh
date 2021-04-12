@@ -928,7 +928,7 @@ def get_file_conf(group_list=None, type_conf=None, return_format=None, filename=
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agent_conf(group_list=None, filename='shared.conf', offset=0, limit=common.database_limit):
+def get_shared_conf(group_list=None, filename='shared.conf', offset=0, limit=common.database_limit):
     """ Reads agent conf for specified group.
 
     :param group_list: List of Group names.
@@ -942,7 +942,7 @@ def get_agent_conf(group_list=None, filename='shared.conf', offset=0, limit=comm
     group_id = group_list[0]
 
     return WazuhResult(
-        {'data': configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit)})
+        {'data': configuration.get_shared_conf(group_id=group_id, filename=filename, offset=offset, limit=limit)})
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)

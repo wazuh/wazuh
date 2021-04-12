@@ -16,25 +16,26 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
+        with patch('wazuh.core.common.manager_conf'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
-            get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, \
-            get_agents_keys, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
-            get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
-            get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
-            restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents
-        from wazuh.core.agent import Agent
-        from wazuh import WazuhError, WazuhException, WazuhInternalError
-        from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-        from wazuh.core.tests.test_agent import InitAgent
-        from api.util import remove_nones_to_dict
-        from wazuh.core.exception import WazuhResourceNotFound
+            from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
+                get_shared_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, \
+                get_agents_keys, get_agents_summary_os, get_agents_summary_status, get_agents_sync_group, \
+                get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
+                get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
+                restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents
+            from wazuh.core.agent import Agent
+            from wazuh import WazuhError, WazuhException, WazuhInternalError
+            from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
+            from wazuh.core.tests.test_agent import InitAgent
+            from api.util import remove_nones_to_dict
+            from wazuh.core.exception import WazuhResourceNotFound
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
@@ -1175,15 +1176,15 @@ def test_agent_get_file_conf(filename, group_list):
 ])
 @patch('wazuh.core.common.database_path_global', new=test_global_bd_path)
 @patch('wazuh.core.common.shared_path', new=test_shared_path)
-def test_agent_get_agent_conf(group_list):
-    """Test `get_agent_agent_conf` function from agent module.
+def test_agent_get_shared_conf(group_list):
+    """Test `get_agent_shared_conf` function from shared module.
 
     Parameters
     ----------
     group_list : List of str
         List of group names.
     """
-    result = get_agent_conf(group_list=group_list)
+    result = get_shared_conf(group_list=group_list)
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'total_affected_items' in result.dikt['data']
     assert result.dikt['data']['total_affected_items'] == 1

@@ -12,18 +12,20 @@ import pytest
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        from wazuh.tests.util import RBAC_bypasser
+        with patch('wazuh.core.common.manager_conf'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.manager import *
-        from wazuh.core.tests.test_manager import get_logs
-        from wazuh import WazuhInternalError
+            from wazuh.manager import *
+            from wazuh.core.tests.test_manager import get_logs
+            from wazuh import WazuhInternalError
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
+test_manager_conf = os.path.join(test_data_path, 'manager_base.conf')
 
 
 @pytest.fixture(scope='module', autouse=True)
@@ -298,6 +300,7 @@ def test_get_config_ko():
 
 
 @pytest.mark.parametrize('raw', [True, False])
+@patch('wazuh.core.common.manager_conf', new=test_manager_conf)
 def test_read_manager_conf(raw):
     """Tests read_manager_conf() function works as expected"""
     result = read_manager_conf(raw=raw)
