@@ -3513,13 +3513,6 @@ components:
       x-bearerInfoFunc: api.authentication.decode_token
 
   parameters:
-    technique_id:
-      in: query
-      name: id
-      description: "MITRE technique ID"
-      schema:
-        type: string
-        format: alphanumeric
     agent_id:
       in: path
       name: agent_id
@@ -10565,7 +10558,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /mitre:
+  /mitre/metadata:
     get:
       tags:
         - Mitre
@@ -10579,7 +10572,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: "Clear rootcheck database for all agents or a list of them"
+          description: "Get MITRE metadata information"
           content:
             application/json:
               schema:

@@ -473,7 +473,7 @@ get_rbac_actions:
             - "*:*:*"
           effect: allow
         related_endpoints:
-          - GET /mitre
+          - GET /mitre/metadata
       rootcheck:clear:
         description: Clear the agents rootcheck database
         resources:
