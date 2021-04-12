@@ -921,7 +921,7 @@ int main()
         /* Tests wdb_agents_clear_vuln_cves */
         cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_clear_vuln_cves_success, test_setup, test_teardown),
-        /* Tests wdb_agents_clear_vuln_cves */
+        /* Tests wdb_agents_set_sys_osinfo_triaged */
         cmocka_unit_test_setup_teardown(test_wdb_agents_set_sys_osinfo_triaged_statement_init_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_agents_set_sys_osinfo_triaged_success, test_setup, test_teardown),
       };
