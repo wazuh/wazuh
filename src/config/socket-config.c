@@ -61,11 +61,6 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         cur_wmodule->tag = strdup(LOGCOLLECTOR_WM_NAME);
     }
 
-    if (!cur_wmodule) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (OS_INVALID);
-    }
-
     if (NULL == cur_wmodule->data) {
         os_calloc(1, sizeof(wm_logcollector_t), logcollector);
         /* Reading the internal options */
