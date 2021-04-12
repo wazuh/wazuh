@@ -218,6 +218,7 @@
 #define MISS_MULT_REGEX "(1968): Missing 'multiline_regex' element."
 #define DUP_OSLOG       "(1969): Can't add more than one oslog block."
 #define INV_OSLOG       "(1970): Invalid Oslog configuration. Attributes 'location' and 'log_format' must be both set to 'oslog'."
+#define LOG_STREAM_INFO "(1971): Monitoring MacOS logs with: %s %s %s %s %s %s %s %s %s %s %s %s"
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
