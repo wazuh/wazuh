@@ -181,7 +181,7 @@ async def logout_user(request, pretty=False, wait_for_complete=False):
 async def get_users(request, user_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                     offset: int = 0, limit: int = None, search: str = None, sort: str = None,
                     resource_type: str = None):
-    """Return information from all system roles.
+    """Return information from all system users.
 
     Parameters
     ----------
