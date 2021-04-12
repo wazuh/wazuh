@@ -17,11 +17,10 @@ variables:
   login_endpoint: security/user/authenticate
 
   # delays
-  restart_delay: 30
-  restart_delay_cluster: 120
-  upgrade_delay: 45
-  global_db_delay: 20
-  active_reponse_delay: 5
+  restart_delay: 45
+  restart_delay_cluster: 150
+  upgrade_delay: 60
+  global_db_delay: 30
 
   custom_wpk_path: "/var/ossec/test_custom_upgrade_3.12.2.wpk"
 
