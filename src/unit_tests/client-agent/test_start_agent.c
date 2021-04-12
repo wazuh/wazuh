@@ -40,7 +40,7 @@ int __wrap_close(int fd) {
 }
 #endif
 
-void __wrap_resolveHostname(char **hostname, int attempts) {
+void __wrap_resolve_hostname(char **hostname, int attempts) {
     if (strcmp(*hostname, "VALID_HOSTNAME/") == 0) {
         free(*hostname);
         os_strdup("VALID_HOSTNAME/127.0.0.3", *hostname);
