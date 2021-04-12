@@ -117,7 +117,7 @@ typedef struct {
 typedef struct {
     char * ctxt_buffer;         ///< store current read when os log is in process
     int64_t last_read_offset;   ///< absolut stream offset of last complete log processed
-    char * last_read_timestamp; ///< timestamp of last log queued (Used for only feature event)
+    char * last_read_timestamp; ///< timestamp of last log queued (Used for only future event)
     wfd_t * log_wfd;            ///< `log stream` IPC connector
     /** Indicates if `log stream` is currently running. if not running, localfiles with oslog format will be ignored */
     bool is_oslog_running;

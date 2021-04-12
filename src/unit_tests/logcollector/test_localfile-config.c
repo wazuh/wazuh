@@ -363,11 +363,11 @@ void test_w_logcollector_get_oslog_type_content_empty(void ** state) {
 void test_w_logcollector_get_oslog_type_content_ignore_values(void ** state) {
     const char * content = "  hello, ,world  ";
 
-    expect_string(__wrap__mwarn, formatted_msg, "(8000): Invalid value 'hello' for attribute 'type' in 'query' option."\
-                  " Default value will be used.");
+    expect_string(__wrap__mwarn, formatted_msg, "(8003): Invalid value 'hello' for attribute 'type' in 'query' option."\
+                  " Attribute will be ignored.");
 
-    expect_string(__wrap__mwarn, formatted_msg, "(8000): Invalid value 'world' for attribute 'type' in 'query' option."\
-                  " Default value will be used.");
+    expect_string(__wrap__mwarn, formatted_msg, "(8003): Invalid value 'world' for attribute 'type' in 'query' option."\
+                  " Attribute will be ignored.");
 
     int ret = w_logcollector_get_oslog_type(content);
     assert_int_equal(ret, 0);
@@ -406,6 +406,17 @@ void test_w_logcollector_get_oslog_type_content_trace_log_activity(void ** state
 
     int ret = w_logcollector_get_oslog_type(content);
     assert_int_equal(ret, OSLOG_TYPE_TRACE | OSLOG_TYPE_ACTIVITY | OSLOG_TYPE_LOG);
+}
+
+void test_w_logcollector_get_oslog_type_content_log_multiword_invalid(void ** state) {
+    const char * content = "log, trace  activity";
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(8003): Invalid value 'trace  activity' for attribute 'type' in 'query' option."
+                  " Attribute will be ignored.");
+
+    int ret = w_logcollector_get_oslog_type(content);
+    assert_int_equal(ret, OSLOG_TYPE_LOG);
 }
 
 int main(void) {
@@ -449,6 +460,7 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_get_oslog_type_content_trace),
         cmocka_unit_test(test_w_logcollector_get_oslog_type_content_trace_activity),
         cmocka_unit_test(test_w_logcollector_get_oslog_type_content_trace_log_activity),
+        cmocka_unit_test(test_w_logcollector_get_oslog_type_content_log_multiword_invalid),
 
     };
 
