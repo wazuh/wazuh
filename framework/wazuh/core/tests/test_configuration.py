@@ -19,12 +19,13 @@ with patch('wazuh.core.common.ossec_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.exception import WazuhError, WazuhInternalError
         from wazuh.core import configuration
+
+        del sys.modules['wazuh.rbac.orm']
 
 parent_directory = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 tmp_path = 'tests/data'

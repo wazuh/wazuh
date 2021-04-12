@@ -16,13 +16,14 @@ with patch('wazuh.common.ossec_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         import wazuh.core.cluster.utils
         import wazuh.core.cluster.cluster
         from wazuh import WazuhException
+
+        del sys.modules['wazuh.rbac.orm']
 
 # Valid configurations
 default_cluster_configuration = {

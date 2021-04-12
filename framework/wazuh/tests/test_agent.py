@@ -20,7 +20,6 @@ with patch('wazuh.core.common.ossec_uid'):
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.agent import add_agent, assign_agents_to_group, create_group, delete_agents, delete_groups, \
@@ -35,6 +34,8 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.tests.test_agent import InitAgent
         from api.util import remove_nones_to_dict
         from wazuh.core.exception import WazuhResourceNotFound
+
+        del sys.modules['wazuh.rbac.orm']
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')

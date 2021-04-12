@@ -13,6 +13,8 @@ with patch('wazuh.common.getgrnam'):
                 from wazuh.core.cluster.local_client import LocalClient
                 from wazuh import WazuhInternalError, WazuhError
 
+                del sys.modules['wazuh.rbac.orm']
+
 
 async def async_local_client(command, data, wait_for_complete):
     return None

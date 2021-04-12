@@ -12,13 +12,15 @@ with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
+
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh import rule
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.core.exception import WazuhError
+
+        del sys.modules['wazuh.rbac.orm']
 
 
 # Variables

@@ -15,6 +15,8 @@ with patch('wazuh.core.common.getgrnam'):
                 from wazuh import WazuhError, WazuhException, WazuhInternalError
                 from wazuh.core.results import WazuhResult
 
+                del sys.modules['wazuh.rbac.orm']
+
 
 default_cluster_config = {
     'disabled': True,

@@ -18,6 +18,9 @@ with patch('wazuh.common.getgrnam'):
                 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
                 from wazuh.core.cluster.common import WazuhJSONEncoder, as_wazuh_object
 
+                del sys.modules['wazuh.rbac.orm']
+
+
 affected = AffectedItemsWazuhResult(dikt={'data': ['test']}, affected_items=['001', '002'])
 affected.add_failed_item(id_='099', error=WazuhError(code=1750, extra_message='wiiiiiii'))
 affected.add_failed_item(id_='111', error=WazuhError(code=1750, extra_message='weeeeee'))

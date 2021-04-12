@@ -16,12 +16,13 @@ with patch('wazuh.core.common.ossec_uid'):
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.manager import *
         from wazuh.core.tests.test_manager import get_logs
         from wazuh import WazuhInternalError
+
+        del sys.modules['wazuh.rbac.orm']
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 

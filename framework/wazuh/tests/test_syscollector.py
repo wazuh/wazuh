@@ -14,7 +14,6 @@ with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
 
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -22,6 +21,7 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh.core.syscollector import Type, get_valid_fields
 
+        del sys.modules['wazuh.rbac.orm']
 
 # Tests
 

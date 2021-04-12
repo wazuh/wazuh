@@ -13,12 +13,13 @@ with patch('wazuh.core.common.ossec_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh.core.exception import WazuhError, WazuhInternalError
         from wazuh.core import stats, common
+
+        del sys.modules['wazuh.rbac.orm']
 
 
 @pytest.mark.parametrize("agent_id, daemon, response", [

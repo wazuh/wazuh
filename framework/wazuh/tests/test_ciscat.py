@@ -16,12 +16,14 @@ with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
+
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.tests.util import InitWDBSocketMock
         from wazuh.ciscat import get_ciscat_results
+
+        del sys.modules['wazuh.rbac.orm']
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 db_file = 'schema_ciscat_test.sql'

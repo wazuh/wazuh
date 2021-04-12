@@ -14,13 +14,15 @@ with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
+        
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.core.exception import WazuhInternalError
         from wazuh.core.results import AffectedItemsWazuhResult
         from wazuh import decoder
+
+        del sys.modules['wazuh.rbac.orm']
 
 
 # Variables

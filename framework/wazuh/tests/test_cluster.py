@@ -8,8 +8,6 @@ with patch('wazuh.core.common.ossec_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
-
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -18,6 +16,8 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.exception import WazuhError, WazuhResourceNotFound
         from wazuh.core.cluster.local_client import LocalClient
         from wazuh.core.results import WazuhResult
+
+        del sys.modules['wazuh.rbac.orm']
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
                   'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'], 'hidden': 'no'}

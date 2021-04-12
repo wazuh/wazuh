@@ -20,8 +20,6 @@ with patch('wazuh.common.ossec_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
-
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -31,6 +29,8 @@ with patch('wazuh.common.ossec_uid'):
         from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
         from wazuh.core.exception import WazuhClusterError
         from api.util import raise_if_exc
+
+        del sys.modules['wazuh.rbac.orm']
 
 logger = logging.getLogger('wazuh')
 loop = asyncio.get_event_loop()

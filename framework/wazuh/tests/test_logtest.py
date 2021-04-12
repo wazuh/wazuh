@@ -19,11 +19,11 @@ with patch('wazuh.common.ossec_uid'):
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
-
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.logtest import run_logtest, end_logtest_session
+
+        del sys.modules['wazuh.rbac.orm']
 
 
 def send_logtest_msg_mock(**kwargs):

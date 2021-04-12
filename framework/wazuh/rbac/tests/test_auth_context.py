@@ -19,10 +19,9 @@ def db_setup():
     with patch('wazuh.core.common.ossec_uid'), patch('wazuh.core.common.ossec_gid'):
         with patch('shutil.chown'), patch('os.chmod'):
             with patch('api.constants.SECURITY_PATH', new=test_data_path):
+                init_db('schema_security_test.sql', test_data_path)
                 from wazuh.rbac.auth_context import RBAChecker
-    init_db('schema_security_test.sql', test_data_path)
-
-    yield RBAChecker
+                yield RBAChecker
 
 
 class Map(dict):
@@ -82,8 +81,7 @@ def test_load_files(db_setup):
         assert type(role) == Map
 
 
-@patch('wazuh.rbac.orm.delete_orphans')
-def test_auth_roles(delete_mock, db_setup):
+def test_auth_roles(db_setup):
     authorization_contexts, roles, results = values()
     for index, auth in enumerate(authorization_contexts):
         for role in roles:

@@ -17,8 +17,6 @@ with patch('wazuh.core.common.ossec_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
-
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -26,6 +24,8 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.syscheck import AffectedItemsWazuhResult
         from wazuh import WazuhError, WazuhInternalError
         from wazuh.core import common
+
+        del sys.modules['wazuh.rbac.orm']
 
 callable_list = list()
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')

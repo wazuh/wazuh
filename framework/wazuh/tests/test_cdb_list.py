@@ -18,13 +18,14 @@ with patch('wazuh.core.common.getgrnam'):
         import wazuh.rbac.decorators
         from wazuh.tests.util import RBAC_bypasser
 
-        del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         from wazuh.cdb_list import get_lists, get_path_lists, iterate_lists, get_list_file, upload_list_file,\
             delete_list_file
         from wazuh.core import common
         from wazuh.core.results import AffectedItemsWazuhResult
+
+        del sys.modules['wazuh.rbac.orm']
 
 RELATIVE_PATH = os.path.join("framework", "wazuh", "tests", "data", "test_cdb_list")
 NAME_FILE_1 = "test_lists_1"
