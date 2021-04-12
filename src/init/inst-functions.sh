@@ -974,12 +974,12 @@ InstallServer()
 
     ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/default
 
-    if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/default
+    if [ ! -f ${INSTALLDIR}/etc/shared/default/shared.conf ]; then
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/shared.conf ${INSTALLDIR}/etc/shared/default
     fi
 
-    if [ ! -f ${INSTALLDIR}/etc/shared/agent-template.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/agent-template.conf
+    if [ ! -f ${INSTALLDIR}/etc/shared/shared-template.conf ]; then
+        ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/shared.conf ${INSTALLDIR}/etc/shared/shared-template.conf
     fi
 
     # Install the plugins files
