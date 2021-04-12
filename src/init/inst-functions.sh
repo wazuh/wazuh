@@ -806,7 +806,6 @@ InstallCommon()
 
   ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 wazuh-syscheckd ${PREFIX}/bin
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 manage_agents ${PREFIX}/bin
   ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/wazuh-control
   ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${PREFIX}/bin/

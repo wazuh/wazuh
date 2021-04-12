@@ -11,7 +11,7 @@
 #include <shared.h>
 #include <pthread.h>
 #include "os_net/os_net.h"
-#include "execd.h"
+#include "exec.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/signature/signature.h"
 #include "wazuh_modules/wmodules.h"
@@ -38,7 +38,7 @@ size_t wcom_dispatch(char *command, char ** output){
 
     if (strcmp(rcv_comm, "unmerge") == 0){
         if (!rcv_args){
-            mdebug1("WCOM unmerge needs arguments.");
+            mtdebug1(WM_EXECD_LOGTAG, "WCOM unmerge needs arguments.");
             os_strdup("err WCOM unmerge needs arguments", *output);
             return strlen(*output);
         }
@@ -47,7 +47,7 @@ size_t wcom_dispatch(char *command, char ** output){
 
     } else if (strcmp(rcv_comm, "uncompress") == 0){
         if (!rcv_args){
-            mdebug1("WCOM uncompress needs arguments.");
+            mtdebug1(WM_EXECD_LOGTAG, "WCOM uncompress needs arguments.");
             os_strdup("err WCOM uncompress needs arguments", *output);
             return strlen(*output);
         }
@@ -58,7 +58,7 @@ size_t wcom_dispatch(char *command, char ** output){
             *(target++) = '\0';
             return wcom_uncompress(source, target, output);
         } else {
-            mdebug1("Bad WCOM uncompress message.");
+            mtdebug1(WM_EXECD_LOGTAG, "Bad WCOM uncompress message.");
             os_strdup("err Too few commands", *output);
             return strlen(*output);
         }
@@ -95,14 +95,14 @@ size_t wcom_dispatch(char *command, char ** output){
     } else if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            mdebug1("WCOM getconfig needs arguments.");
+            mtdebug1(WM_EXECD_LOGTAG, "WCOM getconfig needs arguments.");
             os_strdup("err WCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return wcom_getconfig(rcv_args, output);
 
     } else {
-        mdebug1("WCOM Unrecognized command '%s'.", rcv_comm);
+        mtdebug1(WM_EXECD_LOGTAG, "WCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
@@ -112,13 +112,13 @@ size_t wcom_unmerge(const char *file_path, char ** output){
     char final_path[PATH_MAX + 1];
 
     if (_jailfile(final_path, INCOMING_DIR, file_path) < 0) {
-        merror("At WCOM unmerge: Invalid file name");
+        mterror(WM_EXECD_LOGTAG, "At WCOM unmerge: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
     }
 
     if (UnmergeFiles(final_path, isChroot() ? INCOMING_DIR : DEFAULTDIR INCOMING_DIR, OS_BINARY) == 0){
-        merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
+        mterror(WM_EXECD_LOGTAG, "At WCOM unmerge: Error unmerging file '%s.'", final_path);
         os_strdup("err Cannot unmerge file", *output);
         return strlen(*output);
     } else {
@@ -136,26 +136,26 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
     int length;
 
     if (_jailfile(final_source, INCOMING_DIR, source) < 0) {
-        merror("At WCOM uncompress: Invalid file name");
+        mterror(WM_EXECD_LOGTAG, "At WCOM uncompress: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
     }
 
     if (_jailfile(final_target, INCOMING_DIR, target) < 0) {
-        merror("At WCOM uncompress: Invalid file name");
+        mterror(WM_EXECD_LOGTAG, "At WCOM uncompress: Invalid file name");
         os_strdup("err Invalid file name", *output);
         return strlen(*output);
     }
 
     if (fsource = gzopen(final_source, "rb"), !fsource) {
-        merror("At WCOM uncompress: Unable to open '%s'", final_source);
+        mterror(WM_EXECD_LOGTAG, "At WCOM uncompress: Unable to open '%s'", final_source);
         os_strdup("err Unable to open source", *output);
         return strlen(*output);
     }
 
     if (ftarget = fopen(final_target, "wb"), !ftarget) {
         gzclose(fsource);
-        merror("At WCOM uncompress: Unable to open '%s'", final_target);
+        mterror(WM_EXECD_LOGTAG, "At WCOM uncompress: Unable to open '%s'", final_target);
         os_strdup("err Unable to open target", *output);
         return strlen(*output);
     }
@@ -164,14 +164,14 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         if ((int)fwrite(buffer, 1, length, ftarget) != length) {
             gzclose(fsource);
             fclose(ftarget);
-            merror("At WCOM uncompress: Unable to write '%s'", final_target);
+            mterror(WM_EXECD_LOGTAG, "At WCOM uncompress: Unable to write '%s'", final_target);
             os_strdup("err Unable to write target", *output);
             return strlen(*output);
         }
     }
 
     if (length < 0) {
-        merror("At WCOM uncompress: Unable to read '%s'", final_source);
+        mterror(WM_EXECD_LOGTAG, "At WCOM uncompress: Unable to read '%s'", final_source);
         os_strdup("err Unable to read source", *output);
     } else {
         unlink(final_source);
@@ -195,13 +195,13 @@ size_t wcom_restart(char ** output) {
 
         switch (fork()) {
             case -1:
-                merror("At WCOM restart: Cannot fork");
+                mterror(WM_EXECD_LOGTAG, "At WCOM restart: Cannot fork");
                 os_strdup("err Cannot fork", *output);
             break;
             case 0:
                 sleep(1);
                 if (execv(exec_cmd[0], exec_cmd) < 0) {
-                    merror(EXEC_CMDERROR, *exec_cmd, strerror(errno));
+                    mterror(WM_EXECD_LOGTAG, EXEC_CMDERROR, *exec_cmd, strerror(errno));
                     _exit(1);
                 }
             break;
@@ -219,12 +219,12 @@ size_t wcom_restart(char ** output) {
             fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
             wpclose(wfd);
         } else {
-            merror("At WCOM restart: Cannot execute restart process");
+            mterror(WM_EXECD_LOGTAG, "At WCOM restart: Cannot execute restart process");
             os_strdup("err Cannot execute restart process", *output);
         }
 #endif
     } else {
-        minfo(LOCK_RES, (int)lock);
+        mtinfo(WM_EXECD_LOGTAG, LOCK_RES, (int)lock);
     }
 
     if (!*output) os_strdup("ok ", *output);
@@ -305,7 +305,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    mdebug1("At WCOM getconfig: Could not get '%s' section", section);
+    mtdebug1(WM_EXECD_LOGTAG, "At WCOM getconfig: Could not get '%s' section", section);
     os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
@@ -319,10 +319,10 @@ void * wcom_main(__attribute__((unused)) void * arg) {
     ssize_t length;
     fd_set fdset;
 
-    mdebug1("Local requests thread ready");
+    mtdebug1(WM_EXECD_LOGTAG, "Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(DEFAULTDIR COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", COM_LOCAL_SOCK, errno, strerror(errno));
+        mterror(WM_EXECD_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", COM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -335,7 +335,7 @@ void * wcom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At wcom_main(): select(): %s", strerror(errno));
+                mterror_exit(WM_EXECD_LOGTAG, "At wcom_main(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -346,7 +346,7 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At wcom_main(): accept(): %s", strerror(errno));
+                mterror(WM_EXECD_LOGTAG, "At wcom_main(): accept(): %s", strerror(errno));
             }
 
             continue;
@@ -355,20 +355,20 @@ void * wcom_main(__attribute__((unused)) void * arg) {
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            merror("At wcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            mterror(WM_EXECD_LOGTAG, "At wcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
             break;
 
         case -1:
-            merror("At wcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
+            mterror(WM_EXECD_LOGTAG, "At wcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
             break;
 
         case 0:
-            mdebug1("Empty message from local client.");
+            mtdebug1(WM_EXECD_LOGTAG, "Empty message from local client.");
             close(peer);
             break;
 
         case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
+            mterror(WM_EXECD_LOGTAG, "Received message > %i", MAX_DYN_STR);
             close(peer);
             break;
 
@@ -381,7 +381,7 @@ void * wcom_main(__attribute__((unused)) void * arg) {
         os_free(buffer);
     }
 
-    mdebug1("Local server thread finished.");
+    mtdebug1(WM_EXECD_LOGTAG, "Local server thread finished.");
 
     close(sock);
     return NULL;

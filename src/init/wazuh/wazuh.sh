@@ -148,7 +148,6 @@ WazuhUpgrade()
     rm -f $DIRECTORY/bin/ossec-authd
     rm -f $DIRECTORY/bin/ossec-csyslogd
     rm -f $DIRECTORY/bin/ossec-dbd
-    rm -f $DIRECTORY/bin/ossec-execd
     rm -f $DIRECTORY/bin/ossec-integratord
     rm -f $DIRECTORY/bin/ossec-logcollector
     rm -f $DIRECTORY/bin/ossec-maild

@@ -18,6 +18,9 @@
 #include "os_regex/os_regex.h"
 #include "active-response.h"
 #include "config.h"
+#include "os_execd/exec.h"
+#include "wazuh_modules/wmodules.h"
+#include "wazuh_modules/wm_execd.h"
 
 /* Global variables */
 int ar_flag = 0;
@@ -411,4 +414,43 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     }
 
     return (0);
+}
+
+int ReadActiveResponsesAgent(const OS_XML* xml, __attribute__((unused)) void *d2, void *d1) {
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        wmodule *cur_wmodule_exists = *wmodules;
+        int found = 0;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag, EXECD_WM_NAME) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    found = 1;
+                    break;
+                }
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+
+        if(!found) {
+            while (cur_wmodule->next) {
+                cur_wmodule = cur_wmodule->next;
+            }
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+            cur_wmodule->context = &WM_EXECD_CONTEXT;
+            cur_wmodule->tag = strdup(EXECD_WM_NAME);
+        }
+    } else {
+        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+        cur_wmodule->context = &WM_EXECD_CONTEXT;
+        cur_wmodule->tag = strdup(EXECD_WM_NAME);
+    }
+
+    return wm_execd_read(xml, NULL, cur_wmodule);
 }
