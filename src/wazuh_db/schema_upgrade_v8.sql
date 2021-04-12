@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     architecture TEXT,
     cve TEXT,
     reference TEXT DEFAULT '' NOT NULL,
-    type TEXT DEFAULT 'UNDEFINED' NOT NULL CHECK (type IN ('OS', 'PACKAGE','UNDEFINED')),
+    type TEXT DEFAULT '' NOT NULL CHECK (type IN ('OS', 'PACKAGE')),
     status TEXT DEFAULT 'PENDING' NOT NULL CHECK (status IN ('VALID', 'PENDING', 'OBSOLETE')),
     PRIMARY KEY (reference, cve)
 );
