@@ -5,17 +5,15 @@
 import logging
 from typing import Dict
 
-from wazuh.core.common import database_limit
+from wazuh.core.mitre import WazuhDBQueryMitreMetadata
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.core.mitre import WazuhDBQueryMitre
-from wazuh.core.utils import sort_array
 from wazuh.rbac.decorators import expose_resources
 
 logger = logging.getLogger('wazuh')
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def get_metadata() -> Dict:
+def mitre_metadata() -> Dict:
     """Return the metadata of the MITRE's database
 
     Returns
@@ -25,7 +23,7 @@ def get_metadata() -> Dict:
     result = AffectedItemsWazuhResult(none_msg='No metadata information was returned',
                                       all_msg='Metadata information was returned')
 
-    db_query = WazuhDBQueryMitre(table="metadata")
+    db_query = WazuhDBQueryMitreMetadata()
     data = db_query.run()
 
     result.affected_items.extend(data['items'])

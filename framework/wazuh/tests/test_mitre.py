@@ -24,7 +24,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 def test_get_mitre_metadata(mock_mitre_db):
     """Check MITRE metadata
     """
-    result = mitre.get_metadata()
+    result = mitre.mitre_metadata()
     cur = get_fake_database_data('schema_mitre_test.sql').cursor()
     cur.execute("SELECT * FROM metadata")
     rows = cur.fetchall()

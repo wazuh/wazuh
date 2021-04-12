@@ -18,7 +18,7 @@ def test_WazuhDBQueryMitre_metadata():
     """Verify that the method connects correctly to the database and returns the correct type."""
     with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
         mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql')
-        db_query = WazuhDBQueryMitre(table="metadata")
+        db_query = WazuhDBQueryMitreMetadata()
         data = db_query.run()
 
         assert isinstance(db_query, WazuhDBQueryMitre) and isinstance(data, dict)

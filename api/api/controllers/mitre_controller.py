@@ -9,12 +9,12 @@ from aiohttp import web
 from api.encoder import dumps, prettify
 from api.util import raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.mitre import get_metadata
+from wazuh.mitre import mitre_metadata
 
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_mitre_metadata(request, pretty=False, wait_for_complete=False):
+async def get_metadata(request, pretty=False, wait_for_complete=False):
     """Return the metadata of the MITRE's database
 
     Parameters
@@ -29,7 +29,7 @@ async def get_mitre_metadata(request, pretty=False, wait_for_complete=False):
     Metadata of MITRE's db
     """
 
-    dapi = DistributedAPI(f=get_metadata,
+    dapi = DistributedAPI(f=mitre_metadata,
                           f_kwargs={},
                           request_type='local_master',
                           is_async=False,

@@ -10501,7 +10501,7 @@ paths:
         - Mitre
       summary: "Get MITRE metadata"
       description: "Return the metadata from MITRE database"
-      operationId: api.controllers.mitre_controller.get_mitre_metadata
+      operationId: api.controllers.mitre_controller.get_metadata
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/mitre:read'
       parameters:
