@@ -33,7 +33,7 @@ DWORD WINAPI win_exec_main(void * args);
 static void WinExecd_Shutdown()
 {
     /* Remove pending active responses */
-    minfo(EXEC_SHUTDOWN);
+    mtinfo(WM_EXECD_LOGTAG, EXEC_SHUTDOWN);
 
     timeout_node = OSList_GetFirstNode(timeout_list);
     while (timeout_node) {
@@ -48,7 +48,7 @@ static void WinExecd_Shutdown()
             fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
             wpclose(wfd);
         } else {
-            merror(EXEC_CMD_FAIL, strerror(errno), errno);
+            mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
         }
 
         /* Delete current node - already sets the pointer to next */
@@ -68,26 +68,26 @@ int WinExecd_Start()
 
     /* Read config */
     if ((c = ExecdConfig(cfg)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
+        mterror_exit(WM_EXECD_LOGTAG, CONFIG_ERROR, cfg);
     }
 
     /* Active response disabled */
     if (c == 1) {
-        minfo(EXEC_DISABLED);
+        mtinfo(WM_EXECD_LOGTAG, EXEC_DISABLED);
         return (0);
     }
 
     /* Create list for timeout */
     timeout_list = OSList_Create();
     if (!timeout_list) {
-        merror_exit(LIST_ERROR);
+        mterror_exit(WM_EXECD_LOGTAG, LIST_ERROR);
     }
 
     /* Delete pending AR at succesfull exit */
     atexit(WinExecd_Shutdown);
 
     /* Start up message */
-    minfo(STARTUP_MSG, getpid());
+    mtinfo(WM_EXECD_LOGTAG, STARTUP_MSG, getpid());
 
     w_create_thread(NULL, 0, win_exec_main,
                     winexec_queue, 0, NULL);
@@ -127,7 +127,7 @@ void WinTimeoutRun()
                 fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
                 wpclose(wfd);
             } else {
-                merror(EXEC_CMD_FAIL, strerror(errno), errno);
+                mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
             }
 
             /* Delete currently node - already sets the pointer to next */
@@ -161,7 +161,7 @@ void WinExecdRun(char *exec_msg)
 
     /* Parse message */
     if (json_root = cJSON_Parse(exec_msg), !json_root) {
-        merror(EXEC_INV_JSON, exec_msg);
+        mterror(WM_EXECD_LOGTAG, EXEC_INV_JSON, exec_msg);
         return;
     }
 
@@ -170,7 +170,7 @@ void WinExecdRun(char *exec_msg)
     if (json_command && (json_command->type == cJSON_String)) {
         name = json_command->valuestring;
     } else {
-        merror(EXEC_INV_CMD, exec_msg);
+        mterror(WM_EXECD_LOGTAG, EXEC_INV_CMD, exec_msg);
         cJSON_Delete(json_root);
         return;
     }
@@ -181,7 +181,7 @@ void WinExecdRun(char *exec_msg)
         ReadExecConfig();
         cmd[0] = GetCommandbyName(name, &timeout_value);
         if (!cmd[0]) {
-            merror(EXEC_INV_NAME, name);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_NAME, name);
             cJSON_Delete(json_root);
             return;
         }
@@ -231,7 +231,7 @@ void WinExecdRun(char *exec_msg)
             fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
             wpclose(wfd);
         } else {
-            merror(EXEC_CMD_FAIL, strerror(errno), errno);
+            mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
             os_free(cmd_parameters);
             cJSON_Delete(json_root);
             return;
@@ -259,7 +259,7 @@ void WinExecdRun(char *exec_msg)
             );
 
             if (!OSList_AddData(timeout_list, timeout_entry)) {
-                merror(LIST_ADD_ERROR);
+                mterror(WM_EXECD_LOGTAG, LIST_ADD_ERROR);
                 FreeTimeoutEntry(timeout_entry);
             }
         }

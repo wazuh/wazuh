@@ -38,6 +38,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osbuffer = "client_buffer";             /* Agent Buffer Config  */
     const char *oscommand = "command";                  /* ? Config      */
     const char *osintegratord = "integration";          /* Server Config */
+    const char *osactive_response = "active-response";  /* Agent Config */
     const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                    /* Labels Config */
     const char *oslogging = "logging";                  /* Logging Config */
@@ -46,7 +47,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
-    const char *wlogtest = "rule_test";                  /* Wazuh Logtest */
+    const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
 
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
     const char *task_manager = "task-manager";          /* Task Manager Module */
@@ -138,14 +139,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        }
-#ifndef WIN32
-        else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
+        } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
+            if ((modules & CWMODULE) && (ReadActiveResponsesAgent(xml, NULL, d1) < 0)) {
+                goto fail;
+            }
+        } else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         }
-#endif
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;

@@ -15,22 +15,22 @@
 #ifndef WM_EXECD_H
 #define WM_EXECD_H
 
-#define WM_EXECD_LOGTAG ARGV0 ":execd"  // Tag for log messages
-
 extern const wm_context WM_EXECD_CONTEXT; // Context
 
-typedef void* wm_execd_t;
+typedef struct wm_execd_t {
+    time_t pending_upg;
+    int is_disabled;
+    int req_timeout;
+    int max_restart_lock;
+    //int repeated_offenders_timeout[];
+} wm_execd_t;
 
 /**
- * @brief Parses the XML configuration.
+ * @brief Parses internal configuration.
  *
- * @param xml     XML file to be parsed.
- * @param node    Specific xml portion to be analyzed.
- * @param modules Current module analyzed.
- * @param module  Module to be initialized.
- *
+ * @param wmexecd Execd module to be populated.
  * @return 1 if everything was ok, 0 otherwise.
  */
-int wm_execd_read(const OS_XML* xml, XML_NODE node, int modules, wmodule* module);
+int wm_execd_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif // WM_EXECD_H

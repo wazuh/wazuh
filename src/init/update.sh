@@ -403,6 +403,9 @@ UpdateStopOSSEC()
     if [ -d "$PREINSTALLEDDIR/queue/rootcheck" ]; then
         rm -rf $PREINSTALLEDDIR/queue/rootcheck > /dev/null 2>&1
     fi
+
+    # Deleting wazuh-execd from previous versions to 5.0
+    rm -rf $PREINSTALLEDDIR/bin/wazuh-execd > /dev/null 2>&1
 }
 
 UpdateOldVersions()

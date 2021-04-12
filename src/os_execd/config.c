@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -8,7 +8,7 @@
  * Foundation
  */
 #include "shared.h"
-#include "execd.h"
+#include "exec.h"
 #include "wazuh_modules/wmodules.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
@@ -19,8 +19,7 @@
 int is_disabled;
 
 /* Read the config file */
-int ExecdConfig(const char *cfgfile)
-{
+int ExecdConfig(const OS_XML* xml) {
     is_disabled = 0;
 
     const char *(xmlf[]) = {"wazuh_config", "active-response", "disabled", NULL};
@@ -29,16 +28,8 @@ int ExecdConfig(const char *cfgfile)
     char **repeated_a;
     int i = 0;
 
-    OS_XML xml;
-
-    /* Read XML file */
-    if (OS_ReadXML(cfgfile, &xml) < 0)
-    {
-        merror_exit(XML_ERROR, cfgfile, xml.err, xml.err_line);
-    }
-
     /* We do not validate the xml in here. It is done by other processes. */
-    disable_entry = OS_GetOneContentforElement(&xml, xmlf);
+    disable_entry = OS_GetOneContentforElement(xml, xmlf);
     if (disable_entry)
     {
         if (strcmp(disable_entry, "yes") == 0)
@@ -51,7 +42,7 @@ int ExecdConfig(const char *cfgfile)
         }
         else
         {
-            merror(XML_VALUEERR, "disabled", disable_entry);
+            mterror(WM_EXECD_LOGTAG, XML_VALUEERR, "disabled", disable_entry);
             free(disable_entry);
             return (-1);
         }
@@ -60,19 +51,19 @@ int ExecdConfig(const char *cfgfile)
     }
 
     XML_NODE node;
-    node = OS_GetElementsbyNode(&xml, NULL);
+    node = OS_GetElementsbyNode(xml, NULL);
 
     XML_NODE child = NULL;
     while (node && node[i])
     {
-        child = OS_GetElementsbyNode(&xml, node[i]);
+        child = OS_GetElementsbyNode(xml, node[i]);
         int j = 0;
 
         while (child && child[j]){
 
             if (strcmp(child[j]->element, "active-response") == 0){
                 XML_NODE child_attr = NULL;
-                child_attr = OS_GetElementsbyNode(&xml, child[j]);
+                child_attr = OS_GetElementsbyNode(xml, child[j]);
                 int p = 0;
 
                 while (child_attr && child_attr[p])
@@ -101,7 +92,7 @@ next:
     OS_ClearNode(child);
     OS_ClearNode(node);
 
-    //repeated_t = OS_GetOneContentforElement(&xml, blocks);
+    //repeated_t = OS_GetOneContentforElement(xml, blocks);
     if (repeated_t)
     {
         int i = 0;
@@ -109,7 +100,7 @@ next:
         repeated_a = OS_StrBreak(',', repeated_t, 5);
         if (!repeated_a)
         {
-            merror(XML_VALUEERR, "repeated_offenders", repeated_t);
+            mterror(WM_EXECD_LOGTAG, XML_VALUEERR, "repeated_offenders", repeated_t);
             free(repeated_t);
             return (-1);
         }
@@ -136,7 +127,7 @@ next:
             }
 
             repeated_offenders_timeout[j] = atoi(tmpt);
-            minfo("Adding offenders timeout: %d (for #%d)",
+            mtinfo(WM_EXECD_LOGTAG, "Adding offenders timeout: %d (for #%d)",
                 repeated_offenders_timeout[j], j + 1);
             j++;
             repeated_offenders_timeout[j] = 0;
@@ -157,7 +148,7 @@ next:
         free(repeated_a);
     }
 
-    OS_ClearXML(&xml);
+    OS_ClearXML(xml);
 
     return (is_disabled);
 }
@@ -215,17 +206,17 @@ cJSON *getClusterConfig(void) {
     if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         switch (errno) {
         case ECONNREFUSED:
-            merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            mterror(WM_EXECD_LOGTAG, "At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
             break;
 
         default:
-            merror("At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            mterror(WM_EXECD_LOGTAG, "At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
         }
         return NULL;
     }
 
     if (OS_SendSecureTCPCluster(sock, req, "", 0) != 0) {
-        merror("send(): %s", strerror(errno));
+        mterror(WM_EXECD_LOGTAG, "send(): %s", strerror(errno));
         close(sock);
         return NULL;
     }
@@ -234,25 +225,25 @@ cJSON *getClusterConfig(void) {
 
     switch (length = OS_RecvSecureClusterTCP(sock, buffer, OS_MAXSTR), length) {
     case -2:
-        merror("Cluster error detected");
+        mterror(WM_EXECD_LOGTAG, "Cluster error detected");
         free(buffer);
         close(sock);
         return NULL;
 
     case -1:
-        merror("At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
+        mterror(WM_EXECD_LOGTAG, "At wcom_main(): OS_RecvSecureClusterTCP(): %s", strerror(errno));
         free(buffer);
         close(sock);
         return NULL;
 
     case 0:
-        mdebug1("Empty message from local client.");
+        mtdebug1(WM_EXECD_LOGTAG, "Empty message from local client.");
         free(buffer);
         close(sock);
         return NULL;
 
     case OS_MAXLEN:
-        merror("Received message > %i", OS_MAXSTR);
+        mterror(WM_EXECD_LOGTAG, "Received message > %i", OS_MAXSTR);
         free(buffer);
         close(sock);
         return NULL;
@@ -264,7 +255,7 @@ cJSON *getClusterConfig(void) {
     const char *jsonErrPtr;
     cluster_config_cJSON = cJSON_ParseWithOpts(buffer, &jsonErrPtr, 0);
     if (!cluster_config_cJSON) {
-        mdebug1("Error parsing JSON event. %s", buffer);
+        mtdebug1(WM_EXECD_LOGTAG, "Error parsing JSON event. %s", buffer);
         free(buffer);
         return NULL;
     }

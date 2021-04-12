@@ -11,17 +11,17 @@
 
 #include <stdlib.h>
 #include "../../wmodules_def.h"
-#include "os_execd/execd.h"
+#include "os_execd/exec.h"
 #include "wmodules.h"
 #include "wm_execd.h"
 #include "sym_load.h"
 #include "defs.h"
 #include "mq_op.h"
 
-static void* wm_execd_main(wm_execd_t *sys);        // Module main function. It won't return
-static void wm_execd_destroy(wm_execd_t *sys);      // Destroy data
-const char *WM_EXECD_LOCATION = "execd";            // Location field for event sending
-cJSON *wm_execd_dump(const wm_execd_t *sys);
+static void* wm_execd_main(wm_execd_t *data);        // Module main function. It won't return
+static void wm_execd_destroy(wm_execd_t *data);      // Destroy data
+const char *WM_EXECD_LOCATION = "execd";             // Location field for event sending
+cJSON *wm_execd_dump(const wm_execd_t *data);
 int wm_execd_message(const char *data);
 
 const wm_context WM_EXECD_CONTEXT = {
@@ -29,13 +29,13 @@ const wm_context WM_EXECD_CONTEXT = {
     (wm_routine)wm_execd_main,
     (wm_routine)(void *)wm_execd_destroy,
     (cJSON * (*)(const void *))wm_execd_dump,
-    (int(*)(const char*))wm_execd_message,
+    NULL,
 };
 
 void *execd_module = NULL;
 
-static void wm_execd_log_config(wm_execd_t *sys) {
-    cJSON* config_json = wm_execd_dump(sys);
+static void wm_execd_log_config(wm_execd_t *data) {
+    cJSON* config_json = wm_execd_dump(data);
     if (config_json) {
         char* config_str = cJSON_PrintUnformatted(config_json);
         if (config_str) {
@@ -46,48 +46,42 @@ static void wm_execd_log_config(wm_execd_t *sys) {
     }
 }
 
-void* wm_execd_main(wm_execd_t *sys) {
-    int c;
+void* wm_execd_main(wm_execd_t *data) {
+    mtdebug1(WM_EXECD_LOGTAG, "Starting Execd.");
+
+    wm_execd_log_config(data);
+
+#ifdef WIN32
+    w_queue_t * winexec_queue = queue_init(OS_SIZE_128);
+    WinExecdRun(queue_pop_ex(winexec_queue));
+    queue_free(winexec_queue);
+#else
     int queue = 0;
-    const char *cfg = DEFAULTCPATH;
-
-    // Read config
-    if ((c = ExecdConfig(cfg)) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
-    }
-
-    // If AR is disabled, do not continue
-    if (c == 1) {
-        pthread_exit(NULL);
-        exit(EXIT_SUCCESS);
-    }
-
     // Start exec queue
     if ((queue = StartMQ(EXECQUEUEPATH, READ, 0)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
     }
-
-    mtdebug1(WM_EXECD_LOGTAG, "Starting Execd.");
     // The real daemon Now
     ExecdStart(queue);
+
+    if (queue) {
+        close(queue);
+        queue = 0;
+    }
+#endif // WIN32
     mtinfo(WM_EXECD_LOGTAG, "Module finished.");
     return 0;
 }
 
 void wm_execd_destroy(wm_execd_t *data) {
     mtinfo(WM_EXECD_LOGTAG, "Destroy received for Execd.");
-    execd_shutdown(0);
-    free(data);
+    os_free(data);
 }
 
-cJSON *wm_execd_dump(const wm_execd_t *sys) {
+cJSON *wm_execd_dump(__attribute__((unused)) const wm_execd_t *data) {
     cJSON *root = cJSON_CreateObject();
-    cJSON *wm_execd = cJSON_CreateObject();
-    cJSON_AddItemToObject(root,"execd", wm_execd);
+    cJSON_AddItemToObject(root, "ARConfig", getARConfig());
+    cJSON_AddItemToObject(root, "ClusterConfig", getClusterConfig());
+    cJSON_AddItemToObject(root, "ExecdInternalOptions", getExecdInternalOptions());
     return root;
-}
-
-int wm_execd_message(const char *data) {
-    int ret_val = 0;
-    return ret_val;
 }

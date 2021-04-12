@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,12 +8,18 @@
  * Foundation.
  */
 
-#ifndef EXECD_H
-#define EXECD_H
+#ifndef EXEC_H
+#define EXEC_H
+
+#include "shared.h"
+#include "os_xml/os_xml.h"
+#include "../external/cJSON/cJSON.h"
 
 #ifndef ARGV0
-#define ARGV0 "wazuh-execd"
+#define ARGV0 "wazuh-modulesd"
 #endif
+
+#define WM_EXECD_LOGTAG ARGV0 ":execd" // Tag for log messages
 
 /* Add/delete arguments for the commands */
 #define ADD_ENTRY       "add"
@@ -44,12 +50,10 @@ cJSON *getClusterConfig(void);
 char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);
-int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
+int ExecdConfig(const OS_XML* cfgfile) __attribute__((nonnull));
+void ExecdStart(int q);
 int WinExecd_Start(void);
 void WinTimeoutRun(void);
-
-void ExecdStart(int q);
-void execd_shutdown(int sig);
 
 size_t wcom_unmerge(const char *file_path, char **output);
 size_t wcom_uncompress(const char * source, const char * target, char ** output);
@@ -73,4 +77,4 @@ typedef struct _timeout_data {
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);
 
-#endif /* EXECD_H */
+#endif /* EXEC_H */

@@ -172,11 +172,6 @@ int local_start()
         logsk[1].prefix = NULL;
     }
 
-    /* Read execd config */
-    if (!WinExecd_Start()) {
-        agt->execdq = -1;
-    }
-
     /* Initialize sender */
     sender_init();
 
