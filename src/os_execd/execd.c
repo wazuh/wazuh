@@ -32,9 +32,9 @@ time_t pending_upg = 0;
 static void help_execd(char * home_path) __attribute__((noreturn));
 STATIC void execd_shutdown(int sig) __attribute__((noreturn));
 #ifdef WAZUH_UNIT_TESTING
-STATIC void ExecdStart(int q);
+void ExecdStart(int q);
 #else
-STATIC void ExecdStart(int q) __attribute__((noreturn));
+void ExecdStart(int q) __attribute__((noreturn));
 #endif
 STATIC int CheckManagerConfiguration(char ** output);
 
@@ -64,7 +64,7 @@ static void help_execd(char * home_path)
 }
 
 /* Shut down execd properly */
-STATIC void execd_shutdown(int sig)
+void execd_shutdown(int sig)
 {
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
@@ -266,7 +266,7 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
 #ifndef WIN32
 
 /* Main function on the execd. Does all the data receiving, etc. */
-STATIC void ExecdStart(int q)
+void ExecdStart(int q)
 {
     int i, childcount = 0;
     time_t curr_time;

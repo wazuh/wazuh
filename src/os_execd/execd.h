@@ -48,6 +48,9 @@ int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
 int WinExecd_Start(void);
 void WinTimeoutRun(void);
 
+void ExecdStart(int q);
+void execd_shutdown(int sig);
+
 size_t wcom_unmerge(const char *file_path, char **output);
 size_t wcom_uncompress(const char * source, const char * target, char ** output);
 size_t wcom_restart(char **output);
