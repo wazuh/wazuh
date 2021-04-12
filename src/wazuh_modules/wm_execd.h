@@ -12,8 +12,8 @@
 #include "wmodules_def.h"
 #include "os_xml/os_xml.h"
 
-#ifndef WM_EXECD
-#define WM_EXECD
+#ifndef WM_EXECD_H
+#define WM_EXECD_H
 
 #define WM_EXECD_LOGTAG ARGV0 ":execd"  // Tag for log messages
 
@@ -33,4 +33,4 @@ typedef void* wm_execd_t;
  */
 int wm_execd_read(const OS_XML* xml, XML_NODE node, int modules, wmodule* module);
 
-#endif // WM_EXECD
+#endif // WM_EXECD_H

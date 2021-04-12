@@ -651,7 +651,6 @@ settings:
 BUILD_SERVER+=wazuh-maild -
 BUILD_SERVER+=wazuh-csyslogd -
 BUILD_SERVER+=wazuh-agentlessd -
-#BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
 BUILD_SERVER+=wazuh-agentd
@@ -675,7 +674,6 @@ BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
 BUILD_AGENT+=wazuh-logcollector
 BUILD_AGENT+=wazuh-syscheckd
-#BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
@@ -1319,6 +1317,18 @@ build_syscollector: build_shared_modules build_sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
+#### os_execd #####
+
+os_execd_c := $(wildcard os_execd/*.c)
+os_execd_o := $(os_execd_c:.c=.o)
+os_execd_o_lib := ${os_execd_o} $(filter-out config/active_response_o, ${os_execd_o})
+
+os_execd/%.o: os_execd/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
+
+wazuh-execd: ${os_execd_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
 
@@ -1337,7 +1347,7 @@ wmodules_o := $(wmodules_c:.c=.o)
 wazuh_modules/%.o: wazuh_modules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-wmodules_dep := ${os_execd_o} ${wmodules_o} ${wdblib_o}
+wmodules_dep := ${os_execd_o_lib} ${wmodules_o} ${wdblib_o}
 
 ifeq (${uname_S},HP-UX)
 	wmodules_dep := ${wmodules_dep} ${config_o}
@@ -1499,18 +1509,6 @@ agentlessd/%.o: agentlessd/%.c
 
 wazuh-agentlessd: ${os_agentlessd_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### os_execd #####
-
-os_execd_c := $(wildcard os_execd/*.c)
-os_execd_o := $(os_execd_c:.c=.o)
-
-os_execd/%.o: os_execd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
-
-wazuh-execd: ${os_execd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 
 #### logcollectord ####
 

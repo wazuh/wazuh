@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include "../../wmodules_def.h"
+#include "os_execd/execd.h"
 #include "wmodules.h"
 #include "wm_execd.h"
 #include "sym_load.h"
@@ -33,8 +34,6 @@ const wm_context WM_EXECD_CONTEXT = {
 
 void *execd_module = NULL;
 
-//int queue_fd = 0;                       // Output queue file descriptor
-
 static void wm_execd_log_config(wm_execd_t *sys) {
     cJSON* config_json = wm_execd_dump(sys);
     if (config_json) {
@@ -48,14 +47,36 @@ static void wm_execd_log_config(wm_execd_t *sys) {
 }
 
 void* wm_execd_main(wm_execd_t *sys) {
-    mtdebug1(WM_EXECD_LOGTAG, "Starting Execd.");
+    int c;
+    int queue = 0;
+    const char *cfg = DEFAULTCPATH;
 
+    // Read config
+    if ((c = ExecdConfig(cfg)) < 0) {
+        merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    // If AR is disabled, do not continue
+    if (c == 1) {
+        pthread_exit(NULL);
+        exit(EXIT_SUCCESS);
+    }
+
+    // Start exec queue
+    if ((queue = StartMQ(EXECQUEUEPATH, READ, 0)) < 0) {
+        merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+    }
+
+    mtdebug1(WM_EXECD_LOGTAG, "Starting Execd.");
+    // The real daemon Now
+    ExecdStart(queue);
     mtinfo(WM_EXECD_LOGTAG, "Module finished.");
     return 0;
 }
 
 void wm_execd_destroy(wm_execd_t *data) {
     mtinfo(WM_EXECD_LOGTAG, "Destroy received for Execd.");
+    execd_shutdown(0);
     free(data);
 }
 
