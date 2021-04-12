@@ -1232,7 +1232,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: 0
+        error: 2
         data:
           affected_items:
             - id: 1
