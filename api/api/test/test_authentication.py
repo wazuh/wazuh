@@ -16,10 +16,12 @@ import pytest
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        from api import authentication
+        with patch('wazuh.core.common.manager_conf',
+                   new=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager_base.conf')):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            from api import authentication
 
-        del sys.modules['wazuh.rbac.orm']
+            del sys.modules['wazuh.rbac.orm']
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
