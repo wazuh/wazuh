@@ -86,8 +86,6 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
 
         // Enable SSL check if url is HTTPS
         if (!strncmp(url,"https",5)) {
-            res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-            res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
             if (NULL != cert) {
                 res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
             }
@@ -321,8 +319,6 @@ char * wurl_http_get(const char * url) {
 
         // Enable SSL check if url is HTTPS
         if(!strncmp(url,"https",5)){
-            res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-            res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
             if (NULL != cert) {
                 res += curl_easy_setopt(curl, CURLOPT_CAINFO, cert);
             }

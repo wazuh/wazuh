@@ -3,23 +3,22 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import hashlib
-import logging
 import operator
 from os import chmod, path, listdir
 from shutil import copyfile
+from typing import Union
 
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, expand_group, \
-    Agent, WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding
+from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
+    WazuhDBQueryGroup, get_agents_info, get_groups, core_upgrade_agents, get_rbac_filters, agents_padding
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
-
-logger = logging.getLogger('wazuh')
 
 cluster_enabled = not read_cluster_config()['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
@@ -115,6 +114,45 @@ def get_agents_summary_os(agent_list=None):
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
         result.affected_items = query_data['items']
         result.total_affected_items = len(result.affected_items)
+
+    return result
+
+
+@expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1757]})
+def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:
+    """Force reconnect a list of agents.
+
+    Parameters
+    ----------
+    agent_list : Union[list, str]
+        List of agent IDs. All possible values from 000 onwards. Default `*`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+    """
+    result = AffectedItemsWazuhResult(all_msg='Force reconnect command was sent to all agents',
+                                      some_msg='Force reconnect command was not sent to some agents',
+                                      none_msg='Force reconnect command was not sent to any agent'
+                                      )
+
+    system_agents = get_agents_info()
+    wq = WazuhQueue(common.ARQUEUE)
+    for agent_id in agent_list:
+        try:
+            if agent_id not in system_agents:
+                raise WazuhResourceNotFound(1701)
+            if agent_id == "000":
+                raise WazuhError(1703)
+            Agent(agent_id).reconnect(wq)
+            result.affected_items.append(agent_id)
+        except WazuhException as e:
+            result.add_failed_item(id_=agent_id, error=e)
+    wq.close()
+
+    result.total_affected_items = len(result.affected_items)
+    result.affected_items.sort(key=int)
 
     return result
 

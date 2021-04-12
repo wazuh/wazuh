@@ -17,6 +17,7 @@ variables:
   login_endpoint: security/user/authenticate
 
   # delays
+  reconnect_delay: 15
   restart_delay: 30
   restart_delay_cluster: 120
   upgrade_delay: 45

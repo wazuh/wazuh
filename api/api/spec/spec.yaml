@@ -149,6 +149,15 @@ x-rbac-catalog:
         actions: ['agent:upgrade']
         resources: ['agent:id:001', 'agent:group:mediterranean']
         effect: "allow"
+    'agent:reconnect':
+      description: "Force reconnect agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'agent:reconnect' ]
+        resources: [ 'agent:id:050', 'agent:id:049' ]
+        effect: "deny"
     'agent:restart':
       description: "Restart agents"
       resources:
@@ -6357,8 +6366,16 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: "Restart command sent to all agents"
-                  error: 0
+                  data:
+                    affected_items:
+                      - '002'
+                      - '003'
+                      - '005'
+                    total_affected_items: 3
+                    total_failed_items: 0
+                    failed_items: []
+                    message: "Restart command sent to all agents"
+                    error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7286,6 +7303,52 @@ paths:
                   total_failed_items: 0
                 message: 'All selected agents information was returned'
                 error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/reconnect:
+    put:
+      tags:
+        - Agents
+      summary: "Force reconnect agents"
+      description: "Force reconnect all agents or a list of them"
+      operationId: api.controllers.agent_controller.reconnect_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:reconnect'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Agents reconnected"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  message: 'Force reconnect command was sent to all agents'
+                  error: 0
+                  data:
+                    affected_items:
+                      - '002'
+                      - '004'
+                    total_affected_items: 2
+                    failed_items: [ ]
+                    total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -14038,6 +14101,7 @@ paths:
                                     - agent:read
                                     - agent:delete
                                     - agent:modify_group
+                                    - agent:reconnect
                                     - agent:restart
                                     - agent:upgrade
                                   resources:

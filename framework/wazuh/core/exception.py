@@ -224,9 +224,6 @@ class WazuhException(Exception):
         1701: {'message': 'Agent does not exist',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents'
                },
-        1702: {'message': 'Unable to restart agent(s)',
-               'remediation': 'Please make sure the agent exists, it is active and it is not the manager (agent 000)'
-               },
         1703: {'message': 'Action not available for Manager (agent 000)',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents and make sure you select an agent other than 000'
                },
@@ -272,8 +269,8 @@ class WazuhException(Exception):
         1725: {'message': 'Error registering a new agent',
                'remediation': 'Please check all data fields and try again'
                },
-        1726: {'message': 'Ossec authd is not running',
-               'remediation': f'Please, visit our documentation to get more information: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/registering/index.html#registering-the-wazuh-agent-using-simple-registration-service'
+        1726: {'message': 'Ossec authd is not running and API use_only_authd is enabled',
+               'remediation': f'Please enable authd or change the API use_only_authd configuration'
                },
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use `GET /agents/groups/:group_id/files` to get all available group files'
@@ -336,10 +333,15 @@ class WazuhException(Exception):
                'remediation': 'Please select another agent or connect your agent before assigning groups'},
         1754: {'message': 'Agent does not exist or you do not have permissions to access it',
                'remediation': 'Try listing all agents with GET /agents endpoint'},
-        1755: {'message': 'The group does not have any agent assigned',
-               'remediation': 'Please select another group or assign any agent to it'},
         1756: {'message': 'Upgrade procedure could not start. Agent already upgrading',
                'remediation': 'You can check the status of this task with the /agents/:agent_id/upgrade_result endpoint'
+               },
+        1757: {'message': 'Error deleting an agent',
+               'remediation': 'Please check all data fields and try again'
+               },
+        1758: {'message': 'Tried to release an already unlocked client.keys thread lock',
+               },
+        1759: {'message': 'Timeout acquiring client.keys lock, another thread or process might be blocking it',
                },
 
         # CDB List: 1800 - 1899
