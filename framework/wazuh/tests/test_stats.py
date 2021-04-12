@@ -2,24 +2,24 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 import sys
 from datetime import date
 from unittest.mock import patch, MagicMock
-from wazuh.tests.test_agent import send_msg_to_wdb
 
 import pytest
 
-from wazuh.core.exception import WazuhException
-
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
-        del sys.modules['wazuh.rbac.orm']
+        with patch('wazuh.core.common.manager_conf',
+                   new=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager_base.conf')):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
+            del sys.modules['wazuh.rbac.orm']
 
-        from wazuh.tests.util import RBAC_bypasser
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh.stats import *
+            from wazuh.tests.util import RBAC_bypasser
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from wazuh.stats import *
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'stats')
 
