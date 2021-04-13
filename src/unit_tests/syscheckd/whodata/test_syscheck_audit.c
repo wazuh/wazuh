@@ -1226,7 +1226,7 @@ void test_audit_create_rules_file(void **state) {
     expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
     will_return(__wrap_symlink, 1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6045): Created audit rule file, due to audit immutable mode, rules will be loaded in the next reboot");
+    expect_string(__wrap__minfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
 
     audit_create_rules_file();
 }
@@ -1303,7 +1303,7 @@ void test_audit_create_rules_file_symlink_exist(void **state) {
     expect_string(__wrap_symlink, path2, AUDIT_RULES_LINK);
     will_return(__wrap_symlink, 0);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6045): Created audit rule file, due to audit immutable mode, rules will be loaded in the next reboot");
+    expect_string(__wrap__minfo, formatted_msg, "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot.");
 
     audit_create_rules_file();
 }
