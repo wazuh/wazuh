@@ -143,14 +143,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             const char * level_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_level_attr);
             if (level_attr) {
-                if ((strcmp(node[i]->content, OSLOG_LEVEL_DEFAULT_STR) != 0) &&
-                    (strcmp(node[i]->content, OSLOG_LEVEL_INFO_STR) != 0) &&
-                    (strcmp(node[i]->content, OSLOG_LEVEL_DEBUG_STR) != 0)) {
+                if ((strcmp(level_attr, OSLOG_LEVEL_DEFAULT_STR) != 0) &&
+                    (strcmp(level_attr, OSLOG_LEVEL_INFO_STR) != 0) &&
+                    (strcmp(level_attr, OSLOG_LEVEL_DEBUG_STR) != 0)) {
                     /* Invalid level query */
                     mwarn(LOGCOLLECTOR_INV_VALUE_IGNORE, level_attr,
                         xml_localfile_query_level_attr, xml_localfile_query);
                 } else {
-                    os_strdup(node[i]->content, logf[pl].query_level);
+                    os_strdup(level_attr, logf[pl].query_level);
                 }
             }
 //endif Darwin
