@@ -106,6 +106,16 @@ void *read_multiline(logreader *lf, int *rc, int drop_it);
  */
 void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
 
+/**
+ * @brief Read oslog logs
+ *
+ * @param lf status and configuration of the oslog file
+ * @param rc output parameter, returns zero
+ * @param drop_it if drop_it is different from 0, the logs will be read and discarded
+ * @return NULL
+ */
+void *read_oslog(logreader *lf, int *rc, int drop_it);
+
 /* Read DJB multilog format */
 /* Initializes multilog */
 int init_djbmultilog(logreader *lf);
