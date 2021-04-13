@@ -9,7 +9,7 @@ def sanitize_xml(file):
     with open(file, 'r') as f:
         for line in f.readlines():
             new_file.append(line)
-            if '</wazuh_config>' in line:
+            if '</wazuh_config>' in line or '</ossec_config>' in line:
                 break
 
     return new_file
