@@ -441,9 +441,10 @@ UpdateOldVersions()
                     if [ -f "$OLD_GROUP_SHARED_FILE" ]; then
                         # Backup agent.conf
                         BACKUP_GROUP_SHARED_FILE="$item_path/agent.conf.backup"
-                        cp -pf $OLD_GROUP_SHARED_FILE $BACKUP_GROUP_SHARED_FILE
+                        mv -f $OLD_GROUP_SHARED_FILE $BACKUP_GROUP_SHARED_FILE
 
-                        mv -f $OLD_GROUP_SHARED_FILE $NEW_GROUP_SHARED_FILE
+                        cp -p $BACKUP_GROUP_SHARED_FILE $NEW_GROUP_SHARED_FILE
+                        cat $PREINSTALLEDDIR/etc/shared/shared-template.conf > $NEW_GROUP_SHARED_FILE
                     fi
 
                     if [ -f "$OLD_TEMPLATE" ]; then
@@ -453,9 +454,8 @@ UpdateOldVersions()
             done
         else
             OLD_SHARED_FILE="$PREINSTALLEDDIR/etc/shared/agent.conf"
-            NEW_SHARED_FILE="$PREINSTALLEDDIR/etc/shared/shared.conf"
             if [ -f "$OLD_SHARED_FILE" ]; then
-                mv -f $OLD_SHARED_FILE $NEW_SHARED_FILE
+                rm $OLD_SHARED_FILE
             fi
         fi
 
