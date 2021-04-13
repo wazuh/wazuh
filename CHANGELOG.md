@@ -94,7 +94,6 @@ All notable changes to this project will be documented in this file.
   - Fixed the `equals` comparator for OVAL feeds in Vulnerability Detector. ([#7862](https://github.com/wazuh/wazuh/pull/7862))
 
 - **API:**
-  - Fixed a bug when using `sort` parameter with dictionaries type fields. ([#6761](https://github.com/wazuh/wazuh/pull/6761))
   - Fixed wrong API messages returned when getting agents' upgrade results. ([#7587](https://github.com/wazuh/wazuh/pull/7587))
   - Fixed wrong `user` string in API logs when receiving responses with status codes 308 or 404. ([#7709](https://github.com/wazuh/wazuh/pull/7709))
   - Fixed API errors when cluster is disabled and node_type is worker. ([#7867](https://github.com/wazuh/wazuh/pull/7867))
