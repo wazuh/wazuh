@@ -277,13 +277,16 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->maxsize = newrule->maxsize;
             r_node->ruleinfo->frequency = newrule->frequency;
             r_node->ruleinfo->timeframe = newrule->timeframe;
+
             r_node->ruleinfo->ignore_time = newrule->ignore_time;
 
             r_node->ruleinfo->group = newrule->group;
             r_node->ruleinfo->match = newrule->match;
             r_node->ruleinfo->regex = newrule->regex;
+
             r_node->ruleinfo->day_time = newrule->day_time;
             r_node->ruleinfo->week_day = newrule->week_day;
+
             r_node->ruleinfo->srcip = newrule->srcip;
             r_node->ruleinfo->dstip = newrule->dstip;
             r_node->ruleinfo->srcport = newrule->srcport;
@@ -294,27 +297,41 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->status = newrule->status;
             r_node->ruleinfo->hostname = newrule->hostname;
             r_node->ruleinfo->program_name = newrule->program_name;
+            r_node->ruleinfo->data = newrule->data;
             r_node->ruleinfo->extra_data = newrule->extra_data;
+            r_node->ruleinfo->location = newrule->location;
+            r_node->ruleinfo->system_name = newrule->system_name;
+            r_node->ruleinfo->protocol = newrule->protocol;
+            r_node->ruleinfo->fields = newrule->fields;
             r_node->ruleinfo->action = newrule->action;
+
             r_node->ruleinfo->comment = newrule->comment;
             r_node->ruleinfo->info = newrule->info;
             r_node->ruleinfo->cve = newrule->cve;
             r_node->ruleinfo->info_details = newrule->info_details;
+            r_node->ruleinfo->lists = newrule->lists;
+
             r_node->ruleinfo->if_matched_regex = newrule->if_matched_regex;
             r_node->ruleinfo->if_matched_group = newrule->if_matched_group;
             r_node->ruleinfo->if_matched_sid = newrule->if_matched_sid;
+
             r_node->ruleinfo->alert_opts = newrule->alert_opts;
             r_node->ruleinfo->context_opts = newrule->context_opts;
             r_node->ruleinfo->context = newrule->context;
+
             r_node->ruleinfo->decoded_as = newrule->decoded_as;
+
             r_node->ruleinfo->ar = newrule->ar;
             r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
 
-            r_node->ruleinfo->location = newrule->location;
-            r_node->ruleinfo->lists = newrule->lists;
+            r_node->ruleinfo->file = newrule->file;
+
             r_node->ruleinfo->prev_rule = newrule->prev_rule;
+
             r_node->ruleinfo->same_fields = newrule->same_fields;
             r_node->ruleinfo->not_same_fields = newrule->not_same_fields;
+
+            r_node->ruleinfo->mitre_id = newrule->mitre_id;
 
 #ifdef LIBGEOIP_ENABLED
             r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
