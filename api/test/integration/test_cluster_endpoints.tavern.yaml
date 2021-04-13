@@ -519,18 +519,11 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
-              osquery: !anything
               remote: !anything
-              rootcheck: !anything
               ruleset: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1
@@ -551,18 +544,11 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
-              osquery: !anything
               remote: !anything
-              rootcheck: !anything
               ruleset: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1
@@ -591,7 +577,7 @@ stages:
           total_failed_items: 0
 
 
-  - name: Filters -> section=syscheck (master)
+  - name: Filters -> section=global (master)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
@@ -599,28 +585,31 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        section: syscheck
+        section: global
     response:
       status_code: 200
       json:
         error: !anyint
         data:
           affected_items:
-            - syscheck:
-                alert_new_files: !anystr
-                auto_ignore: !anything
-                directories: !anything
-                disabled: !anystr
-                frequency: !anystr
-                ignore: !anything
-                nodiff: !anything
-                scan_on_start: !anystr
-                skip_nfs: !anystr
+            - global:
+                jsonout_output: !anystr
+                alerts_log: !anystr
+                logall: !anystr
+                logall_json: !anystr
+                email_notification: !anystr
+                smtp_server: !anystr
+                email_from: !anystr
+                email_to: !anystr
+                email_maxperhour: !anystr
+                email_log_source: !anystr
+                agents_disconnection_time: !anystr
+                agents_disconnection_alert_time: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Filters -> section=syscollector (master)
+  - name: Filters -> section=remote (master)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
@@ -628,23 +617,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        section: syscollector
+        section: remote
     response:
       status_code: 200
       json:
         error: !anyint
         data:
           affected_items:
-            - syscollector:
-                disabled: !anystr
-                hardware: !anystr
-                interval: !anystr
-                network: !anystr
-                os: !anystr
-                packages: !anystr
-                ports : !anything
-                processes: !anystr
-                scan_on_start: !anystr
+            - remote:
+              - connection: !anystr
+                port: !anystr
+                protocol: !anylist
+                queue_size: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -671,7 +655,8 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Filters -> section=syscheck (worker1)
+
+  - name: Filters -> section=global (worker1)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
@@ -679,28 +664,31 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        section: syscheck
+        section: global
     response:
       status_code: 200
       json:
         error: !anyint
         data:
           affected_items:
-            - syscheck:
-                alert_new_files: !anystr
-                auto_ignore: !anything
-                directories: !anything
-                disabled: !anystr
-                frequency: !anystr
-                ignore: !anything
-                nodiff: !anything
-                scan_on_start: !anystr
-                skip_nfs: !anystr
+            - global:
+                jsonout_output: !anystr
+                alerts_log: !anystr
+                logall: !anystr
+                logall_json: !anystr
+                email_notification: !anystr
+                smtp_server: !anystr
+                email_from: !anystr
+                email_to: !anystr
+                email_maxperhour: !anystr
+                email_log_source: !anystr
+                agents_disconnection_time: !anystr
+                agents_disconnection_alert_time: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
 
-  - name: Filters -> section=syscollector (worker1)
+  - name: Filters -> section=remote (worker1)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
@@ -708,23 +696,18 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        section: syscollector
+        section: remote
     response:
       status_code: 200
       json:
         error: !anyint
         data:
           affected_items:
-            - syscollector:
-                disabled: !anystr
-                hardware: !anystr
-                interval: !anystr
-                network: !anystr
-                os: !anystr
-                packages: !anystr
-                ports : !anything
-                processes: !anystr
-                scan_on_start: !anystr
+            - remote:
+              - connection: !anystr
+                port: !anystr
+                protocol: !anylist
+                queue_size: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
