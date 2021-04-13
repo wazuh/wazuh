@@ -359,6 +359,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             } else if (strcmp(logf[pl].logformat, OSLOG) == 0) {
                 log_config->oslog_count++;
                 os_calloc(1, sizeof(w_oslog_config_t), logf[pl].oslog);
+                w_calloc_expression_t(&logf[pl].oslog->ctxt.start_log_regex, EXP_TYPE_OSREGEX);
+                if (!w_expression_compile(&logf[pl].oslog->ctxt.start_log_regex, OSLOG_START_REGEX, 0)) {
+                    merror("oslog error osregex");
+                    w_free_expression_t(&logf[pl].oslog->ctxt.start_log_regex);
+                    os_free(logf[pl].oslog);
+                    return (OS_INVALID);
+                }
+
 //endif Darwin
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
