@@ -19,6 +19,8 @@ from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager,
 from wazuh.rbac.orm import SecurityError, max_id_reserved
 
 # Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
+from framework.wazuh.core.exception import WazuhResourceNotFound
+
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
 
 
@@ -706,48 +708,43 @@ def set_user_role(user_id, role_ids, position=None):
     return result
 
 
-@expose_resources(actions=['security:delete'], resources=['user:id:{user_id}', 'role:id:{role_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4016, 4008, 5001]})
+@expose_resources(actions=['security:delete'], resources=['user:id:{user_id}'],
+                  post_proc_func=None)
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_ids}'],
+                  post_proc_kwargs={'exclude_codes': [4002, 4016, 4008]})
 def remove_user_role(user_id, role_ids):
     """Create a relationship between a user and a role
-
     :param user_id: User id
     :param role_ids: List of role ids
     :return User-Roles information
     """
+    username = get_username(user_id=user_id)
+    if username == 'unknown':
+        raise WazuhResourceNotFound(5001)
 
-    try:
-        username = get_username(user_id=user_id)
-        result = AffectedItemsWazuhResult(none_msg=f'No role was unlinked from user {username}',
-                                          some_msg=f'Some roles were not unlinked from user {username}',
-                                          all_msg=f'All roles were unlinked from user {username}')
-        success = False
-        with UserRolesManager() as urm:
-            for role_id in role_ids:
-                user_role = urm.remove_role_in_user(user_id=int(user_id[0]), role_id=role_id)
-                if user_role == SecurityError.INVALID:
-                    result.add_failed_item(id_=int(role_id), error=WazuhError(4016))
-                elif user_role == SecurityError.ROLE_NOT_EXIST:
-                    result.add_failed_item(id_=int(role_id), error=WazuhError(4002))
-                elif user_role == SecurityError.USER_NOT_EXIST:
-                    result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5001))
-                    break
-                elif user_role == SecurityError.ADMIN_RESOURCES:
-                    result.add_failed_item(id_=int(user_id[0]), error=WazuhError(4008))
-                else:
-                    success = True
-                    result.total_affected_items += 1
-            if success:
-                with AuthenticationManager() as auth:
-                    result.affected_items.append(auth.get_user_id(int(user_id[0])))
-                result.affected_items.sort(key=str)
-                invalid_users_tokens(users=user_id)
+    result = AffectedItemsWazuhResult(none_msg=f'No role was unlinked from user {username}',
+                                      some_msg=f'Some roles were not unlinked from user {username}',
+                                      all_msg=f'All roles were unlinked from user {username}')
+    success = False
+    with UserRolesManager() as urm:
+        for role_id in role_ids:
+            user_role = urm.remove_role_in_user(user_id=int(user_id[0]), role_id=role_id)
+            if user_role == SecurityError.INVALID:
+                result.add_failed_item(id_=int(role_id), error=WazuhError(4016))
+            elif user_role == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=int(role_id), error=WazuhError(4002))
+            elif user_role == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=int(user_id[0]), error=WazuhError(4008))
+            else:
+                success = True
+                result.total_affected_items += 1
+        if success:
+            with AuthenticationManager() as auth:
+                result.affected_items.append(auth.get_user_id(int(user_id[0])))
+            result.affected_items.sort(key=str)
+            invalid_users_tokens(users=user_id)
+    return result
 
-        return result
-
-    except:
-
-        raise WazuhError(5001)
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
@@ -769,40 +766,36 @@ def set_role_rule(role_id, rule_ids, run_as=False):
 
     """
 
-    try:
+    result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
+                                      some_msg=f'Some security rules were not linked to role {role_id[0]}',
+                                      all_msg=f'All security rules were linked to role {role_id[0]}')
+    success = False
+    with RolesRulesManager() as rrm:
+        for rule_id in rule_ids:
+            role_rule = rrm.add_rule_to_role(role_id=int(role_id[0]), rule_id=int(rule_id))
+            if role_rule == SecurityError.ALREADY_EXIST:
+                result.add_failed_item(id_=int(rule_id), error=WazuhError(4023))
+            elif role_rule == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
+            elif role_rule == SecurityError.RULE_NOT_EXIST:
+                result.add_failed_item(id_=int(rule_id), error=WazuhError(4022))
+            elif role_rule == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
+            else:
+                success = True
+                result.total_affected_items += 1
+        if success:
+            with RolesManager() as rm:
+                result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
+                # Invalidate users with auth_context
+                invalid_run_as_tokens()
+            result.affected_items.sort(key=str)
 
-        result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
-                                          some_msg=f'Some security rules were not linked to role {role_id[0]}',
-                                          all_msg=f'All security rules were linked to role {role_id[0]}')
-        success = False
-        with RolesRulesManager() as rrm:
-            for rule_id in rule_ids:
-                role_rule = rrm.add_rule_to_role(role_id=int(role_id[0]), rule_id=int(rule_id))
-                if role_rule == SecurityError.ALREADY_EXIST:
-                    result.add_failed_item(id_=int(rule_id), error=WazuhError(4023))
-                elif role_rule == SecurityError.ROLE_NOT_EXIST:
-                    result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
-                elif role_rule == SecurityError.RULE_NOT_EXIST:
-                    result.add_failed_item(id_=int(rule_id), error=WazuhError(4022))
-                elif role_rule == SecurityError.ADMIN_RESOURCES:
-                    result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
-                else:
-                    success = True
-                    result.total_affected_items += 1
-            if success:
-                with RolesManager() as rm:
-                    result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
-                    # Invalidate users with auth_context
-                    invalid_run_as_tokens()
-                result.affected_items.sort(key=str)
+    return result
 
-        return result
-
-    except:
-        
-        raise WazuhError(5001)
-
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'],
+                  post_proc_func=None)
+@expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4024]})
 def remove_role_rule(role_id, rule_ids):
     """Remove a relationship between a role and one or more rules.
@@ -811,6 +804,13 @@ def remove_role_rule(role_id, rule_ids):
     :param rule_ids: List of rule ids
     :return Result of operation
     """
+
+    role = get_role(role_id[0])
+
+    if not role:
+        raise WazuhResourceNotFound(5001)
+
+
     result = AffectedItemsWazuhResult(none_msg=f'No security rule was unlinked from role {role_id[0]}',
                                       some_msg=f'Some security rules were not unlinked from role {role_id[0]}',
                                       all_msg=f'All security rules were unlinked from role {role_id[0]}')
@@ -858,43 +858,64 @@ def set_role_policy(role_id, policy_ids, position=None):
     dict
         Role-Policies information
     """
-    try:
+    result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
+                                      some_msg=f'Some policies were not linked to role {role_id[0]}',
+                                      all_msg=f'All policies were linked to role {role_id[0]}')
+    success = False
+    with RolesPoliciesManager() as rpm:
+        for policy_id in policy_ids:
+            policy_id = int(policy_id)
+            role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id, position=position)
+            if role_policy == SecurityError.ALREADY_EXIST:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4011))
+            elif role_policy == SecurityError.ROLE_NOT_EXIST:
+                result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
+            elif role_policy == SecurityError.POLICY_NOT_EXIST:
+                result.add_failed_item(id_=policy_id, error=WazuhError(4007))
+            elif role_policy == SecurityError.ADMIN_RESOURCES:
+                result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
+            else:
+                success = True
+                result.total_affected_items += 1
+                if position is not None:
+                    position += 1
+        if success:
+            with RolesManager() as rm:
+                result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
+                role = rm.get_role_id(role_id=role_id[0])
+                invalid_roles_tokens(roles=[role['id']])
+            result.affected_items.sort(key=str)
 
-        result = AffectedItemsWazuhResult(none_msg=f'No link was created to role {role_id[0]}',
-                                          some_msg=f'Some policies were not linked to role {role_id[0]}',
-                                          all_msg=f'All policies were linked to role {role_id[0]}')
-        success = False
-        with RolesPoliciesManager() as rpm:
-            for policy_id in policy_ids:
-                policy_id = int(policy_id)
-                role_policy = rpm.add_policy_to_role(role_id=role_id[0], policy_id=policy_id, position=position)
-                if role_policy == SecurityError.ALREADY_EXIST:
-                    result.add_failed_item(id_=policy_id, error=WazuhError(4011))
-                elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                    result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
-                elif role_policy == SecurityError.POLICY_NOT_EXIST:
-                    result.add_failed_item(id_=policy_id, error=WazuhError(4007))
-                elif role_policy == SecurityError.ADMIN_RESOURCES:
-                    result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4008))
-                else:
-                    success = True
-                    result.total_affected_items += 1
-                    if position is not None:
-                        position += 1
-            if success:
-                with RolesManager() as rm:
-                    result.affected_items.append(rm.get_role_id(role_id=role_id[0]))
-                    role = rm.get_role_id(role_id=role_id[0])
-                    invalid_roles_tokens(roles=[role['id']])
-                result.affected_items.sort(key=str)
+    return result
 
-        return result
 
-    except:
+def get_role(role_id):
+    """Return the role name of the specified role_id.
 
-        raise WazuhError(5001)
+    Parameters
+    ----------
+    role_id : str
+        Role ID.
 
-@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
+    Returns
+    -------
+    role_check : bool
+        True if the role_id exists, False in other case.
+    """
+
+    role_check = False
+
+    with RolesManager() as rm:
+        role_information = rm.get_role_id(int(role_id))
+        if role_information != SecurityError.ROLE_NOT_EXIST:
+            role_check = True
+
+    return role_check
+
+
+@expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'],
+                  post_proc_func=None)
+@expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4010]})
 def remove_role_policy(role_id, policy_ids):
     """Removes a relationship between a role and a policy
@@ -903,6 +924,12 @@ def remove_role_policy(role_id, policy_ids):
     :param policy_ids: List of policies ids
     :return Result of operation
     """
+
+    role = get_role(role_id[0])
+
+    if not role:
+        raise WazuhResourceNotFound(5001)
+
     result = AffectedItemsWazuhResult(none_msg=f'No policy was unlinked from role {role_id[0]}',
                                       some_msg=f'Some policies were not unlinked from role {role_id[0]}',
                                       all_msg=f'All policies were unlinked from role {role_id[0]}')

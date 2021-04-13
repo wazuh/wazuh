@@ -126,7 +126,7 @@ remove_role_policy:
     result:
       affected_items: []
       failed_items:
-        "4002":
+        "5001":
           - 999
   - params:
       role_id:

@@ -294,7 +294,7 @@ def api_test(request):
     clean_tmp_folder()
     if request.session.testsfailed > 0:
         save_logs(f"{rbac_mode}_{module.split('.')[0]}" if rbac_mode else f"{module.split('.')[0]}")
-    down_env()
+    #down_env()
 
 
 # HTML report
