@@ -133,6 +133,9 @@ def start(foreground, root, config_file):
     else:
         print(f"Starting API in foreground")
 
+    # Load the SPEC file into memory to use as a reference for future calls
+    common.load_spec()
+
     # Check RBAC database integrity in Master node only if cluster is enabled
     if get_node().get('type') == 'master' if not read_cluster_config()['disabled'] else True:
         check_database_integrity()
