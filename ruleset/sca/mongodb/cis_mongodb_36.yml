@@ -207,7 +207,7 @@ checks:
 
 #5.2
   - id: 23514
-    title: "Ensure that system activity is audited"
+    title: "Ensure that audit filters are configured properly"
     description: "MongoDB Enterprise supports auditing of various operations. When enabled, the audit facility, by default, records all auditable operations as detailed in Audit Event Actions, Details, and Results. To specify which events to record, the audit feature includes the --auditFilter option. This check is only for Enterprise editions."
     rationale: "All operations carried out on the database are logged. This helps in backtracking and tracing any incident that occurs."
     remediation: "Set the audit filters based on the organization’s requirements."
@@ -223,7 +223,7 @@ checks:
 
 #5.3
   - id: 23515
-    title: "Ensure that audit filters are configured properly"
+    title: "Ensure that logging captures as much information as possible"
     description: "The SystemLog.quiet option stops logging of information such as:connection events, authentication events, replication sync activitie, evidence of some potentially impactful commands being run (eg: drop , dropIndexes , validate ). This information should be logged whenever possible. This check is only for Enterprise editions."
     rationale: "The use of SystemLog.quiet makes troubleshooting problems and investigating possible security incidents much more difficult."
     remediation: "Set SystemLog.quiet to false in the /etc/mongod.conf file to disable it."
