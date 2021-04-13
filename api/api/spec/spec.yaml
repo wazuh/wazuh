@@ -178,10 +178,10 @@ x-rbac-catalog:
     'group:read':
       description: "Access agent groups information (id, name, agents, etc)"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/group:id'
       example:
         actions: ['group:create']
-        resources: ['*:*:*']
+        resources: ['group:id:*']
         effect: "allow"
     'group:update_config':
       description: "Change the configuration of agent groups"

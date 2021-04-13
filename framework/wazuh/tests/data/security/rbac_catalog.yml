@@ -216,12 +216,12 @@ get_rbac_actions:
       group:read:
         description: Access agent groups information (id, name, agents, etc)
         resources:
-          - "*:*"
+          - group:id
         example:
           actions:
             - group:create
           resources:
-            - "*:*:*"
+            - group:id:*
           effect: allow
         related_endpoints:
           - GET /groups
