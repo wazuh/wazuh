@@ -68,9 +68,9 @@ checks:
     references:
       - http://nginx.org/en/docs/configure.html
       - https://tools.ietf.org/html/rfc4918
-    condition: all
+    condition: none
     rules:
-      - 'not c:nginx -V 2>&1 | grep http_dav_module -> r:\.+'
+      - 'c:nginx -V 2>&1 | grep "http_dav_module"  -> r:\.+'
 
 # 2.1.3 Ensure modules with gzip functionality are disabled (Scored)
   - id: 23006
@@ -84,9 +84,9 @@ checks:
     references:
       - http://nginx.org/en/docs/configure.html
       - http://nginx.org/en/docs/configure.html
-    condition: all
+    condition: none
     rules:
-      - 'not c:nginx -V | grep "http_gzip_module\|http_gzip_static_module" -> r:\.'
+      - 'c:nginx -V 2>&1 | grep "http_gzip_module\|http_gzip_static_module" -> r:\.'
 
 # 2.1.4 Ensure the autoindex module is disabled (Scored)
   - id: 23007
@@ -99,10 +99,10 @@ checks:
       - cis_csc: ["5.1"]
     references:
       - http://nginx.org/en/docs/http/ngx_http_autoindex_module.htm
-    condition: all
+    condition: none
     rules:
-      - 'not c:egrep -i "^\s*autoindex\s+" /etc/nginx/nginx.conf -> r:autoindex\son'
-      - 'not c:egrep -i "^\s*autoindex\s+" /etc/nginx/conf.d/* -> r:autoindex\son'
+       - 'f:/etc/nginx/nginx.conf -> r:autoindex on'
+       - 'f:/etc/nginx/conf.d/default.conf -> r:autoindex on'
 
 # 2.2 Account Security
 
@@ -119,8 +119,8 @@ checks:
       - http://nginx.org/en/docs/ngx_core_module.html#user
     condition: all
     rules:
-      - 'c:grep "^user " /etc/nginx/nginx.conf -> r:^\s*user\s+nginx;'
-      - 'c:sudo -l -U nginx -> r:User\snginx\sis\snot\sallowed\sto\srun\ssudo\.*'
+      - 'f:/etc/nginx/nginx.conf -> r:^user\s+nginx;'
+      - 'c:sudo -l -U nginx -> r:^User nginx is not allowed to run sudo\.*'
       - 'c:groups nginx -> r:^nginx\s:\snginx$'
 
 # 2.2.2 Ensure the NGINX service account is locked (Scored)
@@ -134,7 +134,7 @@ checks:
       - cis_csc: ["5.1"]
     condition: all
     rules:
-      - 'c:passwd -S nginx -> r:^nginx\sL'
+      - 'c:passwd -S nginx -> r:^nginx L\.+'
 
 # 2.2.3 Ensure the NGINX service account has an invalid shell (Scored)
   - id: 23010
@@ -177,8 +177,7 @@ checks:
       -  https://dev-sec.io/baselines/nginx/
     condition: none
     rules:
-      - 'c:find /etc/nginx -type f | xargs ls -l | grep -v "^-rw-r-----" -> r:\.+'
-      - 'c:find /etc/nginx -type d | xargs ls -ld | grep -v "^drwxr-x---" -> r:\.+'
+      - 'c:ls -l /etc/nginx/ | egrep -v "^d|^l|^total" | grep -v "^-rw-r-----" -> r:\.'
 
 # 2.3.3 Ensure the NGINX process ID (PID) file is secured (Scored)
   - id: 23013
@@ -191,7 +190,7 @@ checks:
       - cis_csc: ["5.1"]
     condition: all
     rules:
-      - 'c:ls -l /var/run/nginx.pid -> r:^\.+\s+root\s+root\s+\d+\s\w\w\w\s+\.+'
+      - 'c:ls -l /var/run/nginx.pid -> r:^\.+\S+\s+root\s+root\s+\.+'
 
 # 2.3.4 Ensure the core dump directory is secured (Not Scored)
   - id: 23014
@@ -206,7 +205,7 @@ checks:
       - https://www.nginx.com/resources/wiki/start/topics/tutorials/debugging/#coredump
     condition: all
     rules:
-      - 'c:grep working_directory /etc/nginx/nginx.conf -> r:^$'
+      - 'not f:/etc/nginx/nginx.conf -> r:^\s*working_directory'
 
 #2.4 Network Configuration
 
@@ -269,9 +268,9 @@ checks:
     compliance:
       - cis: ["2.5.1"]
       - cis_csc: ["5.1"]
-    condition: all
+    condition: none
     rules:
-      - 'not c:curl -I 127.0.0.1 -> r:^\.*Server:\s+nginx/\.+'
+      - 'c:curl -I 127.0.0.1 -> r:^\.*Server:\s+nginx/\.+'
 
 # 2.5.2 Ensure default error and index.html pages do not reference NGINX (Scored)
   - id: 23020
@@ -315,8 +314,8 @@ checks:
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html
     condition: all
     rules:
-      - 'c:grep "proxy_hide_header X-Powered-By;" /etc/nginx/nginx.conf -> r:^\.*proxy_hide_header\s+X-Powered-By;'
-      - 'c:grep "proxy_hide_header Server;" /etc/nginx/nginx.conf -> r:^\.*proxy_hide_header\s+Server;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*proxy_hide_header\s+X-Powered-By;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*proxy_hide_header\s+Server;'
 
 ############################################################
 # 3 Logging
@@ -374,7 +373,7 @@ checks:
       - cis_csc: ["6.3"]
     condition: all
     rules:
-      - 'c:grep error_log /etc/nginx/nginx.conf -> r:^\.+info;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*error_log\s+/var/log/nginx/error.log\s+info;'
 
 # 3.4 Ensure log files are rotated (Scored)
   - id: 23026
@@ -387,8 +386,8 @@ checks:
       - cis_csc: ["6.3","6.4"]
     condition: all
     rules:
-      - 'c:grep " rotate 13" /etc/logrotate.d/nginx -> r:^\s+rotate\s+13'
-      - 'c:grep "weekly" /etc/logrotate.d/nginx -> r:^\s+weekly'
+      - 'f:/etc/logrotate.d/nginx -> r:^\s*rotate\s+13'
+      - 'f:/etc/logrotate.d/nginx -> r:^\s*weekly'
 
 # 3.5 Ensure error logs are sent to a remote syslog server (Not Scored)
   - id: 23027
@@ -403,7 +402,8 @@ checks:
       - http://nginx.org/en/docs/syslog.html
     condition: all
     rules:
-      - 'c:grep -ir syslog /etc/nginx - > r:^\s*error_log\s+syslog:\.+\s+info;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*error_log\s+syslog:\.+\s+info;'
+
 
 # 3.6 Ensure access logs are sent to a remote syslog server (Not Scored)
   - id: 23028
@@ -418,7 +418,7 @@ checks:
       - http://nginx.org/en/docs/syslog.html
     condition: all
     rules:
-      - 'c:grep -ir access_log /etc/nginx -> r:^\s*access_log\s+syslog:\.*\s+severity=info\.*;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*access_log\s+syslog:server\.+severity=info\.*;'
 
 # 3.7 Ensure proxies pass source IP information (Scored)
   - id: 23029
@@ -434,8 +434,8 @@ checks:
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html
     condition: any
     rules:
-      - 'c:grep proxy_set_header /etc/nginx/nginx.conf -> r:^\.+X-Real-IP\s+\$remote_addr;'
-      - 'c:grep proxy_set_header /etc/nginx/nginx.conf -> r:^\.+X-Forwarded-For\s+\$proxy_add_x_forwarded_for;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*proxy_set_header\s+XReal-IP\s+\.+'
+      - 'f:/etc/nginx/nginx.conf -> r:^\.+X-Forwarded-For\s+\$proxy_add_x_forwarded_for'
 
 ############################################################
 # 4 Encryption
@@ -455,8 +455,8 @@ checks:
       - https://serversforhackers.com/c/redirect-http-to-https-nginx
     condition: any
     rules:
-      - 'c:grep "return 301 https://" /etc/nginx/nginx.conf -> r:\.+'
-      - 'c:grep "return 301 https://" /etc/nginx/conf.d/default.conf -> r:\.+'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*return\s+301\s+https://\.+'
+      - 'f:/etc/nginx/conf.d/default.conf -> r:^\s*return\s+301\s+https://\.+'
 
 # 4.1.2 Ensure a trusted certificate and trust chain is installed (Not Scored)
   - id: 23031
@@ -473,7 +473,8 @@ checks:
       - https://support.globalsign.com/customer/portal/articles/1290470-installcertificate---nginx
     condition: all
     rules:
-      - 'c:grep -ir ssl_certificate /etc/nginx/ -> r:^\s*/etc/nginx/nginx.conf:\s+ssl_certificate\s+\.+;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*ssl_certificate\s+\.+'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*ssl_certificate_key\s+\.+'
 
 # 4.1.3 Ensure private key permissions are restricted (Scored)
   - id: 23032
@@ -487,7 +488,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/nginx/nginx.key'
-      - 'c:ls -l /etc/nginx/nginx.key -> r:^-rw-r--r--\.+'
+      - 'c:ls -l /etc/nginx/nginx.key -> r:^-r--------\.+'
 
 # 4.1.4 Ensure only modern TLS protocols are used (Scored)
   - id: 23033
@@ -503,7 +504,7 @@ checks:
       - https://www.cloudflare.com/learning-resources/tls-1-3/
     condition: all
     rules:
-      - 'c:grep "ssl_protocols TLSv1.2;" /etc/nginx/nginx.conf -> r:^\.+'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*ssl_protocols\s+\.+'
 
 #  4.1.5 Disable weak ciphers (Scored)
   - id: 23034
@@ -539,7 +540,7 @@ checks:
       - https://weakdh.org/sysadmin.html
     condition: all
     rules:
-      - 'c:grep -ir ssl_dhparam /etc/nginx/ -> r:\.+'
+      - 'f:/etc/nginx/nginx.conf -> r:\s*ssl_dhparam\s+\.+.'
 
 # 4.1.7 Ensure Online Certificate Status Protocol (OCSP) stapling is enabled (Scored)
   - id: 23036
@@ -554,8 +555,8 @@ checks:
       - https://www.digicert.com/ssl-support/nginx-enable-ocsp-stapling-on-server.htm
     condition: all
     rules:
-      - 'c:grep -ir ssl_stapling /etc/nginx -> r:^\s*ssl_stapling\s+on;'
-      - 'c:grep -ir ssl_stapling /etc/nginx -> r:^\s*ssl_stapling_verify\s+on;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*ssl_stapling\s+on'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*ssl_stapling_verify\s+on'
 
 # 4.1.8 Ensure HTTP Strict Transport Security (HSTS) is enabled (Scored)
   - id: 23037
@@ -574,7 +575,7 @@ checks:
       - https://tools.ietf.org/html/rfc6797
     condition: all
     rules:
-      - 'c:grep -ir Strict-Transport-Security /etc/nginx -> r:^\s*add_header\s+Strict-Transport-Security\.+'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*add_header\s+Strict-Transport-Security\s+"max-age=15768000;"'
 
 # 4.1.9 Ensure HTTP Public Key Pinning is enabled (Not Scored)
   - id: 23038
@@ -589,7 +590,7 @@ checks:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Public_Key_Pinning
     condition: all
     rules:
-      - 'c:grep -ir Public-Key-Pins /etc/nginx -> !r:^$'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*add_header\s+Public-Key-Pins\s+\.+'
 
 # 4.1.10 Ensure upstream server traffic is authenticated with a client certificate (Scored)
   - id: 23039
@@ -606,8 +607,8 @@ checks:
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_certificate
     condition: all
     rules:
-      - 'c:grep -ir proxy_ssl_certificate /etc/nginx -> r:^\s*proxy_ssl_certificate\s+\.+$;'
-      - 'c:grep -ir proxy_ssl_certificate /etc/nginx -> r:^\s*proxy_ssl_certificate_key\s+\.+$;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*proxy_ssl_certificate\s+\.+'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*proxy_ssl_certificate_key\s+\.+'
 
 # 4.1.11 Ensure the upstream traffic server certificate is trusted (Not Scored)
   - id: 23040
@@ -623,8 +624,8 @@ checks:
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_trusted_certificate
     condition: all
     rules:
-      - 'c:grep -ir proxy_ssl_trusted_certificate /etc/nginx -> r:^\s*proxy_ssl_trusted_certificate\s+\.+;'
-      - 'c:grep -ir proxy_ssl_verify /etc/nginx -> r:^\s*proxy_ssl_verify\s+on;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*proxy_ssl_trusted_certificate\s+\.+'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*proxy_ssl_verify\s+on'
 
 # 4.1.12 Ensure your domain is preloaded (Not Scored)
 # Not automatable
@@ -643,7 +644,7 @@ checks:
       - https://scotthelme.co.uk/perfect-forward-secrecy/
     condition: all
     rules:
-      - 'not c:grep -ir ssl_session_tickets /etc/nginx ->r:^\s*ssl_session_tickets\s+off;'
+      - 'c:/etc/nginx/nginx.conf ->r:^\s*ssl_session_tickets\s+off'
 
 # 4.1.14 Ensure HTTP/2.0 is used (Not Scored)
   - id: 23043
@@ -659,7 +660,7 @@ checks:
       - http://http2.github.io/http2-spec/
     condition: all
     rules:
-      - 'c:grep -ir http2 /etc/nginx -> r:^\s*listen\s+\.+http2\.+;'
+      - 'c:grep -ir http2 /etc/nginx -> r:^\.+listen\s+\.+http2\.*;'
 
 ############################################################
 # 5 Request Filtering and Restrictions
@@ -681,9 +682,8 @@ checks:
       - http://nginx.org/en/docs/http/ngx_http_access_module.html
     condition: all
     rules:
-      - 'c:grep "location " /etc/nginx/nginx.conf -> !r:^$'
-      - 'c:grep "allow " /etc/nginx/nginx.conf -> r:^\s*allow\s+\.+;'
-      - 'c:grep "deny " /etc/nginx/nginx.conf -> r:^\s*deny\s+all\s+;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*allow\s+\.+;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*deny\s+all\s*;'
 
 # 5.1.2 Ensure only whitelisted HTTP methods are allowed (Not Scored)
 # Not automatable
@@ -704,8 +704,8 @@ checks:
       - https://blog.qualys.com/securitylabs/2011/11/02/how-to-protect-against-slowhttp-attacks
     condition: all
     rules:
-      - 'c:grep -ir client_body_timeout /etc/nginx -> r:^\s*client_body_timeout\s+10;'
-      - 'c:grep -ir client_header_timeout /etc/nginx -> r:^\s*client_header_timeout\s+10;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*client_body_timeout\s+10\s*;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*client_header_timeout\s+10\s*;'
 
 # 5.2.2 Ensure the maximum request body size is set correctly (Scored)
   - id: 23047
@@ -723,7 +723,7 @@ checks:
       - https://www.tecmint.com/nginx-web-server-security-hardening-and-performancetips/
     condition: all
     rules:
-      - 'c:grep -ir client_max_body_size /etc/nginx -> r:^\s*client_max_body_size\s+100K'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*client_max_body_size\s+100K'
 
 # 5.2.3 Ensure the maximum buffer size for URIs is defined (Scored)
   - id: 23048
@@ -740,7 +740,7 @@ checks:
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#large_client_header_buffers
     condition: all
     rules:
-      - 'c:grep -ir large_client_header_buffers /etc/nginx/ -> r:^\s*large_client_header_buffers\s+2\s+1k'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*large_client_header_buffers\s+2\s+1k'
 
 # 5.2.4 Ensure the number of connections per IP address is limited (Not Scored)
   - id: 23049
@@ -757,8 +757,8 @@ checks:
       - https://scotthelme.co.uk/mitigating-http-get-dos-attack/
     condition: all
     rules:
-      - 'c:grep "limit_conn_zone " /etc/nginx/nginx.conf -> r:^\s*limit_conn_zone\s+\.*zone=limitperip:10m'
-      - 'c:grep "limit_conn " /etc/nginx/nginx.conf -> r:^\s*limit_conn\s+\.*limitperip\s+10'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*limit_conn_zone\s+\.*zone=limitperip:10m'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*limit_conn\s+\.*limitperip\s+10\s*'
 
 # 5.2.5 Ensure rate limits by IP address are set (Not Scored)
   - id: 23050
@@ -774,8 +774,8 @@ checks:
       - https://www.nginx.com/blog/rate-limiting-nginx/
     condition: all
     rules:
-      - 'c:grep "limit_req_zone " /etc/nginx/nginx.conf -> r:^\s*limit_req_zone\s+\.*zone=ratelimit:10m\s+rate=5r/s'
-      - 'c:grep "limit_req " /etc/nginx/nginx.conf -> r:^\s*limit_req\s+\.*zone=ratelimit\s+burst=10\s+nodelay'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*limit_req_zone\s+\.*zone=\.+:10m\s+rate=5r/s'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*limit_req\s+\.*zone=\.+\s+burst=10\s+nodelay'
 
 # 5.3 Browser Security
 
@@ -795,7 +795,7 @@ checks:
       - https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
     condition: all
     rules:
-      - 'c:grep -ir X-Frame-Options /etc/nginx -> r:^\s*add_header\s+X-Frame-Options\s+\.+;'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*add_header\s+X-Frame-Options\s+\.+;'
 
 # 5.3.2 Ensure X-Content-Type-Options header is configured and enabled (Scored)
   - id: 23052
@@ -814,7 +814,7 @@ checks:
       - https://www.iana.org/assignments/message-headers/messageheaders.xml#perm-headers
     condition: all
     rules:
-      - 'c:grep -ir X-Content-Type-Options /etc/nginx -> r:^\s*add_header\s+X-Content-Type-Options\s+"nosniff";'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*add_header\s+X-Content-Type-Options\s+"nosniff"'
 
 # 5.3.3 Ensure the X-XSS-Protection Header is enabled and configured properly (Scored)
   - id: 23053
@@ -831,7 +831,7 @@ checks:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection
     condition: all
     rules:
-      - 'c:grep -ir X-Xss-Protection /etc/nginx -> r:^\s*add_header\s+X-Xss-Protection\s+"1;\s+mode=block";'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*add_header\s+X-Xss-Protection\s+"1;\s+mode=block"'
 
 # 5.3.4 Ensure that Content Security Policy (CSP) is enabled and configured properly (Not Scored)
   - id: 23054
@@ -849,7 +849,7 @@ checks:
       - https://www.w3.org/TR/CSP3/
     condition: all
     rules:
-      - 'c:grep -ir "Content-Security-Policy " /etc/nginx -> r:^\s*add_header\s+Content-Security-Policy\s+"default-src\.*self"'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*add_header\s+Content-Security-Policy\s+"default-src\s+\pself\p"'
 
 # 5.3.5 Ensure the Referrer Policy is enabled and configured properly (Not Scored)
   - id: 23055
@@ -865,4 +865,4 @@ checks:
       - https://www.w3.org/TR/referrer-policy/
     condition: all
     rules:
-      - 'c:grep -r "Referrer-Policy " /etc/nginx -> r:^\s*add_header\s+Referrer-Policy\s+"no-referrer"'
+      - 'f:/etc/nginx/nginx.conf -> r:^\s*add_header\s+Referrer-Policy\s+"no-referrer"'
