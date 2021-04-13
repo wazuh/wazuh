@@ -2,6 +2,7 @@
 - actions:
   - agent:read
   - agent:delete
+  - agent:reconnect
   - agent:restart
   - agent:upgrade
   - agent:modify_group
@@ -33,6 +34,7 @@
   effect: allow
 
 - actions:
+  - agent:reconnect
   - agent:restart
   resources:
   - agent:group:group2

@@ -20,7 +20,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &roles
             - id: !anyint
@@ -42,7 +42,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *roles
@@ -63,7 +63,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_role_id}"
@@ -78,7 +78,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - <<: *roles
@@ -102,7 +102,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *roles
@@ -124,7 +124,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_role_id}"
@@ -141,29 +141,135 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
   # GET /security/roles
-  - name: Search in roles
+  - name: Select role name
     request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/roles"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *all_roles_request
       params:
-        search: wazuh
-        limit: 1
+        select: name
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
       status_code: 200
       json:
-        error: !anyint
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/roles
+  - name: Select role id
+    request:
+      <<: *all_roles_request
+      params:
+        select: id
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/roles
+  - name: Select role rules
+    request:
+      <<: *all_roles_request
+      params:
+        select: rules
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'rules' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/roles
+  - name: Select role policies
+    request:
+      <<: *all_roles_request
+      params:
+        select: policies
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'policies' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/roles
+  - name: Select role users
+    request:
+      <<: *all_roles_request
+      params:
+        select: users
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'users' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/roles
+  - name: Search in roles with select
+    request:
+      <<: *all_roles_request
+      params:
+        select: name
+        search: readonly
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
         data:
           affected_items:
-            - <<: *roles
-          total_affected_items: !anyint
+            - id: 2
+              name: readonly
+            - id: 4
+              name: agents_readonly
+            - id: 6
+              name: cluster_readonly
+          total_affected_items: 3
 
   # GET /security/roles
   - name: Search without limit
@@ -174,7 +280,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *roles
@@ -199,7 +305,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -231,9 +337,49 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
+
+  # GET /security/roles/{role_id}
+  - name: Try to show a specified role in the system
+    request:
+      <<: *all_roles_request
+      params:
+        role_ids: 2,3,4
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *roles
+            - <<: *roles
+            - <<: *roles
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /security/roles/{non-existent role_id}
+  - name: Try to show a non-existent role in the system
+    request:
+      <<: *all_roles_request
+      params:
+        role_ids: 999
+    response:
+      status_code: 200
+      json: &response_error
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: !anyint
+              id:
+                - 999
+          total_affected_items: 0
+          total_failed_items: 1
+
 ---
 test_name: GET /security/policies
 
@@ -253,7 +399,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &policies
             - id: !anyint
@@ -271,7 +417,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *policies
@@ -292,7 +438,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_policy_id}"
@@ -307,7 +453,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
@@ -330,7 +476,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *policies
@@ -346,26 +492,97 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
   # GET /security/policies
-  - name: Search in policies
+  - name: Select policy id
     request:
       <<: *all_policies_request
       params:
+        select: id
+        limit: 1
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/policies
+  - name: Select policy name
+    request:
+      <<: *all_policies_request
+      params:
+        select: name
+        limit: 1
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/policies
+  - name: Select policy info
+    request:
+      <<: *all_policies_request
+      params:
+        select: policy
+        limit: 1
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'policy' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/policies
+  - name: Search in policies with select
+    request:
+      <<: *all_policies_request
+      params:
+        select: name
         search: wazuh
         limit: 2
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
-            - <<: *policies
-            - <<: *policies
-          total_affected_items: !anyint
+            - name: wazuhPolicy
+              id: 100
+            - name: wazuh-wuiPolicy
+              id: 101
+          total_affected_items: 2
       save:
         json:
           policy_id: data.affected_items[0].id
@@ -379,7 +596,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 2
 
@@ -392,7 +609,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -424,9 +641,39 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
+
+  # GET /security/policies/{policy_id}
+  - name: Try to show a specified policy in the system
+    request:
+      <<: *all_policies_request
+      params:
+        policy_ids: 2,3,4
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *policies
+            - <<: *policies
+            - <<: *policies
+          failed_items: [ ]
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  # GET /security/policies/{non-existent policy_id}
+  - name: Try to show a non-existent policy in the system
+    request:
+      <<: *all_policies_request
+      params:
+        policy_ids: 999
+    response:
+      status_code: 200
+      json:
+        <<: *response_error
 
 ---
 test_name: GET /security/rules
@@ -447,7 +694,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &rules
             - id: !anyint
@@ -468,7 +715,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -489,7 +736,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_rule_id}"
@@ -504,7 +751,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - <<: *rules
@@ -528,7 +775,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -550,7 +797,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
           - id: !int "{second_rule_id}"
@@ -567,7 +814,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: !anyint
 
@@ -585,11 +832,94 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
           total_affected_items: !anyint
+
+  # GET /security/rules
+  - name: Select rule id
+    request:
+      <<: *all_rules_request
+      params:
+        select: id
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/rules
+  - name: Select rule name
+    request:
+      <<: *all_rules_request
+      params:
+        select: name
+        limit: 1
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/rules
+  - name: Select rule info
+    request:
+      <<: *all_rules_request
+      params:
+        select: rule
+        limit: 1
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'rule' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
+
+  # GET /security/rules
+  - name: Select rule roles
+    request:
+      <<: *all_rules_request
+      params:
+        select: roles
+        limit: 1
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'roles' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: [ ]
+          total_failed_items: 0
 
   # GET /security/rules
   - name: Search without limit
@@ -600,7 +930,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -626,7 +956,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
 
@@ -658,54 +988,9 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           total_affected_items: 0
-
----
-test_name: GET /security/roles
-
-stages:
-
-  # GET /security/roles/{role_id}
-  - name: Try to show a specified role in the system
-    request:
-      <<: *all_roles_request
-      params:
-        role_ids: 2,3,4
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *roles
-            - <<: *roles
-            - <<: *roles
-
-  # GET /security/roles/{non-existent role_id}
-  - name: Try to show a non-existent role in the system
-    request:
-      <<: *all_roles_request
-      params:
-        role_ids: 999
-    response:
-      status_code: 200
-      json: &response_error
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: !anyint
-              id:
-                - 999
-          total_affected_items: 0
-          total_failed_items: 1
----
-test_name: GET /security/rules/{rule_id}
-
-stages:
 
   # GET /security/rules
   - name: Try to show a list of rules
@@ -716,7 +1001,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *rules
@@ -731,7 +1016,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - <<: *rules
@@ -742,37 +1027,7 @@ stages:
               id:
                 - '999'
           total_affected_items: 1
----
-test_name: GET /security/policies/{policy_id}
-
-stages:
-
-  # GET /security/policies/{policy_id}
-  - name: Try to show a specified policy in the system
-    request:
-      <<: *all_policies_request
-      params:
-        policy_ids: 2,3,4
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - <<: *policies
-            - <<: *policies
-            - <<: *policies
-
-  # GET /security/policies/{non-existent policy_id}
-  - name: Try to show a non-existent policy in the system
-    request:
-      <<: *all_policies_request
-      params:
-        policy_ids: 999
-    response:
-      status_code: 200
-      json:
-        <<: *response_error
+          total_failed_items: 1
 
 ---
 test_name: GET /security/user/authenticate
@@ -796,6 +1051,13 @@ stages:
 ---
 test_name: GET /security/users
 
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - wazuh-wui
+        - normal
+
 stages:
 
   - name: Get all users in the system
@@ -808,7 +1070,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 1
@@ -865,59 +1127,77 @@ stages:
           total_failed_items: 0
           failed_items: []
 
----
-test_name: GET /security/users/me
-
-stages:
-
-  - name: Get information about the current user
+  - name: Get users in the system using filters
     request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/me"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
+      params:
+        select: id
+        limit: 2
+        offset: 0
+        sort: -id
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id' # required_fields={'id'}
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
-            - id: 99
-              username: testing
-              allow_run_as: false
-              roles:
-                - id: 1
-                  name: "administrator"
-                  rules: !anything
-                  policies: !anything
-          total_affected_items: 1
+            - id: 105
+            - id: 104
+          total_affected_items: !anyint
           total_failed_items: 0
-          failed_items: []
+          failed_items: [ ]
 
----
-test_name: GET /security/users/me/policies
-
-stages:
-
-  - name: Get information about the current user processed policies
+  - name: Get users in the system using search and select filters
     request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/security/users/me/policies"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *all_users_request
+      params:
+        limit: 1
+        select: username
+        search: wazuh-wui
     response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'username' # required_fields={'id'}
       status_code: 200
       json:
-        error: !anyint
-        data: !anything
-        message: !anystr
+        error: 0
+        data:
+          affected_items:
+            - id: 2
+              username: wazuh-wui
+          total_affected_items: !anyint
+          total_failed_items: 0
+          failed_items: [ ]
 
----
-test_name: GET /security/users
-
-stages:
+  - name: Get all users in the system using select filter
+    request:
+      <<: *all_users_request
+      params:
+        select: allow_run_as,roles
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'allow_run_as,roles' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: !anyint
+              allow_run_as: !anybool
+              roles: !anylist
+          total_affected_items: !anyint
+          total_failed_items: 0
+          failed_items: [ ]
 
   - name: Get a specified user by its id
     request:
@@ -927,7 +1207,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items: &user
             - id: !anyint
@@ -942,7 +1222,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - <<: *user
@@ -973,9 +1253,9 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
-          affected_items: []
+          affected_items: [ ]
           failed_items:
             - error:
                 code: 5001
@@ -992,9 +1272,9 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 1
         data:
-          affected_items: []
+          affected_items: [ ]
           failed_items:
             - error:
                 code: 5001
@@ -1012,7 +1292,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - id: 1
@@ -1035,7 +1315,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 2
         data:
           affected_items:
             - id: 1
@@ -1050,17 +1330,7 @@ stages:
                 - 10001
           total_affected_items: 2
           total_failed_items: 2
----
-test_name: GET /security/users/?search
 
-marks:
-  - parametrize:
-      key: field
-      vals:
-        - wazuh-wui
-        - normal
-
-stages:
   - name: Testing search
     request:
       <<: *all_users_request
@@ -1069,7 +1339,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - username: "{field}"
@@ -1085,7 +1355,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 99
@@ -1131,10 +1401,6 @@ stages:
           total_failed_items: 0
           failed_items: []
 
----
-test_name: GET /security/users/?sort
-
-stages:
   - name: Testing inverse sort
     request:
       <<: *all_users_request
@@ -1143,7 +1409,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 2
@@ -1208,7 +1474,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 100
@@ -1265,10 +1531,6 @@ stages:
           total_failed_items: 0
           failed_items: []
 
----
-test_name: GET /security/users/?limit,offset
-
-stages:
   - name: Testing offset
     request:
       <<: *all_users_request
@@ -1277,7 +1539,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 100
@@ -1326,7 +1588,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           affected_items:
             - id: 1
@@ -1337,6 +1599,55 @@ stages:
           total_affected_items: 9
           total_failed_items: 0
           failed_items: []
+
+---
+test_name: GET /security/users/me
+
+stages:
+
+  - name: Get information about the current user
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/me"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: 99
+              username: testing
+              allow_run_as: false
+              roles:
+                - id: 1
+                  name: "administrator"
+                  rules: !anything
+                  policies: !anything
+          total_affected_items: 1
+          total_failed_items: 0
+          failed_items: []
+
+---
+test_name: GET /security/users/me/policies
+
+stages:
+
+  - name: Get information about the current user processed policies
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/me/policies"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data: !anything
+        message: !anystr
 
 ---
 test_name: GET /security/actions
@@ -1354,7 +1665,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           active-response:command:
             description: !anystr
@@ -1377,7 +1688,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           rules:read:
             description: !anystr
@@ -1406,7 +1717,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           "*:*":
             description: 'Resource applied in functions acting on resources that do not yet exist in the system.
@@ -1440,7 +1751,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           agent:id:
             description: Reference agents via agent ID (i.e. agent:id:001)
@@ -1460,7 +1771,7 @@ stages:
     response:
       status_code: 200
       json:
-        error: !anyint
+        error: 0
         data:
           auth_token_exp_timeout: !anyint
           rbac_mode: !anystr

@@ -34,6 +34,12 @@ class WazuhDBConnection:
         except OSError as e:
             raise WazuhInternalError(2005, e)
 
+    def close(self):
+        self.__conn.close()
+
+    def __del__(self):
+        self.close()
+
     def __query_input_validation(self, query):
         """
         Checks input queries have the correct format

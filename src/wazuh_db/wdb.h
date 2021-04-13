@@ -711,6 +711,16 @@ void wdb_pool_append(wdb_t * wdb);
 
 void wdb_pool_remove(wdb_t * wdb);
 
+/**
+ * @brief Duplicate the database pool
+ *
+ * Gets a copy of the database pool. This function fills the member "id" and
+ * creates the mutex only.
+ *
+ * @return Pointer to a database list.
+ */
+wdb_t * wdb_pool_copy();
+
 void wdb_close_all();
 
 void wdb_commit_old();
