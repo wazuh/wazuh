@@ -147,8 +147,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2 -Wl,--wra
 endif()
 
 list(APPEND shared_tests_names "test_keys")
-list(APPEND shared_tests_flags "-Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Create \
-                                -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete")
+list(APPEND shared_tests_flags "-Wl,--wrap,rbtree_get")
 
 # Compiling tests
 list(LENGTH shared_tests_names count)

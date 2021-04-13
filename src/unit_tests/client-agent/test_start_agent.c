@@ -40,7 +40,7 @@ int __wrap_close(int fd) {
 }
 #endif
 
-void __wrap_resolveHostname(char **hostname, int attempts) {
+void __wrap_resolve_hostname(char **hostname, int attempts) {
     if (strcmp(*hostname, "VALID_HOSTNAME/") == 0) {
         free(*hostname);
         os_strdup("VALID_HOSTNAME/127.0.0.3", *hostname);
@@ -97,17 +97,13 @@ void add_server_config(char* address, int protocol) {
 }
 
 void keys_init(keystore *keys) {
-    /* Initialize hashes */
+    /* Initialize trees */
 
-#ifdef TEST_WINAGENT
-    will_return_count(__wrap_os_random, 12345, 6);
-#endif
+    keys->keytree_id = rbtree_init();
+    keys->keytree_ip = rbtree_init();
+    keys->keytree_sock = rbtree_init();
 
-    keys->keyhash_id = OSHash_Create();
-    keys->keyhash_ip = OSHash_Create();
-    keys->keyhash_sock = OSHash_Create();
-
-    if (!(keys->keyhash_id && keys->keyhash_ip && keys->keyhash_sock)) {
+    if (!(keys->keytree_id && keys->keytree_ip && keys->keytree_sock)) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 

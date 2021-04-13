@@ -67,7 +67,7 @@ bool connect_server(int server_id, bool verbose)
     if (tmp_str) {
         /* Resolve hostname */
         if (!isChroot()) {
-            resolveHostname(&agt->server[server_id].rip, 5);
+            resolve_hostname(&agt->server[server_id].rip, 5);
 
             tmp_str = strchr(agt->server[server_id].rip, '/');
             if (tmp_str) {
