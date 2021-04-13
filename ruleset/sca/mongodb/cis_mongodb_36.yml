@@ -63,8 +63,7 @@ checks:
       - https://docs.mongodb.com/v3.6/core/authentication/
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A4 "security:" -> r:authorization: "enabled"'
-      
+      - 'f:$main-conf -> r:authorization: "enabled"'
 #2.2
   - id: 23502
     title: "Ensure that MongoDB does not bypass authentication via the localhost exception"
@@ -95,11 +94,11 @@ checks:
       - https://docs.mongodb.com/v3.6/tutorial/configure-x509-member-authentication/
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A12 "ssl:" -> r:PEMKeyFile'
-      - 'c:cat /etc/mongod.conf | grep \-A12 "ssl:" -> r:clusterFile'
-      - 'c:cat /etc/mongod.conf | grep \-A12 "ssl:" -> r:CAFile'
-      - 'c:cat /etc/mongod.conf | grep \-A10 "security:" -> r:clusterAuthMode: "x509"'
-      - 'c:cat /etc/mongod.conf | grep \-A10 "security:" -> r:authenticationMechanisms: "MONGODB-X509"'
+      - 'f:$main-conf -> r:PEMKeyFile'
+      - 'f:$main-conf -> r:clusterFile'
+      - 'f:$main-conf -> r:CAFile'
+      - 'f:$main-conf -> r:clusterAuthMode: "x509"'
+      - 'f:$main-conf -> r:authenticationMechanisms: "MONGODB-X509"'
 
 #3 Access Control
 #3.1 - Requires mongo shell commands, currently not supported
@@ -121,7 +120,7 @@ checks:
       - https://docs.mongodb.com/v3.6/core/security-network/
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A12 "net:" -> r:bindIp'
+      - 'f:$main-conf -> r:bindIp'
 
 #3.3
   - id: 23506
@@ -136,7 +135,7 @@ checks:
       - https://docs.mongodb.com/v3.6/tutorial/manage-users-and-roles/
     condition: all
     rules:
-      - 'not c:ps -aef | grep mongod -> r:root'
+      - 'not c:ps -aef | grep mongod -> root'
 
 #3.4 - Requires mongo shell commands, currently not supported
 #  - id: 23507
@@ -168,7 +167,7 @@ checks:
       - https://docs.mongodb.com/v3.6/tutorial/configure-x509-member-authentication/
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A12 "ssl:" -> r:mode: "requireSSL"'
+      - 'f:$main-conf -> r:mode: "requireSSL"'
 
 #4.2
   - id: 23511
@@ -183,11 +182,11 @@ checks:
       - https://docs.mongodb.com/v3.6/tutorial/configure-fips/
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A12 "ssl:" -> r:FIPSMode: 1|true'
+      - 'f:$main-conf -> r:FIPSMode: 1|true'
 
 #4.3 - Does not provide audit steps
 #  - id: 23512
-#    title: "Ensure Encryption of Data at Rest"
+#    title: "Review Superuser/Admin Roles"
 
 #5 Auditing
 #5.1
@@ -203,7 +202,7 @@ checks:
       - https://docs.mongodb.com/v3.6/tutorial/configure-auditing/
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A4 "auditLog" -> r:destination'
+      - 'f:$main-conf -> r:destination'
 
 #5.2
   - id: 23514
@@ -219,7 +218,7 @@ checks:
       - https://docs.mongodb.com/v3.6/tutorial/configure-audit-filters/
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A10 "auditLog" -> r:filter'
+      - 'f:$main-conf -> r:filter'
 
 #5.3
   - id: 23515
@@ -249,7 +248,7 @@ checks:
       - https://docs.mongodb.com/v3.6/reference/configuration-options/#systemLog.logAppend
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A10 "systemLog" -> r:logAppend: 1|true'
+      - 'f:$main-conf -> r:logAppend: true'
 
 #6 Operating System Hardening
 #6.1
@@ -284,7 +283,7 @@ checks:
       - https://docs.mongodb.com/v3.6/reference/configuration-options/#security.javascriptEnabled
     condition: all
     rules:
-      - 'c:cat /etc/mongod.conf | grep \-A10 "security" -> r:javascriptEnabled: 0|false'
+      - 'f:$main-conf -> r:javascriptEnabled: 0|false'
 
 #7 File Permissions
 #7.1 - Has to be done manually as it is specific to the MongoDB deployment
