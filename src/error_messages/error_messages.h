@@ -220,6 +220,11 @@
 #define DUP_OSLOG       "(1969): Can't add more than one oslog block."
 #define INV_OSLOG       "(1970): Invalid Oslog configuration. Attributes 'location' and 'log_format' must be both set to 'oslog'."
 #define LOG_STREAM_INFO "(1971): Monitoring MacOS logs with: %s %s %s %s %s %s %s %s %s %s %s %s"
+#define FP_TO_FD_ERROR  "(1972): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe. Return value: %d."
+#define GET_FLAGS_ERROR "(1973): The flags couldn't be obtained from the file descriptor. Return value: %d."
+#define SET_FLAGS_ERROR "(1974): The flags couldn't be set in the file descriptor. Return value: %d."
+#define WPOPENV_ERROR   "(1975): An error ocurred while calling wpopenv(), NULL was returned."
+#define SNPRINTF_ERROR  "(1976): An error ocurred while calling snprintf(). Return value: %d."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
