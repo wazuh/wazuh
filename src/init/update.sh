@@ -403,6 +403,11 @@ UpdateStopOSSEC()
     if [ -d "$PREINSTALLEDDIR/queue/rootcheck" ]; then
         rm -rf $PREINSTALLEDDIR/queue/rootcheck > /dev/null 2>&1
     fi
+
+    # Deleting syscheckd if exists (it was migrated to Wazuh modules in v5.0)
+    if [ -d "$PREINSTALLEDDIR/bin/wazuh-syscheckd" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/wazuh-syscheckd > /dev/null 2>&1
+    fi
 }
 
 UpdateOldVersions()

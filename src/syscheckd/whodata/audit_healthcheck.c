@@ -33,11 +33,11 @@ int audit_health_check(int audit_socket) {
 
     retval = audit_add_rule(abs_path_healthcheck, WHODATA_PERMS, AUDIT_HEALTHCHECK_KEY);
     if (retval <= 0 && retval != -EEXIST) {
-        mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
+        mtdebug1(ARGV0, FIM_AUDIT_HEALTHCHECK_RULE);
         return -1;
     }
 
-    mdebug1(FIM_AUDIT_HEALTHCHECK_START);
+    mtdebug1(ARGV0, FIM_AUDIT_HEALTHCHECK_START);
 
     w_cond_init(&audit_hc_started, NULL);
 
@@ -54,7 +54,7 @@ int audit_health_check(int audit_socket) {
         fp = fopen(abs_path_healthcheck_file, "w");
 
         if (!fp) {
-            mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
+            mtdebug1(ARGV0, FIM_AUDIT_HEALTHCHECK_FILE);
         } else {
             fclose(fp);
         }
@@ -63,10 +63,10 @@ int audit_health_check(int audit_socket) {
     } while (!audit_health_check_creation && --timer > 0);
 
     if (!audit_health_check_creation) {
-        mdebug1(FIM_HEALTHCHECK_CREATE_ERROR);
+        mtdebug1(ARGV0, FIM_HEALTHCHECK_CREATE_ERROR);
         retval = -1;
     } else {
-        mdebug1(FIM_HEALTHCHECK_SUCCESS);
+        mtdebug1(ARGV0, FIM_HEALTHCHECK_SUCCESS);
         retval = 0;
     }
 
@@ -74,7 +74,7 @@ int audit_health_check(int audit_socket) {
     unlink(abs_path_healthcheck_file);
 
     if (audit_delete_rule(abs_path_healthcheck, WHODATA_PERMS, AUDIT_HEALTHCHECK_KEY) <= 0) {
-        mdebug1(FIM_HEALTHCHECK_CHECK_RULE); // LCOV_EXCL_LINE
+        mtdebug1(ARGV0, FIM_HEALTHCHECK_CHECK_RULE); // LCOV_EXCL_LINE
     }
     hc_thread_active = 0;
 
@@ -89,11 +89,11 @@ void *audit_healthcheck_thread(int *audit_sock) {
     w_cond_signal(&audit_hc_started);
     w_mutex_unlock(&audit_hc_mutex);
 
-    mdebug2(FIM_HEALTHCHECK_THREAD_ACTIVE);
+    mtdebug2(ARGV0, FIM_HEALTHCHECK_THREAD_ACTIVE);
 
     audit_read_events(audit_sock, HEALTHCHECK_MODE);
 
-    mdebug2(FIM_HEALTHCHECK_THREAD_FINISHED);
+    mtdebug2(ARGV0, FIM_HEALTHCHECK_THREAD_FINISHED);
 
     return NULL;
 }

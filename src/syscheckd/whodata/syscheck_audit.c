@@ -110,7 +110,7 @@ int set_auditd_config(void) {
         }
 
         if (syscheck.restart_audit) {
-            minfo(FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
+            mtinfo(ARGV0, FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
             return audit_restart();
         } else {
             mwarn(FIM_WARN_AUDIT_SOCKET_NOEXIST, AUDIT_SOCKET);
@@ -118,14 +118,14 @@ int set_auditd_config(void) {
         }
     }
 
-    minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
+    mtinfo(ARGV0, FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
     abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
     abspath(AUDIT_SOCKET, abs_path_socket, PATH_MAX);
 
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        mterror(ARGV0, FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
@@ -137,7 +137,7 @@ int set_auditd_config(void) {
     fprintf(fp, "format = string\n");
 
     if (fclose(fp)) {
-        merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        mterror(ARGV0, FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
@@ -145,7 +145,7 @@ int set_auditd_config(void) {
         switch (errno) {
         case EEXIST:
             if (unlink(audit_path) < 0) {
-                merror(UNLINK_ERROR, audit_path, errno, strerror(errno));
+                mterror(ARGV0, UNLINK_ERROR, audit_path, errno, strerror(errno));
                 return -1;
             }
 
@@ -155,13 +155,13 @@ int set_auditd_config(void) {
 
         // Fallthrough
         default:
-            merror(LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
+            mterror(ARGV0, LINK_ERROR, audit_path, AUDIT_CONF_FILE, errno, strerror(errno));
             return -1;
         }
     }
 
     if (syscheck.restart_audit) {
-        minfo(FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
+        mtinfo(ARGV0, FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
         return audit_restart();
     } else {
         mwarn(FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);
@@ -175,7 +175,7 @@ int init_auditd_socket(void) {
     int sfd;
 
     if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0) {
-        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
+        mterror(ARGV0, FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
         return (-1);
     }
 
@@ -220,7 +220,7 @@ int audit_init(void) {
     // Check audit socket configuration
     switch (set_auditd_config()) {
     case -1:
-        mdebug1(FIM_AUDIT_NOCONF);
+        mtdebug1(ARGV0, FIM_AUDIT_NOCONF);
         return (-1);
     case 0:
         break;
@@ -231,13 +231,13 @@ int audit_init(void) {
     // Initialize Audit socket
     audit_data.socket = init_auditd_socket();
     if (audit_data.socket < 0) {
-        merror("Can't init auditd socket in 'init_auditd_socket()'");
+        mterror(ARGV0, "Can't init auditd socket in 'init_auditd_socket()'");
         return -1;
     }
 
     int regex_comp = init_regex();
     if (regex_comp < 0) {
-        merror("Can't init regex in 'init_regex()'");
+        mterror(ARGV0, "Can't init regex in 'init_regex()'");
         return -1;
     }
 
@@ -248,11 +248,11 @@ int audit_init(void) {
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
         if(audit_health_check(audit_data.socket)) {
-            merror(FIM_ERROR_WHODATA_HEALTHCHECK_START);
+            mterror(ARGV0, FIM_ERROR_WHODATA_HEALTHCHECK_START);
             return -1;
         }
     } else {
-        minfo(FIM_AUDIT_HEALTHCHECK_DISABLE);
+        mtinfo(ARGV0, FIM_AUDIT_HEALTHCHECK_DISABLE);
     }
 
     // Change to realtime directories that don't have any rules when Auditd is in immutable mode
@@ -272,7 +272,7 @@ int audit_init(void) {
         mwarn(FIM_AUDIT_DISABLED);
         return -1;
     default:
-        merror(FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
+        mterror(ARGV0, FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
         return -1;
     }
 
@@ -321,13 +321,13 @@ void *audit_main(audit_data_t *audit_data) {
         w_create_thread(audit_reload_thread, NULL);
     }
 
-    minfo(FIM_WHODATA_STARTED);
+    mtinfo(ARGV0, FIM_WHODATA_STARTED);
 
     // Read events
     audit_read_events(&audit_data->socket, READING_MODE);
 
     // Auditd is not runnig or socket closed.
-    mdebug1(FIM_AUDIT_THREAD_STOPED);
+    mtdebug1(ARGV0, FIM_AUDIT_THREAD_STOPED);
     close(audit_data->socket);
 
     // Clean regexes used for parsing events
@@ -388,7 +388,7 @@ void audit_read_events(int *audit_sock, int mode) {
 
         switch (select(*audit_sock + 1, &fdset, NULL, NULL, &timeout)) {
         case -1:
-            merror(SELECT_ERROR, errno, strerror(errno));
+            mterror(ARGV0, SELECT_ERROR, errno, strerror(errno));
             sleep(1);
             continue;
 
@@ -416,15 +416,15 @@ void audit_read_events(int *audit_sock, int mode) {
             // Reconnect
             conn_retries = 0;
             sleep(1);
-            minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
+            mtinfo(ARGV0, FIM_AUDIT_RECONNECT, ++conn_retries);
             *audit_sock = init_auditd_socket();
             while (conn_retries < MAX_CONN_RETRIES && *audit_sock < 0) {
-                minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
+                mtinfo(ARGV0, FIM_AUDIT_RECONNECT, ++conn_retries);
                 sleep(1);
                 *audit_sock = init_auditd_socket();
             }
             if (*audit_sock >= 0) {
-                minfo(FIM_AUDIT_CONNECT);
+                mtinfo(ARGV0, FIM_AUDIT_CONNECT);
                 // Reload rules
                 fim_audit_reload_rules();
                 continue;

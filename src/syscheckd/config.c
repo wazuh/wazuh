@@ -84,7 +84,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.disk_quota_full_msg = true;
     syscheck.audit_key = NULL;
 
-    mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
+    mtdebug1(ARGV0, FIM_CONFIGURATION_FILE, cfgfile);
 
     /* Read config */
     if (ReadConfig(modules, cfgfile, &syscheck, NULL) < 0) {
@@ -92,7 +92,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     }
 
 #ifdef CLIENT
-    mdebug1(FIM_CLIENT_CONFIGURATION, cfgfile);
+    mtdebug1(ARGV0, FIM_CLIENT_CONFIGURATION, cfgfile);
 
     /* Read shared config */
     modules |= CAGENT_CONFIG;

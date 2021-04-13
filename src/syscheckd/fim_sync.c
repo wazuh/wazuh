@@ -54,7 +54,7 @@ void * fim_run_integrity(void * args) {
     while (1) {
         bool sync_successful = true;
 
-        mdebug1("Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
+        mtdebug1(ARGV0, "Initializing FIM Integrity Synchronization check. Sync interval is %li seconds.", sync_interval);
 
         gettime(&start);
         fim_sync_checksum(FIM_TYPE_FILE, &syscheck.fim_entry_mutex);
@@ -67,7 +67,7 @@ void * fim_run_integrity(void * args) {
 
         struct timespec timeout = { .tv_sec = time(NULL) + sync_interval };
 
-        mdebug2("Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
+        mtdebug2(ARGV0, "Finished calculating FIM integrity. Time: %.3f seconds.", time_diff(&start, &end));
 
         // Get messages until timeout
         char * msg;
@@ -89,7 +89,7 @@ void * fim_run_integrity(void * args) {
         }
         else {
             // Duplicate for every failure
-            mdebug1("FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
+            mtdebug1(ARGV0, "FIM Integrity Synchronization check failed. Adjusting sync interval for next run.");
             sync_interval *= 2;
             sync_interval = (sync_interval < syscheck.max_sync_interval) ? sync_interval : syscheck.max_sync_interval;
         }
@@ -164,19 +164,19 @@ void fim_sync_checksum(fim_type type, pthread_mutex_t *mutex) {
     w_mutex_lock(mutex);
 
     if (fim_db_get_first_path(syscheck.database, type, &start) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_GET_ROW_PATH, "FIRST", type == FIM_TYPE_FILE ? "FILE" : "REGISTRY");
+        mterror(ARGV0, FIM_DB_ERROR_GET_ROW_PATH, "FIRST", type == FIM_TYPE_FILE ? "FILE" : "REGISTRY");
         w_mutex_unlock(mutex);
         goto end;
     }
 
     if (fim_db_get_last_path(syscheck.database, type, &top) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_GET_ROW_PATH, "LAST", type == FIM_TYPE_FILE ? "FILE" : "REGISTRY");
+        mterror(ARGV0, FIM_DB_ERROR_GET_ROW_PATH, "LAST", type == FIM_TYPE_FILE ? "FILE" : "REGISTRY");
         w_mutex_unlock(mutex);
         goto end;
     }
 
     if (fim_db_get_data_checksum(syscheck.database, type, (void*) ctx) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_CALC_CHECKSUM);
+        mterror(ARGV0, FIM_DB_ERROR_CALC_CHECKSUM);
         w_mutex_unlock(mutex);
         goto end;
     }
@@ -235,7 +235,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     if (fim_db_get_count_range(syscheck.database, type, start, top, &range_size) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_COUNT_RANGE, start, top);
+        mterror(ARGV0, FIM_DB_ERROR_COUNT_RANGE, start, top);
         range_size = 0;
     }
     w_mutex_unlock(&syscheck.fim_entry_mutex)
@@ -250,7 +250,7 @@ void fim_sync_checksum_split(const char * start, const char * top, long id) {
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (entry == NULL) {
-            merror(FIM_DB_ERROR_GET_PATH, start);
+            mterror(ARGV0, FIM_DB_ERROR_GET_PATH, start);
             return;
         }
 
@@ -323,7 +323,7 @@ void fim_sync_send_list(const char *start, const char *top) {
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     if (fim_db_get_path_range(syscheck.database, type, start, top, &file, syscheck.database_store) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_SYNC_DB);
+        mterror(ARGV0, FIM_DB_ERROR_SYNC_DB);
         if (file != NULL) {
             fim_db_clean_file(&file, syscheck.database_store);
         }
@@ -351,7 +351,7 @@ void fim_sync_send_list(const char *start, const char *top) {
         w_mutex_unlock(&syscheck.fim_entry_mutex);
 
         if (entry == NULL) {
-            merror(FIM_DB_ERROR_GET_PATH, line);
+            mterror(ARGV0, FIM_DB_ERROR_GET_PATH, line);
             os_free(line);
             continue;
         }
@@ -374,7 +374,7 @@ void fim_sync_dispatch(char * payload) {
     char * json_arg = strchr(payload, ' ');
 
     if (json_arg == NULL) {
-        mdebug1(FIM_DBSYNC_NO_ARGUMENT, payload);
+        mtdebug1(ARGV0, FIM_DBSYNC_NO_ARGUMENT, payload);
         return;
     }
 
@@ -382,14 +382,14 @@ void fim_sync_dispatch(char * payload) {
     cJSON * root = cJSON_Parse(json_arg);
 
     if (root == NULL) {
-        mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
+        mtdebug1(ARGV0, FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
         return;
     }
 
     cJSON * id = cJSON_GetObjectItem(root, "id");
 
     if (!cJSON_IsNumber(id)) {
-        mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
+        mtdebug1(ARGV0, FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
         goto end;
     }
 
@@ -398,9 +398,9 @@ void fim_sync_dispatch(char * payload) {
 
     if (id->valuedouble < fim_sync_cur_id) {
         fim_sync_cur_id = id->valuedouble;
-        mdebug1(FIM_DBSYNC_DEC_ID, fim_sync_cur_id);
+        mtdebug1(ARGV0, FIM_DBSYNC_DEC_ID, fim_sync_cur_id);
     } else if (id->valuedouble > fim_sync_cur_id) {
-        mdebug1(FIM_DBSYNC_DROP_MESSAGE, (long)id->valuedouble, fim_sync_cur_id);
+        mtdebug1(ARGV0, FIM_DBSYNC_DROP_MESSAGE, (long)id->valuedouble, fim_sync_cur_id);
         goto end;
     }
 
@@ -408,7 +408,7 @@ void fim_sync_dispatch(char * payload) {
     char * end = cJSON_GetStringValue(cJSON_GetObjectItem(root, "end"));
 
     if (begin == NULL || end == NULL) {
-        mdebug1(FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
+        mtdebug1(ARGV0, FIM_DBSYNC_INVALID_ARGUMENT, json_arg);
         goto end;
     }
 
@@ -417,7 +417,7 @@ void fim_sync_dispatch(char * payload) {
     } else if (strcmp(command, "no_data") == 0) {
         fim_sync_send_list(begin, end);
     } else {
-        mdebug1(FIM_DBSYNC_UNKNOWN_CMD, command);
+        mtdebug1(ARGV0, FIM_DBSYNC_UNKNOWN_CMD, command);
     }
 
 end:
@@ -435,7 +435,7 @@ void fim_sync_push_msg(const char * msg) {
     os_strdup(msg, copy);
 
     if (queue_push_ex(fim_sync_queue, copy) == -1) {
-        mdebug2("Cannot push a data synchronization message: queue is full.");
+        mtdebug2(ARGV0, "Cannot push a data synchronization message: queue is full.");
         free(copy);
     }
 }

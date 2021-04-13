@@ -38,14 +38,14 @@ size_t syscom_dispatch(char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            mdebug1(FIM_SYSCOM_ARGUMENTS, "getconfig");
+            mtdebug1(ARGV0, FIM_SYSCOM_ARGUMENTS, "getconfig");
             os_strdup("err SYSCOM getconfig needs arguments", *output);
             return strlen(*output);
         }
         return syscom_getconfig(rcv_args, output);
     } else if (strcmp(rcv_comm, "dbsync") == 0) {
         if (rcv_args == NULL) {
-            mdebug1(FIM_SYSCOM_ARGUMENTS, "dbsync");
+            mtdebug1(ARGV0, FIM_SYSCOM_ARGUMENTS, "dbsync");
         } else {
             fim_sync_push_msg(rcv_args);
         }
@@ -55,7 +55,7 @@ size_t syscom_dispatch(char * command, char ** output){
         os_set_restart_syscheck();
         return 0;
     } else {
-        mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, rcv_comm);
+        mtdebug1(ARGV0, FIM_SYSCOM_UNRECOGNIZED_COMMAND, rcv_comm);
         os_strdup("err Unrecognized command", *output);
         return strlen(*output);
     }
@@ -105,7 +105,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    mdebug1(FIM_SYSCOM_FAIL_GETCONFIG, section);
+    mtdebug1(ARGV0, FIM_SYSCOM_FAIL_GETCONFIG, section);
     os_strdup("err Could not get requested section", *output);
     return strlen(*output);
 }
@@ -120,10 +120,10 @@ void * syscom_main(__attribute__((unused)) void * arg) {
     ssize_t length;
     fd_set fdset;
 
-    mdebug1(FIM_SYSCOM_REQUEST_READY);
+    mtdebug1(ARGV0, FIM_SYSCOM_REQUEST_READY);
 
     if (sock = OS_BindUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror(FIM_ERROR_SYSCOM_BIND_SOCKET, SYS_LOCAL_SOCK, errno, strerror(errno));
+        mterror(ARGV0, FIM_ERROR_SYSCOM_BIND_SOCKET, SYS_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -147,7 +147,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror(FIM_ERROR_SYSCOM_ACCEPT, strerror(errno));
+                mterror(ARGV0, FIM_ERROR_SYSCOM_ACCEPT, strerror(errno));
             }
 
             continue;
@@ -156,20 +156,20 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            merror(FIM_ERROR_SYSCOM_RECV_TOOLONG);
+            mterror(ARGV0, FIM_ERROR_SYSCOM_RECV_TOOLONG);
             break;
 
         case -1:
-            merror(FIM_ERROR_SYSCOM_RECV, strerror(errno));
+            mterror(ARGV0, FIM_ERROR_SYSCOM_RECV, strerror(errno));
             break;
 
         case 0:
-            mdebug1(FIM_SYSCOM_EMPTY_MESSAGE);
+            mtdebug1(ARGV0, FIM_SYSCOM_EMPTY_MESSAGE);
             close(peer);
             break;
 
         case OS_MAXLEN:
-            merror(FIM_ERROR_SYSCOM_RECV_MAXLEN, MAX_DYN_STR);
+            mterror(ARGV0, FIM_ERROR_SYSCOM_RECV_MAXLEN, MAX_DYN_STR);
             close(peer);
             break;
 
@@ -186,7 +186,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         free(buffer);
     }
 
-    mdebug1(FIM_SYSCOM_THREAD_FINISED);
+    mtdebug1(ARGV0, FIM_SYSCOM_THREAD_FINISED);
 
     close(sock);
     return NULL;
