@@ -62,7 +62,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_HOTFIX_INSERT2] = "INSERT OR REPLACE INTO sys_hotfixes (scan_id, scan_time, hotfix, checksum) VALUES (?, ?, ?, ?);",
     [WDB_STMT_HWINFO_DEL] = "DELETE FROM sys_hwinfo;",
     [WDB_STMT_HOTFIX_DEL] = "DELETE FROM sys_hotfixes WHERE scan_id != ?;",
-    [WDB_STMT_SET_HOTFIX_MET] = "UPDATE vuln_metadata SET HOTFIX_SCAN_ID = ?;",
     [WDB_STMT_PORT_INSERT] = "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_PORT_INSERT2] = "INSERT OR REPLACE INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     [WDB_STMT_PORT_DEL] = "DELETE FROM sys_ports WHERE scan_id != ?;",

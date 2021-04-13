@@ -8,7 +8,7 @@
  * and/or modify it under the terms of GPLv2.
 */
 
-ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL CHECK (checksum <> '');
+ALTER TABLE sys_osinfo ADD COLUMN reference TEXT NOT NULL DEFAULT '';
 ALTER TABLE sys_osinfo ADD COLUMN triaged INTEGER(1) DEFAULT 0;
 
 DROP TABLE IF EXISTS vuln_cves;
@@ -32,13 +32,10 @@ DROP TABLE IF EXISTS vuln_metadata;
 
 CREATE TABLE IF NOT EXISTS vuln_metadata (
     LAST_PARTIAL_SCAN INTEGER,
-    LAST_FULL_SCAN INTEGER,
-    HOTFIX_SCAN_ID TEXT
+    LAST_FULL_SCAN INTEGER
 );
-INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN, HOTFIX_SCAN_ID)
-    SELECT 0, 0, '0' WHERE NOT EXISTS (
-        SELECT * FROM vuln_metadata
-    );
+
+INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN) VALUES (0, 0);
 
 CREATE TRIGGER obsolete_vulnerabilities
     AFTER DELETE ON sys_programs

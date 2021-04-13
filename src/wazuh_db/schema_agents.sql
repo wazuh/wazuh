@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     os_release TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     triaged INTEGER(1) DEFAULT 0,
-    reference TEXT NOT NULL CHECK (checksum <> ''),
+    reference TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (scan_id, os_name)
 );
 
@@ -356,13 +356,10 @@ CREATE INDEX IF NOT EXISTS comp_id_check_index ON sca_check_compliance (id_check
 
 CREATE TABLE IF NOT EXISTS vuln_metadata (
     LAST_PARTIAL_SCAN INTEGER,
-    LAST_FULL_SCAN INTEGER,
-    HOTFIX_SCAN_ID TEXT
+    LAST_FULL_SCAN INTEGER
 );
-INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN, HOTFIX_SCAN_ID)
-    SELECT 0, 0, '0' WHERE NOT EXISTS (
-        SELECT * FROM vuln_metadata
-    );
+
+INSERT INTO vuln_metadata (LAST_PARTIAL_SCAN, LAST_FULL_SCAN) VALUES (0, 0);
 
 CREATE TABLE IF NOT EXISTS sync_info (
     component TEXT PRIMARY KEY,
