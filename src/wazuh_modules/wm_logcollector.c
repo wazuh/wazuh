@@ -81,7 +81,7 @@ void* wm_logcollector_main(wm_logcollector_t *data) {
 
     /* Start the queue */
     if ((logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
     }
 
     LogCollectorStart();
