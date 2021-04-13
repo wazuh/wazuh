@@ -134,7 +134,7 @@ WazuhUpgrade()
     rm -rf $DIRECTORY/queue/ossec
 
 	# Move rotated logs to new folder and remove the existing one
-	
+
 	if [ -d $DIRECTORY/logs/ossec ]; then
 		if [ "$(ls -A $DIRECTORY/logs/ossec)" ]; then
 			mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
@@ -169,6 +169,7 @@ WazuhUpgrade()
     rm -f $DIRECTORY/bin/ossec-remoted
     rm -f $DIRECTORY/bin/ossec-reportd
     rm -f $DIRECTORY/bin/ossec-syscheckd
+    rm -f $DIRECTORY/bin/wazuh-logcollector
 
     # Remove existing ruleset version file
 
