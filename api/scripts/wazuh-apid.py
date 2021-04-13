@@ -115,6 +115,9 @@ def start(foreground, root, config_file):
         os.chown(DATABASE_FULL_PATH, common.ossec_uid(), common.ossec_gid())
         os.chmod(DATABASE_FULL_PATH, 0o640)
 
+    # Save the Wazuh revision into memory before dropping privileges to use it in future calls
+    common.get_wazuh_revision()
+
     # Drop privileges to ossec
     if not root:
         if api_conf['drop_privileges']:
