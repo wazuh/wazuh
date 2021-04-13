@@ -22,6 +22,7 @@
 #include "exec.h"
 
 static const char *get_ip(const Eventinfo *lf);
+int conn_error_sent = 0;
 
 void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *ar) {
     char exec_msg[OS_SIZE_8192 + 1];
@@ -349,11 +350,18 @@ void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, ch
  * @return void.
  */
 void send_exec_msg(int *socket, const char *queue_path, const char *exec_msg) {
+    static int conn_error_sent = 0;
+
     if (*socket < 0) {
         if ((*socket = StartMQ(queue_path, WRITE, 1)) < 0) {
-            merror(QUEUE_ERROR, queue_path, strerror(errno));
+            if (conn_error_sent == 0){
+                merror(QUEUE_ERROR, queue_path, strerror(errno));
+                conn_error_sent = 1;
+            }
 
             return;
+        } else {
+            conn_error_sent = 0;
         }
     }
 
@@ -362,6 +370,8 @@ void send_exec_msg(int *socket, const char *queue_path, const char *exec_msg) {
         if (rc == OS_SOCKBUSY) {
             merror(EXEC_QUEUE_BUSY);
         }
+        OS_CloseSocket(*socket);
+        *socket = -1;
         merror(EXEC_QUEUE_CONNECTION_ERROR, queue_path);
     }
 }
