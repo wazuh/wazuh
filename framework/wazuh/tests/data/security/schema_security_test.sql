@@ -40,7 +40,7 @@ INSERT INTO rules VALUES(106,'default','{"MATCH": {"definition": "ossecRule"}}',
 INSERT INTO rules VALUES(107,'protected','{"MATCH": {"definition": "ossecRule"}}','1970-01-01 00:00:00', 'protected');
 
 /* Testing */
-INSERT INTO policies VALUES(100,'wazuhPolicy','{"actions": ["*:*"], "resources": ["*:*"], "effect": "allow"}','1970-01-01 00:00:00', 'user');
+INSERT INTO policies VALUES(100,'wazuhPolicy','{"actions": ["*:*"], "resources": ["*:*:*"], "effect": "allow"}','1970-01-01 00:00:00', 'user');
 INSERT INTO policies VALUES(101,'wazuh-wuiPolicy','{"actions": ["agent:create"], "effect": "allow", "resources": ["agent:id:001", "agent:id:002", "agent:id:003"]}','1970-01-01 00:00:00', 'user');
 INSERT INTO policies VALUES(102,'technicalPolicy','{"actions": ["agent:create"], "effect": "allow", "resources": ["*:*:*"]}','1970-01-01 00:00:00', 'user');
 INSERT INTO policies VALUES(103,'administratorPolicy','{"actions": ["agent:update", "agent:delete"], "effect": "allow", "resources": ["agent:id:*"]}','1970-01-01 00:00:00', 'user');

@@ -69,7 +69,7 @@ All notable changes to this project will be documented in this file.
 - **Ruleset:**
   - The ruleset was normalized according to the Wazuh standard. ([#6867](https://github.com/wazuh/wazuh/pull/6867))
   - Added CIS policy "Ensure XD/NX support is enabled" back for SCA. ([#7316](https://github.com/wazuh/wazuh/pull/7316))
-  
+
 ### Fixed
 
 - **Cluster:**

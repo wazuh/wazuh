@@ -95,6 +95,59 @@ get_users:
           - 55
           - 97
           - 500
+  - params:
+      user_ids:
+        - 100
+        - 106
+        - 107
+      resource_type: default
+    result:
+      affected_items:
+        - id: 106
+          username: default
+          allow_run_as: false
+          roles: []
+          resource_type: default
+      failed_items: {}
+  - params:
+      user_ids:
+        - 100
+        - 101
+        - 107
+      resource_type: default
+    result:
+      affected_items: []
+      failed_items: {}
+  - params:
+      user_ids:
+        - 100
+        - 106
+        - 107
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 107
+          username: protected
+          allow_run_as: false
+          roles: []
+          resource_type: protected
+      failed_items: {}
+  - params:
+      user_ids:
+        - 100
+        - 106
+        - 107
+      resource_type: user
+    result:
+      affected_items:
+        - id: 100
+          username: administrator
+          allow_run_as: true
+          roles:
+            - 100
+            - 101
+          resource_type: user
+      failed_items: {}
 create_user:
   - params:
       username: new_user

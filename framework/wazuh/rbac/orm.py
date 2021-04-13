@@ -2799,7 +2799,8 @@ class DatabaseManager:
                     # Look for the ID of a default resource from the old database in the new database using its name
                     # This allows us to keep the relationship if the related default resource now has a different id
                     if int(user_id) <= max_id_reserved:
-                        user_name = AuthenticationManager(self.sessions[source]).get_user_id(user_id=user_id)['username']
+                        user_name = AuthenticationManager(self.sessions[source]).get_user_id(user_id=user_id)[
+                            'username']
                         user_id = AuthenticationManager(self.sessions[target]).get_user(username=user_name)['id']
 
                     if int(role_id) <= max_id_reserved:

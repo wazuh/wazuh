@@ -67,7 +67,7 @@ def get_user_me(token):
                   post_proc_kwargs={'exclude_codes': [5001]})
 def get_users(user_ids: list = None, offset: int = 0, limit: int = common.database_limit, sort_by: dict = None,
               sort_ascending: bool = True, search_text: str = None,
-              complementary_search: bool = False, search_in_fields: list = None):
+              complementary_search: bool = False, search_in_fields: list = None, resource_type=None):
     """Get the information of a specified user
 
     Parameters
@@ -88,6 +88,8 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
         Find items without the text to search
     search_in_fields : list
         Fields to search in
+    resource_type : str
+        Filter elements by the specified resource type (default, protected or user)
 
     Returns
     -------
@@ -97,11 +99,15 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
                                       some_msg='Some users were not returned',
                                       all_msg='All specified users were returned')
     affected_items = list()
+    resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
     with AuthenticationManager() as auth:
         for user_id in user_ids:
             user_id = int(user_id)
             user = auth.get_user_id(user_id)
-            affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
+            if not user:
+                result.add_failed_item(id_=user_id, error=WazuhError(5001))
+            elif not resource_type or (resource_type and user['resource_type'] == resource_type):
+                affected_items.append(user)
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
@@ -326,7 +332,8 @@ def remove_users(user_ids, resource_type: ResourceType = ResourceType.USER) -> A
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002]})
 def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None,
+              resource_type=None):
     """Returns information from all system roles, does not return information from its associated policies
 
     :param role_ids: List of roles ids (None for all roles)
@@ -337,20 +344,21 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
     :param search_text: Text to search
     :param complementary_search: Find items without the text to search
     :param search_in_fields: Fields to search in
+    :param resource_type : Filter elements by the specified resource type (default, protected or user)
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No role was returned',
                                       some_msg='Some roles were not returned',
                                       all_msg='All specified roles were returned')
+    resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
     with RolesManager() as rm:
         for r_id in role_ids:
             role = rm.get_role_id(int(r_id))
-            if role != SecurityError.ROLE_NOT_EXIST:
-                affected_items.append(role)
-            else:
-                # Role id does not exist
+            if not role or role == SecurityError.ROLE_NOT_EXIST:
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4002))
+            elif not resource_type or (resource_type and role['resource_type'] == resource_type):
+                affected_items.append(role)
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
@@ -523,7 +531,8 @@ def update_role(role_id=None, name=None, resource_type: ResourceType = None) -> 
 @expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007]})
 def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
-                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+                 sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None,
+                 resource_type=None):
     """Returns the information of a certain policy
 
     :param policy_ids: ID of the policy on which the information will be collected (All for all policies)
@@ -534,20 +543,21 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
     :param search_text: Text to search
     :param complementary_search: Find items without the text to search
     :param search_in_fields: Fields to search in
+    :param resource_type: Filter elements by the specified resource type (default, protected or user)
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     result = AffectedItemsWazuhResult(none_msg='No policy was returned',
                                       some_msg='Some policies were not returned',
                                       all_msg='All specified policies were returned')
     affected_items = list()
+    resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
     with PoliciesManager() as pm:
         for p_id in policy_ids:
             policy = pm.get_policy_id(int(p_id))
-            if policy != SecurityError.POLICY_NOT_EXIST:
-                affected_items.append(policy)
-            else:
-                # Policy id does not exist
+            if not policy or policy == SecurityError.POLICY_NOT_EXIST:
                 result.add_failed_item(id_=int(p_id), error=WazuhError(4007))
+            elif not resource_type or (resource_type and policy['resource_type'] == resource_type):
+                affected_items.append(policy)
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
@@ -730,7 +740,8 @@ def update_policy(policy_id=None, name=None, policy=None, resource_type: Resourc
 @expose_resources(actions=['security:read'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022]})
 def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None,
-              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
+              sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None,
+              resource_type=None):
     """Return information from all the security rules. It does not return information from its associated roles.
 
     :param rule_ids: List of rule ids (None for all rules)
@@ -741,21 +752,21 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
     :param search_text: Text to search
     :param complementary_search: Find items without the text to search
     :param search_in_fields: Fields to search in
+    :param resource_type : Filter elements by the specified resource type (default, protected or user)
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No security rule was returned',
                                       some_msg='Some security rules were not returned',
                                       all_msg='All specified security rules were returned')
-
+    resource_type = resource_type.value if isinstance(resource_type, ResourceType) else resource_type
     with RulesManager() as rum:
         for ru_id in rule_ids:
             rule = rum.get_rule(int(ru_id))
-            if rule != SecurityError.RULE_NOT_EXIST:
-                affected_items.append(rule)
-            else:
-                # Rule id does not exist
+            if not rule or rule == SecurityError.RULE_NOT_EXIST:
                 result.add_failed_item(id_=ru_id, error=WazuhError(4022))
+            elif not resource_type or (resource_type and rule['resource_type'] == resource_type):
+                affected_items.append(rule)
 
     data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,

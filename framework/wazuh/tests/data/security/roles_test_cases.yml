@@ -93,6 +93,75 @@ get_roles:
           - 200
           - 201
           - 202
+  - params:
+      role_ids:
+        - 100
+        - 106
+        - 107
+      resource_type: default
+    result:
+      affected_items:
+        - id: 106
+          name: default
+          rules: []
+          policies: []
+          users: []
+          resource_type: default
+      failed_items: {}
+  - params:
+      role_ids:
+        - 100
+        - 103
+      resource_type: default
+    result:
+      affected_items: []
+      failed_items: {}
+  - params:
+      role_ids:
+        - 100
+        - 103
+        - 106
+        - 107
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 107
+          name: protected
+          rules: []
+          policies: []
+          users: []
+          resource_type: protected
+      failed_items: {}
+  - params:
+      role_ids:
+        - 100
+        - 103
+        - 106
+        - 107
+      resource_type: user
+    result:
+      affected_items:
+        - id: 100
+          name: wazuh
+          rules:
+            - 100
+          policies:
+            - 100
+          users:
+            - 100
+          resource_type: user
+        - id: 103
+          name: administrator_test
+          rules:
+            - 103
+          policies:
+            - 104
+            - 103
+          users:
+            - 101
+            - 104
+          resource_type: user
+      failed_items: {}
 add_role:
   - params:
       name: new_role

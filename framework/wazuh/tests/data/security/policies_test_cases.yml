@@ -12,7 +12,7 @@ get_policies:
             actions:
               - "*:*"
             resources:
-              - "*:*"
+              - "*:*:*"
             effect: allow
           roles:
             - 100
@@ -96,6 +96,76 @@ get_policies:
           - 800
           - 700
           - 600
+  - params:
+      policy_ids:
+        - 100
+        - 110
+        - 111
+      resource_type: default
+    result:
+      affected_items:
+        - id: 110
+          name: default
+          policy:
+            actions:
+              - policy:delete
+            effect: allow
+            resources:
+              - "policy:id:*"
+          roles: []
+          resource_type: default
+      failed_items: {}
+  - params:
+      policy_ids:
+        - 100
+        - 101
+        - 111
+      resource_type: default
+    result:
+      affected_items: []
+      failed_items: {}
+  - params:
+      policy_ids:
+        - 100
+        - 110
+        - 111
+      resource_type: protected
+    result:
+      affected_items:
+        - id: 111
+          name: protected
+          policy:
+            actions:
+              - policy:read
+            effect: deny
+            resources:
+              - policy:id:*
+          roles: []
+          resource_type: protected
+      failed_items: {}
+  - params:
+      policy_ids:
+        - 100
+        - 110
+        - 111
+      resource_type: user
+    result:
+      affected_items:
+        - id: 100
+          name: wazuhPolicy
+          policy:
+            actions:
+              - "*:*"
+            effect: allow
+            resources:
+              - "*:*:*"
+          roles:
+            - 100
+            - 101
+            - 102
+            - 105
+          resource_type: user
+      failed_items: {}
 add_policy:
   - params:
       name: new_policy
