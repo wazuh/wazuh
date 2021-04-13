@@ -30,7 +30,7 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Added RBAC database upgrade and integrity checks. ([#6963](https://github.com/wazuh/wazuh/pull/6963))
   - Added CLI to manage RBAC protected resources. ([#6672](https://github.com/wazuh/wazuh/issues/6672))
-  
+
 
 ### Changed
 

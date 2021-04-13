@@ -1139,7 +1139,7 @@ def test_database_manager_set_database_version(orm_setup):
         db.connect(session_name)
 
     version = '1000'
-    db.set_database_version(session_name, 100)
+    db.set_database_version(session_name, version)
 
     # Check the value returned by get_database_version is the expected one
     assert db.get_database_version(session_name) == version
