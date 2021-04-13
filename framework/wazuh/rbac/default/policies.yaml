@@ -16,6 +16,7 @@ default_policies:
           - agent:read
           - agent:delete
           - agent:modify_group
+          - agent:reconnect
           - agent:restart
           - agent:upgrade
         resources:

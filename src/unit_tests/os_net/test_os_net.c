@@ -376,9 +376,8 @@ void test_gethost_null(void **state) {
 }
 
 void test_gethost_not_exists(void **state) {
-    will_return(__wrap_gethostbyname, NULL);
-    will_return(__wrap_gethostbyname, NULL);
-    will_return(__wrap_gethostbyname, NULL);
+    will_return_count(__wrap_gethostbyname, NULL, 3);
+    expect_value_count(__wrap_sleep, seconds, 1, 3);
 
     assert_null(OS_GetHost("this.should.not.exist", 2));
 }
@@ -524,6 +523,67 @@ void test_recv_secure_cluster_TCP_cmd_error(void **state) {
 	assert_int_equal(OS_RecvSecureClusterTCP(data->client_socket, ret, sizeof(ret)), -2);
 }
 
+void test_resolve_hostname_success(void ** state){
+    test_struct_t *data  = (test_struct_t *)*state;
+    data->h->h_addr_list[0] = "\b\b\b\b";
+
+    os_strdup("localhost", data->ret);
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, data->ret);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 0);
+
+    will_return(__wrap_gethostbyname, data->h);
+
+    resolve_hostname(&data->ret, 5);
+
+    assert_string_equal(data->ret, "localhost/8.8.8.8");
+}
+
+void test_resolve_hostname_valid_ip(void ** state){
+    char *hostname = "8.8.8.8";
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, hostname);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 1);
+
+    resolve_hostname(&hostname, 5);
+}
+
+void test_resolve_hostname_not_resolved(void ** state){
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    os_strdup("localhost", data->ret);
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, data->ret);
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 0);
+
+    expect_value_count(__wrap_sleep, seconds, 1, 6);
+
+    will_return_count(__wrap_gethostbyname, NULL, 6);
+
+    resolve_hostname(&data->ret, 5);
+
+    assert_string_equal(data->ret, "localhost/");
+}
+
+void test_get_ip_from_resolved_hostname_ip(void ** state){
+    const char *resolved_hostname = "localhost/8.8.8.8";
+
+    const char *ret = get_ip_from_resolved_hostname(resolved_hostname);
+
+    assert_string_equal(ret, "8.8.8.8");
+}
+
+void test_get_ip_from_resolved_hostname_no_ip(void ** state){
+    const char *resolved_hostname = "localhost/";
+
+    const char *ret = get_ip_from_resolved_hostname(resolved_hostname);
+
+    assert_string_equal(ret, "");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* Bind a TCP port */
@@ -611,6 +671,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_wrong_header, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_recv_secure_cluster_TCP_cmd_error, test_setup, test_teardown),
 
+        /* Test for resolve_hostname */
+        cmocka_unit_test_setup_teardown(test_resolve_hostname_success, test_setup, test_teardown),
+        cmocka_unit_test(test_resolve_hostname_valid_ip),
+        cmocka_unit_test_setup_teardown(test_resolve_hostname_not_resolved, test_setup, test_teardown),
+
+        /* Test for get_ip_from_resolved_hostname */
+        cmocka_unit_test(test_get_ip_from_resolved_hostname_ip),
+        cmocka_unit_test(test_get_ip_from_resolved_hostname_no_ip),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

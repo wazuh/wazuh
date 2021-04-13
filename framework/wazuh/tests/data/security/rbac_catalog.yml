@@ -154,6 +154,20 @@ get_rbac_actions:
           - DELETE /agents/group
           - PUT /agents/group
           - DELETE /groups
+      agent:reconnect:
+        description: Force reconnect agents
+        resources:
+          - agent:id
+          - agent:group
+        example:
+          actions:
+            - agent:reconnect
+          resources:
+            - agent:id:050
+            - agent:id:049
+          effect: deny
+        related_endpoints:
+          - PUT /agents/reconnect
       agent:restart:
         description: Restart agents
         resources:

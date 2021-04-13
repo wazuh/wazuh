@@ -66,7 +66,7 @@ def test_check_user(mock_raise_if_exc, mock_submit, mock_distribute_function, mo
 
     assert result == {'sub': 'test_user', 'active': True}, 'Result is not as expected'
     mock_dapi.assert_called_once_with(f=ANY, f_kwargs={'user': 'test_user', 'password': 'test_pass'},
-                                      request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY)
+                                      request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY)
     mock_distribute_function.assert_called_once_with()
     mock_raise_if_exc.assert_called_once()
 
@@ -132,7 +132,7 @@ def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function
     assert result == 'test_token', 'Result is not as expected'
 
     # Check all functions are called with expected params
-    mock_dapi.assert_called_once_with(f=ANY, request_type='local_master', is_async=False, wait_for_complete=True,
+    mock_dapi.assert_called_once_with(f=ANY, request_type='local_master', is_async=False, wait_for_complete=False,
                                       logger=ANY)
     mock_distribute_function.assert_called_once_with()
     mock_raise_if_exc.assert_called_once()
@@ -164,8 +164,8 @@ def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, 
     # Check all functions are called with expected params
     calls = [call(f=ANY, f_kwargs={'username': original_payload['sub'], 'token_nbf_time': original_payload['nbf'],
                                    'run_as': False, 'roles': original_payload['rbac_roles']},
-                  request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY),
-             call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=True, logger=ANY)]
+                  request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY),
+             call(f=ANY, request_type='local_master', is_async=False, wait_for_complete=False, logger=ANY)]
     mock_dapi.assert_has_calls(calls)
     mock_generate_secret.assert_called_once()
     mock_decode.assert_called_once_with('test_token', 'test_secret_token', algorithms=['HS256'],

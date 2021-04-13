@@ -32,10 +32,6 @@
 #define FULL 2
 #define FLOOD 3
 
-
-/* Resolve hostname */
-void resolveHostname(char **hostname, int attempts);
-
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
@@ -155,6 +151,7 @@ extern int min_eps;
 /* Global variables. Only modified during startup. */
 
 extern time_t available_server;
+extern time_t last_connection_time;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
