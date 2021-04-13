@@ -89,6 +89,16 @@ STATIC int w_update_hash_node(char * path, int64_t pos);
  */
 STATIC void w_logcollector_create_oslog_env(logreader * current);
 
+// todo: remove this when read_oslog is implemented, this is just a mock
+STATIC void * read_oslog(logreader * lf, int * rc, int drop_it)
+{
+    sleep(1);
+
+    *rc = (lf->duplicated + drop_it) * 0;
+
+    return NULL;
+}
+
 /* Global variables */
 int loop_timeout;
 int logr_queue;
@@ -2902,7 +2912,7 @@ void w_logcollector_create_oslog_env(logreader * current) {
     size_t log_cmd_args_idx = 0;
     
     os_malloc(LOG_CMD_ARGS_SIZE, log_cmd_args);
-    bzero(log_cmd_args,LOG_CMD_ARGS_SIZE);
+    bzero(log_cmd_args, LOG_CMD_ARGS_SIZE);
 
     os_malloc(LOG_CMD_STR_LEN, log_cmd_args[log_cmd_args_idx]);
     strncpy(log_cmd_args[log_cmd_args_idx], LOG_CMD_STR, LOG_CMD_STR_LEN);
@@ -2975,8 +2985,12 @@ void w_logcollector_create_oslog_env(logreader * current) {
     minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_cmd_args));
 
     // todo: is this correctly called?
-    // current->oslog->log_wfd = wpopenv(*log_cmd_args,log_cmd_args,0);
-
+    // current->oslog->log_wfd = wpopenv(*log_cmd_args, log_cmd_args, W_BIND_STDOUT|W_BIND_STDERR);
+    char * mock_log_cmd_args[] = {"/root/readfile.sh", NULL};
+    current->oslog->log_wfd = wpopenv(*mock_log_cmd_args, mock_log_cmd_args, W_BIND_STDOUT|W_BIND_STDERR);
+    current->fp = current->oslog->log_wfd->file;
+    current->oslog->is_oslog_running = true;
+    current->read = read_oslog; // todo: should this be set here or by means of using set_read()?
     current->file = NULL;
 
     for(log_cmd_args_idx = 0; log_cmd_args[log_cmd_args_idx] != NULL; log_cmd_args_idx++) {
