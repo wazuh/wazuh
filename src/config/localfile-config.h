@@ -54,6 +54,8 @@
                                     x[9]?x[9]:"", x[10]?x[10]:"",   \
                                     x[11]?x[11]:"", x[12]?x[12]:"", \
                                     x[13]?x[13]:""
+#define OSLOG_START_REGEX       "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d+:\\d+:\\d+" ///< regex to determine the start of a log (unchecked)
+#define OSLOG_TIMEOUT_OUT       5
 
 #include <pthread.h>
 
@@ -134,13 +136,24 @@ typedef struct {
 } w_multiline_config_t;
 
 /**
+ * @brief Context of a oslog that was not completely written.
+ *
+ * An instance of w_oslog_config_t allow save the context of a log that have not yet completely read.
+ */
+typedef struct {
+    w_expression_t * start_log_regex; ///< used to check the start of a new log
+    char buffer[OS_MAXSTR];           ///< store current read when os log is in process
+    int newline_offset;            ///< offset of new line, used for regex matching
+    time_t timestamp;  ///< last successful read
+} w_oslog_ctxt_t;
+
+/**
  * @brief An instance of w_oslog_config_t represents a OSlog (ULS) and its state
  */
 typedef struct {
-    char * ctxt_buffer;         ///< store current read when os log is in process
-    int64_t last_read_offset;   ///< absolut stream offset of last complete log processed
-    char * last_read_timestamp; ///< timestamp of last log queued (Used for only future event)
-    wfd_t * log_wfd;            ///< `log stream` IPC connector
+    w_oslog_ctxt_t ctxt;         ///< store current status when read log is in process
+    char * last_read_timestamp;  ///< timestamp of last log queued (Used for only future event)
+    wfd_t * log_wfd;             ///< `log stream` IPC connector
     /** Indicates if `log stream` is currently running. if not running, localfiles with oslog format will be ignored */
     bool is_oslog_running;
 } w_oslog_config_t;
