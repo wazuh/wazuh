@@ -115,7 +115,7 @@ int local_start()
     while (rc < agt->server_count) {
         if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
             mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolveHostname(&agt->server[rc].rip, 5);
+            resolve_hostname(&agt->server[rc].rip, 5);
             mdebug2("Server hostname resolved: %s", agt->server[rc].rip);
         }
         rc++;
