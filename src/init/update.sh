@@ -445,6 +445,7 @@ UpdateOldVersions()
 
                     if [ -f "$OLD_TEMPLATE" ]; then
                         mv -f $OLD_TEMPLATE $NEW_TEMPLATE
+                        cat $PREINSTALLEDDIR/etc/shared/shared-template.conf > $NEW_TEMPLATE
                     fi
                 fi
             done
