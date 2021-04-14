@@ -216,14 +216,8 @@ int main(int argc, char **argv)
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
-    /* If AR is disabled, do not continue */
-    if (c == 1) {
-        pthread_join(wcom_thread, NULL);
-        exit(EXIT_SUCCESS);
-    }
-
     /* Start exec queue */
-    if ((m_queue = StartMQ(EXECQUEUE, READ, 0)) < 0) {
+    if ((m_queue = StartMQ(EXECQUEUE, READ, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
 
