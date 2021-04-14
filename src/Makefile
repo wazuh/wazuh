@@ -1022,7 +1022,7 @@ LIBALPM_CFLAGS=-DSYSHOOKDIR=\"/usr/share/libalpm/hooks\" \
 				-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include \
 			    -I. \
 			    -fPIC
-${LIBALPM_LIB}:
+${LIBALPM_LIB}: $(EXTERNAL_PACMAN)configure
 	cd ${EXTERNAL_PACMAN}lib/libalpm && \
 	$(CC) -c *.c ${LIBALPM_CFLAGS} && \
 	ar rcs libalpm.a *.o
