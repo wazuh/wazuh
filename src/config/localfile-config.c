@@ -44,7 +44,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     size_t labels_z=0;
     label_flags_t flags;
     wm_logcollector_t *logcollector = NULL;
-    wmodule **wmodules = (wmodule**)d1;
+    wmodule **const wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
 
     // Allocate memory
@@ -82,8 +82,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     if (NULL == cur_wmodule->data) {
         os_calloc(1, sizeof(wm_logcollector_t), logcollector);
         /* Reading the internal options */
-        int ret = OS_SUCCESS;
-        if (ret = wm_logcollector_read(logcollector), OS_SUCCESS != ret) {
+        int ret = wm_logcollector_read(logcollector);
+        if (OS_SUCCESS != ret) {
             os_free(logcollector);
             return ret;
         }

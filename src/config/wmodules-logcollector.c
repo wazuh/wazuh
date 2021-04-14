@@ -1,6 +1,6 @@
 /*
  * Wazuh module configuration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * April 6, 2021.
  *
  * This program is free software; you can redistribute it
@@ -12,8 +12,7 @@
 #include "wazuh_modules/wmodules.h"
 #define WIN32_MAX_FILES 200
 
-int wm_logcollector_read(wm_logcollector_t *logcollector)
-{
+int wm_logcollector_read(wm_logcollector_t *const logcollector) {
     int ret_val = OS_SUCCESS;
 
     if (NULL != logcollector) {

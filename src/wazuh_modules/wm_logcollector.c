@@ -1,7 +1,7 @@
 /*
  * Wazuh LOGCOLLECTOR
- * Copyright (C) 2015-2020, Wazuh Inc.
- * November 11, 2021.
+ * Copyright (C) 2015-2021, Wazuh Inc.
+ * April 11, 2021.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -16,9 +16,9 @@
 #include "defs.h"
 #include "mq_op.h"
 
-static void* wm_logcollector_main(wm_logcollector_t *data);         // Module main function. It won't return
-static void wm_logcollector_destroy(wm_logcollector_t *data);       // Destroy data
-cJSON *wm_logcollector_dump(const wm_logcollector_t *data);
+static void* wm_logcollector_main(wm_logcollector_t *const data);         // Module main function. It won't return
+static void wm_logcollector_destroy(wm_logcollector_t *const data);       // Destroy data
+cJSON *wm_logcollector_dump(const wm_logcollector_t *const data);
 extern int logr_queue;                                              // Output queue file descriptor
 
 const wm_context WM_LOGCOLLECTOR_CONTEXT = {
@@ -31,9 +31,8 @@ const wm_context WM_LOGCOLLECTOR_CONTEXT = {
 
 
 
-static void wm_logcollector_log_config(wm_logcollector_t *data)
-{
-    cJSON * config_json = wm_logcollector_dump(data);
+static void wm_logcollector_log_config(wm_logcollector_t *const data) {
+    cJSON *const config_json = wm_logcollector_dump(data);
     if (config_json) {
         char * config_str = cJSON_PrintUnformatted(config_json);
         if (config_str) {
@@ -44,7 +43,7 @@ static void wm_logcollector_log_config(wm_logcollector_t *data)
     }
 }
 
-void* wm_logcollector_main(wm_logcollector_t *data) {
+void* wm_logcollector_main(wm_logcollector_t *const data) {
 
 #ifndef WIN32
     // Set max open files limit
@@ -99,7 +98,7 @@ void wm_logcollector_destroy(wm_logcollector_t *data) {
     os_free(data);
 }
 
-cJSON *wm_logcollector_dump(__attribute__((unused)) const wm_logcollector_t *data) {
+cJSON *wm_logcollector_dump(__attribute__((unused)) const wm_logcollector_t *const data) {
     cJSON *root = cJSON_CreateObject();
     cJSON_AddItemToObject(root,"LocalfileConfig",getLocalfileConfig());
     cJSON_AddItemToObject(root,"SocketConfig",getSocketConfig());
@@ -107,7 +106,7 @@ cJSON *wm_logcollector_dump(__attribute__((unused)) const wm_logcollector_t *dat
     return root;
 }
 
-void Free_Localfile(logreader_config * config){
+void Free_Localfile(logreader_config *const config) {
     int i, j;
 
     if (config) {
@@ -145,7 +144,7 @@ void Free_Localfile(logreader_config * config){
     }
 }
 
-void Free_Logreader(logreader * logf) {
+void Free_Logreader(logreader *const logf) {
     int i;
 
     if (logf) {
@@ -185,7 +184,7 @@ void Free_Logreader(logreader * logf) {
     }
 }
 
-int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf) {
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *const globf) {
     if (*logf) {
         int size = 0;
         int x;
