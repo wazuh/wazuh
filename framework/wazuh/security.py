@@ -7,8 +7,10 @@ from copy import deepcopy
 from functools import lru_cache
 
 import api.configuration as configuration
+from api.util import raise_if_exc
+# Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 from wazuh.core import common
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens
 from wazuh.core.security import load_spec, update_security_conf
@@ -17,9 +19,6 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
     TokenManager, UserRolesManager, RolesRulesManager, RulesManager
 from wazuh.rbac.orm import SecurityError, max_id_reserved
-
-# Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-from framework.wazuh.core.exception import WazuhResourceNotFound
 
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
 
@@ -793,10 +792,11 @@ def set_role_rule(role_id, rule_ids, run_as=False):
 
     return result
 
+
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'],
                   post_proc_func=None)
 @expose_resources(actions=['security:delete'], resources=['rule:id:{rule_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4024]})
+                  post_proc_kwargs={'exclude_codes': [4008, 4022, 4024]})
 def remove_role_rule(role_id, rule_ids):
     """Remove a relationship between a role and one or more rules.
 
@@ -808,8 +808,7 @@ def remove_role_rule(role_id, rule_ids):
     role = get_role(role_id[0])
 
     if not role:
-        raise WazuhResourceNotFound(5001)
-
+        raise WazuhResourceNotFound(4002)
 
     result = AffectedItemsWazuhResult(none_msg=f'No security rule was unlinked from role {role_id[0]}',
                                       some_msg=f'Some security rules were not unlinked from role {role_id[0]}',
@@ -916,7 +915,7 @@ def get_role(role_id):
 @expose_resources(actions=['security:delete'], resources=['role:id:{role_id}'],
                   post_proc_func=None)
 @expose_resources(actions=['security:delete'], resources=['policy:id:{policy_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4010]})
+                  post_proc_kwargs={'exclude_codes': [4007, 4008, 4010]})
 def remove_role_policy(role_id, policy_ids):
     """Removes a relationship between a role and a policy
 
@@ -928,7 +927,7 @@ def remove_role_policy(role_id, policy_ids):
     role = get_role(role_id[0])
 
     if not role:
-        raise WazuhResourceNotFound(5001)
+        raise WazuhResourceNotFound(4002)
 
     result = AffectedItemsWazuhResult(none_msg=f'No policy was unlinked from role {role_id[0]}',
                                       some_msg=f'Some policies were not unlinked from role {role_id[0]}',

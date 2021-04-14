@@ -133,6 +133,7 @@ def test_security(db_setup, security_function, params, expected_result):
     expected_result : list of dict
         This is a list that contains the expected results .
     """
+
     try:
         security, _, _ = db_setup
         result = getattr(security, security_function)(**params).to_dict()
