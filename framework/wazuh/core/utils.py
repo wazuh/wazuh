@@ -105,7 +105,8 @@ def execute(command):
 
 
 def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
-                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None):
+                  sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None,
+                  filters=None):
     """ Process a Wazuh framework data array
 
     :param array: Array to process
@@ -125,6 +126,21 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     if not array:
         return {'items': list(), 'totalItems': 0}
 
+    if len(filters.keys()) > 0:
+        new_array = list()
+        for element in array:
+            for key, value in filters.items():
+                if element[key] in value:
+                    new_array.append(element)
+
+        array = new_array
+
+    if sort_by == [""]:
+        array = sort_array(array, sort_ascending=sort_ascending)
+    elif sort_by:
+        array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
+                           allowed_sort_fields=allowed_sort_fields)
+
     if select:
         array = select_array(array, select=select, required_fields=required_fields)
 
@@ -134,12 +150,6 @@ def process_array(array, search_text=None, complementary_search=False, search_in
 
     if q:
         array = filter_array_by_query(q, array)
-
-    if sort_by == [""]:
-        array = sort_array(array, sort_ascending=sort_ascending)
-    elif sort_by:
-        array = sort_array(array, sort_by=sort_by, sort_ascending=sort_ascending,
-                           allowed_sort_fields=allowed_sort_fields)
 
     return {'items': cut_array(array, offset=offset, limit=limit), 'totalItems': len(array)}
 
@@ -203,11 +213,30 @@ def sort_array(array, sort_by=None, sort_ascending=True, allowed_sort_fields=Non
     if sort_by:  # array should be a dictionary or a Class
         if type(array[0]) is dict:
             check_sort_fields(set(array[0].keys()), set(sort_by))
+            try:
+                return sorted(array,
+                              key=lambda o: tuple(
+                                  o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                              reverse=not sort_ascending)
+            except TypeError:
+                items_with_missing_keys = list()
+                copy_array = deepcopy(array)
+                for item in copy_array:
+                    missing_keys = set(sort_by) & set(item.keys())
+                    if len(missing_keys):
+                        items_with_missing_keys.append(array.pop(array.index(item)))
 
-            return sorted(array,
-                          key=lambda o: tuple(
-                              o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
-                          reverse=not sort_ascending)
+                sorted_array = sorted(array, key=lambda o: tuple(
+                    o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
+                                      reverse=not sort_ascending)
+
+                if not sort_ascending:
+                    items_with_missing_keys.extend(sorted_array)
+                    return items_with_missing_keys
+                else:
+                    sorted_array.extend(items_with_missing_keys)
+                    return sorted_array
+
         else:
             return sorted(array,
                           key=lambda o: tuple(

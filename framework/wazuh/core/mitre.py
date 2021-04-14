@@ -119,23 +119,25 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             select = set()
         if filters is None:
             filters = dict()
+        self.min_select_fields = min_select_fields
         if min_select_fields is None:
-            min_select_fields = {'id', 'name'}
+            self.min_select_fields = {'id', 'name'}
+        self.fields = fields
         if fields is None:
-            fields = {'id': 'id', 'name': 'name', 'description': 'description', 'created_time': 'created_time',
-                      'modified_time': 'modified_time', 'mitre_version': 'mitre_version',
-                      'mitre_detection': 'mitre_detection', 'network_requirements': 'network_requirements',
-                      'remote_support': 'remote_support', 'revoked_by': 'revoked_by', 'deprecated': 'deprecated',
-                      'subtechnique_of': 'subtechnique_of'}
+            self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'created_time': 'created_time',
+                           'modified_time': 'modified_time', 'mitre_version': 'mitre_version',
+                           'mitre_detection': 'mitre_detection', 'network_requirements': 'network_requirements',
+                           'remote_support': 'remote_support', 'revoked_by': 'revoked_by', 'deprecated': 'deprecated',
+                           'subtechnique_of': 'subtechnique_of'}
 
         self.extra_valid_select = {'related_tactics', 'related_mitigations', 'related_software', 'related_group'}
-        self.user_select = min_select_fields.union(set(select))
+        self.user_select = self.min_select_fields.union(set(select))
 
-        WazuhDBQueryMitre.__init__(self, table='technique', min_select_fields=min_select_fields, fields=fields,
-                                   filters=filters, offset=offset, limit=limit, query=query, count=count,
-                                   sort=sort, default_sort_field=default_sort_field,
+        WazuhDBQueryMitre.__init__(self, table='technique', min_select_fields=self.min_select_fields,
+                                   fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
+                                   count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
-                                   select=list(set(fields.values()).intersection(set(select))))
+                                   select=list(set(self.fields.values()).intersection(set(select))))
 
     def _filter_status(self, status_filter):
         pass
@@ -148,14 +150,11 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             super()._process_filter(field_name, field_filter, q_filter)
 
     def _delete_extra_fields(self):
-        new_data = list()
-        for technique in self._data:
-            try:
-                new_data.append({k: technique[k] for k in self.user_select})
-            except KeyError:
-                pass
-
-        self._data = new_data
+        remove_relation = self.user_select & self.extra_valid_select
+        if remove_relation:
+            for technique in self._data:
+                for relation in remove_relation:
+                    technique.pop(relation)
 
     def _format_data_into_dictionary(self):
         """This function will add to the final result the mitigations, groups, software and tactics

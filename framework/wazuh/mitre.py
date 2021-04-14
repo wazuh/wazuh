@@ -21,7 +21,7 @@ def get_techniques():
     db_query = mitre.WazuhDBQueryMitreTechniques(limit=None)
     data = db_query.run()
 
-    return data
+    return set(db_query.min_select_fields), data
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
@@ -48,14 +48,17 @@ def mitre_metadata() -> Dict:
 #                      limit: int = common.database_limit, sort: dict = None, q: str = None) -> Dict:
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
 def mitre_techniques(filters: dict = None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
-                     search_text=None, complementary_search=False, search_in_fields=None, q='') -> Dict:
+                     search_text=None, complementary_search=False, search_in_fields=None, q='', select=None) -> Dict:
     """TODO
     """
     result = AffectedItemsWazuhResult(none_msg='No Techniques information was returned',
                                       all_msg='Techniques information was returned')
-    data = get_techniques()
-    data = process_array(data, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by,
+    min_select_fields, data = get_techniques()
+    if select is not None:
+        select = set(select)
+        select = select.union(min_select_fields)
+    data = process_array(data['items'], filters=filters, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, select=select,
                          sort_ascending=sort_ascending, offset=offset, limit=limit, q=q)
 
     result.affected_items.extend(data['items'])

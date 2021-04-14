@@ -53,11 +53,11 @@ async def get_techniques(request, technique_ids=None, offset=None, limit=None, s
     """TODO
     """
     f_kwargs = {'filters': {
-        'technique_ids': technique_ids,
+        'id': technique_ids,
     },
         'offset': offset,
         'limit': limit,
-        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['timestamp'],
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else None,
         'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
         'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
