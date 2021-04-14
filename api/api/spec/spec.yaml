@@ -5773,7 +5773,7 @@ paths:
       tags:
         - Agents
       summary: "Get configuration sync status"
-      description: "Return whether the agent configuration has been synchronized with the agent or not. This can be
+      description: "Return whether the shared configuration has been synchronized with the agent or not. This can be
       useful to check after updating a group configuration"
       operationId: api.controllers.agent_controller.get_sync_agent
       x-rbac-actions:
@@ -6777,7 +6777,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
-                message: Agent configuration was successfully updated
+                message: Shared configuration was successfully updated
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
