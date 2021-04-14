@@ -18,6 +18,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
@@ -94,10 +95,6 @@ static int setup_group(void ** state) {
 #endif
 
     will_return_always(__wrap_os_random, 12345);
-
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
 
     if(Read_Syscheck_Config("test_syscheck.conf"))
         fail();
@@ -248,10 +245,8 @@ void test_fim_whodata_initialize(void **state)
         str_lowercase(expanded_dirs[i]);
         expect_realtime_adddir_call(expanded_dirs[i], 10, 0);
     }
-#else
-    expect_realtime_adddir_call("/etc", 2, 0);
-    expect_realtime_adddir_call("/usr/bin", 5, 0);
-    expect_realtime_adddir_call("/usr/sbin", 6, 0);
+    will_return(__wrap_run_whodata_scan, 0);
+    will_return(wrap_CreateThread, (HANDLE)123456);
 #endif
 
     ret = fim_whodata_initialize();
@@ -291,7 +286,7 @@ void test_fim_send_msg_retry(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_StartMQ_call(DEFAULTQPATH, WRITE, 0);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
 
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
 
@@ -304,9 +299,9 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_StartMQ_call(DEFAULTQPATH, WRITE, -1);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, -1);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: '/var/ossec/queue/ossec/queue'. Giving up.");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/sockets/queue'. Giving up.");
 
     // This code shouldn't run
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
@@ -540,15 +535,19 @@ void test_fim_send_sync_msg_0_eps(void ** state) {
 }
 
 void test_send_syscheck_msg_10_eps(void ** state) {
-    (void) state;
     syscheck.max_eps = 10;
+    cJSON *event = cJSON_CreateObject();
+
+    if (event == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
 
     // We must not sleep the first 9 times
 
     for (int i = 1; i < syscheck.max_eps; i++) {
-        expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-        expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
-        send_syscheck_msg("");
+        expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
+        expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
+        send_syscheck_msg(event);
     }
 
 #ifndef TEST_WINAGENT
@@ -558,20 +557,26 @@ void test_send_syscheck_msg_10_eps(void ** state) {
 #endif
 
     // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-    expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
+    expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
 
-    send_syscheck_msg("");
+    send_syscheck_msg(event);
+
+    cJSON_Delete(event);
 }
 
 void test_send_syscheck_msg_0_eps(void ** state) {
-    (void) state;
     syscheck.max_eps = 0;
+    cJSON *event = cJSON_CreateObject();
+
+    if (event == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
 
     // We must not sleep
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-    expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
-    send_syscheck_msg("");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
+    expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
+    send_syscheck_msg(event);
 }
 
 void test_fim_send_scan_info(void **state) {
@@ -592,7 +597,9 @@ void test_fim_link_update(void **state) {
     int pos = 1;
     char *new_path = "/new_path";
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
+
     expect_realtime_adddir_call(new_path, 0, 0);
     expect_fim_checker_call(new_path, 0, 0);
 
@@ -606,10 +613,11 @@ void test_fim_link_update_already_added(void **state) {
     (void) state;
 
     int pos = 1;
-    char *link_path = "/link";
+    char *link_path = "/home";
     char error_msg[OS_SIZE_128];
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
+    free(syscheck.symbolic_links[pos]);
+    syscheck.symbolic_links[pos] = strdup("/home");
 
     snprintf(error_msg, OS_SIZE_128, FIM_LINK_ALREADY_ADDED, link_path);
 
@@ -617,7 +625,7 @@ void test_fim_link_update_already_added(void **state) {
 
     fim_link_update(pos, link_path);
 
-    assert_string_equal(syscheck.dir[pos], link_path);
+    assert_string_equal(syscheck.dir[pos], "/link");
     assert_null(syscheck.symbolic_links[pos]);
 }
 
@@ -632,8 +640,11 @@ void test_fim_link_check_delete(void **state) {
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, 0);
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", NULL, FIM_DB_DISK, FIMDB_OK);
-    expect_fim_configuration_directory_call(pointed_folder, "file", -1);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", NULL, FIM_DB_DISK, FIMDB_OK);
+
+    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
+
+    expect_fim_configuration_directory_call(pointed_folder, -1);
     fim_link_check_delete(pos);
 
     assert_string_equal(syscheck.dir[pos], link_path);
@@ -673,6 +684,8 @@ void test_fim_link_check_delete_noentry_error(void **state) {
     expect_string(__wrap_lstat, filename, pointed_folder);
     will_return(__wrap_lstat, 0);
     will_return(__wrap_lstat, -1);
+    expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
+
 
     errno = ENOENT;
 
@@ -691,8 +704,8 @@ void test_fim_delete_realtime_watches(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
 
-    expect_fim_configuration_directory_call(pointed_folder, "file", 0);
-    expect_fim_configuration_directory_call("data", "file", 0);
+    expect_fim_configuration_directory_call(pointed_folder, 0);
+    expect_fim_configuration_directory_call("data", 0);
 
     will_return(__wrap_inotify_rm_watch, 1);
 
@@ -705,7 +718,7 @@ void test_fim_link_delete_range(void **state) {
     int pos = 1;
     fim_tmp_file *tmp_file = *state;
 
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
     expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_OK);
     fim_link_delete_range(pos);
 }
@@ -715,8 +728,8 @@ void test_fim_link_delete_range_error(void **state) {
     char error_msg[OS_SIZE_128];
     fim_tmp_file *tmp_file = *state;
 
-    snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/link/%");
-    expect_fim_db_get_path_from_pattern(syscheck.database, "/link/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
+    snprintf(error_msg, OS_SIZE_128, FIM_DB_ERROR_RM_PATTERN, "/folder/%");
+    expect_fim_db_get_path_from_pattern(syscheck.database, "/folder/%", tmp_file, FIM_DB_DISK, FIMDB_OK);
 
     expect_wrapper_fim_db_delete_range_call(syscheck.database, FIM_DB_DISK, tmp_file, FIMDB_ERR);
     expect_string(__wrap__merror, formatted_msg, error_msg);
@@ -791,8 +804,6 @@ void test_check_max_fps_sleep(void **state) {
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test(test_fim_whodata_initialize),
-
 #ifdef TEST_WINAGENT
         cmocka_unit_test(test_set_priority_windows_thread_highest),
         cmocka_unit_test(test_set_priority_windows_thread_above_normal),
@@ -832,6 +843,7 @@ int main(void) {
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 #else  // WIN_WHODATA
     const struct CMUnitTest eventchannel_tests[] = {
+        cmocka_unit_test(test_fim_whodata_initialize),
         cmocka_unit_test(test_set_whodata_mode_changes),
         cmocka_unit_test(test_fim_whodata_initialize_eventchannel),
         cmocka_unit_test(test_fim_whodata_initialize_fail_set_policies),

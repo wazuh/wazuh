@@ -60,8 +60,8 @@ int main(int argc, const char* argv[])
                     "Invalid inputs file."
                 };
             }
-            const auto jsonConfigFile { nlohmann::json::parse(configFile) };
-            const auto jsonInputFile { nlohmann::json::parse(inputData) };
+            const auto& jsonConfigFile { nlohmann::json::parse(configFile) };
+            const auto& jsonInputFile { nlohmann::json::parse(inputData) };
             OneTimeSync otSync(jsonConfigFile,
                                jsonInputFile,
                                args.outputFolder());

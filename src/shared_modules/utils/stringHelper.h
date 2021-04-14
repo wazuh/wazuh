@@ -17,7 +17,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
-	
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
@@ -180,6 +180,16 @@ namespace Utils
             return token == ending;
         }
         return false;
+    }
+
+    static std::string substrOnFirstOccurrence(const std::string& str, const std::string& args = " ")
+    {
+        const auto pos{ str.find(args) };
+        if (pos != std::string::npos)
+        {
+            return str.substr(0, pos);
+        }
+        return str;
     }
 }
 

@@ -15,6 +15,7 @@
 #include "sec.h"
 #include "config/config.h"
 #include "config/client-config.h"
+#include "state.h"
 
 /* Buffer functions */
 #define full(i, j, n) ((i + 1) % (n) == j)
@@ -30,19 +31,6 @@
 #define WARNING 1
 #define FULL 2
 #define FLOOD 3
-
-/* Agent status structure */
-
-typedef struct agent_state_t {
-    agent_status_t status;
-    time_t last_keepalive;
-    time_t last_ack;
-    unsigned int msg_count;
-    unsigned int msg_sent;
-} agent_state_t;
-
-/* Resolve hostname */
-void resolveHostname(char **hostname, int attempts);
 
 /* Client configuration */
 int ClientConf(const char *cfgfile);
@@ -74,6 +62,14 @@ int buffer_append(const char *msg);
 /* Thread to dispatch messages from the buffer */
 void *dispatch_buffer(void * arg);
 
+/**
+ * @brief get the number of events in buffer
+ *
+ * @retval number of events in the buffer
+ * @retval -1 if the anti-flooding mechanism is disabled
+ */
+int w_agentd_get_buffer_lenght();
+
 /* Initialize sender structure */
 void sender_init();
 
@@ -91,6 +87,9 @@ void start_agent(int is_startup);
 
 /* Connect to the server */
 bool connect_server(int initial_id, bool verbose);
+
+/* Send agent stopped message to server */
+void send_agent_stopped_message();
 
 /**
  * Tries to enroll to a server indicated by server_rip
@@ -123,11 +122,6 @@ void * restartAgent();
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
 
-// Agent status functions
-void * state_main(void * args);
-void update_status(agent_status_t status);
-void update_keepalive(time_t curr_time);
-void update_ack(time_t curr_time);
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
@@ -157,10 +151,10 @@ extern int min_eps;
 /* Global variables. Only modified during startup. */
 
 extern time_t available_server;
+extern time_t last_connection_time;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
-extern agent_state_t agent_state;
 
 static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
 

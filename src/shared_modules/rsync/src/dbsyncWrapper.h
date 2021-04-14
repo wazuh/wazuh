@@ -20,7 +20,7 @@ namespace RSync
     {
         DBSYNC_HANDLE m_dbsync_handle;
     public:
-   
+
         explicit DBSyncWrapper(DBSYNC_HANDLE dbsync_handle)
         : m_dbsync_handle(dbsync_handle) { }
         virtual void select(const cJSON*    s_data_input,

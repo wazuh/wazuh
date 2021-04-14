@@ -8,7 +8,7 @@ from wazuh.core.agent import Agent
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
-from wazuh.core.ossec_queue import OssecQueue
+from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.utils import WazuhVersion
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
@@ -88,7 +88,7 @@ def create_json_message(command: str = '', arguments: list = None, alert: dict =
     return msg_queue
 
 
-def send_ar_message(agent_id: str = '', oq: OssecQueue = None, command: str = '', arguments: list = None,
+def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = '', arguments: list = None,
                     custom: bool = False, alert: dict = None) -> None:
     """Send the active response message to the agent.
 
@@ -96,8 +96,8 @@ def send_ar_message(agent_id: str = '', oq: OssecQueue = None, command: str = ''
     ----------
     agent_id : str
         ID specifying the agent where the msg_queue will be sent to.
-    oq : OssecQueue
-        OssecQueue used for the active response messages.
+    wq : WazuhQueue
+        WazuhQueue used for the active response messages.
     command : str
         Command running in the agents. If this value starts with !, then it refers to a script name instead of a
         command name.
@@ -134,7 +134,7 @@ def send_ar_message(agent_id: str = '', oq: OssecQueue = None, command: str = ''
     else:
         msg_queue = create_message(command=command, arguments=arguments, custom=custom)
 
-    oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
+    wq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE)
 
 
 def get_commands() -> list:

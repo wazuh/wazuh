@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "remoted.h"
 #include "remoted_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "shared_download.h"
@@ -97,6 +97,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     const char * node_label = "#\"_node_name\":";
     const char * version_label = "#\"_wazuh_version\":";
     int is_startup = 0;
+    int is_shutdown = 0;
     int agent_id = 0;
     int result = 0;
 
@@ -127,6 +128,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     if (strcmp(r_msg, HC_STARTUP) == 0) {
         mdebug1("Agent %s sent HC_STARTUP from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
         is_startup = 1;
+    } else if (strcmp(r_msg, HC_SHUTDOWN) == 0) {
+        mdebug1("Agent %s sent HC_SHUTDOWN from %s.", key->name, inet_ntoa(key->peer_info.sin_addr));
+        is_shutdown = 1;
     } else {
         /* Clean msg and shared files (remove random string) */
         msg = r_msg;
@@ -143,7 +147,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     }
 
     /* Lock mutex */
-    w_mutex_lock(&lastmsg_mutex)
+    w_mutex_lock(&lastmsg_mutex);
 
     /* Check if there is a keep alive already for this agent */
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
@@ -153,8 +157,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
         result = wdb_update_agent_keepalive(agent_id, AGENT_CS_ACTIVE, logr.worker_node?"syncreq":"synced", wdb_sock);
 
-        if (OS_SUCCESS != result)
+        if (OS_SUCCESS != result) {
             mwarn("Unable to save last keepalive and set connection status as active for agent: %s", key->id);
+        }
     } else {
         if (!data) {
             os_calloc(1, sizeof(pending_data_t), data);
@@ -179,9 +184,44 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             result = wdb_update_agent_connection_status(agent_id, AGENT_CS_PENDING, logr.worker_node?"syncreq":"synced", wdb_sock);
 
             if (OS_SUCCESS != result) {
-                mwarn("Unable to save last keepalive and set connection status as pending for agent: %s", key->id);
+                mwarn("Unable to set connection status as pending for agent: %s", key->id);
             }
-        } else {
+        } else if (is_shutdown) {
+            /* Unlock mutex */
+            w_mutex_unlock(&lastmsg_mutex);
+            agent_id = atoi(key->id);
+
+            result = wdb_update_agent_connection_status(agent_id, AGENT_CS_DISCONNECTED, logr.worker_node?"syncreq":"synced", wdb_sock);
+
+            if (OS_SUCCESS != result) {
+                mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
+            } else {
+                /* Generate alert */
+                char srcmsg[OS_SIZE_256];
+                char msg[OS_SIZE_1024];
+
+                memset(srcmsg, '\0', OS_SIZE_256);
+                memset(msg, '\0', OS_SIZE_1024);
+
+                snprintf(srcmsg, OS_SIZE_256, "[%s] (%s) %s", key->id, key->name, key->ip->ip);
+                snprintf(msg, OS_SIZE_1024, AG_STOP_MSG, key->name, key->ip->ip);
+
+                /* Send stopped message */
+                if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
+                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+                    // Try to reconnect infinitely
+                    logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+                    minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+                    if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
+                        // Something went wrong sending a message after an immediate reconnection...
+                        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                    }
+                }
+            }
+         } else {
             /* Update message */
             mdebug2("save_controlmsg(): inserting '%s'", msg);
             os_free(data->message);
@@ -897,6 +937,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
     FILE *fp;
     os_sha256 multi_group_hash;
     char *multi_group_hash_pt = NULL;
+    int protocol = -1; // Agent client net protocol
 
     /* Check if it is multigroup */
     if (strchr(group,MULTIGROUP_SEPARATOR)) {
@@ -933,6 +974,15 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
         return (-1);
     }
 
+    /* The following code is used to get the protocol that the client is using in order to answer accordingly */
+    key_lock_read();
+    protocol = w_get_agent_net_protocol_from_keystore(&keys, agent_id);
+    key_unlock();
+    if (protocol < 0) {
+        merror(AR_NOAGENT_ERROR, agent_id);
+        return -1;
+    }
+
     /* Send the file contents */
     while ((n = fread(buf, 1, 900, fp)) > 0) {
         buf[n] = '\0';
@@ -941,8 +991,8 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
             fclose(fp);
             return (-1);
         }
-
-        if (logr.proto[logr.position] == IPPROTO_UDP) {
+        /* If the protocol being used is UDP, it is necessary to add a delay to avoid flooding */
+        if (protocol == REMOTED_NET_PROTOCOL_UDP) {
             /* Sleep 1 every 30 messages -- no flood */
             if (i > 30) {
                 sleep(1);

@@ -436,13 +436,15 @@ int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 char *OS_RecvUDP(int socket, int sizet)
 {
     char *ret;
+    int recv_b;
 
     ret = (char *) calloc((sizet), sizeof(char));
     if (ret == NULL) {
         return (NULL);
     }
 
-    if ((recv(socket, ret, sizet - 1, 0)) < 0) {
+    recv_b = recv(socket, ret, sizet - 1, 0);
+    if (recv_b < 0) {
         free(ret);
         return (NULL);
     }
@@ -454,6 +456,8 @@ char *OS_RecvUDP(int socket, int sizet)
 int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 {
     int recv_b;
+
+    buffer[buffer_size] = '\0';
 
     recv_b = recv(socket, buffer, buffer_size, 0);
     if (recv_b < 0) {
@@ -629,10 +633,8 @@ int OS_SetSendTimeout(int socket, int seconds)
 #endif
 }
 
-/* Send secure TCP message
- * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
- * Return 0 on success or OS_SOCKTERR on error.
- */
+// Send secure TCP message
+
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     int retval = OS_SOCKTERR;
     void* buffer = NULL;
@@ -819,7 +821,7 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
                 return -1;
             }
     }
-   
+
     if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
         return -2;
     }
@@ -863,4 +865,41 @@ int wnet_select(int sock, int timeout) {
     FD_SET(sock, &fdset);
 
     return select(sock + 1, &fdset, NULL, NULL, &fdtimeout);
+}
+
+void resolve_hostname(char **hostname, int attempts) {
+    char *tmp_str;
+    char *f_ip;
+
+    assert(hostname != NULL);
+    if (OS_IsValidIP(*hostname, NULL) == 1) {
+        return;
+    }
+
+    tmp_str = strchr(*hostname, '/');
+    if (tmp_str) {
+        *tmp_str = '\0';   // LCOV_EXCL_LINE
+    }
+
+    f_ip = OS_GetHost(*hostname, attempts);
+
+    char ip_str[128] = {0};
+    if (f_ip) {
+        snprintf(ip_str, 127, "%s/%s", *hostname, f_ip);
+        free(f_ip);
+    } else {
+        snprintf(ip_str, 127, "%s/", *hostname);
+    }
+    free(*hostname);
+    os_strdup(ip_str, *hostname);
+}
+
+const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
+    char *tmp_str;
+    assert(resolved_hostname != NULL);
+
+    /* Check if we have a resolved_hostname or an IP */
+    tmp_str = strchr(resolved_hostname, '/');
+
+    return tmp_str ? ++tmp_str : resolved_hostname;
 }

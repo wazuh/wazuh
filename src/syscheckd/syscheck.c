@@ -19,9 +19,7 @@
 
 // Global variables
 syscheck_config syscheck;
-pthread_cond_t audit_thread_started;
-pthread_cond_t audit_hc_started;
-pthread_cond_t audit_db_consistency;
+
 int sys_debug_level;
 
 #ifdef USE_MAGIC
@@ -88,6 +86,9 @@ void fim_initialize() {
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);
     w_mutex_init(&syscheck.fim_scan_mutex, NULL);
     w_mutex_init(&syscheck.fim_realtime_mutex, NULL);
+#ifndef WIN32
+    w_mutex_init(&syscheck.fim_symlink_mutex, NULL)
+#endif
 }
 
 
@@ -97,11 +98,9 @@ int Start_win32_Syscheck()
 {
     int debug_level = 0;
     int r = 0;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
     /* Read internal options */
     read_internal(debug_level);
-
-    mdebug1(STARTED_MSG);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {

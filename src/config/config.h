@@ -51,7 +51,6 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 
 int Read_Global(XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
-int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modules);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Alerts(XML_NODE node, void *d1, void *d2);
@@ -72,10 +71,11 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 int Read_GCP(const OS_XML *xml, xml_node *node, void *d1);
 #ifndef WIN32
+int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
+int Read_Authd(XML_NODE node, void *d1, void *d2);
 #endif
 int Read_Labels(XML_NODE node, void *d1, void *d2);
-int Read_Authd(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
 int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);

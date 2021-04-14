@@ -43,7 +43,6 @@ def test_context_cached():
     @context_cached('foobar')
     def foo(arg='bar', **data):
         test_context_cached.calls_to_foo += 1
-        print(data)
         return arg
 
     # The result of function 'foo' is being cached and it has been called once

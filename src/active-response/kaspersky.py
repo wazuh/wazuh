@@ -25,7 +25,7 @@ from socket import socket, AF_UNIX, SOCK_DGRAM
 # Sets the file paths
 ##################################################################################################################
 wazuh_path = os.path.abspath(os.path.join(__file__, "../../.."))
-wazuh_queue = '{0}/queue/ossec/queue'.format(wazuh_path)
+wazuh_queue = '{0}/queue/sockets/queue'.format(wazuh_path)
 now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 ar_log_file = '{0}/logs/active-responses.log'.format(wazuh_path)
 

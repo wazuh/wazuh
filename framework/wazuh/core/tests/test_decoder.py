@@ -58,7 +58,7 @@ def test_check_status(status, expected_result):
     ('non_existing.xml', 'decoders', "disabled", 777, WazuhError(1502)),
     ('test1_decoders.xml', 'decoders', "all", 000, WazuhError(1502)),
 ])
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.wazuh_path', new=test_data_path)
 def test_load_decoders_from_file(filename, relative_dirname, status, permissions, exception):
     full_file_path = os.path.join(test_data_path, relative_dirname, filename)
     try:
@@ -84,7 +84,7 @@ def test_load_decoders_from_file(filename, relative_dirname, status, permissions
         os.path.exists(full_file_path) and os.chmod(full_file_path, old_permissions)
 
 
-@patch('wazuh.core.common.ossec_path', new=test_data_path)
+@patch('wazuh.core.common.wazuh_path', new=test_data_path)
 def test_load_decoders_from_file_details():
     decoder_file = 'test3_decoders.xml'
     decoder_path = 'decoders'

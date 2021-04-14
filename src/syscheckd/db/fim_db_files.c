@@ -8,7 +8,27 @@
 
 #include "fim_db_files.h"
 
+#ifdef WAZUH_UNIT_TESTING
+/* Remove static qualifier when unit testing */
+#define static
+
+/* Replace assert with mock_assert */
+extern void mock_assert(const int result, const char *const expression, const char *const file, const int line);
+#undef assert
+#define assert(expression) mock_assert((int)(expression), #expression, __FILE__, __LINE__);
+#endif
+
 extern const char *SQL_STMT[];
+
+// Convenience macros
+#define fim_db_bind_set_scanned(fim_sql, path) fim_db_bind_path(fim_sql, FIMDB_STMT_SET_SCANNED, path)
+
+#define fim_db_bind_get_inode_id(fim_sql, path) fim_db_bind_path(fim_sql, FIMDB_STMT_GET_INODE_ID, path)
+
+#define fim_db_bind_get_path_inode(fim_sql, path) fim_db_bind_path(fim_sql, FIMDB_STMT_GET_INODE, path)
+
+#define fim_db_bind_get_path_from_pattern(fim_sql, path) \
+    fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_FROM_PATTERN, path)
 
 // bindings
 /**
@@ -17,7 +37,7 @@ extern const char *SQL_STMT[];
  * @param fim_sql FIM database structure.
  * @param entry FIM entry data structure.
  */
-static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_file_data *entry);
+static void fim_db_bind_insert_data(fdb_t *fim_sql, const fim_file_data *entry);
 
 
 /**
@@ -28,8 +48,7 @@ static void fim_db_bind_insert_data(fdb_t *fim_sql, fim_file_data *entry);
  * @param row_id Row id to be bound.
  * @param entry FIM entry data structure.
  */
-static void fim_db_bind_replace_path(fdb_t *fim_sql, const char *file_path,
-                                    int row_id, fim_file_data *entry);
+static void fim_db_bind_replace_path(fdb_t *fim_sql, const char *file_path, int row_id, const fim_file_data *entry);
 
 
 /**
@@ -63,9 +82,7 @@ static void fim_db_bind_get_inode(fdb_t *fim_sql, int index,
  * @param entry FIM entry data structure.
  * @param row_id Row id in file_data table.
  */
-static void fim_db_bind_update_data(fdb_t *fim_sql,
-                                    fim_file_data *entry,
-                                    int *row_id);
+static void fim_db_bind_update_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id);
 
 /**
  * @brief Binds data into a delete data id statement.
@@ -74,38 +91,6 @@ static void fim_db_bind_update_data(fdb_t *fim_sql,
  * @param row The especific row.
  */
 static void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row);
-
-/**
- * @brief
- *
- * @param fim_sql FIM database structure.
- * @param file_path File name of the file to insert.
- */
-void fim_db_bind_set_scanned(fdb_t *fim_sql, const char *file_path);
-
-/**
- * @brief Binds data into a select inode_id statement
- *
- * @param fim_sql FIM database structure.
- * @param file_path File name of the file to select.
- */
-void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path);
-
-/**
- * @brief Binds data into a select inode statement
- *
- * @param fim_sql FIM database structure.
- * @param file_path File name of the file to select.
- */
-void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path);
-
-/**
- * @brief Binds data into a select path like statement.
- *
- * @param fim_sql FIM database structure.
- * @param pattern Pattern that will be used for the LIKE operator.
- */
-void fim_db_bind_get_path_from_pattern(fdb_t *fim_sql, const char *pattern);
 
 /**
  * @brief Removes paths from the FIM DB if its configuration matches with the one provided
@@ -194,7 +179,7 @@ fim_entry *fim_db_decode_full_row(sqlite3_stmt *stmt) {
    FIMDB_STMT_SET_ALL_UNSCANNED, FIMDB_STMT_DELETE_UNSCANNED */
 
 /* FIMDB_STMT_INSERT_DATA */
-void fim_db_bind_insert_data(fdb_t *fim_sql, fim_file_data *entry) {
+void fim_db_bind_insert_data(fdb_t *fim_sql, const fim_file_data *entry) {
 #ifndef WIN32
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 1, entry->dev);
     sqlite3_bind_int64(fim_sql->stmt[FIMDB_STMT_INSERT_DATA], 2, entry->inode);
@@ -225,7 +210,7 @@ void fim_db_bind_insert_data(fdb_t *fim_sql, fim_file_data *entry) {
 }
 
 /* FIMDB_STMT_REPLACE_PATH */
-void fim_db_bind_replace_path(fdb_t *fim_sql, const char *file_path, int row_id, fim_file_data *entry) {
+void fim_db_bind_replace_path(fdb_t *fim_sql, const char *file_path, int row_id, const fim_file_data *entry) {
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH], 1, file_path, -1, NULL);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH], 2, row_id);
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH], 3, entry->mode);
@@ -235,25 +220,33 @@ void fim_db_bind_replace_path(fdb_t *fim_sql, const char *file_path, int row_id,
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_REPLACE_PATH], 7, entry->checksum, -1, NULL);
 }
 
-/* FIMDB_STMT_GET_PATH, FIMDB_STMT_GET_PATH_COUNT, FIMDB_STMT_DELETE_PATH, FIMDB_STMT_GET_DATA_ROW */
-void fim_db_bind_path(fdb_t *fim_sql, int index, const char *file_path) {
-    if (index == FIMDB_STMT_GET_PATH || index == FIMDB_STMT_GET_PATH_COUNT
-       || index == FIMDB_STMT_DELETE_PATH || index == FIMDB_STMT_GET_DATA_ROW) {
-        sqlite3_bind_text(fim_sql->stmt[index], 1, file_path, -1, NULL);
-    }
+/* FIMDB_STMT_GET_PATH
+ * FIMDB_STMT_GET_PATH_COUNT
+ * FIMDB_STMT_DELETE_PATH
+ * FIMDB_STMT_GET_DATA_ROW
+ * FIMDB_STMT_SET_SCANNED
+ * FIMDB_STMT_GET_INODE_ID
+ * FIMDB_STMT_GET_INODE
+ * FIMDB_STMT_GET_PATH_FROM_PATTERN */
+void fim_db_bind_path(fdb_t *fim_sql, int index, const char *path) {
+    assert(index == FIMDB_STMT_SET_SCANNED || index == FIMDB_STMT_GET_INODE_ID || index == FIMDB_STMT_GET_INODE ||
+           index == FIMDB_STMT_GET_PATH_FROM_PATTERN || index == FIMDB_STMT_GET_PATH ||
+           index == FIMDB_STMT_GET_PATH_COUNT || index == FIMDB_STMT_DELETE_PATH || index == FIMDB_STMT_GET_DATA_ROW ||
+           index == FIMDB_STMT_PATH_IS_SCANNED);
+    sqlite3_bind_text(fim_sql->stmt[index], 1, path, -1, NULL);
 }
 
-/* FIMDB_STMT_GET_PATHS_INODE, FIMDB_STMT_GET_PATHS_INODE_COUNT, FIMDB_STMT_GET_DATA_ROW */
+/* FIMDB_STMT_GET_PATHS_INODE, FIMDB_STMT_GET_DATA_ROW */
 void fim_db_bind_get_inode(fdb_t *fim_sql, int index, unsigned long int inode, unsigned long int dev) {
-    if (index == FIMDB_STMT_GET_PATHS_INODE || index == FIMDB_STMT_GET_PATHS_INODE_COUNT
-        || index == FIMDB_STMT_GET_DATA_ROW) {
+    if (index == FIMDB_STMT_GET_PATHS_INODE || index == FIMDB_STMT_GET_DATA_ROW ||
+        index == FIMDB_STMT_DATA_ROW_EXISTS) {
         sqlite3_bind_int64(fim_sql->stmt[index], 1, inode);
         sqlite3_bind_int(fim_sql->stmt[index], 2, dev);
     }
 }
 
 /* FIMDB_STMT_UPDATE_file_data */
-void fim_db_bind_update_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id) {
+void fim_db_bind_update_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 1, entry->size);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 2, entry->perm, -1, NULL);
     sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_UPDATE_DATA], 3, entry->attributes, -1, NULL);
@@ -273,25 +266,6 @@ void fim_db_bind_delete_data_id(fdb_t *fim_sql, int row) {
     sqlite3_bind_int(fim_sql->stmt[FIMDB_STMT_DELETE_DATA], 1, row);
 }
 
-/* FIMDB_STMT_SET_SCANNED */
-void fim_db_bind_set_scanned(fdb_t *fim_sql, const char *file_path) {
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_SET_SCANNED], 1, file_path, -1, NULL);
-}
-
-/* FIMDB_STMT_GET_INODE_ID */
-void fim_db_bind_get_inode_id(fdb_t *fim_sql, const char *file_path) {
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_GET_INODE_ID], 1, file_path, -1, NULL);
-}
-
-/* FIMDB_STMT_GET_INODE */
-void fim_db_bind_get_path_inode(fdb_t *fim_sql, const char *file_path) {
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_GET_INODE], 1, file_path, -1, NULL);
-}
-
-/* FIMDB_STMT_GET_PATH_FROM_PATTERN */
-void fim_db_bind_get_path_from_pattern(fdb_t *fim_sql, const char *pattern) {
-    sqlite3_bind_text(fim_sql->stmt[FIMDB_STMT_GET_PATH_FROM_PATTERN], 1, pattern, -1, NULL);
-}
 
 fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
     fim_entry *entry = NULL;
@@ -308,38 +282,61 @@ fim_entry *fim_db_get_path(fdb_t *fim_sql, const char *file_path) {
 }
 
 char **fim_db_get_paths_from_inode(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev) {
+    int i = 0;
     char **paths = NULL;
 
     // Clean statements
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATHS_INODE);
-    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATHS_INODE_COUNT);
+    fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_PATHS_INODE, inode, dev);
 
-    fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_PATHS_INODE_COUNT, inode, dev);
+    os_calloc(2, sizeof(char *), paths);
 
-    if(sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE_COUNT]) == SQLITE_ROW) {
-        int result = 0;
-        int i = 0;
-        int rows = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE_COUNT], 0);
+    for (i = 0; sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]) == SQLITE_ROW; i++) {
+        char *p;
+        os_realloc(paths, (i + 2) * sizeof(char *), paths);
 
-        os_calloc(rows + 1, sizeof(char *), paths);
-        fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_PATHS_INODE, inode, dev);
-
-        while (result = sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]), result == SQLITE_ROW) {
-            if (i >= rows) {
-                minfo("The count returned is smaller than the actual elements. This shouldn't happen.");
-                break;
-            }
-            os_strdup((char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), paths[i]);
-            i++;
-        }
+        p = (char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0);
+        sqlite_strdup(p, paths[i]);
     }
+
+    paths[i] = NULL;
 
     fim_db_check_transaction(fim_sql);
 
     return paths;
 }
 
-int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id) {
+int fim_db_append_paths_from_inode(fdb_t *fim_sql,
+                                   unsigned long int inode,
+                                   unsigned long int dev,
+                                   OSList *list,
+                                   rb_tree *tree) {
+    int i = 0;
+    int appended = 0;
+
+    assert(list != NULL);
+    assert(tree != NULL);
+
+    // Clean statements
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATHS_INODE);
+    fim_db_bind_get_inode(fim_sql, FIMDB_STMT_GET_PATHS_INODE, inode, dev);
+
+    for (i = 0; sqlite3_step(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE]) == SQLITE_ROW; i++) {
+        rb_node *leaf =
+        rbtree_insert(tree, (char *)sqlite3_column_text(fim_sql->stmt[FIMDB_STMT_GET_PATHS_INODE], 0), NULL);
+
+        if (leaf) {
+            OSList_AddData(list, leaf->key);
+            appended++;
+        }
+    }
+
+    fim_db_check_transaction(fim_sql);
+
+    return appended;
+}
+
+int fim_db_insert_data(fdb_t *fim_sql, const fim_file_data *entry, int *row_id) {
     int res;
 
     if(*row_id == 0) {
@@ -367,7 +364,7 @@ int fim_db_insert_data(fdb_t *fim_sql, fim_file_data *entry, int *row_id) {
     return FIMDB_OK;
 }
 
-int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *entry, int inode_id) {
+int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, const fim_file_data *entry, int inode_id) {
     int res;
 
     fim_db_clean_stmt(fim_sql, FIMDB_STMT_REPLACE_PATH);
@@ -381,7 +378,7 @@ int fim_db_insert_path(fdb_t *fim_sql, const char *file_path, fim_file_data *ent
     return FIMDB_OK;
 }
 
-int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim_file_data *saved) {
+int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *new, const fim_file_data *saved) {
     int inode_id;
     int res, res_data, res_path;
     int nodes_count;
@@ -404,7 +401,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, fim_file_data *new, fim
     }
     // Modified event
 #ifndef WIN32
-    else if (new->inode != saved->inode) {
+    else if (new->inode != saved->inode || new->dev != saved->dev) {
         fim_db_clean_stmt(fim_sql, FIMDB_STMT_GET_PATH_COUNT);
         fim_db_bind_path(fim_sql, FIMDB_STMT_GET_PATH_COUNT, file_path);
 
@@ -505,7 +502,7 @@ void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   void *fim_ev_mode,
                                   void *configuration) {
     int *original_configuration = (int *)configuration;
-    int validated_configuration = fim_configuration_directory(entry->file_entry.path, "file");
+    int validated_configuration = fim_configuration_directory(entry->file_entry.path);
 
     if (validated_configuration == *original_configuration) {
         fim_delete_file_event(fim_sql, entry, mutex, alert, fim_ev_mode, NULL);
@@ -568,4 +565,31 @@ int fim_db_get_path_from_pattern(fdb_t *fim_sql, const char *pattern, fim_tmp_fi
     }
 
     return ret;
+}
+
+int fim_db_data_exists(fdb_t *fim_sql, unsigned long int inode, unsigned long int dev) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_DATA_ROW_EXISTS);
+    fim_db_bind_get_inode(fim_sql, FIMDB_STMT_DATA_ROW_EXISTS, inode, dev);
+
+    if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DATA_ROW_EXISTS]) != SQLITE_ROW) {
+        return FIMDB_ERR;
+    }
+    return sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_DATA_ROW_EXISTS], 0);
+}
+
+int fim_db_file_is_scanned(fdb_t *fim_sql, const char *path) {
+    fim_db_clean_stmt(fim_sql, FIMDB_STMT_PATH_IS_SCANNED);
+    fim_db_bind_path(fim_sql, FIMDB_STMT_PATH_IS_SCANNED, path);
+
+    switch (sqlite3_step(fim_sql->stmt[FIMDB_STMT_PATH_IS_SCANNED])) {
+    case SQLITE_ROW:
+        return sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_PATH_IS_SCANNED], 0);
+    case SQLITE_DONE:
+        return 0;
+    case SQLITE_ERROR:
+        mdebug2(FIM_DB_FAIL_TO_GET_SCANNED_FILE, path, sqlite3_errmsg(fim_sql->db));
+        // Fallthrough
+    default:
+        return FIMDB_ERR;
+    }
 }

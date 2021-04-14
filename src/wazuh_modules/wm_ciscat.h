@@ -16,9 +16,9 @@
 #define MAX_RESULT          64              // Maximum result length
 
 #define WM_CISCAT_LOGTAG ARGV0 ":ciscat"
-#define WM_CISCAT_DEFAULT_DIR WM_DEFAULT_DIR "/ciscat"
+#define WM_CISCAT_DEFAULT_DIR     "wodles/ciscat"
 #define WM_CISCAT_DEFAULT_DIR_WIN "wodles\\ciscat"
-#define WM_CISCAT_REPORTS DEFAULTDIR "/tmp"
+#define WM_CISCAT_REPORTS "tmp"
 
 #define WM_CISCAT_PROFILE       "<Profile id="
 #define WM_CISCAT_PROFILE2      "<xccdf:Profile id="

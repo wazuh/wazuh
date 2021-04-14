@@ -424,6 +424,23 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: UPDATE USER'S ALLOW_RUN_AS FLAG
+
+stages:
+
+  - name: Update one specified user's allow_run_as flag (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/security/users/104/run_as"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+      params:
+        allow_run_as: false
+    response:
+      <<: *permission_denied
+
+---
 test_name: UPDATE ROLES RBAC
 
 stages:
@@ -709,7 +726,6 @@ stages:
       json:
         username: newUser
         password: stringA1!
-        allow_run_as: true
     response:
       status_code: 200
       json:
@@ -718,7 +734,7 @@ stages:
           affected_items:
             - id: 106
               username: newUser
-              allow_run_as: true
+              allow_run_as: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -993,7 +1009,7 @@ stages:
               roles: []
             - id: 106
               username: newUser
-              allow_run_as: true
+              allow_run_as: false
               roles: []
           total_affected_items: 4
           total_failed_items: 0

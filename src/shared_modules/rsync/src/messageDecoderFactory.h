@@ -22,7 +22,7 @@ namespace RSync
     {
         SYNC_RANGE_JSON,
     };
-    
+
     class FactoryDecoder final
     {
     public:

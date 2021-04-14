@@ -24,12 +24,19 @@
 
 // JSON decoder flags
 // null treatment
-#define DISCARD     0
-#define EMPTY       1
-#define SHOW_STRING 2
+#define JSON_TREAT_NULL_AS_DISCARD     (0x1 << 0)
+#define JSON_TREAT_NULL_AS_STRING      (0x1 << 1)
 // array treatment
-#define CSV_STRING  4
-#define JSON_ARRAY  8
+#define JSON_TREAT_ARRAY_AS_CSV_STRING (0x1 << 2)
+#define JSON_TREAT_ARRAY_AS_ARRAY      (0x1 << 3)
+
+#define JSON_TREAT_NULL_MASK           (JSON_TREAT_NULL_AS_DISCARD | JSON_TREAT_NULL_AS_STRING)
+#define JSON_TREAT_ARRAY_MASK          (JSON_TREAT_ARRAY_AS_CSV_STRING | JSON_TREAT_ARRAY_AS_ARRAY)
+// Default values
+#define JSON_TREAT_ARRAY_DEFAULT       JSON_TREAT_ARRAY_AS_ARRAY
+#define JSON_TREAT_NULL_DEFAULT        JSON_TREAT_NULL_AS_STRING
+
+
 
 struct _Eventinfo;
 

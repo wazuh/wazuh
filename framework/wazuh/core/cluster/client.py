@@ -11,7 +11,7 @@ from typing import Tuple, Dict, List
 import uvloop
 
 from wazuh.core.cluster import common
-from wazuh.core.cluster.utils import context_tag, context_subtag
+from wazuh.core.cluster.utils import context_tag
 
 
 class AbstractClientManager:
@@ -57,7 +57,6 @@ class AbstractClientManager:
         self.tag = tag
         # Modify filter tags with context vars.
         context_tag.set(self.tag)
-        context_subtag.set("Main")
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None
@@ -123,7 +122,7 @@ class AbstractClientManager:
             finally:
                 transport.close()
 
-            self.logger.info("The connection has ben closed. Reconnecting in 10 seconds.")
+            self.logger.info("The connection has been closed. Reconnecting in 10 seconds.")
             await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
 
 
@@ -214,7 +213,7 @@ class AbstractClient(common.Handler):
 
     def _cancel_all_tasks(self):
         """Iterate asyncio tasks and cancel each of them."""
-        for task in asyncio.Task.all_tasks():
+        for task in asyncio.all_tasks():
             task.cancel()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:

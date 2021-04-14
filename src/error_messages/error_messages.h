@@ -21,7 +21,7 @@
 #define NULL_ERROR    "(1105): Attempted to use null string."
 #define FORMAT_ERROR  "(1106): String not correctly formatted."
 #define MKDIR_ERROR   "(1107): Could not create directory '%s' due to [(%d)-(%s)]."
-//#define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."
+#define HOME_ERROR    "(1108): Unable to find Wazuh install directory. Export it to WAZUH_HOME environment variable."
 #define THREAD_ERROR  "(1109): Unable to create new pthread."
 #define FWRITE_ERROR  "(1110): Could not write file '%s' due to [(%d)-(%s)]."
 #define WAITPID_ERROR "(1111): Error during waitpid()-call due to [(%d)-(%s)]."
@@ -142,6 +142,8 @@
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
 #define NO_CLIENT_KEYS  "(1751): File client.keys not found or empty."
+
+#define REMOTED_NET_PROTOCOL_NOT_SET  "(1752): Network protocol is not set."
 
 /* 1760 - 1769 -- reserved for maild */
 
@@ -284,10 +286,11 @@
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
 /* Syslog output */
-#define XML_INV_CSYSLOG "(5301): Invalid client-syslog configuration."
+#define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."
+#define ERROR_SENDING_MSG  "(5302): Error sending message to '%s'."
 
 /* Integrator daemon */
-#define XML_INV_INTEGRATOR "(5302): Invalid integratord configuration."
+#define XML_INV_INTEGRATOR "(5310): Invalid integratord configuration."
 
 /* Agentless */
 #define XML_INV_AGENTLESS   "(7101): Invalid agentless configuration."
@@ -402,6 +405,7 @@
 #define VU_VER_INVALID_FORMAT       "(5588): Invalid format of Wazuh version for agent '%.3d'"
 #define VU_VER_READING_ERROR        "(5589): Couldn't read Wazuh version for agent '%.3d'"
 #define VU_OVAL_VULN_NOT_FOUND      "(5590): No vulnerabilities could be found in the OVAL for agent '%.3d'"
+#define VU_PKG_INVALID_VER          "(5591): Invalid version for package '%s' of the inventory: '%s'"
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
@@ -618,9 +622,9 @@
                         " access list (allowed-ips). Syslog server disabled."
 #define CONN_TO     "Connected to '%s' (%s queue)"
 #define MAIL_DIS    "E-Mail notification disabled. Clean Exit."
+#define WAZUH_HOMEDIR "Wazuh home directory: %s"
 
 /* Debug Messages */
-#define STARTED_MSG "Starting ..."
 #define FOUND_USER  "Found user/group ..."
 #define ASINIT      "Active response initialized ..."
 #define READ_CONFIG "Read configuration ..."
@@ -643,6 +647,7 @@
 /* WAZUH alert messages */
 #define OS_AD_STARTED   "wazuh: Wazuh started."
 #define OS_AG_STARTED   "wazuh: Agent started: '%s->%s'."
+#define OS_AG_STOPPED   "wazuh: Agent stopped: '%s->%s'."
 #define OS_AG_DISCON    "wazuh: Agent disconnected: '%s'."
 #define OS_AG_REMOVED   "wazuh: Agent removed: '%s'."
 

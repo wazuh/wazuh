@@ -1,7 +1,9 @@
 import os
 import socket
+import sys
+sys.path.append('/tools')
 
-from base_healthcheck import get_manager_health_base
+from healthcheck_utils import get_manager_health_base
 
 if __name__ == "__main__":
     # Workers are not needed in this test, so the exit code is set to 0 (healthy).

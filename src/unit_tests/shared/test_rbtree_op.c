@@ -50,12 +50,13 @@ void test_rbtree_insert_success(void **state)
     (void) state;
     rb_tree *tree = *state;
     char *value = strdup("testing");
-    char *ret;
+    rb_node *ret;
 
     ret = rbtree_insert(tree, "test", value);
 
     assert_non_null(tree->root);
-    assert_ptr_equal(ret, value);
+    assert_non_null(ret);
+    assert_ptr_equal(ret->value, value);
     assert_string_equal(tree->root->key, "test");
     assert_ptr_equal(tree->root->value, value);
 }
@@ -65,12 +66,11 @@ void test_rbtree_insert_failure(void **state)
     (void) state;
     rb_tree *tree = *state;
     char *value = strdup("testing");
-    char *ret;
+    rb_node *ret;
 
     rbtree_insert(tree, "test", value);
     ret = rbtree_insert(tree, "test", value);
 
-    assert_string_equal(value, "testing");
     assert_null(ret);
 }
 
@@ -100,12 +100,12 @@ void test_rbtree_insert_null_value(void **state)
     (void) state;
     rb_tree *tree = *state;
     char *value = NULL;
-    char *ret;
+    rb_node *ret;
 
     ret = rbtree_insert(tree, "test", NULL);
 
+    assert_non_null(ret);
     assert_non_null(tree->root);
-    assert_ptr_equal(ret, value);
     assert_string_equal(tree->root->key, "test");
     assert_ptr_equal(tree->root->value, value);
 }

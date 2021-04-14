@@ -21,7 +21,7 @@ namespace RSync
         int32_t id;
     };
 
-    class IMessageDecoder 
+    class IMessageDecoder
     {
     public:
         // LCOV_EXCL_START

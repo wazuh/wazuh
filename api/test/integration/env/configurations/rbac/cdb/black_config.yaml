@@ -1,9 +1,14 @@
 ---
 - actions:
   - lists:read
-  - lists:update
   - lists:delete
   resources:
   - list:file:aws-eventnames
   - list:file:audit-keys
+  effect: deny
+
+- actions:
+  - lists:update
+  resources:
+  - "*:*:*"
   effect: deny

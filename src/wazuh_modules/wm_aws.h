@@ -16,8 +16,7 @@
 
 #define WM_AWS_LOGTAG ARGV0 ":aws-s3"
 #define WM_AWS_DEFAULT_INTERVAL 5
-#define WM_AWS_DEFAULT_DIR WM_DEFAULT_DIR "/aws"
-#define WM_AWS_SCRIPT_PATH WM_AWS_DEFAULT_DIR "/aws-s3"
+#define WM_AWS_SCRIPT_PATH "wodles/aws/aws-s3"
 
 typedef struct wm_aws_state_t {
     time_t next_time;               // Absolute time for next scan

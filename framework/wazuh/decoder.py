@@ -157,7 +157,7 @@ def get_decoder_file(filename: str, raw: bool = False) -> Union[str, AffectedIte
     if len(decoders) > 0:
         decoder_path = decoders[0]['relative_dirname']
         try:
-            full_path = join(common.ossec_path, decoder_path, filename)
+            full_path = join(common.wazuh_path, decoder_path, filename)
             with open(full_path) as f:
                 file_content = f.read()
             if raw:

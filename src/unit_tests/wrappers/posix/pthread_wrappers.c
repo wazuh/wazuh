@@ -25,6 +25,21 @@ int __wrap_pthread_mutex_unlock(__attribute__((unused)) pthread_mutex_t *x) {
     return 0;
 }
 
+int __wrap_pthread_rwlock_rdlock(__attribute__((unused)) pthread_rwlock_t *rwlock) {
+    function_called();
+    return 0;
+}
+
+int __wrap_pthread_rwlock_wrlock(__attribute__((unused)) pthread_rwlock_t *rwlock) {
+    function_called();
+    return 0;
+}
+
+int __wrap_pthread_rwlock_unlock(__attribute__((unused)) pthread_rwlock_t *rwlock) {
+    function_called();
+    return 0;
+}
+
 int __wrap_pthread_exit() {
     return mock();
 }
@@ -32,7 +47,7 @@ int __wrap_pthread_exit() {
 int __wrap_pthread_cond_wait(pthread_cond_t *cond,pthread_mutex_t *mutex) {
     check_expected_ptr(cond);
     check_expected_ptr(mutex);
-    // callback function to avoid infinite loops when testing 
+    // callback function to avoid infinite loops when testing
     if (pthread_callback_ptr)
         pthread_callback_ptr();
     return 0;

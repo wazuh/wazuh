@@ -39,7 +39,7 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 
 # Set paths
 log_file = '{0}/logs/integrations.log'.format(pwd)
-socket_addr = '{0}/queue/ossec/queue'.format(pwd)
+socket_addr = '{0}/queue/sockets/queue'.format(pwd)
 
 def main(args):
     debug("# Starting")

@@ -52,7 +52,11 @@ void OSRegex_free_regex_matching (regex_matching *reg) {
         os_free(reg->sub_strings);
     }
 
-    if (reg->prts_str) os_free(reg->prts_str[0]);
-    os_free(reg->prts_str);
+     if (reg->prts_str) {
+        for (unsigned int i = 0; reg->d_size.prts_str_size[i] && reg->prts_str[i]; i++) {
+            os_free(reg->prts_str[i]);
+        }
+        os_free(reg->prts_str);
+    }
     os_free(reg->d_size.prts_str_size);
 }

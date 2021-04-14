@@ -102,9 +102,16 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
  */
 int OS_SetSendTimeout(int socket, int seconds);
 
-/* Send secure TCP message
+/**
+ * @brief Send secure TCP message
+ *
  * This function prepends a header containing message size as 4-byte little-endian unsigned integer.
- * Return 0 on success or OS_SOCKTERR on error.
+ *
+ * @param sock Socket file descriptor.
+ * @param size Message length, in bytes.
+ * @param msg Pointer to the message content.
+ * @retval 0 on success.
+ * @retval OS_SOCKTERR on error.
  */
 int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
@@ -115,7 +122,7 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 int OS_RecvSecureTCP(int sock, char * ret,uint32_t size);
 
 /**
- * @brief Send secure TCP Cluster message 
+ * @brief Send secure TCP Cluster message
  * @param sock Socket to write on
  * @param command Command to send
  * @param payload Payload of the command to send
@@ -151,5 +158,19 @@ ssize_t os_recv_waitall(int sock, void * buf, size_t size);
 
 // Wrapper for select()
 int wnet_select(int sock, int timeout);
+
+/**
+ * @brief Resolve a given hostname, getting the associated ip
+ * @param hostname Hostname to be resolved, if successfull, it will be modified with the format: 'hostname/x.x.x.x'
+ * @param attempts Number of attempts of the call to the function gethostbyname
+ * */
+void resolve_hostname(char **hostname, int attempts);
+
+/**
+ * @brief Extract the ip address from the result of the resolve_hostname function.
+ * @param resolved_hostname String with the format: 'hostname/x.x.x.x'
+ * @return String with the ip addres
+ * */
+const char *get_ip_from_resolved_hostname(const char *resolved_hostname);
 
 #endif /* OS_NET_H */

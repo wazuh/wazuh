@@ -87,7 +87,7 @@
     <field name="win.system.eventID">^6005$</field>
     <description>The Event log service was started</description>
     <mitre>
-      <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+      <id>T1050</id>
     </mitre>
     <options>no_full_log</options>
     <group>windows_log_service_started,gpg13_10.1,</group>

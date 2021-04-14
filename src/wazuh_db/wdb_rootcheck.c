@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "helpers/wdb_global_helpers.h"
 
 static const char *SQL_DELETE_PM = "DELETE FROM pm_event;";
 
@@ -75,6 +76,11 @@ int wdb_delete_pm(int id) {
 
     if (!name)
         return -1;
+
+    if (*name == '\0') {
+        free(name);
+        return -1;
+    }
 
     db = wdb_open_agent(id, name);
     free(name);

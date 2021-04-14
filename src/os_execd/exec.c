@@ -44,37 +44,6 @@ STATIC OSList *timeout_list;
 STATIC OSListNode *timeout_node;
 STATIC OSHash *repeated_hash;
 
-#endif
-
-/* Free the timeout entry
- * Must be called after popping it from the timeout list
- */
-void FreeTimeoutEntry(timeout_data *timeout_entry) {
-    char **tmp_str;
-
-    if (!timeout_entry) {
-        return;
-    }
-
-    tmp_str = timeout_entry->command;
-
-    /* Clear the command arguments */
-    if (tmp_str) {
-        while (*tmp_str) {
-            os_free(*tmp_str);
-            *tmp_str = NULL;
-            tmp_str++;
-        }
-        os_free(timeout_entry->command);
-    }
-
-    os_free(timeout_entry->parameters);
-
-    os_free(timeout_entry);
-}
-
-#ifndef WIN32
-
 /* Shut down execd properly */
 void execd_shutdown(int sig) {
     /* Remove pending active responses */
@@ -167,7 +136,7 @@ void ExecdStart(int q) {
             int wp;
             wp = waitpid((pid_t) - 1, NULL, WNOHANG);
             if (wp < 0 && errno != ECHILD) {
-                merror(WAITPID_ERROR, errno, strerror(errno));
+                mterror(WM_EXECD_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
                 break;
             }
             /* if = 0, we still need to wait for the child process */
@@ -204,7 +173,7 @@ void ExecdStart(int q) {
                     fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
                     wpclose(wfd);
                 } else {
-                    merror(EXEC_CMD_FAIL, strerror(errno), errno);
+                    mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
                 }
 
                 /* Delete current node - already sets the pointer to next */
@@ -236,13 +205,13 @@ void ExecdStart(int q) {
 
         /* Check for error */
         if (!FD_ISSET(q, &fdset)) {
-            merror(SELECT_ERROR, errno, strerror(errno));
+            mterror(WM_EXECD_LOGTAG, SELECT_ERROR, errno, strerror(errno));
             continue;
         }
 
         /* Receive the message */
         if (OS_RecvUnix(q, OS_MAXSTR, buffer) == 0) {
-            merror(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+            mterror(WM_EXECD_LOGTAG, QUEUE_ERROR, EXECQUEUE, strerror(errno));
             continue;
         }
 
@@ -253,7 +222,7 @@ void ExecdStart(int q) {
 
         /* Parse message */
         if (json_root = cJSON_Parse(buffer), !json_root) {
-            merror(EXEC_INV_JSON, buffer);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_JSON, buffer);
             continue;
         }
 
@@ -262,7 +231,7 @@ void ExecdStart(int q) {
         if (json_command && (json_command->type == cJSON_String)) {
             name = json_command->valuestring;
         } else {
-            merror(EXEC_INV_CMD, buffer);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_CMD, buffer);
             cJSON_Delete(json_root);
             continue;
         }
@@ -295,8 +264,8 @@ void ExecdStart(int q) {
             int rc;
             /* Start api socket */
             int api_sock;
-            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE, 1)) < 0) {
-                merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+            if ((api_sock = StartMQ(EXECQUEUEA, WRITE, 1)) < 0) {
+                mterror(WM_EXECD_LOGTAG, QUEUE_ERROR, EXECQUEUEA, strerror(errno));
                 os_free(output);
                 continue;
             }
@@ -304,7 +273,7 @@ void ExecdStart(int q) {
             if ((rc = OS_SendUnix(api_sock, output, 0)) < 0) {
                 /* Error on the socket */
                 if (rc == OS_SOCKTERR) {
-                    merror("socketerr (not available).");
+                    mterror(WM_EXECD_LOGTAG, "socketerr (not available).");
                     os_free(output);
                     close(api_sock);
                     continue;
@@ -324,7 +293,7 @@ void ExecdStart(int q) {
 
             if(cmd_api[0] == NULL) {
                 char script_path[PATH_MAX] = {0};
-                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "active-response/bin/restart.sh");
+                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTAR, "active-response/bin/restart.sh");
                 os_strdup(script_path, cmd_api[0]);
             }
 
@@ -346,7 +315,7 @@ void ExecdStart(int q) {
             ReadExecConfig();
             cmd[0] = GetCommandbyName(name, &timeout_value);
             if (!cmd[0]) {
-                merror(EXEC_INV_NAME, name);
+                mterror(WM_EXECD_LOGTAG, EXEC_INV_NAME, name);
                 cJSON_Delete(json_root);
                 continue;
             }
@@ -398,7 +367,7 @@ void ExecdStart(int q) {
                                 snprintf(ntimes, 16, "%d", ntimes_int);
                                 if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
                                     free(ntimes);
-                                    merror("At ExecdStart: OSHash_Update() failed");
+                                    mterror(WM_EXECD_LOGTAG, "At ExecdStart: OSHash_Update() failed");
                                 }
                             }
                             mtdebug1(WM_EXECD_LOGTAG, "Repeated offender. Setting timeout to '%ds'", new_timeout);
@@ -431,7 +400,7 @@ void ExecdStart(int q) {
                 fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
                 wpclose(wfd);
             } else {
-                merror(EXEC_CMD_FAIL, strerror(errno), errno);
+                mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
                 os_free(cmd_parameters);
                 cJSON_Delete(json_root);
                 continue;
@@ -464,7 +433,7 @@ void ExecdStart(int q) {
                             snprintf(ntimes, 16, "%d", ntimes_int);
                             if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
                                 free(ntimes);
-                                merror("At ExecdStart: OSHash_Update() failed");
+                                mterror(WM_EXECD_LOGTAG, "At ExecdStart: OSHash_Update() failed");
                             }
                         }
                         timeout_value = new_timeout;
@@ -497,7 +466,7 @@ void ExecdStart(int q) {
                 );
 
                 if (!OSList_AddData(timeout_list, timeout_entry)) {
-                    merror(LIST_ADD_ERROR);
+                    mterror(WM_EXECD_LOGTAG, LIST_ADD_ERROR);
                     FreeTimeoutEntry(timeout_entry);
                 }
             }
@@ -539,7 +508,7 @@ STATIC int CheckManagerConfiguration(char ** output) {
 
     for (i = 0; daemons[i]; i++) {
         output_msg = NULL;
-        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
+        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTAR, daemons[i], "-t");
 
         if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
             if (result_code == EXECVE_ERROR) {
@@ -579,14 +548,59 @@ error:
     return ret_val;
 }
 
+/* Execute command given. Must be a argv** NULL terminated.
+ * Prints error to log message in case of problems
+ */
+void ExecCmd(char *const *cmd)
+{
+    pid_t pid;
+
+    /* Fork and leave it running */
+    pid = fork();
+    if (pid == 0) {
+        if (execv(*cmd, cmd) < 0) {
+            mterror(WM_EXECD_LOGTAG, EXEC_CMDERROR, *cmd, strerror(errno));
+            exit(1);
+        }
+
+        exit(0);
+    }
+}
+
 #endif /* !WIN32 */
+
+/* Free the timeout entry
+ * Must be called after popping it from the timeout list
+ */
+void FreeTimeoutEntry(timeout_data *timeout_entry) {
+    char **tmp_str;
+
+    if (!timeout_entry) {
+        return;
+    }
+
+    tmp_str = timeout_entry->command;
+
+    /* Clear the command arguments */
+    if (tmp_str) {
+        while (*tmp_str) {
+            os_free(*tmp_str);
+            *tmp_str = NULL;
+            tmp_str++;
+        }
+        os_free(timeout_entry->command);
+    }
+
+    os_free(timeout_entry->parameters);
+
+    os_free(timeout_entry);
+}
 
 /* Read the shared exec config
  * Returns 1 on success or 0 on failure
  * Format of the file is 'name - command - timeout'
  */
-int ReadExecConfig()
-{
+int ReadExecConfig() {
     int i = 0, j = 0, dup_entry = 0;
     FILE *fp;
     FILE *process_file;
@@ -601,9 +615,9 @@ int ReadExecConfig()
     exec_size = 0;
 
     /* Open file */
-    fp = fopen(DEFAULTARPATH, "r");
+    fp = fopen(DEFAULTAR, "r");
     if (!fp) {
-        mterror(WM_EXECD_LOGTAG, FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
+        mterror(WM_EXECD_LOGTAG, FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (0);
     }
 
@@ -617,14 +631,12 @@ int ReadExecConfig()
         // The command name must not start with '!'
 
         if (buffer[0] == '!') {
-            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTARPATH);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
-
-        /* Clean up the buffer */
         tmp_str = strstr(buffer, " - ");
         if (!tmp_str) {
-            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTARPATH);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
         *tmp_str = '\0';
@@ -639,7 +651,7 @@ int ReadExecConfig()
         /* Search for ' ' and - */
         tmp_str = strstr(tmp_str, " - ");
         if (!tmp_str) {
-            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTARPATH);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
         *tmp_str = '\0';
@@ -653,9 +665,9 @@ int ReadExecConfig()
         } else {
             /* Write the full command path */
             snprintf(exec_cmd[exec_size], OS_FLSIZE,
-                     "%s/%s",
-                     AR_BINDIRPATH,
-                     str_pt);
+                    "%s/%s",
+                    AR_BINDIR,
+                    str_pt);
             process_file = fopen(exec_cmd[exec_size], "r");
             if (!process_file) {
                 if (f_time_reading) {
@@ -714,8 +726,7 @@ int ReadExecConfig()
  * If timeout is not NULL, write the timeout for that
  * command to it
  */
-char *GetCommandbyName(const char *name, int *timeout)
-{
+char *GetCommandbyName(const char *name, int *timeout) {
     int i = 0;
 
     // Filter custom commands
@@ -723,7 +734,7 @@ char *GetCommandbyName(const char *name, int *timeout)
     if (name[0] == '!') {
         static char command[OS_FLSIZE];
 
-        if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIRPATH, name + 1) >= (int)sizeof(command)) {
+        if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, name + 1) >= (int)sizeof(command)) {
             mtwarn(WM_EXECD_LOGTAG, "Cannot execute command '%32s...': path too long.", name + 1);
             return NULL;
         }
@@ -742,33 +753,9 @@ char *GetCommandbyName(const char *name, int *timeout)
     return (NULL);
 }
 
-#ifndef WIN32
+#ifdef WIN32
 
-/* Execute command given. Must be a argv** NULL terminated.
- * Prints error to log message in case of problems
- */
-void ExecCmd(char *const *cmd)
-{
-    pid_t pid;
-
-    /* Fork and leave it running */
-    pid = fork();
-    if (pid == 0) {
-        if (execv(*cmd, cmd) < 0) {
-            mterror(WM_EXECD_LOGTAG, EXEC_CMDERROR, *cmd, strerror(errno));
-            exit(1);
-        }
-
-        exit(0);
-    }
-
-    return;
-}
-
-#else
-
-void ExecCmd_Win32(char *cmd)
-{
+void ExecCmd_Win32(char *cmd) {
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
 
@@ -791,4 +778,5 @@ void ExecCmd_Win32(char *cmd)
 
     return;
 }
+
 #endif

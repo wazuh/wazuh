@@ -129,6 +129,19 @@ WazuhUpgrade()
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
 
+    # Remove existing socket folder
+
+    rm -rf $DIRECTORY/queue/ossec
+
+	# Move rotated logs to new folder and remove the existing one
+	
+	if [ -d $DIRECTORY/logs/ossec ]; then
+		if [ "$(ls -A $DIRECTORY/logs/ossec)" ]; then
+			mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
+		fi
+		rm -rf $DIRECTORY/logs/ossec
+	fi
+
     # Remove deprecated Wazuh tools
 
     rm -f $DIRECTORY/bin/ossec-control

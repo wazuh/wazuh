@@ -531,10 +531,7 @@ void fim_registry_process_value_delete_event(fdb_t *fim_sql,
         cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
 
         if (json_event) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
-
+            send_syscheck_msg(json_event);
             cJSON_Delete(json_event);
         }
     }
@@ -578,10 +575,7 @@ void fim_registry_process_key_delete_event(fdb_t *fim_sql,
         cJSON *json_event = fim_registry_event(data, NULL, configuration, event_mode, FIM_DELETE, NULL, NULL);
 
         if (json_event) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
-
+            send_syscheck_msg(json_event);
             cJSON_Delete(json_event);
         }
     }
@@ -704,9 +698,7 @@ void fim_registry_process_value_event(fim_entry *new,
         }
 
         if (_base_line) {
-            char *json_formated = cJSON_PrintUnformatted(json_event);
-            send_syscheck_msg(json_formated);
-            os_free(json_formated);
+            send_syscheck_msg(json_event);
         }
 
         cJSON_Delete(json_event);
@@ -911,9 +903,7 @@ void fim_open_key(HKEY root_key_handle,
             }
 
             if (_base_line) {
-                char *json_formated = cJSON_PrintUnformatted(json_event);
-                send_syscheck_msg(json_formated);
-                os_free(json_formated);
+                send_syscheck_msg(json_event);
             }
 
             cJSON_Delete(json_event);

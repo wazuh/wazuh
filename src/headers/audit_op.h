@@ -24,19 +24,9 @@
  */
 typedef struct {
     char *path; ///< Path of the folder.
-    char *perm; ///< Permission access type.
+    int perm; ///< Permission access type.
     char *key;  ///< Filter key.
 } w_audit_rule;
-
-/**
- * @struct w_audit_rules_list
- * @brief Stores the list of the Audit loaded rules.
- */
-typedef struct {
-    w_audit_rule **list; ///< List of loaded rules.
-    int used;            ///< Number of loaded rules.
-    int size;            ///< Size of the rules list.
-} w_audit_rules_list;
 
 
 typedef enum _audit_mode {
@@ -48,21 +38,37 @@ typedef enum _audit_mode {
 
 
 /**
- * @brief Init loaded rules list.
- *
- * @param initialSize Initial size of the list.
- * @return Pointer to w_audit_rules_list struct.
+ * @brief Allocate the memory for the rule_list and set it's free function.
  */
-w_audit_rules_list* audit_rules_list_init(int initialSize);
+void init_audit_rule_list();
 
 
 /**
  * @brief Adds a rule to loaded rules list.
  *
- * @param wlist Loaded rules list. This list must be initialized.
  * @param element Struct w_audit_rule to be added.
  */
-void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element);
+void audit_rules_list_append(w_audit_rule *element);
+
+
+/**
+ * @brief Checks if the audit rule is loaded.
+ *
+ * @param path Path of the folder.
+ * @param perms Permission access type.
+ * @param key Filter key.
+ * @retval -1 If error.
+ * @retval 0 Rule not loaded.
+ * @retval 1 Rule loaded.
+ */
+int search_audit_rule(const char *path, int perms, const char *key);
+
+
+/**
+ * @brief Deallocates the memory used by a rules list.
+ *
+ */
+void audit_rules_list_free();
 
 
 /**
@@ -72,34 +78,6 @@ void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element);
  * @return -1 on error and 1 on success.
  */
 int audit_get_rule_list(int fd);
-
-
-/**
- * @brief Checks if the audit rule is loaded. audit_get_rule_list() must be called before.
- *
- * @param path Path of the folder.
- * @param perms Permission access type.
- * @param key Filter key.
- * @retval -1 If error.
- * @retval 0 Rule not loaded.
- * @retval 1 Rule loaded.
- */
-int search_audit_rule(const char *path, const char *perms, const char *key);
-
-
-/**
- * @brief Deallocates the memory used by the loaded rules list.
- *
- */
-void audit_free_list(void);
-
-
-/**
- * @brief Deallocates the memory used by a rules list.
- *
- * @param wlist Pointer to the rule list to be deallocated.
- */
-void audit_rules_list_free(w_audit_rules_list *wlist);
 
 
 /**
@@ -142,33 +120,43 @@ int audit_restart(void);
  *
  * @param action Values `#ADD_RULE` or `#DELETE_RULE`
  * @param path Path of the folder.
+ * @param permissions Permission access type.
  * @param key Filter key.
  * @return The return value is <= 0 on error,
  *         otherwise it is the netlink sequence id number.
  */
-int audit_manage_rules(int action, const char *path, const char *key);
+int audit_manage_rules(int action, const char *path, int permissions, const char *key);
 
 
 /**
  * @brief Adds an Audit rule.
  *
  * @param path Path of the folder.
+ * @param perms Permission access type.
  * @param key Filter key.
  * @return The return value is <= 0 on error,
  *         otherwise it is the netlink sequence id number.
  */
-int audit_add_rule(const char *path, const char *key);
+int audit_add_rule(const char *path, int perms, const char *key);
 
 
 /**
  * @brief Deletes an Audit rule.
  *
  * @param path Path of the folder.
+ * @param perms Permission access type.
  * @param key Filter key.
  * @return The return value is <= 0 on error,
  *         otherwise it is the netlink sequence id number.
  */
-int audit_delete_rule(const char *path, const char *key);
+int audit_delete_rule(const char *path, int perms, const char *key);
+
+/**
+ * @brief Function that frees the data memory of a node in the list.
+ *
+ * @param rule Data of a node in a list (OSListNode.data)
+ */
+void clear_audit_rule(w_audit_rule *rule);
 
 #endif /* ENABLE_AUDIT */
 #endif /* AUDIT_OP_H */

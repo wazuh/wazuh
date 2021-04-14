@@ -49,7 +49,7 @@
         <id>^6005$</id>
         <description>The Event log service was started</description>
         <mitre>
-            <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+            <id>T1050</id>
         </mitre>
         <group>windows_log_service_started,gpg13_10.1,</group>
     </rule>

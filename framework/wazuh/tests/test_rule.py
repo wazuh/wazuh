@@ -62,8 +62,8 @@ rule_contents = '''
 
 
 @pytest.fixture(scope='module', autouse=True)
-def mock_ossec_path():
-    with patch('wazuh.core.common.ossec_path', new=parent_directory):
+def mock_wazuh_path():
+    with patch('wazuh.core.common.wazuh_path', new=parent_directory):
         yield
 
 

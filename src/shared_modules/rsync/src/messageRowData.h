@@ -24,7 +24,7 @@ namespace RSync
         ~MessageRowData() = default;
         void send(const ResultCallback /*callback*/, const nlohmann::json& /*config*/, const Type& /*data*/) override
         {
-            throw rsync_error { NOT_SPECIALIZED_FUNCTION };   
+            throw rsync_error { NOT_SPECIALIZED_FUNCTION };
         }
         // LCOV_EXCL_STOP
     };
@@ -40,7 +40,7 @@ namespace RSync
             nlohmann::json outputMessage;
             outputMessage["component"] = config.at("component");
             outputMessage["type"] = "state";
-            
+
             nlohmann::json outputData;
             outputData["index"] = data.at(config.at("index").get_ref<const std::string&>());
             const auto lastEvent{config.find("last_event")};

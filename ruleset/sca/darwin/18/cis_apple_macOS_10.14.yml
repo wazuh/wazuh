@@ -526,7 +526,7 @@ checks:
       - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 365'
 
 # jal 
-# jal not implemented sca limit-> 3.4 Ensure security auditing retention (Automated) 
+# jal not implemented sca limit -> 3.4 Ensure security auditing retention (Automated) 
 
 # jal  
 # 3.5 Control access to audit records (Automated) 

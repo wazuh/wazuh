@@ -244,8 +244,8 @@
     <field name="win.system.eventID">^8023$</field>
     <description>The value for the parameter to the browser service was illegal</description>
     <mitre>
-      <id technique="Exploitation for Client Execution" tactic="Execution" tacticID="TA0002">T1203</id>
-      <id technique="Credentials from Password Stores: Credentials from Web Browsers" tactic="Credential Access" tacticID="TA0006">T1555.003</id>
+      <id>T1203</id>
+      <id>T1503</id>
     </mitre>
     <options>no_full_log</options>
   </rule>
@@ -314,7 +314,7 @@
     <field name="win.system.eventID">^7045$</field>
     <description>New Windows Service Created</description>
     <mitre>
-      <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+      <id>T1050</id>
     </mitre>
     <options>no_full_log</options>
     <options>no_email_alert</options>

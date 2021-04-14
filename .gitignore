@@ -59,6 +59,7 @@ src/wazuh-csyslogd
 src/wazuh-dbd
 src/wazuh-execd
 src/wazuh-logcollector
+src/wazuh-logtest-legacy
 src/wazuh-maild
 src/wazuh-monitord
 src/wazuh-remoted

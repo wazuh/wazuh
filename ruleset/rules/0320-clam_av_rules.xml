@@ -80,7 +80,7 @@
     <match>stop|Stop</match>
     <description>Clamd stopped</description>
     <mitre>
-      <id technique="Impair Defenses: Disable or Modify Tools" tactic="Defense Evasion" tacticID="TA0005">T1562.001</id>
+      <id>T1089</id>
     </mitre>
     <group>virus,pci_dss_5.1,gpg13_4.14,nist_800_53_SI.3,tsc_A1.2,</group>
   </rule>

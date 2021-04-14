@@ -242,7 +242,7 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
     /* Add the agent to the centralized configuration group */
     if(groups) {
         char path[PATH_MAX];
-        if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+        if (snprintf(path, PATH_MAX, GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
             merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
             OS_RemoveAgent(keys.keyentries[index]->id);
             merror("Unable to set agent centralized group: %s (internal error)", groups);
@@ -281,7 +281,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
             break;
         }
 
-        snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
+        snprintf(dir, PATH_MAX + 1, SHAREDCFG_DIR "/%s", group);
         dp = opendir(dir);
         if (!dp) {
             merror("Invalid group: %.255s",group);

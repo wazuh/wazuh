@@ -833,7 +833,7 @@ checks:
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: none
+    condition: all
     rules:
       - 'c:rpm -q mcstrans -> r:package mcstrans is not installed'
 
@@ -1013,7 +1013,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q xinetd-> r:package xinetd is not installed'
+      - 'c:rpm -q xinetd -> r:package xinetd is not installed'
 
 
 ###############################################
@@ -1087,9 +1087,9 @@ checks:
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
-    condition: all
+    condition: none
     rules:
-      - 'c:rpm -q xorg-x11-server* -> r:package xorg-x11 is not installed'
+      - 'c:rpm -qa xorg-x11-server* -> r:^xorg-x11-server'
 
 # 2.2.3 Ensure Avahi Server is not installed (Automated)
   - id: 4557
@@ -1105,8 +1105,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q avahi-autoipd-> r:package avahi-autoipd is not installed'
-      - 'c:rpm -q avahi-> r:pacakge avahi is not installed'
+      - 'c:rpm -q avahi-autoipd -> r:package avahi-autoipd is not installed'
+      - 'c:rpm -q avahi -> r:pacakge avahi is not installed'
 
 # 2.2.4 Ensure CUPS is not installed (Automated)
   - id: 4558
@@ -1122,7 +1122,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q cups-> r:package cups is not installed'
+      - 'c:rpm -q cups -> r:package cups is not installed'
 
 # 2.2.5 Ensure DHCP Server is not installed (Automated)
   - id: 4559
@@ -1140,7 +1140,7 @@ checks:
       - More detailed documentation on DHCP is available at https://www.isc.org/software/dhcp
     condition: all
     rules:
-      - 'c:rpm -q dhcp-> r:package dhcp is not installed'
+      - 'c:rpm -q dhcp -> r:package dhcp is not installed'
 
 # 2.2.6  Ensure LDAP server is not installed (Automated)
   - id: 4560
@@ -1158,7 +1158,7 @@ checks:
       - More detailed documentation on OpenLDAP is available at https://www.openldap.org
     condition: all
     rules:
-      - 'c:rpm -q openldap-servers-> r:package openldap-servers is not installed'
+      - 'c:rpm -q openldap-servers -> r:package openldap-servers is not installed'
 
 
 
@@ -1176,7 +1176,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: any
     rules:
-      - 'c:rpm -q nfs-utils-> r:package nfs-utils is not installed'
+      - 'c:rpm -q nfs-utils -> r:package nfs-utils is not installed'
       - 'c:systemctl is-enabled nfs-server -> r:masked'
 
 # 2.2.8 Ensure rpcbind is not installed or the rpcbind services are masked (Automated)
@@ -1193,7 +1193,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: any
     rules:
-      - 'c:rpm -q rpcbind-> r:package rpcbind is not installed'
+      - 'c:rpm -q rpcbind -> r:package rpcbind is not installed'
       - 'not c:systemctl is-enabled rpcbind rpcbind.socket -> r:enabled'
 
 
@@ -1212,7 +1212,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q bind-> r:package bind is not installed'
+      - 'c:rpm -q bind -> r:package bind is not installed'
 
 # 2.2.10 Ensure FTP Server is not installed (Automated)
   - id: 4564
@@ -1228,7 +1228,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q vsftpd-> r:package vsftpd is not installed'
+      - 'c:rpm -q vsftpd -> r:package vsftpd is not installed'
 
 # 2.2.11 Ensure HTTP server is not installed (Automated)
   - id: 4565
@@ -1244,7 +1244,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q httpd-> r:package httpd is not installed'
+      - 'c:rpm -q httpd -> r:package httpd is not installed'
 
 # 2.2.12 Ensure IMAP and POP3 server is not installed (Automated)
   - id: 4566
@@ -1260,7 +1260,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q dovecot-> r:package dovecot is not installed'
+      - 'c:rpm -q dovecot -> r:package dovecot is not installed'
 
 # 2.2.13 Ensure Samba is not installed (Automated)
   - id: 4567
@@ -1276,7 +1276,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q samba-> r:package samba is not installed'
+      - 'c:rpm -q samba -> r:package samba is not installed'
 
 # 2.2.14 Ensure HTTP Proxy Server is not installed (Automated)
   - id: 4568
@@ -1292,7 +1292,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q squid-> r:package squid is not installed'
+      - 'c:rpm -q squid -> r:package squid is not installed'
 
 # 2.2.15 Ensure net-snmp is not installed (Automated)
   - id: 4569
@@ -1308,7 +1308,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q net-snmp-> r:package net-snmp is not installed'
+      - 'c:rpm -q net-snmp -> r:package net-snmp is not installed'
 
 # 2.2.16 Ensure mail transfer agent is configured for local-only mode (Automated)
   - id: 4570
@@ -1340,8 +1340,8 @@ checks:
       - tsc: ["CC5.2","CC6.4","CC6.6","CC6.7"]
     condition: any
     rules:
-      - 'c:rpm -q rsync-> r:package rsync is not installed'
-      - 'c:systemctl is-enabled rsyncd-> r:masked'
+      - 'c:rpm -q rsync -> r:package rsync is not installed'
+      - 'c:systemctl is-enabled rsyncd -> r:masked'
 
   # 2.2.18 Ensure NIS server is not installed (Automated)
   - id: 4572
@@ -1360,7 +1360,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-    - 'c:rpm -q ypserv-> r:package ypserv is not installed'
+    - 'c:rpm -q ypserv -> r:package ypserv is not installed'
 
 
 # 2.2.19 Ensure telnet-server is not installed (Automated)
@@ -1380,7 +1380,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:rpm -q telnet-server-> r:package telnet-server is not installed'
+      - 'c:rpm -q telnet-server -> r:package telnet-server is not installed'
 
 
 
@@ -1524,8 +1524,8 @@ checks:
     condition: none
     rules:
       - 'f:/boot/grub2/grub.cfg -> r:^\s*\t*linux && !r:ipv6.disable=1'
-      - 'c:sysctl net.ipv6.conf.all.disable_ipv6-> r:net.ipv6.conf.all.disable_ipv6\s*=\s*0'
-      - 'c:sysctl net.ipv6.conf.default.disable_ipv6-> r:net.ipv6.conf.default.disable_ipv6\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.all.disable_ipv6 -> r:net.ipv6.conf.all.disable_ipv6\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.default.disable_ipv6 -> r:net.ipv6.conf.default.disable_ipv6\s*=\s*0'
 
 
 # 3.1.2 Ensure wireless interfaces are disabled (Manual)
@@ -1542,7 +1542,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:iw list-> r:Interface'
+      - 'c:iw list -> r:Interface'
 
 ##################################################
 # 3.2 Network Parameters (Host Only)
@@ -1564,9 +1564,9 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0$'
-      - 'not c:grep -RhEs "^\s*net\.ipv4\.ip_forward\s*=\s*1" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf-> r:ip_forward'
+      - 'not c:grep -RhEs "^\s*net\.ipv4\.ip_forward\s*=\s*1" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:ip_forward'
       - 'c:sysctl net.ipv6.conf.all.forwarding -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
-      - 'not c:grep -RhEs "^\s*net\.ipv6\.conf\.all\.forwarding\s*=\s*1" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf-> r:forwarding'
+      - 'not c:grep -RhEs "^\s*net\.ipv6\.conf\.all\.forwarding\s*=\s*1" /etc/sysctl.conf /etc/sysctl.d/*.conf /usr/lib/sysctl.d/*.conf /run/sysctl.d/*.conf -> r:forwarding'
 
 
 # 3.2.2 Ensure packet redirect sending is disabled (Automated)
@@ -1838,9 +1838,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: any
     rules:
-      - 'not c:rpm -q iptables firewalld-> r:is not installed'
-      - 'not c:rpm -q nftables-> r:is not installed'
-      - 'not c:rpm -q iptables iptables-services-> r:is not installed'
+      - 'not c:rpm -q iptables firewalld -> r:is not installed'
+      - 'not c:rpm -q nftables -> r:is not installed'
+      - 'not c:rpm -q iptables iptables-services -> r:is not installed'
 
 # 3.5.1.2 Ensure iptables-services package is not installed (Automated)
 # 3.5.3.1.3 Ensure firewalld is not installed or stopped and masked(Automated)
@@ -1857,8 +1857,8 @@ checks:
       - tsc: ["CC8.1"]
     condition: any
     rules:
-      - 'c:rpm -q iptables-services firewalld-> r:is not installed'
-      - 'c:systemctl is-enabled firewalld-> r:masked'
+      - 'c:rpm -q iptables-services firewalld -> r:is not installed'
+      - 'c:systemctl is-enabled firewalld -> r:masked'
 
 
 
@@ -1896,8 +1896,8 @@ checks:
     condition: any
     rules:
       - 'c:rpm -q firewalld nftables -> r:is not installed'
-      - 'c:systemctl is-enabled nftables-> r:masked'
-      - 'c:systemctl is-enabled firewalld-> r:masked'
+      - 'c:systemctl is-enabled nftables -> r:masked'
+      - 'c:systemctl is-enabled firewalld -> r:masked'
 
 
 
@@ -1915,7 +1915,7 @@ checks:
     condition: all
     rules:
       - 'c:systemctl is-enabled firewalld -> r:enabled'
-      - 'c:firewall-cmd --state-> r:running'
+      - 'c:firewall-cmd --state -> r:running'
 
 
 ###############################################
@@ -1935,7 +1935,7 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:nft list tables-> r:table'
+      - 'c:nft list tables -> r:table'
 
 # 3.5.2.6 Ensure base chains exist (Automated)
   - id: 4601
@@ -1950,9 +1950,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:nft list ruleset-> r:type filter hook input priority 0'
-      - 'c:nft list ruleset-> r:type filter forward priority 0'
-      - 'c:nft list ruleset-> r:type filter hook output priority 0'
+      - 'c:nft list ruleset -> r:type filter hook input priority 0'
+      - 'c:nft list ruleset -> r:type filter forward priority 0'
+      - 'c:nft list ruleset -> r:type filter hook output priority 0'
 
 # 3.5.2.7 Ensure loopback traffic is configured (Automated)
   - id: 4602
@@ -1967,8 +1967,8 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:nft list ruleset-> r:iif "lo" accept'
-      - 'c:nft list ruleset-> r:ip saddr 127.0.0.0/8 counter packets 0 bytes 0 drop'
+      - 'c:nft list ruleset -> r:iif "lo" accept'
+      - 'c:nft list ruleset -> r:ip saddr 127.0.0.0/8 counter packets 0 bytes 0 drop'
 
 # 3.5.2.8 Ensure outbound and established connections are configured (Manual)
   - id: 4603
@@ -1983,12 +1983,12 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:nft list ruleset-> r:ip protocol tcp ct state established accept'
-      - 'c:nft list ruleset-> r:ip protocol tcp udp state established accept'
-      - 'c:nft list ruleset-> r:ip protocol tcp icmp state established accept'
-      - 'c:nft list ruleset-> r:ip protocol tcp ct state established,related,new accept'
-      - 'c:nft list ruleset-> r:ip protocol tcp udp state established,related,new accept'
-      - 'c:nft list ruleset-> r:ip protocol tcp icmp state established,related,new accept'
+      - 'c:nft list ruleset -> r:ip protocol tcp ct state established accept'
+      - 'c:nft list ruleset -> r:ip protocol tcp udp state established accept'
+      - 'c:nft list ruleset -> r:ip protocol tcp icmp state established accept'
+      - 'c:nft list ruleset -> r:ip protocol tcp ct state established,related,new accept'
+      - 'c:nft list ruleset -> r:ip protocol tcp udp state established,related,new accept'
+      - 'c:nft list ruleset -> r:ip protocol tcp icmp state established,related,new accept'
 
 
 # 3.5.2.9 Ensure default deny firewall policy (Automated)
@@ -2004,9 +2004,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:nft list ruleset-> r:type filter hook input priority 0; policy drop;'
-      - 'c:nft list ruleset-> r:type filter hook forward priority 0; policy drop;'
-      - 'c:nft list ruleset-> r:type filter hook output priority 0; policy drop;'
+      - 'c:nft list ruleset -> r:type filter hook input priority 0; policy drop;'
+      - 'c:nft list ruleset -> r:type filter hook forward priority 0; policy drop;'
+      - 'c:nft list ruleset -> r:type filter hook output priority 0; policy drop;'
 
 # 3.5.2.10 Ensure nftables service is enabled (Automated)
   - id: 4605
@@ -2021,9 +2021,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled nftables-> r:enabled'
-      - 'c:nft list ruleset-> r:type filter hook forward priority 0; policy drop;'
-      - 'c:nft list ruleset-> r:type filter hook output priority 0; policy drop;'
+      - 'c:systemctl is-enabled nftables -> r:enabled'
+      - 'c:nft list ruleset -> r:type filter hook forward priority 0; policy drop;'
+      - 'c:nft list ruleset -> r:type filter hook output priority 0; policy drop;'
 
 # 3.5.2.11 Ensure nftables rules are permanent (Automated)
   - id: 4606
@@ -2038,8 +2038,8 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'f:/etc/sysconfig/nftables.conf-> r:^include "/etc/nftables/nftables.rules"'
-      - 'not f:/etc/sysconfig/nftables.conf-> r:#\s*include "/etc/nftables/nftables.rules"'
+      - 'f:/etc/sysconfig/nftables.conf -> r:^include "/etc/nftables/nftables.rules"'
+      - 'not f:/etc/sysconfig/nftables.conf -> r:#\s*include "/etc/nftables/nftables.rules"'
 
 
 ###############################################
@@ -2117,9 +2117,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:ip6tables -L-> r:Chain INPUT (policy DROP)'
-      - 'c:ip6tables -L-> r:Chain FORWARD (policy DROP)'
-      - 'c:ip6tables -L-> r:Chain OUTPUT (policy DROP)'
+      - 'c:ip6tables -L -> r:Chain INPUT (policy DROP)'
+      - 'c:ip6tables -L -> r:Chain FORWARD (policy DROP)'
+      - 'c:ip6tables -L -> r:Chain OUTPUT (policy DROP)'
 
 
 # 3.5.3.3.2 Ensure IPv6 loopback traffic is configured (Automated)
@@ -2135,9 +2135,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:ip6tables -L INPUT -v -n-> r:ACCEPT'
-      - 'c:ip6tables -L INPUT -v -n-> r:DROP'
-      - 'c:ip6tables -L OUTPUT -v -n-> r:ACCEPT'
+      - 'c:ip6tables -L INPUT -v -n -> r:ACCEPT'
+      - 'c:ip6tables -L INPUT -v -n -> r:DROP'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:ACCEPT'
 
 # 3.5.3.3.3 Ensure IPv6 outbound and established connections are configured (Manual)
   - id: 4612
@@ -2152,8 +2152,8 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:ip6tables -L OUTPUT -v -n-> r:state NEW,ESTABLISHED'
-      - 'c:ip6tables -L INPUT -v -n-> r:state ESTABLISHED'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:state NEW,ESTABLISHED'
+      - 'c:ip6tables -L INPUT -v -n -> r:state ESTABLISHED'
 
 
 # 3.5.3.3.6 Ensure ip6tables is enabled and running (Automated)
@@ -2405,7 +2405,6 @@ checks:
     description: "Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp file tracks all currently logged in users. All audit records will be tagged with the identifier \"session.\" The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier \"logins.\"."
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules. Example: vi /etc/audit/rules.d/logins.rules and add the following lines:   -w /var/run/utmp -p wa -k session   -w /var/log/wtmp -p wa -k logins   -w /var/log/btmp -p wa -k logins . Notes: The last command can be used to read /var/log/wtmp ( last with no parameters) and /var/run/utmp ( last -f /var/run/utmp ) Reloading the auditd config to set active settings may require a system reboot."
-    compliance:
     compliance:
       - cis: ["4.1.8"]
       - cis_csc: ["4.9","16.11","16.13"]
@@ -2899,9 +2898,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key" -exec stat {} \;->^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key" -exec stat {} \;->^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key" -exec stat {} \;->^Access: \(0\d400/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key" -exec stat {} \; -> r:^Access: \(0\d40/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key" -exec stat {} \; -> r:^Access: \(0\d400/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 # 5.2.3 Ensure permissions on SSH public host key files are configured  (Automated)
@@ -2918,10 +2917,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat {} \;->^Access: \(0\d444/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat {} \;->^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat {} \;->^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_rsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d444/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ecdsa_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:find /etc/ssh -xdev -type f -name "ssh_host_ed25519_key.pub" -exec stat {} \; -> r:^Access: \(0\d44/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
 
 # 5.2.4 Ensure SSH access is limited (Scored)

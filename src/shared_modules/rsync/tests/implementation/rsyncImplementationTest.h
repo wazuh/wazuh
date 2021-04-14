@@ -16,7 +16,7 @@
 #include "gmock/gmock.h"
 #include "commonDefs.h"
 
-class RSyncImplementationTest : public ::testing::Test 
+class RSyncImplementationTest : public ::testing::Test
 {
 protected:
 

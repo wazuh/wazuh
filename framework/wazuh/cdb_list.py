@@ -51,7 +51,7 @@ def get_lists(filename=None, offset=0, limit=common.database_limit, select=None,
     result = AffectedItemsWazuhResult(all_msg='All specified lists were returned',
                                       some_msg='Some lists were not returned',
                                       none_msg='No list was returned')
-    dirname = join(common.ossec_path, relative_dirname) if relative_dirname else None
+    dirname = join(common.wazuh_path, relative_dirname) if relative_dirname else None
 
     lists = list()
     for path in get_filenames_paths(filename):
@@ -224,7 +224,7 @@ def get_path_lists(filename=None, offset=0, limit=common.database_limit, sort_by
     lists = iterate_lists(only_names=True)
     for item in list(lists):
         if any([relative_dirname is not None and item['relative_dirname'] != relative_dirname,
-                join(common.ossec_path, item['relative_dirname'], item['filename']) not in paths]):
+                join(common.wazuh_path, item['relative_dirname'], item['filename']) not in paths]):
             lists.remove(item)
 
     data = process_array(lists, search_text=search_text, search_in_fields=search_in_fields,

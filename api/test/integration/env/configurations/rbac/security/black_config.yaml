@@ -69,6 +69,7 @@
   - security:create
   - security:read_config
   - security:update_config
+  - security:edit_run_as
   resources:
   - "*:*:*"
   effect: deny

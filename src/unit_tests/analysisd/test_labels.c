@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../wrappers/wazuh/wazuh_db/wdb_agent_wrappers.h"
+#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
 
 #include "../analysisd/config.h"
 #include "../analysisd/labels.h"

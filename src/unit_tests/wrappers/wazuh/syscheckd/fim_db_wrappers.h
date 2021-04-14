@@ -161,4 +161,14 @@ void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
  */
 void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val);
 
+int __wrap_fim_db_file_is_scanned(__attribute__((unused)) fdb_t *fim_sql, const char *path);
+
+int __wrap_fim_db_data_exists(__attribute__((unused)) fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
+
+int __wrap_fim_db_append_paths_from_inode(fdb_t *fim_sql,
+                                          unsigned long int inode,
+                                          unsigned long int dev,
+                                          OSList *list,
+                                          rb_tree *tree);
+
 #endif

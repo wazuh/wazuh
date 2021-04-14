@@ -9,8 +9,8 @@
 
 #include "active_responses.h"
 
-#define LOCK_PATH "/active-response/bin/fw-drop"
-#define LOCK_FILE "/active-response/bin/fw-drop/pid"
+#define LOCK_PATH "active-response/bin/fw-drop"
+#define LOCK_FILE "active-response/bin/fw-drop/pid"
 #define DEFAULT_FW_CMD "/bin/firewall-cmd"
 
 int main (int argc, char **argv) {
@@ -22,8 +22,18 @@ int main (int argc, char **argv) {
     char log_msg[LOGSIZE];
     char lock_path[PATH_MAX];
     char lock_pid_path[PATH_MAX];
+    char *home_path = w_homedir(argv[0]);
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
+
+    /* Trim absolute path to get Wazuh's installation directory */
+    home_path = w_strtok_r_str_delim("/active-response", &home_path);
+    
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
 
     write_debug_file(argv[0], "Starting");
 
@@ -113,8 +123,8 @@ int main (int argc, char **argv) {
 
         memset(lock_path, '\0', PATH_MAX);
         memset(lock_pid_path, '\0', PATH_MAX);
-        snprintf(lock_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_PATH);
-        snprintf(lock_pid_path, PATH_MAX - 1, "%s%s", DEFAULTDIR, LOCK_FILE);
+        snprintf(lock_path, PATH_MAX - 1, "%s", LOCK_PATH);
+        snprintf(lock_pid_path, PATH_MAX - 1, "%s", LOCK_FILE);
 
         // Taking lock
         if (lock(lock_path, lock_pid_path, argv[0], basename(argv[0])) == OS_INVALID) {

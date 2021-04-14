@@ -170,8 +170,8 @@
     <regex> "GET \S+/shell.php?cmd=</regex>
     <description>Simple shell.php command execution.</description>
     <mitre>
-      <id technique="Server Software Component: Web Shell" tactic="Persistence" tacticID="TA0003">T1505.003</id>
-      <id technique="Exploitation for Client Execution" tactic="Execution" tacticID="TA0002">T1203</id>
+      <id>T1100</id>
+      <id>T1203</id>
     </mitre>
    <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
    </rule>
@@ -229,7 +229,7 @@
     <regex> "GET /\S+.php?\S+%00</regex>
     <description>Anomaly URL query (attempting to pass null termination).</description>
     <mitre>
-      <id technique="Credentials from Password Stores: Credentials from Web Browsers" tactic="Credential Access" tacticID="TA0006">T1555.003</id>
+      <id>T1503</id>
     </mitre>
     <group>pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SA.11,nist_800_53_SI.4,tsc_CC6.6,tsc_CC7.1,tsc_CC8.1,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>

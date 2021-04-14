@@ -22,7 +22,7 @@ from wazuh.core.utils import tail
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
-execq_lockfile = join(common.ossec_path, "var", "run", ".api_execq_lock")
+execq_lockfile = join(common.wazuh_path, "var", "run", ".api_execq_lock")
 
 
 def status():
@@ -126,7 +126,7 @@ def validate_ossec_conf():
     try:
         # Sockets path
         api_socket_relative_path = join('queue', 'alerts', 'execa')
-        api_socket_path = join(common.ossec_path, api_socket_relative_path)
+        api_socket_path = join(common.wazuh_path, api_socket_relative_path)
         execq_socket_path = common.EXECQ
         # Message for checking Wazuh configuration
         execq_msg = json.dumps(create_wazuh_socket_message(origin={'module': 'api/framework'},

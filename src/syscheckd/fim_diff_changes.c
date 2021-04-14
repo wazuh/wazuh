@@ -298,16 +298,16 @@ diff_data *initialize_registry_diff_data(const char *key_name, const char *value
     OS_SHA1_Str(value_name, -1, encoded_value);
 
     if (configuration->arch){
-        snprintf(buffer, PATH_MAX, "%s/registry/[x64] %s/%s", DIFF_DIR_PATH, encoded_key, encoded_value);
+        snprintf(buffer, PATH_MAX, "%s/registry/[x64] %s/%s", DIFF_DIR, encoded_key, encoded_value);
     } else {
-        snprintf(buffer, PATH_MAX, "%s/registry/[x32] %s/%s", DIFF_DIR_PATH, encoded_key, encoded_value);
+        snprintf(buffer, PATH_MAX, "%s/registry/[x32] %s/%s", DIFF_DIR, encoded_key, encoded_value);
     }
     os_strdup(buffer, diff->compress_folder);
 
     snprintf(buffer, PATH_MAX, "%s/last-entry.gz", diff->compress_folder);
     os_strdup(buffer, diff->compress_file);
 
-    snprintf(buffer, PATH_MAX, "%s/tmp", DIFF_DIR_PATH);
+    snprintf(buffer, PATH_MAX, "%s/tmp", DIFF_DIR);
     os_strdup(buffer, diff->tmp_folder);
 
     if (configuration->arch){
@@ -462,7 +462,7 @@ cleanup:
 diff_data *initialize_file_diff_data(const char *filename){
     diff_data *diff;
     char buffer[PATH_MAX];
-    char abs_diff_dir_path[PATH_MAX];
+    char abs_diff_dir_path[PATH_MAX + 1];
 
     os_calloc(1, sizeof(diff_data), diff);
 
@@ -470,7 +470,7 @@ diff_data *initialize_file_diff_data(const char *filename){
     diff->file_size = 0;
 
     if (syscheck.file_size_enabled) {
-        int it = fim_configuration_directory(filename, "file");
+        int it = fim_configuration_directory(filename);
         diff->size_limit = syscheck.diff_size_limit[it];
     }
 
@@ -494,8 +494,8 @@ diff_data *initialize_file_diff_data(const char *filename){
     }
 
     // Get cwd for Windows
-    if (abspath(DIFF_DIR_PATH, abs_diff_dir_path, sizeof(abs_diff_dir_path)) == NULL) {
-        merror(FIM_ERROR_GET_ABSOLUTE_PATH, DIFF_DIR_PATH, strerror(errno), errno);
+    if (abspath(DIFF_DIR, abs_diff_dir_path, sizeof(abs_diff_dir_path)) == NULL) {
+        merror(FIM_ERROR_GET_ABSOLUTE_PATH, abs_diff_dir_path, strerror(errno), errno);
         os_free(path_filtered);
         goto error;
     }
@@ -503,10 +503,10 @@ diff_data *initialize_file_diff_data(const char *filename){
     snprintf(buffer, PATH_MAX, "%s/local/%s", abs_diff_dir_path, path_filtered);
     os_free(path_filtered);
 #else
-    strcpy(abs_diff_dir_path, DIFF_DIR_PATH);
+    strcpy(abs_diff_dir_path, DIFF_DIR);
 
     // This snprintf is duplicated to avoid a double slash ('/') in UNIX systems
-    snprintf(buffer, PATH_MAX, "%s/local%s", DIFF_DIR_PATH, diff->file_origin);
+    snprintf(buffer, PATH_MAX, "%s/local%s", DIFF_DIR, diff->file_origin);
 #endif
 
     // Check if the full_diff_path for filename, is too long
@@ -949,10 +949,10 @@ next_it:
 int fim_diff_process_delete_file(const char *filename){
     char *full_path;
     int ret;
-    os_malloc(sizeof(char) * (strlen(DIFF_DIR_PATH) + strlen(filename) + 8), full_path);
+    os_malloc(sizeof(char) * (strlen(DIFF_DIR) + strlen(filename) + 8), full_path);
 
 #ifdef WIN32
-    snprintf(full_path, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
+    snprintf(full_path, PATH_MAX, "%s/local/", DIFF_DIR);
     // Remove ":" from filename
     char *buffer = NULL;
     buffer = os_strip_char(filename, ':');
@@ -964,7 +964,7 @@ int fim_diff_process_delete_file(const char *filename){
     strcat(full_path, buffer);
     os_free(buffer);
 #else
-    snprintf(full_path, PATH_MAX, "%s/local", DIFF_DIR_PATH);
+    snprintf(full_path, PATH_MAX, "%s/local", DIFF_DIR);
     strcat(full_path, filename);
 #endif
 
@@ -991,9 +991,9 @@ int fim_diff_process_delete_registry(const char *key_name, int arch){
     OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
 
     if (arch){
-        snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s", DIFF_DIR_PATH, encoded_key);
+        snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s", DIFF_DIR, encoded_key);
     } else {
-        snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s", DIFF_DIR_PATH, encoded_key);
+        snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s", DIFF_DIR, encoded_key);
     }
 
     if(fim_diff_delete_compress_folder(full_path) == -1){
@@ -1012,9 +1012,9 @@ int fim_diff_process_delete_value(const char *key_name, const char *value_name, 
     OS_SHA1_Str(value_name, strlen(value_name), encoded_value);
 
     if (arch){
-        snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s/%s", DIFF_DIR_PATH, encoded_key, encoded_value);
+        snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s/%s", DIFF_DIR, encoded_key, encoded_value);
     } else {
-        snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s/%s", DIFF_DIR_PATH, encoded_key, encoded_value);
+        snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s/%s", DIFF_DIR, encoded_key, encoded_value);
     }
 
     if(fim_diff_delete_compress_folder(full_path) == -1){

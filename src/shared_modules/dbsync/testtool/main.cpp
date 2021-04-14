@@ -35,7 +35,7 @@ int main(int argc, const char* argv[])
 
         // dbsync configuration data 
         std::ifstream configFile{ cmdLineArgs.configFile() };
-        const nlohmann::json jsonConfigFile { nlohmann::json::parse(configFile) };
+        const auto& jsonConfigFile { nlohmann::json::parse(configFile) };
         const std::string dbName{ jsonConfigFile.at("db_name").get_ref<const std::string&>() };
         const std::string dbType{ jsonConfigFile.at("db_type").get_ref<const std::string&>() };
         const std::string hostType{ jsonConfigFile.at("host_type").get_ref<const std::string&>() };
@@ -65,7 +65,7 @@ int main(int argc, const char* argv[])
                 const std::string inputFile{ actions[idx] };
                 std::ifstream actionsIdxFile{ inputFile };
                 std::cout << "Processing file: " << inputFile << std::endl;
-                const nlohmann::json jsonAction { nlohmann::json::parse(actionsIdxFile) };
+                const auto& jsonAction { nlohmann::json::parse(actionsIdxFile) };
                 auto action { FactoryAction::create(jsonAction["action"].get<std::string>()) };
                 action->execute(testContext, jsonAction);
             }

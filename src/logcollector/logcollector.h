@@ -25,10 +25,9 @@
 
 ///< JSON path wich contains the files position of last read
 #ifdef WIN32
-#define LOCALFILE_STATUS_PATH   "queue\\logcollector\\file_status.json"
+#define LOCALFILE_STATUS   "queue\\logcollector\\file_status.json"
 #else
-#define LOCALFILE_STATUS        "/queue/logcollector/file_status.json"
-#define LOCALFILE_STATUS_PATH   DEFAULTDIR LOCALFILE_STATUS
+#define LOCALFILE_STATUS        "queue/logcollector/file_status.json"
 #endif
 
 ///< JSON fields for file_status

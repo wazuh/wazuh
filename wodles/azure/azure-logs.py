@@ -46,7 +46,7 @@ except Exception as e:
 	print("Azure Storage SDK for Python is missing: '{}', try 'pip install azure-storage-blob'.".format(e))
 	sys.exit(1)
 
-ADDR = '{}/queue/ossec/queue'.format(common.ossec_path)
+ADDR = '{}/queue/sockets/queue'.format(common.ossec_path)
 BLEN = 212992
 
 utc = pytz.UTC

@@ -335,7 +335,7 @@
     <field name="osquery.name">suid_bin</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): File $(osquery.columns.path) has setuid enabled</description>
     <mitre>
-      <id technique="Abuse Elevation Control Mechanism: Setuid and Setgid" tactic="Persistence" tacticID="TA0003">T1548.001</id>
+      <id>T1166</id>
     </mitre>
     <group>incident_response,</group>
     <options>no_full_log</options>
@@ -1202,7 +1202,7 @@
     <field name="osquery.name">CCleaner_Trojan.Floxif</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): CCleaner Trojan Floxif detected on registry path $(osquery.columns.path)</description>
     <mitre>
-      <id technique="Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder" tactic="Persistence" tacticID="TA0003">T1547.001</id>
+      <id>T1060</id>
     </mitre>
     <group>windows_attacks,</group>
     <options>no_full_log</options>
@@ -1213,7 +1213,7 @@
     <field name="osquery.name">CCleaner_Trojan_stage2.Floxif</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): CCleaner Trojan Floxif detected on service $(osquery.columns.name) for user $(osquery.columns.user_account)</description>
     <mitre>
-      <id technique="System Services: Service Execution" tactic="Execution" tacticID="TA0002">T1569.002</id>
+      <id>T1035</id>
     </mitre>
     <group>windows_attacks,</group>
     <options>no_full_log</options>
@@ -1270,8 +1270,8 @@
     <field name="osquery.name">StickyKeys_Registry_Backdoor</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): Sticky registry key backdoor detected for key $(osquery.columns.path)</description>
     <mitre>
-      <id technique="Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder" tactic="Persistence" tacticID="TA0003">T1547.001</id>
-      <id technique="Modify Registry" tactic="Defense Evasion" tacticID="TA0005">T1112</id>
+      <id>T1060</id>
+      <id>T1112</id>
     </mitre>
     <group>windows_attacks,</group>
     <options>no_full_log</options>

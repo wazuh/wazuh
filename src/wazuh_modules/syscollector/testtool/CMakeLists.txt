@@ -14,6 +14,7 @@ link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER}/external/procps/)
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
@@ -22,10 +23,14 @@ add_definitions(-DWAZUH_UNIT_TESTING)
 
 set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
 
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")
+endif(FSANITIZE)
+
 file(GLOB SYSCOLLECTOR_TESTTOOL_SRC
         "${CMAKE_SOURCE_DIR}/testtool/*.cpp"
         )
-    
+
 add_executable(syscollector_test_tool
                ${SYSCOLLECTOR_TESTTOOL_SRC}
                )

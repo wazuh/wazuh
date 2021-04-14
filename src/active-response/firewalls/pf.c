@@ -24,6 +24,16 @@ int main (int argc, char **argv) {
     char *srcip;
     cJSON *input_json = NULL;
     struct utsname uname_buffer;
+    char *home_path = w_homedir(argv[0]);
+
+    /* Trim absolute path to get Wazuh's installation directory */
+    home_path = w_strtok_r_str_delim("/active-response", &home_path);
+
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
+    os_free(home_path);
 
     write_debug_file(argv[0], "Starting");
 

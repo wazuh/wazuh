@@ -90,6 +90,33 @@ TEST_F(SysInfoParsersTest, UnixCentos)
     EXPECT_EQ("8", output["os_major"]);
 }
 
+TEST_F(SysInfoParsersTest, UnixArch)
+{
+    constexpr auto UNIX_RELEASE_FILE
+    {
+        R"(
+        NAME="Arch Linux"
+        PRETTY_NAME="Arch Linux"
+        ID=arch
+        BUILD_ID=rolling
+        ANSI_COLOR="38;2;23;147;209"
+        HOME_URL="https://www.archlinux.org/"
+        DOCUMENTATION_URL="https://wiki.archlinux.org/"
+        SUPPORT_URL="https://bbs.archlinux.org/"
+        BUG_REPORT_URL="https://bugs.archlinux.org/"
+        LOGO=archlinux
+        )"
+    };
+    nlohmann::json output;
+    std::stringstream info{UNIX_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("Arch Linux", output["os_name"]);
+    EXPECT_EQ("arch", output["os_platform"]);
+}
+
+
+
 TEST_F(SysInfoParsersTest, Ubuntu)
 {
     constexpr auto UBUNTU_RELEASE_FILE

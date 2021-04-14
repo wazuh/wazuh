@@ -773,7 +773,6 @@ stages:
       json:
         username: "new_user"
         password: "new_user1A!"
-        allow_run_as: true
       method: POST
     response:
       status_code: 200
@@ -787,7 +786,6 @@ stages:
       json:
         username: "symbols"
         password: "new_user1A!@#~½¬?¿ñàÀ"
-        allow_run_as: true
       method: POST
     response:
       status_code: 200
@@ -801,7 +799,6 @@ stages:
       json:
         username: "test_very_long_user_name_so_the_request_fails_because_of_maximum1"
         password: "new_user1A!@#~½¬?¿ñàÀ"
-        allow_run_as: true
       method: POST
     response:
       status_code: 400
@@ -813,7 +810,6 @@ stages:
       json:
         username: "new_user"
         password: "new_user1B!"
-        allow_run_as: false
     response:
       status_code: 200
       json:
@@ -873,7 +869,6 @@ stages:
       <<: *post_users_request
       json:
         username: "new_user1"
-        allow_run_as: true
     response:
       status_code: 400
 

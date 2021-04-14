@@ -44,8 +44,8 @@ decoder_ossec_conf_2 = {
 # Module patches
 
 @pytest.fixture(scope='module', autouse=True)
-def mock_ossec_path():
-    with patch('wazuh.core.common.ossec_path', new=test_data_path):
+def mock_wazuh_path():
+    with patch('wazuh.core.common.wazuh_path', new=test_data_path):
         with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
             yield
 

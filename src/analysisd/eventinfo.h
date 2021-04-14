@@ -154,6 +154,11 @@ struct EventList {
     pthread_mutex_t event_mutex;
 };
 
+#ifdef TESTRULE
+extern int full_output;
+extern int alert_only;
+#endif
+
 /* Types of events (from decoders) */
 #define UNKNOWN         0   /* Unknown */
 #define SYSLOG          1   /* syslog messages */

@@ -11,7 +11,7 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.security import invalid_users_tokens, invalid_roles_tokens, invalid_run_as_tokens, revoke_tokens
-from wazuh.core.security import load_spec, update_security_conf
+from wazuh.core.security import load_spec, update_security_conf, REQUIRED_FIELDS, SORT_FIELDS, SORT_FIELDS_GET_USERS
 from wazuh.core.utils import process_array
 from wazuh.rbac.decorators import expose_resources
 from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager, RolesPoliciesManager, \
@@ -66,7 +66,7 @@ def get_user_me(token):
 @expose_resources(actions=['security:read'], resources=['user:id:{user_ids}'],
                   post_proc_kwargs={'exclude_codes': [5001]})
 def get_users(user_ids: list = None, offset: int = 0, limit: int = common.database_limit, sort_by: dict = None,
-              sort_ascending: bool = True, search_text: str = None,
+              sort_ascending: bool = True, search_text: str = None, select: str = None,
               complementary_search: bool = False, search_in_fields: list = None):
     """Get the information of a specified user
 
@@ -84,6 +84,8 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
         Sort in ascending (true) or descending (false) order
     search_text : str
         Text to search
+    select : str
+        Select which fields to return (separated by comma)
     complementary_search : bool
         Find items without the text to search
     search_in_fields : list
@@ -103,17 +105,53 @@ def get_users(user_ids: list = None, offset: int = 0, limit: int = common.databa
             user = auth.get_user_id(user_id)
             affected_items.append(user) if user else result.add_failed_item(id_=user_id, error=WazuhError(5001))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS_GET_USERS,
+                         required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
     return result
 
 
+@expose_resources(actions=['security:edit_run_as'], resources=['*:*:*'])
+def edit_run_as(user_id: str = None, allow_run_as: bool = False):
+    """Enable/Disable the user's allow_run_as flag
+
+    Parameters
+    ----------
+    user_id : str
+        User ID
+    allow_run_as : bool
+        Enable or disable authorization context login method for the specified user
+
+    Returns
+    -------
+    result : AffectedItemsWazuhResult
+        Status message
+    """
+    result = AffectedItemsWazuhResult(none_msg=f"The parameter allow_run_as could not be "
+                                               f"{'enabled' if allow_run_as else 'disabled'} for the user",
+                                      all_msg=f"Parameter allow_run_as has been "
+                                              f"{'enabled' if allow_run_as else 'disabled'} for the user")
+    with AuthenticationManager() as auth:
+        user_id = int(user_id)
+        query = auth.edit_run_as(user_id, allow_run_as)
+        if query is False:
+            result.add_failed_item(id_=user_id, error=WazuhError(5001))
+        elif query == SecurityError.INVALID:
+            result.add_failed_item(id_=user_id, error=WazuhError(5010))
+        else:
+            result.affected_items.append(auth.get_user_id(user_id))
+            result.total_affected_items += 1
+            invalid_users_tokens(users=[user_id])
+
+    return result
+
+
 @expose_resources(actions=['security:create_user'], resources=['*:*:*'])
-def create_user(username: str = None, password: str = None, allow_run_as: bool = False):
+def create_user(username: str = None, password: str = None):
     """Create a new user
 
     Parameters
@@ -122,8 +160,6 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
         Name for the new user
     password : str
         Password for the new user
-    allow_run_as : bool
-        Enable authorization context login method for the new user
 
     Returns
     -------
@@ -138,7 +174,7 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
     result = AffectedItemsWazuhResult(none_msg='User could not be created',
                                       all_msg='User was successfully created')
     with AuthenticationManager() as auth:
-        if auth.add_user(username, password, allow_run_as=allow_run_as):
+        if auth.add_user(username, password):
             operation = auth.get_user(username)
             if operation:
                 result.affected_items.append(operation)
@@ -152,7 +188,7 @@ def create_user(username: str = None, password: str = None, allow_run_as: bool =
 
 
 @expose_resources(actions=['security:update'], resources=['user:id:{user_id}'])
-def update_user(user_id: str = None, password: str = None, allow_run_as: bool = None):
+def update_user(user_id: str = None, password: str = None):
     """Update a specified user
 
     Parameters
@@ -161,14 +197,12 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
         User ID
     password : str
         Password for the new user
-    allow_run_as : bool
-        Enable authorization context login method for the new user
 
     Returns
     -------
     Status message
     """
-    if password is None and allow_run_as is None:
+    if password is None:
         raise WazuhError(4001)
     if password:
         if len(password) > 64 or len(password) < 8:
@@ -178,7 +212,7 @@ def update_user(user_id: str = None, password: str = None, allow_run_as: bool = 
     result = AffectedItemsWazuhResult(all_msg='User was successfully updated',
                                       none_msg='User could not be updated')
     with AuthenticationManager() as auth:
-        query = auth.update_user(int(user_id[0]), password, allow_run_as)
+        query = auth.update_user(int(user_id[0]), password)
         if query is False:
             result.add_failed_item(id_=int(user_id[0]), error=WazuhError(5001))
         else:
@@ -233,19 +267,34 @@ def remove_users(user_ids):
 
 @expose_resources(actions=['security:read'], resources=['role:id:{role_ids}'],
                   post_proc_kwargs={'exclude_codes': [4002]})
-def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None, select=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
-    """Returns information from all system roles, does not return information from its associated policies
+    """Return information from all system roles, does not return information from its associated policies.
 
-    :param role_ids: List of roles ids (None for all roles)
-    :param offset: First item to return
-    :param limit: Maximum number of items to return
-    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    role_ids : list, optional
+        List of roles ids to be obtained
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    select : str
+        Select which fields to return (separated by comma)
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+
+    Returns
+    -------
+    Roles information
     """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No role was returned',
@@ -260,9 +309,9 @@ def get_roles(role_ids=None, offset=0, limit=common.database_limit, sort_by=None
                 # Role id does not exist
                 result.add_failed_item(id_=int(r_id), error=WazuhError(4002))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -355,19 +404,34 @@ def update_role(role_id=None, name=None):
 
 @expose_resources(actions=['security:read'], resources=['policy:id:{policy_ids}'],
                   post_proc_kwargs={'exclude_codes': [4007]})
-def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None,
+def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None, select=None,
                  sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
-    """Returns the information of a certain policy
+    """Return the information of a certain policy.
 
-    :param policy_ids: ID of the policy on which the information will be collected (All for all policies)
-    :param offset: First item to return
-    :param limit: Maximum number of items to return
-    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    policy_ids : list
+        ID of the policy on which the information will be collected (All for all policies)
+    offset : int
+        First item to return
+    limit : int
+        Maximum number of items to return
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    select : str
+        Select which fields to return (separated by comma)
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+
+    Returns
+    -------
+    Policies information
     """
     result = AffectedItemsWazuhResult(none_msg='No policy was returned',
                                       some_msg='Some policies were not returned',
@@ -382,9 +446,9 @@ def get_policies(policy_ids, offset=0, limit=common.database_limit, sort_by=None
                 # Policy id does not exist
                 result.add_failed_item(id_=int(p_id), error=WazuhError(4007))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -480,19 +544,34 @@ def update_policy(policy_id=None, name=None, policy=None):
 
 @expose_resources(actions=['security:read'], resources=['rule:id:{rule_ids}'],
                   post_proc_kwargs={'exclude_codes': [4022]})
-def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None,
+def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None, select=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None):
     """Return information from all the security rules. It does not return information from its associated roles.
 
-    :param rule_ids: List of rule ids (None for all rules)
-    :param offset: First item to return
-    :param limit: Maximum number of items to return
-    :param sort_by: Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
-    :param sort_ascending: Sort in ascending (true) or descending (false) order
-    :param search_text: Text to search
-    :param complementary_search: Find items without the text to search
-    :param search_in_fields: Fields to search in
-    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    Parameters
+    ----------
+    rule_ids : list
+        List of rule ids (None for all rules)
+    offset : int
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    select : str
+        Select which fields to return (separated by comma)
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+
+    Returns
+    -------
+    Rules information
     """
     affected_items = list()
     result = AffectedItemsWazuhResult(none_msg='No security rule was returned',
@@ -508,9 +587,9 @@ def get_rules(rule_ids=None, offset=0, limit=common.database_limit, sort_by=None
                 # Rule id does not exist
                 result.add_failed_item(id_=ru_id, error=WazuhError(4022))
 
-    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields,
+    data = process_array(affected_items, search_text=search_text, search_in_fields=search_in_fields, select=select,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
-                         offset=offset, limit=limit)
+                         offset=offset, limit=limit, allowed_sort_fields=SORT_FIELDS, required_fields=REQUIRED_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 

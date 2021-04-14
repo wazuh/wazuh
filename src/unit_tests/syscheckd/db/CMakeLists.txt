@@ -35,7 +35,7 @@ target_compile_options(test_fim_db_files PRIVATE "-Wall")
 
 target_link_libraries(test_fim_db_files SYSCHECK_O ${TEST_DEPS} fim_shared)
 
-set(FIM_DB_FILES_LINUX_FLAGS "-Wl,--wrap=isChroot -Wl,--wrap=usleep,--wrap=time,--wrap=sqlite3_bind_int64 \
+set(FIM_DB_FILES_LINUX_FLAGS "-Wl,--wrap=usleep,--wrap=time,--wrap=sqlite3_bind_int64 \
                               -Wl,--wrap=sqlite3_last_insert_rowid,--wrap=SendMSG,--wrap=rmdir_ex,--wrap=opendir \
                               -Wl,--wrap=readdir,--wrap=closedir")
 

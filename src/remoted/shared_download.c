@@ -532,7 +532,7 @@ void w_create_group(char *group){
 
     char group_path[PATH_MAX] = {0};
 
-    if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",group) >= PATH_MAX){
+    if(snprintf(group_path, PATH_MAX, "%s/%s", SHAREDCFG_DIR, group) >= PATH_MAX){
         mwarn(W_PARSER_GROUP_TOO_LARGE,PATH_MAX);
     }
     else{
@@ -622,7 +622,7 @@ int w_init_shared_download()
         return OS_INVALID;
     }
 
-    snprintf(yaml_file, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
+    snprintf(yaml_file, OS_SIZE_1024, "%s/%s", SHAREDCFG_DIR, W_SHARED_YAML_FILE);
 
     if (w_prepare_parsing() == 1) {
         /* Check download module connection */

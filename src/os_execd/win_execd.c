@@ -63,7 +63,7 @@ static void WinExecd_Shutdown()
 int WinExecd_Start()
 {
     int c;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
     winexec_queue = queue_init(OS_SIZE_128);
 
     /* Read config */

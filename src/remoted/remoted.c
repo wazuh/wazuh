@@ -16,6 +16,8 @@
 #include "os_net/os_net.h"
 #include "remoted.h"
 
+#define WM_STRCAT_NO_SEPARATOR 0
+
 /* Global variables */
 keystore keys;
 remoted logr;
@@ -28,9 +30,10 @@ int tcp_keepcnt;
 /* Handle remote connections */
 void HandleRemote(int uid)
 {
-    int position = logr.position;
+    const int position = logr.position;
     int recv_timeout;    //timeout in seconds waiting for a client reply
     int send_timeout;
+    char * str_protocol = NULL;
 
     recv_timeout = getDefine_Int("remoted", "recv_timeout", 1, 60);
     send_timeout = getDefine_Int("remoted", "send_timeout", 1, 60);
@@ -66,34 +69,42 @@ void HandleRemote(int uid)
         }
     }
 
-    /* Bind TCP */
-    if (logr.proto[position] == IPPROTO_TCP) {
-        if ((logr.sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
-            merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
-        } else if (logr.conn[position] == SECURE_CONN) {
+    /* If TCP is enabled then bind the TCP socket */
+    if (logr.proto[position] & REMOTED_NET_PROTOCOL_TCP) {
 
-            if (OS_SetKeepalive(logr.sock) < 0){
+        logr.tcp_sock = OS_Bindporttcp(logr.port[position], logr.lip[position], logr.ipv6[position]);
+
+        if (logr.tcp_sock < 0) {
+            merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
+        }
+        else if (logr.conn[position] == SECURE_CONN) {
+
+            if (OS_SetKeepalive(logr.tcp_sock) < 0) {
                 merror("OS_SetKeepalive failed with error '%s'", strerror(errno));
             }
 #ifndef CLIENT
             else {
-                OS_SetKeepalive_Options(logr.sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
+                OS_SetKeepalive_Options(logr.tcp_sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
             }
 #endif
-            if (OS_SetRecvTimeout(logr.sock, recv_timeout, 0) < 0){
+            if (OS_SetRecvTimeout(logr.tcp_sock, recv_timeout, 0) < 0) {
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }
-            if (OS_SetSendTimeout(logr.sock, send_timeout) < 0){
+            if (OS_SetSendTimeout(logr.tcp_sock, send_timeout) < 0) {
                 merror("OS_SetSendTimeout failed with error '%s'", strerror(errno));
             }
         }
-    } else {
+    }
+    /* If UDP is enabled then bind the UDP socket */
+    if (logr.proto[position] & REMOTED_NET_PROTOCOL_UDP) {
         /* Using UDP. Fast, unreliable... perfect */
-        if ((logr.sock =
-                    OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0) {
+        logr.udp_sock = OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position]);
+
+        if (logr.udp_sock < 0) {
             merror_exit(BIND_ERROR, logr.port[position], errno, strerror(errno));
         }
     }
+
 
     /* Revoke privileges */
     if (Privsep_SetUser(uid) < 0) {
@@ -106,17 +117,32 @@ void HandleRemote(int uid)
     }
 
     /* Start up message */
+    // If TCP is enabled
+    if (logr.proto[position] & REMOTED_NET_PROTOCOL_TCP) {
+        wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_TCP_STR, WM_STRCAT_NO_SEPARATOR);
+    }
+    // If UDP is enabled
+    if (logr.proto[position] & REMOTED_NET_PROTOCOL_UDP) {
+        wm_strcat(&str_protocol, REMOTED_NET_PROTOCOL_UDP_STR, (str_protocol == NULL) ? WM_STRCAT_NO_SEPARATOR : ',');
+    }
+
+    /* This should never happen */
+    if (str_protocol == NULL) {
+        merror_exit(REMOTED_NET_PROTOCOL_NOT_SET);
+    }
+
     minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
-    (int)getpid(),
-    logr.port[position],
-    logr.proto[position] == IPPROTO_TCP ? "TCP" : "UDP",
-    logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
+        (int)getpid(),
+        logr.port[position],
+        str_protocol,
+        logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
+    os_free(str_protocol);
 
     /* If secure connection, deal with it */
     if (logr.conn[position] == SECURE_CONN) {
         HandleSecure();
     }
-    else if (logr.proto[position] == IPPROTO_TCP) {
+    else if (logr.proto[position] == REMOTED_NET_PROTOCOL_TCP) {
         HandleSyslogTCP();
     }
     else { /* If not, deal with syslog */

@@ -37,7 +37,7 @@ class DockerListener:
         else:
             # Get Wazuh installation path, obtained relative to the path of this file
             self.wazuh_path = os.path.abspath(os.path.join(__file__, "../../.."))
-        self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
+        self.wazuh_queue = '{0}/queue/sockets/queue'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-Docker:"
         # docker variables
         self.client = docker.from_env()

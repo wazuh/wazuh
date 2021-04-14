@@ -38,7 +38,7 @@ public:
         port["inode"] = m_spPortRawData->inode();
         port["state"] = m_spPortRawData->state();
         port["pid"] = m_spPortRawData->pid();
-        port["process_name"] = m_spPortRawData->processName();
+        port["process"] = m_spPortRawData->processName();
     }
 };
 #endif // _PORT_IMPL_H

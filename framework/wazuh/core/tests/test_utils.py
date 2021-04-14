@@ -19,13 +19,13 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.utils import *
         from wazuh.core import exception
         from wazuh.core.agent import WazuhDBQueryAgents
-        from wazuh.core.common import ossec_path
+        from wazuh.core.common import wazuh_path
 
 # all necessary params
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_files_path = os.path.join(test_data_path, 'utils')
-ossec_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
+wazuh_cdb_list = "172.16.19.:\n172.16.19.:\n192.168.:"
 
 # input data for testing q filter
 input_array = [
@@ -362,7 +362,7 @@ def test_chown_r(mock_chown):
         mock_chown.assert_any_call(path.join(tmp_dirname, tmp_file.name), 'test_user', 'test_group')
 
 
-@patch('wazuh.core.utils.common.ossec_path', new='/test/path')
+@patch('wazuh.core.utils.common.wazuh_path', new='/test/path')
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('wazuh.core.utils.remove')
 def test_delete_wazuh_file(mock_remove, mock_exists):
@@ -371,7 +371,7 @@ def test_delete_wazuh_file(mock_remove, mock_exists):
     mock_remove.assert_called_once_with('/test/path/etc/file')
 
 
-@patch('wazuh.core.utils.common.ossec_path', new='/test/path')
+@patch('wazuh.core.utils.common.wazuh_path', new='/test/path')
 def test_delete_wazuh_file_ko():
     """Check delete_file calls functions with expected params"""
     with pytest.raises(WazuhError, match=r'\b1907\b'):
@@ -1558,7 +1558,7 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 
 
 @patch('wazuh.core.utils.check_remote_commands')
-@patch('wazuh.core.manager.common.ossec_path', new=test_files_path)
+@patch('wazuh.core.manager.common.wazuh_path', new=test_files_path)
 def test_validate_wazuh_xml(mock_remote_commands):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
@@ -1618,7 +1618,7 @@ def test_delete_file_with_backup_ko(mock_copyfile):
 def test_to_relative_path():
     """Test to_relative_path function."""
     path = 'etc/ossec.conf'
-    assert to_relative_path(join(ossec_path, path)) == path
+    assert to_relative_path(join(wazuh_path, path)) == path
 
     assert to_relative_path(path, prefix='etc') == basename(path)
 

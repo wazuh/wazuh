@@ -18,7 +18,7 @@ from xml.dom.minidom import parseString
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.wazuh_socket import OssecSocket
+from wazuh.core.wazuh_socket import WazuhSocket
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
@@ -207,6 +207,8 @@ def _read_option(section_name, opt):
     elif section_name == 'localfile' and opt_name == 'query':
         # Remove new lines, empty spaces and backslashes
         opt_value = re.sub(r'(?:(\n) +)|.*\n$', '', re.sub(r'\\+<', '<', re.sub(r'\\+>', '>', opt.text)))
+    elif section_name == 'remote' and opt_name == 'protocol':
+        opt_value = [elem.strip() for elem in opt.text.split(',')]
     else:
         if opt.attrib:
             opt_value = {}
@@ -248,7 +250,7 @@ def _conf2json(src_xml, dst_json):
 
         for option in list(section):
             option_name, option_value = _read_option(section_name, option)
-            if type(option_value) is list:
+            if type(option_value) is list and not (section_name == 'remote' and option_name == 'protocol'):
                 for ov in option_value:
                     _insert(section_json, section_name, option_name, ov)
             else:
@@ -656,7 +658,7 @@ def upload_group_configuration(group_id, file_content):
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
-    tmp_file_path = os_path.join(common.ossec_path, "tmp", f"api_tmp_file_{time.time()}_{random.randint(0, 1000)}.xml")
+    tmp_file_path = os_path.join(common.wazuh_path, "tmp", f"api_tmp_file_{time.time()}_{random.randint(0, 1000)}.xml")
     # create temporary file for parsing xml input and validate XML format
     try:
         with open(tmp_file_path, 'w') as tmp_file:
@@ -693,7 +695,7 @@ def upload_group_configuration(group_id, file_content):
     try:
         # check Wazuh xml format
         try:
-            subprocess.check_output([os_path.join(common.ossec_path, "bin", "verify-agent-conf"), '-f', tmp_file_path],
+            subprocess.check_output([os_path.join(common.wazuh_path, "bin", "verify-agent-conf"), '-f', tmp_file_path],
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             # extract error message from output.
@@ -764,7 +766,7 @@ def get_active_configuration(agent_id, component, configuration):
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    sockets_path = os_path.join(common.ossec_path, "queue", "ossec")
+    sockets_path = os_path.join(common.wazuh_path, "queue", "sockets")
 
     if agent_id == '000':
         dest_socket = os_path.join(sockets_path, component)
@@ -775,7 +777,7 @@ def get_active_configuration(agent_id, component, configuration):
 
     # Socket connection
     try:
-        s = OssecSocket(dest_socket)
+        s = WazuhSocket(dest_socket)
     except Exception:
         raise WazuhInternalError(1121)
 
@@ -797,7 +799,7 @@ def get_active_configuration(agent_id, component, configuration):
         # Include password if auth->use_password enabled and authd.pass file exists
         if msg.get('auth', {}).get('use_password') == 'yes':
             try:
-                with open(os_path.join(common.ossec_path, "etc", "authd.pass"), 'r') as f:
+                with open(os_path.join(common.wazuh_path, "etc", "authd.pass"), 'r') as f:
                     msg['authd.pass'] = f.read().rstrip()
             except IOError:
                 pass

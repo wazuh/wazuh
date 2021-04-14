@@ -95,4 +95,4 @@ def get_file_logger(output_file: str, level: int = 3) -> logging.Logger:
 
 def get_wazuh_queue() -> str:
     """Get Wazuh queue"""
-    return os.path.join(common.find_wazuh_path(), 'queue', 'ossec', 'queue')
+    return os.path.join(common.find_wazuh_path(), 'queue', 'sockets', 'queue')

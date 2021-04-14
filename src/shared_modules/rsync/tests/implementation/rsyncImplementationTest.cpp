@@ -25,7 +25,7 @@ void RSyncImplementationTest::SetUp()
 void RSyncImplementationTest::TearDown()
 {
 };
- 
+
 
 TEST_F(RSyncImplementationTest, InvalidHandlerInRegister)
 {
@@ -58,7 +58,7 @@ TEST_F(RSyncImplementationTest, ValidDecoder)
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id",nullptr, nlohmann::json::parse(config), {}));
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
-} 
+}
 
 
 TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
@@ -77,9 +77,9 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedNoData)
     const std::vector<unsigned char> data{first, last};
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
-    
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
-} 
+}
 
 
 TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
@@ -130,7 +130,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
                                 "order_by_opt":""
                             }
                         })" };
-    
+
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
     EXPECT_CALL(*mockDbSync, select(_,_)).WillOnce(testing::Invoke([](const cJSON*, callback_data_t callback_data)
@@ -155,7 +155,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
             EXPECT_EQ(0, payload.compare(expectedResult));
         }
     };
-   
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, nlohmann::json::parse(config), callbackWrapper));
 
     std::string buffer{R"(test_id checksum_fail {"begin":"1","end":"2","id":1})"};
@@ -165,9 +165,9 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFail)
     const std::vector<unsigned char> data{first, last};
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
-    
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
-} 
+}
 
 TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
 {
@@ -223,7 +223,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
                                 "order_by_opt":""
                             }
                         })" };
- 
+
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
     EXPECT_CALL(*mockDbSync, select(_,_)).WillOnce(testing::Invoke([](const cJSON*, callback_data_t callback_data)
@@ -260,7 +260,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
             {
                 retVal = ::testing::AssertionSuccess();
             }
-            return retVal; 
+            return retVal;
         }
     };
 
@@ -271,7 +271,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
             EXPECT_PRED1(checkExpected, payload);
         }
     };
-    
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().registerSyncId(handle,"test_id", mockDbSync, nlohmann::json::parse(config), callbackWrapper));
 
     std::string buffer{R"(test_id checksum_fail {"begin":"1","end":"2","id":1})"};
@@ -281,9 +281,9 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumFailToSplit)
     const std::vector<unsigned char> data{first, last};
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
-    
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
-} 
+}
 
 TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumInvalidOperation)
 {
@@ -321,7 +321,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumInvalidOperation)
                                 "order_by_opt":""
                             }
                         })" };
- 
+
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
     EXPECT_CALL(*mockDbSync, select(_,_)).Times(0);
@@ -335,9 +335,9 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumInvalidOperation)
     const std::vector<unsigned char> data{first, last};
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
-    
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
-} 
+}
 
 TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
 {
@@ -376,7 +376,7 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
             "order_by_opt":""
         }
     })" };
- 
+
     auto mockDbSync { std::make_shared<MockDBSync>() };
 
     EXPECT_CALL(*mockDbSync, select(_,_)).WillOnce(testing::Invoke([](const cJSON*, callback_data_t callback_data)
@@ -396,11 +396,11 @@ TEST_F(RSyncImplementationTest, ValidDecoderPushedChecksumNoData)
     const std::vector<unsigned char> data{first, last};
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
-    
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
 
     EXPECT_ANY_THROW(RSync::RSyncImplementation::instance().push(handle, data));
-} 
+}
 
 
 TEST_F(RSyncImplementationTest, InvalidPushData)
@@ -414,7 +414,7 @@ TEST_F(RSyncImplementationTest, InvalidPushData)
     const std::vector<unsigned char> data{first, last};
 
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().push(handle, data));
-    
+
     EXPECT_NO_THROW(RSync::RSyncImplementation::instance().release());
-} 
+}
 

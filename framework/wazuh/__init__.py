@@ -48,7 +48,7 @@ class Wazuh:
         self.version = common.wazuh_version
         self.installation_date = common.installation_date
         self.type = common.install_type
-        self.path = common.ossec_path
+        self.path = common.wazuh_path
         self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
         self.tz_offset = None

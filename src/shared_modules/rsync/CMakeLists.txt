@@ -19,7 +19,15 @@ endif(COVERITY)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif(FSANITIZE)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -38,8 +46,9 @@ include_directories(${SHARED_MODULES}/dbsync/include/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 
-link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SHARED_MODULES}/dbsync/build/lib/)
+link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/openssl/)
 
 file(GLOB RSYNC_SRC
@@ -57,7 +66,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
-  target_link_libraries(rsync crypto ssl ws2_32 crypt32)
 elseif(UNIX AND NOT APPLE)
   set_target_properties(rsync PROPERTIES
         LINK_FLAGS "-static-libgcc -static-libstdc++")
@@ -65,14 +73,22 @@ elseif(UNIX AND NOT APPLE)
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    
-target_link_libraries(rsync cjson dbsync crypto pthread)
+
+if(DISABLE_SHARED)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(rsync dbsync cjson crypto ws2_32 ssl crypt32 pthread)
+  else()
+    target_link_libraries(rsync dbsync cjson crypto pthread)
+  endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+else()
+  target_link_libraries(rsync dbsync wazuhext)
+endif(DISABLE_SHARED)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
     string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-    target_link_libraries(rsync dbsync cjson crypto pthread -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
+    target_link_libraries(rsync dbsync -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
   endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
 endif(CMAKE_BUILD_TYPE STREQUAL "Release")
 
@@ -87,5 +103,8 @@ if(UNIT_TEST)
 endif(UNIT_TEST)
 
 if(NOT DEFINED COVERITY AND NOT DEFINED UNIT_TEST)
+  if(FSANITIZE)
+    target_link_libraries(rsync gcov)
+  endif(FSANITIZE)
   add_subdirectory(testtool)
 endif(NOT DEFINED COVERITY AND NOT DEFINED UNIT_TEST)

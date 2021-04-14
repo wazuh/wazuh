@@ -8,7 +8,7 @@ from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError
 from wazuh.core.utils import WazuhDBQuery, \
     WazuhDBBackend
-from wazuh.core.wazuh_socket import OssecSocket
+from wazuh.core.wazuh_socket import WazuhSocket
 
 tasks_fields = {'task_id': 'task_id', 'agent_id': 'agent_id', 'node': 'node', 'module': 'module',
                 'command': 'command', 'create_time': 'create_time', 'last_update_time': 'last_update_time',
@@ -64,7 +64,7 @@ def send_to_tasks_socket(command):
     Message received from the socket
     """
     try:
-        s = OssecSocket(common.TASKS_SOCKET)
+        s = WazuhSocket(common.TASKS_SOCKET)
     except Exception:
         raise WazuhInternalError(1121)
     s.send(dumps(command).encode())

@@ -21,6 +21,7 @@
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
+static const std::string UTILITIES_FOLDER   { "/Utilities"          };
 
 class PKGWrapper final : public IPackageWrapper
 {
@@ -61,6 +62,14 @@ public:
     {
         return m_osPatch;
     }
+    std::string source() const override
+    {
+        return m_source;
+    }
+    std::string location() const override
+    {
+        return m_location;
+    }
 
 private:
     void getPkgData(const std::string& filePath)
@@ -89,7 +98,7 @@ private:
 
         const auto getDataFnc
         {
-            [this](std::istream& data)
+            [this, &filePath](std::istream& data)
             {
                 std::string line;
                 while(std::getline(data, line))
@@ -117,6 +126,8 @@ private:
                         m_description = getValueFnc(line);
                     }
                 }
+                m_source   = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
+                m_location = filePath;
             }
         };
 
@@ -170,6 +181,8 @@ private:
     std::string m_architecture;
     const std::string m_format;
     std::string m_osPatch;
+    std::string m_source;
+    std::string m_location;
 };
 
 #endif //_PKG_WRAPPER_H

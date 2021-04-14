@@ -29,6 +29,7 @@
 #define w_rwlock_rdlock(x) { int error = pthread_rwlock_rdlock(x); if (error) merror_exit("At pthread_rwlock_rdlock(): %s", strerror(error)); }
 #define w_rwlock_wrlock(x) { int error = pthread_rwlock_wrlock(x); if (error) merror_exit("At pthread_rwlock_wrlock(): %s", strerror(error)); }
 #define w_rwlock_unlock(x) { int error = pthread_rwlock_unlock(x); if (error) merror_exit("At pthread_rwlock_unlock(): %s", strerror(error)); }
+#define w_rwlock_destroy(x) { int error = pthread_rwlock_destroy(x); if (error) merror_exit("At pthread_rwlock_destroy(" #x "): %s", strerror(error)); }
 #define w_mutexattr_init(x) { int error = pthread_mutexattr_init(x); if (error) merror_exit("At pthread_mutexattr_init(): %s", strerror(error)); }
 #define w_mutexattr_settype(x, y) { int error = pthread_mutexattr_settype(x, y); if (error) merror_exit("At pthread_mutexattr_settype(): %s", strerror(error)); }
 #define w_mutexattr_destroy(x) { int error = pthread_mutexattr_destroy(x); if (error) merror_exit("At pthread_mutexattr_destroy(): %s", strerror(error)); }

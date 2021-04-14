@@ -736,7 +736,6 @@ stages:
               node_api_config:
                 host: !anystr
                 port: !anyint
-                behind_proxy_server: !anybool
 
                 https:
                   enabled: !anybool

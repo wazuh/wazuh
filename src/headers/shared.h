@@ -273,5 +273,4 @@ extern const char *__local_name;
 #include "enrollment_op.h"
 #include "buffer_op.h"
 
-
 #endif /* SHARED_H */

@@ -68,8 +68,8 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
         merror(QUEUE_SEND);
 
-        if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQPATH);
+        if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         // Try to send it again
@@ -96,10 +96,13 @@ void fim_send_sync_msg(const char *location, const char * msg) {
 
 
 // Send a message related to syscheck change/addition
-void send_syscheck_msg(const char *msg)
-{
+void send_syscheck_msg(const cJSON *_msg) {
+    char *msg = cJSON_PrintUnformatted(_msg);
+
     mdebug2(FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
+
+    os_free(msg);
 
     if (syscheck.max_eps == 0) {
         return;
@@ -116,11 +119,9 @@ void send_syscheck_msg(const char *msg)
 // Send a scan info event
 void fim_send_scan_info(fim_scan_event event) {
     cJSON * json = fim_scan_info_json(event, time(NULL));
-    char * plain = cJSON_PrintUnformatted(json);
 
-    send_syscheck_msg(plain);
+    send_syscheck_msg(json);
 
-    free(plain);
     cJSON_Delete(json);
 }
 
@@ -215,7 +216,7 @@ void start_daemon()
     // Deleting content local/diff directory
     char diff_dir[PATH_MAX];
 
-    snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR_PATH);
+    snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR);
 
     if (cldir_ex(diff_dir) == -1 && errno != ENOENT) {
         merror("Unable to clear directory '%s': %s (%d)", diff_dir, strerror(errno), errno);
@@ -341,8 +342,7 @@ void start_daemon()
 
         // If time elapsed is higher than the syscheck time, run syscheck time
         if (((curr_time - prev_time_sk) > syscheck.time) || run_now) {
-            fim_scan();
-            prev_time_sk = time(0);
+            prev_time_sk = fim_scan();
         }
         sleep(SYSCHECK_WAIT);
     }
@@ -474,25 +474,18 @@ int fim_whodata_initialize() {
     set_priority_windows_thread();
 #endif
 
-    for (int i = 0; syscheck.dir[i]; i++) {
-
-        if (syscheck.opts[i] & WHODATA_ACTIVE) {
-
 #ifdef WIN_WHODATA // Whodata on Windows
+    for (int i = 0; syscheck.dir[i]; i++) {
+        if (syscheck.opts[i] & WHODATA_ACTIVE) {
             if(realtime_adddir(syscheck.dir[i], i + 1, 0) == -2) {
                 syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
                 syscheck.opts[i] &= ~WHODATA_ACTIVE;
                 syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
                 syscheck.realtime_change = 1;
             }
-#else // Whodata on Linux
-            realtime_adddir(fim_get_real_path(i), i + 1, (syscheck.opts[i] & CHECK_FOLLOW) ? 1 : 0);
-#endif
 
         }
     }
-
-#ifdef WIN_WHODATA
     HANDLE t_hdle;
     long unsigned int t_id;
 
@@ -602,7 +595,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     snprintf(path, PATH_MAX, "%s", syscheck.symbolic_links[i]);
                     fim_link_check_delete(i);
 
-                    int config = fim_configuration_directory(path, "file");
+                    int config = fim_configuration_directory(path);
 
                     if (config >= 0) {
                         fim_link_silent_scan(path, config);
@@ -629,7 +622,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
 STATIC void fim_link_update(int pos, char *new_path) {
     int i;
     int in_configuration = false;
-
+    int is_new_link = true;
     // Check if the previously pointed folder is in the configuration
     // and delete its database entries if it isn't
     for (i = 0; syscheck.dir[i] != NULL; i++) {
@@ -638,30 +631,55 @@ STATIC void fim_link_update(int pos, char *new_path) {
             continue;
         }
 
-        if (strcmp(syscheck.symbolic_links[pos], fim_get_real_path(i)) == 0) {
+        if (strcmp(syscheck.symbolic_links[pos],
+                   syscheck.symbolic_links[i] ? syscheck.symbolic_links[i] : syscheck.dir[i]) == 0) {
             in_configuration = true;
             break;
         }
     }
 
     if (in_configuration == false) {
+#ifdef ENABLE_AUDIT
+        // Remove the audit rule for the previous link only if the path is not configured in other entry.
+        if (syscheck.opts[pos] & WHODATA_ACTIVE) {
+            remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
+        }
+#endif
         fim_link_delete_range(pos);
     }
 
     // Check if the updated path of the link is already in the configuration
     for (i = 0; syscheck.dir[i] != NULL; i++) {
-        if (strcmp(new_path, syscheck.dir[i]) == 0) {
+        if (i == pos) {
+            if (strcmp(new_path, syscheck.dir[i]) == 0) {
+                // We were monitoring a link, now we are monitoring the actual directory
+#ifdef ENABLE_AUDIT
+                if (syscheck.opts[i] & WHODATA_ACTIVE) {
+                    add_whodata_directory(syscheck.dir[i]);
+                }
+#endif
+                is_new_link = false;
+                break;
+            }
+        } else if (strcmp(new_path, syscheck.symbolic_links[i] ? syscheck.symbolic_links[i] : syscheck.dir[i]) == 0) {
             mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
-            syscheck.symbolic_links[pos] = NULL;
-            return;
+            is_new_link = false;
+            break;
         }
     }
 
+    w_mutex_lock(&syscheck.fim_symlink_mutex);
     os_free(syscheck.symbolic_links[pos]);
-    os_strdup(new_path, syscheck.symbolic_links[pos]);
 
-    // Add new entries without alert.
-    fim_link_silent_scan(new_path, pos);
+    if (is_new_link) {
+        os_strdup(new_path, syscheck.symbolic_links[pos]);
+    }
+
+    w_mutex_unlock(&syscheck.fim_symlink_mutex);
+    if (is_new_link) {
+        // Add new entries without alert.
+        fim_link_silent_scan(new_path, pos);
+    }
 }
 
 STATIC void fim_link_check_delete(int pos) {
@@ -669,7 +687,14 @@ STATIC void fim_link_check_delete(int pos) {
 
     if (w_stat(syscheck.symbolic_links[pos], &statbuf) < 0) {
         if (errno == ENOENT) {
-            syscheck.symbolic_links[pos] = NULL;
+#ifdef ENABLE_AUDIT
+            if (syscheck.opts[pos] & WHODATA_ACTIVE) {
+                remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
+            }
+#endif
+            w_mutex_lock(&syscheck.fim_symlink_mutex);
+            os_free(syscheck.symbolic_links[pos]);
+            w_mutex_unlock(&syscheck.fim_symlink_mutex);
             return;
         }
 
@@ -680,8 +705,14 @@ STATIC void fim_link_check_delete(int pos) {
         if (syscheck.realtime && syscheck.realtime->dirtb) {
             fim_delete_realtime_watches(pos);
         }
-
-        syscheck.symbolic_links[pos] = NULL;
+#ifdef ENABLE_AUDIT
+        if (syscheck.opts[pos] & WHODATA_ACTIVE) {
+            remove_audit_rule_syscheck(syscheck.symbolic_links[pos]);
+        }
+#endif
+        w_mutex_lock(&syscheck.fim_symlink_mutex);
+        os_free(syscheck.symbolic_links[pos]);
+        w_mutex_unlock(&syscheck.fim_symlink_mutex);
     }
 }
 
@@ -696,7 +727,7 @@ STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
     int watch_conf;
 
     assert(watch_to_delete != NULL);
-    dir_conf = fim_configuration_directory(syscheck.symbolic_links[pos], "file");
+    dir_conf = fim_configuration_directory(syscheck.symbolic_links[pos]);
 
     if (dir_conf > -1) {
         w_mutex_lock(&syscheck.fim_realtime_mutex);
@@ -704,7 +735,7 @@ STATIC void fim_delete_realtime_watches(__attribute__((unused)) int pos) {
         while(hash_node) {
             data = hash_node->data;
             if (data) {
-                watch_conf = fim_configuration_directory(data, "file");
+                watch_conf = fim_configuration_directory(data);
 
                 if (dir_conf == watch_conf) {
                     W_Vector_insert(watch_to_delete, hash_node->key);
@@ -736,7 +767,7 @@ STATIC void fim_link_delete_range(int pos) {
     char pattern[PATH_MAX] = {0};
 
     // Create the sqlite LIKE pattern.
-    snprintf(pattern, PATH_MAX, "%s%c%%", syscheck.dir[pos], PATH_SEP);
+    snprintf(pattern, PATH_MAX, "%s%c%%", syscheck.symbolic_links[pos], PATH_SEP);
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
@@ -757,18 +788,19 @@ STATIC void fim_link_delete_range(int pos) {
 }
 
 STATIC void fim_link_silent_scan(char *path, int pos) {
-    struct fim_element *item;
+    struct fim_element item = { .index = pos, .mode = FIM_SCHEDULED };
 
-    os_calloc(1, sizeof(fim_element), item);
-    item->index = pos;
-    item->mode = FIM_SCHEDULED;
+    fim_checker(path, &item, NULL, 0);
 
     if (syscheck.opts[pos] & REALTIME_ACTIVE) {
         realtime_adddir(path, 0, 1);    // This is acting always on links, so `followsl` will always be `1`
+    } else if (syscheck.opts[pos] & WHODATA_ACTIVE) {
+#ifdef ENABLE_AUDIT
+        // Just in case, we need to remove the configured directory if it was previously monitored
+        remove_audit_rule_syscheck(syscheck.dir[pos]);
+        add_whodata_directory(path);
+#endif
     }
-
-    fim_checker(path, item, NULL, 0);
-    os_free(item);
 }
 
 STATIC void fim_link_reload_broken_link(char *path, int index) {
@@ -785,8 +817,10 @@ STATIC void fim_link_reload_broken_link(char *path, int index) {
 
     // Reload broken link
     if (!found) {
+        w_mutex_lock(&syscheck.fim_symlink_mutex);
         os_free(syscheck.symbolic_links[index]);
         os_strdup(path, syscheck.symbolic_links[index]);
+        w_mutex_unlock(&syscheck.fim_symlink_mutex);
 
         // Add new entries without alert.
         fim_link_silent_scan(path, index);

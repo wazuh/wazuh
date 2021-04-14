@@ -22,9 +22,6 @@ void jsonout_output_event(const Eventinfo *lf)
     if (strstr(json_alert,"gcp")) {
         mdebug2("Sending gcp event: %s", json_alert);
     }
-    if (strstr(json_alert,"mitre")) {
-        mdebug2("Sending mitre event: %s", json_alert);
-    }
     free(json_alert);
     return;
 }

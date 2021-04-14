@@ -97,4 +97,6 @@ extern cJSON * __real_cJSON_GetArrayItem(const cJSON *array, int index);
 
 cJSON* __wrap_cJSON_Duplicate(const cJSON *item, int recurse);
 
+cJSON* __wrap_cJSON_AddBoolToObject(cJSON * const object, const char * const name, const cJSON_bool boolean);
+
 #endif

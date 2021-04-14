@@ -12,6 +12,8 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 
+#ifndef WIN32
+
 #undef minfo
 #undef mwarn
 #undef merror
@@ -61,8 +63,8 @@ void * wm_download_main(wm_download_t * data) {
     do {
         static unsigned int seconds = 60;
 
-        if (sock = OS_BindUnixDomain(WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-            mwarn("Unable to bind to socket '%s', retrying in %u secs.", WM_DOWNLOAD_SOCK_PATH, seconds);
+        if (sock = OS_BindUnixDomain(WM_DOWNLOAD_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+            mwarn("Unable to bind to socket '%s', retrying in %u secs.", WM_DOWNLOAD_SOCK, seconds);
             sleep(seconds);
             seconds += seconds < 600 ? 60 : 0;
         }
@@ -211,7 +213,7 @@ unsc:
 
     // Jail path
 
-    if (snprintf(jpath, sizeof(jpath), "%s/%s", DEFAULTDIR, unsc_fpath) >= (int)sizeof(jpath)) {
+    if (snprintf(jpath, sizeof(jpath), "%s", unsc_fpath) >= (int)sizeof(jpath)) {
         mdebug1("Path too long: '%s'", buffer_cpy);
         snprintf(buffer, OS_MAXSTR, "err path too long");
         goto end;
@@ -288,3 +290,4 @@ cJSON *wm_download_dump() {
     cJSON_AddItemToObject(root,"wazuh_download",wm_wd);
     return root;
 }
+#endif

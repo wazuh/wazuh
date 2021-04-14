@@ -108,13 +108,13 @@ STATIC void w_logcollector_state_dump() {
 
     FILE * lc_state_file = NULL;
 
-    if (lc_state_file = fopen(LOGCOLLECTOR_STATE_PATH, "w"), lc_state_file != NULL) {
+    if (lc_state_file = fopen(LOGCOLLECTOR_STATE, "w"), lc_state_file != NULL) {
         if (fwrite(lc_state_str, sizeof(char), len + 1, lc_state_file) < 1) {
-            merror(FWRITE_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
+            merror(FWRITE_ERROR, LOGCOLLECTOR_STATE, errno, strerror(errno));
         }
         fclose(lc_state_file);
     } else {
-        merror(FOPEN_ERROR, LOGCOLLECTOR_STATE_PATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, LOGCOLLECTOR_STATE, errno, strerror(errno));
     }
 
     os_free(lc_state_str);
@@ -122,7 +122,7 @@ STATIC void w_logcollector_state_dump() {
 
 void w_logcollector_state_init(w_lc_state_type_t state_type, bool state_file_enabled) {
 
-    pthread_mutex_init(&g_lc_raw_stats_mutex, NULL);
+    w_mutex_init(&g_lc_raw_stats_mutex, NULL);
 
     if (state_type & LC_STATE_GLOBAL) {
 
@@ -139,7 +139,7 @@ void w_logcollector_state_init(w_lc_state_type_t state_type, bool state_file_ena
     }
 
     if (state_type & LC_STATE_INTERVAL) {
-        pthread_mutex_init(&g_lc_json_stats_mutex, NULL);
+        w_mutex_init(&g_lc_json_stats_mutex, NULL);
 
         os_calloc(1, sizeof(w_lc_state_storage_t), g_lc_states_interval);
 

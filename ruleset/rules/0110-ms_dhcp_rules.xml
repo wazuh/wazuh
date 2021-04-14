@@ -60,7 +60,7 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<id>^00</id>
     <description>MS-DHCP: The log was started.</description>
     <mitre>
-      <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+      <id>T1050</id>
     </mitre>
     <group>service_start,pci_dss_10.2.6,gpg13_4.14,gpg13_10.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -339,7 +339,7 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11010</id>
     <description>MS-DHCP: Started.</description>
     <mitre>
-      <id technique="Create or Modify System Process: Windows Service" tactic="Persistence" tacticID="TA0003">T1543.003</id>
+      <id>T1050</id>
     </mitre>
     <group>service_start,</group>
   </rule>
@@ -434,7 +434,7 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11023</id>
     <description>MS-DHCP: Service not authorized in AD.</description>
     <mitre>
-      <id technique="System Services: Service Execution" tactic="Execution" tacticID="TA0002">T1569.002</id>
+      <id>T1035</id>
     </mitre>
     <group>dhcp_ipv6,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -451,7 +451,7 @@ Server 2008 IPv6 Event ID  Meaning
 	<id>^11025</id>
     <description>MS-DHCP: Service has not determined if it is authorized in AD.</description>
     <mitre>
-      <id technique="System Services: Service Execution" tactic="Execution" tacticID="TA0002">T1569.002</id>
+      <id>T1035</id>
     </mitre>
     <group>dhcp_ipv6,pci_dss_10.6.1,gpg13_4.3,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>

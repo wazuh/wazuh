@@ -22,7 +22,9 @@ static int read_main_elements(const OS_XML *xml, int modules,
 {
     int i = 0;
     const char *osglobal = "global";                    /* Server Config */
+#ifndef WIN32
     const char *osrules = "ruleset";                    /* Server Config */
+#endif
     const char *ossyscheck = "syscheck";                /* Agent Config  */
     const char *osrootcheck = "rootcheck";              /* Agent Config  */
     const char *osalerts = "alerts";                    /* Server Config */
@@ -35,12 +37,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osclient = "client";                    /* Agent Config  */
     const char *osbuffer = "client_buffer";             /* Agent Buffer Config  */
     const char *oscommand = "command";                  /* ? Config      */
-    const char *osreports = "reports";                  /* Server Config */
     const char *osintegratord = "integration";          /* Server Config */
     const char *osactive_response = "active-response";  /* Agent Config */
     const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                    /* Labels Config */
-    const char *osauthd = "auth";                       /* Authd Config */
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
@@ -53,6 +53,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *task_manager = "task-manager";          /* Task Manager Module */
 #ifndef WIN32
     const char *osfluent_forward = "fluent-forward";     /* Fluent forwarder */
+    const char *osauthd = "auth";                       /* Authd Config */
+    const char *osreports = "reports";                  /* Server Config */
 #endif
 
     while (node[i]) {
@@ -90,11 +92,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osrules) == 0)) {
+        }
+#ifndef WIN32
+        else if (chld_node && (strcmp(node[i]->element, osrules) == 0)) {
             if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, ossyscheck) == 0) {
+        }
+#endif
+        else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
                 goto fail;
             }
@@ -137,11 +143,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (ReadActiveResponsesAgent(xml, NULL, d1) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
+        }
+#ifndef WIN32
+        else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, oswmodule) == 0) {
+        }
+#endif
+        else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
@@ -167,14 +177,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
                 goto fail;
             }
+        } else if (strcmp(node[i]->element, osauthd) == 0) {
+            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
         }
 #endif
         else if (chld_node && (strcmp(node[i]->element, oslabels) == 0)) {
             if ((modules & CLABELS) && (Read_Labels(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (strcmp(node[i]->element, osauthd) == 0) {
-            if ((modules & CAUTHD) && (Read_Authd(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {

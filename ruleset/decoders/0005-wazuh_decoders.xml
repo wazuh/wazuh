@@ -29,7 +29,16 @@
   <parent>wazuh</parent>
   <type>wazuh</type>
   <prematch offset="after_parent">^Agent started:</prematch>
-  <regex offset="after_prematch">^ '(\S+\S)'</regex>
+  <regex offset="after_prematch">^ '(\S+)'</regex>
+  <order>extra_data</order>
+  <fts>name, location, extra_data</fts>
+</decoder>
+
+<decoder name="wazuh-agent-stop">
+  <parent>wazuh</parent>
+  <type>wazuh</type>
+  <prematch offset="after_parent">^Agent stopped:</prematch>
+  <regex offset="after_prematch">^ '(\S+)'</regex>
   <order>extra_data</order>
   <fts>name, location, extra_data</fts>
 </decoder>

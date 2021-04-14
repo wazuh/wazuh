@@ -102,13 +102,13 @@ void *receiver_thread(__attribute__((unused)) void *none)
                         merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
                     }
 
-                    update_status(GA_STATUS_NACTIVE);
+                    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
                     merror(LOST_ERROR);
                     os_setwait();
                     start_agent(0);
                     minfo(SERVER_UP);
                     os_delwait();
-                    update_status(GA_STATUS_ACTIVE);
+                    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
                     break;
                 }
             } else {
@@ -133,7 +133,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                 /* This is the only thread that modifies it */
                 available_server = (int)time(NULL);
-                update_ack(available_server);
+                w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
 
                 /* If it is an active response message */
                 if (strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0) {
@@ -144,6 +144,21 @@ void *receiver_thread(__attribute__((unused)) void *none)
                         queue_push_ex(winexec_queue, strdup(tmp_msg));
                     }
 
+                    continue;
+                }
+
+                /* Force reconnect agent to the manager */
+                else if (strncmp(tmp_msg, HC_FORCE_RECONNECT, strlen(HC_FORCE_RECONNECT)) == 0) {
+                    /* Set lock and wait for it */
+                    minfo("Wazuh Agent will be reconnected because a reconnect message was received");
+                    os_setwait();
+                    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
+
+                    /* Send sync message */
+                    start_agent(0);
+
+                    os_delwait();
+                    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
                     continue;
                 }
 
@@ -297,7 +312,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
             else if (fp) {
                 available_server = (int)time(NULL);
-                update_ack(available_server);
+                w_agentd_state_update(UPDATE_ACK, (void *) &available_server);
                 fprintf(fp, "%s", tmp_msg);
             }
 

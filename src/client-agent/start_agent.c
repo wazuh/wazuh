@@ -67,7 +67,7 @@ bool connect_server(int server_id, bool verbose)
     if (tmp_str) {
         /* Resolve hostname */
         if (!isChroot()) {
-            resolveHostname(&agt->server[server_id].rip, 5);
+            resolve_hostname(&agt->server[server_id].rip, 5);
 
             tmp_str = strchr(agt->server[server_id].rip, '/');
             if (tmp_str) {
@@ -120,6 +120,7 @@ bool connect_server(int server_id, bool verbose)
             }
         #endif
         agt->rip_id = server_id;
+        last_connection_time = (int)time(NULL);
         return true;
     }
     return false;
@@ -412,7 +413,7 @@ static bool agent_handshake_to_server(int server_id, bool is_startup) {
 /**
  * @brief Sends log message about start up
  * */
-static void send_msg_on_startup(void){
+static void send_msg_on_startup(void) {
 
     char msg[OS_MAXSTR + 2] = { '\0' };
     char fmsg[OS_MAXSTR + 1] = { '\0' };
@@ -425,4 +426,16 @@ static void send_msg_on_startup(void){
             "ossec", msg);
 
     send_msg(fmsg, -1);
+}
+
+/**
+ * @brief Send agent stopped message to server before exit
+ * */
+void send_agent_stopped_message() {
+    char msg[OS_SIZE_32] = { '\0' };
+
+    snprintf(msg, OS_SIZE_32, "%s%s", CONTROL_HEADER, HC_SHUTDOWN);
+
+    /* Send shutdown message */
+    send_msg(msg, -1);
 }

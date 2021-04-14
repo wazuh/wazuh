@@ -10,7 +10,7 @@ file(GLOB sysinfo_UNIT_TEST_SRC
 file(GLOB SYSINFO_SRC
     "${CMAKE_SOURCE_DIR}/src/network/networkInterfaceWindows.cpp")
 
-add_executable(sysInfoNetworkWindows_unit_test 
+add_executable(sysInfoNetworkWindows_unit_test
     ${sysinfo_UNIT_TEST_SRC}
     ${SYSINFO_SRC})
 

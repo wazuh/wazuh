@@ -16,7 +16,7 @@
 #include "eventinfo.h"
 #include "alerts/alerts.h"
 
-#define HOSTINFO_FILE   "/queue/fts/hostinfo"
+#define HOSTINFO_FILE   "queue/fts/hostinfo"
 #define HOST_HOST       "Host: "
 /*#define HOST_PORT       " open ports: "
 #define HOST_CHANGED    "Host information changed."

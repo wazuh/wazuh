@@ -668,7 +668,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     free_whodata_event(w_evt);
                     goto clean;
                 }
-                if (w_evt->config_node = fim_configuration_directory(w_evt->path, "file"), w_evt->config_node < 0 &&
+                if (w_evt->config_node = fim_configuration_directory(w_evt->path), w_evt->config_node < 0 &&
                     !(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                     // Discard the file or directory if its monitoring has not been activated
                     mdebug2(FIM_WHODATA_NOT_ACTIVE, w_evt->path);

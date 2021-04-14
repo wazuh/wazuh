@@ -1,17 +1,14 @@
 import os
 import socket
+import sys
+sys.path.append('/tools')
 
-
-def check(result):
-    if result == 0:
-        return 0
-    else:
-        return 1
+from healthcheck_utils import check
 
 
 def get_master_health():
     os.system("/var/ossec/bin/wazuh-control status > /tmp/daemons.txt")
-    check0 = check(os.system("diff -q /tmp/daemons.txt /configuration_files/healthcheck/daemons_check.txt"))
+    check0 = check(os.system("diff -q /tmp/daemons.txt /tmp/healthcheck/daemons_check.txt"))
     check1 = check(os.system("grep -qs 'Listening on ' /var/ossec/logs/api.log"))
     return check0 or check1
 

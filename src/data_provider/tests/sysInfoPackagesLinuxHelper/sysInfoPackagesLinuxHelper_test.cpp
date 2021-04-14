@@ -231,9 +231,6 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_EQ("amd64", jsPackageInfo["architecture"]);
     EXPECT_EQ("deb", jsPackageInfo["format"]);
     EXPECT_EQ("Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>", jsPackageInfo["vendor"]);
-    EXPECT_EQ("compression library - development\n\
-         zlib is a library implementing the deflate compression method found\n\
-         in gzip and PKZIP.  This package includes the development support\n\
-         files.", jsPackageInfo["description"]);
+    EXPECT_EQ("compression library - development", jsPackageInfo["description"]);
     EXPECT_EQ("zlib", jsPackageInfo["source"]);
 }

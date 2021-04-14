@@ -295,7 +295,7 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
         pi->get_next = 0;
         pi->regex_offset = 0;
         pi->prematch_offset = 0;
-        pi->flags = SHOW_STRING | JSON_ARRAY;
+        pi->flags = JSON_TREAT_NULL_DEFAULT | JSON_TREAT_ARRAY_DEFAULT;
         pi->internal_saving = false;
 
         regex_str = NULL;
@@ -457,26 +457,32 @@ int ReadDecodeXML(const char *file, OSDecoderNode **decoderlist_pn,
             }
 
             else if (strcasecmp(elements[j]->element, xml_nullfield) == 0) {
-                if (strcmp(elements[j]->content, "discard") == 0) {
-                    pi->flags |= DISCARD;
-                } else if (strcmp(elements[j]->content, "empty") == 0) {
-                    pi->flags |= EMPTY;
-                } else if (strcmp(elements[j]->content, "string") == 0) {
-                    pi->flags |= SHOW_STRING;
+
+                /* clearing json null treat bits */
+                pi->flags = (pi->flags) & (~JSON_TREAT_NULL_MASK);
+                if (strcasecmp(elements[j]->content, "discard") == 0) {
+                    pi->flags |= JSON_TREAT_NULL_AS_DISCARD;
+                } else if (strcasecmp(elements[j]->content, "empty") == 0) {
+                    smwarn(log_msg, ANALYSISD_DEC_DEPRECATED_OPT_VALUE, elements[j]->content, xml_nullfield, pi->name);
+                    pi->flags |= JSON_TREAT_NULL_DEFAULT;
+                } else if (strcasecmp(elements[j]->content, "string") == 0) {
+                    pi->flags |= JSON_TREAT_NULL_AS_STRING;
                 } else {
-                    smerror(log_msg, INVALID_ELEMENT, elements[j]->element, elements[j]->content);
-                    goto cleanup;
+                    smwarn(log_msg, ANALYSISD_INV_OPT_VALUE_DEFAULT, elements[j]->content, xml_nullfield, pi->name);
+                    pi->flags |= JSON_TREAT_NULL_DEFAULT;
                 }
             }
 
             else if (strcasecmp(elements[j]->element, xml_arraystructure) == 0) {
-                if (strcmp(elements[j]->content, "csv") == 0) {
-                    pi->flags |= CSV_STRING;
-                } else if (strcmp(elements[j]->content, "array") == 0) {
-                    pi->flags |= JSON_ARRAY;
+                /* clear default value */
+                pi->flags = (pi->flags) & (~JSON_TREAT_ARRAY_MASK);
+                if (strcasecmp(elements[j]->content, "csv") == 0) {
+                    pi->flags |= JSON_TREAT_ARRAY_AS_CSV_STRING;
+                } else if (strcasecmp(elements[j]->content, "array") == 0) {
+                    pi->flags |= JSON_TREAT_ARRAY_AS_ARRAY;
                 } else {
-                    smerror(log_msg, INVALID_ELEMENT, elements[j]->element, elements[j]->content);
-                    goto cleanup;
+                    smwarn(log_msg, ANALYSISD_INV_OPT_VALUE_DEFAULT, elements[j]->content, xml_arraystructure, pi->name);
+                    pi->flags |= JSON_TREAT_ARRAY_DEFAULT;
                 }
             }
 

@@ -20,7 +20,13 @@
 /* Notify list size */
 #define NOTIFY_LIST_SIZE    32
 
+/* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
+#define AUDIT_SOCKET                "queue/sockets/audit"
+#define AUDIT_CONF_FILE             "etc/af_wazuh.conf"
+#define AUDIT_HEALTHCHECK_DIR       "tmp"
+#define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
+#define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
 
 #ifdef WIN32
 #define FIM_REGULAR _S_IFREG
@@ -46,6 +52,13 @@ typedef enum fim_scan_event {
     FIM_SCAN_END
 } fim_scan_event;
 
+typedef enum {
+    FIM_FILE_UPDATED,
+    FIM_FILE_DELETED,
+    FIM_FILE_ADDED_PATHS,
+    FIM_FILE_ERROR
+} fim_sanitize_state_t;
+
 typedef enum fim_state_db {
     FIM_STATE_DB_EMPTY,
     FIM_STATE_DB_NORMAL,
@@ -58,7 +71,7 @@ typedef struct fim_element {
     struct stat statbuf;
     int index;
     int configuration;
-    int mode;
+    fim_event_mode mode;
 } fim_element;
 
 typedef struct fim_tmp_file {
@@ -144,8 +157,9 @@ void read_internal(int debug_level);
 /**
  * @brief Performs an integrity monitoring scan
  *
+ * @return A timestamp taken as soons as the scan ends.
  */
-void fim_scan();
+time_t fim_scan();
 
 /**
  * @brief Stop scanning files for one second if the max number of files scanned has been reached.
@@ -181,9 +195,8 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
  * @param [in] item FIM item
  * @param [in] w_evt Whodata event
  * @param [in] report 0 Dont report alert in the scan, otherwise an alert is generated
- * @return 0 on success, -1 on failure
  */
-int fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report);
+void fim_file(const char *file, fim_element *item, whodata_evt *w_evt, int report);
 
 /**
  * @brief Process FIM realtime event
@@ -213,10 +226,9 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
  * @brief Search the position of the path in directories array
  *
  * @param path Path to seek in the directories array
- * @param entry "file", for file checking or "registry" for registry checking
  * @return Returns the position of the path in the directories array, -1 if the path is not found
  */
-int fim_configuration_directory(const char *path, const char *entry);
+int fim_configuration_directory(const char *path);
 
 /**
  * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
@@ -235,7 +247,7 @@ int fim_check_depth(const char *path, int dir_position);
  *
  * @return A fim_file_data structure with the data from the file
  */
-fim_file_data * fim_get_data(const char *file_name, fim_element *item);
+fim_file_data * fim_get_data(const char *file_name, const fim_element *item);
 
 /**
  * @brief Initialize a fim_file_data structure
@@ -305,7 +317,7 @@ cJSON *fim_json_event(const char *file_name,
                       int pos,
                       unsigned int type,
                       fim_event_mode mode,
-                      whodata_evt *w_evt,
+                      const whodata_evt *w_evt,
                       const char *diff);
 
 /**
@@ -321,13 +333,6 @@ void free_file_data(fim_file_data *data);
  * @param entry Entry to be deallocated.
  */
 void free_entry(fim_entry * entry);
-
-/**
- * @brief Frees the memory of a FIM inode data structure
- *
- * @param [out] data The FIM inode data to be freed
- */
-void free_inode_data(fim_inode_data **data);
 
 /**
  * @brief Start real time monitoring
@@ -384,7 +389,7 @@ void free_whodata_event(whodata_evt *w_evt);
  *
  * @param msg The message to be sent
  */
-void send_syscheck_msg(const char *msg) __attribute__((nonnull));
+void send_syscheck_msg(const cJSON *msg) __attribute__((nonnull));
 
 /**
  * @brief Send a data synchronization control message
@@ -430,12 +435,18 @@ char *audit_get_id(const char * event);
 int init_regex(void);
 
 /**
- * @brief Adds audit rules to configured directories
+ * @brief Adds audit rules to directories
  *
- * @param first_time Indicates if it's the first time the rules are being added
- * @return The number of rules added
+ * @param path Path of the configured rule
  */
-int add_audit_rules_syscheck(bool first_time);
+void add_whodata_directory(const char *path);
+
+/**
+ * @brief Function the delete the audit rule for a specfic path
+ *
+ * @param path: Path of the configured rule.
+ */
+void remove_audit_rule_syscheck(const char *path);
 
 /**
  * @brief Read an audit event from socket
@@ -479,13 +490,6 @@ int set_auditd_config(void);
 int init_auditd_socket(void);
 
 /**
- * @brief Creates the necessary threads to process audit events
- *
- * @param [out] audit_sock The audit socket to read the events from
- */
-void *audit_main(int *audit_sock);
-
-/**
  * @brief Reloads audit rules every RELOAD_RULES_INTERVAL seconds
  *
  */
@@ -524,7 +528,7 @@ void get_parent_process_info(char *ppid, char ** const parent_name, char ** cons
  * This is necessary to include audit rules for hot added directories in the configuration
  *
  */
-void audit_reload_rules(void);
+void fim_audit_reload_rules(void);
 
 /**
  * @brief Parses an audit event and sends the corresponding alert message
@@ -553,15 +557,8 @@ void clean_rules(void);
  * @param buffer
  * @return 0 if no key is found, 1 if AUDIT_KEY is found, 2 if an existing key is found, 3 if AUDIT_HEALTHCHECK_KEY is found
  */
+
 int filterkey_audit_events(char *buffer);
-extern W_Vector *audit_added_dirs;
-extern volatile int audit_thread_active;
-extern volatile int whodata_alerts;
-extern volatile int audit_db_consistency_flag;
-extern pthread_mutex_t audit_mutex;
-extern pthread_cond_t audit_thread_started;
-extern pthread_cond_t audit_hc_started;
-extern pthread_cond_t audit_db_consistency;
 
 #elif WIN32
 /**
@@ -920,9 +917,9 @@ void fim_diff_folder_size();
  * physical object in the filesystem
  *
  * @param position Position of the directory in the structure
- * @return A string holding the element being monitored.
+ * @return A string holding the element being monitored. It must be freed after it's usage.
  */
-const char *fim_get_real_path(int position);
+char *fim_get_real_path(int position);
 
 /**
  * @brief Create a delete event and removes the entry from the database.

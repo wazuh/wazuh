@@ -79,7 +79,7 @@ public:
 
     static void showHelp()
     {
-        std::cout << "\nUsage: dbsync_test_tool <option(s)> SOURCES \n"
+        std::cout << "\nUsage: rsync_test_tool <option(s)> SOURCES \n"
                   << "Options:\n"
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-u DB_UPDATE_PERIOD\tSpecifies the database update period.\n"

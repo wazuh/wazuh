@@ -216,7 +216,6 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         # Modify filter tags with context vars.
         wazuh.core.cluster.utils.context_tag.set(self.tag)
-        wazuh.core.cluster.utils.context_subtag.set("Main")
         self.cluster_items = cluster_items
         # Transports in asyncio are an abstraction of sockets.
         self.transport = None
@@ -284,16 +283,19 @@ class Handler(asyncio.Protocol):
             Whether a message was parsed or not.
         """
         if self.in_buffer:
-            if self.in_msg.received == 0:
+            if self.in_msg.received == 0 and len(self.in_buffer) >= self.header_len:
                 # A new message has been received. Both header and payload must be processed.
                 self.in_buffer = self.in_msg.get_info_from_header(header=self.in_buffer,
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
-            else:
+                return True
+            elif self.in_msg.received != 0:
                 # The previous message has not been completely received yet. No header to parse, just payload.
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
-            return True
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -385,8 +387,8 @@ class Handler(asyncio.Protocol):
             raise exception.WazuhClusterError(3034, extra_message=filename)
 
         filename = filename.encode()
-        relative_path = filename.replace(common.ossec_path.encode(), b'')
-        # Tell to the destination node where (inside ossec_path) the file has to be written.
+        relative_path = filename.replace(common.wazuh_path.encode(), b'')
+        # Tell to the destination node where (inside wazuh_path) the file has to be written.
         await self.send_request(command=b'new_file', data=relative_path)
 
         # Send each chunk so it is updated in the destination.
@@ -489,7 +491,7 @@ class Handler(asyncio.Protocol):
         message : bytes
             Received data.
         """
-        self.in_buffer = message
+        self.in_buffer += message
         for command, counter, payload in self.get_messages():
             # If the message is the response of a previously sent request.
             if counter in self.box:
@@ -616,7 +618,7 @@ class Handler(asyncio.Protocol):
         bytes
             Response message.
         """
-        self.in_file[data] = {'fd': open(common.ossec_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
+        self.in_file[data] = {'fd': open(common.wazuh_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -813,16 +815,16 @@ class WazuhCommon:
         task_name, filename = task_and_file_names.split(' ', 1)
         if task_name not in self.sync_tasks:
             # Remove filename if task_name does not exists, before raising exception.
-            if os.path.exists(os.path.join(common.ossec_path, filename)):
+            if os.path.exists(os.path.join(common.wazuh_path, filename)):
                 try:
-                    os.remove(os.path.join(common.ossec_path, filename))
+                    os.remove(os.path.join(common.wazuh_path, filename))
                 except Exception as e:
                     self.get_logger(self.logger_tag).error(
-                        f"Attempt to delete file {os.path.join(common.ossec_path, filename)} failed: {e}")
+                        f"Attempt to delete file {os.path.join(common.wazuh_path, filename)} failed: {e}")
             raise exception.WazuhClusterError(3027, extra_message=task_name)
 
         # Set full path to file for task 'task_name' and notify it is ready to be read, so the lock is released.
-        self.sync_tasks[task_name].filename = os.path.join(common.ossec_path, filename)
+        self.sync_tasks[task_name].filename = os.path.join(common.wazuh_path, filename)
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
 

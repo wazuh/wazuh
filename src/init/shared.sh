@@ -9,7 +9,6 @@ VERSION_FILE="./src/VERSION"
 REVISION_FILE="./src/REVISION"
 VERSION=`cat ${VERSION_FILE}`
 REVISION=`cat ${REVISION_FILE}`
-LOCATION="./src/LOCATION"
 UNAME=`uname -snr`
 NUNAME=`uname`
 
@@ -30,10 +29,9 @@ NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
 INSTYPE="server"
-DEFAULT_DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
-INSTALLDIR="$DEFAULT_DIR";
+# Default installation directory
+INSTALLDIR="/var/ossec";
 PREINSTALLEDDIR=""
-WORKDIR="$INSTALLDIR"
 CEXTRA=""
 
 # Internal definitions

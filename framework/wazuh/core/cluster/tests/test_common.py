@@ -24,7 +24,7 @@ affected.add_failed_item(id_='111', error=WazuhError(code=1750, extra_message='w
 affected.add_failed_item(id_='555', error=WazuhError(code=1750, extra_message='wiiiiiii'))
 affected.add_failed_item(id_='333', error=WazuhError(code=1707, extra_message='wiiiiiii'))
 
-with patch('wazuh.common.ossec_path', new=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')):
+with patch('wazuh.common.wazuh_path', new=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')):
     objects_to_encode = [
         {'foo': 'bar',
          'foo2': 3,
@@ -55,7 +55,7 @@ with patch('wazuh.common.ossec_path', new=os.path.join(os.path.dirname(os.path.a
 
 
 @pytest.mark.parametrize('obj', objects_to_encode)
-@patch('wazuh.common.ossec_path', new=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
+@patch('wazuh.common.wazuh_path', new=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
 def test_encoder_decoder(obj):
     # Encoding first object
     encoded = json.dumps(obj, cls=WazuhJSONEncoder)

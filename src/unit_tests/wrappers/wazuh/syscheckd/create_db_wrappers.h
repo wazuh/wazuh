@@ -18,8 +18,7 @@ void __wrap_fim_checker(char *path,
                         whodata_evt *w_evt,
                         int report);
 
-int __wrap_fim_configuration_directory(const char *path,
-                                       const char *entry);
+int __wrap_fim_configuration_directory(const char *path);
 
 cJSON *__wrap_fim_entry_json(const char * path,
                              fim_file_data * data);
@@ -35,7 +34,7 @@ int __wrap_fim_whodata_event(whodata_evt * w_evt);
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_configuration_directory
  */
-void expect_fim_configuration_directory_call(const char *path, const char *file, int ret);
+void expect_fim_configuration_directory_call(const char *path, int ret);
 
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_checker

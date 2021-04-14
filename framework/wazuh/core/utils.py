@@ -22,8 +22,7 @@ from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
 from xml.dom.minidom import parseString
-from xml.etree import ElementTree as ET
-from xml.etree.ElementTree import fromstring
+from xml.etree import ElementTree
 
 import wazuh.core.results as results
 from api import configuration
@@ -78,7 +77,7 @@ def previous_month(n=1):
 
 
 def execute(command):
-    """Executes a command. It is used to execute ossec commands.
+    """Executes a command. It is used to execute Wazuh commands.
 
     :param command: Command as list.
     :return: If output.error !=0 returns output.data, otherwise launches a WazuhException with output.error as error code and output.message as description.
@@ -109,19 +108,36 @@ def process_array(array, search_text=None, complementary_search=False, search_in
                   sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None):
     """ Process a Wazuh framework data array
 
-    :param array: Array to process
-    :param search_text: Text to search and search type
-    :param complementary_search: Perform a complementary search
-    :param search_in_fields: Fields to search in
-    :param select: Select fields to return
-    :param sort_by: Fields to sort_by. Will sort the array directly if [''] is received
-    :param sort_ascending: Sort order ascending or descending
-    :param allowed_sort_fields: Allowed fields to sort_by
-    :param offset: First element to return.
-    :param limit: Maximum number of elements to return
-    :param q: Query to filter by
-    :param required_fields: Required fields that must appear in the response
-    :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
+    Parameters
+    ----------
+    array : list
+        Array to process
+    search_text : str
+        Text to search and search type
+    complementary_search : bool
+        Perform a complementary search
+    search_in_fields : list
+        Fields to search in
+    select : list
+        Select fields to return
+    sort_by : list
+        Fields to sort_by. Will sort the array directly if [''] is received
+    sort_ascending : bool
+        Sort order ascending or descending
+    allowed_sort_fields : list
+        Allowed fields to sort_by
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return
+    q : str
+        Query to filter by
+    required_fields : list
+        Required fields that must appear in the response
+
+    Returns
+    -------
+    Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
     if not array:
         return {'items': list(), 'totalItems': 0}
@@ -474,7 +490,7 @@ def delete_wazuh_file(full_path):
     bool
         True if success.
     """
-    if not full_path.startswith(common.ossec_path) or '..' in full_path:
+    if not full_path.startswith(common.wazuh_path) or '..' in full_path:
         raise WazuhError(1907)
 
     if path.exists(full_path):
@@ -737,7 +753,7 @@ def load_wazuh_xml(xml_path, data=None):
                '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
-    return fromstring(entities + '<root_tag>' + data + '</root_tag>')
+    return ElementTree.fromstring(entities + '<root_tag>' + data + '</root_tag>')
 
 
 class WazuhVersion:
@@ -1107,7 +1123,7 @@ class WazuhDBQuery(object):
         self.date_fields = date_fields
         self.extra_fields = extra_fields
         self.q = query
-        self.legacy_filters = filters
+        self.legacy_filters = filters.copy() if filters else filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
         self.rbac_negate = rbac_negate
@@ -1610,7 +1626,7 @@ def upload_file(content, path, check_xml_formula_values=True):
     def escape_formula_values(xml_string):
         """Prepend with a single quote possible formula injections."""
         formula_characters = ('=', '+', '-', '@')
-        et = ET.ElementTree(ET.fromstring(f'<root>{xml_string}</root>'))
+        et = ElementTree.ElementTree(ElementTree.fromstring(f'<root>{xml_string}</root>'))
         full_preprend, beginning_preprend = list(), list()
         for node in et.iter():
             if node.tag and node.tag.startswith(formula_characters):
@@ -1628,7 +1644,7 @@ def upload_file(content, path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.wazuh_path, time.time(), random.randint(0, 1000))
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
@@ -1639,7 +1655,7 @@ def upload_file(content, path, check_xml_formula_values=True):
 
     # Move temporary file to group folder
     try:
-        new_conf_path = join(common.ossec_path, path)
+        new_conf_path = join(common.wazuh_path, path)
         safe_move(tmp_file_path, new_conf_path, permissions=0o660)
     except Error:
         raise WazuhInternalError(1016)
@@ -1679,7 +1695,7 @@ def replace_in_comments(original_content, to_be_replaced, replacement):
     return original_content
 
 
-def to_relative_path(full_path: str, prefix: str = common.ossec_path):
+def to_relative_path(full_path: str, prefix: str = common.wazuh_path):
     """Return a relative path from the Wazuh base directory.
 
     Parameters
@@ -1687,7 +1703,7 @@ def to_relative_path(full_path: str, prefix: str = common.ossec_path):
     full_path : str
         Absolute path.
     prefix : str, opt
-        Prefix to strip from the absolute path. Default `common.ossec_path`
+        Prefix to strip from the absolute path. Default `common.wazuh_path`
 
     Returns
     -------

@@ -253,7 +253,7 @@ void test_wm_agent_send_task_information_master_ok(void **state)
                       "\"command\":\"upgrade\","
                       "\"agent\":10}]";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -323,7 +323,7 @@ void test_wm_agent_send_task_information_master_json_err(void **state)
                       "\"command\":\"upgrade\","
                       "\"agent\":10}]";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -393,7 +393,7 @@ void test_wm_agent_send_task_information_master_recv_error(void **state)
                       "\"command\":\"upgrade\","
                       "\"agent\":10}]";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -463,7 +463,7 @@ void test_wm_agent_send_task_information_master_sockterr_error(void **state)
                       "\"command\":\"upgrade\","
                       "\"agent\":10}]";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);
@@ -517,13 +517,13 @@ void test_wm_agent_send_task_information_master_connect_error(void **state)
     cJSON_AddItemToArray(input, task_request1);
     cJSON_AddItemToArray(input, task_request2);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mterror, formatted_msg, "(8104): Cannot connect to '/var/ossec/queue/tasks/task'. Could not reach task manager module.");
+    expect_string(__wrap__mterror, formatted_msg, "(8104): Cannot connect to 'queue/tasks/task'. Could not reach task manager module.");
 
     cJSON *output = wm_agent_send_task_information_master(input);
 
@@ -647,7 +647,7 @@ void test_wm_agent_upgrade_send_tasks_information_master(void **state)
 
     will_return(__wrap_w_is_worker, 0);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR TASK_QUEUE);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, TASK_QUEUE);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
     will_return(__wrap_OS_ConnectUnixDomain, socket);

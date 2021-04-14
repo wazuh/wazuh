@@ -55,9 +55,9 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     active_response *tmp_ar;
 
     /* Open shared ar file */
-    fp = fopen(DEFAULTARPATH, "a");
+    fp = fopen(DEFAULTAR, "a");
     if (!fp) {
-        merror(FOPEN_ERROR, DEFAULTARPATH, errno, strerror(errno));
+        merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (-1);
     }
 
@@ -70,7 +70,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         return OS_INVALID;
     }
 
-    if ((chown(DEFAULTARPATH, (uid_t) - 1, gid)) == -1) {
+    if ((chown(DEFAULTAR, (uid_t) - 1, gid)) == -1) {
         merror("Could not change the group to '%s': %d.", GROUPGLOBAL, errno);
         fclose(fp);
         return OS_INVALID;
@@ -78,7 +78,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 #endif
 
-    if ((chmod(DEFAULTARPATH, 0640)) == -1) {
+    if ((chmod(DEFAULTAR, 0640)) == -1) {
         merror("Could not chmod to 0640: '%d'", errno);
         fclose(fp);
         return (-1);
@@ -285,7 +285,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
              tmp_ar->timeout);
 
     /* Add to shared file */
-    mdebug1("Writing command '%s' to '%s'", tmp_ar->command, DEFAULTARPATH);
+    mdebug1("Writing command '%s' to '%s'", tmp_ar->command, DEFAULTAR);
     fprintf(fp, "%s - %s - %d\n",
             tmp_ar->name,
             tmp_ar->ar_cmd->executable,

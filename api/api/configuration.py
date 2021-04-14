@@ -14,9 +14,11 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
+from jsonschema import validate, ValidationError
 
 from api.api_exception import APIError
-from api.constants import SECURITY_CONFIG_PATH
+from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH
+from api.validator import api_config_schema, security_config_schema
 from wazuh.core import common
 
 default_security_configuration = {
@@ -27,7 +29,9 @@ default_security_configuration = {
 default_api_configuration = {
     "host": "0.0.0.0",
     "port": 55000,
-    "behind_proxy_server": False,
+    "use_only_authd": False,
+    "drop_privileges": True,
+    "experimental_features": False,
     "https": {
         "enabled": True,
         "key": "api/configuration/ssl/server.key",
@@ -56,9 +60,6 @@ default_api_configuration = {
         "block_time": 300,
         "max_request_per_minute": 300
     },
-    "use_only_authd": False,
-    "drop_privileges": True,
-    "experimental_features": False,
     "remote_commands": {
         "localfile": {
             "enabled": True,
@@ -85,31 +86,41 @@ def dict_to_lowercase(mydict: Dict):
             mydict[k] = val.lower()
 
 
-def append_ossec_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
-    """Appends ossec path to all path fields in a dictionary
+def append_wazuh_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
+    """Appends wazuh path to all path fields in a dictionary
 
-    :param dictionary: dictionary to append ossec path
+    :param dictionary: dictionary to append wazuh path
     :param path_fields: List of tuples containing path fields
     :return: None (the dictionary's reference is modified)
     """
     for section, subsection in path_fields:
         try:
-            dictionary[section][subsection] = os.path.join(common.ossec_path, dictionary[section][subsection])
+            dictionary[section][subsection] = os.path.join(common.wazuh_path, dictionary[section][subsection])
         except KeyError:
             pass
 
 
-def fill_dict(default: Dict, config: Dict) -> Dict:
-    """Fills a dictionary's missing values using default ones.
+def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
+    """Validate and fill a dictionary's missing values using default ones.
 
-    :param default: Dictionary with default values
-    :param config: Dictionary to fill
-    :return: Filled dictionary
+    Parameters
+    ----------
+    default : dict
+        Dictionary with default values.
+    config : dict
+        Dictionary to be filled.
+    json_schema : dict
+        Jsonschema with allowed properties.
+
+    Returns
+    -------
+    dict
+        Filled dictionary.
     """
-    # Check there aren't extra configuration values in user's configuration:
-    for k in config.keys():
-        if k not in default.keys():
-            raise APIError(2000, details=', '.join(config.keys() - default.keys()))
+    try:
+        validate(instance=config, schema=json_schema)
+    except ValidationError as e:
+        raise APIError(2000, details=e.message)
 
     for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
         for item, value in config[k].items():
@@ -197,7 +208,7 @@ def generate_self_signed_certificate(private_key, certificate_path):
     os.chmod(certificate_path, 0o400)
 
 
-def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> Dict:
+def read_yaml_config(config_file=CONFIG_FILE_PATH, default_conf=None) -> Dict:
     """Reads user API configuration and merges it with the default one
 
     :return: API configuration
@@ -234,18 +245,27 @@ def read_yaml_config(config_file=common.api_config_path, default_conf=None) -> D
     else:
         configuration = None
 
-    # If any value is missing from user's cluster configuration, add the default one:
     if configuration is None:
         configuration = copy.deepcopy(default_conf)
     else:
+        # If any value is missing from user's configuration, add the default one:
         dict_to_lowercase(configuration)
-        configuration = fill_dict(default_conf, configuration)
+        schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
+        configuration = fill_dict(default_conf, configuration, schema)
 
-    # Append ossec_path to all paths in configuration
-    append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
+    # Append wazuh_path to all paths in configuration
+    append_wazuh_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
 
     return configuration
 
+
+# Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any
+# change is performed to the configuration.
+try:
+    validate(instance=default_security_configuration, schema=security_config_schema)
+    validate(instance=default_api_configuration, schema=api_config_schema)
+except ValidationError as e:
+    raise APIError(2000, details=e.message)
 
 # Configuration - global object
 api_conf = dict()

@@ -877,7 +877,6 @@ stages:
               node_api_config: &default_api_config
                 host: !anystr
                 port: !anyint
-                behind_proxy_server: !anybool
                 https:
                   enabled: !anybool
                   key: !anystr
@@ -1228,7 +1227,7 @@ stages:
               - connection: !anystr
                 ipv6: !anystr
                 port: !anystr
-                protocol: !anystr
+                protocol: !anylist
                 queue_size: !anystr
           failed_items: []
           total_affected_items: 1

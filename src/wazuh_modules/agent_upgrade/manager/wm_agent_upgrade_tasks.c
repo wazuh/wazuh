@@ -200,10 +200,10 @@ cJSON* wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
 STATIC cJSON *wm_agent_send_task_information_master(const cJSON *message_object) {
     cJSON* response = NULL;
 
-    int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+    int sock = OS_ConnectUnixDomain(WM_TASK_MODULE_SOCK, SOCK_STREAM, OS_MAXSTR);
 
     if (sock == OS_SOCKTERR) {
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNREACHEABLE_TASK_MANAGER, WM_TASK_MODULE_SOCK_PATH);
+        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNREACHEABLE_TASK_MANAGER, WM_TASK_MODULE_SOCK);
     } else {
         char *buffer = NULL;
         int length;

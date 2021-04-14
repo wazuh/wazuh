@@ -23,4 +23,4 @@ def test_get_wazuh_queue():
     with patch(f'tools.common.find_wazuh_path', return_value=wazuh_installation_path):
         wazuh_queue = get_wazuh_queue()
 
-    assert "/var/ossec/queue/ossec/queue" == wazuh_queue
+    assert "/var/ossec/queue/sockets/queue" == wazuh_queue

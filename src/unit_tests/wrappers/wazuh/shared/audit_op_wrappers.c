@@ -14,6 +14,7 @@
 #include <cmocka.h>
 
 int __wrap_audit_add_rule(__attribute__((unused)) const char *path,
+                          __attribute__((unused)) int perms,
                           __attribute__((unused)) const char *key) {
     return mock();
 }
@@ -31,7 +32,14 @@ int __wrap_audit_set_db_consistency() {
 }
 
 int __wrap_search_audit_rule(__attribute__((unused)) const char *path,
-                             __attribute__((unused)) const char *perms,
+                             __attribute__((unused)) int perms,
                              __attribute__((unused)) const char *key) {
     return mock();
+}
+
+int __wrap_audit_delete_rule(const char *path, int perms, const char *key) {
+    check_expected_ptr(path);
+    check_expected(perms);
+    check_expected_ptr(key);
+    return mock_type(int);
 }

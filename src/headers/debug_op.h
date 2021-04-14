@@ -27,8 +27,8 @@
 /* For internal logs */
 #ifndef LOGFILE
 #ifndef WIN32
-#define LOGFILE   "/logs/ossec.log"
-#define LOGJSONFILE "/logs/ossec.json"
+#define LOGFILE   "logs/ossec.log"
+#define LOGJSONFILE "logs/ossec.json"
 #define _PRINTF_FORMAT printf
 #else
 #define LOGFILE "ossec.log"
