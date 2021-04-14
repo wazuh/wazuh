@@ -12,7 +12,7 @@
     <!--
     Sample: {"system":{"providerName":"Microsoft-Windows-Sysmon","providerGuid":"{5770385F-C22A-43E0-BF4C-06F5698FFBD9}","eventID":"1","version":"5","level":"4","task":"1","opcode":"0","keywords":"0x8000000000000000","systemTime":"2021-03-26T18:28:37.194586400Z","eventRecordID":"1521","processID":"12768","threadID":"12156","channel":"Microsoft-Windows-Sysmon/Operational","computer":"WIN-03FGEGKLSPR.fakecorp.com","severityValue":"INFORMATION","message":"\"Process Create:\r\nRuleName: -\r\nUtcTime: 2021-03-26 18:28:37.194\r\nProcessGuid: {F5960AB9-27D5-605E-A501-000000002000}\r\nProcessId: 7496\r\nImage: C:\\\\Windows\\\\System32\\\\cmd.exe\r\nFileVersion: 6.1.7601.17514 (win7sp1_rtm.101119-1850)\r\nDescription: Windows Command Processor\r\nProduct: Microsoft® Windows® Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: Cmd.Exe\r\nCommandLine: C:\\\\Windows\\\\system32\\\\cmd.exe\r\nCurrentDirectory: c:\\\\windows\\\\system32\\\\inetsrv\\\\r\nUser: NT AUTHORITY\\\\SYSTEM\r\nLogonGuid: {F5960AB9-F5C7-605D-E703-000000000000}\r\nLogonId: 0x3e7\r\nTerminalSessionId: 0\r\nIntegrityLevel: System\r\nHashes: SHA256=DB06C3534964E3FC79D2763144BA53742D7FA250CA336F4A0FE724B75AAFF386\r\nParentProcessGuid: {F5960AB9-FF45-605D-0C01-000000002000}\r\nParentProcessId: 11416\r\nParentImage: C:\\Program Files\\Microsoft\\Exchange Server\\V15\\Bin\\UMWorkerProcess.exe\r\nParentCommandLine: \"UMWorkerProcess.exe\""},"eventdata":{"utcTime":"2021-03-26 18:28:37.194","processGuid":"{F5960AB9-27D5-605E-A501-000000002000}","processId":"7496","image":"C:\\\\\\\\Windows\\\\\\\\System32\\\\\\\\cmd.exe","fileVersion":"6.1.7601.17514 (win7sp1_rtm.101119-1850)","description":"Windows Command Processor","product":"Microsoft® Windows® Operating System","company":"Microsoft Corporation","originalFileName":"Cmd.Exe","commandLine":"C:\\\\\\\\Windows\\\\\\\\system32\\\\\\\\cmd.exe","currentDirectory":"c:\\\\\\\\windows\\\\\\\\system32\\\\\\\\inetsrv\\\\\\\\","user":"NT AUTHORITY\\\\\\\\SYSTEM","logonGuid":"{F5960AB9-F5C7-605D-E703-000000000000}","logonId":"0x3e7","terminalSessionId":"0","integrityLevel":"System","hashes":"SHA256=DB06C3534964E3FC79D2763144BA53742D7FA250CA336F4A0FE724B75AAFF386","parentProcessGuid":"{F5960AB9-FF45-605D-0C01-000000002000}","parentProcessId":"11416","parentImage":"C:\\\\Program Files\\\\Microsoft\\\\Exchange Server\\\\V15\\Bin\\\\UMWorkerProcess.exe","parentCommandLine":"UMWorkerProcess.exe"}}
     -->
-    <rule id="61644" level="12">
+    <rule id="91000" level="12">
         <if_group>sysmon_event1</if_group>
         <field name="win.eventdata.parentImage">\\UMWorkerProcess.exe</field>
         <field name="win.eventdata.originalFileName" negate="yes">werfault.exe|wermgr.exe</field>
@@ -22,7 +22,7 @@
         </mitre>
     </rule>
 
-    <rule id="61645" level="12">
+    <rule id="91001" level="12">
         <if_group>sysmon_event_11</if_group>
         <field name="win.eventdata.image">\\UMWorkerProcess.exe</field>
         <field name="win.eventdata.targetFilename" negate="yes">CacheCleanup.bin$|.txt$|.log$|.cfg$|cleanup.bin$</field>
@@ -39,7 +39,7 @@ CVE-2021-26855 (ProxyLogon) exploitation can be detected via the following Excha
 These logs are located in the following directory: %PROGRAMFILES%\Microsoft\Exchange Server\V15\Logging\HttpProxy
 Exploitation can be identified by searching for log entries where the AuthenticatedUser is empty and the AnchorMailbox contains the pattern of ServerInfo~*/*
 -->
-    <rule id="61646" level="12">
+    <rule id="91002" level="12">
         <regex type="pcre2">,,[^,]*,ServerInfo~[^,]*/[^,]*</regex>
         <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-26855)</description>
         <mitre>
@@ -55,7 +55,7 @@ with the Exchange server then they could use this vulnerability to write a file 
 They could authenticate by exploiting the CVE-2021-26855 SSRF vulnerability or by compromising a legitimate
 admin’s credentials.
 -->
-    <rule id="61647" level="12">
+    <rule id="91003" level="12">
         <regex type="pcre2">Set-.+VirtualDirectory.+?Url.+\<\w+.*\>.*?\<\/\w+\>.+?VirtualDirectory</regex>
         <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-27065)</description>
         <mitre>
@@ -69,7 +69,7 @@ C:\Program Files\Microsoft\Exchange Server\V15\Logging\OABGeneratorLog
 Files should only be downloaded to the %PROGRAMFILES%\Microsoft\Exchange Server\V15\ClientAccess\OAB\Temp directory
 In case of exploitation, files are downloaded to other directories (UNC or local paths)
 -->
-    <rule id="62648" level="12">
+    <rule id="91004" level="12">
         <match>Download failed and temporary file</match>
         <regex type="pcre2" negate="yes">[A-Z]:\\Program Files( \(x86\))?\\Microsoft\\Exchange Server\\V15\\ClientAccess\\OAB\\Temp</regex>
         <description>MS Exchange - Possible post-authentication arbitrary file write vulnerability exploitation (CVE-2021-26858)</description>
@@ -85,15 +85,15 @@ is where untrusted user-controllable data is deserialized by a program. Exploiti
 ability to run code as SYSTEM on the Exchange server. This requires administrator permission or another vulnerability
 to exploit.
 -->
-    <rule id="61648" level="0">
+    <rule id="91005" level="0">
         <if_sid>60602</if_sid>
         <field name="win.system.providerName">^MSExchange Unified Messaging$</field>
         <options>no_full_log</options>
         <description>Filtering MSExchange Unified Message error events</description>
     </rule>
 
-    <rule id="61649" level="12">
-        <if_sid>61648</if_sid>
+    <rule id="91006" level="12">
+        <if_sid>91005</if_sid>
         <field name="win.system.message">System.InvalidCastException</field>
         <description>MS Exchange - Possible deserialization exploitation (CVE-2021-26857)</description>
         <mitre>
@@ -101,7 +101,7 @@ to exploit.
         </mitre>
     </rule>
 
-    <rule id="61644" level="12">
+    <rule id="91007" level="12">
         <if_group>sysmon_event1</if_group>
         <field name="win.eventdata.originalFileName">cmd.exe|powershell.exe|powershell_ISE.exe</field>
         <field name="win.eventdata.commandLine">Add-PSSnapin\s+Microsoft.Exchange.Powershell.Snapin</field>
@@ -112,7 +112,7 @@ to exploit.
         </mitre>
     </rule>
 
-    <rule id="61645" level="12">
+    <rule id="91008" level="12">
         <if_group>sysmon_event1</if_group>
         <field name="win.eventdata.originalFileName">powershell.exe|powershell_ISE.exe</field>
         <field name="win.eventdata.commandLine" type="pcre2">\$client = New-Object System\.Net\.Sockets\.TCPClient</field>
