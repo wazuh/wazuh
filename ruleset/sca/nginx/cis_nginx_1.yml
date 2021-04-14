@@ -57,37 +57,10 @@ checks:
 # Not automatable
 
 # 2.1.2 Ensure HTTP WebDAV module is not installed (Scored)
-  - id: 23005
-    title: "Ensure HTTP WebDAV module is not installed"
-    description: "The http_dav_module enables HTTP Extensions for Web Distributed Authoring and Versioning (WebDAV) as defined by RFC 4918. This enables file-based operations on your web server, such as the ability to create, delete, change and move files on your server. Most modern architectures have replaced this functionality with cloud-based object storage, in which case the module should not be installed."
-    rationale: "WebDAV functionality opens up an unnecessary path for exploiting your web server. Through misconfigurations of WebDAV operations, an attacker may be able to access and manipulate files on the server."
-    remediation: "To remove the http_dav_module, recompile nginx from source without the --withhttp_dav_module flag."
-    compliance:
-      - cis: ["2.1.2"]
-      - cis_csc: ["5.1"]
-    references:
-      - http://nginx.org/en/docs/configure.html
-      - https://tools.ietf.org/html/rfc4918
-    condition: all
-    rules:
-      - 'c:nginx -V 2>&1 | grep "http_dav_module"  -> !r:http_dav_module'
+# Not automatable
 
 # 2.1.3 Ensure modules with gzip functionality are disabled (Scored)
-  - id: 23006
-    title: "Ensure modules with gzip functionality are disabled"
-    description: "gzip is used for compression. Compression functionality should be disabled to prevent certain types of attacks from being performed successfully."
-    rationale: "Compression has been linked with the Breach attack and others. While the Breach attack has been mitigated with modern usages of the HTTP protocol, disabling the use of compression is considered a defense-in-depth strategy to mitigate other attacks."
-    remediation: "In order to disable the http_gzip_module, nginx must be recompiled from source. This can be accomplished using the below command in the folder you used during your original compilation. This must be done without the --with-http_gzip_static_module configuration directive. './configure --without-http_gzip_module'"
-    compliance:
-      - cis: ["2.1.3"]
-      - cis_csc: ["5.1"]
-    references:
-      - http://nginx.org/en/docs/configure.html
-      - http://nginx.org/en/docs/configure.html
-    condition: any
-    rules:
-      - 'c:nginx -V 2>&1 | grep http_gzip_module -> !r:http_gzip_module'
-      - 'c:nginx -V 2>&1 | grep http_gzip_static_module -> !r:http_gzip_static_module'
+# Not automatable
 
 # 2.1.4 Ensure the autoindex module is disabled (Scored)
   - id: 23007
@@ -166,21 +139,7 @@ checks:
       - 'c:stat /etc/nginx | grep "Access: (" -> r:Uid:\s+\(\.+root\)\s+Gid:\s+\(\.+root\)$'
 
 # 2.3.2 Ensure access to NGINX directories and files is restricted (Scored)
-  - id: 23012
-    title: "Ensure access to NGINX directories and files is restricted"
-    description: "Permissions on the /etc/nginx directory should enforce the principle of least privilege."
-    rationale: "This ensures that only users who need access to configuration files are able to view them, thus preventing unauthorized access. Other users will need to use sudo in order to access these files."
-    remediation: "To set permissions to least privilege on the nginx configuration files, issue these commands: 'find /etc/nginx -type d | xargs chmod 750'. 'find /etc/nginx -type f | xargs chmod 640'"
-    compliance:
-      - cis: ["2.3.2"]
-      - cis_csc: ["14"]
-    references:
-      -  https://dev-sec.io/baselines/nginx/
-    condition: all
-    rules:
-      - 'c:ls -l /etc/nginx/ | egrep -v "^d|^l|^total|^-rw-r-----" -> !r:^-'
-      - 'c:ls -ld /etc/nginx/conf.d/ | egrep -v "^drwxr-x---" -> !r:^d'
-
+# Not automatable
 
 # 2.3.3 Ensure the NGINX process ID (PID) file is secured (Scored)
   - id: 23013
