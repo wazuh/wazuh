@@ -140,7 +140,7 @@ def test_get_cluster_items():
                                                         'recursive': True, 'restart': False,
                                                         'remove_subdirs_if_empty': False, 'extra_valid': True,
                                                         'description': 'agents group configuration'},
-                               'excluded_files': ['ar.conf', 'manager.conf', 'agent.conf'],
+                               'excluded_files': ['ar.conf', 'manager.conf'],
                                'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
                      'intervals': {'worker': {'sync_integrity': 9, 'sync_files': 10, 'keep_alive': 60,
                                               'connection_retry': 10, 'max_failed_keepalive_attempts': 2},

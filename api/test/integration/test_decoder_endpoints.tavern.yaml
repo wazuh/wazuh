@@ -263,13 +263,13 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-    # GET /decoders?q=name=agent-upgrade;position=2
+    # GET /decoders?q=name=agent-upgrade;position=9
   - name: Get decoders using query parameter
     request:
       verify: False
       <<: *get_decoders
       params:
-        q: 'name=agent-upgrade;position=8'
+        q: 'name=agent-upgrade;position=9'
     response:
       status_code: 200
       json:
@@ -278,7 +278,7 @@ stages:
           affected_items:
             - <<: *full_items_array
               name: 'agent-upgrade'
-              position: 8
+              position: 9
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: !anyint
