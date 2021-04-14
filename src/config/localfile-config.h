@@ -50,8 +50,6 @@
 
 #define MAX_LOG_CMD_ARGS                12              ///< This value takes into account the largest case of use
 
-#define LOG_CMD_ARGS_SIZE               (sizeof(char *) * (MAX_LOG_CMD_ARGS + 1))   ///<  It is used to allocate memory
-
 /** This macro is used for logging the full "log stream" command with its arguments **/
 #define GET_LOG_STREAM_PARAMS(x)    x[0]?x[0]:"", x[1]?x[1]:"", x[2]?x[2]:"",\
                                     x[3]?x[3]:"", x[4]?x[4]:"", x[5]?x[5]:"",\

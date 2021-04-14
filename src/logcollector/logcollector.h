@@ -40,7 +40,7 @@
 #include "config/localfile-config.h"
 #include "config/config.h"
 #include "os_crypto/sha1/sha1_op.h"
-
+#include "oslog_stream.h"
 
 /*** Function prototypes ***/
 
