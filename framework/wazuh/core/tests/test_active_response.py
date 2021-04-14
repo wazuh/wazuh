@@ -15,7 +15,6 @@ with patch('wazuh.core.common.ossec_uid'):
 
 # Variables
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
-test_manager_conf = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
 
 
 # Functions

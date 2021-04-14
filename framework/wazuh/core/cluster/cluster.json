@@ -79,8 +79,7 @@
 
         "excluded_files": [
             "ar.conf",
-            "manager.conf",
-            "agent.conf"
+            "manager.conf"
         ],
 
         "excluded_extensions": [
