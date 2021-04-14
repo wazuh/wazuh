@@ -466,7 +466,8 @@ class WazuhException(Exception):
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
         3034: "Error sending file. File not found.",
-        3035: "Agent-info chunks couldn't be found",
+        3035: "String couldn't be found",
+        3036: "JSON couldn't be loaded",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.

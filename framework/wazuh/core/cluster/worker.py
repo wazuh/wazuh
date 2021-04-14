@@ -65,9 +65,7 @@ class SyncWorker:
         self.worker = worker
 
     async def sync(self):
-        """
-        Start synchronization process with the master and send necessary information.
-        """
+        """Start synchronization process with the master and send necessary information."""
         start_time = time.time()
         result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
         if isinstance(result, Exception):
@@ -128,7 +126,7 @@ class SyncWorker:
 
 class SyncWazuhdb:
     """
-    Define methods to send information to wazuh-db in the master through send_string protocol.
+    Define methods to send information to the master node (wazuh-db) through send_string protocol.
     """
 
     def __init__(self, worker, logger, cmd: bytes, get_data_command: str, set_data_command: str,
@@ -158,9 +156,7 @@ class SyncWazuhdb:
         self.data_retriever = data_retriever
 
     async def sync(self):
-        """
-        Start sending information to master node.
-        """
+        """Start sending information to master node."""
         start_time = time.time()
         result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
         if isinstance(result, Exception):
@@ -401,6 +397,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return self.error_receiving_integrity(data.decode())
         elif command == b'sync_m_a_e':
             return self.sync_agent_info_from_master(data.decode())
+        elif command == b'sync_m_a_err':
+            return self.error_receiving_agent_info(data.decode())
         elif command == b'dapi_res':
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
@@ -506,13 +504,50 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                               f"Sync not required.")
         return b'ok', b'Thanks'
 
-    def sync_agent_info_from_master(self, data) -> Tuple[bytes, bytes]:
+    def sync_agent_info_from_master(self, response) -> Tuple[bytes, bytes]:
+        """Function called when the master sends the "sync_m_a_e" command.
+
+        This method is called once the master finishes processing the agent-info. It logs
+        information like the number of chunks that were updated and any error message.
+
+        Parameters
+        ----------
+        response : str
+            JSON containing information about agent-info sync status.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
         logger = self.task_loggers['Agent-info sync']
-        data = json.loads(data)
+        data = json.loads(response)
         msg = f"Finished in {(time.time()-self.agent_info_sync_status['date_start']):.3f}s ({data['updated_chunks']} " \
               f"chunks updated)."
         logger.info(msg) if not data['error_messages'] else logger.error(
             msg + f" There were {len(data['error_messages'])} chunks with errors: {data['error_messages']}")
+
+        return b'ok', b'Thanks'
+
+    def error_receiving_agent_info(self, response):
+        """Function called when the master sends the "sync_m_a_err" command.
+
+        Parameters
+        ----------
+        response : str
+            Message with extra information of the error.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        logger = self.task_loggers['Agent-info sync']
+        logger.error(f"There was an error while processing agent-info on the master: {response}")
 
         return b'ok', b'Thanks'
 
@@ -576,7 +611,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.error(f"Error synchronizing agent info: {e}")
 
             await asyncio.sleep(
-                self.cluster_items['intervals']['worker']['sync_agent_info_ok' if synced else 'sync_agent_info_ko'])
+                self.cluster_items['intervals']['worker']['sync_agent_info' if synced else 'sync_agent_info_ko_retry'])
 
     async def sync_extra_valid(self, extra_valid: Dict):
         """Merge and send files of the worker node that are missing in the master node.
