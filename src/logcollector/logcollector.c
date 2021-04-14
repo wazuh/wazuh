@@ -82,23 +82,6 @@ STATIC int64_t w_set_to_pos(logreader *lf, int64_t pos, int mode);
  */
 STATIC int w_update_hash_node(char * path, int64_t pos);
 
-/**
- * @brief Creates the environment for collecting logs on MacOS Systems
- * @param logreader with "log stream"'s input arguments and w_oslog_config_t structure to be set
- * @return
- */
-STATIC void w_logcollector_create_oslog_env(logreader * current);
-
-// todo: remove this when read_oslog is implemented, this is just a mock
-STATIC void * read_oslog(logreader * lf, int * rc, int drop_it)
-{
-    sleep(1);
-
-    *rc = (lf->duplicated + drop_it) * 0;
-
-    return NULL;
-}
-
 /* Global variables */
 int loop_timeout;
 int logr_queue;
@@ -349,13 +332,11 @@ void LogCollectorStart()
             }
         }
 //ifdef Darwin
+#ifndef WIN32 //todo : remove this when having the right define
         else if (strcmp(current->logformat, OSLOG) == 0) {
-            if(current->oslog == NULL) {
-                merror("OSLog structure was not previously allocated"); // todo: do the proper handling, or not, of this
-            } else {
-                w_logcollector_create_oslog_env(current);
-            }
+            w_logcollector_create_oslog_env(current);
         }
+#endif  //todo : remove this when having the right define
 //endif Darwin
         else if (j < 0) {
             set_read(current, i, j);
@@ -2905,137 +2886,4 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
         *context = data->context;
     }
     return true;
-}
-
-void w_logcollector_create_oslog_env(logreader * current) {
-    int logstream_fd = -1;
-    int logstream_fd_flags = 0;
-    char ** log_cmd_args = NULL;
-    size_t log_cmd_args_idx = 0;
-    
-    os_malloc(LOG_CMD_ARGS_SIZE, log_cmd_args);
-    bzero(log_cmd_args, LOG_CMD_ARGS_SIZE); // Clears all the pointers values in the array
-
-    /* 
-    * On the following code, the structure for adding an argument repeats the same steps:
-    *   1st - Have a string that will be part of the whole executable command
-    *   2nd - Get the string' size to allocate memory on the array that will be used in wpopenv()
-    *   3rd - Allocate the memory on the array to store the string
-    *   4th - Copy the string into the corresponding array position
-    *   5th - Increase the array index
-    * And so on... When the array is not necessary anymore, it is then released.
-    */
-
-    os_malloc(LOG_CMD_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-    strncpy(log_cmd_args[log_cmd_args_idx], LOG_CMD_STR, LOG_CMD_STR_LEN);
-    log_cmd_args_idx++;
-
-    os_malloc(LOG_STREAM_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-    strncpy(log_cmd_args[log_cmd_args_idx], LOG_STREAM_OPT_STR, LOG_STREAM_OPT_STR_LEN);
-    log_cmd_args_idx++;
-
-    // Log Stream's Predicate section
-    if(current->query != NULL) {
-        const size_t QUERY_STR_LEN = strlen(current->query) + 2 + 1; // The "2" is due to the added chars ''
-        if(QUERY_STR_LEN > 0) {
-            // todo: check basic query logic as parenthesis balance and such
-            os_malloc(PREDICATE_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], PREDICATE_OPT_STR, PREDICATE_OPT_STR_LEN);
-            log_cmd_args_idx++;
-
-            os_malloc(QUERY_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            const int snprintf_retval = snprintf(log_cmd_args[log_cmd_args_idx], QUERY_STR_LEN, "'%s'", current->query);
-            if(snprintf_retval < 0) {
-                merror(SNPRINTF_ERROR, snprintf_retval);
-            }
-            log_cmd_args_idx++;
-        }
-    }
-
-    // Log Stream's Type section
-    if(current->query_type != 0) {
-        if(current->query_type & OSLOG_TYPE_ACTIVITY) {
-            os_malloc(TYPE_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], TYPE_OPT_STR, TYPE_OPT_STR_LEN);
-            log_cmd_args_idx++;
-            
-            os_malloc(OSLOG_TYPE_ACTIVITY_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], OSLOG_TYPE_ACTIVITY_STR, OSLOG_TYPE_ACTIVITY_STR_LEN);
-            log_cmd_args_idx++;
-        }
-        if(current->query_type & OSLOG_TYPE_LOG) {
-            os_malloc(TYPE_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], TYPE_OPT_STR, TYPE_OPT_STR_LEN);
-            log_cmd_args_idx++;
-            
-            os_malloc(OSLOG_TYPE_LOG_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], OSLOG_TYPE_LOG_STR, OSLOG_TYPE_LOG_STR_LEN);
-            log_cmd_args_idx++;
-        }
-        if(current->query_type & OSLOG_TYPE_TRACE) {
-            os_malloc(TYPE_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], TYPE_OPT_STR, TYPE_OPT_STR_LEN);
-            log_cmd_args_idx++;
-            
-            os_malloc(OSLOG_TYPE_TRACE_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], OSLOG_TYPE_TRACE_STR, OSLOG_TYPE_TRACE_STR_LEN);
-            log_cmd_args_idx++;
-        }
-    }
-
-    // Log Stream's Level section
-    if(current->query_level != NULL) {
-        const size_t LEVEL_ATTR_STR_LEN = strlen(current->query_level) + 1;
-        if(LEVEL_ATTR_STR_LEN > 0) {
-            os_malloc(LEVEL_OPT_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], LEVEL_OPT_STR, LEVEL_OPT_STR_LEN);
-            log_cmd_args_idx++;
-
-            os_malloc(LEVEL_ATTR_STR_LEN, log_cmd_args[log_cmd_args_idx]);
-            strncpy(log_cmd_args[log_cmd_args_idx], current->query_level, LEVEL_ATTR_STR_LEN);
-            log_cmd_args_idx++;
-        }
-    }
-
-    minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_cmd_args));
-
-    // todo: is this correctly called?
-    // current->oslog->log_wfd = wpopenv(*log_cmd_args, log_cmd_args, W_BIND_STDOUT|W_BIND_STDERR);
-    // todo: remove testing/developing code lines
-    char * mock_log_cmd_args[] = {"/root/readfile.sh", NULL};
-
-    current->oslog->log_wfd = wpopenv(*mock_log_cmd_args, mock_log_cmd_args, W_BIND_STDOUT|W_BIND_STDERR);
-
-    if(current->oslog->log_wfd == NULL) {
-        merror(WPOPENV_ERROR);
-    } else {
-        current->oslog->is_oslog_running = true;
-        current->fp = current->oslog->log_wfd->file;
-        current->read = read_oslog; // todo: should this be set here or by means of using set_read()?
-        current->file = NULL;
-
-        // The file descriptor, from which the output of `log stream` will be read, is set to non-blocking
-        logstream_fd = fileno(current->fp);                             // Gets the file descriptor from a file pointer
-
-        if(logstream_fd <= 0) {
-            merror(FP_TO_FD_ERROR, logstream_fd);
-        } else {
-            logstream_fd_flags = fcntl(logstream_fd, F_GETFL, 0);       // Gets current flags
-
-            if(logstream_fd_flags < 0) {
-                merror(GET_FLAGS_ERROR, logstream_fd_flags);
-            } else {
-                logstream_fd_flags |= O_NONBLOCK;                       // Adds the NON-BLOCKING flag to current flags
-                const int set_flags_retval = fcntl(logstream_fd, F_SETFL, logstream_fd_flags);  // Sets the new Flags
-                if(set_flags_retval < 0) {
-                    merror(SET_FLAGS_ERROR, set_flags_retval);
-                }
-            }
-        }
-    }
-
-    for(log_cmd_args_idx = 0; log_cmd_args[log_cmd_args_idx] != NULL; log_cmd_args_idx++) {
-        os_free(log_cmd_args[log_cmd_args_idx]);
-    }
-    os_free(log_cmd_args);
 }
