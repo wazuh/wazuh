@@ -67,6 +67,15 @@ STATIC void oslog_ctxt_clean(w_oslog_ctxt_t * ctxt);
  */
 STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
 
+/**
+ * @brief Get pointer to the beginning of the last line in the string s.
+ * 
+ * @warning If the `str` ends with a `\n`, it is ignored.
+ * @param str to get last line
+ * @return pointer to the beginning of the last line
+ */
+STATIC char * oslog_get_lastline(char * str);
+
 void * read_oslog(logreader * lf, int * rc, int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
     int count_lines = 0;
@@ -129,48 +138,68 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
         offset += chunk_sz;
         str += chunk_sz;
         bool full_buffer = false;
+        bool str_endline = (*(str - 1) == '\n');
+        char * last_line = NULL;
+        bool split = false;
 
         /* Avoid fgets infinite loop behavior when size parameter is 1
          * If we didn't get the new line, because the size is large, send what we got so far.
          */
         if (offset + 1 == length) {
-            // Clean context and send the log
+            // Clean context and force send the log
             oslog_ctxt_clean(&oslog_cfg->ctxt);
-
-            // Discard the rest of the log, moving the pointer to the next end of line
-            while (true) {
-                char c = fgetc(stream); // if stream its closed ?, check errno and break loop
-                if (c == '\n' || c == '\0' || c == EOF) {
-                    break;
-                }
-            }
-            mdebug2("Max lenght oslog message... The remaining surplus was discarded");
-
-            /* If there is only one log in the buffer it is sent, otherwise,
-               it must be split and send them separately */
             full_buffer = true;
-        } else if (*(str - 1) != '\n') {
+        } else if (!str_endline) {
             mdebug2("Inclomplete oslog message...");
             /* Save the context */
-            *str = '\0';
             oslog_ctxt_backup(buffer, &oslog_cfg->ctxt);
-            
             continue;
         }
 
         /* If this point has been reached, it is because:
-            - The buffer is full, one log is incomplete
-            - The buffer is full, there is a full log and an incomplete log.
+            - The buffer is full, one log is incomplete/complete
+            - The buffer is full, there is a complete log and an incomplete log.
             - The buffer is full, there are remnants of one multiline 
             - The buffer is full, there are remnants of one multiline, and incomplete log
             - The buffer is not full, there are remnants of one multiline 
-            - The buffer is not full, there are remnants of a multiline and the second one may be multiline
-            - The buffer is not full, there is a complete log and the second one may be a multiline.
+            - The buffer is not full, there are remnants of a multiline and incomplete log
+            - The buffer is not full, there is a complete log and incomplete log
             - The buffer is not full, there is a log that may be multiline.
         If a new log is received, we store it in the context and send the oldest one.
         */
+
+       last_line = oslog_get_lastline(buffer);
+
+        /* If there are 2 logs, they are separated for sending */
+        if (str_endline && last_line != NULL) {
+            split =  w_expression_match(oslog_cfg->ctxt.start_log_regex, last_line, NULL, NULL);
+        }
+
+        if (!split && full_buffer) {
+            /* If only one-line log in the buffer it is sent and the rest of the line is discarded, 
+             * otherwise, it must be split, store the last line and send them separately.
+             * If the line is incomplete, it is impossible to differentiate 
+             * whether it belongs to the current log or to a new log.
+             */
+            if (!str_endline) {
+                if (last_line == NULL) {
+                    // Discard the rest of the one line log, moving the pointer to the next end of line
+                    while (true) {
+                        char c = fgetc(stream); // if stream its closed ?, check errno and break loop
+                        if (c == '\n' || c == '\0' || c == EOF) {
+                            break;
+                        }
+                    }
+                    mdebug2("Max lenght oslog message... The remaining surplus was discarded");
+                } else {
+                    split = true;
+                    mdebug2("Max lenght oslog message... The remaining surplus was send separately");
+                }
+            }
+        }
+
+        /* split the logs */
         if (w_expression_match(oslog_cfg->ctxt.start_log_regex, &buffer[newline_offset == 0 ? 0 : newline_offset + 1], NULL, NULL)) {
-            /* split the logs */
             buffer[newline_offset] = '\0';
             *str = '\0';
             strncpy(oslog_cfg->ctxt.buffer, &buffer[newline_offset] + 1, offset - newline_offset + 1);
@@ -243,4 +272,26 @@ STATIC void oslog_ctxt_backup(char * buffer, w_oslog_ctxt_t * ctxt) {
     strcpy(ctxt->buffer + old_size, buffer + old_size);
     ctxt->timestamp = time(NULL);
     ctxt->newline_offset = (last_nl == NULL) ? 0 : last_nl - ctxt->buffer;
+}
+
+STATIC char * oslog_get_lastline(char * str) {
+    
+    char * retval = NULL;
+    char ignored_char = '\0';
+    size_t size = 0;
+
+    if (str == NULL || *str == '\0') {
+        return retval;
+    }
+
+    /* Ignore last character */
+    size = strlen(str);
+
+    ignored_char = str[size - 1];
+    str[size - 1] = '\0';
+
+    retval = strrchr (str, '\n');
+    str[size - 1] = ignored_char;
+
+    return retval;
 }
