@@ -10,7 +10,8 @@ class WazuhDBQueryMitre(WazuhDBQuery):
 
     def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
                  table: str = 'technique', sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
-                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
+                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None,
+                 request_slice=500):
         """Create an instance of WazuhDBQueryMitre query."""
 
         if filters is None:
@@ -20,7 +21,7 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                               fields=fields, default_sort_field=default_sort_field,
                               default_sort_order=default_sort_order, filters=filters, query=query, count=count,
                               get_data=True, min_select_fields=min_select_fields,
-                              backend=WazuhDBBackend(query_format='mitre'))
+                              backend=WazuhDBBackend(query_format='mitre', request_slice=request_slice))
 
     def _filter_status(self, status_filter):
         pass
@@ -46,7 +47,7 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
     def __init__(self, table: str = None, offset: int = 0, limit: int = common.database_limit, query: str = '',
                  count: bool = True, sort: dict = None, default_sort_order: str = 'ASC',
                  default_sort_field: str = None, fields=None, search: dict = None, select: list = None,
-                 min_select_fields=None, filters=None, dict_key: str = None):
+                 min_select_fields=None, filters=None, dict_key: str = None, request_slice=500):
         """WazuhDBQueryMitreRelational constructor
         This class will always generate dictionaries with two keys, this is because it handles relational tables,
         where the relationship of two objects is specified.
@@ -83,7 +84,8 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
         WazuhDBQueryMitre.__init__(self, table=table, min_select_fields=self.min_select_fields, fields=fields,
                                    filters=filters, offset=offset, limit=limit, query=query, count=count,
                                    sort=sort, default_sort_field=default_sort_field,
-                                   default_sort_order=default_sort_order, search=search, select=select)
+                                   default_sort_order=default_sort_order, search=search, select=select,
+                                   request_slice=request_slice)
 
     def _filter_status(self, status_filter):
         pass
@@ -137,7 +139,8 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
                                    default_sort_order=default_sort_order, search=search,
-                                   select=list(set(self.fields.values()).intersection(set(select))))
+                                   select=list(set(self.fields.values()).intersection(set(select))),
+                                   request_slice=32)
 
     def _filter_status(self, status_filter):
         pass
@@ -169,17 +172,17 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             technique_ids.add(technique['id'])
 
         related_tactics = WazuhDBQueryMitreRelational(table='phase', filters={'tech_id': list(technique_ids)},
-                                                      dict_key='tech_id').run()
+                                                      dict_key='tech_id', request_slice=250).run()
         related_mitigations = WazuhDBQueryMitreRelational(table='mitigate', filters={'target_id': list(technique_ids)},
-                                                          dict_key='target_id').run()
+                                                          dict_key='target_id', request_slice=250).run()
         related_software = WazuhDBQueryMitreRelational(table='use',
                                                        filters={'target_id': list(technique_ids),
                                                                 'target_type': 'technique', 'source_type': 'software'},
-                                                       dict_key='target_id').run()
+                                                       dict_key='target_id', request_slice=250).run()
         related_group = WazuhDBQueryMitreRelational(table='use',
                                                     filters={'target_id': list(technique_ids),
                                                              'target_type': 'technique', 'source_type': 'group'},
-                                                    dict_key='target_id').run()
+                                                    dict_key='target_id', request_slice=250).run()
 
         for technique in self._data:
             technique['related_tactics'] = related_tactics.get(technique['id'], list())

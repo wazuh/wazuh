@@ -1015,13 +1015,16 @@ class WazuhDBBackend(AbstractDatabaseBackend):
     This class describes a wazuh db backend that executes database queries
     """
 
-    def __init__(self, agent_id=None, query_format='agent'):
+    def __init__(self, agent_id=None, query_format='agent', max_size=6144, request_slice=500):
         self.agent_id = agent_id
         self.query_format = query_format
+        self.max_size = max_size
+        self.request_slice = request_slice
+
         super().__init__()
 
     def connect_to_db(self):
-        return WazuhDBConnection()
+        return WazuhDBConnection(max_size=self.max_size, request_slice=self.request_slice)
 
     def _substitute_params(self, query, request):
         """
