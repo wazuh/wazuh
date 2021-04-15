@@ -356,17 +356,13 @@ def select_array(array, select=None, required_fields=None):
     result_list = list()
     for item in array:
         selected_fields = dict()
-        missing_select = False
         # Build an entry with the filtered values
         for sel in select:
             candidate = get_nested_fields(item, sel)
             if candidate:
                 selected_fields.update(candidate)
-            else:
-                missing_select = True
-                break
-        # Add required fields if the entry is not empty or missing one of the selects
-        if selected_fields and not missing_select:
+        # Add required fields if the entry is not empty
+        if selected_fields:
             selected_fields.update({req_field: item[req_field] for req_field in required_fields})
             result_list.append(selected_fields)
     if not result_list:
