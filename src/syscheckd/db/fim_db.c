@@ -86,6 +86,17 @@ const char *SQL_STMT[] = {
     [FIMDB_STMT_COUNT_DB_ENTRIES] = "SELECT (SELECT count(*) FROM file_entry) + (SELECT count(*) FROM registry_key) + (SELECT count(*) FROM registry_data);",
 };
 
+#ifdef WIN32
+/**
+ * @brief Function that looks for the separator `:` between keys and values in synchronization messages.
+ *
+ * @param input string with the path of the synchronization message.
+ * @return char* Pointer to the separator. If the separator wasn't found, returns NULL.
+ */
+static char *find_key_value_limiter(char *input);
+
+#endif
+
 fdb_t *fim_db_init(int storage) {
     fdb_t *fim;
     char *path = (storage == FIM_DB_MEMORY) ? FIM_DB_MEMORY_PATH : FIM_DB_DISK_PATH;
@@ -298,6 +309,37 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
 }
 // LCOV_EXCL_STOP
 #else
+
+static char *find_key_value_limiter(char *input){
+    size_t limiter_pos = 0;
+    if (input == NULL || *input == '\0') {
+        return NULL;
+    }
+
+    size_t input_len = strlen(input);
+    size_t increment = 0;
+
+    while (limiter_pos = strcspn(input, "\\:"), input[limiter_pos] != '\0') {
+        switch (input[limiter_pos]) {
+        case ':':
+            return input + limiter_pos;
+
+        default: // '\':
+            // Check that the string won't be exceeded.
+            increment += limiter_pos + 2;
+            if (input_len <= increment) {
+                return NULL;
+            }
+
+            input += limiter_pos + 2;
+            break;
+        }
+    }
+
+    return NULL;
+}
+
+
 fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
     char *full_path = NULL;
     char *key_path = NULL;
@@ -315,13 +357,7 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
     os_strdup(&path[6], full_path);
     value_name = full_path;
 
-    // Find where the key ends and the value starts
-    while ((finder = strchr(value_name, ':'))) {
-        if (*(finder - 1) != '\\') {
-            break;
-        }
-        value_name = finder + 1;
-    }
+    finder = find_key_value_limiter(value_name);
 
     if (finder == NULL) {
         mdebug1("Separator ':' was not found in %s", full_path);
@@ -333,7 +369,6 @@ fim_entry *fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const c
 
     value_name = filter_special_chars(finder + 1);
     key_path = filter_special_chars(full_path);
-
     os_calloc(1, sizeof(fim_entry), entry);
     entry->type = FIM_TYPE_REGISTRY;
     entry->registry_entry.key = fim_db_get_registry_key(fim_sql, key_path, arch);

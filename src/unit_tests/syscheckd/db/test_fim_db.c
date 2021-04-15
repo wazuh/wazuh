@@ -2237,6 +2237,59 @@ void test_fim_db_get_entry_from_sync_msg_get_registry_value_success(void **state
     assert_int_equal(entry->registry_entry.value->id, entry->registry_entry.key->id);
 }
 
+void test_fim_db_get_entry_from_sync_msg_two_dots_subkey(void **state) {
+    fdb_t fim_sql;
+    fim_registry_key key_data = DEFAULT_REGISTRY_KEY;
+    fim_registry_value_data value_data = DEFAULT_REGISTRY_VALUE;
+    fim_entry *entry;
+    key_data.path = "HKEY_LOCAL_MACHINE\\software\\some:\\:\\key";
+    expect_fim_db_get_registry_key(&key_data);
+    expect_fim_db_get_registry_data("some:value", key_data.id, &value_data);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY,
+                                           "[x64] HKEY_LOCAL_MACHINE\\\\software\\\\some\\:\\\\\\:\\\\key:some\\:value");
+
+    *state = entry;
+
+    assert_non_null(entry);
+    assert_int_equal(entry->type, FIM_TYPE_REGISTRY);
+    assert_non_null(entry->registry_entry.key);
+    assert_string_equal(entry->registry_entry.key->path, "HKEY_LOCAL_MACHINE\\software\\some:\\:\\key");
+    assert_int_equal(entry->registry_entry.key->arch, ARCH_64BIT);
+    assert_non_null(entry->registry_entry.value);
+    assert_string_equal(entry->registry_entry.value->name, "some:value");
+    assert_int_equal(entry->registry_entry.value->id, entry->registry_entry.key->id);
+}
+
+void test_fim_db_get_entry_from_sync_msg_no_separator(void **state) {
+    char *str = "[x64] a\\string\\without\\the\\separator\\:";
+    char debug_msg[OS_SIZE_128] = {0};
+    fdb_t fim_sql;
+    fim_entry *entry = NULL;
+
+    snprintf(debug_msg, OS_SIZE_128, "Separator ':' was not found in %s", "a\\string\\without\\the\\separator\\:");
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, str);
+
+    assert_null(entry);
+}
+
+void test_fim_db_get_entry_from_sync_msg_wrong_str(void **state) {
+    char *str = "[x64] \\\\\\\0:random_content";
+    char debug_msg[OS_SIZE_128] = {0};
+    fdb_t fim_sql;
+    fim_entry *entry = NULL;
+
+    snprintf(debug_msg, OS_SIZE_128, "Separator ':' was not found in %s", "\\\\\\");
+    expect_string(__wrap__mdebug1, formatted_msg, debug_msg);
+
+    entry = fim_db_get_entry_from_sync_msg(&fim_sql, FIM_TYPE_REGISTRY, str);
+
+    assert_null(entry);
+}
+
+
 #endif
 
 /**********************************************************************************************************************\
@@ -2380,6 +2433,10 @@ int main(void) {
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_key_fail_to_get_key, teardown_fim_entry),
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_value_fail_to_get_data, teardown_fim_entry),
         cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_get_registry_value_success, teardown_fim_entry),
+        cmocka_unit_test_teardown(test_fim_db_get_entry_from_sync_msg_two_dots_subkey, teardown_fim_entry),
+        cmocka_unit_test(test_fim_db_get_entry_from_sync_msg_no_separator),
+        cmocka_unit_test(test_fim_db_get_entry_from_sync_msg_wrong_str),
+
 #endif
     };
     return cmocka_run_group_tests(tests, setup_fim_db_group, teardown_fim_db_group);
