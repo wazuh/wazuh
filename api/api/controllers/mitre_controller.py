@@ -103,7 +103,28 @@ async def get_techniques(request, technique_ids=None, pretty=False, wait_for_com
 async def get_techniques():
     """TODO
     """
-    # TODO
+    f_kwargs = {'filters': {
+        'id': technique_ids,
+    },
+        'offset': offset,
+        'limit': limit,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else None,
+        'sort_ascending': False if sort is None or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+        'select': select, 'q': q}
+
+    dapi = DistributedAPI(f=mitre.mitre_techniques,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
 async def get_mitigations():
