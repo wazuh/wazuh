@@ -14,7 +14,7 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 #include "../external/cJSON/cJSON.h"
-#include "exec.h"
+#include "execd.h"
 
 static char exec_names[MAX_AR + 1][OS_FLSIZE + 1];
 static char exec_cmd[MAX_AR + 1][OS_FLSIZE + 1];

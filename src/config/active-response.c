@@ -18,7 +18,7 @@
 #include "os_regex/os_regex.h"
 #include "active-response.h"
 #include "config.h"
-#include "os_execd/exec.h"
+#include "os_execd/execd.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_execd.h"
 

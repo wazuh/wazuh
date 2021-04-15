@@ -8,8 +8,8 @@
  * Foundation.
  */
 
-#ifndef EXEC_H
-#define EXEC_H
+#ifndef EXECD_H
+#define EXECD_H
 
 #include "shared.h"
 #include "os_xml/os_xml.h"
@@ -77,4 +77,4 @@ typedef struct _timeout_data {
 
 void FreeTimeoutEntry(timeout_data *timeout_entry);
 
-#endif /* EXEC_H */
+#endif /* EXECD_H */
