@@ -12,7 +12,7 @@ from wazuh.core.utils import process_array
 class WazuhDBQueryMitre(WazuhDBQuery):
 
     def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
-                 table: str = 'technique', sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 table: str = '', sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None,
                  request_slice=500):
         """Create an instance of WazuhDBQueryMitre query."""
@@ -25,6 +25,8 @@ class WazuhDBQueryMitre(WazuhDBQuery):
                               default_sort_order=default_sort_order, filters=filters, query=query, count=count,
                               get_data=True, min_select_fields=min_select_fields,
                               backend=WazuhDBBackend(query_format='mitre', request_slice=request_slice))
+
+        self.relation_fields = set()  # This variable contains valid fields not included in the database (relations)
 
     def _filter_status(self, status_filter):
         pass
@@ -126,7 +128,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             filters = dict()
         self.min_select_fields = min_select_fields
         if min_select_fields is None:
-            self.min_select_fields = {'id', 'name'}
+            self.min_select_fields = {'id'}
         self.fields = fields
         if fields is None:
             self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'created_time': 'created_time',
@@ -135,9 +137,6 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                            'remote_support': 'remote_support', 'revoked_by': 'revoked_by', 'deprecated': 'deprecated',
                            'subtechnique_of': 'subtechnique_of'}
 
-        self.extra_valid_fields = {'related_tactics', 'related_mitigations', 'related_software', 'related_group'}
-        self.user_select = self.min_select_fields.union(set(select))
-
         WazuhDBQueryMitre.__init__(self, table='technique', min_select_fields=self.min_select_fields,
                                    fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
                                    count=count, sort=sort, default_sort_field=default_sort_field,
@@ -145,31 +144,17 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                                    select=list(set(self.fields.values()).intersection(set(select))),
                                    request_slice=32)
 
+        self.relation_fields = {'related_tactics', 'related_mitigations', 'related_software', 'related_groups'}
+
     def _filter_status(self, status_filter):
         pass
 
-    def _process_filter(self, field_name, field_filter, q_filter):
-        if 'technique_ids' in field_name:
-            self.query += f"id {q_filter['operator']} (:{field_filter})"
-            self.request[field_filter] = q_filter['value']
-        else:
-            super()._process_filter(field_name, field_filter, q_filter)
-
-    def _delete_extra_fields(self):
-        remove_relation = self.user_select & self.extra_valid_fields
-        if remove_relation:
-            for technique in self._data:
-                for relation in remove_relation:
-                    technique.pop(relation)
-
-    def _format_data_into_dictionary(self):
-        """This function will add to the final result the mitigations, groups, software and tactics
-        related to each of the techniques.
-
-        Returns
-        -------
-        Dictionary with all the requested techniques and their relationships.
+    def _execute_data_query(self):
+        """This function will add to the result the mitigations, groups, software and tactics
+        related to each technique.
         """
+        super()._execute_data_query()
+
         technique_ids = set()
         for technique in self._data:
             technique_ids.add(technique['id'])
@@ -182,7 +167,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                                                        filters={'target_id': list(technique_ids),
                                                                 'target_type': 'technique', 'source_type': 'software'},
                                                        dict_key='target_id', request_slice=250).run()
-        related_group = WazuhDBQueryMitreRelational(table='use',
+        related_groups = WazuhDBQueryMitreRelational(table='use',
                                                     filters={'target_id': list(technique_ids),
                                                              'target_type': 'technique', 'source_type': 'group'},
                                                     dict_key='target_id', request_slice=250).run()
@@ -191,11 +176,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             technique['related_tactics'] = related_tactics.get(technique['id'], list())
             technique['related_mitigations'] = related_mitigations.get(technique['id'], list())
             technique['related_software'] = related_software.get(technique['id'], list())
-            technique['related_group'] = related_group.get(technique['id'], list())
-
-        self._delete_extra_fields()
-
-        return {'items': self._data, 'totalItems': self.total_items}
+            technique['related_groups'] = related_groups.get(technique['id'], list())
 
 
 @lru_cache(maxsize=None)
@@ -211,7 +192,7 @@ def get_techniques():
     """
     info = {'min_select_fields': None, 'allowed_fields': None}
     db_query = WazuhDBQueryMitreTechniques(limit=None)
-    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.extra_valid_fields))
+    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
     info['min_select_fields'] = set(db_query.min_select_fields)
     data = db_query.run()
 
@@ -252,11 +233,10 @@ def get_results_with_select(filters, select, offset, limit, sort_by, sort_ascend
         Processed techniques array.
     """
     fields_info, data = get_techniques()
-    if select is not None:
-        select = set(select)
-        select = select.union(fields_info['min_select_fields'])
 
     return process_array(data['items'], filters=filters, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, select=select,
                          sort_ascending=sort_ascending, offset=offset, limit=limit, q=q,
-                         allowed_sort_fields=fields_info['allowed_fields'])
+                         allowed_sort_fields=fields_info['allowed_fields'],
+                         allowed_select_fields=fields_info['allowed_fields'],
+                         required_fields=fields_info['min_select_fields'])

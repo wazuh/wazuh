@@ -106,7 +106,7 @@ def execute(command):
 
 def process_array(array, search_text=None, complementary_search=False, search_in_fields=None, select=None, sort_by=None,
                   sort_ascending=True, allowed_sort_fields=None, offset=0, limit=None, q='', required_fields=None,
-                  filters=None):
+                  allowed_select_fields=None, filters=None):
     """ Process a Wazuh framework data array
 
     :param array: Array to process
@@ -121,6 +121,7 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     :param limit: Maximum number of elements to return
     :param q: Query to filter by
     :param required_fields: Required fields that must appear in the response
+    :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     :return: Dictionary: {'items': Processed array, 'totalItems': Number of items, before applying offset and limit)}
     """
     if not array:
@@ -142,7 +143,8 @@ def process_array(array, search_text=None, complementary_search=False, search_in
                            allowed_sort_fields=allowed_sort_fields)
 
     if select:
-        array = select_array(array, select=select, required_fields=required_fields)
+        array = select_array(array, select=select, required_fields=required_fields,
+                             allowed_select_fields=allowed_select_fields)
 
     if search_text:
         array = search_array(array, search_text=search_text, complementary_search=complementary_search,
@@ -311,7 +313,7 @@ def search_array(array, search_text=None, complementary_search=False, search_in_
     return found
 
 
-def select_array(array, select=None, required_fields=None):
+def select_array(array, select=None, required_fields=None, allowed_select_fields=None):
     """Get only those values from each element in the array that matches the select values.
 
     Parameters
@@ -354,6 +356,9 @@ def select_array(array, select=None, required_fields=None):
         required_fields = set()
     select = set(select)
 
+    if allowed_select_fields and not select.issubset(allowed_select_fields):
+        raise WazuhError(1724, "{}".format(', '.join(select)))
+
     result_list = list()
     for item in array:
         selected_fields = dict()
@@ -363,11 +368,11 @@ def select_array(array, select=None, required_fields=None):
             if candidate:
                 selected_fields.update(candidate)
         # Add required fields if the entry is not empty
-        if selected_fields:
-            selected_fields.update({req_field: item[req_field] for req_field in required_fields})
-            result_list.append(selected_fields)
-    if not result_list:
-        raise WazuhError(1724, "{}".format(', '.join(select)))
+        if array and not allowed_select_fields and not selected_fields:
+            raise WazuhError(1724, "{}".format(', '.join(select)))
+        selected_fields.update({req_field: item[req_field] for req_field in required_fields})
+        result_list.append(selected_fields)
+
     return result_list
 
 

@@ -1712,7 +1712,7 @@ components:
           description: "Event to look for"
 
     # MITRE models
-    technique_id:
+    Technique_id:
       type: string
       description: "Technique ID"
 
@@ -4009,14 +4009,14 @@ components:
       schema:
         type: string
         format: alphanumeric
-    mitre_technique_id:
+    mitre_technique_ids:
       in: query
       name: 'technique_ids'
       description: "List of MITRE's techniques IDs (separated by comma)"
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/technique_id'
+          $ref: '#/components/schemas/Technique_id'
     name:
       in: query
       name: name
@@ -5301,7 +5301,7 @@ tags:
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
     description: "Wazuh manager management"
-  - name: Mitre
+  - name: MITRE
     description: "Technique information from MITRE database"
   - name: Overview
     description: "Overview of Wazuh"
@@ -10511,7 +10511,7 @@ paths:
   /mitre/metadata:
     get:
       tags:
-        - Mitre
+        - MITRE
       summary: "Get MITRE metadata"
       description: "Return the metadata from MITRE database"
       operationId: api.controllers.mitre_controller.get_metadata
@@ -10546,14 +10546,14 @@ paths:
   /mitre/techniques:
     get:
       tags:
-        - Mitre
+        - MITRE
       summary: "Get MITRE techniques"
       description: "Return the techniques from MITRE database"
       operationId: api.controllers.mitre_controller.get_techniques
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/mitre:read'
       parameters:
-        - $ref: '#/components/parameters/mitre_technique_id'
+        - $ref: '#/components/parameters/mitre_technique_ids'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
@@ -10564,7 +10564,7 @@ paths:
         - $ref: '#/components/parameters/query'
       responses:
         '200':
-          description: "Get MITRE metadata information"
+          description: "Get MITRE techniques information"
           content:
             application/json:
               schema:

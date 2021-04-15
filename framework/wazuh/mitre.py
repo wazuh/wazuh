@@ -68,8 +68,8 @@ def mitre_techniques(filters: dict = None, offset=0, limit=common.database_limit
     """
     data = mitre.get_results_with_select(**locals())
 
-    result = AffectedItemsWazuhResult(none_msg='No Techniques information was returned',
-                                      all_msg='Techniques information was returned')
+    result = AffectedItemsWazuhResult(none_msg='No MITRE techniques information was returned',
+                                      all_msg='MITRE techniques information was returned')
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
 
