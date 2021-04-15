@@ -560,7 +560,7 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
         id = strtoul(read_line, &split, 10);
         // Skip if the fields couldn't be extracted.
         if (split == NULL || *split != ' ') {
-            mwarn("Temporary path file '%s' is corrupt: wrong line format", file->path);
+            mtwarn(ARGV0, "Temporary path file '%s' is corrupt: wrong line format", file->path);
             os_free(read_line);
             continue;
         }

@@ -374,7 +374,7 @@ int fim_diff_registry_tmp(const char *value_data,
 
             default:
                 // Wrong type
-                mwarn(FIM_REG_VAL_WRONG_TYPE);
+                mtwarn(ARGV0, FIM_REG_VAL_WRONG_TYPE);
                 ret = -1;
                 break;
         }
@@ -609,7 +609,7 @@ int fim_diff_estimate_compression(float file_size) {
 
 int fim_diff_create_compress_file(const diff_data *diff) {
     if (w_compress_gzfile(diff->file_origin, diff->compress_tmp_file) != 0) {
-        mwarn(FIM_WARN_GENDIFF_SNAPSHOT, diff->file_origin);
+        mtwarn(ARGV0, FIM_WARN_GENDIFF_SNAPSHOT, diff->file_origin);
         return -1;
     } else if (syscheck.disk_quota_enabled) {
         unsigned int zip_size = FileSize(diff->compress_tmp_file) / 1024;

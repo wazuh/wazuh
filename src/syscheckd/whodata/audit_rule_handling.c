@@ -121,7 +121,7 @@ int fim_rules_initial_load() {
                 mtdebug1(ARGV0, FIM_AUDIT_NEWRULE, directory);
                 rules_added++;
             } else if (retval != -EEXIST) {
-                mwarn(FIM_WARN_WHODATA_ADD_RULE, directory);
+                mtwarn(ARGV0, FIM_WARN_WHODATA_ADD_RULE, directory);
             } else {
                 mtdebug1(ARGV0, FIM_AUDIT_ALREADY_ADDED, directory);
             }

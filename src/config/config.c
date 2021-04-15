@@ -101,7 +101,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
 #endif
         else if (strcmp(node[i]->element, ossyscheck) == 0) {
-            if ((modules & CWMODULE) && (Read_Syscheck(xml, chld_node, d1, modules) < 0)) {
+            if ((modules & CWMODULE) && (Read_Syscheck(xml, chld_node, d1, modules, 1) < 0)) {
                 goto fail;
             }
             if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {

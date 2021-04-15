@@ -69,7 +69,7 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
         mterror(ARGV0, QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         // Try to send it again
@@ -434,7 +434,7 @@ static int _base_line = 0;
 #else
     for (int i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & REALTIME_ACTIVE) {
-            mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+            mtwarn(ARGV0, FIM_WARN_REALTIME_UNSUPPORTED);
             break;
         }
     }
@@ -520,7 +520,7 @@ int fim_whodata_initialize() {
 
 #else
     if (syscheck.enable_whodata) {
-        mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+        mtwarn(ARGV0, FIM_WARN_WHODATA_UNSUPPORTED);
     }
 #endif
 

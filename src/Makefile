@@ -1392,10 +1392,10 @@ syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
 	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 syscheckd/%.o: syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazu-modulesd:syscheck\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-modulesd:syscheck\" -c $^ -o $@
 
 syscheckd/%-event.o: syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazu-modulesd:syscheck\" -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-modulesd:syscheck\" -c $^ -o $@
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)

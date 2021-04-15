@@ -113,7 +113,7 @@ int set_auditd_config(void) {
             mtinfo(ARGV0, FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
             return audit_restart();
         } else {
-            mwarn(FIM_WARN_AUDIT_SOCKET_NOEXIST, AUDIT_SOCKET);
+            mtwarn(ARGV0, FIM_WARN_AUDIT_SOCKET_NOEXIST, AUDIT_SOCKET);
             return 1;
         }
     }
@@ -164,7 +164,7 @@ int set_auditd_config(void) {
         mtinfo(ARGV0, FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
         return audit_restart();
     } else {
-        mwarn(FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);
+        mtwarn(ARGV0, FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);
         return 1;
     }
 }
@@ -195,7 +195,7 @@ void audit_no_rules_to_realtime() {
         found = search_audit_rule(real_path, WHODATA_PERMS, AUDIT_KEY);
 
         if (found == 0) {   // No rule found
-            mwarn(FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
+            mtwarn(ARGV0, FIM_ERROR_WHODATA_ADD_DIRECTORY, real_path);
             syscheck.opts[i] &= ~WHODATA_ACTIVE;
             syscheck.opts[i] |= REALTIME_ACTIVE;
         }
@@ -213,7 +213,7 @@ int audit_init(void) {
     int aupid = check_auditd_enabled();
 
     if (aupid <= 0) {
-        mwarn(FIM_AUDIT_NORUNNING);
+        mtwarn(ARGV0, FIM_AUDIT_NORUNNING);
         return (-1);
     }
 
@@ -269,7 +269,7 @@ int audit_init(void) {
         atexit(clean_rules);
         break;
     case AUDIT_DISABLED:
-        mwarn(FIM_AUDIT_DISABLED);
+        mtwarn(ARGV0, FIM_AUDIT_DISABLED);
         return -1;
     default:
         mterror(ARGV0, FIM_ERROR_AUDIT_MODE, strerror(errno), errno);
@@ -412,7 +412,7 @@ void audit_read_events(int *audit_sock, int mode) {
 
         if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
             // Connection closed
-            mwarn(FIM_WARN_AUDIT_CONNECTION_CLOSED);
+            mtwarn(ARGV0, FIM_WARN_AUDIT_CONNECTION_CLOSED);
             // Reconnect
             conn_retries = 0;
             sleep(1);
@@ -472,7 +472,7 @@ void audit_read_events(int *audit_sock, int mode) {
                     cache[cache_i++] = '\n';
                     cache[cache_i] = '\0';
                 } else if (!event_too_long_id){
-                    mwarn(FIM_WARN_WHODATA_EVENT_TOOLONG, id);
+                    mtwarn(ARGV0, FIM_WARN_WHODATA_EVENT_TOOLONG, id);
                     os_strdup(id, event_too_long_id);
                 }
                 eoe_found = strstr(line, "type=EOE");
@@ -480,7 +480,7 @@ void audit_read_events(int *audit_sock, int mode) {
                 free(cache_id);
                 cache_id = id;
             } else {
-                mwarn(FIM_WARN_WHODATA_GETID, line);
+                mtwarn(ARGV0, FIM_WARN_WHODATA_GETID, line);
             }
 
             line = endline + 1;

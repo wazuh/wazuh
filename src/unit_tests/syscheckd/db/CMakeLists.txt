@@ -8,6 +8,7 @@ add_executable(test_fim_db test_fim_db.c)
 target_compile_options(test_fim_db PRIVATE "-Wall")
 
 set(FIM_DB_BASE_FLAGS "-Wl,--wrap=w_is_file,--wrap=remove,--wrap=sqlite3_open_v2,--wrap=sqlite3_exec,--wrap=_merror \
+                       -Wl,--wrap=_mtinfo,--wrap=_mtwarn,--wrap=_mterror,--wrap=_mtdebug1,--wrap=_mtdebug2 \
                        -Wl,--wrap=sqlite3_prepare_v2,--wrap=sqlite3_step,--wrap=sqlite3_finalize \
                        -Wl,--wrap=sqlite3_close_v2,--wrap=chmod,--wrap=sqlite3_free,--wrap=sqlite3_reset \
                        -Wl,--wrap=sqlite3_clear_bindings,--wrap=sqlite3_errmsg,--wrap=sqlite3_bind_int \

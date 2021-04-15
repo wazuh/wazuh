@@ -19,32 +19,37 @@ static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
 #endif
 
 // Parse XML configuration
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules) {
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, char alloc) {
     wmodule** wmodules = (wmodule**)d1;
     wmodule* cur_wmodule = NULL;
     syscheck_config* config = NULL;
     // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
-        while (cur_wmodule->next)
+    if(alloc) {
+        if ((cur_wmodule = *wmodules)) {
+            while (cur_wmodule->next)
+                cur_wmodule = cur_wmodule->next;
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
             cur_wmodule = cur_wmodule->next;
+        } else
+            *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
-        os_calloc(1, sizeof(wmodule), cur_wmodule->next);
-        cur_wmodule = cur_wmodule->next;
-    } else
-        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
-
-    if (!cur_wmodule) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (OS_INVALID);
+        if (!cur_wmodule) {
+            merror(MEM_ERROR, errno, strerror(errno));
+            return (OS_INVALID);
+        }
+        if(!cur_wmodule->data) {
+            os_calloc(1, sizeof(syscheck_config), config);
+            memset(config, 0, sizeof(syscheck_config));
+            cur_wmodule->context = &WM_SYSCHECK_CONTEXT;
+            cur_wmodule->tag = strdup(cur_wmodule->context->name);
+            cur_wmodule->data = config;
+        }
+        config = cur_wmodule->data;
     }
-    if(!cur_wmodule->data) {
-        os_calloc(1, sizeof(syscheck_config), config);
-        memset(config, 0, sizeof(syscheck_config));
-        cur_wmodule->context = &WM_SYSCHECK_CONTEXT;
-        cur_wmodule->tag = strdup(cur_wmodule->context->name);
-        cur_wmodule->data = config;
+    else {
+        config = d1;
     }
-    config = cur_wmodule->data;
     int it = 0;
 
     config->rootcheck      = 0;
@@ -107,7 +112,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules) {
     config->audit_key = NULL;
 
     /* Read config */
-    if (read_syscheck_config_xml(xml, node, config, modules) < 0) {
+    if (node && read_syscheck_config_xml(xml, node, config, modules) < 0) {
         return (OS_INVALID);
     }
 

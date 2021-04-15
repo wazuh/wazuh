@@ -90,7 +90,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata, int fo
             if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
                 if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
                     os_free(data);
-                    merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+                    mterror_exit(ARGV0, FIM_CRITICAL_ERROR_OUT_MEM);
                 }
                 else if (retval == 1) {
                     mtdebug2(ARGV0, FIM_REALTIME_HASH_DUP, data);
@@ -134,7 +134,7 @@ void realtime_process() {
             event = (struct inotify_event *) (void *) &buf[i];
 
             if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
-                mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+                mtwarn(ARGV0, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
                 syscheck.realtime->queue_overflow = true;
                 send_log_msg("wazuh: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
             }
@@ -252,7 +252,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
     if (!OSHash_Get_ex(syscheck.realtime->dirtb, wdchar)) {
         if (retval = OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, data), retval == 0) {
             os_free(data);
-            merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+            mterror_exit(ARGV0, FIM_CRITICAL_ERROR_OUT_MEM);
         }
 
         mtdebug1(ARGV0, FIM_REALTIME_NEWDIRECTORY, data);
@@ -434,7 +434,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
         } while (pinfo->NextEntryOffset != 0);
     }
     else {
-        mwarn(FIM_WARN_REALTIME_OVERFLOW);
+        mtwarn(ARGV0, FIM_WARN_REALTIME_OVERFLOW);
     }
 
     realtime_win32read(rtlocald);
@@ -493,7 +493,7 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
         int type;
 
         if (!syscheck.wdata.fd && whodata_audit_start()) {
-            merror_exit(FIM_CRITICAL_DATA_CREATE, "whodata file descriptors");
+            mterror_exit(ARGV0, FIM_CRITICAL_DATA_CREATE, "whodata file descriptors");
         }
 
         // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
@@ -583,7 +583,7 @@ int realtime_adddir(const char *dir, int whodata, __attribute__((unused)) int fo
         }
 
         if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) {
-            merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
+            mterror_exit(ARGV0, FIM_CRITICAL_ERROR_OUT_MEM);
         }
 
         mtdebug1(ARGV0, FIM_REALTIME_NEWDIRECTORY, dir);

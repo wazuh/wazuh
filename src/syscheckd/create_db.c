@@ -355,7 +355,7 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
     dp = opendir(dir);
 
     if (!dp) {
-        mwarn(FIM_PATH_NOT_OPEN, dir, strerror(errno));
+        mtwarn(ARGV0, FIM_PATH_NOT_OPEN, dir, strerror(errno));
         return OS_INVALID;
     }
 
@@ -618,7 +618,7 @@ static int fim_update_db_data(const char *path,
             return -1;
         case 1:
             if (fim_resolve_db_collision(data->inode, data->dev) != 0) {
-                mwarn("Failed to resolve an inode collision for file '%s'", path);
+                mtwarn(ARGV0, "Failed to resolve an inode collision for file '%s'", path);
                 return -1;
             }
             // Fallthrough
@@ -653,7 +653,7 @@ static int fim_update_db_data(const char *path,
     }
 
     if (fim_resolve_db_collision(data->inode, data->dev) != 0) {
-        mwarn("Failed to resolve an inode collision for file '%s'", path); // LCOV_EXCL_LINE
+        mtwarn(ARGV0, "Failed to resolve an inode collision for file '%s'", path); // LCOV_EXCL_LINE
         return -1;                                                         // LCOV_EXCL_LINE
     }
 #endif
@@ -884,7 +884,7 @@ void fim_check_db_state() {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (nodes_count < 0) {
-        mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+        mtwarn(ARGV0, FIM_DATABASE_NODES_COUNT_FAIL);
         return;
     }
 
@@ -932,7 +932,7 @@ void fim_check_db_state() {
 
     if (nodes_count >= syscheck.file_limit) {
         _db_state = FIM_STATE_DB_FULL;
-        mwarn(FIM_DB_FULL_ALERT);
+        mtwarn(ARGV0, FIM_DB_FULL_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "full");
     }
     else if (nodes_count >= syscheck.file_limit * 0.9) {

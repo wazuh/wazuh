@@ -427,7 +427,7 @@ end:
 void fim_sync_push_msg(const char * msg) {
 
     if (fim_sync_queue == NULL) {
-        mwarn("A data synchronization response was received before sending the first message.");
+        mtwarn(ARGV0, "A data synchronization response was received before sending the first message.");
         return;
     }
 

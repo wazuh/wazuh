@@ -42,7 +42,8 @@ void test_syscom_dispatch_getconfig(void **state)
     char command[] = "getconfig args";
     char * output;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
 
     ret = syscom_dispatch(command, &output);
     *state = output;
@@ -60,7 +61,8 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
     char command[] = "getconfig";
     char * output;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM getconfig needs arguments.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6281): SYSCOM getconfig needs arguments.");
 
     ret = syscom_dispatch(command, &output);
     *state = output;
@@ -94,7 +96,8 @@ void test_syscom_dispatch_dbsync_noargs(void **state)
     char command[] = "dbsync";
     char *output;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM dbsync needs arguments.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6281): SYSCOM dbsync needs arguments.");
 
     ret = syscom_dispatch(command, &output);
 
@@ -124,7 +127,8 @@ void test_syscom_dispatch_getconfig_unrecognized(void **state)
     char command[] = "invalid";
     char * output;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6282): SYSCOM Unrecognized command 'invalid'");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6282): SYSCOM Unrecognized command 'invalid'");
 
     ret = syscom_dispatch(command, &output);
     *state = output;
@@ -176,7 +180,8 @@ void test_syscom_getconfig_syscheck_failure(void **state)
     char * output;
 
     will_return(__wrap_getSyscheckConfig, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'syscheck' section.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'syscheck' section.");
 
     ret = syscom_getconfig(section, &output);
     *state = output;
@@ -215,7 +220,8 @@ void test_syscom_getconfig_rootcheck_failure(void **state)
     char * output;
 
     will_return(__wrap_getRootcheckConfig, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'rootcheck' section.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'rootcheck' section.");
 
     ret = syscom_getconfig(section, &output);
     *state = output;
@@ -254,7 +260,8 @@ void test_syscom_getconfig_internal_failure(void **state)
     char * output;
 
     will_return(__wrap_getSyscheckInternalOptions, NULL);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'internal' section.");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'internal' section.");
 
     ret = syscom_getconfig(section, &output);
     *state = output;

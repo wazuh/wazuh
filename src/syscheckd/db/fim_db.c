@@ -877,7 +877,7 @@ int fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **b
         char path_length[OS_SIZE_32 + 1];
 
         if (it == 0 && fseek(file->fd, 0, SEEK_SET) != 0) {
-            mwarn(FIM_DB_TEMPORARY_FILE_POSITION, errno, strerror(errno));
+            mtwarn(ARGV0, FIM_DB_TEMPORARY_FILE_POSITION, errno, strerror(errno));
             return -1;
         }
 

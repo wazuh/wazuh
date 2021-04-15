@@ -388,7 +388,7 @@ int fim_db_insert(fdb_t *fim_sql, const char *file_path, const fim_file_data *ne
         if (syscheck.file_limit_enabled) {
             nodes_count = fim_db_get_count_entries(syscheck.database);
             if (nodes_count < 0) {
-                mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+                mtwarn(ARGV0, FIM_DATABASE_NODES_COUNT_FAIL);
                 return FIMDB_ERR;
             }
             if (nodes_count >= syscheck.file_limit) {
