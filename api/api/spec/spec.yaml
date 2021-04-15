@@ -1720,6 +1720,11 @@ components:
           type: string
           description: "Event to look for"
 
+    # MITRE models
+    Technique_id:
+      type: string
+      description: "Technique ID"
+
     # Security models
     Role_id:
       type: string
@@ -4013,6 +4018,14 @@ components:
       schema:
         type: string
         format: alphanumeric
+    mitre_technique_ids:
+      in: query
+      name: 'technique_ids'
+      description: "List of MITRE's techniques IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Technique_id'
     name:
       in: query
       name: name
@@ -5297,7 +5310,7 @@ tags:
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
     description: "Wazuh manager management"
-  - name: Mitre
+  - name: MITRE
     description: "Technique information from MITRE database"
   - name: Overview
     description: "Overview of Wazuh"
@@ -10561,7 +10574,7 @@ paths:
   /mitre/metadata:
     get:
       tags:
-        - Mitre
+        - MITRE
       summary: "Get MITRE metadata"
       description: "Return the metadata from MITRE database"
       operationId: api.controllers.mitre_controller.get_metadata
@@ -10573,6 +10586,48 @@ paths:
       responses:
         '200':
           description: "Get MITRE metadata information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/techniques:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE techniques"
+      description: "Return the techniques from MITRE database"
+      operationId: api.controllers.mitre_controller.get_techniques
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_technique_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE techniques information"
           content:
             application/json:
               schema:
