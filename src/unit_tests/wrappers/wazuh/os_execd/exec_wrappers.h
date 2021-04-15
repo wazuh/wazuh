@@ -11,8 +11,8 @@
 #ifndef OS_EXEC_WRAPPERS_H
 #define OS_EXEC_WRAPPERS_H
 
-int __wrap_ReadExecConfig();
+int __wrap_read_exec_config();
 
-char *__wrap_GetCommandbyName(const char *name, int *timeout);
+char *__wrap_get_command_by_name(const char *name, int *timeout);
 
 #endif

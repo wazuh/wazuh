@@ -52,8 +52,8 @@ void* wm_execd_main(wm_execd_t *data) {
     wm_execd_log_config(data);
 
 #ifdef WIN32
-    w_queue_t * winexec_queue = queue_init(OS_SIZE_128);
-    WinExecdRun(queue_pop_ex(winexec_queue));
+    w_queue_t *winexec_queue = queue_init(OS_SIZE_128);
+    win_execd_run(queue_pop_ex(winexec_queue));
     queue_free(winexec_queue);
 #else
     int queue = 0;
@@ -62,7 +62,7 @@ void* wm_execd_main(wm_execd_t *data) {
         merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
     // The real daemon Now
-    ExecdStart(queue);
+    execd_start(queue);
 
     if (queue) {
         close(queue);
@@ -81,7 +81,7 @@ void wm_execd_destroy(wm_execd_t *data) {
 
 cJSON *wm_execd_dump(__attribute__((unused)) const wm_execd_t *data) {
     cJSON *root = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "ARConfig", getARConfig());
-    cJSON_AddItemToObject(root, "ExecdInternalOptions", getExecdInternalOptions());
+    cJSON_AddItemToObject(root, "ARConfig", get_ar_config());
+    cJSON_AddItemToObject(root, "ExecdInternalOptions", get_execd_internal_options());
     return root;
 }

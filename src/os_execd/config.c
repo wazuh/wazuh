@@ -18,8 +18,8 @@
 
 int is_disabled;
 
-/* Read the config file */
-int ExecdConfig() {
+/** @copydoc execd_config */
+int execd_config() {
     is_disabled = 0;
 
     const char *(xmlf[]) = {"wazuh_config", "active-response", "disabled", NULL};
@@ -31,25 +31,18 @@ int ExecdConfig() {
     OS_XML xml;
 
     /* Read XML file */
-    if (OS_ReadXML(OSSECCONF, &xml) < 0)
-    {
+    if (OS_ReadXML(OSSECCONF, &xml) < 0) {
         merror_exit(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
     }
 
     /* We do not validate the xml in here. It is done by other processes. */
     disable_entry = OS_GetOneContentforElement(&xml, xmlf);
-    if (disable_entry)
-    {
-        if (strcmp(disable_entry, "yes") == 0)
-        {
+    if (disable_entry) {
+        if (strcmp(disable_entry, "yes") == 0) {
             is_disabled = 1;
-        }
-        else if (strcmp(disable_entry, "no") == 0)
-        {
+        } else if (strcmp(disable_entry, "no") == 0) {
             is_disabled = 0;
-        }
-        else
-        {
+        } else {
             mterror(WM_EXECD_LOGTAG, XML_VALUEERR, "disabled", disable_entry);
             free(disable_entry);
             return (-1);
@@ -62,22 +55,19 @@ int ExecdConfig() {
     node = OS_GetElementsbyNode(&xml, NULL);
 
     XML_NODE child = NULL;
-    while (node && node[i])
-    {
+    while (node && node[i]) {
         child = OS_GetElementsbyNode(&xml, node[i]);
         int j = 0;
 
-        while (child && child[j]){
+        while (child && child[j]) {
 
-            if (strcmp(child[j]->element, "active-response") == 0){
+            if (strcmp(child[j]->element, "active-response") == 0) {
                 XML_NODE child_attr = NULL;
                 child_attr = OS_GetElementsbyNode(&xml, child[j]);
                 int p = 0;
 
-                while (child_attr && child_attr[p])
-                {
-                    if (!strcmp(child_attr[p]->element, "repeated_offenders"))
-                    {
+                while (child_attr && child_attr[p]) {
+                    if (!strcmp(child_attr[p]->element, "repeated_offenders")) {
                         os_strdup(child_attr[p]->content, repeated_t);
                         OS_ClearNode(child_attr);
                         goto next;
@@ -86,7 +76,6 @@ int ExecdConfig() {
                 }
 
                 OS_ClearNode(child_attr);
-
             }
             j++;
         }
@@ -101,35 +90,27 @@ next:
     OS_ClearNode(node);
 
     //repeated_t = OS_GetOneContentforElement(xml, blocks);
-    if (repeated_t)
-    {
+    if (repeated_t) {
         int i = 0;
         int j = 0;
         repeated_a = OS_StrBreak(',', repeated_t, 5);
-        if (!repeated_a)
-        {
+        if (!repeated_a) {
             mterror(WM_EXECD_LOGTAG, XML_VALUEERR, "repeated_offenders", repeated_t);
             free(repeated_t);
             return (-1);
         }
 
-        while (repeated_a[i] != NULL)
-        {
+        while (repeated_a[i] != NULL) {
             char *tmpt = repeated_a[i];
-            while (*tmpt != '\0')
-            {
-                if (*tmpt == ' ' || *tmpt == '\t')
-                {
+            while (*tmpt != '\0') {
+                if (*tmpt == ' ' || *tmpt == '\t') {
                     tmpt++;
-                }
-                else
-                {
+                } else {
                     break;
                 }
             }
 
-            if (*tmpt == '\0')
-            {
+            if (*tmpt == '\0') {
                 i++;
                 continue;
             }
@@ -139,8 +120,7 @@ next:
                 repeated_offenders_timeout[j], j + 1);
             j++;
             repeated_offenders_timeout[j] = 0;
-            if (j >= 6)
-            {
+            if (j >= 6) {
                 break;
             }
             i++;
@@ -148,8 +128,7 @@ next:
 
         free(repeated_t);
 
-        for (i = 0; repeated_a[i]; i++)
-        {
+        for (i = 0; repeated_a[i]; i++) {
             free(repeated_a[i]);
         }
 
@@ -161,7 +140,7 @@ next:
     return (is_disabled);
 }
 
-cJSON *getARConfig(void) {
+cJSON *get_ar_config(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *ar = cJSON_CreateObject();
@@ -182,7 +161,7 @@ cJSON *getARConfig(void) {
 }
 
 
-cJSON *getExecdInternalOptions(void) {
+cJSON *get_execd_internal_options(void) {
 
     cJSON *root = cJSON_CreateObject();
     cJSON *internals = cJSON_CreateObject();
@@ -198,7 +177,7 @@ cJSON *getExecdInternalOptions(void) {
 }
 
 
-cJSON *getClusterConfig(void) {
+cJSON *get_cluster_config(void) {
 
 #ifndef WIN32
     char req[] = "get_config";
@@ -214,11 +193,11 @@ cJSON *getClusterConfig(void) {
     if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         switch (errno) {
         case ECONNREFUSED:
-            mterror(WM_EXECD_LOGTAG, "At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            mterror(WM_EXECD_LOGTAG, "At get_cluster_config(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
             break;
 
         default:
-            mterror(WM_EXECD_LOGTAG, "At getClusterConfig(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            mterror(WM_EXECD_LOGTAG, "At get_cluster_config(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
         }
         return NULL;
     }

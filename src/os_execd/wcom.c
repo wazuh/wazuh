@@ -231,7 +231,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
     char *json_str;
 
     if (strcmp(section, "active-response") == 0){
-        if (cfg = getARConfig(), cfg) {
+        if (cfg = get_ar_config(), cfg) {
             os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
@@ -253,7 +253,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
             goto error;
         }
     } else if (strcmp(section, "internal") == 0){
-        if (cfg = getExecdInternalOptions(), cfg) {
+        if (cfg = get_execd_internal_options(), cfg) {
             os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
@@ -278,7 +278,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         else {
             close(sock);
 
-            if (cfg = getClusterConfig(), cfg) {
+            if (cfg = get_cluster_config(), cfg) {
                 os_strdup("ok ", *output);
                 json_str = cJSON_PrintUnformatted(cfg);
                 wm_strcat(output, json_str, ' ');

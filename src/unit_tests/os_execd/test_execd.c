@@ -32,7 +32,7 @@
 
 extern int test_mode;
 
-void ExecdStart(int q);
+void execd_start(int q);
 
 /* Setup/Teardown */
 
@@ -61,7 +61,7 @@ static int test_teardown_file(void **state) {
 
 /* Tests */
 
-static void test_ExecdStart_ok(void **state) {
+static void test_execd_start_ok(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -133,9 +133,9 @@ static void test_ExecdStart_ok(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
@@ -172,10 +172,10 @@ static void test_ExecdStart_ok(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_timeout(void **state) {
+static void test_execd_start_timeout(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -247,9 +247,9 @@ static void test_ExecdStart_timeout(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
@@ -315,10 +315,10 @@ static void test_ExecdStart_timeout(void **state) {
                                                                                     "}"
                                                                                 "}' to the timeout list, with a timeout of '10s'.");
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_wpopenv_err(void **state) {
+static void test_execd_start_wpopenv_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -390,9 +390,9 @@ static void test_ExecdStart_wpopenv_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
@@ -466,9 +466,9 @@ static void test_ExecdStart_wpopenv_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
@@ -505,10 +505,10 @@ static void test_ExecdStart_wpopenv_err(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_get_command_err(void **state) {
+static void test_execd_start_get_command_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -580,15 +580,15 @@ static void test_ExecdStart_get_command_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, NULL);
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, NULL);
 
-    will_return(__wrap_ReadExecConfig, 0);
+    will_return(__wrap_read_exec_config, 0);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, NULL);
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'restart-wazuh0' provided.");
 
@@ -631,9 +631,9 @@ static void test_ExecdStart_get_command_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
@@ -670,10 +670,10 @@ static void test_ExecdStart_get_command_err(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_get_name_err(void **state) {
+static void test_execd_start_get_name_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -761,9 +761,9 @@ static void test_ExecdStart_get_name_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
@@ -800,10 +800,10 @@ static void test_ExecdStart_get_name_err(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_json_err(void **state) {
+static void test_execd_start_json_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -891,9 +891,9 @@ static void test_ExecdStart_json_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
@@ -930,17 +930,17 @@ static void test_ExecdStart_json_err(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_ExecdStart_ok, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_timeout, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_wpopenv_err, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_get_command_err, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_get_name_err, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_json_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_ok, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_timeout, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_wpopenv_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_get_command_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_get_name_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_json_err, test_setup_file, test_teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

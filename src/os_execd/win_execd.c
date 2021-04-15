@@ -29,46 +29,14 @@ OSListNode *timeout_node;
 
 DWORD WINAPI win_exec_main(void * args);
 
-/* Shut down win-execd properly */
-static void WinExecd_Shutdown()
-{
-    /* Remove pending active responses */
-    mtinfo(WM_EXECD_LOGTAG, EXEC_SHUTDOWN);
-
-    timeout_node = OSList_GetFirstNode(timeout_list);
-    while (timeout_node) {
-        timeout_data *list_entry;
-
-        list_entry = (timeout_data *)timeout_node->data;
-
-        mdebug2("Delete pending AR: %s", list_entry->command[0]);
-
-        wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
-        if (wfd) {
-            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
-            wpclose(wfd);
-        } else {
-            mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
-        }
-
-        /* Delete current node - already sets the pointer to next */
-        OSList_DeleteCurrentlyNode(timeout_list);
-        timeout_node = OSList_GetCurrentlyNode(timeout_list);
-
-        /* Clear the memory */
-        FreeTimeoutEntry(list_entry);
-    }
-}
-
 // Create a thread to run windows AR simultaneous
 DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     while(1) {
-        WinExecdRun(queue_pop_ex(winexec_queue));
+        win_execd_run(queue_pop_ex(winexec_queue));
     }
 }
 
-void WinTimeoutRun()
-{
+void win_timeout_run() {
     time_t curr_time = time(NULL);
 
     /* Check if there is any timed out command to execute */
@@ -100,14 +68,14 @@ void WinTimeoutRun()
             timeout_node = OSList_GetCurrentlyNode(timeout_list);
 
             /* Clear the memory */
-            FreeTimeoutEntry(list_entry);
+            free_timeout_entry(list_entry);
         } else {
             timeout_node = OSList_GetNextNode(timeout_list);
         }
     }
 }
 
-void WinExecdRun(char *exec_msg)
+void win_execd_run(char *exec_msg)
 {
     time_t curr_time;
 
@@ -141,10 +109,10 @@ void WinExecdRun(char *exec_msg)
     }
 
     /* Get command to execute */
-    cmd[0] = GetCommandbyName(name, &timeout_value);
+    cmd[0] = get_command_by_name(name, &timeout_value);
     if (!cmd[0]) {
-        ReadExecConfig();
-        cmd[0] = GetCommandbyName(name, &timeout_value);
+        read_exec_config();
+        cmd[0] = get_command_by_name(name, &timeout_value);
         if (!cmd[0]) {
             mterror(WM_EXECD_LOGTAG, EXEC_INV_NAME, name);
             cJSON_Delete(json_root);
@@ -225,7 +193,7 @@ void WinExecdRun(char *exec_msg)
 
             if (!OSList_AddData(timeout_list, timeout_entry)) {
                 mterror(WM_EXECD_LOGTAG, LIST_ADD_ERROR);
-                FreeTimeoutEntry(timeout_entry);
+                free_timeout_entry(timeout_entry);
             }
         }
     }

@@ -36,44 +36,12 @@ time_t pending_upg = 0;
 
 /* Prototypes */
 void execd_shutdown() __attribute__((noreturn));
-void ExecdStart(int q);
 STATIC int CheckManagerConfiguration(char ** output);
 
 /* Global variables */
 STATIC OSList *timeout_list;
 STATIC OSListNode *timeout_node;
 STATIC OSHash *repeated_hash;
-
-#endif
-
-/* Free the timeout entry
- * Must be called after popping it from the timeout list
- */
-void FreeTimeoutEntry(timeout_data *timeout_entry) {
-    char **tmp_str;
-
-    if (!timeout_entry) {
-        return;
-    }
-
-    tmp_str = timeout_entry->command;
-
-    /* Clear the command arguments */
-    if (tmp_str) {
-        while (*tmp_str) {
-            os_free(*tmp_str);
-            *tmp_str = NULL;
-            tmp_str++;
-        }
-        os_free(timeout_entry->command);
-    }
-
-    os_free(timeout_entry->parameters);
-
-    os_free(timeout_entry);
-}
-
-#ifndef WIN32
 
 /* Shut down execd properly */
 void execd_shutdown() {
@@ -100,12 +68,11 @@ void execd_shutdown() {
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
 
         /* Clear the memory */
-        FreeTimeoutEntry(list_entry);
+        free_timeout_entry(list_entry);
     }
 }
 
-/* Main function on the execd. Does all the data receiving, etc. */
-void ExecdStart(int q) {
+void execd_start(int q) {
     int i, childcount = 0;
     time_t curr_time;
 
@@ -208,7 +175,7 @@ void ExecdStart(int q) {
                 timeout_node = OSList_GetCurrentlyNode(timeout_list);
 
                 /* Clear the memory */
-                FreeTimeoutEntry(list_entry);
+                free_timeout_entry(list_entry);
 
                 childcount++;
             } else {
@@ -332,15 +299,15 @@ void ExecdStart(int q) {
                 #endif
             }
 
-            ExecCmd(cmd_api);
+            exec_command(cmd_api);
             continue;
         }
 
         /* Get command to execute */
-        cmd[0] = GetCommandbyName(name, &timeout_value);
+        cmd[0] = get_command_by_name(name, &timeout_value);
         if (!cmd[0]) {
-            ReadExecConfig();
-            cmd[0] = GetCommandbyName(name, &timeout_value);
+            read_exec_config();
+            cmd[0] = get_command_by_name(name, &timeout_value);
             if (!cmd[0]) {
                 merror(EXEC_INV_NAME, name);
                 cJSON_Delete(json_root);
@@ -394,7 +361,7 @@ void ExecdStart(int q) {
                                 snprintf(ntimes, 16, "%d", ntimes_int);
                                 if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
                                     free(ntimes);
-                                    merror("At ExecdStart: OSHash_Update() failed");
+                                    merror("At execd_start: OSHash_Update() failed");
                                 }
                             }
                             mtdebug1(WM_EXECD_LOGTAG, "Repeated offender. Setting timeout to '%ds'", new_timeout);
@@ -460,7 +427,7 @@ void ExecdStart(int q) {
                             snprintf(ntimes, 16, "%d", ntimes_int);
                             if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
                                 free(ntimes);
-                                merror("At ExecdStart: OSHash_Update() failed");
+                                merror("At execd_start: OSHash_Update() failed");
                             }
                         }
                         timeout_value = new_timeout;
@@ -494,7 +461,7 @@ void ExecdStart(int q) {
 
                 if (!OSList_AddData(timeout_list, timeout_entry)) {
                     merror(LIST_ADD_ERROR);
-                    FreeTimeoutEntry(timeout_entry);
+                    free_timeout_entry(timeout_entry);
                 }
             }
 
@@ -512,7 +479,7 @@ void ExecdStart(int q) {
 #ifdef WAZUH_UNIT_TESTING
     timeout_node = OSList_GetFirstNode(timeout_list);
     while (timeout_node) {
-        FreeTimeoutEntry((timeout_data *)timeout_node->data);
+        free_timeout_entry((timeout_data *)timeout_node->data);
         OSList_DeleteCurrentlyNode(timeout_list);
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
     }
@@ -575,14 +542,81 @@ error:
     return ret_val;
 }
 
+/** @copydoc exec_command */
+void exec_command(char *const *cmd) {
+    pid_t pid;
+
+    /* Fork and leave it running */
+    pid = fork();
+    if (pid == 0) {
+        if (execv(*cmd, cmd) < 0) {
+            mterror(WM_EXECD_LOGTAG, EXEC_CMDERROR, *cmd, strerror(errno));
+            exit(1);
+        }
+
+        exit(0);
+    }
+}
+
+#else
+
+/** @copydoc exec_cmd_win */
+void exec_cmd_win(char *cmd) {
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+
+    ZeroMemory( &si, sizeof(si) );
+    si.cb = sizeof(si);
+    ZeroMemory( &pi, sizeof(pi) );
+
+    if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL,
+                       &si, &pi)) {
+        mterror(WM_EXECD_LOGTAG, "Unable to create active response process. ");
+        return;
+    }
+
+    /* Wait until process exits */
+    WaitForSingleObject(pi.hProcess, INFINITE );
+
+    /* Close process and thread */
+    CloseHandle( pi.hProcess );
+    CloseHandle( pi.hThread );
+
+    return;
+}
 #endif /* !WIN32 */
 
-/* Read the shared exec config
- * Returns 1 on success or 0 on failure
- * Format of the file is 'name - command - timeout'
- */
-int ReadExecConfig()
-{
+//
+// Independent OS functions.
+//
+
+/** @copydoc free_timeout_entry */
+void free_timeout_entry(timeout_data *timeout_entry) {
+    char **tmp_str;
+
+    if (!timeout_entry) {
+        return;
+    }
+
+    tmp_str = timeout_entry->command;
+
+    /* Clear the command arguments */
+    if (tmp_str) {
+        while (*tmp_str) {
+            os_free(*tmp_str);
+            *tmp_str = NULL;
+            tmp_str++;
+        }
+        os_free(timeout_entry->command);
+    }
+
+    os_free(timeout_entry->parameters);
+
+    os_free(timeout_entry);
+}
+
+/** @copydoc read_exec_config */
+int read_exec_config() {
     int i = 0, j = 0, dup_entry = 0;
     FILE *fp;
     FILE *process_file;
@@ -705,13 +739,8 @@ int ReadExecConfig()
     return (1);
 }
 
-/* Returns a pointer to the command name (full path)
- * Returns NULL if name cannot be found
- * If timeout is not NULL, write the timeout for that
- * command to it
- */
-char *GetCommandbyName(const char *name, int *timeout)
-{
+/** @copydoc get_command_by_name*/
+char *get_command_by_name(const char *name, int *timeout) {
     int i = 0;
 
     // Filter custom commands
@@ -737,54 +766,3 @@ char *GetCommandbyName(const char *name, int *timeout)
 
     return (NULL);
 }
-
-#ifndef WIN32
-
-/* Execute command given. Must be a argv** NULL terminated.
- * Prints error to log message in case of problems
- */
-void ExecCmd(char *const *cmd)
-{
-    pid_t pid;
-
-    /* Fork and leave it running */
-    pid = fork();
-    if (pid == 0) {
-        if (execv(*cmd, cmd) < 0) {
-            mterror(WM_EXECD_LOGTAG, EXEC_CMDERROR, *cmd, strerror(errno));
-            exit(1);
-        }
-
-        exit(0);
-    }
-
-    return;
-}
-
-#else
-
-void ExecCmd_Win32(char *cmd)
-{
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-
-    ZeroMemory( &si, sizeof(si) );
-    si.cb = sizeof(si);
-    ZeroMemory( &pi, sizeof(pi) );
-
-    if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL,
-                       &si, &pi)) {
-        mterror(WM_EXECD_LOGTAG, "Unable to create active response process. ");
-        return;
-    }
-
-    /* Wait until process exits */
-    WaitForSingleObject(pi.hProcess, INFINITE );
-
-    /* Close process and thread */
-    CloseHandle( pi.hProcess );
-    CloseHandle( pi.hThread );
-
-    return;
-}
-#endif

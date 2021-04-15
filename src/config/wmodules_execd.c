@@ -19,7 +19,7 @@ int wm_execd_read(__attribute__((unused)) const OS_XML *xml, __attribute__((unus
     if (module) {
         module->context = &WM_EXECD_CONTEXT;
         module->tag = strdup(EXECD_WM_NAME);
-        if (-1 != ExecdConfig()) {
+        if (-1 != execd_config()) {
             wm_execd_t* wmexecd = NULL;
 
             if (NULL == module->data) {

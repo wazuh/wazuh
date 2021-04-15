@@ -53,7 +53,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
     while (1) {
         /* Run timeout commands */
         if (agt->execdq >= 0) {
-            WinTimeoutRun();
+            win_timeout_run();
         }
 
         /* sock must be set */

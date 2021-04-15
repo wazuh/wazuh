@@ -101,7 +101,7 @@ int receive_msg()
 #ifdef WIN32
             /* Run timeout commands */
             if (agt->execdq >= 0) {
-                WinTimeoutRun();
+                win_timeout_run();
             }
 #endif
 
@@ -118,7 +118,7 @@ int receive_msg()
 #else
                 /* Run on Windows */
                 if (agt->execdq >= 0) {
-                    WinExecdRun(tmp_msg);
+                    win_execd_run(tmp_msg);
                 }
 #endif
 
