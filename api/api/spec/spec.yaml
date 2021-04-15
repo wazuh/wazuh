@@ -3540,7 +3540,7 @@ components:
       description: "Filter by command"
       schema:
         type: string
-        format: alphanumeric
+        format: symbols_alphanumeric_param
     component:
       in: path
       name: component

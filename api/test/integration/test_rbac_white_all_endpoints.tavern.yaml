@@ -2047,7 +2047,6 @@ stages:
       json:
         username: newUser
         password: stringA1!
-        allow_run_as: true
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
