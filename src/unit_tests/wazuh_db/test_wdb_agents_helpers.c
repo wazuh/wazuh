@@ -38,11 +38,11 @@ int teardown_wdb_agents_helpers(void **state) {
     return 0;
 }
 
-/* Tests wdb_agents_sys_osinfo_check_triaged */
+/* Tests wdb_agents_sys_osinfo_get */
 
-void test_wdb_agents_sys_osinfo_check_triaged_error_wdb_query(void ** state)
+void test_wdb_agents_sys_osinfo_get_error_sql_execution(void ** state)
 {
-    int ret = 0;
+    cJSON *ret = NULL;
     int id = 1;
 
     // Calling Wazuh DB
@@ -55,62 +55,27 @@ void test_wdb_agents_sys_osinfo_check_triaged_error_wdb_query(void ** state)
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_agents_sys_osinfo_check_triaged(id, NULL);
+    ret = wdb_agents_sys_osinfo_get(id, NULL);
 
-    assert_int_equal(OS_INVALID, ret);
+    assert_null(ret);
 }
 
-void test_wdb_agents_sys_osinfo_check_triaged_error_no_info(void ** state)
+void test_wdb_agents_sys_osinfo_get_success(void ** state)
 {
-    int ret = 0;
+    cJSON *ret = NULL;
     int id = 1;
 
     cJSON *root = __real_cJSON_CreateArray();
     cJSON *row = __real_cJSON_CreateObject();
-    cJSON *triaged = __real_cJSON_CreateNumber(1);
-    __real_cJSON_AddItemToObject(row, "dummy_data", triaged);
     __real_cJSON_AddItemToArray(root, row);
 
     // Calling Wazuh DB
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
-    will_return(__wrap_cJSON_GetObjectItem, NULL);
 
-    // Handling result
-    expect_string(__wrap__merror, formatted_msg, "No information related to the triaged status of the OS");
+    ret = wdb_agents_sys_osinfo_get(id, NULL);
 
-    //Cleaning  memory
-    expect_function_call(__wrap_cJSON_Delete);
-
-    ret = wdb_agents_sys_osinfo_check_triaged(id, NULL);
-
-    assert_int_equal(OS_INVALID, ret);
-
-    __real_cJSON_Delete(root);
-}
-
-void test_wdb_agents_sys_osinfo_check_triaged_success(void ** state)
-{
-    int ret = 0;
-    int id = 1;
-
-    cJSON *root = __real_cJSON_CreateArray();
-    cJSON *row = __real_cJSON_CreateObject();
-    cJSON *triaged = __real_cJSON_CreateNumber(1);
-    __real_cJSON_AddItemToObject(row, "triaged", triaged);
-    __real_cJSON_AddItemToArray(root, row);
-
-    // Calling Wazuh DB
-    will_return(__wrap_wdbc_query_parse_json, 0);
-    will_return(__wrap_wdbc_query_parse_json, root);
-    will_return(__wrap_cJSON_GetObjectItem, triaged);
-
-    //Cleaning  memory
-    expect_function_call(__wrap_cJSON_Delete);
-
-    ret = wdb_agents_sys_osinfo_check_triaged(id, NULL);
-
-    assert_int_equal(1, ret);
+    assert_ptr_equal(root, ret);
 
     __real_cJSON_Delete(root);
 }
@@ -1260,10 +1225,9 @@ int main()
 {
     const struct CMUnitTest tests[] =
     {
-        /* Tests wdb_agents_sys_osinfo_check_triaged */
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_check_triaged_error_wdb_query, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_check_triaged_error_no_info, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_check_triaged_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        /* Tests wdb_agents_sys_osinfo_get */
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_get_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_agents_sys_osinfo_get_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_agents_vuln_cves_insert*/
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_insert_error_json, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_agents_vuln_cves_insert_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
