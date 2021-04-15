@@ -63,9 +63,10 @@ checks:
       - cis_csc: ["16", "16.3"]
     references:
       - https://docs.mongodb.com/v3.6/reference/parameters/#param.enableLocalhostAuthBypass
-    condition: all
+    condition: any
     rules:
-      - 'f:$main-conf -> r:enableLocalhostAuthBypass: 0|false'
+      - 'f:$main-conf -> r:enableLocalhostAuthBypass: false'
+      - 'f:$main-conf -> r:enableLocalhostAuthBypass: 0'
 
 #2.3
   - id: 23503
@@ -168,9 +169,10 @@ checks:
       - cis_csc: ["14.2","14.5","14.4","14.8",]
     references:
       - https://docs.mongodb.com/v3.6/tutorial/configure-fips/
-    condition: all
+    condition: any
     rules:
-      - 'f:$main-conf -> r:FIPSMode: 1|true'
+      - 'f:$main-conf -> r:FIPSMode: true'
+      - 'f:$main-conf -> r:FIPSMode: 1'
 
 #4.3 - Does not provide audit steps
 #  - id: 23512
@@ -219,9 +221,10 @@ checks:
       - cis_csc: ["6.2", "6.3"]
     references:
       - https://docs.mongodb.com/v3.6/reference/configuration-options/#systemLog.quiet
-    condition: all
+    condition: any
     rules:
-      - 'f:$main-conf -> r:quiet: 0|false'
+      - 'f:$main-conf -> r:quiet: false'
+      - 'f:$main-conf -> r:quiet: 0'
 
 #5.4
   - id: 23516
@@ -269,9 +272,10 @@ checks:
       - cis_csc: ["18.9", "9.2"]
     references:
       - https://docs.mongodb.com/v3.6/reference/configuration-options/#security.javascriptEnabled
-    condition: all
+    condition: any
     rules:
-      - 'f:$main-conf -> r:javascriptEnabled: 0|false'
+      - 'f:$main-conf -> r:javascriptEnabled: false'
+      - 'f:$main-conf -> r:javascriptEnabled: 0'
 
 #7 File Permissions
 #7.1 - Has to be done manually as it is specific to the MongoDB deployment
