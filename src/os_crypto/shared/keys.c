@@ -662,7 +662,7 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
 int OS_DeleteSocket(keystore * keys, int sock) {
     char strsock[16] = "";
     keyentry * entry;
-    int retval;
+    int retval = 0;
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
     w_mutex_lock(&keys->keytree_sock_mutex);
