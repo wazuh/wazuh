@@ -21,7 +21,7 @@
 
 
 // todo: remove this function when read_oslog is implemented, this is just a mock
-STATIC void * read_oslog(logreader * lf, int * rc, int drop_it)
+void * read_oslog(logreader * lf, int * rc, int drop_it)
 {
     sleep(1);
 
@@ -163,7 +163,6 @@ void w_logcollector_create_oslog_env(logreader * current) {
         current->oslog->is_oslog_running = true;
         minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_stream_array));
     }
-    current->read = read_oslog; // todo: should this be set here or by means of using set_read()?
     current->file = NULL;
 
     free_strarray(log_stream_array);
