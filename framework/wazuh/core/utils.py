@@ -135,6 +135,8 @@ def process_array(array, search_text=None, complementary_search=False, search_in
         Query to filter by
     required_fields : list
         Required fields that must appear in the response
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
 
     Returns
     -------
