@@ -535,10 +535,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         before = time()
         for i, chunk in enumerate(data['chunks']):
             try:
+                logger.debug2(f"Sending chunk {i}/{len(data['chunks'])} to wazuh-db: {chunk}")
                 response = wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
                 if response[0] != 'ok':
                     result['error_messages'].append(response)
-                    logger.error(f"Response for chunk {i}/{len(chunk)} was not 'ok': {response}")
+                    logger.error(f"Response for chunk {i}/{len(data['chunks'])} was not 'ok': {response}")
                 else:
                     result['updated_chunks'] += 1
             except Exception as e:
