@@ -110,8 +110,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - board_serial: !anything
-              cpu:
+            - cpu:
                 cores: !anything
                 mhz: !anything
                 name: !anything
@@ -128,7 +127,6 @@ stages:
         message: !anystr
       save:
         json:
-          board_serial: data.affected_items[0].board_serial
           cpu_name: data.affected_items[0].cpu.name
           ram_total: data.affected_items[0].ram.total
 
@@ -148,7 +146,6 @@ marks:
   - parametrize:
       key: field
       vals:
-        - board_serial
         - cpu.cores
         - cpu.mhz
         - cpu.name
@@ -2819,8 +2816,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - board_serial: !anything
-              cpu:
+            - cpu:
                 cores: !anything
                 mhz: !anything
                 name: !anything
@@ -2833,7 +2829,6 @@ stages:
                 time: !anything
       save:
         json:
-          board_serial: data.affected_items[0].board_serial
           cpu_name: data.affected_items[0].cpu.name
           ram_total: data.affected_items[0].ram.total
 
@@ -2853,7 +2848,6 @@ marks:
   - parametrize:
       key: field
       vals:
-        - board_serial
         - cpu.cores
         - cpu.mhz
         - cpu.name
