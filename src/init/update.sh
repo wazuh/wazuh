@@ -429,6 +429,48 @@ UpdateOldVersions()
         # rename ossec.conf to ossec.conf.backup
         mv $OSSEC_CONF_FILE $OSSEC_CONF_FILE_BACKUP
 
+        # Rename shared agent.conf to shared.conf
+        if [ ! "$INSTYPE" = "agent" ]; then
+            for item_path in $PREINSTALLEDDIR/etc/shared/*
+            do
+                OLD_GROUP_SHARED_FILE="$item_path/agent.conf"
+                NEW_GROUP_SHARED_FILE="$item_path/shared.conf"
+                OLD_TEMPLATE="$item_path/agent-template.conf"
+                NEW_TEMPLATE="$item_path/shared-template.conf"
+                if [ -d "$item_path" ]; then
+                    if [ -f "$OLD_GROUP_SHARED_FILE" ]; then
+                        rm $OLD_GROUP_SHARED_FILE
+                        cp -pf $PREINSTALLEDDIR/etc/shared/shared-template.conf $NEW_GROUP_SHARED_FILE
+                    fi
+
+                    if [ -f "$OLD_TEMPLATE" ]; then
+                        rm $OLD_TEMPLATE
+                        cp -pf $PREINSTALLEDDIR/etc/shared/shared-template.conf $NEW_TEMPLATE
+                    fi
+                fi
+            done
+
+            for item_multigroup in $PREINSTALLEDDIR/var/multigroups/*
+            do
+                OLD_MULTIGROUP_FILE="$item_multigroup/agent.conf"
+                OLD_MULTIGROUP_TEMPLATE="$item_multigroup/agent-template.conf"
+                if [ -d "$item_multigroup" ]; then
+                    if [ -f "$OLD_MULTIGROUP_FILE" ]; then
+                        rm $OLD_MULTIGROUP_FILE
+                    fi
+
+                    if [ -f "$OLD_MULTIGROUP_TEMPLATE" ]; then
+                        rm $OLD_MULTIGROUP_TEMPLATE
+                    fi
+                fi
+            done
+        else
+            OLD_SHARED_FILE="$PREINSTALLEDDIR/etc/shared/agent.conf"
+            if [ -f "$OLD_SHARED_FILE" ]; then
+                rm $OLD_SHARED_FILE
+            fi
+        fi
+
         # If it is Wazuh 2.0 or newer, exit
         if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
             return

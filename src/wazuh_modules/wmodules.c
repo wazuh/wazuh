@@ -65,9 +65,9 @@ int wm_config() {
         return -1;
     }
 
-    // Read shared configuration: agent.conf
+    // Read shared configuration: shared.conf
     agent_cfg = 1;
-    ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
+    ReadConfig(CWMODULE | CSHARED_CONFIG, SHAREDCONFIG, &wmodules, &agent_cfg);
 #else
     // Read configuration: manager.conf
     if (ReadConfig(CWMODULE, WAZUHCONF_MANAGER, &wmodules, &agent_cfg) < 0) {

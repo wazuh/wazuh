@@ -2137,8 +2137,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
-            if (modules & CAGENT_CONFIG) {
-                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).",
+            if (modules & CSHARED_CONFIG) {
+                mwarn("'%s' option can't be changed using centralized configuration (shared.conf).",
                       xml_allow_remote_prefilter_cmd);
                 i++;
                 continue;
@@ -2167,7 +2167,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     // Set prefilter only if it's expressly allowed (agent.conf in agent side).
 
     if (prefilter_cmd[0]) {
-        if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
+        if (!(modules & CSHARED_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
             free(syscheck->prefilter_cmd);
             os_strdup(prefilter_cmd, syscheck->prefilter_cmd);
         } else if (!syscheck->allow_remote_prefilter_cmd) {
@@ -2239,7 +2239,7 @@ int Test_Syscheck(const char * path){
     int fail = 0;
     syscheck_config test_syscheck = { .rootcheck = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
+    if (ReadConfig(CSHARED_CONFIG | CSYSCHECK, path, &test_syscheck, NULL) < 0) {
 		merror(RCONFIG_ERROR,"Syscheck", path);
 		fail = 1;
 	}

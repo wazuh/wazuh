@@ -453,20 +453,20 @@ int check_path_type(const char *dir)
 int IsFile(const char *file)
 {
     struct stat buf;
-	return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
+    return (!stat(file, &buf) && S_ISREG(buf.st_mode)) ? 0 : -1;
 }
 
 #ifndef WIN32
 
 int IsSocket(const char * file) {
     struct stat buf;
-	return (!stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
+    return (!stat(file, &buf) && S_ISSOCK(buf.st_mode)) ? 0 : -1;
 }
 
 
 int IsLink(const char * file) {
     struct stat buf;
-	return (!lstat(file, &buf) && S_ISLNK(buf.st_mode)) ? 0 : -1;
+    return (!lstat(file, &buf) && S_ISLNK(buf.st_mode)) ? 0 : -1;
 }
 
 #endif // WIN32
@@ -665,41 +665,46 @@ int UnmergeFiles(const char *finalpath, const char *optdir, int mode)
         files++;
         state_ok = 1;
 
-        if (optdir) {
-            snprintf(final_name, 2048, "%s/%s", optdir, files);
+        // Skip legacy shared configuration file for agents with version < 5.0.0
+        if (strcmp(files, "agent.conf") == 0) {
+            fp = NULL;
+        } else {
+            if (optdir) {
+                snprintf(final_name, 2048, "%s/%s", optdir, files);
 
-            // Check that final_name is inside optdir
+                // Check that final_name is inside optdir
 
-            if (w_ref_parent_folder(final_name)) {
-                merror("Unmerging '%s': unable to unmerge '%s' (it contains '..')", finalpath, final_name);
+                if (w_ref_parent_folder(final_name)) {
+                    merror("Unmerging '%s': unable to unmerge '%s' (it contains '..')", finalpath, final_name);
+                    state_ok = 0;
+                }
+            } else {
+                strncpy(final_name, files, 2048);
+                final_name[2048] = '\0';
+            }
+
+            // Create directory
+
+            copy = strdup(final_name);
+
+            if (mkdir_ex(dirname(copy))) {
+                merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
                 state_ok = 0;
             }
-        } else {
-            strncpy(final_name, files, 2048);
-            final_name[2048] = '\0';
-        }
 
-        // Create directory
+            free(copy);
 
-        copy = strdup(final_name);
+            /* Open filename */
 
-        if (mkdir_ex(dirname(copy))) {
-            merror("Unmerging '%s': couldn't create directory '%s'", finalpath, files);
-            state_ok = 0;
-        }
-
-        free(copy);
-
-        /* Open filename */
-
-        if (state_ok) {
-            if (fp = fopen(final_name, mode == OS_BINARY ? "wb" : "w"), !fp) {
+            if (state_ok) {
+                if (fp = fopen(final_name, mode == OS_BINARY ? "wb" : "w"), !fp) {
+                    ret = 0;
+                    merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", final_name, errno, strerror(errno));
+                }
+            } else {
+                fp = NULL;
                 ret = 0;
-                merror("Unable to unmerge file '%s' due to [(%d)-(%s)].", final_name, errno, strerror(errno));
             }
-        } else {
-            fp = NULL;
-            ret = 0;
         }
 
         if (files_size < sizeof(buf) - 1) {
@@ -912,6 +917,17 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
         while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
             buf[n] = '\0';
             fwrite(buf, n, 1, finalfp);
+        }
+
+        // For legacy agents with version < 5.0.0
+        if (strcmp(files + path_offset, "shared.conf") == 0) {
+            fprintf(finalfp, "!%ld agent.conf\n", files_size);
+            fseek(fp, 0, SEEK_SET);
+
+            while ((n = fread(buf, 1, sizeof(buf) - 1, fp)) > 0) {
+                buf[n] = '\0';
+                fwrite(buf, n, 1, finalfp);
+            }
         }
 
         fclose(fp);

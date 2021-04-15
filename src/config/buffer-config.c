@@ -98,7 +98,7 @@ int Test_ClientBuffer(const char * path){
     int fail = 0;
     agent test_clientBuffer = { .server = 0 };
 
-    if (ReadConfig(CAGENT_CONFIG | CBUFFER, path, NULL, &test_clientBuffer) < 0) {
+    if (ReadConfig(CSHARED_CONFIG | CBUFFER, path, NULL, &test_clientBuffer) < 0) {
 		merror(RCONFIG_ERROR,"ClientBuffer", path);
 		fail = 1;
 	}

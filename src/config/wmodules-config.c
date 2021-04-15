@@ -449,7 +449,7 @@ int Test_WModule(const char * path) {
     wmodule *test_wmodule;
     os_calloc(1, sizeof(wmodule), test_wmodule);
 
-    if (ReadConfig(CAGENT_CONFIG | CWMODULE, path, &test_wmodule, NULL) < 0) {
+    if (ReadConfig(CSHARED_CONFIG | CWMODULE, path, &test_wmodule, NULL) < 0) {
         merror(RCONFIG_ERROR,"WModule", path);
         fail = 1;
     }

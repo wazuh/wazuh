@@ -11,29 +11,29 @@
 #ifndef HCONFIG_H
 #define HCONFIG_H
 
-#define CGLOBAL       000000001
-#define CRULES        000000002
-#define CSYSCHECK     000000004
-#define CROOTCHECK    000000010
-#define CALERTS       000000020
-#define CLOCALFILE    000000040
-#define CREMOTE       000000100
-#define CCLIENT       000000200
-#define CMAIL         000000400
-#define CAR           000001000
-#define CDBD          000002000
-#define CSYSLOGD      000004000
-#define CAGENT_CONFIG 000010000
-#define CAGENTLESS    000020000
-#define CREPORTS      000040000
-#define CINTEGRATORD  000100000
-#define CWMODULE      000200000
-#define CLABELS       000400000
-#define CAUTHD        001000000
-#define CBUFFER       002000000
-#define CCLUSTER      004000000
-#define CSOCKET       010000000
-#define CLOGTEST      020000000
+#define CGLOBAL        000000001
+#define CRULES         000000002
+#define CSYSCHECK      000000004
+#define CROOTCHECK     000000010
+#define CALERTS        000000020
+#define CLOCALFILE     000000040
+#define CREMOTE        000000100
+#define CCLIENT        000000200
+#define CMAIL          000000400
+#define CAR            000001000
+#define CDBD           000002000
+#define CSYSLOGD       000004000
+#define CSHARED_CONFIG 000010000
+#define CAGENTLESS     000020000
+#define CREPORTS       000040000
+#define CINTEGRATORD   000100000
+#define CWMODULE       000200000
+#define CLABELS        000400000
+#define CAUTHD         001000000
+#define CBUFFER        002000000
+#define CCLUSTER       004000000
+#define CSOCKET        010000000
+#define CLOGTEST       020000000
 
 #define MAX_NEEDED_TAGS 4
 

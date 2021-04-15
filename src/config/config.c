@@ -227,12 +227,12 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     const char *xml_agent_overwrite = "overwrite";
     const char *xml_agent_profile = "profile";
 
-    if ((modules & CAGENT_CONFIG) && !getDefine_Int("agent", "remote_conf", 0, 1)) {
+    if ((modules & CSHARED_CONFIG) && !getDefine_Int("agent", "remote_conf", 0, 1)) {
       return 0;
     }
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
-        if (modules & CAGENT_CONFIG) {
+        if (modules & CSHARED_CONFIG) {
 #ifndef CLIENT
             merror(XML_ERROR, cfgfile, xml.err, xml.err_line);
 #endif
@@ -255,7 +255,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             OS_ClearNode(node);
             OS_ClearXML(&xml);
             return (OS_INVALID);
-        } else if (!(modules & CAGENT_CONFIG) &&
+        } else if (!(modules & CSHARED_CONFIG) &&
                    (strcmp(node[i]->element, xml_start_ossec) == 0)) {
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(&xml, node[i]);
@@ -272,7 +272,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 
                 OS_ClearNode(chld_node);
             }
-        } else if ((modules & CAGENT_CONFIG) &&
+        } else if ((modules & CSHARED_CONFIG) &&
                    (strcmp(node[i]->element, xml_start_agent) == 0)) {
             int passed_agent_test = 1;
             int attrs = 0;
