@@ -58,7 +58,7 @@ void* wm_execd_main(wm_execd_t *data) {
 #else
     int queue = 0;
     // Start exec queue
-    if ((queue = StartMQ(EXECQUEUE, READ, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+    if ((queue = StartMQ(EXECQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
     // The real daemon Now
@@ -75,13 +75,13 @@ void* wm_execd_main(wm_execd_t *data) {
 
 void wm_execd_destroy(wm_execd_t *data) {
     mtinfo(WM_EXECD_LOGTAG, "Destroy received for Execd.");
+    //execd_shutdown();
     os_free(data);
 }
 
 cJSON *wm_execd_dump(__attribute__((unused)) const wm_execd_t *data) {
     cJSON *root = cJSON_CreateObject();
     cJSON_AddItemToObject(root, "ARConfig", getARConfig());
-    cJSON_AddItemToObject(root, "ClusterConfig", getClusterConfig());
     cJSON_AddItemToObject(root, "ExecdInternalOptions", getExecdInternalOptions());
     return root;
 }

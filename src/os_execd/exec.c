@@ -35,7 +35,7 @@ time_t pending_upg = 0;
 #ifndef WIN32
 
 /* Prototypes */
-void execd_shutdown(int sig) __attribute__((noreturn));
+void execd_shutdown() __attribute__((noreturn));
 void ExecdStart(int q);
 STATIC int CheckManagerConfiguration(char ** output);
 
@@ -76,7 +76,7 @@ void FreeTimeoutEntry(timeout_data *timeout_entry) {
 #ifndef WIN32
 
 /* Shut down execd properly */
-void execd_shutdown(int sig) {
+void execd_shutdown() {
     /* Remove pending active responses */
     mtinfo(WM_EXECD_LOGTAG, EXEC_SHUTDOWN);
 
@@ -102,8 +102,6 @@ void execd_shutdown(int sig) {
         /* Clear the memory */
         FreeTimeoutEntry(list_entry);
     }
-
-    HandleSIG(sig);
 }
 
 /* Main function on the execd. Does all the data receiving, etc. */
@@ -114,8 +112,6 @@ void ExecdStart(int q) {
     char buffer[OS_MAXSTR + 1];
     char *cmd_api[MAX_ARGS];
     pthread_t wcom_thread;
-
-    StartSIG2(ARGV0, execd_shutdown);
 
     // Start com request thread
     if (CreateThreadJoinable(&wcom_thread, wcom_main, NULL) < 0) {

@@ -147,7 +147,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
     /* Connect to the execd queue */
     if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
+        if ((agt->execdq = StartMQ(EXECQUEUE, READ, 0)) < 0) {
             minfo("Unable to connect to the active response "
                    "queue (disabled).");
             agt->execdq = -1;

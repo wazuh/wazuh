@@ -1367,9 +1367,6 @@ execd_o_lib := ${execd_o} $(filter-out config/active_response_o, ${execd_o})
 os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-modulesd\" -c $^ -o $@
 
-wazuh-execd: ${execd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
 

@@ -66,7 +66,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
 
         chld_node = OS_GetElementsbyNode(xml, node[i]);
-
         if (chld_node && (strcmp(node[i]->element, osglobal) == 0)) {
             if (((modules & CGLOBAL) || (modules & CMAIL))
                     && (Read_Global(chld_node, d1, d2) < 0)) {
@@ -138,9 +137,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
             if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
                 goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osactive_response) == 0)) {
-            if ((modules & CWMODULE) && (ReadActiveResponsesAgent(d1) < 0)) {
+            } else if ((modules & CWMODULE) && (ReadActiveResponsesAgent(d1) < 0)) {
                 goto fail;
             }
 #ifndef WIN32
