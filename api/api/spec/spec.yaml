@@ -1724,6 +1724,9 @@ components:
     Tactic_id:
       type: string
       description: "Tactic ID"
+    Mitre_group_id:
+      type: string
+      description: "MITRE group ID"
     Technique_id:
       type: string
       description: "Technique ID"
@@ -4029,6 +4032,14 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Tactic_id'
+    mitre_group_ids:
+      in: query
+      name: 'mitre_group_ids'
+      description: "List of MITRE's group IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Mitre_group_id'
     mitre_technique_ids:
       in: query
       name: 'technique_ids'
@@ -10719,6 +10730,48 @@ paths:
       responses:
         '200':
           description: "Get MITRE techniques information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/groups:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE groups"
+      description: "Return the groups from MITRE database"
+      operationId: api.controllers.mitre_controller.get_groups
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_group_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE groups information"
           content:
             application/json:
               schema:
