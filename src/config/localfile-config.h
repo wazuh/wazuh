@@ -141,19 +141,18 @@ typedef struct {
  * An instance of w_oslog_config_t allow save the context of a log that have not yet completely read.
  */
 typedef struct {
-    w_expression_t * start_log_regex; ///< used to check the start of a new log
-    char buffer[OS_MAXSTR];           ///< store current read when os log is in process
-    int newline_offset;            ///< offset of new line, used for regex matching
-    time_t timestamp;  ///< last successful read
+    char buffer[OS_MAXSTR]; ///< store current read when oslog is in process
+    time_t timestamp;       ///< last successful read
 } w_oslog_ctxt_t;
 
 /**
  * @brief An instance of w_oslog_config_t represents a OSlog (ULS) and its state
  */
 typedef struct {
-    w_oslog_ctxt_t ctxt;         ///< store current status when read log is in process
-    char * last_read_timestamp;  ///< timestamp of last log queued (Used for only future event)
-    wfd_t * log_wfd;             ///< `log stream` IPC connector
+    w_expression_t * start_log_regex; ///< used to check the start of a new log
+    w_oslog_ctxt_t ctxt;              ///< store current status when read log is in process
+    char * last_read_timestamp;       ///< timestamp of last log queued (Used for only future event)
+    wfd_t * log_wfd;                  ///< `log stream` IPC connector
     /** Indicates if `log stream` is currently running. if not running, localfiles with oslog format will be ignored */
     bool is_oslog_running;
 } w_oslog_config_t;
