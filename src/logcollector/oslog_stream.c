@@ -57,10 +57,15 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
     
     os_calloc(MAX_LOG_CMD_ARGS + 1, sizeof(char *), oslog_array);
 
+    // Adding `log` and `stream` to the array
     w_strdup(LOG_CMD_STR, oslog_array[oslog_array_idx++]);
     w_strdup(LOG_STREAM_OPT_STR, oslog_array[oslog_array_idx++]);
 
-    // Log Stream's Type section
+    // Adding the style lines to the array (`--style syslog`)
+    w_strdup(STYLE_OPT_STR, oslog_array[oslog_array_idx++]);
+    w_strdup(SYSLOG_STR, oslog_array[oslog_array_idx++]);
+
+    // Log Stream's Type section (`--type`)
     if(type != 0) {
         if(type & OSLOG_TYPE_ACTIVITY) {
             w_strdup(TYPE_OPT_STR, oslog_array[oslog_array_idx++]);
@@ -76,7 +81,7 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
         }
     }
 
-    // Log Stream's Level section
+    // Log Stream's Level section  (`--level`)
     if(level != NULL) {
         w_strdup(LEVEL_OPT_STR, oslog_array[oslog_array_idx++]);
         w_strdup(level, oslog_array[oslog_array_idx++]);
