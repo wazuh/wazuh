@@ -29,6 +29,7 @@ static const void *default_modules[] = {
     wm_agent_upgrade_read,
 #ifndef CLIENT
     wm_task_manager_read,
+    wm_execd_read,
 #endif
     NULL
 };

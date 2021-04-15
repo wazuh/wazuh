@@ -242,7 +242,7 @@ void ExecdStart(int q) {
 
         /* Receive the message */
         if (OS_RecvUnix(q, OS_MAXSTR, buffer) == 0) {
-            merror(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+            merror(QUEUE_ERROR, EXECQUEUE, strerror(errno));
             continue;
         }
 
@@ -295,8 +295,8 @@ void ExecdStart(int q) {
             int rc;
             /* Start api socket */
             int api_sock;
-            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE, 1)) < 0) {
-                merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+            if ((api_sock = StartMQ(EXECQUEUEA, WRITE, 1)) < 0) {
+                merror(QUEUE_ERROR, EXECQUEUEA, strerror(errno));
                 os_free(output);
                 continue;
             }
@@ -324,7 +324,7 @@ void ExecdStart(int q) {
 
             if(cmd_api[0] == NULL) {
                 char script_path[PATH_MAX] = {0};
-                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "active-response/bin/restart.sh");
+                snprintf(script_path, PATH_MAX, "%s", "active-response/bin/restart.sh");
                 os_strdup(script_path, cmd_api[0]);
             }
 
@@ -539,7 +539,7 @@ STATIC int CheckManagerConfiguration(char ** output) {
 
     for (i = 0; daemons[i]; i++) {
         output_msg = NULL;
-        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
+        snprintf(command_in, PATH_MAX, "%s %s", daemons[i], "-t");
 
         if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
             if (result_code == EXECVE_ERROR) {

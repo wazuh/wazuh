@@ -58,8 +58,8 @@ void* wm_execd_main(wm_execd_t *data) {
 #else
     int queue = 0;
     // Start exec queue
-    if ((queue = StartMQ(EXECQUEUEPATH, READ, 0)) < 0) {
-        merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+    if ((queue = StartMQ(EXECQUEUE, READ, 0)) < 0) {
+        merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
     // The real daemon Now
     ExecdStart(queue);
