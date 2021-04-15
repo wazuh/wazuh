@@ -65,6 +65,9 @@ list(APPEND logcollector_flags "-Wl,--wrap,w_logcollector_state_get -Wl,--wrap,c
                                 -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_PrintUnformatted \
                                 -Wl,--wrap,cJSON_Delete")
 
+list(APPEND logcollector_names "test_oslog_stream")
+list(APPEND logcollector_flags "")
+
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
