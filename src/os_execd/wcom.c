@@ -66,12 +66,7 @@ size_t wcom_dispatch(char *command, char ** output){
     } else if (strcmp(rcv_comm, "restart") == 0) {
         return wcom_restart(output);
     } else if (strcmp(rcv_comm, "lock_restart") == 0) {
-        max_restart_lock = 0;
         int timeout = -2;
-
-        if (!max_restart_lock) {
-            max_restart_lock = getDefine_Int("execd", "max_restart_lock", 0, 3600);
-        }
 
         if (rcv_args) {
             timeout = atoi(rcv_args);

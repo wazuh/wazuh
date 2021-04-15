@@ -63,7 +63,7 @@ int Read_Integrator(XML_NODE node, void *config1, void *config2);
 int Read_Remote(XML_NODE node, void *d1, void *d2);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
-int ReadActiveResponsesAgent(const OS_XML* node, void *d1, void *d2);
+int ReadActiveResponsesAgent(void *d1);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);

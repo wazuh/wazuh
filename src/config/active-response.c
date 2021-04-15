@@ -416,7 +416,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     return (0);
 }
 
-int ReadActiveResponsesAgent(const OS_XML* xml, __attribute__((unused)) void *d2, void *d1) {
+int ReadActiveResponsesAgent(void *d1) {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
 
@@ -443,14 +443,10 @@ int ReadActiveResponsesAgent(const OS_XML* xml, __attribute__((unused)) void *d2
 
             os_calloc(1, sizeof(wmodule), cur_wmodule->next);
             cur_wmodule = cur_wmodule->next;
-            cur_wmodule->context = &WM_EXECD_CONTEXT;
-            cur_wmodule->tag = strdup(EXECD_WM_NAME);
         }
     } else {
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
-        cur_wmodule->context = &WM_EXECD_CONTEXT;
-        cur_wmodule->tag = strdup(EXECD_WM_NAME);
     }
 
-    return wm_execd_read(xml, NULL, cur_wmodule);
+    return wm_execd_read(NULL, NULL, cur_wmodule);
 }

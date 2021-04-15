@@ -50,9 +50,8 @@ cJSON *getClusterConfig(void);
 char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 void ExecCmd(char *const *cmd) __attribute__((nonnull));
 void ExecCmd_Win32(char *cmd);
-int ExecdConfig(const OS_XML* cfgfile) __attribute__((nonnull));
+int ExecdConfig();
 void ExecdStart(int q);
-int WinExecd_Start(void);
 void WinTimeoutRun(void);
 
 size_t wcom_unmerge(const char *file_path, char **output);

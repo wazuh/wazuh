@@ -18,11 +18,10 @@
 extern const wm_context WM_EXECD_CONTEXT; // Context
 
 typedef struct wm_execd_t {
-    time_t pending_upg;
     int is_disabled;
     int req_timeout;
     int max_restart_lock;
-    //int repeated_offenders_timeout[];
+    int *repeated_offenders_timeout;
 } wm_execd_t;
 
 /**

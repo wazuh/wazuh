@@ -60,41 +60,6 @@ static void WinExecd_Shutdown()
     }
 }
 
-int WinExecd_Start()
-{
-    int c;
-    char *cfg = OSSECCONF;
-    winexec_queue = queue_init(OS_SIZE_128);
-
-    /* Read config */
-    if ((c = ExecdConfig(cfg)) < 0) {
-        mterror_exit(WM_EXECD_LOGTAG, CONFIG_ERROR, cfg);
-    }
-
-    /* Active response disabled */
-    if (c == 1) {
-        mtinfo(WM_EXECD_LOGTAG, EXEC_DISABLED);
-        return (0);
-    }
-
-    /* Create list for timeout */
-    timeout_list = OSList_Create();
-    if (!timeout_list) {
-        mterror_exit(WM_EXECD_LOGTAG, LIST_ERROR);
-    }
-
-    /* Delete pending AR at succesfull exit */
-    atexit(WinExecd_Shutdown);
-
-    /* Start up message */
-    mtinfo(WM_EXECD_LOGTAG, STARTUP_MSG, getpid());
-
-    w_create_thread(NULL, 0, win_exec_main,
-                    winexec_queue, 0, NULL);
-
-    return (1);
-}
-
 // Create a thread to run windows AR simultaneous
 DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     while(1) {

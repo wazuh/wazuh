@@ -19,7 +19,7 @@
 int is_disabled;
 
 /* Read the config file */
-int ExecdConfig(const OS_XML* xml) {
+int ExecdConfig() {
     is_disabled = 0;
 
     const char *(xmlf[]) = {"wazuh_config", "active-response", "disabled", NULL};
@@ -28,8 +28,16 @@ int ExecdConfig(const OS_XML* xml) {
     char **repeated_a;
     int i = 0;
 
+    OS_XML xml;
+
+    /* Read XML file */
+    if (OS_ReadXML(OSSECCONF, &xml) < 0)
+    {
+        merror_exit(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
+    }
+
     /* We do not validate the xml in here. It is done by other processes. */
-    disable_entry = OS_GetOneContentforElement(xml, xmlf);
+    disable_entry = OS_GetOneContentforElement(&xml, xmlf);
     if (disable_entry)
     {
         if (strcmp(disable_entry, "yes") == 0)
@@ -51,19 +59,19 @@ int ExecdConfig(const OS_XML* xml) {
     }
 
     XML_NODE node;
-    node = OS_GetElementsbyNode(xml, NULL);
+    node = OS_GetElementsbyNode(&xml, NULL);
 
     XML_NODE child = NULL;
     while (node && node[i])
     {
-        child = OS_GetElementsbyNode(xml, node[i]);
+        child = OS_GetElementsbyNode(&xml, node[i]);
         int j = 0;
 
         while (child && child[j]){
 
             if (strcmp(child[j]->element, "active-response") == 0){
                 XML_NODE child_attr = NULL;
-                child_attr = OS_GetElementsbyNode(xml, child[j]);
+                child_attr = OS_GetElementsbyNode(&xml, child[j]);
                 int p = 0;
 
                 while (child_attr && child_attr[p])
@@ -148,7 +156,7 @@ next:
         free(repeated_a);
     }
 
-    OS_ClearXML(xml);
+    OS_ClearXML(&xml);
 
     return (is_disabled);
 }
