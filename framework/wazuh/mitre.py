@@ -66,7 +66,7 @@ def mitre_techniques(filters: dict = None, offset=0, limit=common.database_limit
     dict
         Dictionary with the information of the specified techniques and their relationships
     """
-    data = mitre.get_results_with_select(**locals())
+    data = mitre.get_results_with_select(mitre.get_techniques, **locals())
 
     result = AffectedItemsWazuhResult(none_msg='No MITRE techniques information was returned',
                                       all_msg='MITRE techniques information was returned')

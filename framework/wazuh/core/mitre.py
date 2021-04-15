@@ -199,12 +199,14 @@ def get_techniques():
     return info, data
 
 
-def get_results_with_select(filters, select, offset, limit, sort_by, sort_ascending, search_text,
+def get_results_with_select(mitre_function, filters, select, offset, limit, sort_by, sort_ascending, search_text,
                             complementary_search, search_in_fields, q):
-    """Sanitize the select parameter and processes the list of techniques.
+    """Sanitize the select parameter and processes the list of MITRE resources.
 
     Parameters
     ----------
+    mitre_function : callable
+        Cached function to obtain certain MITRE resources.
     filters : str
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     select : list
@@ -230,9 +232,9 @@ def get_results_with_select(filters, select, offset, limit, sort_by, sort_ascend
     Returns
     -------
     list
-        Processed techniques array.
+        Processed MITRE resources array.
     """
-    fields_info, data = get_techniques()
+    fields_info, data = mitre_function()
 
     return process_array(data['items'], filters=filters, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, select=select,
