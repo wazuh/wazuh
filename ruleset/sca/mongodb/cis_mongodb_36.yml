@@ -26,28 +26,16 @@ requirements:
     - "f:/etc/mongodb.conf"
     - "f:/etc/mongod.conf"
 
+# This can be either /etc/mongod.conf or /etc/mongodb.conf depending on the installation
 variables:
-  $main-conf: /etc/mongod.conf
+  $main-conf: /etc/mongodb.conf
 
 checks:
 #1 Installation and Patching
-#1.1
-  - id: 23500
-    title: "Ensure the appropriate MongoDB software version/patches are installed"
-    description: "The MongoDB installation version, along with the patch level, should be the most recent that is compatible with the organization's operational needs."
-    rationale: "Using the most recent MongoDB software version along with all applicable patches, helps limit the possibilities for vulnerabilities in the software. The installation version and/or patches applied should be selected according to the needs of the organization. At a minimum, the software version should be supported."
-    remediation: "Upgrade to the latest version of the MongoDB software: 1. Backup the data set. 2. Download the binaries for the latest MongoDB revision from the MongoDB Download Page and store the binaries in a temporary location. The binaries download as compressed files that extract to the directory structure used by the MongoDB installation. 3. Shutdown the MongoDB instance. 4. Replace the existing MongoDB binaries with the downloaded binaries. 5. Restart the MongoDB instance."
-    compliance:
-      - cis: ["1.1"]
-      - cis_csc: ["4", "2.2"]
-    references:
-      - https://docs.mongodb.com/v3.6/tutorial/upgrade-revision/
-      - https://docs.mongodb.com/v3.6/release-notes/
-      - https://www.mongodb.com/download-center#community
-      - https://www.mongodb.com/support-policy
-    condition: all
-    rules:
-      - 'c:mongod --version'
+
+#1.1 - Has to be done manually as it is specific to the MongoDB deployment
+#  - id: 23500
+#    title: "Ensure the appropriate MongoDB software version/patches are installed"
 
 #2 Authentication
 #2.1
