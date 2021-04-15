@@ -48,9 +48,36 @@ async def get_tactics():
     # TODO
 
 
-async def get_techniques(request, technique_ids=None, offset=None, limit=None, sort=None, search=None, select=None,
-                         q=None, pretty=False, wait_for_complete=False):
-    """TODO
+async def get_techniques(request, technique_ids=None, pretty=False, wait_for_complete=False, offset=None,
+                         limit=None, sort=None, search=None, select=None, q=None):
+    """Get information of specified MITRE's techniques.
+
+    Parameters
+    ----------
+    request : connexion.request
+    technique_ids : list, optional
+        List of technique ids to be obtained
+    pretty : bool, optional
+        Show results in human-readable format
+    wait_for_complete : bool, optional
+        Disable timeout response
+    offset : int, optional
+        First item to return
+    limit : int, optional
+        Maximum number of items to return
+    search : str
+        Looks for elements with the specified string
+    select : list[str]
+        Select which fields to return (separated by comma).
+    sort : str, optional
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order
+    q : str
+        Query to filter by.
+
+    Returns
+    -------
+    MITRE's techniques information
     """
     f_kwargs = {'filters': {
         'id': technique_ids,

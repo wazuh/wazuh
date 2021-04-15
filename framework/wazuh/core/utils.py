@@ -126,7 +126,7 @@ def process_array(array, search_text=None, complementary_search=False, search_in
     if not array:
         return {'items': list(), 'totalItems': 0}
 
-    if len(filters.keys()) > 0:
+    if isinstance(filters, dict) and len(filters.keys()) > 0:
         new_array = list()
         for element in array:
             for key, value in filters.items():
@@ -207,12 +207,14 @@ def sort_array(array, sort_by=None, sort_ascending=True, allowed_sort_fields=Non
     if not isinstance(sort_ascending, bool):
         raise WazuhError(1402)
 
+    is_sort_valid = False
     if allowed_sort_fields:
         check_sort_fields(set(allowed_sort_fields), set(sort_by))
+        is_sort_valid = True
 
     if sort_by:  # array should be a dictionary or a Class
         if type(array[0]) is dict:
-            check_sort_fields(set(array[0].keys()), set(sort_by))
+            not is_sort_valid and check_sort_fields(set(array[0].keys()), set(sort_by))
             try:
                 return sorted(array,
                               key=lambda o: tuple(
@@ -221,12 +223,11 @@ def sort_array(array, sort_by=None, sort_ascending=True, allowed_sort_fields=Non
             except TypeError:
                 items_with_missing_keys = list()
                 copy_array = deepcopy(array)
-                for item in copy_array:
-                    missing_keys = set(sort_by) & set(item.keys())
-                    if len(missing_keys):
-                        items_with_missing_keys.append(array.pop(array.index(item)))
+                for item in array:
+                    set(sort_by) & set(item.keys()) and items_with_missing_keys.append(
+                        copy_array.pop(copy_array.index(item)))
 
-                sorted_array = sorted(array, key=lambda o: tuple(
+                sorted_array = sorted(copy_array, key=lambda o: tuple(
                     o.get(a).lower() if type(o.get(a)) in (str, unicode) else o.get(a) for a in sort_by),
                                       reverse=not sort_ascending)
 

@@ -3,25 +3,13 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
-from functools import lru_cache
 from typing import Dict
 
 from wazuh.core import common, mitre
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.utils import process_array
 
 logger = logging.getLogger('wazuh')
-
-
-@lru_cache(maxsize=None)
-def get_techniques():
-    """TODO
-    """
-    db_query = mitre.WazuhDBQueryMitreTechniques(limit=None)
-    data = db_query.run()
-
-    return set(db_query.min_select_fields), data
 
 
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
@@ -44,23 +32,44 @@ def mitre_metadata() -> Dict:
     return result
 
 
-# def mitre_techniques(filters: dict = None, select: list = None, search: dict = None, offset: int = 0,
-#                      limit: int = common.database_limit, sort: dict = None, q: str = None) -> Dict:
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
-def mitre_techniques(filters: dict = None, offset=0, limit=common.database_limit, sort_by=None, sort_ascending=True,
-                     search_text=None, complementary_search=False, search_in_fields=None, q='', select=None) -> Dict:
-    """TODO
+def mitre_techniques(filters: dict = None, offset=0, limit=common.database_limit, select=None, sort_by=None,
+                     sort_ascending=True, search_text=None, complementary_search=False,
+                     search_in_fields=None, q='') -> Dict:
+    """Get information of specified MITRE's techniques and its relations.
+
+    Parameters
+    ----------
+    filters : str
+        Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+    offset : int
+        First item to return
+    limit : int
+        Maximum number of items to return
+    select : list
+        Select which fields to return (separated by comma).
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+    q : str
+        Query for filtering a list of results.
+
+    Returns
+    -------
+    dict
+        Dictionary with the information of the specified techniques and their relationships
     """
+    data = mitre.get_results_with_select(**locals())
+
     result = AffectedItemsWazuhResult(none_msg='No Techniques information was returned',
                                       all_msg='Techniques information was returned')
-    min_select_fields, data = get_techniques()
-    if select is not None:
-        select = set(select)
-        select = select.union(min_select_fields)
-    data = process_array(data['items'], filters=filters, search_text=search_text, search_in_fields=search_in_fields,
-                         complementary_search=complementary_search, sort_by=sort_by, select=select,
-                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=q)
-
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
 

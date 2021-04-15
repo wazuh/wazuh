@@ -2,8 +2,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+from functools import lru_cache
+
 from wazuh.core import common
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend
+from wazuh.core.utils import process_array
 
 
 class WazuhDBQueryMitre(WazuhDBQuery):
@@ -132,7 +135,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                            'remote_support': 'remote_support', 'revoked_by': 'revoked_by', 'deprecated': 'deprecated',
                            'subtechnique_of': 'subtechnique_of'}
 
-        self.extra_valid_select = {'related_tactics', 'related_mitigations', 'related_software', 'related_group'}
+        self.extra_valid_fields = {'related_tactics', 'related_mitigations', 'related_software', 'related_group'}
         self.user_select = self.min_select_fields.union(set(select))
 
         WazuhDBQueryMitre.__init__(self, table='technique', min_select_fields=self.min_select_fields,
@@ -153,7 +156,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             super()._process_filter(field_name, field_filter, q_filter)
 
     def _delete_extra_fields(self):
-        remove_relation = self.user_select & self.extra_valid_select
+        remove_relation = self.user_select & self.extra_valid_fields
         if remove_relation:
             for technique in self._data:
                 for relation in remove_relation:
@@ -193,3 +196,67 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
         self._delete_extra_fields()
 
         return {'items': self._data, 'totalItems': self.total_items}
+
+
+@lru_cache(maxsize=None)
+def get_techniques():
+    """This function loads the technique data in order to speed up the use of the Framework function.
+    It also provides information about the min_select_fields for the select parameter and the
+    allowed_fields for the sort parameter.
+
+    Returns
+    -------
+    dict
+        Dictionary with information about the fields of the technique objects and the techniques obtained.
+    """
+    info = {'min_select_fields': None, 'allowed_fields': None}
+    db_query = WazuhDBQueryMitreTechniques(limit=None)
+    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.extra_valid_fields))
+    info['min_select_fields'] = set(db_query.min_select_fields)
+    data = db_query.run()
+
+    return info, data
+
+
+def get_results_with_select(filters, select, offset, limit, sort_by, sort_ascending, search_text,
+                            complementary_search, search_in_fields, q):
+    """Sanitize the select parameter and processes the list of techniques.
+
+    Parameters
+    ----------
+    filters : str
+        Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+    select : list
+        Select which fields to return (separated by comma).
+    offset : int
+        First item to return
+    limit : int
+        Maximum number of items to return
+
+    sort_by : dict
+        Fields to sort the items by. Format: {"fields":["field1","field2"],"order":"asc|desc"}
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order
+    search_text : str
+        Text to search
+    complementary_search : bool
+        Find items without the text to search
+    search_in_fields : list
+        Fields to search in
+    q : str
+        Query for filtering a list of results.
+
+    Returns
+    -------
+    list
+        Processed techniques array.
+    """
+    fields_info, data = get_techniques()
+    if select is not None:
+        select = set(select)
+        select = select.union(fields_info['min_select_fields'])
+
+    return process_array(data['items'], filters=filters, search_text=search_text, search_in_fields=search_in_fields,
+                         complementary_search=complementary_search, sort_by=sort_by, select=select,
+                         sort_ascending=sort_ascending, offset=offset, limit=limit, q=q,
+                         allowed_sort_fields=fields_info['allowed_fields'])
