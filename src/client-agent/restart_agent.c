@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "headers/defs.h"
-#include "os_execd/exec.h"
+#include "os_execd/execd.h"
 #include "os_net/os_net.h"
 #include "config/syscheck-config.h"
 #include "config/rootcheck-config.h"

@@ -11,7 +11,7 @@
 #include <shared.h>
 #include <pthread.h>
 #include "os_net/os_net.h"
-#include "exec.h"
+#include "execd.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/signature/signature.h"
 #include "wazuh_modules/wmodules.h"

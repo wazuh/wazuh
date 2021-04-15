@@ -11,7 +11,7 @@
 
 #include <stdlib.h>
 #include "../../wmodules_def.h"
-#include "os_execd/exec.h"
+#include "os_execd/execd.h"
 #include "wmodules.h"
 #include "wm_execd.h"
 #include "sym_load.h"

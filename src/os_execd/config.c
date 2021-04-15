@@ -8,7 +8,7 @@
  * Foundation
  */
 #include "shared.h"
-#include "exec.h"
+#include "execd.h"
 #include "wazuh_modules/wmodules.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"

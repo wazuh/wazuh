@@ -20,7 +20,7 @@
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
 #include "../external/cJSON/cJSON.h"
-#include "os_execd/exec.h"
+#include "os_execd/execd.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
