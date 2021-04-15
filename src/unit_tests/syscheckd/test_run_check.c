@@ -88,10 +88,6 @@ static int setup_group(void ** state) {
     syscheck.database = fim_db_init(FIM_DB_DISK);
 #endif
 
-#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
-    expect_string(__wrap__mdebug1, formatted_msg, "(6208): Reading Client Configuration [test_syscheck.conf]");
-#endif
-
     will_return_always(__wrap_os_random, 12345);
     int ret = 0;
     OS_XML xml;
