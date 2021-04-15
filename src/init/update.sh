@@ -433,19 +433,34 @@ UpdateOldVersions()
         if [ ! "$INSTYPE" = "agent" ]; then
             for item_path in $PREINSTALLEDDIR/etc/shared/*
             do
+                OLD_GROUP_SHARED_FILE="$item_path/agent.conf"
+                NEW_GROUP_SHARED_FILE="$item_path/shared.conf"
+                OLD_TEMPLATE="$item_path/agent-template.conf"
+                NEW_TEMPLATE="$item_path/shared-template.conf"
                 if [ -d "$item_path" ]; then
-                    OLD_GROUP_SHARED_FILE="$item_path/agent.conf"
-                    NEW_GROUP_SHARED_FILE="$item_path/shared.conf"
-                    OLD_TEMPLATE="$item_path/agent-template.conf"
-                    NEW_TEMPLATE="$item_path/shared-template.conf"
                     if [ -f "$OLD_GROUP_SHARED_FILE" ]; then
-                        mv -f $OLD_GROUP_SHARED_FILE $NEW_GROUP_SHARED_FILE
-                        cat $PREINSTALLEDDIR/etc/shared/shared-template.conf > $NEW_GROUP_SHARED_FILE
+                        rm $OLD_GROUP_SHARED_FILE
+                        cp -pf $PREINSTALLEDDIR/etc/shared/shared-template.conf $NEW_GROUP_SHARED_FILE
                     fi
 
                     if [ -f "$OLD_TEMPLATE" ]; then
-                        mv -f $OLD_TEMPLATE $NEW_TEMPLATE
-                        cat $PREINSTALLEDDIR/etc/shared/shared-template.conf > $NEW_TEMPLATE
+                        rm $OLD_TEMPLATE
+                        cp -pf $PREINSTALLEDDIR/etc/shared/shared-template.conf $NEW_TEMPLATE
+                    fi
+                fi
+            done
+
+            for item_multigroup in $PREINSTALLEDDIR/var/multigroups/*
+            do
+                OLD_MULTIGROUP_FILE="$item_multigroup/agent.conf"
+                OLD_MULTIGROUP_TEMPLATE="$item_multigroup/agent-template.conf"
+                if [ -d "$item_multigroup" ]; then
+                    if [ -f "$OLD_MULTIGROUP_FILE" ]; then
+                        rm $OLD_MULTIGROUP_FILE
+                    fi
+
+                    if [ -f "$OLD_MULTIGROUP_TEMPLATE" ]; then
+                        rm $OLD_MULTIGROUP_TEMPLATE
                     fi
                 fi
             done
