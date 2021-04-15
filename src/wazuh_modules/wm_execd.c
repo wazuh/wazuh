@@ -74,8 +74,7 @@ void* wm_execd_main(wm_execd_t *data) {
 }
 
 void wm_execd_destroy(wm_execd_t *data) {
-    mtinfo(WM_EXECD_LOGTAG, "Destroy received for Execd.");
-    //execd_shutdown();
+    execd_shutdown();
     os_free(data);
 }
 

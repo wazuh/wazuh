@@ -93,6 +93,12 @@ int execd_config();
 int read_exec_config(void);
 
 /**
+ * @brief Function to shutdown execd module.
+ *
+ */
+extern void execd_shutdown();
+
+/**
  * @brief Main function on the execd. Does all the data receiving, etc.
  *
  * @param q Specific queue to start with.
@@ -140,6 +146,7 @@ size_t wcom_restart(char **output);
 size_t wcom_dispatch(char *command, char **output);
 size_t lock_restart(int timeout);
 size_t wcom_getconfig(const char * section, char ** output);
+
 
 #ifndef WIN32
 // Com request thread dispatcher
