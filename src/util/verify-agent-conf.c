@@ -14,7 +14,7 @@
 #include "logcollector/logcollector.h"
 
 #undef ARGV0
-#define ARGV0 "verify-shared-conf"
+#define ARGV0 "verify-agent-conf"
 
 #define AGENT_CONF_FILE "shared.conf"
 
