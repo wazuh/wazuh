@@ -72,6 +72,10 @@ If objFSO.fileExists(home_dir & "ossec.conf") Then
     objFSO.MoveFile home_dir & "ossec.conf" , home_dir & "ossec.conf.backup"
 End If
 
+If objFSO.fileExists(home_dir & "shared\agent.conf") Then
+    objFSO.DeleteFile home_dir & "shared\agent.conf"
+End If
+
 If objFSO.fileExists(home_dir & "agent.conf") Then
     ' Reading agent.conf file
     Const ForReading = 1
