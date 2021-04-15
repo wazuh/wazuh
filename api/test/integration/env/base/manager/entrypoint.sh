@@ -60,7 +60,21 @@ if [ "$3" == "master" ]; then
 
   # RBAC configuration
   for sql_file in /tmp/configuration_files/*.sql; do
-    sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file
+    # Redirect standard error to /tmp/sql_lock_check to check a possible locked database error
+    # 2>&1 redirects "standard error" to "standard output"
+    sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file > /tmp/sql_lock_check 2>&1
+
+    # Insert the RBAC configuration again if database was locked
+    elapsed_time=0
+    while [[ $(grep 'database is locked' /tmp/sql_lock_check | wc -l)  -eq 1 ]] && [[ $elapsed_time -lt 120 ]]
+    do
+      sleep 1
+      elapsed_time=$((elapsed_time+1))
+      sqlite3 /var/ossec/api/configuration/security/rbac.db < $sql_file > /tmp/sql_lock_check 2>&1
+    done
+
+    # Remove the temporal file used to check the possible locked database error
+    rm -rf /tmp/sql_lock_check
   done
 fi
 
