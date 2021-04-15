@@ -115,6 +115,54 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
         return relational_dict
 
 
+class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
+
+    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
+                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
+        """Create an instance of WazuhDBQueryMitreTactics query."""
+
+        if select is None:
+            select = set()
+        if filters is None:
+            filters = dict()
+        self.min_select_fields = min_select_fields
+        if min_select_fields is None:
+            self.min_select_fields = {'id'}
+        self.fields = fields
+        if fields is None:
+            self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'short_name': 'short_name',
+                           'created_time': 'created_time', 'modified_time': 'modified_time'}
+
+        WazuhDBQueryMitre.__init__(self, table='tactic', min_select_fields=self.min_select_fields,
+                                   fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
+                                   count=count, sort=sort, default_sort_field=default_sort_field,
+                                   default_sort_order=default_sort_order, search=search,
+                                   select=list(set(self.fields.values()).intersection(set(select))),
+                                   request_slice=32)
+
+        self.relation_fields = {'related_techniques'}
+
+    def _filter_status(self, status_filter):
+        pass
+
+    def _execute_data_query(self):
+        """This function will add to the result the mitigations, groups, software and tactics
+        related to each technique.
+        """
+        super()._execute_data_query()
+
+        tactic_ids = set()
+        for tactic in self._data:
+            tactic_ids.add(tactic['id'])
+
+        related_techniques = WazuhDBQueryMitreRelational(table='phase', filters={'tactic_id': list(tactic_ids)},
+                                                         dict_key='tactic_id', request_slice=250).run()
+
+        for tactic in self._data:
+            tactic['related_techniques'] = related_techniques.get(tactic['id'], list())
+
+
 class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
 
     def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
@@ -168,15 +216,35 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                                                                 'target_type': 'technique', 'source_type': 'software'},
                                                        dict_key='target_id', request_slice=250).run()
         related_groups = WazuhDBQueryMitreRelational(table='use',
-                                                    filters={'target_id': list(technique_ids),
-                                                             'target_type': 'technique', 'source_type': 'group'},
-                                                    dict_key='target_id', request_slice=250).run()
+                                                     filters={'target_id': list(technique_ids),
+                                                              'target_type': 'technique', 'source_type': 'group'},
+                                                     dict_key='target_id', request_slice=250).run()
 
         for technique in self._data:
             technique['related_tactics'] = related_tactics.get(technique['id'], list())
             technique['related_mitigations'] = related_mitigations.get(technique['id'], list())
             technique['related_software'] = related_software.get(technique['id'], list())
             technique['related_groups'] = related_groups.get(technique['id'], list())
+
+
+@lru_cache(maxsize=None)
+def get_tactics():
+    """This function loads the tactic data in order to speed up the use of the Framework function.
+    It also provides information about the min_select_fields for the select parameter and the
+    allowed_fields for the sort parameter.
+
+    Returns
+    -------
+    dict
+        Dictionary with information about the fields of the technique objects and the techniques obtained.
+    """
+    info = {'min_select_fields': None, 'allowed_fields': None}
+    db_query = WazuhDBQueryMitreTactics(limit=None)
+    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
+    info['min_select_fields'] = set(db_query.min_select_fields)
+    data = db_query.run()
+
+    return info, data
 
 
 @lru_cache(maxsize=None)
