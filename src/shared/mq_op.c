@@ -40,7 +40,6 @@ int StartMQ(const char *path, short int type, short int n_attempts)
         }
 
         if (rc < 0) {
-            merror(QUEUE_ERROR, path, strerror(errno));
             return OS_INVALID;
         }
 
