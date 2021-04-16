@@ -12,15 +12,13 @@
   - Examples:
   - [2007-08-31 18:37:09.454 ADT] 192.168.2.99: LOG:  connection authorized: user=wazuh_user database=wazuh_db
   - [2007-08-31 18:37:15.525 ADT] 192.168.2.99: ERROR:  relation "alert2" does not exist
+  - Version 13:
+  - 021-04-07 16:48:20.991 EET [8329] FATAL:  password authentication failed for user "testing_user"
+  - 2021-04-07 16:48:20.991 EET [8329] DETAIL:  Password does not match for user "testing_user".
+        Connection matched pg_hba.conf line 90: "host   testing_db      testing_user           0.0.0.0/0                md5"
   -->
 <decoder name="postgresql_log">
-  <prematch>^[\d\d\d\d-\d\d-\d\d \S+ \w+] </prematch>
-  <regex offset="after_prematch">^\S+ (\w+): </regex>
-  <order>status</order>
-</decoder>
-
-<decoder name="postgresql_log">
-  <prematch>^\d\d\d\d-\d\d-\d\d \S+ \w+ </prematch>
+  <prematch type="pecre2">^\[?\d\d\d\d-\d\d-\d\d \S+ \w+\]? </prematch>
   <regex offset="after_prematch">^\S+ (\w+): </regex>
   <order>status</order>
 </decoder>
