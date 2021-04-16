@@ -4509,6 +4509,25 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    cve_status:
+      in: query
+      name: status
+      description: "Filter by CVE status"
+      schema:
+        type: string
+        enum:
+          - valid
+          - pending
+          - obsolete
+    cve_type:
+      in: query
+      name: type
+      description: "Filter by CVE type"
+      schema:
+        type: string
+        enum:
+          - os
+          - package
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -15890,6 +15909,8 @@ paths:
         - $ref: '#/components/parameters/cve'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/cve_version'
+        - $ref: '#/components/parameters/cve_type'
+        - $ref: '#/components/parameters/cve_status'
       responses:
         '200':
           description: "Get agent vulnerabilities"
