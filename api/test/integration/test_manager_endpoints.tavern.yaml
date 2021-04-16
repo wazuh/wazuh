@@ -1152,6 +1152,7 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+    delay_after: !float "{restart_delay_cluster}"
 
 ---
 test_name: PUT /manager/configuration

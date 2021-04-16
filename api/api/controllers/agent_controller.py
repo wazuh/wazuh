@@ -848,7 +848,7 @@ async def get_group_config(request, group_id, pretty=False, wait_for_complete=Fa
                 'offset': offset,
                 'limit': limit}
 
-    dapi = DistributedAPI(f=agent.get_agent_conf,
+    dapi = DistributedAPI(f=agent.get_shared_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

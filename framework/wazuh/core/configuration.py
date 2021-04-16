@@ -695,20 +695,20 @@ def upload_group_configuration(group_id, file_content):
     try:
         # check Wazuh xml format
         try:
-            subprocess.check_output([os_path.join(common.wazuh_path, "bin", "verify-shared-conf"), '-f', tmp_file_path],
+            subprocess.check_output([os_path.join(common.wazuh_path, "bin", "verify-agent-conf"), '-f', tmp_file_path],
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             # extract error message from output.
             # Example of raw output
-            # 2019/01/08 14:51:09 verify-shared-conf: ERROR: (1230):
-            # Invalid element in the configuration: 'shared_conf'.\n2019/01/08 14:51:09 verify-shared-conf: ERROR:
+            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230):
+            # Invalid element in the configuration: 'shared_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR:
             # (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is
             # corrupted.
             # \n\n
             # Example of desired output:
             # Invalid element in the configuration: 'shared_conf'.
             # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-shared-conf: ERROR: "
+            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             if output_regex:
                 raise WazuhError(1114, ' '.join(output_regex))
