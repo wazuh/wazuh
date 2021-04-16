@@ -352,7 +352,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         self.agent_info_sync_status = {'date_start': 0.0}
         self.integrity_check_status = {'date_start': 0.0}
-        self.integrity_sync_status = {'date_start': 0.0, 'date_end': 0.0}
+        self.integrity_sync_status = {'date_start': 0.0}
 
     def connection_result(self, future_result):
         """Callback function called when the master sends a response to the hello command sent by the worker.
@@ -638,8 +638,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                              logger=logger, worker=self).sync()
             after = time.time()
             logger.debug(f"Finished sending extra valid files in {(after - before):.3f}s.")
-            self.integrity_sync_status['date_end'] = after - self.integrity_sync_status['date_start']
-            logger.info(f"Finished in {self.integrity_sync_status['date_end']:.3f}s.")
+            logger.info(f"Finished in {(after - self.integrity_sync_status['date_start']):.3f}s.")
 
         # If exception is raised during sync process, notify the master so it removes the file if received.
         except exception.WazuhException as e:
@@ -695,14 +694,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 logger.debug("Updating local files: Start.")
                 self.update_master_files_in_worker(ko_files, zip_path)
                 logger.debug("Updating local files: End.")
-                self.integrity_sync_status['date_end'] = time.time() - self.integrity_sync_status['date_start']
+                date_end = time.time() - self.integrity_sync_status['date_start']
 
             # Send extra valid files to the master.
             if ko_files['extra_valid']:
                 logger.debug("Master requires some worker files.")
                 asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
             else:
-                logger.info(f"Finished in {self.integrity_sync_status['date_end']:.3f}s.")
+                logger.info(f"Finished in {date_end:.3f}s.")
 
         finally:
             shutil.rmtree(zip_path)
