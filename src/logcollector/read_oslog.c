@@ -88,11 +88,11 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    while (rlog = oslog_getlog(read_buffer, MAX_LINE_LEN, lf->fp, lf->oslog),
+    while (rlog = oslog_getlog(read_buffer, MAX_LINE_LEN, lf->oslog->log_wfd->file, lf->oslog),
            rlog && (maximum_lines == 0 || count_logs < maximum_lines)) {
 
         if (drop_it == 0) {
-            w_msg_hash_queues_push(read_buffer, lf->file, strlen(read_buffer) + 1, lf->log_target, LOCALFILE_MQ);
+            w_msg_hash_queues_push(read_buffer, OSLOG_NAME, strlen(read_buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
         count_logs++;
     }
@@ -119,7 +119,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
             oslog_ctxt_clean(&oslog_cfg->ctxt);
             /* delete last end-of-line character  */
             if (buffer[offset - 1] == '\n') {
-                buffer[offset - 1] == '0';
+                buffer[offset - 1] = '\0';
             }
             retval = true;
             return retval;
@@ -214,7 +214,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
     return retval;
 }
 
-STATIC bool oslog_ctxt_restore(char * buffer, int * newline_offset, w_oslog_ctxt_t * ctxt) {
+STATIC bool oslog_ctxt_restore(char * buffer, w_oslog_ctxt_t * ctxt) {
 
     if (ctxt->buffer[0] == '\0') {
         return false;
