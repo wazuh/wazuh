@@ -112,7 +112,6 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
  * @return A pointer to a fulfilled wfd_t structure, on success, or NULL
  */
 STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t flags) {
-    int status = 0;
     int oslog_fd = -1;
     int oslog_fd_flags = 0;
     wfd_t * oslog_wfd = wpopenv(*oslog_array, oslog_array, flags);
@@ -125,29 +124,26 @@ STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t f
 
         if (oslog_fd <= 0) {
             merror(FP_TO_FD_ERROR, oslog_fd);
-            kill(oslog_wfd->pid, SIGKILL);
+            wpclose(oslog_wfd);
+            oslog_wfd = NULL;
         } else {
             oslog_fd_flags = fcntl(oslog_fd, F_GETFL, 0);   // Gets current flags
 
             if (oslog_fd_flags < 0) {
                 merror(GET_FLAGS_ERROR, oslog_fd_flags);
-                kill(oslog_wfd->pid, SIGKILL);
+                wpclose(oslog_wfd);
+                oslog_wfd = NULL;
             } else {
                 oslog_fd_flags |= O_NONBLOCK;               // Adds the NON-BLOCKING flag to current flags
                 const int set_flags_retval = fcntl(oslog_fd, F_SETFL, oslog_fd_flags);  // Sets the new Flags
 
                 if (set_flags_retval < 0) {
                     merror(SET_FLAGS_ERROR, set_flags_retval);
-                    kill(oslog_wfd->pid, SIGKILL);
+                    wpclose(oslog_wfd);
+                    oslog_wfd = NULL;
                 }
             }
         }
-    }
-
-    // This comparison will only be true if the process exited and its "soul" could be acquired
-    if (waitpid(oslog_wfd->pid, &status, WNOHANG) == oslog_wfd->pid) {
-        mdebug1("OSLog's process (%d) died and its resources where released.", oslog_wfd->pid);
-        os_free(oslog_wfd);
     }
 
     return oslog_wfd;
