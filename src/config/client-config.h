@@ -32,6 +32,7 @@ typedef struct _agent {
     int m_queue;
     int sock;
     int execdq;
+    int wmoduleshs;
     int cfgadq;
     int rip_id; ///< Holds the index of the current connected server
     int server_count; ///< Holds the total amount of servers

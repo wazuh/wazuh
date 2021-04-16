@@ -130,6 +130,8 @@ int verifyRemoteConf();
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
 
+extern int wmodules_hs_receivemsg();
+
 /*** Global variables ***/
 extern int agent_debug_level;
 extern int win_debug_level;

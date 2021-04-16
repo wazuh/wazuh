@@ -17,6 +17,7 @@
 #include "sym_load.h"
 #include "defs.h"
 #include "mq_op.h"
+#include "../os_net/os_net.h"
 
 static void* wm_execd_main(wm_execd_t *data);        // Module main function. It won't return
 static void wm_execd_destroy(wm_execd_t *data);      // Destroy data
@@ -58,15 +59,42 @@ void* wm_execd_main(wm_execd_t *data) {
 #else
     int queue = 0;
     // Start exec queue
-    if ((queue = StartMQ(EXECQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+    if ((queue = StartMQ(EXECQUEUE, READ, INFINITE_OPENQ_ATTEMPTS)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUE, strerror(errno));
     }
+
+    int queue_health_status = 0;
+    // Connect wazuh health status checks.
+    if ((queue_health_status = StartMQ(WMODULES_HSTATUS_QUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        merror_exit(QUEUE_ERROR, WMODULES_HSTATUS_QUEUE, strerror(errno));
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON_AddStringToObject(root, "operation", "initialization");
+    cJSON_AddStringToObject(root, "wmodule", WM_EXECD_CONTEXT.name);
+    char* raw_message_health_status = cJSON_PrintUnformatted(root);
+
+    if (raw_message_health_status) {
+        if (queue_health_status >= 0) {
+            if (OS_SendUnix(queue_health_status, raw_message_health_status, 0) < 0) {
+                merror("Error communicating with execd");
+            }
+        }
+        cJSON_free(raw_message_health_status);
+    }
+    cJSON_Delete(root);
+
     // The real daemon Now
     execd_start(queue);
 
     if (queue) {
         close(queue);
         queue = 0;
+    }
+
+    if (queue_health_status) {
+        close(queue_health_status);
+        queue_health_status = 0;
     }
 #endif // WIN32
     mtinfo(WM_EXECD_LOGTAG, "Module finished.");

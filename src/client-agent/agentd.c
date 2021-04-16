@@ -145,13 +145,14 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         maxfd = agt->sock;
     }
 
-    /* Connect to the execd queue */
-    if (agt->execdq == 0) {
-        if ((agt->execdq = StartMQ(EXECQUEUE, READ, 0)) < 0) {
-            minfo("Unable to connect to the active response "
-                   "queue (disabled).");
-            agt->execdq = -1;
-        }
+    /* Create health status queue for wmodules. */
+    if ((agt->wmoduleshs = StartMQ(WMODULES_HSTATUS_QUEUE, READ, 0)) < 0) {
+       merror_exit(QUEUE_ERROR, WMODULES_HSTATUS_QUEUE, strerror(errno));
+    }
+
+    /* Set max fd for select */
+    if (agt->wmoduleshs > maxfd) {
+        maxfd = agt->wmoduleshs;
     }
 
     start_agent(1);
@@ -192,6 +193,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         FD_ZERO(&fdset);
         FD_SET(agt->sock, &fdset);
         FD_SET(agt->m_queue, &fdset);
+        FD_SET(agt->wmoduleshs, &fdset);
 
         fdtimeout.tv_sec = 1;
         fdtimeout.tv_usec = 0;
@@ -202,6 +204,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             merror_exit(SELECT_ERROR, errno, strerror(errno));
         } else if (rc == 0) {
             continue;
+        }
+
+        if (FD_ISSET(agt->wmoduleshs, &fdset)) {
+            if (wmodules_hs_receivemsg() < 0) {
+                merror(MSG_ERROR, WMODULES_HSTATUS_QUEUE);
+            }
         }
 
         /* For the receiver */

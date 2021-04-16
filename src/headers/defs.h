@@ -124,6 +124,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 // Remote requests socket
 #define REMOTE_REQ_SOCK "queue/sockets/request"
 
+/* WModules health queue */
+#define WMODULES_HSTATUS_QUEUE "queue/sockets/whs"
+
 // Local requests socket
 #define COM_LOCAL_SOCK  "queue/sockets/com"
 #define LC_LOCAL_SOCK  "queue/sockets/logcollector"
