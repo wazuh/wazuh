@@ -13,16 +13,17 @@ from wazuh.core import common
 
 with patch('wazuh.common.ossec_uid'):
     with patch('wazuh.common.ossec_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
+        with patch('wazuh.core.common.manager_conf'):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
-        from wazuh.tests.util import RBAC_bypasser
+            del sys.modules['wazuh.rbac.orm']
+            from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        import wazuh.core.cluster.utils
-        import wazuh.core.cluster.cluster
-        from wazuh import WazuhException
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            import wazuh.core.cluster.utils
+            import wazuh.core.cluster.cluster
+            from wazuh import WazuhException
 
 # Valid configurations
 default_cluster_configuration = {
@@ -65,7 +66,7 @@ def test_read_empty_configuration():
     """
     Test reading an empty cluster configuration
     """
-    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
+    with patch('wazuh.core.cluster.utils.get_manager_conf') as m:
         wazuh.core.cluster.utils.read_config.cache_clear()
         m.side_effect = WazuhException(1106)
         configuration = wazuh.core.cluster.utils.read_config()
@@ -80,9 +81,9 @@ def test_read_empty_configuration():
 ])
 def test_read_configuration(read_config):
     """
-    Tests reading the cluster configuration from ossec.conf
+    Tests reading the cluster configuration from manager.conf
     """
-    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
+    with patch('wazuh.core.cluster.utils.get_manager_conf') as m:
         m.return_value = read_config.copy()
         configuration = wazuh.core.cluster.utils.read_config()
         configuration['disabled'] = 'yes' if configuration['disabled'] else 'no'
@@ -114,7 +115,7 @@ def test_checking_configuration(read_config):
     """
     Checks wrong configurations to check the proper exceptions are raised
     """
-    with patch('wazuh.core.cluster.utils.get_ossec_conf') as m:
+    with patch('wazuh.core.cluster.utils.get_manager_conf') as m:
         m.return_value = read_config.copy()
         with pytest.raises(WazuhException, match=r'.* 3004 .*'):
             configuration = wazuh.core.cluster.utils.read_config()

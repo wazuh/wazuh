@@ -81,18 +81,11 @@ marks:
      vals:
        - alerts
        - auth
-       - cis-cat
        - cluster
        - command
        - global
-       - localfile
-       - osquery
        - remote
-       - rootcheck
        - ruleset
-       - sca
-       - syscheck
-       - syscollector
        - vulnerability-detector
 
 stages:
@@ -151,18 +144,11 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
-              localfile: !anything
-              osquery: !anything
               remote: !anything
-              rootcheck: !anything
               ruleset: !anything
-              sca: !anything
-              syscheck: !anything
-              syscollector: !anything
               vulnerability-detector: !anything
           failed_items: []
           total_affected_items: 1
@@ -178,16 +164,16 @@ stages:
       headers:
           Authorization: "Bearer {test_login_token}"
       params:
-        section: rootcheck
-        field: disabled
+        section: alerts
+        field: log_alert_level
     response:
       status_code: 200
       json:
         error: !anyint
         data:
           affected_items:
-            - rootcheck:
-                disabled: !anystr
+            - alerts:
+                log_alert_level: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -201,16 +187,16 @@ stages:
       headers:
           Authorization: "Bearer {test_login_token}"
       params:
-        section: syscheck
-        field: frequency
+        section: global
+        field: logall
     response:
       status_code: 200
       json:
         error: !anyint
         data:
           affected_items:
-            - syscheck:
-                frequency: !anystr
+            - global:
+                logall: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -237,7 +223,7 @@ stages:
       headers:
           Authorization: "Bearer {test_login_token}"
       params:
-        section: syscheck
+        section: vulnerability-detector
         field: invalid_field
     response:
       status_code: 200
@@ -686,7 +672,6 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - sca: !anything
             - wazuh-agentlessd: !anything
             - wazuh-analysisd: !anything
             - wazuh-authd: !anything
@@ -698,12 +683,9 @@ stages:
             - wazuh-logcollector: !anything
             - wazuh-modulesd: !anything
             - wazuh-modulesd:agent-upgrade: !anything
-            - wazuh-modulesd:ciscat: !anything
             - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:osquery: !anything
-            - wazuh-modulesd:syscollector: !anything
             - wazuh-modulesd:task-manager: !anything
             - wazuh-monitord: !anything
             - wazuh-remoted: !anything
@@ -1146,31 +1128,6 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
-
----
-test_name: PUT /manager/restart
-
-stages:
-
-  # PUT /manager/restart
-  - name: Restart manager
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data:
-          affected_items:
-            - !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
 ---
 test_name: PUT /manager/configuration
 
@@ -1288,6 +1245,30 @@ stages:
           affected_items:
             - alerts:
                 log_alert_level: '300'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
+test_name: PUT /manager/restart
+
+stages:
+
+  # PUT /manager/restart
+  - name: Restart manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0

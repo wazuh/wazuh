@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
-                        default=common.ossec_conf)
+                        default=common.manager_conf)
     args = parser.parse_args()
 
     if args.version:

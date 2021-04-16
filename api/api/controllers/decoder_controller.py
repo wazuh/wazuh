@@ -22,7 +22,7 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
                        q: str = None, filename: str = None, relative_dirname: str = None, status: str = None):
     """Get all decoders
 
-    Returns information about all decoders included in ossec.conf. This information include decoder's route,
+    Returns information about all decoders included in manager.conf. This information include decoder's route,
     decoder's name, decoder's file among others
 
     :param decoder_names: Filters by decoder name.

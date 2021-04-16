@@ -50,23 +50,23 @@ class WazuhException(Exception):
         1101: {'message': 'Requested component does not exist',
                'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
         1102: {'message': 'Invalid section',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html) '
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/index.html) '
                               'to get more information about configuration sections'},
         1103: {'message': 'Invalid field in section',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html) '
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/index.html) '
                               'to get more information about configuration sections'},
         1104: {'message': 'Invalid type',
                'remediation': 'Insert a valid type'},
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in configuration',
                'remediation': 'Please, check your configuration file. '
-                              f'You can visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html) '
+                              f'You can visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/index.html) '
                               'to get more information about configuration sections'},
         1107: 'Internal options file not found',
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
-        1111: "Remote group file updates are only available in 'agent.conf' file",
+        1111: "Remote group file updates are only available in 'shared.conf' file",
         1112: {'message': 'Empty files are not supported',
                'remediation': 'Please, provide another file'
                },
@@ -92,20 +92,20 @@ class WazuhException(Exception):
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is {MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
         1124: {'message': 'Remote command detected',
                'remediation': f'To solve this issue please enable the remote commands in the API settings or add an exception: https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/api/configuration.html#remote-commands-configuration'},
-        1125: {'message': 'Invalid ossec configuration',
-               'remediation': 'Please, provide a valid ossec configuration'
+        1125: {'message': 'Invalid manager configuration',
+               'remediation': 'Please, provide a valid manager configuration'
                },
-        1126: {'message': 'Error updating ossec configuration',
-               'remediation': 'Please, ensure `WAZUH_PATH/etc/ossec.conf` has the proper permissions and ownership.'
+        1126: {'message': 'Error updating manager configuration',
+               'remediation': 'Please, ensure `WAZUH_PATH/etc/manager.conf` has the proper permissions and ownership.'
                },
 
         # Rule: 1200 - 1299
-        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'
+        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/manager.conf`',
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
         1201: {'message': 'Error reading rule files',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
         1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
@@ -128,7 +128,7 @@ class WazuhException(Exception):
                'remediation': 'Please, check your permissions over the file'
                },
         1208: {'message': 'The rule does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
 
@@ -176,7 +176,7 @@ class WazuhException(Exception):
                },
 
         # Decoders: 1500 - 1599
-        1500: {'message': 'Error reading decoders from ossec.conf',
+        1500: {'message': 'Error reading decoders from manager.conf',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/ruleset/custom.html)'
                               'to get more information on adding or modifying existing decoders'
                },
@@ -189,7 +189,7 @@ class WazuhException(Exception):
                'remediation': 'Please, use GET /decoders/files to list all available decoders'
                },
         1504: {'message': 'The decoder does not exist or you do not have permission to see it',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/index.html)'
+               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/index.html)'
                               ' to get more information about the decoders'
                },
 
@@ -325,7 +325,7 @@ class WazuhException(Exception):
                'remediation': "Use force=1 parameter to force the downgrade"
                },
         1750: {'message': 'Could not send restart command, active-response is disabled in the agent',
-               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/ossec.conf`"},
+               'remediation': "You can activate it in agents' `WAZUH_HOME/etc/agent.conf`"},
         1751: {'message': 'Could not assign agent to group',
                'remediation': 'Agent already belongs to specified group, please select another agent'},
         1752: {'message': 'Could not force single group for the agent'},
@@ -427,7 +427,7 @@ class WazuhException(Exception):
         3010: 'Received the status/group of a non-existent agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
-        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
+        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/manager.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/configuring-cluster/index.html)'
                               ' to get more information about how to configure a cluster'
                },
@@ -447,18 +447,18 @@ class WazuhException(Exception):
         3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3025: {'message': "Could not decrypt message",
                'remediation': "Check the cluster key is correct in the worker's "
-                              f"[ossec.conf](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/cluster.html#key)"
+                              f"[manager.conf](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/cluster.html#key)"
                               ", ensure it is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
         3027: "Unknown received task name",
         3028: {'message': "Worker node ID already exists",
-               'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/cluster.html#node-name)"
+               'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service."},
         3029: {"message": "Connected worker with same name as the master",
-               "remediation": f"Check and fix the [worker name](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/cluster.html#node-name)"
+               "remediation": f"Check and fix the [worker name](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/cluster.html#node-name)"
                               " and restart the `wazuh-manager` service in the node"},
         3030: {'message': 'Worker does not belong to the same cluster',
-               'remediation': f"Change the [cluster name](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/ossec-conf/cluster.html#name)"
+               'remediation': f"Change the [cluster name](https://documentation.wazuh.com/{WAZUH_VERSION}/user-manual/reference/manager-conf/cluster.html#name)"
                               " in the worker configuration to match the master's and restart the `wazuh-manager` service"},
         3031: {'message': "Worker and master versions are not the same",
                'remediation': f"[Update](https://documentation.wazuh.com/{WAZUH_VERSION}/upgrade-guide/index.html)"

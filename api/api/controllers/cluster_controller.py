@@ -212,7 +212,7 @@ async def get_info_node(request, node_id, pretty=False, wait_for_complete=False)
 
 async def get_configuration_node(request, node_id, pretty=False, wait_for_complete=False, section=None, field=None,
                                  raw: bool = False):
-    """Get a specified node's configuration (ossec.conf)
+    """Get a specified node's configuration (manager.conf)
 
     Parameters
     ----------
@@ -243,7 +243,7 @@ async def get_configuration_node(request, node_id, pretty=False, wait_for_comple
                 'raw': raw}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.read_ossec_conf,
+    dapi = DistributedAPI(f=manager.read_manager_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -570,7 +570,7 @@ async def get_node_config(request, node_id, component, wait_for_complete=False, 
 
 
 async def update_configuration(request, node_id, body,  pretty=False, wait_for_complete=False):
-    """Update Wazuh configuration (ossec.conf) in node node_id.
+    """Update Wazuh configuration (manager.conf) in node node_id.
 
     Parameters
     ----------
@@ -587,7 +587,7 @@ async def update_configuration(request, node_id, body,  pretty=False, wait_for_c
                 'new_conf': parsed_body}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.update_ossec_conf,
+    dapi = DistributedAPI(f=manager.update_manager_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

@@ -362,7 +362,7 @@
     "no_processed_policies": [
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "resources": ["node:id:*&file:path:etc/manager.conf"],
         "effect": "allow"
       },
       {
@@ -387,28 +387,28 @@
     "no_processed_policies": [
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "resources": ["node:id:*&file:path:etc/manager.conf"],
         "effect": "allow"
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "resources": ["node:id:*&file:path:etc/manager.conf"],
         "effect": "allow"
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "resources": ["node:id:*&file:path:etc/manager.conf"],
         "effect": "deny"
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "resources": ["node:id:*&file:path:etc/manager.conf"],
         "effect": "allow"
       }
     ],
     "processed_policies": {
       "cluster:read_file": {
-        "node:id:*&file:path:etc/ossec.conf": "allow"
+        "node:id:*&file:path:etc/manager.conf": "allow"
       }
     }
   },
@@ -416,12 +416,12 @@
     "no_processed_policies": [
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "resources": ["node:id:*&file:path:etc/manager.conf"],
         "effect": "allow"
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "resources": ["node:id:*&file:path:etc/manager.conf"],
         "effect": "allow"
       },
       {
@@ -431,14 +431,14 @@
       },
       {
         "actions": ["cluster:read_file"],
-        "resources": ["node:id:*&file:path:etc/ossec.conf"],
+        "resources": ["node:id:*&file:path:etc/manager.conf"],
         "effect": "allow"
       }
     ],
     "processed_policies": {
       "cluster:read_file": {
         "node:id:*&file:path:*": "deny",
-        "node:id:*&file:path:etc/ossec.conf": "allow"
+        "node:id:*&file:path:etc/manager.conf": "allow"
       }
     }
   }

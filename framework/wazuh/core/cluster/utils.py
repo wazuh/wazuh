@@ -15,7 +15,7 @@ from operator import setitem
 from os.path import join, exists
 
 from wazuh.core import common
-from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.configuration import get_manager_conf
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
@@ -25,10 +25,10 @@ logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.wazuh_path, "var/run/.api_execq_lock")
 
 
-def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
-    """Read cluster configuration from ossec.conf.
+def read_cluster_config(config_file=common.manager_conf) -> typing.Dict:
+    """Read cluster configuration from manager.conf.
 
-    If some fields are missing in the ossec.conf cluster configuration, they are replaced
+    If some fields are missing in the manager.conf cluster configuration, they are replaced
     with default values.
     If there is no cluster configuration at all, the default configuration is marked as disabled.
 
@@ -55,10 +55,10 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
     }
 
     try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)['cluster']
+        config_cluster = get_manager_conf(section='cluster', conf_file=config_file)['cluster']
     except WazuhException as e:
         if e.code == 1106:
-            # If no cluster configuration is present in ossec.conf, return default configuration but disabling it.
+            # If no cluster configuration is present in manager.conf, return default configuration but disabling it.
             cluster_default_configuration['disabled'] = True
             return cluster_default_configuration
         else:
@@ -212,7 +212,7 @@ def get_cluster_items():
 
 
 @lru_cache()
-def read_config(config_file=common.ossec_conf):
+def read_config(config_file=common.manager_conf):
     """Get the cluster configuration.
 
     Parameters

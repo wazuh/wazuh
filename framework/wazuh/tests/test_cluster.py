@@ -1,3 +1,4 @@
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -5,19 +6,21 @@ import pytest
 
 with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
-        sys.modules['wazuh.rbac.orm'] = MagicMock()
-        import wazuh.rbac.decorators
+        with patch('wazuh.core.common.manager_conf',
+                   new=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager_base.conf')):
+            sys.modules['wazuh.rbac.orm'] = MagicMock()
+            import wazuh.rbac.decorators
 
-        del sys.modules['wazuh.rbac.orm']
+            del sys.modules['wazuh.rbac.orm']
 
-        from wazuh.tests.util import RBAC_bypasser
+            from wazuh.tests.util import RBAC_bypasser
 
-        wazuh.rbac.decorators.expose_resources = RBAC_bypasser
-        from wazuh import cluster
-        from wazuh.core import common
-        from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-        from wazuh.core.cluster.local_client import LocalClient
-        from wazuh.core.results import WazuhResult
+            wazuh.rbac.decorators.expose_resources = RBAC_bypasser
+            from wazuh import cluster
+            from wazuh.core import common
+            from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+            from wazuh.core.cluster.local_client import LocalClient
+            from wazuh.core.results import WazuhResult
 
 default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
                   'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'], 'hidden': 'no'}

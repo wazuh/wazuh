@@ -1908,7 +1908,7 @@ stages:
   - name: Delete invalid rule
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/ossec.conf"
+      url: "{protocol:s}://{host:s}:{port:d}/rules/files/manager.conf"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"

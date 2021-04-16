@@ -26,14 +26,14 @@ with patch('wazuh.core.common.getgrnam'):
 # Variables
 
 test_data_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-decoder_ossec_conf = {
+decoder_manager_conf = {
     'ruleset': {
         'decoder_dir': ['tests/data/decoders'],
         'decoder_exclude': 'test2_decoders.xml'
     }
 }
 
-decoder_ossec_conf_2 = {
+decoder_manager_conf_2 = {
     'ruleset': {
         'decoder_dir': ['tests/data/decoders'],
         'decoder_exclude': 'wrong_decoders.xml'
@@ -46,7 +46,7 @@ decoder_ossec_conf_2 = {
 @pytest.fixture(scope='module', autouse=True)
 def mock_wazuh_path():
     with patch('wazuh.core.common.wazuh_path', new=test_data_path):
-        with patch('wazuh.core.configuration.get_ossec_conf', return_value=decoder_ossec_conf):
+        with patch('wazuh.core.configuration.get_manager_conf', return_value=decoder_manager_conf):
             yield
 
 
@@ -83,11 +83,11 @@ def test_get_decoders(names, status, filename, relative_dirname, parents, expect
 
 
 @pytest.mark.parametrize('conf, exception', [
-    (decoder_ossec_conf, None),
+    (decoder_manager_conf, None),
     ({'ruleset': None}, WazuhInternalError(1500))
 ])
 def test_get_decoders_files(conf, exception):
-    with patch('wazuh.core.configuration.get_ossec_conf', return_value=conf):
+    with patch('wazuh.core.configuration.get_manager_conf', return_value=conf):
         try:
             # UUT call
             result = decoder.get_decoders_files()
