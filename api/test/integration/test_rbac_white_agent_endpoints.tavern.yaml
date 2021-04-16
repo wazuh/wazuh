@@ -440,16 +440,16 @@ stages:
        Authorization: "Bearer {test_login_token}"
      params:
        limit: 2
-       offset: 0
+       offset: 1
    response:
      status_code: 200
      json:
        error: 0
        data:
          affected_items:
-           - filename: shared.conf
+           - filename: merged.mg
              hash: !anystr
-           - filename: ar.conf
+           - filename: shared.conf
              hash: !anystr
          total_affected_items: 3
          total_failed_items: 0
