@@ -37,8 +37,7 @@ void * read_oslog(logreader * lf, int * rc, int drop_it)
  */
 STATIC bool w_logcollector_validate_oslog_stream_predicate(char * predicate) {
     // todo : improve this function
-    if(strlen(predicate) > 0)
-    {
+    if (strlen(predicate) > 0) {
         return true;
     }
     return false;
@@ -66,38 +65,38 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
     w_strdup(SYSLOG_STR, oslog_array[oslog_array_idx++]);
 
     // Log Stream's Type section (`--type`)
-    if(type != 0) {
-        if(type & OSLOG_TYPE_ACTIVITY) {
+    if (type != 0) {
+        if (type & OSLOG_TYPE_ACTIVITY) {
             w_strdup(TYPE_OPT_STR, oslog_array[oslog_array_idx++]);
             w_strdup(OSLOG_TYPE_ACTIVITY_STR, oslog_array[oslog_array_idx++]);
         }
-        if(type & OSLOG_TYPE_LOG) {
+        if (type & OSLOG_TYPE_LOG) {
             w_strdup(TYPE_OPT_STR, oslog_array[oslog_array_idx++]);
             w_strdup(OSLOG_TYPE_LOG_STR, oslog_array[oslog_array_idx++]);
         }
-        if(type & OSLOG_TYPE_TRACE) {
+        if (type & OSLOG_TYPE_TRACE) {
             w_strdup(TYPE_OPT_STR, oslog_array[oslog_array_idx++]);
             w_strdup(OSLOG_TYPE_TRACE_STR, oslog_array[oslog_array_idx++]);
         }
     }
 
     // Log Stream's Level section  (`--level`)
-    if(level != NULL) {
+    if (level != NULL) {
         w_strdup(LEVEL_OPT_STR, oslog_array[oslog_array_idx++]);
         w_strdup(level, oslog_array[oslog_array_idx++]);
     }
 
     // Log Stream's Predicate section
-    if(predicate != NULL) {
+    if (predicate != NULL) {
         const bool is_predicate_valid = w_logcollector_validate_oslog_stream_predicate(predicate);
-        if(is_predicate_valid)
+        if (is_predicate_valid)
         {
             w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
 
             const size_t QUERY_STR_LEN = strlen(predicate) + 2 + 1; // The "2" is due to the added chars ''
             os_malloc(QUERY_STR_LEN, oslog_array[oslog_array_idx]);
             const int snprintf_retval = snprintf(oslog_array[oslog_array_idx], QUERY_STR_LEN, "'%s'", predicate);
-            if(snprintf_retval < 0) {
+            if (snprintf_retval < 0) {
                 merror(SNPRINTF_ERROR, snprintf_retval);
             }
         }
@@ -117,25 +116,25 @@ STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t f
     int oslog_fd_flags = 0;
     wfd_t * oslog_wfd = wpopenv(*oslog_array, oslog_array, flags);
 
-    if(oslog_wfd == NULL) {
+    if (oslog_wfd == NULL) {
         merror(WPOPENV_ERROR);
     } else {
         // The file descriptor, from which the output of `log stream` will be read, is set to non-blocking
         oslog_fd = fileno(oslog_wfd->file);                 // Gets the file descriptor from a file pointer
 
-        if(oslog_fd <= 0) {
+        if (oslog_fd <= 0) {
             merror(FP_TO_FD_ERROR, oslog_fd);
             // todo: set oslog_wfd to null and handle wpopenv's running process
         } else {
             oslog_fd_flags = fcntl(oslog_fd, F_GETFL, 0);   // Gets current flags
 
-            if(oslog_fd_flags < 0) {
+            if (oslog_fd_flags < 0) {
                 merror(GET_FLAGS_ERROR, oslog_fd_flags);
                 // todo: set oslog_wfd to null and handle wpopenv's running process
             } else {
                 oslog_fd_flags |= O_NONBLOCK;               // Adds the NON-BLOCKING flag to current flags
                 const int set_flags_retval = fcntl(oslog_fd, F_SETFL, oslog_fd_flags);  // Sets the new Flags
-                if(set_flags_retval < 0) {
+                if (set_flags_retval < 0) {
                     merror(SET_FLAGS_ERROR, set_flags_retval);
                     // todo: set oslog_wfd to null and handle wpopenv's running process
                 }
@@ -155,7 +154,7 @@ void w_logcollector_create_oslog_env(logreader * current) {
     char * mock_log_stream_array[] = {"/root/readfile.sh", NULL};
     current->oslog->log_wfd = w_logcollector_exec_oslog_stream(mock_log_stream_array, W_BIND_STDOUT|W_BIND_STDERR);
 
-    if(current->oslog->log_wfd == NULL) {
+    if (current->oslog->log_wfd == NULL) {
         current->oslog->is_oslog_running = false;
         current->fp = NULL;
     } else {
