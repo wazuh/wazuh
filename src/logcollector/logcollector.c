@@ -335,12 +335,12 @@ void LogCollectorStart()
 #ifndef WIN32 //todo : remove this when having the right define
         else if (strcmp(current->logformat, OSLOG) == 0) {
             w_logcollector_create_oslog_env(current);
-            if (current->fp) {
+            current->read = read_oslog;
+            if (current->oslog->log_wfd->file) {
                 for(int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
                     mdebug1("Socket target for '%s' -> %s", OSLOG_NAME, current->target[tg_idx]);
                     w_logcollector_state_add_target(OSLOG_NAME, current->target[tg_idx]);
                 }
-                current->read = read_oslog;
             }
         }
 #endif  //todo : remove this when having the right define
@@ -2125,6 +2125,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             current->read(current, &r, 0);
                         }
                     }
+//#ifdef darwin
+                    /* Read process `log` in stream  (oslog) */
+                    else if (current->oslog != NULL && current->oslog->is_oslog_running) {
+                        current->read(current, &r, 0);
+                    }
+//#endif darwin
                     w_mutex_unlock(&current->mutex);
                     w_rwlock_unlock(&files_update_rwlock);
                     continue;
