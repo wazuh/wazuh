@@ -100,6 +100,8 @@ void w_init_queues();
 
 extern OSHash *fim_agentinfo;
 extern int num_rule_matching_threads;
+extern int wmodules_hs_receivemsg(const int wmoduleshs, int * execdqueue);
+extern int execdq;
 
 #define FIM_MAX_WAZUH_DB_ATTEMPS 5
 #define SYS_MAX_WAZUH_DB_ATTEMPS 5

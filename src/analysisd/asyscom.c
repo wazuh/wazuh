@@ -177,13 +177,27 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
         return NULL;
     }
 
+    int maxfd = sock;
+    int wmoduleshs = OS_BindUnixDomain(WMODULES_HSTATUS_QUEUE, SOCK_DGRAM, OS_MAXSTR + 512);
+
+    if (wmoduleshs < 0) {
+        merror("Unable to bind to socket '%s': (%d) %s.", WMODULES_HSTATUS_QUEUE, errno, strerror(errno));
+        return NULL;
+    }
+
+    /* Set max fd for select */
+    if (wmoduleshs > maxfd) {
+        maxfd = wmoduleshs;
+    }
+
     while (1) {
 
         // Wait for socket
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
+        FD_SET(wmoduleshs, &fdset);
 
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+        switch (select(maxfd + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
                 merror_exit("At asyscom_main(): select(): %s", strerror(errno));
@@ -195,41 +209,49 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
             continue;
         }
 
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
-                merror("At asyscom_main(): accept(): %s", strerror(errno));
+        if (FD_ISSET(wmoduleshs, &fdset)) {
+            if (wmodules_hs_receivemsg(wmoduleshs, &execdq) < 0) {
+                merror(MSG_ERROR, WMODULES_HSTATUS_QUEUE);
             }
-
-            continue;
         }
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
 
-        switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
-        case OS_SOCKTERR:
-            merror("At asyscom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
-            break;
+        if (FD_ISSET(sock, &fdset)) {
+            if (peer = accept(sock, NULL, NULL), peer < 0) {
+                if (errno != EINTR) {
+                    merror("At asyscom_main(): accept(): %s", strerror(errno));
+                }
 
-        case -1:
-            merror("At asyscom_main(): OS_RecvSecureTCP: %s", strerror(errno));
-            break;
+                continue;
+            }
+            os_calloc(OS_MAXSTR, sizeof(char), buffer);
 
-        case 0:
-            mdebug1("Empty message from local client.");
-            close(peer);
-            break;
+            switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
+            case OS_SOCKTERR:
+                merror("At asyscom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+                break;
 
-        case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
-            close(peer);
-            break;
+            case -1:
+                merror("At asyscom_main(): OS_RecvSecureTCP: %s", strerror(errno));
+                break;
 
-        default:
-            length = asyscom_dispatch(buffer, &response);
-            OS_SendSecureTCP(peer, length, response);
-            free(response);
-            close(peer);
+            case 0:
+                mdebug1("Empty message from local client.");
+                close(peer);
+                break;
+
+            case OS_MAXLEN:
+                merror("Received message > %i", MAX_DYN_STR);
+                close(peer);
+                break;
+
+            default:
+                length = asyscom_dispatch(buffer, &response);
+                OS_SendSecureTCP(peer, length, response);
+                free(response);
+                close(peer);
+            }
+            free(buffer);
         }
-        free(buffer);
     }
 
     mdebug1("Local server thread finished.");
