@@ -19,6 +19,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/linux/socket_wrappers.h"
 
 bool w_logcollector_validate_oslog_stream_predicate(char * predicate);
 char ** w_create_oslog_stream_array(char * predicate, char * level, int type);
@@ -37,6 +38,22 @@ static int group_teardown(void ** state) {
     test_mode = 0;
     return 0;
 
+}
+
+static int setup_file(void **state) {
+    wfd_t * wfd = calloc(1, sizeof(wfd_t));
+
+    *state = wfd;
+
+    return 0;
+}
+
+static int teardown_file(void **state) {
+    wfd_t * wfd = *state;
+
+    free(wfd);
+
+    return 0;
 }
 
 /* wraps */
@@ -1809,6 +1826,129 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predic
 
 }
 
+/* w_logcollector_exec_oslog_stream */
+void test_w_logcollector_exec_oslog_stream_wpopenv_error(void ** state) {
+    char * oslog_array = NULL;
+    os_strdup("log stream", oslog_array);
+    u_int32_t flags = 0;
+
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
+
+    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+
+    assert_null(ret);
+    os_free(oslog_array);
+
+}
+
+void test_w_logcollector_exec_oslog_stream_fileno_error(void ** state) {
+    wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
+
+    char * oslog_array = NULL;
+    os_strdup("log stream", oslog_array);
+    u_int32_t flags = 0;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fileno, __stream, wfd->file);
+    will_return(__wrap_fileno, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1972): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: Success (0).");
+
+    will_return(__wrap_wpclose, 0);
+
+    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+
+    assert_ptr_equal(ret, 0);
+    os_free(oslog_array);
+
+}
+
+void test_w_logcollector_exec_oslog_stream_fp_to_fd_error(void ** state) {
+    wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
+
+    char * oslog_array = NULL;
+    os_strdup("log stream", oslog_array);
+    u_int32_t flags = 0;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fileno, __stream, wfd->file);
+    will_return(__wrap_fileno, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1972): The file descriptor couldn't be obtained from the file pointer of the Log Stream pipe: Success (0).");
+
+    will_return(__wrap_wpclose, 0);
+
+    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+
+    assert_ptr_equal(ret, 0);
+    os_free(oslog_array);
+
+}
+
+void test_w_logcollector_exec_oslog_stream_get_flags_error(void ** state) {
+    wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
+
+    char * oslog_array = NULL;
+    os_strdup("log stream", oslog_array);
+    u_int32_t flags = 0;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fileno, __stream, wfd->file);
+    will_return(__wrap_fileno, 1);
+
+    will_return(__wrap_fcntl, -1);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1973): The flags couldn't be obtained from the file descriptor: Success (0).");
+
+    will_return(__wrap_wpclose, 0);
+
+    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+
+    assert_ptr_equal(ret, 0);
+    os_free(oslog_array);
+
+}
+
+void test_w_logcollector_exec_oslog_stream_set_flags_error(void ** state) {
+    wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
+
+    char * oslog_array = NULL;
+    os_strdup("log stream", oslog_array);
+    u_int32_t flags = 0;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fileno, __stream, wfd->file);
+    will_return(__wrap_fileno, 1);
+
+    will_return(__wrap_fcntl, 0);
+
+    will_return(__wrap_fcntl, -1);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1974): The flags couldn't be set in the file descriptor: Success (0).");
+
+    will_return(__wrap_wpclose, 0);
+
+    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+
+    assert_ptr_equal(ret, 0);
+    os_free(oslog_array);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test w_logcollector_validate_oslog_stream_predicate
@@ -1879,6 +2019,12 @@ int main(void) {
         cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_trace_predicate),
         cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_log_trace_predicate),
         cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predicate),
+        // Test w_logcollector_exec_oslog_stream
+        cmocka_unit_test(test_w_logcollector_exec_oslog_stream_wpopenv_error),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_fileno_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_fp_to_fd_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_get_flags_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_set_flags_error, setup_file, teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

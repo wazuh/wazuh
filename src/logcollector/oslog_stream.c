@@ -96,8 +96,8 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
             const size_t QUERY_STR_LEN = strlen(predicate) + 2 + 1; // The "2" is due to the added chars ''
             os_malloc(QUERY_STR_LEN, oslog_array[oslog_array_idx]);
             const int snprintf_retval = snprintf(oslog_array[oslog_array_idx], QUERY_STR_LEN, "'%s'", predicate);
-            if (snprintf_retval < 0) {
-                merror(SNPRINTF_ERROR, snprintf_retval);
+            if(snprintf_retval < 0) {
+                merror(SNPRINTF_ERROR, strerror(errno), errno);
             }
         }
     }
@@ -117,20 +117,20 @@ STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t f
     wfd_t * oslog_wfd = wpopenv(*oslog_array, oslog_array, flags);
 
     if (oslog_wfd == NULL) {
-        merror(WPOPENV_ERROR);
+        merror(WPOPENV_ERROR, strerror(errno), errno);
     } else {
         // The file descriptor, from which the output of `log stream` will be read, is set to non-blocking
         oslog_fd = fileno(oslog_wfd->file);                 // Gets the file descriptor from a file pointer
 
         if (oslog_fd <= 0) {
-            merror(FP_TO_FD_ERROR, oslog_fd);
+            merror(FP_TO_FD_ERROR, strerror(errno), errno);
             wpclose(oslog_wfd);
             oslog_wfd = NULL;
         } else {
             oslog_fd_flags = fcntl(oslog_fd, F_GETFL, 0);   // Gets current flags
 
             if (oslog_fd_flags < 0) {
-                merror(GET_FLAGS_ERROR, oslog_fd_flags);
+                merror(GET_FLAGS_ERROR, strerror(errno), errno);
                 wpclose(oslog_wfd);
                 oslog_wfd = NULL;
             } else {
@@ -138,7 +138,7 @@ STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t f
                 const int set_flags_retval = fcntl(oslog_fd, F_SETFL, oslog_fd_flags);  // Sets the new Flags
 
                 if (set_flags_retval < 0) {
-                    merror(SET_FLAGS_ERROR, set_flags_retval);
+                    merror(SET_FLAGS_ERROR, strerror(errno), errno);
                     wpclose(oslog_wfd);
                     oslog_wfd = NULL;
                 }
