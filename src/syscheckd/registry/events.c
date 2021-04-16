@@ -138,6 +138,7 @@ cJSON *fim_registry_value_json_event(const fim_entry *new_data,
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", new_data->registry_entry.key->path);
+    cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
     cJSON_AddStringToObject(data, "arch", new_data->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]");
@@ -289,6 +290,7 @@ cJSON *fim_registry_key_json_event(const fim_registry_key *new_data,
     cJSON_AddItemToObject(json_event, "data", data);
 
     cJSON_AddStringToObject(data, "path", new_data->path);
+    cJSON_AddNumberToObject(data, "version", 2.0);
     cJSON_AddStringToObject(data, "mode", FIM_EVENT_MODE[mode]);
     cJSON_AddStringToObject(data, "type", FIM_EVENT_TYPE[type]);
     cJSON_AddStringToObject(data, "arch", new_data->arch == ARCH_32BIT ? "[x32]" : "[x64]");
