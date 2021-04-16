@@ -54,7 +54,9 @@ void* wm_execd_main(wm_execd_t *data) {
 
 #ifdef WIN32
     w_queue_t *winexec_queue = queue_init(OS_SIZE_128);
-    win_execd_run(queue_pop_ex(winexec_queue));
+    while(1) {
+        win_execd_run(queue_pop_ex(winexec_queue));
+    }
     queue_free(winexec_queue);
 #else
     int queue = 0;

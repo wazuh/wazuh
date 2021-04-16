@@ -27,15 +27,6 @@ extern w_queue_t * winexec_queue;
 OSList *timeout_list;
 OSListNode *timeout_node;
 
-DWORD WINAPI win_exec_main(void * args);
-
-// Create a thread to run windows AR simultaneous
-DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
-    while(1) {
-        win_execd_run(queue_pop_ex(winexec_queue));
-    }
-}
-
 void win_timeout_run() {
     time_t curr_time = time(NULL);
 
