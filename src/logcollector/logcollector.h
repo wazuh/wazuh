@@ -12,13 +12,12 @@
 #define LOGREADER_H
 
 #ifndef ARGV0
-#define ARGV0 "wazuh-logcollector"
+#define ARGV0 "wazuh-modulesd"
 #endif
 
 #define N_MIN_INPUT_THREADS 1
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
-#define WIN32_MAX_FILES 200
 
 ///< Size of hash table to save the status file
 #define LOCALFILES_TABLE_SIZE 40
@@ -35,6 +34,8 @@
 #define OS_LOGCOLLECTOR_JSON_PATH       "path"
 #define OS_LOGCOLLECTOR_JSON_HASH       "hash"
 #define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
+
+#define WM_LOGCOLLECTOR_LOGTAG ARGV0 ":logcollector" // Tag for log messages
 
 #include "shared.h"
 #include "config/localfile-config.h"
@@ -256,7 +257,6 @@ int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
 void w_get_hash_context(const char * path, SHA_CTX *context, int64_t position);
 
 extern int sample_log_length;
-extern int lc_debug_level;
 extern int accept_remote;
 extern int N_INPUT_THREADS;
 extern int OUTPUT_QUEUE_SIZE;

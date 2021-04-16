@@ -16,6 +16,7 @@
 
 #include "../../headers/shared.h"
 #include "../../logcollector/state.h"
+#include "../../logcollector/logcollector.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
@@ -73,7 +74,8 @@ void test_w_logcollector_state_init_fail_hash_create_global(void ** state) {
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'logcollector_state' hash table");
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1296): Unable to create a 'logcollector_state' hash table");
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -102,7 +104,9 @@ void test_w_logcollector_state_init_fail_hash_create_interval(void ** state) {
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
-    expect_string(__wrap__merror_exit, formatted_msg, "(1296): Unable to create a 'logcollector_state' hash table");
+
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1296): Unable to create a 'logcollector_state' hash table");
 
     will_return(__wrap_OSHash_setSize, 1);
     will_return(__wrap_OSHash_setSize, 1);
@@ -131,7 +135,8 @@ void test_w_logcollector_state_init_fail_hash_setsize_global(void ** state) {
     will_return(__wrap_OSHash_Create, 3);
 
     will_return(__wrap_OSHash_setSize, 0);
-    expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'logcollector_state' hash table");
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1297): Unable to set size of 'logcollector_state' hash table");
 
     will_return(__wrap_OSHash_setSize, 1);
 
@@ -159,7 +164,9 @@ void test_w_logcollector_state_init_fail_hash_setsize_interval(void ** state) {
 
     will_return(__wrap_OSHash_setSize, 1);
     will_return(__wrap_OSHash_setSize, 0);
-    expect_string(__wrap__merror_exit, formatted_msg, "(1297): Unable to set size of 'logcollector_state' hash table");
+
+    expect_string(__wrap__mterror_exit, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror_exit, formatted_msg, "(1297): Unable to set size of 'logcollector_state' hash table");
 
     w_logcollector_state_init(LC_STATE_GLOBAL|LC_STATE_INTERVAL, true);
 
@@ -423,7 +430,8 @@ void test__w_logcollector_state_update_file_fail_update(void ** state) {
     expect_value(__wrap_OSHash_Add, key, "/test_path");
     will_return(__wrap_OSHash_Add, 0);
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
                   "(1299): Failure to update '/test_path' to 'logcollector_state' hash table");
 
     _w_logcollector_state_update_file(&stat, "/test_path", 100);
@@ -602,7 +610,8 @@ void test__w_logcollector_state_update_target_OSHash_Add_fail(void ** state) {
     expect_value(__wrap_OSHash_Add, key, "/test_path");
     will_return(__wrap_OSHash_Add, 0);
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
                   "(1299): Failure to update '/test_path' to 'logcollector_state' hash table");
 
     _w_logcollector_state_update_target(&stats, fpath, target_str, dropped);
@@ -836,7 +845,8 @@ void test_w_logcollector_state_dump_fail_open(void ** state) {
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, NULL);
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
                   "(1103): Could not open file "
                   "'var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
 
@@ -856,7 +866,8 @@ void test_w_logcollector_state_dump_fail_write(void ** state) {
     will_return(__wrap_fopen, (FILE *) 100);
     will_return(__wrap_fwrite, 0);
 
-    expect_string(__wrap__merror, formatted_msg,
+    expect_string(__wrap__mterror, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg,
                   "(1110): Could not write file "
                   "'var/run/wazuh-logcollector.state' due to [(0)-(Success)].");
 

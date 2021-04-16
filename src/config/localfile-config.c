@@ -9,14 +9,11 @@
  */
 
 #include "shared.h"
-#include "localfile-config.h"
-#include "config.h"
+#include "wazuh_modules/wmodules.h"
 
-int maximum_files;
-int current_files;
-int total_files;
-
-
+int maximum_files = 0;
+int current_files = 0;
+int total_files = 0;
 
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -46,8 +43,56 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logreader_config *log_config;
     size_t labels_z=0;
     label_flags_t flags;
+    wm_logcollector_t *logcollector = NULL;
+    wmodule **const wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
 
-    log_config = (logreader_config *)d1;
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        wmodule *cur_wmodule_exists = *wmodules;
+        int found = 0;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,LOGCOLLECTOR_WM_NAME) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    found = 1;
+                    break;
+                }
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+
+        if(!found) {
+            while (cur_wmodule->next) {
+                cur_wmodule = cur_wmodule->next;
+            }
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+            cur_wmodule->context = &WM_LOGCOLLECTOR_CONTEXT;
+            cur_wmodule->tag = strdup(LOGCOLLECTOR_WM_NAME);
+        }
+    } else {
+        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+        cur_wmodule->context = &WM_LOGCOLLECTOR_CONTEXT;
+        cur_wmodule->tag = strdup(LOGCOLLECTOR_WM_NAME);
+    }
+
+    if (NULL == cur_wmodule->data) {
+        os_calloc(1, sizeof(wm_logcollector_t), logcollector);
+        /* Reading the internal options */
+        int ret = wm_logcollector_read(logcollector);
+        if (OS_SUCCESS != ret) {
+            os_free(logcollector);
+            return ret;
+        }
+        cur_wmodule->data = logcollector;
+    } else {
+        logcollector = cur_wmodule->data;
+    }
+
+    log_config = &logcollector->log_config;
 
     if (maximum_files && current_files >= maximum_files) {
         mwarn(FILE_LIMIT, maximum_files);
@@ -589,143 +634,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     }
 
     return (0);
-}
-
-int Test_Localfile(const char * path){
-    int fail = 0;
-    logreader_config test_localfile = { .agent_cfg = 0 };
-
-    if (ReadConfig(CAGENT_CONFIG | CLOCALFILE | CSOCKET, path, &test_localfile, NULL) < 0) {
-        merror(RCONFIG_ERROR,"Localfile", path);
-        fail = 1;
-    }
-
-    Free_Localfile(&test_localfile);
-
-    if (fail) {
-        return -1;
-    } else {
-        return 0;
-    }
-}
-
-void Free_Localfile(logreader_config * config){
-    int i, j;
-
-    if (config) {
-        if (config->config) {
-            for (i = 0; config->config[i].file; i++) {
-                Free_Logreader(&config->config[i]);
-            }
-
-            free(config->config);
-        }
-
-        if (config->socket_list) {
-            for (i = 0; config->socket_list[i].name; i++) {
-                free(config->socket_list[i].name);
-                free(config->socket_list[i].location);
-                free(config->socket_list[i].prefix);
-            }
-
-            free(config->socket_list);
-        }
-
-        if (config->globs) {
-            for (i = 0; config->globs[i].gpath; i++) {
-                if (config->globs[i].gfiles->file) {
-                    Free_Logreader(config->globs[i].gfiles);
-                    for (j = 1; config->globs[i].gfiles[j].file; j++) {
-                        free(config->globs[i].gfiles[j].file);
-                    }
-                }
-                free(config->globs[i].gfiles);
-            }
-
-            free(config->globs);
-        }
-    }
-}
-
-void Free_Logreader(logreader * logf) {
-    int i;
-
-    if (logf) {
-        free(logf->ffile);
-        free(logf->file);
-        free(logf->logformat);
-        free(logf->djb_program_name);
-        free(logf->alias);
-        free(logf->query);
-        free(logf->exclude);
-
-        if (logf->target) {
-            for (i = 0; logf->target[i]; i++) {
-                free(logf->target[i]);
-            }
-
-            free(logf->target);
-        }
-
-        free(logf->log_target);
-
-        labels_free(logf->labels);
-
-        if (logf->fp) {
-            fclose(logf->fp);
-        }
-
-        if (logf->out_format) {
-            for (i = 0; logf->out_format[i]; ++i) {
-                free(logf->out_format[i]->target);
-                free(logf->out_format[i]->format);
-                free(logf->out_format[i]);
-            }
-
-            free(logf->out_format);
-        }
-    }
-}
-
-int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf) {
-    if (*logf) {
-        int size = 0;
-        int x;
-        while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) {
-            size++;
-        }
-        if (i < size) {
-            if (fr) {
-                Free_Logreader(&(*logf)[i]);
-            } else {
-                free((*logf)[i].file);
-                if((*logf)[i].fp) {
-                    fclose((*logf)[i].fp);
-                }
-            #ifdef WIN32
-                if ((*logf)[i].h && (*logf)[i].h != INVALID_HANDLE_VALUE) {
-                    CloseHandle((*logf)[i].h);
-                }
-            #endif
-            }
-
-            for (x = i; x < size; x++) {
-                memcpy(&(*logf)[x], &(*logf)[x + 1], sizeof(logreader));
-            }
-
-            if (!size)
-                size = 1;
-            os_realloc(*logf, size*sizeof(logreader), *logf);
-
-            if(gl && globf) {
-                (*globf).num_files--;
-            }
-
-            current_files--;
-            return 0;
-        }
-    }
-    return (OS_INVALID);
 }
 
 w_multiline_match_type_t w_get_attr_match(xml_node * node) {

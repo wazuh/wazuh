@@ -75,9 +75,6 @@ int verifyRemoteConf(){
 	} else if (Test_Rootcheck(configPath) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "rootcheck");
 		goto fail;
-    } else if (Test_Localfile(configPath) < 0) {
-		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "localfile");
-		goto fail;
     } else if (Test_Client(configPath) < 0) {
 		snprintf(msg_output, OS_MAXSTR, "%c:%s:%s: '%s'. ",  LOCALFILE_MQ, "wazuh-agent", AG_IN_RCON, "client");
 		goto fail;

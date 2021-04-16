@@ -16,7 +16,7 @@
 #define CSYSCHECK     000000004
 #define CROOTCHECK    000000010
 #define CALERTS       000000020
-#define CLOCALFILE    000000040
+#define CLOCALFILE    000000040  // Deprecated
 #define CREMOTE       000000100
 #define CCLIENT       000000200
 #define CMAIL         000000400
@@ -32,7 +32,7 @@
 #define CAUTHD        001000000
 #define CBUFFER       002000000
 #define CCLUSTER      004000000
-#define CSOCKET       010000000
+#define CSOCKET       010000000  // Deprecated
 #define CLOGTEST      020000000
 
 #define MAX_NEEDED_TAGS 4
@@ -92,9 +92,6 @@ int Test_Syscheck(const char * path);
 
 /* Verifies that the configuration for Rootcheck is correct. Return 0 on success or -1 on error.  */
 int Test_Rootcheck(const char * path);
-
-/* Verifies that the configuration for Localfile is correct. Return 0 on success or -1 on error.  */
-int Test_Localfile(const char * path);
 
 /* Verifies that the configuration for Client is correct. Return 0 on success or -1 on error.  */
 int Test_Client(const char * path);

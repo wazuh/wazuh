@@ -10,8 +10,7 @@
  */
 
 #include "shared.h"
-#include "config.h"
-#include "localfile-config.h"
+#include "wazuh_modules/wmodules.h"
 
 
 int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
@@ -24,7 +23,58 @@ int Read_Socket(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     logsocket *logf;
     logreader_config *log_config;
 
-    log_config = (logreader_config *)d1;
+    wm_logcollector_t *logcollector = NULL;
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    wmodule *cur_wmodule_exists;
+
+    // Allocate memory
+
+    if ((cur_wmodule = *wmodules)) {
+        cur_wmodule_exists = *wmodules;
+        int found = 0;
+
+        while (cur_wmodule_exists) {
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,LOGCOLLECTOR_WM_NAME) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    found = 1;
+                    break;
+                }
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+
+        if(!found) {
+            while (cur_wmodule->next) {
+                cur_wmodule = cur_wmodule->next;
+            }
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+            cur_wmodule->context = &WM_LOGCOLLECTOR_CONTEXT;
+            cur_wmodule->tag = strdup(LOGCOLLECTOR_WM_NAME);
+        }
+    } else {
+        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+        cur_wmodule->context = &WM_LOGCOLLECTOR_CONTEXT;
+        cur_wmodule->tag = strdup(LOGCOLLECTOR_WM_NAME);
+    }
+
+    if (NULL == cur_wmodule->data) {
+        os_calloc(1, sizeof(wm_logcollector_t), logcollector);
+        /* Reading the internal options */
+        int ret = OS_SUCCESS;
+        if (ret = wm_logcollector_read(logcollector), OS_SUCCESS != ret) {
+            os_free(logcollector);
+            return ret;
+        }
+        cur_wmodule->data = logcollector;
+    } else {
+        logcollector = cur_wmodule->data;
+    }
+
+    log_config = &logcollector->log_config;
 
     unsigned int pl = 0;
     unsigned int i = 0;
