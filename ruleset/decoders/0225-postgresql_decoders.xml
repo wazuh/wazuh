@@ -18,3 +18,9 @@
   <regex offset="after_prematch">^\S+ (\w+): </regex>
   <order>status</order>
 </decoder>
+
+<decoder name="postgresql_log">
+  <prematch>^\d\d\d\d-\d\d-\d\d \S+ \w+ </prematch>
+  <regex offset="after_prematch">^\S+ (\w+): </regex>
+  <order>status</order>
+</decoder>
