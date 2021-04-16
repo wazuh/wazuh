@@ -2559,7 +2559,6 @@ void test_fim_delete_file_event_no_conf(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    char buffer_msg[OS_SIZE_128] = {0};
     char buffer_config[OS_SIZE_128] = {0};
 
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -2569,6 +2568,7 @@ void test_fim_delete_file_event_no_conf(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
     snprintf(buffer_msg, OS_SIZE_128, FIM_DELETE_EVENT_PATH_NOCONF, fim_data->fentry->file_entry.path);
+
     snprintf(buffer_config, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "file", fim_data->fentry->file_entry.path);
 
     // Inside fim_configuration_directory
@@ -3232,7 +3232,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     will_return(__wrap_fim_db_set_all_unscanned, 0);
 
     expect_wrapper_fim_db_get_count_entries(syscheck.database, 50000);
-    // eliminacion maximun monitored
+
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
