@@ -93,17 +93,17 @@ int execd_config();
 int read_exec_config(void);
 
 /**
- * @brief Function to shutdown execd module.
- *
- */
-extern void execd_shutdown();
-
-/**
  * @brief Main function on the execd. Does all the data receiving, etc.
  *
  * @param q Specific queue to start with.
  */
 void execd_start(int q);
+
+/**
+ * @brief Function to shutdown execd module.
+ *
+ */
+void execd_shutdown();
 
 /**
  * @brief Gets a pointer to the command name (full path).

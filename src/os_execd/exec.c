@@ -32,46 +32,16 @@ static int  f_time_reading = 1;
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
 time_t pending_upg = 0;
 
-#ifndef WIN32
-
-/* Prototypes */
-void execd_shutdown() __attribute__((noreturn));
-STATIC int CheckManagerConfiguration(char ** output);
-
 /* Global variables */
-STATIC OSList *timeout_list;
 STATIC OSListNode *timeout_node;
+STATIC OSList *timeout_list;
 STATIC OSHash *repeated_hash;
 
-/* Shut down execd properly */
-void execd_shutdown() {
-    /* Remove pending active responses */
-    mtinfo(WM_EXECD_LOGTAG, EXEC_SHUTDOWN);
+#ifndef WIN32
 
-    timeout_node = timeout_list ? OSList_GetFirstNode(timeout_list) : NULL;
-    while (timeout_node) {
-        timeout_data *list_entry;
+STATIC int CheckManagerConfiguration(char ** output);
 
-        list_entry = (timeout_data *)timeout_node->data;
-
-        mtdebug2(WM_EXECD_LOGTAG, "Delete pending AR: '%s' '%s'", list_entry->command[0], list_entry->parameters);
-        wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
-        if (wfd) {
-            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
-            wpclose(wfd);
-        } else {
-            mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
-        }
-
-        /* Delete current node - already sets the pointer to next */
-        OSList_DeleteCurrentlyNode(timeout_list);
-        timeout_node = OSList_GetCurrentlyNode(timeout_list);
-
-        /* Clear the memory */
-        free_timeout_entry(list_entry);
-    }
-}
-
+/** @copydoc execd_start */
 void execd_start(int q) {
     int i, childcount = 0;
     time_t curr_time;
@@ -589,6 +559,35 @@ void exec_cmd_win(char *cmd) {
 //
 // Independent OS functions.
 //
+
+/** @copydoc execd_shutdown */
+void execd_shutdown() {
+    /* Remove pending active responses */
+    mtinfo(WM_EXECD_LOGTAG, EXEC_SHUTDOWN);
+
+    timeout_node = timeout_list ? OSList_GetFirstNode(timeout_list) : NULL;
+    while (timeout_node) {
+        timeout_data *list_entry;
+
+        list_entry = (timeout_data *)timeout_node->data;
+
+        mtdebug2(WM_EXECD_LOGTAG, "Delete pending AR: '%s' '%s'", list_entry->command[0], list_entry->parameters);
+        wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+        if (wfd) {
+            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+            wpclose(wfd);
+        } else {
+            mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
+        }
+
+        /* Delete current node - already sets the pointer to next */
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+
+        /* Clear the memory */
+        free_timeout_entry(list_entry);
+    }
+}
 
 /** @copydoc free_timeout_entry */
 void free_timeout_entry(timeout_data *timeout_entry) {
