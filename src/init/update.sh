@@ -426,10 +426,10 @@ UpdateOldVersions()
         OSSEC_CONF_FILE="$PREINSTALLEDDIR/etc/ossec.conf"
         OSSEC_CONF_FILE_BACKUP="$PREINSTALLEDDIR/etc/ossec.conf.backup"
 
-        # rename ossec.conf to ossec.conf.backup
+        # Rename ossec.conf to ossec.conf.backup
         mv $OSSEC_CONF_FILE $OSSEC_CONF_FILE_BACKUP
 
-        # Rename shared agent.conf to shared.conf
+        # Delete centralized agent.conf
         if [ ! "$INSTYPE" = "agent" ]; then
             for item_path in $PREINSTALLEDDIR/etc/shared/*
             do

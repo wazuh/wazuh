@@ -68,10 +68,12 @@ If Not objFSO.fileExists(home_dir & "client.keys") Then
 
 End If
 
+' Rename ossec.conf to ossec.conf.backup
 If objFSO.fileExists(home_dir & "ossec.conf") Then
     objFSO.MoveFile home_dir & "ossec.conf" , home_dir & "ossec.conf.backup"
 End If
 
+' Delete centralized agent.conf
 If objFSO.fileExists(home_dir & "shared\agent.conf") Then
     objFSO.DeleteFile home_dir & "shared\agent.conf"
 End If
