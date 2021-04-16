@@ -489,13 +489,13 @@ PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
     memset(buffer, 0, used_size);
 
     if (!EvtRender(context, event, EvtRenderEventValues, used_size, buffer, &used_size, &property_count)) {
-        mwarn(FIM_WHODATA_RENDER_EVENT, GetLastError());
+        mtwarn(ARGV0, FIM_WHODATA_RENDER_EVENT, GetLastError());
         os_free(buffer);
         return buffer;
     }
 
     if (property_count != fields_number) {
-        mwarn(FIM_WHODATA_RENDER_PARAM);
+        mtwarn(ARGV0, FIM_WHODATA_RENDER_PARAM);
         os_free(buffer);
     }
 
@@ -509,7 +509,7 @@ int whodata_get_event_id(const PEVT_VARIANT raw_data, short *event_id) {
 
     // EventID
     if (raw_data[RENDERED_EVENT_ID].Type != EvtVarTypeUInt16) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_EVENT_ID].Type, "event_id");
+        mtwarn(ARGV0, FIM_WHODATA_PARAMETER, raw_data[RENDERED_EVENT_ID].Type, "event_id");
         return -1;
     }
     *event_id = raw_data[RENDERED_EVENT_ID].Int16Val;
@@ -530,7 +530,7 @@ int whodata_get_handle_id(const PEVT_VARIANT raw_data, unsigned __int64 *handle_
         } else if (raw_data[RENDERED_HANDLE_ID].Type == EvtVarTypeHexInt32) {
             *handle_id = (unsigned __int64) raw_data[RENDERED_HANDLE_ID].UInt32Val;
         } else {
-            mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_HANDLE_ID].Type, "handle_id");
+            mtwarn(ARGV0, FIM_WHODATA_PARAMETER, raw_data[RENDERED_HANDLE_ID].Type, "handle_id");
             return -1;
         }
     } else {
@@ -546,7 +546,7 @@ int whodata_get_access_mask(const PEVT_VARIANT raw_data, unsigned long *mask) {
 
     // AccessMask
     if (raw_data[RENDERED_ACCESS_MASK].Type != EvtVarTypeHexInt32) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_ACCESS_MASK].Type, "mask");
+        mtwarn(ARGV0, FIM_WHODATA_PARAMETER, raw_data[RENDERED_ACCESS_MASK].Type, "mask");
         return -1;
     }
     *mask = raw_data[RENDERED_ACCESS_MASK].UInt32Val;
@@ -561,7 +561,7 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
 
     // ObjectName
     if (raw_data[RENDERED_PATH].Type != EvtVarTypeString) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_PATH].Type, "path");
+        mtwarn(ARGV0, FIM_WHODATA_PARAMETER, raw_data[RENDERED_PATH].Type, "path");
         return -1;
     }  else {
         if (event_data->path = get_whodata_path(raw_data[RENDERED_PATH].XmlVal), !event_data->path) {
@@ -579,7 +579,7 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
 
     // SubjectUserName
     if (raw_data[RENDERED_USER_NAME].Type != EvtVarTypeString) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_USER_NAME].Type, "user_name");
+        mtwarn(ARGV0, FIM_WHODATA_PARAMETER, raw_data[RENDERED_USER_NAME].Type, "user_name");
         event_data->user_name = NULL;
     } else {
         event_data->user_name = convert_windows_string(raw_data[RENDERED_USER_NAME].XmlVal);
@@ -587,7 +587,7 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
 
     // ProcessName
     if (raw_data[RENDERED_PROCESS_NAME].Type != EvtVarTypeString) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_PROCESS_NAME].Type, "process_name");
+        mtwarn(ARGV0, FIM_WHODATA_PARAMETER, raw_data[RENDERED_PROCESS_NAME].Type, "process_name");
         event_data->process_name = NULL;
     } else {
         event_data->process_name = convert_windows_string(raw_data[RENDERED_PROCESS_NAME].XmlVal);
@@ -601,7 +601,7 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
         } else if (raw_data[RENDERED_PROCESS_ID].Type == EvtVarTypeHexInt32) {
             event_data->process_id = (unsigned __int64) raw_data[RENDERED_PROCESS_ID].UInt32Val;
         } else {
-            mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_PROCESS_ID].Type, "process_id");
+            mtwarn(ARGV0, FIM_WHODATA_PARAMETER, raw_data[RENDERED_PROCESS_ID].Type, "process_id");
             event_data->process_id = 0;
         }
     } else {
@@ -610,7 +610,7 @@ int whodata_event_parse(const PEVT_VARIANT raw_data, whodata_evt *event_data) {
 
     // SubjectUserSid
     if (raw_data[RENDERED_USER_SID].Type != EvtVarTypeSid) {
-        mwarn(FIM_WHODATA_PARAMETER, raw_data[RENDERED_USER_SID].Type, "user_id");
+        mtwarn(ARGV0, FIM_WHODATA_PARAMETER, raw_data[RENDERED_USER_SID].Type, "user_id");
         event_data->user_id = NULL;
     } else if (!ConvertSidToStringSid(raw_data[RENDERED_USER_SID].SidVal, &event_data->user_id)) {
         if (event_data->user_name) {
@@ -763,7 +763,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 // Get the event time
                 if (buffer[RENDERED_TIMESTAMP].Type != EvtVarTypeFileTime) {
-                    mwarn(FIM_WHODATA_PARAMETER, buffer[RENDERED_TIMESTAMP].Type, "event_time");
+                    mtwarn(ARGV0, FIM_WHODATA_PARAMETER, buffer[RENDERED_TIMESTAMP].Type, "event_time");
                     w_evt->scan_directory = 2;
                     goto clean;
                 }
@@ -1176,7 +1176,7 @@ int get_volume_names() {
 
     if (fh == INVALID_HANDLE_VALUE) {
         win_error = GetLastError();
-        mwarn("FindFirstVolumeW failed (%u)'%s'", win_error, strerror(win_error));
+        mtwarn(ARGV0, "FindFirstVolumeW failed (%u)'%s'", win_error, strerror(win_error));
         FindVolumeClose(fh);
         return success;
     }
@@ -1198,7 +1198,7 @@ int get_volume_names() {
             volume_name[3]     != L'\\' ||
             volume_name[index] != L'\\')
         {
-            mwarn("Find Volume returned a bad path: %s", convert_volume);
+            mtwarn(ARGV0, "Find Volume returned a bad path: %s", convert_volume);
             break;
         }
 
@@ -1210,7 +1210,7 @@ int get_volume_names() {
 
         if (char_count == 0) {
             win_error = GetLastError();
-            mwarn("QueryDosDeviceW failed (%u)'%s'", win_error, strerror(win_error));
+            mtwarn(ARGV0, "QueryDosDeviceW failed (%u)'%s'", win_error, strerror(win_error));
             break;
         }
 
@@ -1226,7 +1226,7 @@ int get_volume_names() {
             win_error = GetLastError();
 
             if (win_error != ERROR_NO_MORE_FILES) {
-                mwarn("FindNextVolumeW failed (%u)'%s'", win_error, strerror(win_error));
+                mtwarn(ARGV0, "FindNextVolumeW failed (%u)'%s'", win_error, strerror(win_error));
                 break;
             }
 
@@ -1269,7 +1269,7 @@ int get_drive_names(wchar_t *volume_name, char *device) {
         }
 
         if (retval = GetLastError(), retval != ERROR_MORE_DATA) {
-            mwarn("GetVolumePathNamesForVolumeNameW (%u)'%s'", retval, strerror(retval));
+            mtwarn(ARGV0, "GetVolumePathNamesForVolumeNameW (%u)'%s'", retval, strerror(retval));
             break;
         }
 

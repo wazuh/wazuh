@@ -31,6 +31,8 @@
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
 
+#define SYSCHECK_MODULE_NAME "wazuh-modulesd:syscheck"
+
 char inv_hKey[50];
 
 static registry default_config[] = {
@@ -490,7 +492,8 @@ static void test_fim_registry_configuration_registry_found(void **state) {
 static void test_fim_registry_configuration_registry_not_found_arch_does_not_match(void **state) {
     registry *configuration;
 
-    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     configuration = fim_registry_configuration("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\something", ARCH_32BIT);
     assert_null(configuration);
@@ -499,7 +502,8 @@ static void test_fim_registry_configuration_registry_not_found_arch_does_not_mat
 static void test_fim_registry_configuration_registry_not_found_path_does_not_match(void **state) {
     registry *configuration;
 
-    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     configuration = fim_registry_configuration("HKEY_LOCAL_MACHINE\\Software\\Classes\\something", ARCH_64BIT);
     assert_null(configuration);
@@ -508,7 +512,8 @@ static void test_fim_registry_configuration_registry_not_found_path_does_not_mat
 static void test_fim_registry_configuration_null_key(void **state) {
     registry *configuration;
 
-    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     configuration = fim_registry_configuration(NULL, ARCH_64BIT);
     assert_null(configuration);
@@ -546,7 +551,8 @@ static void test_fim_registry_validate_recursion_level_invalid_recursion_level(v
     char *path = "HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\This\\must\\fail";
     registry *configuration = &syscheck.registry[1];
     int ret;
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg,
                   "(6217): Maximum level of recursion reached. Depth:3 recursion_level:0 "
                   "'HKEY_LOCAL_MACHINE\\Software\\RecursionLevel0\\This\\must\\fail'");
 
@@ -588,7 +594,8 @@ static void test_fim_registry_validate_ignore_ignore_entry(void **state) {
     registry *configuration = &syscheck.registry[2];
     int ret;
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg,
                   "(6260): Ignoring 'registry' '[x64] HKEY_LOCAL_MACHINE\\Software\\Ignore' due to "
                   "'HKEY_LOCAL_MACHINE\\Software\\Ignore'");
 
@@ -602,7 +609,8 @@ static void test_fim_registry_validate_ignore_regex_ignore_entry(void **state) {
     registry *configuration = &syscheck.registry[0];
     int ret;
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg,
                   "(6259): Ignoring 'registry' '[x64] "
                   "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\IgnoreRegex\\This\\must\\fail' due to sregex "
                   "'IgnoreRegex'");
@@ -790,22 +798,26 @@ static void test_fim_registry_calculate_hashes_no_config(void **state) {
 }
 
 static void test_fim_registry_scan_no_entries_configured(void **state) {
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
 
     fim_registry_scan();
 
@@ -826,8 +838,10 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     LPSTR gsid = "groupid";
     FILETIME last_write_time = { 0, 1000 };
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
-    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     // Scan a subkey of batfile
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
@@ -885,7 +899,8 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
     // Test
     fim_registry_scan();
@@ -905,9 +920,12 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     LPSTR gsid = "groupid";
     FILETIME last_write_time = { 0, 1000 };
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6919): Invalid syscheck registry entry: 'HKEY_LOCAL_MACHINE_Invalid_key\\Software\\Ignore' arch: '[x64] '.");
-    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6919): Invalid syscheck registry entry: 'HKEY_LOCAL_MACHINE_Invalid_key\\Software\\Ignore' arch: '[x64] '.");
+    expect_any_always(__wrap__mtdebug2, tag);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     // Scan a subkey of batfile
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
@@ -999,7 +1017,8 @@ static void test_fim_registry_scan_regular_scan(void **state) {
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_OK);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
 
     // Test
     fim_registry_scan();
@@ -1009,10 +1028,14 @@ static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
     syscheck.registry = one_entry_config;
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '[x64]'.");
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
-    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '[x64]'.");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     // Scan a subkey of batfile
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
@@ -1023,14 +1046,16 @@ static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
     will_return(__wrap_fim_db_get_registry_keys_not_scanned, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, NULL);
     will_return(__wrap_fim_db_get_registry_data_not_scanned, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
 
     // Test
     fim_registry_scan();
@@ -1043,9 +1068,12 @@ static void test_fim_registry_scan_RegQueryInfoKey_fail(void **state) {
     syscheck.registry = one_entry_config;
     syscheck.registry[0].opts = CHECK_REGISTRY_ALL;
 
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
-    expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
-    expect_any_always(__wrap__mdebug2, formatted_msg);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_START);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_any_always(__wrap__mtdebug2, formatted_msg);
 
     // Scan a subkey of batfile
     expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0,
@@ -1082,7 +1110,8 @@ static void test_fim_registry_process_value_delete_event_null_configuration(void
     // Test if the entry is not configured
     syscheck.registry = empty_config;
     snprintf(buff, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "registry", data->entry->registry_entry.key->path);
-    expect_string(__wrap__mdebug2, formatted_msg, buff);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg, buff);
 
     fim_registry_process_value_delete_event(syscheck.database, data->entry, &mutex, &alert, &event_mode, w_event);
 }
@@ -1110,7 +1139,8 @@ static void test_fim_registry_process_key_delete_event_null_configuration(void *
     // Test if the entry is not configured
     syscheck.registry = empty_config;
     snprintf(buff, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "registry", data->entry->registry_entry.key->path);
-    expect_string(__wrap__mdebug2, formatted_msg, buff);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg, buff);
 
     fim_registry_process_key_delete_event(syscheck.database, data->entry, &mutex, &alert, &event_mode, w_event);
 
@@ -1147,7 +1177,8 @@ static void test_fim_registry_process_value_event_null_configuration(void **stat
     // Test if the entry is not configured
     syscheck.registry = empty_config;
 
-    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg, "(6319): No configuration found for (registry):'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile'");
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
 }
@@ -1166,7 +1197,8 @@ static void test_fim_registry_process_value_event_ignore_event(void **state) {
     };
     syscheck.value_ignore = ignore_conf;
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg,
                   "(6260): Ignoring 'value' '[x64] HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' due to "
                   "'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename'");
 
@@ -1188,7 +1220,8 @@ static void test_fim_registry_process_value_event_restrict_event(void **state) {
     // Test if the entry is not configured
     syscheck.registry[0].restrict_value = restrict_list;
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg,
                   "(6203): Ignoring entry 'valuename' due to restriction 'restricted_value'");
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);
@@ -1209,7 +1242,8 @@ static void test_fim_registry_process_value_event_insert_data_error(void **state
                                    strlen("value_data"), REG_QWORD, "diff string");
     will_return(__wrap_fim_db_insert_registry_data, FIMDB_ERR);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, formatted_msg,
                   "(6944): Failed to insert value '[x64] HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename'");
 
     fim_registry_process_value_event(entry_array[1], entry_array[0], event_mode, data_buffer);

@@ -87,6 +87,7 @@ else()
     add_executable(test_win_whodata test_win_whodata.c)
     target_compile_options(test_win_whodata PRIVATE "-Wall")
     set(WIN_WHODATA_FLAGS "-Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn \
+                           -Wl,--wrap,_mtdebug2 -Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtwarn -Wl,--wrap,_mtinfo \
                            -Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG -Wl,--wrap,OSHash_Add_ex \
                            -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
                            -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \

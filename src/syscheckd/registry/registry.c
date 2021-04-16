@@ -447,7 +447,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         retval = get_registry_permissions(key_handle, permissions);
 
         if (retval != ERROR_SUCCESS) {
-            mwarn(FIM_EXTRACT_PERM_FAIL, path, retval);
+            mtwarn(ARGV0, FIM_EXTRACT_PERM_FAIL, path, retval);
             os_strdup("", key->perm);
         } else {
             key->perm = decode_win_permissions(permissions);
@@ -611,7 +611,7 @@ void fim_registry_process_unscanned_entries() {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
-        mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+        mtwarn(ARGV0, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
     } else if (file && file->elements) {
         fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex,
                                  fim_registry_process_key_delete_event, syscheck.database_store, &_base_line,
@@ -623,7 +623,7 @@ void fim_registry_process_unscanned_entries() {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
-        mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
+        mtwarn(ARGV0, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
     } else if (file && file->elements) {
         fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_entry_mutex,
                                                fim_registry_process_value_delete_event, syscheck.database_store,
@@ -734,7 +734,7 @@ void fim_read_values(HKEY key_handle,
     if (new->registry_entry.key->id == 0) {
         if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path,
                                           new->registry_entry.key->arch, &new->registry_entry.key->id) != FIMDB_OK) {
-            mwarn(FIM_REGISTRY_FAIL_TO_GET_KEY_ID, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
+            mtwarn(ARGV0, FIM_REGISTRY_FAIL_TO_GET_KEY_ID, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
                   new->registry_entry.key->path);
             return;
         }

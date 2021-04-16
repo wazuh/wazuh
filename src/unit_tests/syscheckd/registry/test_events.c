@@ -18,6 +18,8 @@
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
 
+#define SYSCHECK_MODULE_NAME "wazuh-modulesd:syscheck"
+
 static int teardown_cjson_object(void **state) {
     cJSON *object = *state;
 
@@ -31,7 +33,8 @@ static void test_fim_registry_event_null_new_data(void **state) {
     registry configuration;
     cJSON *ret;
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_EVENT_NULL_ENTRY);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_EVENT_NULL_ENTRY);
 
     ret = fim_registry_event(NULL, &saved, &configuration, FIM_SCHEDULED, FIM_ADDED, NULL, NULL);
 
@@ -48,7 +51,8 @@ static void test_fim_registry_event_null_new_key(void **state) {
     new.registry_entry.key = NULL;
     new.registry_entry.value = NULL;
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_EVENT_NULL_ENTRY_KEY);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_EVENT_NULL_ENTRY_KEY);
 
     ret = fim_registry_event(&new, &saved, &configuration, FIM_SCHEDULED, FIM_ADDED, NULL, NULL);
 
@@ -68,7 +72,8 @@ static void test_fim_registry_event_invalid_new_entry_type(void **state) {
 
     saved.type = FIM_TYPE_REGISTRY;
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE);
 
     ret = fim_registry_event(&new, &saved, &configuration, FIM_SCHEDULED, FIM_ADDED, NULL, NULL);
 
@@ -85,7 +90,8 @@ static void test_fim_registry_event_invalid_new_entry_type_null_saved_entry(void
     new.registry_entry.key = &new_key;
     new.registry_entry.value = NULL;
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE);
 
     ret = fim_registry_event(&new, NULL, &configuration, FIM_SCHEDULED, FIM_ADDED, NULL, NULL);
 
@@ -108,7 +114,8 @@ static void test_fim_registry_event_invalid_saved_entry_type(void **state) {
     saved.registry_entry.key = &saved_key;
     saved.registry_entry.value = NULL;
 
-    expect_string(__wrap__mwarn, formatted_msg, FIM_REGISTRY_EVENT_WRONG_SAVED_TYPE);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, formatted_msg, FIM_REGISTRY_EVENT_WRONG_SAVED_TYPE);
 
     ret = fim_registry_event(&new, &saved, &configuration, FIM_SCHEDULED, FIM_ADDED, NULL, NULL);
 

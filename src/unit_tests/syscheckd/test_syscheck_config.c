@@ -508,17 +508,9 @@ void test_getSyscheckConfig_no_directories(void **state)
     (void) state;
     cJSON * ret;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
     OS_XML xml;
-    XML_NODE node;
-    XML_NODE chld_node;
     OS_ReadXML("test_empty_config.conf", &xml);
-    node = OS_GetElementsbyNode(&xml, NULL);
-    chld_node = OS_GetElementsbyNode(&xml, node[0]);
-    Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
-    OS_ClearNode(chld_node);
-    OS_ClearNode(node);
+    Read_Syscheck(&xml, NULL, &syscheck, CWMODULE, 0);
     OS_ClearXML(&xml);
 
 
@@ -599,7 +591,9 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     (void) state;
     int ret;
 
+    #ifndef WIN32
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    #endif //WIN32
 
     OS_XML xml;
     XML_NODE node;

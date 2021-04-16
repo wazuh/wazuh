@@ -109,8 +109,9 @@ add_executable(test_create_db test_create_db.c)
 
 target_compile_options(test_create_db PRIVATE "-Wall")
 
-set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mdebug1\
-                          -Wl,--wrap,_mtdebug2 -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
+set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,_mtinfo -Wl,--wrap,_mterror -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtdebug2 \
+                          -Wl,--wrap,_minfo -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 \
+                          -Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_get_paths_from_inode \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,fim_db_insert -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
@@ -141,7 +142,7 @@ endif()
 add_test(NAME test_create_db COMMAND test_create_db)
 
 
-set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_mterror -Wl,--wrap,_mtwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,_mdebug1 \
+set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,_mterror -Wl,--wrap,_mtwarn -Wl,--wrap,lstat -Wl,--wrap,stat -Wl,--wrap,_mdebug1 -Wl,--wrap,_mtdebug1\
                            -Wl,--wrap,wfopen -Wl,--wrap,fread -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fwrite \
                            -Wl,--wrap,w_compress_gzfile -Wl,--wrap,IsDir -Wl,--wrap,mkdir_ex -Wl,--wrap,fflush \
                            -Wl,--wrap,w_uncompress_gzfile -Wl,--wrap,OS_MD5_File -Wl,--wrap,File_DateofChange \
@@ -197,18 +198,7 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mte
                          -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merror -Wl,--wrap,_merror_exit -Wl,--wrap,_minfo \
                          -Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int")
 list(APPEND syscheckd_tests_names "test_syscheck")
-if(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
-                                    -Wl,--wrap=Read_Syscheck_Config \
-                                    -Wl,--wrap=os_wait \
-                                    -Wl,--wrap=rootcheck_init \
-                                    -Wl,--wrap=start_daemon \
-                                    -Wl,--wrap=File_DateofChange \
-                                    -Wl,--wrap,getpid")
-
-else()
-  list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
-endif()
+list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
 
 set(FIM_SYNC_BASE_FLAGS "-Wl,--wrap,fim_send_sync_msg -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 \
                          -Wl,--wrap,_mterror -Wl,--wrap,_mtdebug2 -Wl,--wrap,queue_push_ex \

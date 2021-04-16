@@ -58,7 +58,8 @@ if(${TARGET} STREQUAL "winagent")
     target_compile_options(test_fim_db_registries PRIVATE "-Wall")
 
     target_link_libraries(test_fim_db_registries SYSCHECK_O ${TEST_DEPS})
-    target_link_libraries(test_fim_db_registries "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn,--wrap=sqlite3_step")
+    target_link_libraries(test_fim_db_registries "-Wl,--wrap=_mtdebug2,--wrap=_mtdebug1,--wrap=_mterror,--wrap=_mtwarn,--wrap=sqlite3_step
+                                                  -Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn,--wrap=sqlite3_step")
 
     add_test(NAME test_fim_db_registries COMMAND test_fim_db_registries)
 endif()

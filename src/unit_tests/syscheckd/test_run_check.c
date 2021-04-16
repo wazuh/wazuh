@@ -239,7 +239,7 @@ void test_fim_whodata_initialize(void **state)
 
     expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh_modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
     expect_string(__wrap__mtdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
 
     // Expand directories
@@ -363,7 +363,7 @@ void test_fim_whodata_initialize_fail_set_policies(void **state)
 void test_set_priority_windows_thread_highest(void **state) {
     syscheck.process_priority = -10;
 
-    expect_string(__wrap__mdtebug1, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_TAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "(6320): Setting process priority to: '-10'");
 
     will_return(wrap_GetCurrentThread, (HANDLE)123456);
