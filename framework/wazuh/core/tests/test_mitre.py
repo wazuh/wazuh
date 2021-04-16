@@ -13,6 +13,12 @@ with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.mitre import *
 
+# Tactics variables
+TACTICS_FIELDS = {'id': 'id', 'name': 'name', 'description': 'description', 'short_name': 'short_name',
+                  'created_time': 'created_time', 'modified_time': 'modified_time'}
+TACTICS_RELATION_FIELDS = {'related_techniques'}
+TACTICS_MIN_SELECT_FIELDS = {'id'}
+TACTICS_TABLE_NAME = 'tactic'
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
 def test_WazuhDBQueryMitreMetadata(mock_wdb):
