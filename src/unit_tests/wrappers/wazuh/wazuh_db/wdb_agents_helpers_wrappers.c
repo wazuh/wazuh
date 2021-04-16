@@ -51,9 +51,9 @@ cJSON* __wrap_wdb_agents_vuln_cves_remove_by_status(int id,
 }
 
 int __wrap_wdb_agents_vuln_cves_update_status(int id,
-                                       const char *old_status,
-                                       const char *new_status,
-                                       __attribute__((unused)) int *sock) {
+                                              const char *old_status,
+                                              const char *new_status,
+                                              __attribute__((unused)) int *sock) {
     check_expected(id);
     check_expected(old_status);
     check_expected(new_status);
