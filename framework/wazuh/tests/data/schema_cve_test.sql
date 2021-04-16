@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
     version TEXT,
     architecture TEXT,
     cve TEXT,
+    type TEXT,
+    status TEXT,
     PRIMARY KEY (name, version, architecture, cve)
 );
 CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);
