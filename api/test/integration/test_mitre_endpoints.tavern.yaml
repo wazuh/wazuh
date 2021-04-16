@@ -27,3 +27,317 @@ stages:
           total_affected_items: 2
           total_failed_items: 0
           failed_items: [ ]
+
+---
+test_name: GET /mitre/techniques
+
+marks:
+  - base_technique_tests
+
+stages:
+
+  - name: Try to show one technique
+    request: &general_techniques_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/techniques"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: &techniques_response
+            - subtechnique_of: !anything
+              deprecated: !anyint
+              remote_support: !anyint
+              name: !anystr
+              mitre_version: !anystr
+              id: !anystr
+              mitre_detection: !anystr
+              description: !anystr
+              modified_time: !anystr
+              network_requirements: !anyint
+              created_time: !anystr
+              related_tactics: !anything
+              related_mitigations: !anything
+              related_software: !anything
+              related_groups: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Try to show one technique with offset = 1
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      save:
+        $ext:
+          function: tavern_utils:test_save_response_data_mitre
+          extra_kwargs:
+            fields:
+              - id
+              - name
+              - created_time
+              - deprecated
+              - remote_support
+              - related_tactics
+              - related_groups
+              - related_mitigations
+              - related_software
+
+  - name: Check that the offset is working properly, try to show two techniques with offset = 0
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+      verify_response_with:
+        - function: tavern_utils:test_validate_mitre
+          extra_kwargs:
+            data: "{response_data}"
+            index: 1
+
+  - name: Try to show all techniques without limit
+    request:
+      verify: False
+      <<: *general_techniques_request
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+
+  - name: Try to get all techniques with limit = 0
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+
+  - name: Get three specified technique (one of them does not exist in the database)
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        technique_ids:
+          - "attack-pattern--840a987a-99bd-4a80-a5c9-0cb2baa6cade"
+          - "attack-pattern--db8f5003-3b20-48f0-9b76-123e44208120"
+          - "attack-pattern--db8f5003-3b20-48f0-9b76-NOTEXIST"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *techniques_response
+              id: "attack-pattern--840a987a-99bd-4a80-a5c9-0cb2baa6cade"
+            - <<: *techniques_response
+              id: "attack-pattern--db8f5003-3b20-48f0-9b76-123e44208120"
+          failed_items: [ ]
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Sort without limit
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        sort: -related_mitigations
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "related_mitigations"
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Show techniques using valid select
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        select: 'related_groups,deprecated,name'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'id,related_groups,deprecated,name' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Show techniques using invalid select
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
+  - name: Show techniques using invalid select (one select is invalid)
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        select: 'name,noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
+
+  - name: Show techniques using select and specifying a non-existent id in the technique_ids parameter
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        select: 'related_software'
+        technique_ids: 'invalid'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Search in techniques
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        search: 'Gather Victim Network Information'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - deprecated: !anyint
+              remote_support: !anyint
+              name: "Gather Victim Network Information"
+              mitre_version: !anystr
+              id: !anystr
+              mitre_detection: !anystr
+              description: !anystr
+              modified_time: !anystr
+              network_requirements: !anyint
+              created_time: !anystr
+              related_tactics: !anything
+              related_mitigations: !anything
+              related_software: !anything
+              related_groups: !anything
+            - <<: *techniques_response
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+      save:
+        json:
+          technique_id: data.affected_items[1].id
+
+  - name: Test search
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        search: 'Gather Victim Network Information'
+        offset: 1
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{technique_id}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Invalid parameter
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        noexist: nothing
+    response:
+      status_code: 400
+
+  - name: Invalid parameters - Extra fields
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        id: "attack-pattern--db8f5003-3b20-48f0-9b76-123e44208120"
+        noexist: True
+    response:
+      status_code: 400
+
+  - name: Test q
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        q: "id=attack-pattern--db8f5003-3b20-48f0-9b76-123e44208120"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *techniques_response
+              id: "attack-pattern--db8f5003-3b20-48f0-9b76-123e44208120"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Test complex q
+    request:
+      verify: False
+      <<: *general_techniques_request
+      params:
+        q: "created_time<2020-02-11 18:42:08;created_time>2020-02-11 18:42:06"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *techniques_response
+              created_time: "2020-02-11 18:42:07.281000"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0

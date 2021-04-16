@@ -18,3 +18,22 @@ stages:
       status_code: 403
       json:
         error: 4000
+
+---
+test_name: GET /mitre/techniques
+
+marks:
+  - base_technique_tests
+
+stages:
+
+  # GET /mitre/techniques
+  - name: Request MITRE techniques (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/techniques"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
