@@ -494,7 +494,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
 
 int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
     cJSON *json_path;
-    char *path, *arch, *value_name, *full_path, *item_type, *item_version;
+    char *path, *arch, *value_name, *full_path, *item_type;
     if (!wdb) {
         merror("WDB object cannot be null.");
         return -1;
@@ -515,11 +515,11 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         return -1;
     }
 
-    item_version = cJSON_GetStringValue(cJSON_GetObjectItem(data, "version"));
+    cJSON * version = cJSON_GetObjectItem(data, "version");
 
-    if (item_version == NULL) {
-        merror("DB(%s) fim/save request with no version attribute.", wdb->id);
-        return -1;
+    if (!cJSON_IsNumber(version)) {
+        // Synchronization messages without the "version" attribute are ignored, but won't trigger any error message.
+        return 0;
     }
 
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");

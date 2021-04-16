@@ -148,8 +148,7 @@ cJSON *fim_entry_json(const char *key, fim_entry *entry) {
         attributes = fim_registry_value_attributes_json(entry->registry_entry.value, configuration);
     }
 #endif
-    cJSON_AddStringToObject(root, "version", "2.0");
-
+    cJSON_AddNumberToObject(root, "version", 2.0);
     cJSON_AddItemToObject(root, "attributes", attributes);
 
     return root;
