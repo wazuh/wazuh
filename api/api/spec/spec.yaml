@@ -4034,7 +4034,7 @@ components:
           $ref: '#/components/schemas/Tactic_id'
     mitre_group_ids:
       in: query
-      name: 'mitre_group_ids'
+      name: 'group_ids'
       description: "List of MITRE's group IDs (separated by comma)"
       schema:
         type: array
