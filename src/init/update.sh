@@ -429,11 +429,11 @@ UpdateOldVersions()
         OSSEC_JSON_FILE="$PREINSTALLEDDIR/logs/ossec.json"
         LOG_WAZUH_FOLDER="$PREINSTALLEDDIR/logs/wazuh"
 
-        # remove ossec.log and ossec.json
+        # Remove ossec.log and ossec.json
         rm -v $OSSEC_LOG_FILE
         rm -v $OSSEC_JSON_FILE
 
-        # remove all files and folders from /logs/wazuh/*
+        # Remove all rotated logs
         if [ -d $LOG_WAZUH_FOLDER ]; then
             rm -rfv $LOG_WAZUH_FOLDER/*
         fi
