@@ -13,12 +13,6 @@ with patch('wazuh.core.common.ossec_uid'):
     with patch('wazuh.core.common.ossec_gid'):
         from wazuh.core.mitre import *
 
-# Tactics variables
-TACTICS_FIELDS = {'id': 'id', 'name': 'name', 'description': 'description', 'short_name': 'short_name',
-                  'created_time': 'created_time', 'modified_time': 'modified_time'}
-TACTICS_RELATION_FIELDS = {'related_techniques'}
-TACTICS_MIN_SELECT_FIELDS = {'id'}
-TACTICS_TABLE_NAME = 'tactic'
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
 def test_WazuhDBQueryMitreMetadata(mock_wdb):
@@ -30,6 +24,7 @@ def test_WazuhDBQueryMitreMetadata(mock_wdb):
 
 
 @pytest.mark.parametrize('wdb_query_class', [
+    WazuhDBQueryMitreTactics,
     # TODO: add the rest of wdb query classes
 ])
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
@@ -50,6 +45,7 @@ def test_WazuhDBQueryMitre_classes(mock_wdb, wdb_query_class):
 
 
 @pytest.mark.parametrize('mitre_get_function, mitre_wdb_query_class', [
+    (get_tactics, WazuhDBQueryMitreTactics),
     # TODO: add the rest of wdb query classes
 ])
 @patch('wazuh.core.utils.WazuhDBConnection')
