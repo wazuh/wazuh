@@ -246,7 +246,7 @@ void test_fim_db_insert_db_full(void **state) {
 
     expect_fim_db_get_count_entries(50000);
 
-    expect_string(__wrap__mdebug1, formatted_msg,
+    expect_string(__wrap__mdebug2, formatted_msg,
                   "Couldn't insert '/test/path' entry into DB. The DB is full, please check your configuration.");
 
     syscheck.database = test_data->fim_sql;

@@ -82,7 +82,7 @@ const fim_registry_value_data DEFAULT_REGISTRY_VALUE = {
 void expect_fim_db_check_transaction() {
     will_return(__wrap_sqlite3_get_autocommit, 0);
     expect_fim_db_exec_simple_wquery("END;");
-    expect_string(__wrap__mdebug1, formatted_msg, "Database transaction completed.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Database transaction completed.");
     expect_fim_db_exec_simple_wquery("BEGIN;");
 }
 
