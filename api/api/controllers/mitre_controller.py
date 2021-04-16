@@ -4,7 +4,6 @@
 
 import logging
 
-import connexion
 from aiohttp import web
 
 from api.encoder import dumps, prettify
@@ -43,9 +42,9 @@ async def get_metadata(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
-async def get_tactics(request: connexion.request, tactic_ids: list = None, pretty: bool = False,
-                      wait_for_complete: bool = False, offset: int = None, limit: int = None, sort: str = None,
-                      search: str = None, select: list = None, q: str = None):
+async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                      offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
+                      q: str = None):
     """Get information of specified MITRE's tactics.
 
     Parameters
@@ -75,16 +74,19 @@ async def get_tactics(request: connexion.request, tactic_ids: list = None, prett
     -------
     MITRE's tactics information.
     """
-    f_kwargs = {'filters': {
-        'id': tactic_ids,
-    },
+    f_kwargs = {
+        'filters': {
+            'id': tactic_ids,
+        },
         'offset': offset,
         'limit': limit,
         'sort_by': parse_api_param(sort, 'sort')['fields'] if sort else None,
         'sort_ascending': False if not sort or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
         'search_text': parse_api_param(search, 'search')['value'] if search else None,
         'complementary_search': parse_api_param(search, 'search')['negation'] if search else None,
-        'select': select, 'q': q}
+        'select': select,
+        'q': q
+    }
 
     dapi = DistributedAPI(f=mitre.mitre_tactics,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
