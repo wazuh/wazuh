@@ -5,6 +5,8 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from wazuh.tests.util import InitWDBSocketMock
 
 with patch('wazuh.core.common.ossec_uid'):
@@ -12,13 +14,46 @@ with patch('wazuh.core.common.ossec_uid'):
         from wazuh.core.mitre import *
 
 
-# Tests
-
-def test_WazuhDBQueryMitre_metadata():
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
+def test_WazuhDBQueryMitreMetadata(mock_wdb):
     """Verify that the method connects correctly to the database and returns the correct type."""
-    with patch('wazuh.core.utils.WazuhDBConnection') as mock_wdb:
-        mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql')
-        db_query = WazuhDBQueryMitreMetadata()
-        data = db_query.run()
+    db_query = WazuhDBQueryMitreMetadata()
+    data = db_query.run()
 
-        assert isinstance(db_query, WazuhDBQueryMitre) and isinstance(data, dict)
+    assert isinstance(db_query, WazuhDBQueryMitre) and isinstance(data, dict)
+
+
+@pytest.mark.parametrize('wdb_query_class', [
+    # TODO: add the rest of wdb query classes
+])
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
+def test_WazuhDBQueryMitre_classes(mock_wdb, wdb_query_class):
+    """Verify that the method connects correctly to the database and returns the correct types."""
+    db_query = wdb_query_class()
+    data = db_query.run()
+
+    assert isinstance(db_query, WazuhDBQueryMitre) and isinstance(data, dict)
+
+    # All items have all the related_items (relation_fields) and their type is list
+    try:
+        assert all(
+            isinstance(data_item[related_item], list) for related_item in db_query.relation_fields for data_item in
+            data['items'])
+    except KeyError:
+        pytest.fail("Related item not found in data obtained from query")
+
+
+@pytest.mark.parametrize('mitre_get_function, mitre_wdb_query_class', [
+    # TODO: add the rest of wdb query classes
+])
+@patch('wazuh.core.utils.WazuhDBConnection')
+def test_mitre_get_functions(mock_wdb, mitre_get_function, mitre_wdb_query_class):
+    """Test get_tactics function."""
+    info, data = mitre_get_function()
+
+    db_query_to_compare = mitre_wdb_query_class()
+
+    assert isinstance(info['allowed_fields'], set) and info['allowed_fields'] == set(
+        db_query_to_compare.fields.keys()).union(db_query_to_compare.relation_fields)
+    assert isinstance(info['min_select_fields'], set) and info[
+        'min_select_fields'] == db_query_to_compare.min_select_fields
