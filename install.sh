@@ -145,7 +145,6 @@ Install()
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
         WazuhUpgrade
-
         # Update versions previous to Wazuh 5.0.0
         UpdateOldVersions $breaking_upgrade
         echo "Starting Wazuh..."

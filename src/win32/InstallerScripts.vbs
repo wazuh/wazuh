@@ -65,7 +65,6 @@ Set objFSO = CreateObject("Scripting.FileSystemObject")
 ' Create an empty client.keys file on first install
 If Not objFSO.fileExists(home_dir & "client.keys") Then
     objFSO.CreateTextFile(home_dir & "client.keys")
-
 End If
 
 ' Rename ossec.conf to ossec.conf.backup
