@@ -13,16 +13,16 @@
 
 #include "wazuh_db/wdb.h"
 
-int __wrap_wdb_agents_vuln_cves_insert(int id,
-                                      const char *name,
-                                      const char *version,
-                                      const char *architecture,
-                                      const char *cve,
-                                      const char *reference,
-                                      const char *type,
-                                      const char *status,
-                                      bool check_pkg_existence,
-                                      __attribute__((unused)) int *sock);
+cJSON* __wrap_wdb_agents_vuln_cves_insert(int id,
+                                          const char *name,
+                                          const char *version,
+                                          const char *architecture,
+                                          const char *cve,
+                                          const char *reference,
+                                          const char *type,
+                                          const char *status,
+                                          bool check_pkg_existence,
+                                          __attribute__((unused)) int *sock);
 
 int __wrap_wdb_agents_vuln_cves_clear(int id,
                                      __attribute__((unused)) int *sock);
@@ -30,5 +30,10 @@ int __wrap_wdb_agents_vuln_cves_clear(int id,
 cJSON* __wrap_wdb_agents_vuln_cves_remove_by_status(int id,
                                              const char *status,
                                              __attribute__((unused)) int *sock);
+
+int __wrap_wdb_agents_vuln_cves_update_status(int id,
+                                       const char *old_status,
+                                       const char *new_status,
+                                       __attribute__((unused)) int *sock);
 
 #endif
