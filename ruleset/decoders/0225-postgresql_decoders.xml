@@ -18,7 +18,7 @@
         Connection matched pg_hba.conf line 90: "host   testing_db      testing_user           0.0.0.0/0                md5"
   -->
 <decoder name="postgresql_log">
-  <prematch type="pecre2">^\[?\d\d\d\d-\d\d-\d\d \S+ \w+\]? </prematch>
+  <prematch type="pcre2">^\[?\d\d\d\d-\d\d-\d\d \S+ \w+\]? </prematch>
   <regex offset="after_prematch">^\S+ (\w+): </regex>
   <order>status</order>
 </decoder>
