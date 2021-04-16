@@ -23,10 +23,12 @@
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
 
+#define SYSCHECK_MODULE_NAME "wazuh-modulesd:syscheck"
 #ifdef TEST_WINAGENT
 #define CHECK_REGISTRY_ALL                                                                             \
     CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_MD5SUM | CHECK_SHA1SUM | \
     CHECK_SHA256SUM | CHECK_SEECHANGES | CHECK_TYPE
+
 
 static registry default_reg_config[] = {
     { "HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
@@ -160,7 +162,7 @@ void expect_gen_diff_generate(gen_diff_struct *gen_diff_data_container) {
 void expect_initialize_file_diff_data(const char *path, int ret_abspath){
     expect_abspath(path, ret_abspath);
     if (!ret_abspath) {
-        expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+        expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
         expect_any(__wrap__mterror, formatted_msg);
     } else {
 #ifdef TEST_WINAGENT
@@ -176,7 +178,7 @@ void expect_fim_diff_registry_tmp(const char *folder, const char *file, FILE *fp
         expect_fprintf(fp, value_data, 0);
         expect_fclose(fp, 0);
     } else {
-        expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+        expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
         expect_any(__wrap__mterror, formatted_msg);
     }
 
@@ -253,11 +255,11 @@ void expect_fim_diff_delete_compress_folder(const char *folder, int isDir_ret, i
 
         if (rmdir_ex_ret >= 0) {
             expect_string(__wrap_remove_empty_folders, folder, folder);
-            expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+            expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
             expect_any(__wrap__mtdebug2, formatted_msg);
             will_return(__wrap_remove_empty_folders, remove_empty_folder_ret);
         } else {
-            expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+            expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
             expect_any(__wrap__mtdebug2, formatted_msg);
         }
     }
@@ -530,7 +532,7 @@ void test_adapt_win_fc_output_invalid_input(void **state) {
 
     strarray[0] = input;
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6667): Unable to find second line of alert string.: This is invalid");
 
     output = adapt_win_fc_output(input);
@@ -637,7 +639,7 @@ void test_initialize_file_diff_data_too_long_path(void **state) {
     expect_abspath(path, 1);
 #endif
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_any(__wrap__mterror, formatted_msg);
 
     diff = initialize_file_diff_data(path);
@@ -650,10 +652,10 @@ void test_initialize_file_diff_data_abspath_fail(void **state) {
 
     expect_abspath(GENERIC_PATH, 0);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6711): Cannot get absolute path of 'c:\\file\\path': Success (0)");
 #else
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6711): Cannot get absolute path of '/path/to/file': Success (0)");
 #endif
     diff = initialize_file_diff_data(GENERIC_PATH);
@@ -725,7 +727,7 @@ void test_fim_diff_delete_compress_folder(void **state) {
     expect_string(__wrap_remove_empty_folders, folder, folder);
     will_return(__wrap_remove_empty_folders, 0);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     int ret = fim_diff_delete_compress_folder(folder);
@@ -764,7 +766,7 @@ void test_fim_diff_delete_compress_folder_rmdir_ex_fail(void **state) {
     expect_string(__wrap_rmdir_ex, name, folder);
     will_return(__wrap_rmdir_ex, -1);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     int ret = fim_diff_delete_compress_folder(folder);
@@ -825,7 +827,7 @@ void test_fim_diff_create_compress_file_fail_compress(void **state) {
     expect_string(__wrap_w_compress_gzfile, filedst, diff->compress_tmp_file);
     will_return(__wrap_w_compress_gzfile, -1);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtwarn, formatted_msg, "(6914): Cannot create a snapshot of file '/path/file/origin'");
 
     int ret = fim_diff_create_compress_file(diff);
@@ -867,7 +869,7 @@ void test_fim_diff_create_compress_file_quota_reached(void **state) {
 
     expect_FileSize(diff->compress_tmp_file, 1024 * 1024);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6350): The calculate of the file size '/path/file/origin' exceeds the disk_quota. Operation discarded.");
 
     int ret = fim_diff_create_compress_file(diff);
@@ -983,7 +985,7 @@ void test_save_compress_file_rename_fail(void **state) {
 
     expect_rename_ex(diff->compress_tmp_file, diff->compress_file, -1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(1124): Could not rename file '/path/to/compress/tmp/file' to '/path/to/compress/file' due to [(0)-(Success)].");
 
     save_compress_file(diff);
@@ -1039,7 +1041,7 @@ void test_gen_diff_str_wfropen_fail(void **state) {
 
     expect_wfopen(diff->diff_file, "rb", NULL);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6665): Unable to generate diff alert (fopen)'/path/to/diff/file'.");
 
     char *diff_str = gen_diff_str(diff);
@@ -1063,7 +1065,7 @@ void test_gen_diff_str_fread_fail(void **state) {
     will_return(__wrap_unlink, 0);
 #endif
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6666): Unable to generate diff alert (fread).");
 
     char *diff_str = gen_diff_str(diff);
@@ -1100,7 +1102,7 @@ void test_fim_diff_generate_filters_fail(void **state) {
     diff->file_origin = strdup("\%wrong path");
     diff->diff_file = strdup("\%wrong path");
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug1, formatted_msg, "(6200): Diff execution skipped for containing insecure characters.");
 
     char *diff_str = fim_diff_generate(diff);
@@ -1115,7 +1117,7 @@ void test_fim_diff_generate_status_equal(void **state) {
 
     expect_system(0);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6352): Command diff/fc output 0, files are the same");
 
     char *diff_str = fim_diff_generate(diff);
@@ -1133,10 +1135,10 @@ void test_fim_diff_generate_status_error(void **state) {
     expect_system(-1);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6714): Command fc output an error");
 #else
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6714): Command diff output an error");
 #endif
 
@@ -1177,7 +1179,7 @@ void test_fim_diff_registry_tmp_fopen_fail(void **state) {
 
     expect_fopen(diff->file_origin, "w", fp);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(1103): Could not open file '/path/to/file/origin' due to [(2)-(No such file or directory)].");
 
     int ret = fim_diff_registry_tmp(value_data, data_type, diff);
@@ -1299,7 +1301,7 @@ void test_fim_diff_registry_tmp_default_type(void **state) {
 
     expect_fopen(diff->file_origin, "w", fp);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtwarn, formatted_msg, FIM_REG_VAL_WRONG_TYPE);
 
     expect_fclose(fp, 0);
@@ -1349,7 +1351,7 @@ void test_fim_registry_value_diff_wrong_too_big_file(void **state) {
 
     expect_fim_diff_check_limits("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, COMPRESS_FOLDER_REG, 1);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6349): File 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' is too big for configured maximum size to perform diff operation.");
 
     expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
@@ -1373,7 +1375,7 @@ void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
 
     expect_fim_diff_check_limits("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, COMPRESS_FOLDER_REG, 2);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6350): The estimation of the file size 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\valuename' exceeds the disk_quota. Operation discarded.");
 
     expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
@@ -1428,7 +1430,7 @@ void test_fim_registry_value_diff_create_compress_fail(void **state) {
 
     expect_fim_diff_create_compress_file("queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, "queue/diff/tmp/tmp-entry.gz", -1);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtwarn, formatted_msg, "(6914): Cannot create a snapshot of file 'queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED "'");
 
     expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
@@ -1460,7 +1462,7 @@ void test_fim_registry_value_diff_compare_fail(void **state) {
 
     expect_fim_diff_compare("queue/diff/tmp/tmp-entry", "queue/diff/tmp/[x64] " KEY_NAME_HASHED VALUE_NAME_HASHED, md5sum_old, md5sum_new, -1);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6351): The files are identical, don't compute differences");
 
     expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
@@ -1529,7 +1531,7 @@ void test_fim_registry_value_diff_generate_fail(void **state) {
 
     expect_fim_diff_generate(gen_diff_data_container, 1);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6714): Command fc output an error");
 
     expect_string(__wrap_rmdir_ex, name, "queue/diff/tmp");
@@ -1599,10 +1601,10 @@ void test_fim_file_diff_wrong_too_big_file(void **state) {
 
     expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 1);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6349): File 'c:\\file\\path' is too big for configured maximum size to perform diff operation.");
 #else
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6349): File '/path/to/file' is too big for configured maximum size to perform diff operation.");
 #endif
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
@@ -1624,10 +1626,10 @@ void test_fim_file_diff_wrong_quota_reached(void **state) {
 
     expect_fim_diff_check_limits(GENERIC_PATH, COMPRESS_FOLDER, 2);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6350): The estimation of the file size 'c:\\file\\path' exceeds the disk_quota. Operation discarded.");
 #else
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6350): The estimation of the file size '/path/to/file' exceeds the disk_quota. Operation discarded.");
 #endif
 
@@ -1684,10 +1686,10 @@ void test_fim_file_diff_create_compress_fail(void **state) {
     expect_fim_diff_create_compress_file(GENERIC_PATH, COMPRESS_TMP_FILE, -1);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtwarn, formatted_msg, "(6914): Cannot create a snapshot of file 'c:\\file\\path'");
 #else
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtwarn, formatted_msg, "(6914): Cannot create a snapshot of file '/path/to/file'");
 #endif
 
@@ -1720,7 +1722,7 @@ void test_fim_file_diff_compare_fail(void **state) {
 
     expect_fim_diff_compare(UNCOMPRESS_FILE, GENERIC_PATH, md5sum_old, md5sum_new, -1);
 
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6351): The files are identical, don't compute differences");
 
     expect_string(__wrap_rmdir_ex, name, TMP_FOLDER);
@@ -1825,10 +1827,10 @@ void test_fim_file_diff_generate_fail(void **state) {
     expect_fim_diff_generate(gen_diff_data_container, 1);
 
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6714): Command diff output an error");
 #else
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6714): Command fc output an error");
 #endif
 
@@ -1965,10 +1967,10 @@ void test_fim_diff_process_delete_file_delete_error(void **state) {
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, 0, -1, 0);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/c\\file\\path'");
 #else
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mterror, formatted_msg, "(6713): Cannot remove diff folder for file: 'queue/diff/local/path/to/file'");
 #endif
 
@@ -1982,10 +1984,10 @@ void test_fim_diff_process_delete_file_folder_not_exist(void **state) {
     expect_fim_diff_delete_compress_folder(COMPRESS_FOLDER, -1, 0, 0);
 
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/c\\file\\path', it does not exist.");
 #else
-    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:syscheck");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6355): Can't remove folder 'queue/diff/local/path/to/file', it does not exist.");
 #endif
 

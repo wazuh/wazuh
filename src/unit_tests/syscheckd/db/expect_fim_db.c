@@ -163,8 +163,6 @@ void expect_fim_db_get_path_success(const char *path, const fim_entry *entry) {
 int setup_fim_db_group(void **state) {
     (void)state;
 
-    // expect_any_always(__wrap__mdebug1, formatted_msg);
-
 #ifndef TEST_SERVER
     will_return_always(__wrap_getDefine_Int, 0);
 #endif

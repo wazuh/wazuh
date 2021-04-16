@@ -99,26 +99,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_non_null(syscheck.diff_size_limit);
 }
 
-// void test_Read_Syscheck_Config_invalid(void **state)
-// {
-//     (void) state;
-//     int ret;
-
-//     expect_any_always(__wrap__mdebug1, formatted_msg);
-//     expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
-//     OS_XML xml;
-//     XML_NODE node;
-//     XML_NODE chld_node;
-//     OS_ReadXML("invalid.conf", &xml);
-//     node = OS_GetElementsbyNode(&xml, NULL);
-//     chld_node = OS_GetElementsbyNode(&xml, node[0]);
-//     ret = Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
-//     OS_ClearNode(chld_node);
-//     OS_ClearNode(node);
-//     OS_ClearXML(&xml);
-//     assert_int_equal(ret, OS_INVALID);
-// }
-
 void test_Read_Syscheck_Config_undefined(void **state)
 {
     (void) state;
@@ -654,7 +634,6 @@ void test_getSyscheckInternalOptions(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_success, restart_syscheck),
-        // cmocka_unit_test_teardown(test_Read_Syscheck_Config_invalid, restart_syscheck),
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_undefined, restart_syscheck),
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_unparsed, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),

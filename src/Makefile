@@ -1384,7 +1384,6 @@ syscheck_c += $(wildcard syscheckd/registry/*.c)
 syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
-syscheck_o_lib := $(filter-out syscheckd/main.o, ${syscheck_o})
 
 syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
 	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
@@ -1417,7 +1416,7 @@ logcollector_c := $(wildcard logcollector/*.c)
 logcollector_o := $(logcollector_c:.c=.o)
 logcollector_eventchannel_o := $(logcollector_c:.c=-event.o)
 
-wmodules_dep := ${wmodules_o} ${wdblib_o} $(logcollector_o) ${rootcheck_o_lib} ${syscheck_o_lib} 
+wmodules_dep := ${wmodules_o} ${wdblib_o} $(logcollector_o) ${rootcheck_o_lib} ${syscheck_o} 
 
 ifeq (${uname_S},HP-UX)
 	wmodules_dep := ${wmodules_dep} ${config_o}

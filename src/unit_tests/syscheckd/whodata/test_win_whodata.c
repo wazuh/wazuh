@@ -161,23 +161,14 @@ int syscheck_teardown(void ** state) {
 
 int test_group_setup(void **state) {
     int ret;
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$");
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex node .log$|.htm$|.jpg$|.png$|.chm$|.pnf$|.evtx$|.swp$ OK?");
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found ignore regex size 0");
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file");
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node ^file OK?");
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 0");
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$");
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex node test_$ OK?");
-    // expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
     expect_string(__wrap__mdebug1, formatted_msg, "Found nodiff regex size 1");
     will_return_always(__wrap_getDefine_Int, 0);
     OS_XML xml;
