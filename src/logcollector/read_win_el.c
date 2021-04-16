@@ -45,21 +45,21 @@ int startEL(char *app, os_el *el)
     /* Open the event log */
     el->h = OpenEventLog(NULL, app);
     if (!el->h) {
-        merror(EVTLOG_OPEN, app);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, EVTLOG_OPEN, app);
         return (-1);
     }
 
     el->name = app;
     if (GetOldestEventLogRecord(el->h, &el->record) == 0) {
         /* Unable to read oldest event log record */
-        merror(EVTLOG_GETLAST, app);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, EVTLOG_GETLAST, app);
         CloseEventLog(el->h);
         el->h = NULL;
         return (-1);
     }
 
     if (GetNumberOfEventLogRecords(el->h, &NumberOfRecords) == 0) {
-        merror(EVTLOG_GETLAST, app);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, EVTLOG_GETLAST, app);
         CloseEventLog(el->h);
         el->h = NULL;
         return (-1);
@@ -151,7 +151,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
             if (OSHash_Add(dll_hash, skey, sval) != 2) free(sval);
             free(skey);
         } else {
-            merror(MEM_ERROR, errno, strerror(errno));
+            mterror(WM_LOGCOLLECTOR_LOGTAG, MEM_ERROR, errno, strerror(errno));
             if (skey != NULL) free(skey);
             if (sval != NULL) free(sval);
         }
@@ -363,7 +363,7 @@ void readel(os_el *el, int printit)
                         tmp_str++;
                         *tmp_str = '\0';
                     } else {
-                        merror("Invalid application string (size+)");
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, "Invalid application string (size+)");
                     }
                     size_left -= str_size + 2;
 
@@ -470,7 +470,7 @@ void readel(os_el *el, int printit)
                 w_logcollector_state_update_file(el->name, strlen(final_msg));
 
                 if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
-                    merror(QUEUE_SEND);
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, QUEUE_SEND);
                     w_logcollector_state_update_target(el->name, "agent", true);
                 } else {
                     w_logcollector_state_update_target(el->name, "agent", false);
@@ -500,7 +500,7 @@ void readel(os_el *el, int printit)
     else if (id == ERROR_EVENTLOG_FILE_CHANGED) {
         char msg_alert[512 + 1];
         msg_alert[512] = '\0';
-        mwarn("Event log cleared: '%s'", el->name);
+        mtwarn(WM_LOGCOLLECTOR_LOGTAG, "Event log cleared: '%s'", el->name);
 
         /* Send message about cleared */
         snprintf(msg_alert, 512, "wazuh: Event log cleared: '%s'", el->name);
@@ -512,27 +512,27 @@ void readel(os_el *el, int printit)
 
         /* Reopen */
         if (startEL(el->name, el) < 0) {
-            merror("Unable to reopen event log '%s'", el->name);
+            mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to reopen event log '%s'", el->name);
         }
     }
 
 
     /* Event log was closed and re-opened */
     else if (id == ERROR_INVALID_HANDLE) {
-        mdebug1("The EventLog service has been restarted. Reconnecting to '%s' channel.", el->name);
+        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "The EventLog service has been restarted. Reconnecting to '%s' channel.", el->name);
 
         CloseEventLog(el->h);
         el->h = NULL;
 
         /* Reopen */
         if (startEL(el->name, el) < 0) {
-            merror(
+            mterror(WM_LOGCOLLECTOR_LOGTAG, 
             "Could not subscribe for (%s) which returned (%d)",
             el->name,
             id);
         } else {
             counter = 0;
-            minfo("'%s' channel has been reconnected succesfully.", el->name);
+            mtinfo(WM_LOGCOLLECTOR_LOGTAG, "'%s' channel has been reconnected succesfully.", el->name);
         }
     }
 
@@ -540,13 +540,13 @@ void readel(os_el *el, int printit)
         /* Prevent message flooding when EventLog is stopped */
         el->er = NULL;
         if (counter == 0) {
-            mwarn("The EventLog service is down. Unable to collect logs from its channels.");
+            mtwarn(WM_LOGCOLLECTOR_LOGTAG, "The EventLog service is down. Unable to collect logs from its channels.");
             counter = 1;
         }
     }
 
     else {
-        mdebug1("Error reading event log: %d", id);
+        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Error reading event log: %d", id);
     }
 }
 
@@ -559,13 +559,13 @@ void win_read_vista_sec()
 
     /* Vista security */
     fp = fopen("vista_sec.txt", "r");
-    if (!fp) merror_exit("Unable to read vista security descriptions.");
+    if (!fp) mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "Unable to read vista security descriptions.");
 
     /* Creating the hash */
     vista_sec_id_hash = OSHash_Create();
     if (!vista_sec_id_hash) {
         fclose(fp);
-        merror_exit("Unable to read vista security descriptions.");
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "Unable to read vista security descriptions.");
     }
 
     /* Read the whole file and add it to memory */
@@ -577,7 +577,7 @@ void win_read_vista_sec()
 
         p = strchr(buf, ',');
         if (!p) {
-            merror("Invalid entry on the Vista security description.");
+            mterror(WM_LOGCOLLECTOR_LOGTAG, "Invalid entry on the Vista security description.");
             continue;
         }
 
@@ -594,7 +594,7 @@ void win_read_vista_sec()
         desc = strdup(p);
 
         if (!key || !desc) {
-            merror("Invalid entry on the Vista security description.");
+            mterror(WM_LOGCOLLECTOR_LOGTAG, "Invalid entry on the Vista security description.");
             if (key) free(key);
             if (desc) free(desc);
         } else {
@@ -621,7 +621,7 @@ void win_startel(char *evt_log)
 
     /* Maximum size */
     if (el_last == 9) {
-        merror(EVTLOG_DUP, evt_log);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, EVTLOG_DUP, evt_log);
         return;
     }
 
@@ -629,7 +629,7 @@ void win_startel(char *evt_log)
     if (!dll_hash) {
         dll_hash = OSHash_Create();
         if (!dll_hash) {
-            merror("Unable to create DLL hash.");
+            mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to create DLL hash.");
         }
     }
 
@@ -638,7 +638,7 @@ void win_startel(char *evt_log)
 
     /* Start event log -- going to last available record */
     if (entries_count = startEL(evt_log, &el[el_last]), entries_count < 0) {
-        merror(INV_EVTLOG, evt_log);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, INV_EVTLOG, evt_log);
         return;
     } else {
         readel(&el[el_last], 0);

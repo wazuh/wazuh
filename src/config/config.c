@@ -47,7 +47,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *ossca = "sca";                          /* Security Configuration Assessment */
     const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
     const char *osgcp = "gcp-pubsub";                   /* Google Cloud - Wazuh Module */
-    const char *wlogtest = "rule_test";                  /* Wazuh Logtest */
+    const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
 
     const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
     const char *task_manager = "task-manager";          /* Task Manager Module */
@@ -116,7 +116,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
-            if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
+            if ((modules & CWMODULE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {
@@ -189,7 +189,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
-            if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
+            if ((modules & CWMODULE) && (Read_Socket(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {

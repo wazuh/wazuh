@@ -109,16 +109,6 @@ int local_start()
         rc++;
     }
 
-    /* Read logcollector config file */
-    mdebug1("Reading logcollector configuration.");
-
-    /* Init message queue */
-    w_msg_hash_queues_init();
-
-    if (LogCollectorConfig(cfg) < 0) {
-        merror_exit(CONFIG_ERROR, cfg);
-    }
-
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
         OS_PassEmptyKeyfile();
@@ -131,34 +121,6 @@ int local_start()
     /* Read keys */
     minfo(ENC_READ);
     OS_ReadKeys(&keys, 1, 0);
-
-    /* If there is no file to monitor, create a clean entry
-     * for the mark messages.
-     */
-    if (logff == NULL) {
-        os_calloc(2, sizeof(logreader), logff);
-        logff[0].file = NULL;
-        logff[0].ffile = NULL;
-        logff[0].logformat = NULL;
-        logff[0].fp = NULL;
-        logff[1].file = NULL;
-        logff[1].logformat = NULL;
-
-        minfo(NO_FILE);
-    }
-
-    /* No sockets defined */
-    if (logsk == NULL) {
-        os_calloc(2, sizeof(logsocket), logsk);
-        logsk[0].name = NULL;
-        logsk[0].location = NULL;
-        logsk[0].mode = 0;
-        logsk[0].prefix = NULL;
-        logsk[1].name = NULL;
-        logsk[1].location = NULL;
-        logsk[1].mode = 0;
-        logsk[1].prefix = NULL;
-    }
 
     /* Read execd config */
     if (!WinExecd_Start()) {
@@ -243,12 +205,10 @@ int local_start()
                      (LPDWORD)&threadID2);
 
     // Read wodle configuration and start modules
-
+    wmodule * cur_module;
     if (!wm_config() && !wm_check()) {
-        wmodule * cur_module;
-
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-            w_create_thread(NULL,
+            cur_module->thread = (unsigned int)w_create_thread(NULL,
                             0,
                             (LPTHREAD_START_ROUTINE)cur_module->context->start,
                             cur_module->data,
@@ -258,12 +218,12 @@ int local_start()
     }
 
     atexit(stop_wmodules);
-
     /* Send agent stopped message at exit */
     atexit(send_agent_stopped_message);
 
-    /* Start logcollector -- main process here */
-    LogCollectorStart();
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        WaitForSingleObject((HANDLE)cur_module->thread, INFINITE);
+    }
 
     if (sysinfo_module){
         so_free_library(sysinfo_module);

@@ -93,7 +93,8 @@ void test_lccom_getstate_null(void ** state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, "Statistics unavailable");
     will_return(__wrap_cJSON_AddStringToObject, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "At LCCOM getstate: Statistics unavailable");
+    expect_string(__wrap__mtdebug1, tag, WM_LOGCOLLECTOR_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "At LCCOM getstate: Statistics unavailable");
 
     will_return(__wrap_cJSON_PrintUnformatted, json);
     expect_function_call(__wrap_cJSON_Delete);

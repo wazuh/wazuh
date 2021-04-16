@@ -97,7 +97,12 @@ int reload_interval;
 int reload_delay;
 int free_excluded_files_interval;
 int state_interval;
+int accept_remote;
+
 OSHash * msg_queues_table;
+#ifndef WIN32
+rlim_t nofile;
+#endif
 
 ///< To asociate the path, the position to read, and the hash key of lines read.
 OSHash * files_status;
@@ -138,23 +143,49 @@ void LogCollectorStart()
     IT_control duplicates_removed = 0;
     logreader *current;
 
+    /* No file available to monitor -- continue */
+    if (logff == NULL) {
+        os_calloc(2, sizeof(logreader), logff);
+        logff[0].file = NULL;
+        logff[0].ffile = NULL;
+        logff[0].logformat = NULL;
+        logff[0].fp = NULL;
+        logff[1].file = NULL;
+        logff[1].logformat = NULL;
+
+        mtinfo(WM_LOGCOLLECTOR_LOGTAG, NO_FILE);
+    }
+
+    /* No sockets defined */
+    if (logsk == NULL) {
+        os_calloc(2, sizeof(logsocket), logsk);
+        logsk[0].name = NULL;
+        logsk[0].location = NULL;
+        logsk[0].mode = 0;
+        logsk[0].prefix = NULL;
+        logsk[1].name = NULL;
+        logsk[1].location = NULL;
+        logsk[1].mode = 0;
+        logsk[1].prefix = NULL;
+    }
+
     /* Create store data */
     excluded_files = OSHash_Create();
     if (!excluded_files) {
-        merror_exit(LIST_ERROR);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, LIST_ERROR);
     }
 
     /* Create store for binaries data */
     excluded_binaries = OSHash_Create();
     if (!excluded_binaries) {
-        merror_exit(LIST_ERROR);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, LIST_ERROR);
     }
 
     /* Initialize status file struct (files_status) and set w_save_file_status at the process exit */
     w_initialize_file_status();
 
     if (atexit(w_save_file_status)) {
-        merror(ATEXIT_ERROR);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, ATEXIT_ERROR);
     }
 
     /* Initialize state component */
@@ -203,9 +234,9 @@ void LogCollectorStart()
 
     /* Check if we are on Windows Vista */
     if (!checkVista()) {
-        minfo("Windows version is older than 6.0. (%s).", m_uname);
+        mtinfo(WM_LOGCOLLECTOR_LOGTAG, "Windows version is older than 6.0. (%s).", m_uname);
     } else {
-        minfo("Windows version is 6.0 or newer. (%s).", m_uname);
+        mtinfo(WM_LOGCOLLECTOR_LOGTAG, "Windows version is 6.0 or newer. (%s).", m_uname);
     }
 
     /* Read vista descriptions */
@@ -220,7 +251,7 @@ void LogCollectorStart()
     w_mutexattr_settype(&win_el_mutex_attr, PTHREAD_MUTEX_ERRORCHECK);
 #endif
 
-    mdebug1("Entering LogCollectorStart().");
+    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Entering LogCollectorStart().");
 
     /* Initialize each file and structure */
     for (i = 0;; i++) {
@@ -246,7 +277,7 @@ void LogCollectorStart()
         } else if (!strcmp(current->logformat, "eventlog")) {
 #ifdef WIN32
 
-            minfo(READING_EVTLOG, current->file);
+            mtinfo(WM_LOGCOLLECTOR_LOGTAG, READING_EVTLOG, current->file);
             win_startel(current->file);
 
             /* Mutexes are not previously initialized under Windows*/
@@ -261,10 +292,10 @@ void LogCollectorStart()
 #ifdef WIN32
 
 #ifdef EVENTCHANNEL_SUPPORT
-            minfo(READING_EVTLOG, current->file);
+            mtinfo(WM_LOGCOLLECTOR_LOGTAG, READING_EVTLOG, current->file);
             win_start_event_channel(current->file, current->future, current->query, current->reconnect_time);
 #else
-            mwarn("eventchannel not available on this version of Windows");
+            mtwarn(WM_LOGCOLLECTOR_LOGTAG, "eventchannel not available on this version of Windows");
 #endif
 
             /* Mutexes are not previously initialized under Windows*/
@@ -287,11 +318,11 @@ void LogCollectorStart()
             if (current->command) {
                 current->read = read_command;
 
-                minfo("Monitoring output of command(%d): %s", current->ign, current->command);
+                mtinfo(WM_LOGCOLLECTOR_LOGTAG, "Monitoring output of command(%d): %s", current->ign, current->command);
                 tg = 0;
                 if (current->target) {
                     while (current->target[tg]) {
-                        mdebug1("Socket target for '%s' -> %s", current->command, current->target[tg]);
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Socket target for '%s' -> %s", current->command, current->target[tg]);
                         tg++;
                     }
                 }
@@ -300,7 +331,7 @@ void LogCollectorStart()
                     os_strdup(current->command, current->alias);
                 }
             } else {
-                merror("Missing command argument. Ignoring it.");
+                mterror(WM_LOGCOLLECTOR_LOGTAG, "Missing command argument. Ignoring it.");
             }
         } else if (strcmp(current->logformat, "full_command") == 0) {
             current->file = NULL;
@@ -315,11 +346,11 @@ void LogCollectorStart()
             if (current->command) {
                 current->read = read_fullcommand;
 
-                minfo("Monitoring full output of command(%d): %s", current->ign, current->command);
+                mtinfo(WM_LOGCOLLECTOR_LOGTAG, "Monitoring full output of command(%d): %s", current->ign, current->command);
                 tg = 0;
                 if (current->target){
                     while (current->target[tg]) {
-                        mdebug1("Socket target for '%s' -> %s", current->command, current->target[tg]);
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Socket target for '%s' -> %s", current->command, current->target[tg]);
                         tg++;
                     }
                 }
@@ -328,14 +359,14 @@ void LogCollectorStart()
                     os_strdup(current->command, current->alias);
                 }
             } else {
-                merror("Missing command argument. Ignoring it.");
+                mterror(WM_LOGCOLLECTOR_LOGTAG, "Missing command argument. Ignoring it.");
             }
         }
 
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
-                minfo(READING_FILE, current->file);
+                mtinfo(WM_LOGCOLLECTOR_LOGTAG, READING_FILE, current->file);
             }
             /* More tweaks for Windows. For some reason IIS places
              * some weird characters at the end of the files and getc
@@ -358,7 +389,7 @@ void LogCollectorStart()
             /* On Windows we need to forward the seek for wildcard files */
 #ifdef WIN32
             if (current->file) {
-                minfo(READING_FILE, current->file);
+                mtinfo(WM_LOGCOLLECTOR_LOGTAG, READING_FILE, current->file);
             }
 
             if (current->fp) {
@@ -396,8 +427,8 @@ void LogCollectorStart()
     w_create_input_threads();
 
     /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
-    mdebug1(CURRENT_FILES, current_files, maximum_files);
+    mtinfo(WM_LOGCOLLECTOR_LOGTAG, STARTUP_MSG, (int)getpid());
+    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
 
 #ifndef WIN32
     // Start com request thread
@@ -412,20 +443,20 @@ void LogCollectorStart()
             set_can_read(0); // Stop reading threads
             w_rwlock_wrlock(&files_update_rwlock);
             set_can_read(1); // Clean signal once we have the lock
-            mdebug1("Refreshing excluded files list.");
+            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Refreshing excluded files list.");
 
             OSHash_Free(excluded_files);
             excluded_files = OSHash_Create();
 
             if (!excluded_files) {
-                merror_exit(LIST_ERROR);
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, LIST_ERROR);
             }
 
             OSHash_Free(excluded_binaries);
             excluded_binaries = OSHash_Create();
 
             if (!excluded_binaries) {
-                merror_exit(LIST_ERROR);
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, LIST_ERROR);
             }
 
             f_free_excluded = 0;
@@ -441,7 +472,7 @@ void LogCollectorStart()
             int j = -1;
             f_reload += f_check;
 
-            mdebug1("Performing file check.");
+            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Performing file check.");
 
             // Force reload, if enabled
 
@@ -489,7 +520,7 @@ void LogCollectorStart()
 
                     if (current->file && current->exists) {
                         if (reload_file(current) == -1) {
-                            minfo(FORGET_FILE, current->file);
+                            mtinfo(WM_LOGCOLLECTOR_LOGTAG, FORGET_FILE, current->file);
                             current->exists = 0;
                             current->ign++;
 
@@ -497,16 +528,16 @@ void LogCollectorStart()
 
                             if (j >= 0) {
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
-                                    merror(REM_ERROR, current->file);
+                                    mterror(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR, current->file);
                                 } else {
-                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
+                                    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
                             } else if (open_file_attempts) {
-                                mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                                mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                             } else {
-                                mdebug1(OPEN_UNABLE, current->file);
+                                mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_UNABLE, current->file);
                             }
                         }
                     }
@@ -564,7 +595,7 @@ void LogCollectorStart()
                     if(tf == NULL) {
                         if (errno == ENOENT) {
                             if(current->exists==1){
-                                minfo(FORGET_FILE, current->file);
+                                mtinfo(WM_LOGCOLLECTOR_LOGTAG, FORGET_FILE, current->file);
                                 current->exists = 0;
                             }
                             current->ign++;
@@ -572,19 +603,19 @@ void LogCollectorStart()
                             // Only expanded files that have been deleted will be forgotten
                             if (j >= 0) {
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
-                                    merror(REM_ERROR, current->file);
+                                    mterror(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR, current->file);
                                 } else {
-                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
+                                    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
                             } else if (open_file_attempts) {
-                                mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                                mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                             } else {
-                                mdebug1(OPEN_UNABLE, current->file);
+                                mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_UNABLE, current->file);
                             }
                         } else {
-                            merror(FOPEN_ERROR, current->file, errno, strerror(errno));
+                            mterror(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, current->file, errno, strerror(errno));
                         }
                     }
 
@@ -593,10 +624,10 @@ void LogCollectorStart()
                         fclose(tf);
                         current->fp = NULL;
 
-                        merror(FSTAT_ERROR, current->file, errno, strerror(errno));
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, FSTAT_ERROR, current->file, errno, strerror(errno));
                     }
                     else if (fclose(tf) == EOF) {
-                        merror("Closing the temporary file %s did not work (%d): %s", current->file, errno, strerror(errno));
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, "Closing the temporary file %s did not work (%d): %s", current->file, errno, strerror(errno));
                     }
 #else
                     HANDLE h1;
@@ -608,18 +639,18 @@ void LogCollectorStart()
                         fclose(current->fp);
                         CloseHandle(current->h);
                         current->fp = NULL;
-                        merror(FILE_ERROR, current->file);
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, FILE_ERROR, current->file);
                     } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                         fclose(current->fp);
                         CloseHandle(current->h);
                         CloseHandle(h1);
                         current->fp = NULL;
-                        merror(FILE_ERROR, current->file);
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, FILE_ERROR, current->file);
                     }
 
                     if (!current->fp) {
                         if(current->exists==1){
-                            minfo(FORGET_FILE, current->file);
+                            mtinfo(WM_LOGCOLLECTOR_LOGTAG, FORGET_FILE, current->file);
                             current->exists = 0;
                         }
                         current->ign++;
@@ -627,16 +658,16 @@ void LogCollectorStart()
                         // Only expanded files that have been deleted will be forgotten
                         if (j >= 0) {
                             if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
-                                merror(REM_ERROR, current->file);
+                                mterror(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR, current->file);
                             } else {
-                                mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                                 i--;
                                 continue;
                             }
                         } else if (open_file_attempts) {
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                         } else {
-                            mdebug1(OPEN_UNABLE, current->file);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_UNABLE, current->file);
                         }
                     }
 #endif
@@ -658,7 +689,7 @@ void LogCollectorStart()
                         /* Send message about log rotated */
                         w_msg_hash_queues_push(msg_alert, "wazuh-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
-                        mdebug1("File inode changed. %s",
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "File inode changed. %s",
                                current->file);
 
                         OSHash_Delete_ex(files_status,current->file);
@@ -689,7 +720,7 @@ void LogCollectorStart()
                         /* Send message about log rotated */
                         w_msg_hash_queues_push(msg_alert, "wazuh-logcollector", strlen(msg_alert) + 1, default_target, LOCALFILE_MQ);
 
-                        mdebug1("File size reduced. %s",
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "File size reduced. %s",
                                 current->file);
 
                         /* Get new file */
@@ -727,13 +758,13 @@ void LogCollectorStart()
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
-                            mdebug1(FILE_ERROR, current->file);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, FILE_ERROR, current->file);
                             file_exists = 0;
                         } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
-                            mdebug1(FILE_ERROR, current->file);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, FILE_ERROR, current->file);
                             file_exists = 0;
                         }
 
@@ -743,17 +774,17 @@ void LogCollectorStart()
                         if (j >= 0) {
                             if (!file_exists) {
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
-                                    merror(REM_ERROR, current->file);
+                                    mterror(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR, current->file);
                                 } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
                             }
                         } else if (open_file_attempts) {
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                         } else {
-                            mdebug1(OPEN_UNABLE, current->file);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_UNABLE, current->file);
                         }
                     }
 #endif
@@ -771,9 +802,9 @@ void LogCollectorStart()
                     }
 
                     if(!strcmp(current->logformat, "eventchannel")){
-                        mdebug1(LOGC_FILE_ERROR, current->file);
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, LOGC_FILE_ERROR, current->file);
                     } else {
-                        minfo(LOGC_FILE_ERROR, current->file);
+                        mtinfo(WM_LOGCOLLECTOR_LOGTAG, LOGC_FILE_ERROR, current->file);
                     }
 
                     if (current->fp) {
@@ -839,7 +870,7 @@ void LogCollectorStart()
             f_check = 0;
 
             if (mq_log_builder_update() == -1) {
-                mdebug1("Output log pattern data could not be updated.");
+                mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Output log pattern data could not be updated.");
             }
         }
 
@@ -874,14 +905,14 @@ int update_fname(int i, int j)
     lfile[OS_FLSIZE] = '\0';
     ret = strftime(lfile, OS_FLSIZE, lf->ffile, &tm_result);
     if (ret == 0) {
-        merror_exit(PARSE_ERROR, lf->ffile);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, PARSE_ERROR, lf->ffile);
     }
 
     /* Update the filename */
     if (strcmp(lfile, lf->file)) {
         os_free(lf->file);
         os_strdup(lfile, lf->file);
-        minfo(VAR_LOG_MON, lf->file);
+        mtinfo(WM_LOGCOLLECTOR_LOGTAG, VAR_LOG_MON, lf->file);
 
         /* Setting cday to zero because other files may need
          * to be changed.
@@ -915,7 +946,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     lf->fp = fopen(lf->file, "r");
     if (!lf->fp) {
         if (do_log == 1 && lf->exists == 1) {
-            merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
+            mterror(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, lf->file, errno, strerror(errno));
             lf->exists = 0;
         }
         goto error;
@@ -923,7 +954,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     /* Get inode number for fp */
     fd = fileno(lf->fp);
     if (fstat(fd, &stat_fd) == -1) {
-        merror(FSTAT_ERROR, lf->file, errno, strerror(errno));
+        mterror(WM_LOGCOLLECTOR_LOGTAG, FSTAT_ERROR, lf->file, errno, strerror(errno));
         fclose(lf->fp);
         lf->fp = NULL;
         goto error;
@@ -944,7 +975,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     if (lf->h == INVALID_HANDLE_VALUE) {
         if (do_log == 1) {
             DWORD error = GetLastError();
-            merror(FOPEN_ERROR, lf->file, (int)error, win_strerror(error));
+            mterror(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, lf->file, (int)error, win_strerror(error));
         }
         goto error;
     }
@@ -952,13 +983,13 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     fd = _open_osfhandle((intptr_t)lf->h, 0);
 
     if (fd == -1) {
-        merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
+        mterror(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, lf->file, errno, strerror(errno));
         CloseHandle(lf->h);
         goto error;
     }
     lf->fp = _fdopen(fd, "r");
     if (!lf->fp) {
-        merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
+        mterror(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, lf->file, errno, strerror(errno));
         CloseHandle(lf->h);
         goto error;
     }
@@ -968,7 +999,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
      * of the index low + index high numbers.
      */
     if (GetFileInformationByHandle(lf->h, &lpFileInformation) == 0) {
-        merror("Unable to get file information by handle.");
+        mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to get file information by handle.");
         fclose(lf->fp);
         CloseHandle(lf->h);
         lf->fp = NULL;
@@ -981,7 +1012,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
 #endif
 
     if (find_duplicate_inode(lf)) {
-        mdebug1(DUP_FILE_INODE, lf->file);
+        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, DUP_FILE_INODE, lf->file);
         close_file(lf);
         return 0;
     }
@@ -1012,9 +1043,9 @@ error:
     lf->ign++;
 
     if (open_file_attempts && j < 0) {
-        mdebug1(OPEN_ATTEMPT, lf->file, open_file_attempts - lf->ign);
+        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_ATTEMPT, lf->file, open_file_attempts - lf->ign);
     } else {
-        mdebug1(OPEN_UNABLE, lf->file);
+        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_UNABLE, lf->file);
     }
 
     return -1;
@@ -1161,7 +1192,7 @@ void set_read(logreader *current, int i, int j) {
         if (update_fname(i, j)) {
             handle_file(i, j, 1, 1);
         } else {
-            merror_exit(PARSE_ERROR, current->ffile);
+            mterror_exit(WM_LOGCOLLECTOR_LOGTAG, PARSE_ERROR, current->ffile);
         }
 
     } else {
@@ -1171,7 +1202,7 @@ void set_read(logreader *current, int i, int j) {
     tg = 0;
     if (current->target) {
         while (current->target[tg]) {
-            mdebug1("Socket target for '%s' -> %s", current->file, current->target[tg]);
+            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Socket target for '%s' -> %s", current->file, current->target[tg]);
             w_logcollector_state_add_target(current->file, current->target[tg]);
             tg++;
         }
@@ -1198,7 +1229,7 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_postgresql_log;
     } else if (strcmp("djb-multilog", current->logformat) == 0) {
         if (!init_djbmultilog(current)) {
-            merror(INV_MULTILOG, current->file);
+            mterror(WM_LOGCOLLECTOR_LOGTAG, INV_MULTILOG, current->file);
             if (current->fp) {
                 fclose(current->fp);
                 current->fp = NULL;
@@ -1219,19 +1250,19 @@ void set_read(logreader *current, int i, int j) {
             if (FileSizeWin(current->file) == 0) {
                 current->ucs2 = UCS2_LE;
                 current->read = read_ucs2_le;
-                mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
                 return;
             }
         }
 
         if(current->ucs2 == UCS2_LE){
-            mdebug1("File '%s' is UCS-2 LE",current->file);
+            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "File '%s' is UCS-2 LE",current->file);
             current->read = read_ucs2_le;
             return;
         }
 
         if(current->ucs2 == UCS2_BE){
-            mdebug1("File '%s' is UCS-2 BE",current->file);
+            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "File '%s' is UCS-2 BE",current->file);
             current->read = read_ucs2_be;
             return;
         }
@@ -1261,27 +1292,27 @@ int check_pattern_expand(int do_seek) {
             glob_offset = 0;
             if (err = glob(globs[j].gpath, 0, NULL, &g), err) {
                 if (err == GLOB_NOMATCH) {
-                    mdebug1(GLOB_NFOUND, globs[j].gpath);
+                    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, GLOB_NFOUND, globs[j].gpath);
                 } else {
-                    mdebug1(GLOB_ERROR, globs[j].gpath);
+                    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, GLOB_ERROR, globs[j].gpath);
                 }
                 continue;
             }
             while (g.gl_pathv[glob_offset] != NULL) {
                 if (current_files >= maximum_files) {
-                    mwarn(FILE_LIMIT, maximum_files);
+                    mtwarn(WM_LOGCOLLECTOR_LOGTAG, FILE_LIMIT, maximum_files);
                     break;
                 }
 
                 struct stat statbuf;
                 if (lstat(g.gl_pathv[glob_offset], &statbuf) < 0) {
-                    merror("Error on lstat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, "Error on lstat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
                     glob_offset++;
                     continue;
                 }
 
                 if ((statbuf.st_mode & S_IFMT) != S_IFREG) {
-                    mdebug1("File %s is not a regular file. Skipping it.", g.gl_pathv[glob_offset]);
+                    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "File %s is not a regular file. Skipping it.", g.gl_pathv[glob_offset]);
                     glob_offset++;
                     continue;
                 }
@@ -1299,7 +1330,7 @@ int check_pattern_expand(int do_seek) {
                     int added = 0;
 
                     if(!ex_file) {
-                        mdebug1(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
 
                         os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
 
@@ -1314,7 +1345,7 @@ int check_pattern_expand(int do_seek) {
                         globs[j].gfiles[i + 1].target = NULL;
                         current_files++;
                         globs[j].num_files++;
-                        mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                         if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
@@ -1341,7 +1372,7 @@ int check_pattern_expand(int do_seek) {
                         globs[j].gfiles[i + 1].target = NULL;
                         current_files++;
                         globs[j].num_files++;
-                        mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                         if  (!globs[j].gfiles[i].read) {
                             set_read(&globs[j].gfiles[i], i, j);
                         } else {
@@ -1378,9 +1409,9 @@ static void check_pattern_expand_excluded() {
             glob_offset = 0;
             if (err = glob(globs[j].exclude_path, 0, NULL, &g), err) {
                 if (err == GLOB_NOMATCH) {
-                    mdebug1(GLOB_NFOUND, globs[j].exclude_path);
+                    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, GLOB_NFOUND, globs[j].exclude_path);
                 } else {
-                    mdebug1(GLOB_ERROR, globs[j].exclude_path);
+                    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, GLOB_ERROR, globs[j].exclude_path);
                 }
                 continue;
             }
@@ -1401,7 +1432,7 @@ static void check_pattern_expand_excluded() {
                     result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
 
                     if (result) {
-                        merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
+                        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR,g.gl_pathv[glob_offset]);
                     } else {
 
                         /* Add the excluded file to the hash table */
@@ -1409,10 +1440,10 @@ static void check_pattern_expand_excluded() {
 
                         if(!file) {
                             OSHash_Add(excluded_files,g.gl_pathv[glob_offset],(void *)1);
-                            minfo(EXCLUDE_FILE,g.gl_pathv[glob_offset]);
+                            mtinfo(WM_LOGCOLLECTOR_LOGTAG, EXCLUDE_FILE,g.gl_pathv[glob_offset]);
                         }
 
-                        mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                     }
                 }
                 glob_offset++;
@@ -1451,7 +1482,7 @@ int check_pattern_expand(int do_seek) {
                 wildcard++;
 
                 if (dir = opendir(global_path), !dir) {
-                    merror("Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, "Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
                     os_free(global_path);
                     continue;
                 }
@@ -1464,7 +1495,7 @@ int check_pattern_expand(int do_seek) {
                     }
 
                     if (current_files >= maximum_files) {
-                        mwarn(FILE_LIMIT, maximum_files);
+                        mtwarn(WM_LOGCOLLECTOR_LOGTAG, FILE_LIMIT, maximum_files);
                         break;
                     }
 
@@ -1475,7 +1506,7 @@ int check_pattern_expand(int do_seek) {
                     DIR *is_dir = NULL;
 
                     if (is_dir = opendir(full_path), is_dir) {
-                        mdebug1("File %s is a directory. Skipping it.", full_path);
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "File %s is a directory. Skipping it.", full_path);
                         closedir(is_dir);
                         continue;
                     }
@@ -1506,7 +1537,7 @@ int check_pattern_expand(int do_seek) {
                     wm_strcat(&regex, "$", 0);
 
                     if (!OS_Regex(regex,dirent->d_name)) {
-                        mdebug2("Regex %s doesn't match with file '%s'",regex,dirent->d_name);
+                        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Regex %s doesn't match with file '%s'",regex,dirent->d_name);
                         os_free(regex);
                         continue;
                     }
@@ -1543,7 +1574,7 @@ int check_pattern_expand(int do_seek) {
 
                             CloseHandle(h1);
 
-                            minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
+                            mtinfo(WM_LOGCOLLECTOR_LOGTAG, NEW_GLOB_FILE, globs[j].gpath, full_path);
 
                             os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
 
@@ -1558,7 +1589,7 @@ int check_pattern_expand(int do_seek) {
                             globs[j].gfiles[i + 1].target = NULL;
                             current_files++;
                             globs[j].num_files++;
-                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                             if  (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
@@ -1585,7 +1616,7 @@ int check_pattern_expand(int do_seek) {
                             globs[j].gfiles[i + 1].target = NULL;
                             current_files++;
                             globs[j].num_files++;
-                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                             if  (!globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
                             } else {
@@ -1622,7 +1653,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
             }
 
             if (current != dup && dup->file && !strcmp(current->file, dup->file)) {
-                mwarn(DUP_FILE, current->file);
+                mtwarn(WM_LOGCOLLECTOR_LOGTAG, DUP_FILE, current->file);
                 int result;
 
                 if (j < 0) {
@@ -1631,9 +1662,9 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                     result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j]);
                 }
                 if (result) {
-                    merror_exit(REM_ERROR, current->file);
+                    mterror_exit(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR, current->file);
                 } else {
-                    mdebug1(CURRENT_FILES, current_files, maximum_files);
+                    mtdebug1(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                 }
                 d_control = NEXT_IT;
                 break;
@@ -1684,7 +1715,7 @@ static void set_sockets() {
     // List read sockets
     unsigned int sk;
     for (sk=0; logsk && logsk[sk].name; sk++) {
-        mdebug1("Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == IPPROTO_UDP ? "udp" : "tcp", logsk[sk].location);
+        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Socket '%s' (%s) added. Location: %s", logsk[sk].name, logsk[sk].mode == IPPROTO_UDP ? "udp" : "tcp", logsk[sk].location);
     }
 
     for (i = 0, t = -1;; i++) {
@@ -1717,7 +1748,7 @@ static void set_sockets() {
                 }
             }
             if (found != 0) {
-                merror_exit("Socket '%s' for '%s' is not defined.", current->target[j], file);
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "Socket '%s' for '%s' is not defined.", current->target[j], file);
             } else {
                 current->log_target[j].log_socket = &logsk[k];
                 w_msg_hash_queues_add_entry(logsk[k].name);
@@ -1741,7 +1772,7 @@ static void set_sockets() {
                     }
 
                     if (!current->target[k]) {
-                        mwarn("Log target '%s' not found for the output format of localfile '%s'.", current->out_format[j]->target, current->file);
+                        mtwarn(WM_LOGCOLLECTOR_LOGTAG, "Log target '%s' not found for the output format of localfile '%s'.", current->out_format[j]->target, current->file);
                     }
                 } else {
                     // Fill the targets that don't yet have a format
@@ -1794,7 +1825,7 @@ void w_msg_hash_queues_init(){
     msg_queues_table = OSHash_Create();
 
     if(!msg_queues_table){
-        merror_exit("Failed to create hash table for queue threads");
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, "Failed to create hash table for queue threads");
     }
 
     OSHash_SetFreeDataPointer(msg_queues_table, (void (*)(void *))free_msg_queue);
@@ -1838,7 +1869,6 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
         if (msg) {
             os_strdup(file, file_cpy);
             result = w_msg_queue_push(msg, str, file_cpy, size, &targets[i], queue_mq);
-
             if (result < 0) {
                 w_logcollector_state_update_target(file,targets[i].log_socket->name, true);
             }
@@ -1870,9 +1900,9 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
 
     if ((result < 0) && !reported) {
         #ifndef WIN32
-            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+            mtwarn(WM_LOGCOLLECTOR_LOGTAG, "Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
         #else
-            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
+            mtwarn(WM_LOGCOLLECTOR_LOGTAG, "Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
         #endif
             reported = 1;
     }
@@ -1883,7 +1913,7 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
         free(message->file);
         free(message->buffer);
         free(message);
-        mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
+        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Discarding log line for target '%s'", log_target->log_socket->name);
     }
 
     return result;
@@ -1912,7 +1942,7 @@ void * w_output_thread(void * args){
     int result;
 
     if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
-        mwarn("Could not found the '%s'.", queue_name);
+        mtwarn(WM_LOGCOLLECTOR_LOGTAG, "Could not found the '%s'.", queue_name);
     #ifdef WIN32
         exit(1);
     #else
@@ -1934,24 +1964,24 @@ void * w_output_thread(void * args){
             if (result != 0) {
                 if (result != 1) {
 #ifdef CLIENT
-                    merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
-                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
                 }
                 // Retry to connect infinitely.
                 logr_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
-                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+                mtinfo(WM_LOGCOLLECTOR_LOGTAG, "Successfully reconnected to '%s'", DEFAULTQUEUE);
 
                 if (result = SendMSGtoSCK(logr_queue, message->buffer, message->file, message->queue_mq, message->log_target),
                     result != 0) {
                     // We reconnected but are still unable to send the message, notify it and go on.
                     if (result != 1) {
 #ifdef CLIENT
-                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
 #else
-                        merror("Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to send message to '%s' after a successfull reconnection...", DEFAULTQUEUE);
 #endif
                     }
                     result = 1;
@@ -1970,7 +2000,7 @@ void * w_output_thread(void * args){
                 result = SendMSGtoSCK(logr_queue, message->buffer, message->file,
                                       message->queue_mq, message->log_target);
                 if (result < 0) {
-                    merror(QUEUE_SEND);
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, QUEUE_SEND);
 
                     sleep(sleep_time);
 
@@ -1987,7 +2017,7 @@ void * w_output_thread(void * args){
                                                result == 1);
 
             if (retries == MAX_RETRIES) {
-                merror(SEND_ERROR, message->log_target->log_socket->location, message->buffer);
+                mterror(WM_LOGCOLLECTOR_LOGTAG, SEND_ERROR, message->log_target->log_socket->location, message->buffer);
             }
         }
         free(message->file);
@@ -2051,11 +2081,11 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
         /* Wait for the select timeout */
         if ((r = select(0, NULL, NULL, NULL, &fp_timeout)) < 0) {
-            merror(SELECT_ERROR, errno, strerror(errno));
+            mterror(WM_LOGCOLLECTOR_LOGTAG, SELECT_ERROR, errno, strerror(errno));
             int_error++;
 
             if (int_error >= 5) {
-                merror_exit(SYSTEM_ERROR);
+                mterror_exit(WM_LOGCOLLECTOR_LOGTAG, SYSTEM_ERROR);
             }
             continue;
         }
@@ -2111,7 +2141,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
                 if(current->age) {
                     if ((fstat(fileno(current->fp), &tmp_stat)) == -1) {
-                        merror(FSTAT_ERROR, current->file, errno, strerror(errno));
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, FSTAT_ERROR, current->file, errno, strerror(errno));
 
                     } else {
                         struct timespec c_currenttime;
@@ -2119,7 +2149,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
                         /* Ignore file */
                         if((c_currenttime.tv_sec - (int)current->age) >= tmp_stat.st_mtime) {
-                            mdebug1("Ignoring file '%s' due to modification time",current->file);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Ignoring file '%s' due to modification time",current->file);
                             fclose(current->fp);
                             current->fp = NULL;
                             w_mutex_unlock(&current->mutex);
@@ -2149,7 +2179,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 #ifdef WIN32
             if(current->age) {
                 if (current->h && (GetFileInformationByHandle(current->h, &lpFileInformation) == 0)) {
-                    merror("Unable to get file information by handle.");
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, "Unable to get file information by handle.");
                     w_mutex_unlock(&current->mutex);
                     w_rwlock_unlock(&files_update_rwlock);
                     continue;
@@ -2164,7 +2194,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
                     /* Ignore file */
                     if((c_currenttime - current->age) >= file_currenttime) {
-                        mdebug1("Ignoring file '%s' due to modification time",current->file);
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "Ignoring file '%s' due to modification time",current->file);
                         fclose(current->fp);
                         CloseHandle(current->h);
                         current->fp = NULL;
@@ -2184,16 +2214,16 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     if (FileSizeWin(current->file) == 0) {
                         current->ucs2 = UCS2_LE;
                         current->read = read_ucs2_le;
-                        mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
                     } else {
 
                         if (current->ucs2 == UCS2_LE) {
-                            mdebug1("File '%s' is UCS-2 LE",current->file);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "File '%s' is UCS-2 LE",current->file);
                             current->read = read_ucs2_le;
                         }
 
                         if (current->ucs2 == UCS2_BE) {
-                            mdebug1("File '%s' is UCS-2 BE",current->file);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, "File '%s' is UCS-2 BE",current->file);
                             current->read = read_ucs2_be;
                         }
                     }
@@ -2205,7 +2235,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 if (FileSizeWin(current->file) == 0) {
                     current->ucs2 = UCS2_LE;
                     current->read = read_ucs2_le;
-                    mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
                 } else {
 
                     if (!ucs2) {
@@ -2232,9 +2262,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         current->ign++;
 
                         if (open_file_attempts && j < 0) {
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                         } else {
-                            mdebug1(OPEN_UNABLE, current->file);
+                            mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_UNABLE, current->file);
                         }
 
                     }
@@ -2242,7 +2272,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 }
                 /* If ferror is set */
                 else {
-                    merror(FREAD_ERROR, current->file, errno, strerror(errno));
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, FREAD_ERROR, current->file, errno, strerror(errno));
     #ifndef WIN32
                     if (fseek(current->fp, 0, SEEK_END) < 0)
     #else
@@ -2251,7 +2281,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     {
 
     #ifndef WIN32
-                        merror(FSEEK_ERROR, current->file, errno, strerror(errno));
+                        mterror(WM_LOGCOLLECTOR_LOGTAG, FSEEK_ERROR, current->file, errno, strerror(errno));
     #endif
 
                         /* Close the file */
@@ -2280,9 +2310,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     current->ign++;
 
                     if (open_file_attempts && j < 0) {
-                        mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                     } else {
-                        mdebug1(OPEN_UNABLE, current->file);
+                        mtdebug1(WM_LOGCOLLECTOR_LOGTAG, OPEN_UNABLE, current->file);
                     }
 
                     if (current->fp) {
@@ -2383,10 +2413,10 @@ static void check_text_only() {
                 }
 
                 if (result) {
-                    merror_exit(REM_ERROR, file_name);
+                    mterror_exit(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR, file_name);
                 } else {
-                    mdebug2(NON_TEXT_FILE, file_name);
-                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, NON_TEXT_FILE, file_name);
+                    mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
 
                     if(!file_excluded) {
                         OSHash_Add(excluded_files,file_name,(void *)1);
@@ -2438,7 +2468,7 @@ static void check_pattern_expand_excluded() {
                 wildcard++;
 
                 if (dir = opendir(global_path), !dir) {
-                    merror("Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
+                    mterror(WM_LOGCOLLECTOR_LOGTAG, "Couldn't open directory '%s' due to: %s", global_path, win_strerror(WSAGetLastError()));
                     os_free(global_path);
                     continue;
                 }
@@ -2457,7 +2487,7 @@ static void check_pattern_expand_excluded() {
                     DIR *is_dir = NULL;
 
                     if (is_dir = opendir(full_path), is_dir) {
-                        mdebug2("File %s is a directory. Skipping it.", full_path);
+                        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "File %s is a directory. Skipping it.", full_path);
                         closedir(is_dir);
                         continue;
                     }
@@ -2488,7 +2518,7 @@ static void check_pattern_expand_excluded() {
                     wm_strcat(&regex, "$", 0);
 
                     if(!OS_Regex(regex,dirent->d_name)) {
-                        mdebug2("Regex %s doesn't match with file '%s'",regex,dirent->d_name);
+                        mtdebug2(WM_LOGCOLLECTOR_LOGTAG, "Regex %s doesn't match with file '%s'",regex,dirent->d_name);
                         os_free(regex);
                         continue;
                     }
@@ -2515,7 +2545,7 @@ static void check_pattern_expand_excluded() {
                         }
 
                         if (result) {
-                            merror_exit(REM_ERROR,full_path);
+                            mterror_exit(WM_LOGCOLLECTOR_LOGTAG, REM_ERROR,full_path);
                         } else {
 
                             /* Add the excluded file to the hash table */
@@ -2523,11 +2553,11 @@ static void check_pattern_expand_excluded() {
 
                             if(!file) {
                                 OSHash_Add(excluded_files,full_path,(void *)1);
-                                minfo(EXCLUDE_FILE,full_path);
+                                mtinfo(WM_LOGCOLLECTOR_LOGTAG, EXCLUDE_FILE,full_path);
                             }
 
-                            mdebug2(EXCLUDE_FILE,full_path);
-                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            mtdebug2(WM_LOGCOLLECTOR_LOGTAG, EXCLUDE_FILE,full_path);
+                            mtdebug2(WM_LOGCOLLECTOR_LOGTAG, CURRENT_FILES, current_files, maximum_files);
                         }
                     }
                 }
@@ -2581,11 +2611,11 @@ STATIC void w_initialize_file_status() {
 
     /* Initialize hash table to associate paths and read position */
     if (files_status = OSHash_Create(), files_status == NULL) {
-        merror_exit(HCREATE_ERROR, files_status_name);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, HCREATE_ERROR, files_status_name);
     }
 
     if (OSHash_setSize(files_status, LOCALFILES_TABLE_SIZE) == 0) {
-        merror_exit(HSETSIZE_ERROR, files_status_name);
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, HSETSIZE_ERROR, files_status_name);
     }
 
     OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free);
@@ -2597,7 +2627,7 @@ STATIC void w_initialize_file_status() {
         char str[OS_MAXSTR] = {0};
 
         if (fread(str, 1, OS_MAXSTR - 1, fd) < 1) {
-            merror(FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+            mterror(WM_LOGCOLLECTOR_LOGTAG, FREAD_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
             clearerr(fd);
         } else {
             cJSON * global_json = cJSON_Parse(str);
@@ -2607,7 +2637,7 @@ STATIC void w_initialize_file_status() {
 
         fclose(fd);
     } else if (errno != ENOENT) {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
 }
 
@@ -2623,12 +2653,12 @@ STATIC void w_save_file_status() {
 
     if (fd = wfopen(LOCALFILE_STATUS, "w"), fd != NULL) {
         if (fwrite(str, 1, size_str, fd) == 0) {
-            merror(FWRITE_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+            mterror(WM_LOGCOLLECTOR_LOGTAG, FWRITE_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
             clearerr(fd);
         }
         fclose(fd);
     } else {
-        merror_exit(FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
+        mterror_exit(WM_LOGCOLLECTOR_LOGTAG, FOPEN_ERROR, LOCALFILE_STATUS, errno, strerror(errno));
     }
 
     os_free(str);
@@ -2703,7 +2733,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
 
         if (OSHash_Update_ex(files_status, path_str, data) != 1) {
             if (OSHash_Add_ex(files_status, path_str, data) != 2) {
-                merror(HADD_ERROR, path_str, files_status_name);
+                mterror(WM_LOGCOLLECTOR_LOGTAG, HADD_ERROR, path_str, files_status_name);
                 os_free(data);
             }
         }
@@ -2751,7 +2781,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     if (data = (os_file_status_t *)OSHash_Get_ex(files_status, lf->file), data == NULL) {
         w_set_to_pos(lf, 0, SEEK_END);
         if (w_update_hash_node(lf->file, w_ftell(lf->fp)) == -1) {
-            merror(HUPDATE_ERROR, lf->file, files_status_name);
+            mterror(WM_LOGCOLLECTOR_LOGTAG, HUPDATE_ERROR, lf->file, files_status_name);
         }
         return 0;
     }
@@ -2759,7 +2789,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     struct stat stat_fd;
 
     if (fstat(fileno(lf->fp), &stat_fd) == -1) {
-        merror(FSTAT_ERROR, lf->file, errno, strerror(errno));
+        mterror(WM_LOGCOLLECTOR_LOGTAG, FSTAT_ERROR, lf->file, errno, strerror(errno));
         return -1;
     }
 
@@ -2769,7 +2799,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     os_sha1 output;
 
     if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset) == -1) {
-        merror("Failure to generate the SHA1 hash from file '%s'", lf->file);
+        mterror(WM_LOGCOLLECTOR_LOGTAG, "Failure to generate the SHA1 hash from file '%s'", lf->file);
         return -1;
     }
 
@@ -2783,7 +2813,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
 
     if (result >= 0) {
         if (w_update_hash_node(lf->file, result) == -1) {
-            merror(HUPDATE_ERROR, lf->file, files_status_name);
+            mterror(WM_LOGCOLLECTOR_LOGTAG, HUPDATE_ERROR, lf->file, files_status_name);
         }
     }
 
@@ -2824,7 +2854,7 @@ STATIC int64_t w_set_to_pos(logreader * lf, int64_t pos, int mode) {
     }
 
     if (w_fseek(lf->fp, pos, mode) < 0) {
-        merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
+        mterror(WM_LOGCOLLECTOR_LOGTAG, FSEEK_ERROR, lf->file, errno, strerror(errno));
         fclose(lf->fp);
         lf->fp = NULL;
         return -1;
