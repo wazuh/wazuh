@@ -54,6 +54,7 @@
                                     x[9]?x[9]:"", x[10]?x[10]:"",   \
                                     x[11]?x[11]:"", x[12]?x[12]:"", \
                                     x[13]?x[13]:""
+
 #define OSLOG_START_REGEX       "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d+:\\d+:\\d+" ///< regex to determine the start of a log (unchecked)
 #define OSLOG_TIMEOUT_OUT       5
 
