@@ -20,7 +20,5 @@
  */
 void w_logcollector_create_oslog_env(logreader * current);
 
-// todo: remove this function when read_oslog is implemented, this is just a mock
-void * read_oslog(logreader * lf, int * rc, int drop_it);
 
 #endif /* OSLOGSTREAM_H */

@@ -8,9 +8,7 @@
  * Foundation
  */
 
-
 #include "oslog_stream.h"
-
 
 // Remove STATIC qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
@@ -18,17 +16,6 @@
 #else
 #define STATIC static
 #endif
-
-
-// todo: remove this function when read_oslog is implemented, this is just a mock
-void * read_oslog(logreader * lf, int * rc, int drop_it)
-{
-    sleep(1);
-
-    *rc = (lf->duplicated + drop_it) * 0;
-
-    return NULL;
-}
 
 /**
  * @brief Validates whether the predicate is valid or not
@@ -53,7 +40,7 @@ STATIC bool w_logcollector_validate_oslog_stream_predicate(char * predicate) {
 STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int type) {
     char ** oslog_array = NULL;
     size_t oslog_array_idx = 0;
-    
+
     os_calloc(MAX_LOG_CMD_ARGS + 1, sizeof(char *), oslog_array);
 
     // Adding `log` and `stream` to the array
@@ -89,14 +76,13 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
     // Log Stream's Predicate section
     if (predicate != NULL) {
         const bool is_predicate_valid = w_logcollector_validate_oslog_stream_predicate(predicate);
-        if (is_predicate_valid)
-        {
+        if (is_predicate_valid) {
             w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
 
             const size_t QUERY_STR_LEN = strlen(predicate) + 2 + 1; // The "2" is due to the added chars ''
             os_malloc(QUERY_STR_LEN, oslog_array[oslog_array_idx]);
             const int snprintf_retval = snprintf(oslog_array[oslog_array_idx], QUERY_STR_LEN, "'%s'", predicate);
-            if(snprintf_retval < 0) {
+            if (snprintf_retval < 0) {
                 merror(SNPRINTF_ERROR, strerror(errno), errno);
             }
         }
@@ -156,17 +142,16 @@ void w_logcollector_create_oslog_env(logreader * current) {
 
     // todo: remove testing/developing code lines !!!
     char * mock_log_stream_array[] = {"/root/readfile.sh", NULL};
-    current->oslog->log_wfd = w_logcollector_exec_oslog_stream(mock_log_stream_array, W_BIND_STDOUT|W_BIND_STDERR);
+    current->oslog->log_wfd = w_logcollector_exec_oslog_stream(mock_log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
     if (current->oslog->log_wfd == NULL) {
         current->oslog->is_oslog_running = false;
-        current->fp = NULL;
     } else {
-        current->fp = current->oslog->log_wfd->file;
         current->oslog->is_oslog_running = true;
         minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_stream_array));
     }
     current->file = NULL;
+    current->fp = NULL;
 
     free_strarray(log_stream_array);
 }
