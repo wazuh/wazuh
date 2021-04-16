@@ -123,7 +123,7 @@ def mitre_tactics(filters: dict = None, offset: int = 0, limit: int = common.dat
 @expose_resources(actions=["mitre:read"], resources=["*:*:*"])
 def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.database_limit, select: list = None,
                  sort_by: dict = None, sort_ascending: bool = True, search_text: str = None,
-                 complementary_search:bool = False, search_in_fields: list = None, q: str = '') -> Dict:
+                 complementary_search: bool = False, search_in_fields: list = None, q: str = '') -> Dict:
     """Get information of specified MITRE's groups and its relations.
 
     Parameters
