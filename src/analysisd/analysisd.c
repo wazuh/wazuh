@@ -88,7 +88,7 @@ OSDecoderInfo *NULL_Decoder;
 int num_rule_matching_threads;
 
 /* execd queue */
-static int execdq = 0;
+int execdq = 0;
 
 /* Active response queue */
 static int arq = 0;
@@ -897,22 +897,6 @@ void OS_ReadMSG_analysisd(int m_queue)
             }
         }
 #endif
-
-        if (Config.ar & LOCAL_AR) {
-            if ((execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
-                merror(ARQ_ERROR);
-
-                /* If REMOTE_AR is set, keep it there */
-                if (Config.ar & REMOTE_AR) {
-                    Config.ar = 0;
-                    Config.ar |= REMOTE_AR;
-                } else {
-                    Config.ar = 0;
-                }
-            } else {
-                minfo(CONN_TO, EXECQUEUE, "exec");
-            }
-        }
     }
     mdebug1("Active response Init completed.");
 
