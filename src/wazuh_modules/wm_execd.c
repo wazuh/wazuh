@@ -33,7 +33,9 @@ const wm_context WM_EXECD_CONTEXT = {
     NULL,
 };
 
-void *execd_module = NULL;
+#ifdef WIN32
+extern w_queue_t * winexec_queue;
+#endif
 
 static void wm_execd_log_config(wm_execd_t *data) {
     cJSON* config_json = wm_execd_dump(data);
@@ -52,12 +54,19 @@ void* wm_execd_main(wm_execd_t *data) {
 
     wm_execd_log_config(data);
 
+    /* Create list for timeout */
+    timeout_list = OSList_Create();
+    if (!timeout_list) {
+        mterror_exit(WM_EXECD_LOGTAG, LIST_ERROR);
+    }
+
 #ifdef WIN32
-    w_queue_t *winexec_queue = queue_init(OS_SIZE_128);
+    winexec_queue = queue_init(OS_SIZE_128);
     while(1) {
         win_execd_run(queue_pop_ex(winexec_queue));
     }
     queue_free(winexec_queue);
+    winexec_queue = NULL;
 #else
     int queue = 0;
     // Start exec queue

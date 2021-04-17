@@ -20,7 +20,7 @@
 #include "syscheck_op.h"
 
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
-w_queue_t * winexec_queue;
+w_queue_t * winexec_queue = NULL;
 
 /* Receive events from the server */
 void *receiver_thread(__attribute__((unused)) void *none)
@@ -140,7 +140,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     tmp_msg += strlen(EXECD_HEADER);
 
                     /* Run on Windows */
-                    if (agt->execdq >= 0) {
+                    if (winexec_queue) {
                         queue_push_ex(winexec_queue, strdup(tmp_msg));
                     }
 

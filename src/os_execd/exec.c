@@ -34,11 +34,10 @@ time_t pending_upg = 0;
 
 /* Global variables */
 STATIC OSListNode *timeout_node;
-STATIC OSList *timeout_list;
-STATIC OSHash *repeated_hash;
+OSList *timeout_list;
 
 #ifndef WIN32
-
+STATIC OSHash *repeated_hash;
 STATIC int CheckManagerConfiguration(char ** output);
 
 /** @copydoc execd_start */
@@ -71,12 +70,6 @@ void execd_start(int q) {
     /* Initialize the api cmd arguments */
     for (i = 0; i < MAX_ARGS; i++) {
         cmd_api[i] = NULL;
-    }
-
-    /* Create list for timeout */
-    timeout_list = OSList_Create();
-    if (!timeout_list) {
-        mterror_exit(WM_EXECD_LOGTAG, LIST_ERROR);
     }
 
     if (repeated_offenders_timeout[0] != 0) {

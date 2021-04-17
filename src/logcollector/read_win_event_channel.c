@@ -467,8 +467,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
         if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
             merror(
-                "Could not get message for (%s)",
-                channel->evt_log);
+                "Could not get message for (%s-%s)",
+                channel->evt_log, wprovider_name);
         }
         else {
             cJSON_AddStringToObject(event_json, "Message", msg_from_prov);

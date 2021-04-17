@@ -41,7 +41,6 @@ void wmodules_hc_parse_msg(cJSON *const messageJSON, int * execdqueue) {
 
 /* Receive a message locally from wazuh-modules to check health check and initialization */
 int wmodules_hs_receivemsg(const int wmoduleshs, int * execdqueue) {
-    ssize_t recv_b;
     int ret_val = 0;
     char msg[OS_MAXSTR + 1] = { 0 };
     ssize_t position = 0;

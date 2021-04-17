@@ -39,6 +39,7 @@ extern time_t pending_upg;
 extern int is_disabled;
 extern int req_timeout;
 extern int max_restart_lock;
+extern OSList *timeout_list;
 
 /* Timeout data structure */
 typedef struct _timeout_data {

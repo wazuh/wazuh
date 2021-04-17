@@ -24,44 +24,45 @@
 extern w_queue_t * winexec_queue;
 
 /* Timeout list */
-OSList *timeout_list;
 OSListNode *timeout_node;
 
 void win_timeout_run() {
     time_t curr_time = time(NULL);
 
-    /* Check if there is any timed out command to execute */
-    timeout_node = OSList_GetFirstNode(timeout_list);
-    while (timeout_node) {
-        timeout_data *list_entry;
+    if (timeout_list) {
+        /* Check if there is any timed out command to execute */
+        timeout_node = OSList_GetFirstNode(timeout_list);
+        while (timeout_node) {
+            timeout_data *list_entry;
 
-        list_entry = (timeout_data *)timeout_node->data;
+            list_entry = (timeout_data *)timeout_node->data;
 
-        /* Timed out */
-        if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
+            /* Timed out */
+            if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
 
-            mdebug1("Executing command '%s %s' after a timeout of '%ds'",
-                list_entry->command[0],
-                list_entry->parameters ? list_entry->parameters : "",
-                list_entry->time_to_block
-            );
+                mdebug1("Executing command '%s %s' after a timeout of '%ds'",
+                    list_entry->command[0],
+                    list_entry->parameters ? list_entry->parameters : "",
+                    list_entry->time_to_block
+                );
 
-            wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
-            if (wfd) {
-                fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
-                wpclose(wfd);
+                wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+                if (wfd) {
+                    fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+                    wpclose(wfd);
+                } else {
+                    mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
+                }
+
+                /* Delete currently node - already sets the pointer to next */
+                OSList_DeleteCurrentlyNode(timeout_list);
+                timeout_node = OSList_GetCurrentlyNode(timeout_list);
+
+                /* Clear the memory */
+                free_timeout_entry(list_entry);
             } else {
-                mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
+                timeout_node = OSList_GetNextNode(timeout_list);
             }
-
-            /* Delete currently node - already sets the pointer to next */
-            OSList_DeleteCurrentlyNode(timeout_list);
-            timeout_node = OSList_GetCurrentlyNode(timeout_list);
-
-            /* Clear the memory */
-            free_timeout_entry(list_entry);
-        } else {
-            timeout_node = OSList_GetNextNode(timeout_list);
         }
     }
 }
