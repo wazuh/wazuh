@@ -207,7 +207,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         }
 
         if (FD_ISSET(agt->wmoduleshs, &fdset)) {
-            if (wmodules_hs_receivemsg(agt->wmoduleshs, &agt->execdq) < 0) {
+            if (wmodules_hs_receivemsg(agt->wmoduleshs, &agt->execdq) != 0) {
                 merror(MSG_ERROR, WMODULES_HSTATUS_QUEUE);
             }
         }

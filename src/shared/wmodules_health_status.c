@@ -42,25 +42,36 @@ void wmodules_hc_parse_msg(cJSON *const messageJSON, int * execdqueue) {
 /* Receive a message locally from wazuh-modules to check health check and initialization */
 int wmodules_hs_receivemsg(const int wmoduleshs, int * execdqueue) {
     ssize_t recv_b;
-    int total_chunks_received = 0;
-    char msg[OS_MAXSTR + 1];
+    int ret_val = 0;
+    char msg[OS_MAXSTR + 1] = { 0 };
+    ssize_t position = 0;
+    int recv_ret = 0;
 
-    /* Initialize variables */
-    msg[0] = '\0';
-    msg[OS_MAXSTR] = '\0';
-
-    while ((recv_b = recv(wmoduleshs, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0) {
-        msg[recv_b] = '\0';
-        ++total_chunks_received;
+    while (1) {
+        recv_ret = recv(wmoduleshs, msg+position, OS_MAXSTR, MSG_DONTWAIT);
+        if (-1 == recv_ret) {
+            if (errno == EAGAIN) {
+                break;
+            } else {
+                ret_val = errno;
+                position = 0;
+                break;
+            }
+        } else {
+            position += recv_ret;
+        }
+    }
+    msg[position] = '\0';
+    if (position > 0) {
         const char *jsonErrPtr;
         cJSON * messageJSON = cJSON_ParseWithOpts(msg, &jsonErrPtr, 0);
         if (!messageJSON) {
-            mdebug2("Malformed JSON string '%s'", msg);
+            mdebug2("Parse JSON error '%s'", msg);
         } else {
             wmodules_hc_parse_msg(messageJSON, execdqueue);
             cJSON_Delete(messageJSON);
         }
     }
-    return recv_b < 0 ? recv_b : total_chunks_received;
+    return ret_val;
 }
 

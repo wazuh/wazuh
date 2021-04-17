@@ -210,7 +210,7 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
         }
 
         if (FD_ISSET(wmoduleshs, &fdset)) {
-            if (wmodules_hs_receivemsg(wmoduleshs, &execdq) < 0) {
+            if (wmodules_hs_receivemsg(wmoduleshs, &execdq) != 0) {
                 merror(MSG_ERROR, WMODULES_HSTATUS_QUEUE);
             }
         }
