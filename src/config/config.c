@@ -115,7 +115,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
-            if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
+            if ((modules & CWMODULE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, osremote) == 0)) {
@@ -189,7 +189,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
-            if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
+            if ((modules & CWMODULE) && (Read_Socket(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
