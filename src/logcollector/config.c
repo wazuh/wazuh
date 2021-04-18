@@ -115,7 +115,29 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         if (list[i].command) cJSON_AddStringToObject(file,"command",list[i].command);
         if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
         if (list[i].alias) cJSON_AddStringToObject(file,"alias",list[i].alias);
-        if (list[i].query) cJSON_AddStringToObject(file,"query",list[i].query);
+        if (list[i].query) {
+            cJSON * query = cJSON_CreateObject();
+            if (list[i].query) {
+                cJSON_AddStringToObject(query, "value", list[i].query);
+            }
+            if (list[i].query_level) {
+                cJSON_AddStringToObject(query, "level", list[i].query_level);
+            }
+            if (list[i].query_type > 0) {
+                cJSON *type = cJSON_CreateArray();
+                if (list[i].query_type & OSLOG_TYPE_LOG) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(OSLOG_TYPE_LOG_STR));
+                }
+                if (list[i].query_type & OSLOG_TYPE_ACTIVITY) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(OSLOG_TYPE_ACTIVITY_STR));
+                }
+                if (list[i].query_type & OSLOG_TYPE_TRACE) {
+                    cJSON_AddItemToArray(type, cJSON_CreateString(OSLOG_TYPE_TRACE_STR));
+                }
+                cJSON_AddItemToObject(query, "type", type);
+            }
+            cJSON_AddItemToObject(file, "query", query);
+        }
         cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
