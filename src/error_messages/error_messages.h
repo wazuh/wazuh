@@ -226,6 +226,7 @@
 #define SET_FLAGS_ERROR "(1974): The flags couldn't be set in the file descriptor: %s (%d)."
 #define WPOPENV_ERROR   "(1975): An error ocurred while calling wpopenv(): %s (%d)."
 #define SNPRINTF_ERROR  "(1976): An error ocurred while calling snprintf(): %s (%d)."
+#define CHILD_ERROR     "(1977): OSLog's process exited, pid: %d, exit value: %d."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
