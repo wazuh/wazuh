@@ -28,6 +28,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 def mitre_db():
     """Get fake MITRE database cursor."""
     core_mitre.get_groups.cache_clear()
+    core_mitre.get_mitigations.cache_clear()
     core_mitre.get_techniques.cache_clear()
     core_mitre.get_tactics.cache_clear()
     return get_fake_database_data('schema_mitre_test.sql').cursor()
@@ -68,6 +69,16 @@ def test_mitre_metadata(mock_mitre_dbmitre, mitre_db):
 
     assert result.affected_items
     assert all(item[key] == row[key] for item, row in zip(result.affected_items, rows) for key in row)
+
+
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
+def test_mitre_mitigations(mock_mitre_db, mitre_db):
+    """Check MITRE mitigations."""
+    result = mitre.mitre_mitigations()
+    rows = mitre_query(mitre_db, "SELECT * FROM mitigation")
+
+    assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
+               for key in row)
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
