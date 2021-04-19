@@ -302,7 +302,7 @@ void dump_syscheck_registry(syscheck_config *syscheck,
     } else {
         while (syscheck->registry[pl].entry != NULL) {
             /* Duplicated entry */
-            if (strcmp(syscheck->registry[pl].entry, entry) == 0 && arch == syscheck->registry[pl].arch) {
+            if (strcasecmp(syscheck->registry[pl].entry, entry) == 0 && arch == syscheck->registry[pl].arch) {
                 overwrite = pl;
                 mdebug2("Duplicated registration entry: %s", syscheck->registry[pl].entry);
                 break;
