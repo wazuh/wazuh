@@ -1207,3 +1207,296 @@ stages:
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+
+---
+test_name: GET /mitre/software
+
+stages:
+
+  - name: Show one software
+    request: &general_software_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/software"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: &software_response
+            - mitre_version: !anystr
+              deprecated: !anyint
+              name: !anystr
+              id: !anystr
+              modified_time: !anystr
+              created_time: !anystr
+              description: !anystr
+              related_groups: !anything
+              related_techniques: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Show one software with offset = 1
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      save:
+        $ext:
+          function: tavern_utils:test_save_response_data_mitre
+          extra_kwargs:
+            fields:
+              - mitre_version
+              - deprecated
+              - name
+              - id
+              - modified_time
+              - created_time
+              - description
+              - related_groups
+              - related_techniques
+
+  - name: Check that the offset is working properly, show two softwares with offset = 0
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+      verify_response_with:
+        - function: tavern_utils:test_validate_mitre
+          extra_kwargs:
+            data: "{response_data}"
+            index: 1
+
+  - name: Show all softwares without limit
+    request:
+      verify: False
+      <<: *general_software_request
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+
+  - name: Try to get all softwares with limit = 0
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+
+  - name: Get three specified softwares (one of them does not exist in the database)
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        software_ids:
+          - "malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b"
+          - "malware--00806466-754d-44ea-ad6f-0caf59cb8556"
+          - "malware--00806466-754d-44ea-ad6f-999999999999"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *software_response
+              id: "malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b"
+            - <<: *software_response
+              id: "malware--00806466-754d-44ea-ad6f-0caf59cb8556"
+          failed_items: [ ]
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Sort softwares without limit
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        sort: -related_groups
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "related_groups"
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Show softwares using valid select
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        select: 'name,deprecated'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name,deprecated,id' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to show softwares using invalid select
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
+
+  - name: Try to show softwares using invalid select (one select is invalid)
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        select: 'name,noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
+
+  - name: Show softwares using select and specifying a non-existent id in the software_ids parameter
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        select: 'related_groups'
+        software_ids: 'invalid'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Search in softwares
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        search: "TrickBot"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+      verify_response_with:
+        function: tavern_utils:test_validate_search
+        extra_kwargs:
+          search_param: "TrickBot"
+      save:
+        json:
+          software_id: data.affected_items[1].id
+
+  - name: Search softwares using offset and limit
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        search: "TrickBot"
+        offset: 1
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{software_id}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Try to show softwares using an invalid parameter
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        noexist: nothing
+    response:
+      status_code: 400
+
+  - name: Try to show softwares using an invalid id with an extra field
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        id: "malware--007b44b6-e4c5-480b-b5b9-999999999999"
+        noexist: True
+    response:
+      status_code: 400
+
+  - name: Filter softwares using q parameter
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        q: "id=malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *software_response
+              id: "malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Filter softwares using q parameter (complex query)
+    request:
+      verify: False
+      <<: *general_software_request
+      params:
+        q: "created_time<2017-05-31 21:32:41;created_time>2017-05-31 21:32:40"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *software_response
+              created_time: "2017-05-31 21:32:40.801000"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0

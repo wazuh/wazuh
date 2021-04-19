@@ -1842,6 +1842,21 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /mitre/software
+
+stages:
+
+  - name: Try to get MITRE software
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/software"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /overview/agents
 
 stages:

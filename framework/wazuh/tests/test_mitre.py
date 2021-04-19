@@ -31,6 +31,7 @@ def mitre_db():
     core_mitre.get_mitigations.cache_clear()
     core_mitre.get_techniques.cache_clear()
     core_mitre.get_tactics.cache_clear()
+    core_mitre.get_software.cache_clear()
     return get_fake_database_data('schema_mitre_test.sql').cursor()
 
 
@@ -108,6 +109,17 @@ def test_mitre_groups(mock_mitre_db, mitre_db):
     """Check MITRE groups."""
     result = mitre.mitre_groups()
     rows = mitre_query(mitre_db, "SELECT * FROM `group`")
+
+    assert result.affected_items
+    assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
+               for key in row)
+
+
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
+def test_mitre_software(mock_mitre_db, mitre_db):
+    """Check MITRE software."""
+    result = mitre.mitre_software()
+    rows = mitre_query(mitre_db, "SELECT * FROM software")
 
     assert result.affected_items
     assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
