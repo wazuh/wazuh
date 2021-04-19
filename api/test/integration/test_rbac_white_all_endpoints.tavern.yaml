@@ -1782,6 +1782,21 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /mitre/mitigations
+
+stages:
+
+  - name: Try to get MITRE mitigations
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/mitigations"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /mitre/techniques
 
 stages:

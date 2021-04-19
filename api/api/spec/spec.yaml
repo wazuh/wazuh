@@ -1721,18 +1721,18 @@ components:
           description: "Event to look for"
 
     # MITRE models
-    Mitigation_id:
+    Mitre_mitigation_id:
       type: string
-      description: "Mitigation ID"
-    Tactic_id:
+      description: "MITRE mitigation ID"
+    Mitre_tactic_id:
       type: string
-      description: "Tactic ID"
+      description: "MITRE tactic ID"
     Mitre_group_id:
       type: string
       description: "MITRE group ID"
-    Technique_id:
+    Mitre_technique_id:
       type: string
-      description: "Technique ID"
+      description: "MITRE technique ID"
 
     # Security models
     Role_id:
@@ -4034,7 +4034,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/Mitigation_id'
+          $ref: '#/components/schemas/Mitre_mitigation_id'
     mitre_tactic_ids:
       in: query
       name: 'tactic_ids'
@@ -4042,7 +4042,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/Tactic_id'
+          $ref: '#/components/schemas/Mitre_tactic_id'
     mitre_group_ids:
       in: query
       name: 'group_ids'
@@ -4058,7 +4058,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/Technique_id'
+          $ref: '#/components/schemas/Mitre_technique_id'
     name:
       in: query
       name: name

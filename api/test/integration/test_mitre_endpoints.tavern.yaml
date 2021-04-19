@@ -58,7 +58,7 @@ stages:
               created_time: !anystr
               modified_time: !anystr
               mitre_version: !anystr
-              deprecated: !anystr
+              deprecated: !anyint
               related_techniques: !anything
           failed_items: []
           total_affected_items: !anyint
@@ -236,13 +236,13 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - <<: *mitigations_response
-              name: "Persistence"
-            - <<: *mitigations_response
           failed_items: []
-          total_affected_items: 2
+          total_affected_items: 3
           total_failed_items: 0
+      verify_response_with:
+        function: tavern_utils:test_validate_search
+        extra_kwargs:
+          search_param: 'Use strong'
       save:
         json:
           mitigation_id: data.affected_items[1].id
