@@ -4072,7 +4072,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/MITRE_software_id'
+          $ref: '#/components/schemas/Mitre_software_id'
     mitre_technique_ids:
       in: query
       name: 'technique_ids'
