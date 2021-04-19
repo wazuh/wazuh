@@ -127,6 +127,12 @@ static pthread_rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
+// ifdef DARWIN
+#ifndef WIN32
+static wfd_t * oslog_wfd = NULL;
+#endif
+// endif
+
 /* Handle file management */
 void LogCollectorStart()
 {
@@ -336,7 +342,11 @@ void LogCollectorStart()
         else if (strcmp(current->logformat, OSLOG) == 0) {
             w_logcollector_create_oslog_env(current);
             current->read = read_oslog;
-            if (current->oslog->log_wfd->file) {
+            if (current->oslog->log_wfd->file != NULL) {
+                if (atexit(w_oslog_release)) {
+                    merror(ATEXIT_ERROR);
+                }
+                oslog_wfd = current->oslog->log_wfd;    // OSLog's info needs to be globally reachable to be released
                 for(int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
                     mdebug1("Socket target for '%s' -> %s", OSLOG_NAME, current->target[tg_idx]);
                     w_logcollector_state_add_target(OSLOG_NAME, current->target[tg_idx]);
@@ -2900,3 +2910,18 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
     }
     return true;
 }
+
+// ifdef DARWIN
+#ifndef WIN32
+void w_oslog_release(void) {
+    if (oslog_wfd != NULL) {
+        mdebug1("Releasing OSLog resources.");
+        if(oslog_wfd->pid > 0) {
+            kill(oslog_wfd->pid, SIGTERM);
+        }
+        wpclose(oslog_wfd);
+        oslog_wfd = NULL;
+    }
+}
+#endif
+// endif

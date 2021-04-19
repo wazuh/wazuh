@@ -275,4 +275,13 @@ extern int OUTPUT_QUEUE_SIZE;
 extern rlim_t nofile;
 #endif
 
+// ifdef DARWIN
+#ifndef WIN32
+/**
+ * @brief This function is called to release oslog's resources
+ */
+void w_oslog_release(void);
+#endif
+// endif
+
 #endif /* LOGREADER_H */
