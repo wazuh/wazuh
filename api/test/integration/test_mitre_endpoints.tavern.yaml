@@ -415,7 +415,7 @@ stages:
       verify: False
       <<: *general_references_request
       params:
-        tactic_ids:
+        reference_ids:
           - "attack-pattern--0042a9f5-f053-4769-b3ef-9ad018dfa298"
           - "attack-pattern--005a06c6-14bf-4118-afa0-ebcd8aebb0c9"
           - "attack-pattern--005a06c6-14bf-4118-afa0-NOTEXIST"
@@ -439,6 +439,7 @@ stages:
       <<: *general_references_request
       params:
         sort: -source
+        limit: 3
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
@@ -590,7 +591,7 @@ stages:
           total_affected_items: 6
           total_failed_items: 0
 
-  - name: Filter tactics using q parameter (complex query)
+  - name: Filter references using q parameter (complex query)
     request:
       verify: False
       <<: *general_references_request
