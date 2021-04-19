@@ -29,6 +29,7 @@ def mitre_db():
     """Get fake MITRE database cursor."""
     core_mitre.get_groups.cache_clear()
     core_mitre.get_techniques.cache_clear()
+    core_mitre.get_tactics.cache_clear()
     return get_fake_database_data('schema_mitre_test.sql').cursor()
 
 
