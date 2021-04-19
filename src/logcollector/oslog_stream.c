@@ -23,6 +23,7 @@
  * @return true if valid, otherwise false
  */
 STATIC bool w_logcollector_validate_oslog_stream_predicate(char * predicate) {
+
     // todo : improve this function
     if (strlen(predicate) > 0) {
         return true;
@@ -38,6 +39,7 @@ STATIC bool w_logcollector_validate_oslog_stream_predicate(char * predicate) {
  * @return A pointer to a fulfilled wfd_t structure, on success, or NULL
  */
 STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int type) {
+
     char ** oslog_array = NULL;
     size_t oslog_array_idx = 0;
 
@@ -98,6 +100,7 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
  * @return A pointer to a fulfilled wfd_t structure, on success, or NULL
  */
 STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t flags) {
+
     int oslog_fd = -1;
     int oslog_fd_flags = 0;
     wfd_t * oslog_wfd = wpopenv(*oslog_array, oslog_array, flags);
@@ -136,12 +139,13 @@ STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t f
 }
 
 void w_logcollector_create_oslog_env(logreader * current) {
+
     char ** log_stream_array = NULL;
 
     log_stream_array = w_create_oslog_stream_array(current->query, current->query_level, current->query_type);
 
     // todo: remove testing/developing code lines !!!
-    char * mock_log_stream_array[] = {"/root/readfile.sh", NULL};
+    char * mock_log_stream_array[] = {"/root/oslog.sh", NULL};
     current->oslog->log_wfd = w_logcollector_exec_oslog_stream(mock_log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
     if (current->oslog->log_wfd == NULL) {
@@ -150,7 +154,8 @@ void w_logcollector_create_oslog_env(logreader * current) {
         current->oslog->is_oslog_running = true;
         minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_stream_array));
     }
-    current->file = NULL;
+
+    os_free(current->file);
     current->fp = NULL;
 
     free_strarray(log_stream_array);
