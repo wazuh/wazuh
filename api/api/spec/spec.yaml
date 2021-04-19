@@ -10648,6 +10648,44 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e",
+                      created_time: "2018-10-17 00:14:20.652000",
+                      modified_time: "2019-07-19 17:44:36.953000",
+                      description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. ",
+                      name: "Lateral Movement",
+                      short_name: "lateral-movement",
+                      related_techniques:
+                        - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
+                          "attack-pattern--246fd3c7-f5e3-466d-8787-4c13d9e3b61c"
+                          "attack-pattern--2db31dcd-54da-405d-acef-b9129b816ed6"
+                          "attack-pattern--3b744087-9945-4a6f-91e8-9dbceda417a4"
+                          "attack-pattern--4d2a5b3e-340d-4600-9123-309dd63c9bf8"
+                          "attack-pattern--4f9ca633-15c5-463c-9724-bdcd54fde541"
+                          "attack-pattern--51a14c76-dd3b-440b-9c20-2bf91d25a814"
+                          "attack-pattern--54a649ff-439a-41a4-9856-8d144a2551ba"
+                          "attack-pattern--5b0ad6f8-6a16-4966-a4ef-d09ea6e2a9f5"
+                          "attack-pattern--60d0c01d-e2bf-49dd-a453-f8a9c9fa6f65"
+                          "attack-pattern--68a0c5ed-bee2-4513-830d-5b0d650139bd"
+                          "attack-pattern--772bc7a8-a157-42cc-8728-d648e25c7fe7"
+                          "attack-pattern--7b211ac6-c815-4189-93a9-ab415deca926"
+                          "attack-pattern--804c042c-cfe6-449e-bc1a-ba0a998a70db"
+                          "attack-pattern--92a78814-b191-47ca-909c-1ccfe3777414"
+                          "attack-pattern--9db0cf3a-a3c9-4012-8268-123b9db6fd82"
+                          "attack-pattern--9e7452df-5144-4b6e-b04a-b66dd4016747"
+                          "attack-pattern--bf90d72c-c00b-45e3-b3aa-68560560d4c5"
+                          "attack-pattern--c3c8c916-2f3c-4e71-94b2-240bdfc996f0"
+                          "attack-pattern--e0033c16-a07e-48aa-8204-7c3ca669998c"
+                          "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e"
+                          "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf"
+                          "attack-pattern--f005e783-57d4-4837-88ad-dbe7faee1c51"
+                  total_affected_items: 14
+                  failed_items: []
+                  total_failed_items: 0
+                message: "All tactics information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
