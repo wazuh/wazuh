@@ -361,7 +361,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
         pass
 
     def _execute_data_query(self):
-        """This function will add to the result the groups and tactics related to each software."""
+        """This function will add to the result the groups and techniques related to each software."""
         super()._execute_data_query()
 
         software_ids = set()
