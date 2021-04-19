@@ -240,7 +240,7 @@ async def get_groups(request, group_ids=None, pretty=False, wait_for_complete=Fa
 
     Returns
     -------
-    MITRE's groups information
+    MITRE's softwares information
     """
     f_kwargs = {
         'filters': {
