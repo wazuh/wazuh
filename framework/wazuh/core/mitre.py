@@ -163,6 +163,36 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
             mitigation['related_techniques'] = related_techniques.get(mitigation['id'], list())
 
 
+class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
+
+    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
+                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
+        """Create an instance of WazuhDBQueryMitreReferences query."""
+
+        if select is None:
+            select = set()
+        if filters is None:
+            filters = dict()
+        self.min_select_fields = min_select_fields
+        if min_select_fields is None:
+            self.min_select_fields = {'id'}
+        self.fields = fields
+        if fields is None:
+            self.fields = {'id': 'id', 'source': 'source', 'external_id': 'external_id', 'url': 'url',
+                           'description': 'description', 'type': 'type'}
+
+        WazuhDBQueryMitre.__init__(self, table='reference', min_select_fields=self.min_select_fields,
+                                   fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
+                                   count=count, sort=sort, default_sort_field=default_sort_field,
+                                   default_sort_order=default_sort_order, search=search,
+                                   select=list(set(self.fields.values()).intersection(set(select))),
+                                   request_slice=32)
+
+    def _filter_status(self, status_filter):
+        pass
+
+
 class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
 
     def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
@@ -195,8 +225,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
         pass
 
     def _execute_data_query(self):
-        """This function will add to the result the techniques related to each tactic.
-        """
+        """This function will add to the result the techniques related to each tactic."""
         super()._execute_data_query()
 
         tactic_ids = set()
@@ -405,6 +434,26 @@ def get_mitigations():
 
 
 @lru_cache(maxsize=None)
+def get_references():
+    """This function loads the reference data in order to speed up the use of the Framework function.
+    It also provides information about the min_select_fields for the select parameter and the
+    allowed_fields for the sort parameter.
+
+    Returns
+    -------
+    dict
+        Dictionary with information about the fields of the reference objects and the references obtained.
+    """
+    info = {'min_select_fields': None, 'allowed_fields': None}
+    db_query = WazuhDBQueryMitreReferences(limit=None)
+    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
+    info['min_select_fields'] = set(db_query.min_select_fields)
+    data = db_query.run()
+
+    return info, data
+
+
+@lru_cache(maxsize=None)
 def get_tactics():
     """This function loads the tactic data in order to speed up the use of the Framework function.
     It also provides information about the min_select_fields for the select parameter and the
@@ -413,7 +462,7 @@ def get_tactics():
     Returns
     -------
     dict
-        Dictionary with information about the fields of the technique objects and the techniques obtained.
+        Dictionary with information about the fields of the tactic objects and the tactics obtained.
     """
     info = {'min_select_fields': None, 'allowed_fields': None}
     db_query = WazuhDBQueryMitreTactics(limit=None)
