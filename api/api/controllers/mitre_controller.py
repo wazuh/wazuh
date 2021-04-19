@@ -72,7 +72,7 @@ async def get_references(request, reference_ids: list = None, pretty: bool = Fal
 
     Returns
     -------
-    MITRE's tactics information.
+    MITRE's references information.
     """
     f_kwargs = {
         'filters': {
