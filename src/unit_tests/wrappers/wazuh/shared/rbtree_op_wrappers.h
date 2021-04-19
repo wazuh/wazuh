@@ -17,4 +17,6 @@ void * __wrap_rbtree_insert(rb_tree * tree, const char * key, void * value);
 
 char **__wrap_rbtree_keys(const rb_tree *tree);
 
+void *__wrap_rbtree_get(const rb_tree *tree, const char * key);
+
 #endif
