@@ -27,6 +27,7 @@ def test_WazuhDBQueryMitreMetadata(mock_wdb):
     # TODO: add the rest of wdb query classes
     WazuhDBQueryMitreGroups,
     WazuhDBQueryMitreMitigations,
+    WazuhDBQueryMitreReferences,
     WazuhDBQueryMitreTactics,
     WazuhDBQueryMitreTechniques,
     WazuhDBQueryMitreSoftware
@@ -53,6 +54,7 @@ def test_WazuhDBQueryMitre_classes(mock_wdb, wdb_query_class):
     # TODO: add the rest of wdb query classes
     (get_groups, WazuhDBQueryMitreGroups),
     (get_mitigations, WazuhDBQueryMitreMitigations),
+    (get_references, WazuhDBQueryMitreReferences),
     (get_tactics, WazuhDBQueryMitreTactics),
     (get_techniques, WazuhDBQueryMitreTechniques),
     (get_software, WazuhDBQueryMitreSoftware)

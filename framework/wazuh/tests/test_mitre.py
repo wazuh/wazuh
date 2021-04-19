@@ -38,6 +38,7 @@ def mitre_db():
 # Functions
 class CursorByName:
     """Class to return query result including the column name as key."""
+
     def __init__(self, cursor):
         self._cursor = cursor
 
@@ -56,7 +57,7 @@ def mitre_query(cursor, query):
 
 
 def sort_entries(entries, sort_key='id'):
-    """Sort a list of dictionaries by one their keys."""
+    """Sort a list of dictionaries by one of their keys."""
     return sorted(entries, key=lambda k: k[sort_key])
 
 
@@ -80,6 +81,20 @@ def test_mitre_mitigations(mock_mitre_db, mitre_db):
 
     assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
                for key in row)
+
+
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
+def test_mitre_references(mock_mitre_dbmitre, mitre_db):
+    """Check MITRE metadata."""
+    result = mitre.mitre_references(limit=None)
+    rows = mitre_query(mitre_db, 'SELECT * FROM reference')
+
+    sorted_result = sort_entries(sort_entries(sort_entries(result.affected_items, sort_key='id'), sort_key='source'),
+                                 sort_key='url')
+    sorted_rows = sort_entries(sort_entries(sort_entries(rows, sort_key='id'), sort_key='source'), sort_key='url')
+
+    assert result.affected_items
+    assert all(item[key] == row[key] for item, row in zip(sorted_result, sorted_rows) for key in row)
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
