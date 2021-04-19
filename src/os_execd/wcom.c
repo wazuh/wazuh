@@ -101,6 +101,9 @@ size_t wcom_dispatch(char *command, char ** output){
         }
         return wcom_getconfig(rcv_args, output);
 
+    } else if (strcmp(rcv_comm, "check-manager-config") == 0) {
+        return wcom_check_manager_config(output);
+
     } else {
         mdebug1("WCOM Unrecognized command '%s'.", rcv_comm);
         os_strdup("err Unrecognized command", *output);
@@ -301,6 +304,73 @@ size_t wcom_getconfig(const char * section, char ** output) {
 error:
     mdebug1("At WCOM getconfig: Could not get '%s' section", section);
     os_strdup("err Could not get requested section", *output);
+    return strlen(*output);
+}
+
+size_t wcom_check_manager_config(char **output) {
+    static const char *daemons[] = {"bin/wazuh-authd", "bin/wazuh-remoted",
+                                    "bin/wazuh-execd", "bin/wazuh-analysisd", "bin/wazuh-logcollector",
+                                    "bin/wazuh-integratord", "bin/wazuh-syscheckd", "bin/wazuh-maild",
+                                    "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/wazuh-agentlessd",
+                                    "bin/wazuh-integratord", "bin/wazuh-dbd", "bin/wazuh-csyslogd", NULL
+                                    };
+
+    int ret_val = 0;
+    int result_code = 0;
+    int i;
+    char command_in[PATH_MAX] = {0};
+    char *msg = NULL;
+    char *output_msg = NULL;
+    cJSON *response = cJSON_CreateObject();
+
+    for (i = 0; daemons[i]; i++) {
+        snprintf(command_in, PATH_MAX, "%s %s", daemons[i], "-t");
+        // Exec a command with a timeout of 2000 seconds.
+        if (wm_exec(command_in, &output_msg, &result_code, 2000, NULL) < 0) {
+            if (result_code == EXECVE_ERROR) {
+                mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
+            } else {
+                mwarn("Error executing [%s]", command_in);
+            }
+
+            ret_val = 1;
+            size_t size = snprintf(NULL, 0, "Error executing %s - (%d)", command_in, result_code);
+            os_calloc(size + 1, sizeof(char), msg);
+            snprintf(msg, 0, "Error executing %s - (%d)", command_in, result_code);
+            break;
+        }
+
+        if (output_msg && *output_msg) {
+            // Remove last newline
+            size_t lastchar = strlen(output_msg) - 1;
+            output_msg[lastchar] = output_msg[lastchar] == '\n' ? '\0' : output_msg[lastchar];
+
+            wm_strcat(&msg, output_msg, ' ');
+        }
+
+        os_free(output_msg);
+
+        if(result_code) {
+            ret_val = result_code;
+            break;
+        }
+    }
+
+    cJSON_AddNumberToObject(response, "error", ret_val);
+
+    if (ret_val) {
+        char error_msg[OS_SIZE_4096 - 27] = {0};
+        snprintf(error_msg, OS_SIZE_4096 - 27, "%s", msg);
+        cJSON_AddStringToObject(response, "message", error_msg);
+    } else {
+        cJSON_AddStringToObject(response, "message", "ok");
+    }
+
+    os_free(msg);
+
+    *output = cJSON_PrintUnformatted(response);
+    cJSON_Delete(response);
+
     return strlen(*output);
 }
 
