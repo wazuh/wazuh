@@ -71,6 +71,16 @@ def test_mitre_metadata(mock_mitre_dbmitre, mitre_db):
 
 
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
+def test_mitre_mitigations(mock_mitre_db, mitre_db):
+    """Check MITRE mitigations."""
+    result = mitre.mitre_mitigations()
+    rows = mitre_query(mitre_db, "SELECT * FROM mitigation")
+
+    assert all(item[key] == row[key] for item, row in zip(sort_entries(result.affected_items), sort_entries(rows))
+               for key in row)
+
+
+@patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
 def test_mitre_tactics(mock_mitre_db, mitre_db):
     """Check MITRE tactics."""
     result = mitre.mitre_tactics()
