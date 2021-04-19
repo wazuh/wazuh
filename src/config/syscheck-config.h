@@ -417,6 +417,16 @@ typedef struct _config {
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
     bool allow_remote_prefilter_cmd;
 } syscheck_config;
+/**
+ * @brief Reads syscheck config from XML.
+ * 
+ * @param xml XML structure containing Wazuh's configuration
+ * @param node XML node to continue reading the configuration file
+ * @param syscheck Syscheck configuration structure
+ * @param modules Modules enabled.
+ * @return Return 0 on success or -1 on error.
+ */
+int read_syscheck_config_xml(const OS_XML *xml, XML_NODE node, syscheck_config *syscheck, int modules);
 
 /**
  * @brief Organizes syscheck directories and related data according to their priority (whodata-realtime-scheduled) and in alphabetical order

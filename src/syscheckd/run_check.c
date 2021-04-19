@@ -66,10 +66,10 @@ STATIC void fim_delete_realtime_watches(int pos);
 // Send a message
 STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
     if (SendMSG(syscheck.queue, msg, location, mq) < 0) {
-        merror(QUEUE_SEND);
+        mterror(SYSCHECK_LOGTAG, QUEUE_SEND);
 
         if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-            merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+            mterror_exit(SYSCHECK_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         // Try to send it again
@@ -79,7 +79,7 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
 
 // Send a data synchronization control message
 void fim_send_sync_msg(const char *location, const char * msg) {
-    mdebug2(FIM_DBSYNC_SEND, msg);
+    mtdebug2(SYSCHECK_LOGTAG, FIM_DBSYNC_SEND, msg);
     fim_send_msg(DBSYNC_MQ, location, msg);
 
     if (syscheck.sync_max_eps == 0) {
@@ -99,7 +99,7 @@ void fim_send_sync_msg(const char *location, const char * msg) {
 void send_syscheck_msg(const cJSON *_msg) {
     char *msg = cJSON_PrintUnformatted(_msg);
 
-    mdebug2(FIM_SEND, msg);
+    mtdebug2(SYSCHECK_LOGTAG, FIM_SEND, msg);
     fim_send_msg(SYSCHECK_MQ, SYSCHECK, msg);
 
     os_free(msg);
@@ -150,7 +150,7 @@ void check_max_fps() {
         w_mutex_unlock(&fps_mutex);
         return;
     }
-    mdebug2(FIM_REACHED_MAX_FPS);
+    mtdebug2(SYSCHECK_LOGTAG, FIM_REACHED_MAX_FPS);
     wait_time.tv_sec += 1;
 
     // Wait for one second or until the thread is unlocked using w_cond_broadcast
@@ -160,7 +160,7 @@ void check_max_fps() {
         files_read = 0;
         w_cond_broadcast(&cond);
     } else if (rt != 0) {
-        mdebug2("pthread_cond_timedwait failed: %s", strerror(rt));
+        mtdebug2(SYSCHECK_LOGTAG, "pthread_cond_timedwait failed: %s", strerror(rt));
     }
     w_mutex_unlock(&fps_mutex);
 }
@@ -191,10 +191,10 @@ void start_daemon()
 
     // A higher nice value means a low priority.
 #ifndef WIN32
-    mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
+    mtdebug1(SYSCHECK_LOGTAG, FIM_PROCESS_PRIORITY, syscheck.process_priority);
 
     if (nice(syscheck.process_priority) == -1) {
-        merror(NICE_ERROR, strerror(errno), errno);
+        mterror(SYSCHECK_LOGTAG, NICE_ERROR, strerror(errno), errno);
     }
 #endif
 
@@ -203,7 +203,7 @@ void start_daemon()
     w_create_thread(w_rootcheck_thread, &syscheck);
 #else
     if (CreateThread(NULL, 0, w_rootcheck_thread, &syscheck, 0, NULL) == NULL) {
-        merror(THREAD_ERROR);
+        mterror(SYSCHECK_LOGTAG, THREAD_ERROR);
     }
 #endif
 
@@ -219,17 +219,17 @@ void start_daemon()
     snprintf(diff_dir, PATH_MAX, "%s/local/", DIFF_DIR);
 
     if (cldir_ex(diff_dir) == -1 && errno != ENOENT) {
-        merror("Unable to clear directory '%s': %s (%d)", diff_dir, strerror(errno), errno);
+        mterror(SYSCHECK_LOGTAG, "Unable to clear directory '%s': %s (%d)", diff_dir, strerror(errno), errno);
     }
 
     if (syscheck.disabled) {
         return;
     }
 
-    minfo(FIM_DAEMON_STARTED);
+    mtinfo(SYSCHECK_LOGTAG, FIM_DAEMON_STARTED);
 
     // Create File integrity monitoring base-line
-    minfo(FIM_FREQUENCY_TIME, syscheck.time);
+    mtinfo(SYSCHECK_LOGTAG, FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
 #ifndef WIN32
     // Launch Real-time thread
@@ -246,13 +246,13 @@ void start_daemon()
 #else
     if (syscheck.enable_synchronization) {
         if (CreateThread(NULL, 0, fim_run_integrity, &syscheck, 0, NULL) == NULL) {
-            merror(THREAD_ERROR);
+            mterror(SYSCHECK_LOGTAG, THREAD_ERROR);
         }
     }
 
     if (CreateThread(NULL, 0, fim_run_realtime, &syscheck, 0, NULL) == NULL) {
 
-        merror(THREAD_ERROR);
+        mterror(SYSCHECK_LOGTAG, THREAD_ERROR);
     }
 #endif
 
@@ -384,7 +384,7 @@ static int _base_line = 0;
                     realtime_sanitize_watch_map();
                     syscheck.realtime->queue_overflow = false;
                 }
-                mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+                mtdebug2(SYSCHECK_LOGTAG, FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
             }
         }
 
@@ -414,7 +414,7 @@ static int _base_line = 0;
                             &selecttime);
 
             if (run_now < 0) {
-                merror(FIM_ERROR_SELECT);
+                mterror(SYSCHECK_LOGTAG, FIM_ERROR_SELECT);
             } else if (run_now == 0) {
                 // Timeout
             } else if (FD_ISSET (syscheck.realtime->fd, &rfds)) {
@@ -423,7 +423,7 @@ static int _base_line = 0;
 
 #elif defined WIN32
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
+                mterror(SYSCHECK_LOGTAG, FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
             }
 #endif
         } else {
@@ -434,7 +434,7 @@ static int _base_line = 0;
 #else
     for (int i = 0; syscheck.dir[i]; i++) {
         if (syscheck.opts[i] & REALTIME_ACTIVE) {
-            mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
+            mtwarn(SYSCHECK_LOGTAG, FIM_WARN_REALTIME_UNSUPPORTED);
             break;
         }
     }
@@ -455,11 +455,11 @@ void set_priority_windows_thread() {
                       syscheck.process_priority <= 10 ? THREAD_PRIORITY_LOWEST :
                       THREAD_PRIORITY_IDLE;
 
-    mdebug1(FIM_PROCESS_PRIORITY, syscheck.process_priority);
+    mtdebug1(SYSCHECK_LOGTAG, FIM_PROCESS_PRIORITY, syscheck.process_priority);
 
     if(!SetThreadPriority(GetCurrentThread(), dwCreationFlags)) {
         int dwError = GetLastError();
-        merror("Can't set thread priority: %d", dwError);
+        mterror(SYSCHECK_LOGTAG, "Can't set thread priority: %d", dwError);
     }
 }
 #endif
@@ -493,11 +493,11 @@ int fim_whodata_initialize() {
     Wazuh must monitor files/directories in Realtime mode. */
     if (!run_whodata_scan()) {
         if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-            merror(FIM_ERROR_CHECK_THREAD);
+            mterror(SYSCHECK_LOGTAG, FIM_ERROR_CHECK_THREAD);
             retval = -1;
         }
     } else {
-        merror(FIM_ERROR_WHODATA_INIT);
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_WHODATA_INIT);
 
         // In case SACLs and policies have been set, restore them.
         audit_restore();
@@ -520,7 +520,7 @@ int fim_whodata_initialize() {
 
 #else
     if (syscheck.enable_whodata) {
-        mwarn(FIM_WARN_WHODATA_UNSUPPORTED);
+        mtwarn(SYSCHECK_LOGTAG, FIM_WARN_WHODATA_UNSUPPORTED);
     }
 #endif
 
@@ -540,19 +540,19 @@ void log_realtime_status(int next) {
     switch (status) {
     case 0:
         if (next == 1) {
-            minfo(FIM_REALTIME_STARTED);
+            mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_STARTED);
             status = next;
         }
         break;
     case 1:
         if (next == 2) {
-            minfo(FIM_REALTIME_PAUSED);
+            mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_PAUSED);
             status = next;
         }
         break;
     case 2:
         if (next == 1) {
-            minfo(FIM_REALTIME_RESUMED);
+            mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_RESUMED);
             status = next;
         }
     }
@@ -565,11 +565,11 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *real_path;
     int i;
 
-    mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
+    mtdebug1(SYSCHECK_LOGTAG, FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
     while (1) {
         sleep(syscheck.sym_checker_interval);
-        mdebug1(FIM_LINKCHECK_START, syscheck.sym_checker_interval);
+        mtdebug1(SYSCHECK_LOGTAG, FIM_LINKCHECK_START, syscheck.sym_checker_interval);
 
         w_mutex_lock(&syscheck.fim_scan_mutex);
         for (i = 0; syscheck.dir[i]; i++) {
@@ -583,10 +583,10 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 if (real_path) {
                     // Check if link has changed
                     if (strcmp(real_path, syscheck.symbolic_links[i])) {
-                        minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
+                        mtinfo(SYSCHECK_LOGTAG, FIM_LINKCHECK_CHANGED, syscheck.dir[i], syscheck.symbolic_links[i], real_path);
                         fim_link_update(i, real_path);
                     } else {
-                        mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.symbolic_links[i]);
+                        mtdebug1(SYSCHECK_LOGTAG, FIM_LINKCHECK_NOCHANGE, syscheck.symbolic_links[i]);
                     }
                 } else {
                     // Broken link
@@ -612,7 +612,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
         }
 
         w_mutex_unlock(&syscheck.fim_scan_mutex);
-        mdebug1(FIM_LINKCHECK_FINALIZE);
+        mtdebug1(SYSCHECK_LOGTAG, FIM_LINKCHECK_FINALIZE);
     }
 
     return NULL;
@@ -662,7 +662,7 @@ STATIC void fim_link_update(int pos, char *new_path) {
                 break;
             }
         } else if (strcmp(new_path, syscheck.symbolic_links[i] ? syscheck.symbolic_links[i] : syscheck.dir[i]) == 0) {
-            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
+            mtdebug1(SYSCHECK_LOGTAG, FIM_LINK_ALREADY_ADDED, syscheck.dir[i]);
             is_new_link = false;
             break;
         }
@@ -698,7 +698,7 @@ STATIC void fim_link_check_delete(int pos) {
             return;
         }
 
-        mdebug1(FIM_STAT_FAILED, syscheck.symbolic_links[pos], errno, strerror(errno));
+        mtdebug1(SYSCHECK_LOGTAG, FIM_STAT_FAILED, syscheck.symbolic_links[pos], errno, strerror(errno));
     } else {
         fim_link_delete_range(pos);
 
@@ -772,7 +772,7 @@ STATIC void fim_link_delete_range(int pos) {
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (fim_db_get_path_from_pattern(syscheck.database, pattern, &file, syscheck.database_store) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+        mterror(SYSCHECK_LOGTAG, FIM_DB_ERROR_RM_PATTERN, pattern);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -782,7 +782,7 @@ STATIC void fim_link_delete_range(int pos) {
 
         if (fim_db_delete_range(syscheck.database, file,
                                 &syscheck.fim_entry_mutex, syscheck.database_store, mode, &pos) != FIMDB_OK) {
-            merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+            mterror(SYSCHECK_LOGTAG, FIM_DB_ERROR_RM_PATTERN, pattern);
         }
     }
 }
@@ -810,7 +810,7 @@ STATIC void fim_link_reload_broken_link(char *path, int index) {
     for (element = 0; syscheck.dir[element]; element++) {
         if (strcmp(path, syscheck.dir[element]) == 0) {
             // If a configuration directory exists don't reload
-            mdebug1(FIM_LINK_ALREADY_ADDED, syscheck.dir[element]);
+            mtdebug1(SYSCHECK_LOGTAG, FIM_LINK_ALREADY_ADDED, syscheck.dir[element]);
             found = 1;
         }
     }
@@ -843,9 +843,9 @@ void set_whodata_mode_changes() {
             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
             syscheck.opts[i] |= REALTIME_ACTIVE;
             if (realtime_adddir(syscheck.dir[i], 0, 0) != 1) {
-                merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, syscheck.dir[i]);
+                mterror(SYSCHECK_LOGTAG, FIM_ERROR_REALTIME_ADDDIR_FAILED, syscheck.dir[i]);
             } else {
-                mdebug1(FIM_REALTIME_MONITORING, syscheck.dir[i]);
+                mtdebug1(SYSCHECK_LOGTAG, FIM_REALTIME_MONITORING, syscheck.dir[i]);
             }
         }
     }

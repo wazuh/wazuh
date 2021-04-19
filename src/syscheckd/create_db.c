@@ -65,7 +65,7 @@ void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mu
     pos = fim_configuration_directory(entry->file_entry.path);
 
     if(pos == -1) {
-        mdebug2(FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_DELETE_EVENT_PATH_NOCONF, entry->file_entry.path);
         return;
     }
     /* Don't send alert if received mode and mode in configuration aren't the same.
@@ -106,7 +106,7 @@ void fim_delete_file_event(fdb_t *fim_sql, fim_entry *entry, pthread_mutex_t *mu
     w_mutex_unlock(mutex);
 
     if (json_event != NULL) {
-        mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_FILE_MSG_DELETE, entry->file_entry.path);
         send_syscheck_msg(json_event);
     }
 
@@ -125,14 +125,14 @@ time_t fim_scan() {
     char *real_path = NULL;
     cputime_start = clock();
     gettime(&start);
-    minfo(FIM_FREQUENCY_STARTED);
+    mtinfo(SYSCHECK_LOGTAG, FIM_FREQUENCY_STARTED);
     fim_send_scan_info(FIM_SCAN_START);
 
 
     fim_diff_folder_size();
     syscheck.disk_quota_full_msg = true;
 
-    mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR, syscheck.diff_folder_size);
+    mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_FOLDER_SIZE, DIFF_DIR, syscheck.diff_folder_size);
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
 
@@ -199,11 +199,11 @@ time_t fim_scan() {
     end_of_scan = time(NULL);
 
     if (syscheck.file_limit_enabled) {
-        mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_FILE_LIMIT_VALUE, syscheck.file_limit);
         fim_check_db_state();
     }
     else {
-        mdebug2(FIM_FILE_LIMIT_UNLIMITED);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_FILE_LIMIT_UNLIMITED);
     }
 
     if (_base_line == 0) {
@@ -217,11 +217,11 @@ time_t fim_scan() {
                 realtime_sanitize_watch_map();
                 syscheck.realtime->queue_overflow = false;
             }
-            mdebug2(FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
+            mtdebug2(SYSCHECK_LOGTAG, FIM_NUM_WATCHES, syscheck.realtime->dirtb->elements);
         }
     }
 
-    minfo(FIM_FREQUENCY_ENDED);
+    mtinfo(SYSCHECK_LOGTAG, FIM_FREQUENCY_ENDED);
     fim_send_scan_info(FIM_SCAN_END);
 
     if (isDebug()) {
@@ -261,7 +261,7 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
     depth = fim_check_depth(path, node);
 
     if (depth > syscheck.recursion_level[node]) {
-        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[node], path);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_MAX_RECURSION_LEVEL, depth, syscheck.recursion_level[node], path);
         return;
     }
 
@@ -272,7 +272,7 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
     // Deleted file. Sending alert.
     if (w_stat(path, &(item->statbuf)) == -1) {
         if(errno != ENOENT) {
-            mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
+            mtdebug1(SYSCHECK_LOGTAG, FIM_STAT_FAILED, path, errno, strerror(errno));
             return;
         }
 
@@ -295,7 +295,7 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
 #ifdef WIN_WHODATA
     if (w_evt && w_evt->scan_directory == 1) {
         if (w_update_sacl(path)) {
-            mdebug1(FIM_SCAL_NOREFRESH, path);
+            mtdebug1(SYSCHECK_LOGTAG, FIM_SCAL_NOREFRESH, path);
         }
     }
 #endif
@@ -325,7 +325,7 @@ void fim_checker(const char *path, fim_element *item, whodata_evt *w_evt, int re
 
     case FIM_DIRECTORY:
         if (depth == syscheck.recursion_level[node]) {
-            mdebug2(FIM_DIR_RECURSION_LEVEL, path, depth);
+            mtdebug2(SYSCHECK_LOGTAG, FIM_DIR_RECURSION_LEVEL, path, depth);
             return;
         }
 #ifndef WIN32
@@ -347,7 +347,7 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
     size_t path_size;
 
     if (!dir) {
-        merror(NULL_ERROR);
+        mterror(SYSCHECK_LOGTAG, NULL_ERROR);
         return OS_INVALID;
     }
 
@@ -355,7 +355,7 @@ int fim_directory (const char *dir, fim_element *item, whodata_evt *w_evt, int r
     dp = opendir(dir);
 
     if (!dp) {
-        mwarn(FIM_PATH_NOT_OPEN, dir, strerror(errno));
+        mtwarn(SYSCHECK_LOGTAG, FIM_PATH_NOT_OPEN, dir, strerror(errno));
         return OS_INVALID;
     }
 
@@ -426,7 +426,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         int configuration;
 
         if (errno != ENOENT) {
-            mdebug1(FIM_STAT_FAILED, entry->file_entry.path, errno, strerror(errno));
+            mtdebug1(SYSCHECK_LOGTAG, FIM_STAT_FAILED, entry->file_entry.path, errno, strerror(errno));
             free_entry(entry);
             return FIM_FILE_ERROR;
         }
@@ -540,7 +540,7 @@ static int fim_resolve_db_collision(unsigned long inode, unsigned long dev) {
         OSListNode *last = OSList_GetLastNode(stack);
 
         if (last == NULL) {
-            mdebug2("Failed getting the next node to scan"); // LCOV_EXCL_LINE
+            mtdebug2(SYSCHECK_LOGTAG, "Failed getting the next node to scan"); // LCOV_EXCL_LINE
             break;                                           // LCOV_EXCL_LINE
         }
 
@@ -618,7 +618,7 @@ static int fim_update_db_data(const char *path,
             return -1;
         case 1:
             if (fim_resolve_db_collision(data->inode, data->dev) != 0) {
-                mwarn("Failed to resolve an inode collision for file '%s'", path);
+                mtwarn(SYSCHECK_LOGTAG, "Failed to resolve an inode collision for file '%s'", path);
                 return -1;
             }
             // Fallthrough
@@ -653,7 +653,7 @@ static int fim_update_db_data(const char *path,
     }
 
     if (fim_resolve_db_collision(data->inode, data->dev) != 0) {
-        mwarn("Failed to resolve an inode collision for file '%s'", path); // LCOV_EXCL_LINE
+        mtwarn(SYSCHECK_LOGTAG, "Failed to resolve an inode collision for file '%s'", path); // LCOV_EXCL_LINE
         return -1;                                                         // LCOV_EXCL_LINE
     }
 #endif
@@ -680,7 +680,7 @@ static cJSON *_fim_file(const char *path, fim_element *item, whodata_evt *w_evt)
         // Prevent analysis of the same file twice during the same scan
         switch (fim_db_file_is_scanned(syscheck.database, path)) {
             case FIMDB_ERR:
-                mdebug2("Failed to query status of file '%s'", path);
+                mtdebug2(SYSCHECK_LOGTAG, "Failed to query status of file '%s'", path);
                 // Fallthrough
             case 1:
                 return NULL;
@@ -693,7 +693,7 @@ static cJSON *_fim_file(const char *path, fim_element *item, whodata_evt *w_evt)
     //Get file attributes
     new = fim_get_data(path, item);
     if (new == NULL) {
-        mdebug1(FIM_GET_ATTRIBUTES, path);
+        mtdebug1(SYSCHECK_LOGTAG, FIM_GET_ATTRIBUTES, path);
         return NULL;
     }
 
@@ -743,7 +743,7 @@ static cJSON *_fim_file_force_update(const char *path, const fim_element *item, 
     // Get file attributes
     new = fim_get_data(path, item);
     if (new == NULL) {
-        mdebug1(FIM_GET_ATTRIBUTES, path);
+        mtdebug1(SYSCHECK_LOGTAG, FIM_GET_ATTRIBUTES, path);
         return NULL;
     }
 
@@ -867,7 +867,7 @@ void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt
     if (files && files->elements) {
         if (fim_db_process_missing_entry(syscheck.database, files, &syscheck.fim_entry_mutex,
             syscheck.database_store, mode, w_evt) != FIMDB_OK) {
-                merror(FIM_DB_ERROR_RM_PATTERN, pattern);
+                mterror(SYSCHECK_LOGTAG, FIM_DB_ERROR_RM_PATTERN, pattern);
         }
     }
 }
@@ -884,7 +884,7 @@ void fim_check_db_state() {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (nodes_count < 0) {
-        mwarn(FIM_DATABASE_NODES_COUNT_FAIL);
+        mtwarn(SYSCHECK_LOGTAG, FIM_DATABASE_NODES_COUNT_FAIL);
         return;
     }
 
@@ -932,27 +932,27 @@ void fim_check_db_state() {
 
     if (nodes_count >= syscheck.file_limit) {
         _db_state = FIM_STATE_DB_FULL;
-        mwarn(FIM_DB_FULL_ALERT);
+        mtwarn(SYSCHECK_LOGTAG, FIM_DB_FULL_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "full");
     }
     else if (nodes_count >= syscheck.file_limit * 0.9) {
         _db_state = FIM_STATE_DB_90_PERCENTAGE;
-        minfo(FIM_DB_90_PERCENTAGE_ALERT);
+        mtinfo(SYSCHECK_LOGTAG, FIM_DB_90_PERCENTAGE_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "90_percentage");
     }
     else if (nodes_count >= syscheck.file_limit * 0.8) {
         _db_state = FIM_STATE_DB_80_PERCENTAGE;
-        minfo(FIM_DB_80_PERCENTAGE_ALERT);
+        mtinfo(SYSCHECK_LOGTAG, FIM_DB_80_PERCENTAGE_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "80_percentage");
     }
     else if (nodes_count > 0) {
         _db_state = FIM_STATE_DB_NORMAL;
-        minfo(FIM_DB_NORMAL_ALERT);
+        mtinfo(SYSCHECK_LOGTAG, FIM_DB_NORMAL_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
     else {
         _db_state = FIM_STATE_DB_EMPTY;
-        minfo(FIM_DB_NORMAL_ALERT);
+        mtinfo(SYSCHECK_LOGTAG, FIM_DB_NORMAL_ALERT);
         cJSON_AddStringToObject(json_event, "alert_type", "normal");
     }
 
@@ -996,7 +996,7 @@ int fim_configuration_directory(const char *path) {
     }
 
     if (position == -1) {
-        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", path);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_CONFIGURATION_NOTFOUND, "file", path);
     }
 
     return position;
@@ -1063,7 +1063,7 @@ fim_file_data *fim_get_data(const char *file, const fim_element *item) {
         char perm[OS_SIZE_6144 + 1];
 
         if (error = w_get_file_permissions(file, perm, OS_SIZE_6144), error) {
-            mdebug1(FIM_EXTRACT_PERM_FAIL, file, error);
+            mtdebug1(SYSCHECK_LOGTAG, FIM_EXTRACT_PERM_FAIL, file, error);
             free_file_data(data);
             return NULL;
         } else {
@@ -1132,7 +1132,7 @@ fim_file_data *fim_get_data(const char *file, const fim_element *item) {
                                         data->hash_sha256,
                                         OS_BINARY,
                                         syscheck.file_max_size) < 0) {
-                mdebug1(FIM_HASHES_FAIL, file);
+                mtdebug1(SYSCHECK_LOGTAG, FIM_HASHES_FAIL, file);
                 free_file_data(data);
                 return NULL;
         }
@@ -1221,7 +1221,7 @@ void check_deleted_files() {
     w_mutex_lock(&syscheck.fim_entry_mutex);
 
     if (fim_db_get_not_scanned(syscheck.database, &file, syscheck.database_store) != FIMDB_OK) {
-        merror(FIM_DB_ERROR_RM_NOT_SCANNED);
+        mterror(SYSCHECK_LOGTAG, FIM_DB_ERROR_RM_NOT_SCANNED);
     }
 
     w_mutex_unlock(&syscheck.fim_entry_mutex);
@@ -1484,7 +1484,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
             if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
-                mdebug2(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
+                mtdebug2(SYSCHECK_LOGTAG, FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
                 return 1;
             }
             i++;
@@ -1496,7 +1496,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                mdebug2(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
+                mtdebug2(SYSCHECK_LOGTAG, FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
                 return 1;
             }
             i++;
@@ -1509,14 +1509,14 @@ int fim_check_ignore (const char *file_name) {
 
 int fim_check_restrict (const char *file_name, OSMatch *restriction) {
     if (file_name == NULL) {
-        merror(NULL_ERROR);
+        mterror(SYSCHECK_LOGTAG, NULL_ERROR);
         return 1;
     }
 
     // Restrict file types
     if (restriction) {
         if (!OSMatch_Execute(file_name, strlen(file_name), restriction)) {
-            mdebug2(FIM_FILE_IGNORE_RESTRICT, file_name, restriction->raw);
+            mtdebug2(SYSCHECK_LOGTAG, FIM_FILE_IGNORE_RESTRICT, file_name, restriction->raw);
             return 1;
         }
     }
@@ -1576,13 +1576,13 @@ void fim_diff_folder_size(){
 
 // LCOV_EXCL_START
 void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_start) {
-    mdebug1(FIM_RUNNING_SCAN,
+    mtdebug1(SYSCHECK_LOGTAG, FIM_RUNNING_SCAN,
             time_diff(&start, &end),
             (double)(clock() - cputime_start) / CLOCKS_PER_SEC);
 
 #ifdef WIN32
-    mdebug1(FIM_ENTRIES_INFO, fim_db_get_count_file_entry(syscheck.database));
-    mdebug1(FIM_REGISTRY_ENTRIES_INFO, fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database));
+    mtdebug1(SYSCHECK_LOGTAG, FIM_ENTRIES_INFO, fim_db_get_count_file_entry(syscheck.database));
+    mtdebug1(SYSCHECK_LOGTAG, FIM_REGISTRY_ENTRIES_INFO, fim_db_get_count_registry_key(syscheck.database) + fim_db_get_count_registry_data(syscheck.database));
 #else
     unsigned inode_items = 0;
     unsigned inode_paths = 0;
@@ -1590,7 +1590,7 @@ void fim_print_info(struct timespec start, struct timespec end, clock_t cputime_
     inode_items = fim_db_get_count_file_data(syscheck.database);
     inode_paths = fim_db_get_count_file_entry(syscheck.database);
 
-    mdebug1(FIM_INODES_INFO, inode_items, inode_paths);
+    mtdebug1(SYSCHECK_LOGTAG, FIM_INODES_INFO, inode_items, inode_paths);
 #endif
 
     return;
