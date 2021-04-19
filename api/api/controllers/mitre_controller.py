@@ -42,6 +42,65 @@ async def get_metadata(request, pretty=False, wait_for_complete=False):
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+async def get_references(request, reference_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
+                         offset: int = None, limit: int = None, sort: str = None, search: str = None,
+                         select: list = None, q: str = None):
+    """Get information of specified MITRE's references.
+
+    Parameters
+    ----------
+    request : connexion.request
+    reference_ids : list
+        List of reference ids to be obtained.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First item to return.
+    limit : int
+        Maximum number of items to return.
+    search : str
+        Looks for elements with the specified string.
+    select : list
+        Select which fields to return (separated by comma).
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    q : str
+        Query to filter by.
+
+    Returns
+    -------
+    MITRE's references information.
+    """
+    f_kwargs = {
+        'filters': {
+            'id': reference_ids,
+        },
+        'offset': offset,
+        'limit': limit,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort else None,
+        'sort_ascending': False if not sort or parse_api_param(sort, 'sort')['order'] == 'desc' else True,
+        'search_text': parse_api_param(search, 'search')['value'] if search else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search else None,
+        'select': select,
+        'q': q
+    }
+
+    dapi = DistributedAPI(f=mitre.mitre_references,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
 async def get_tactics(request, tactic_ids: list = None, pretty: bool = False, wait_for_complete: bool = False,
                       offset: int = None, limit: int = None, sort: str = None, search: str = None, select: list = None,
                       q: str = None):

@@ -1721,6 +1721,9 @@ components:
           description: "Event to look for"
 
     # MITRE models
+    Mitre_reference_id:
+      type: string
+      description: "MITRE Reference ID"
     Mitre_mitigation_id:
       type: string
       description: "MITRE mitigation ID"
@@ -4038,6 +4041,14 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Mitre_mitigation_id'
+    mitre_reference_ids:
+      in: query
+      name: 'reference_ids'
+      description: "List of MITRE's references IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/Mitre_reference_id'
     mitre_tactic_ids:
       in: query
       name: 'tactic_ids'
@@ -4061,7 +4072,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/MITRE_software_id'
+          $ref: '#/components/schemas/Mitre_software_id'
     mitre_technique_ids:
       in: query
       name: 'technique_ids'
@@ -10698,6 +10709,61 @@ paths:
                   total_failed_items: 0
                   failed_items: [ ]
                 message: "MITRE mitigations information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/references:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE references"
+      description: "Return the references from MITRE database"
+      operationId: api.controllers.mitre_controller.get_references
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_reference_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE references"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - description: "Hosseini, A. (2017, July 18). Ten Process Injection Techniques: A Technical Survey Of Common And Trending Process Injection Techniques. Retrieved December 7, 2017."
+                      type: "technique"
+                      source: "Endgame Process Injection July 2017"
+                      url: "https://www.endgame.com/blog/technical-blog/ten-process-injection-techniques-technical-survey-common-and-trending-process"
+                      id: "attack-pattern--0042a9f5-f053-4769-b3ef-9ad018dfa298"
+                  total_affected_items: 5212
+                  failed_items: []
+                  total_failed_items: 0
+                message: "MITRE references information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

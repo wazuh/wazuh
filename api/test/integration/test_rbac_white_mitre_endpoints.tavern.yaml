@@ -39,6 +39,25 @@ stages:
       <<: *permission_allowed
 
 ---
+test_name: GET /mitre/references
+
+marks:
+  - base_reference_tests
+
+stages:
+
+  # GET /mitre/references
+  - name: Request MITRE references (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/references"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
+
+---
 test_name: GET /mitre/techniques
 
 marks:

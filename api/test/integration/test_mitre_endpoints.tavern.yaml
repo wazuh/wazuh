@@ -322,6 +322,301 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: GET /mitre/references
+
+marks:
+  - base_reference_tests
+
+stages:
+
+  - name: Show one reference
+    request: &general_references_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/references"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: &references_response
+            - id: !anystr
+              source: !anystr
+              url: !anystr
+              type: !anystr
+              # description or external_id
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Show one reference with offset = 1
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      save:
+        $ext:
+          function: tavern_utils:test_save_response_data_mitre
+          extra_kwargs:
+            fields:
+              - id
+              - source
+              - url
+              - type
+
+  - name: Check that the offset is working properly, try to show two references with offset = 0
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+      verify_response_with:
+        - function: tavern_utils:test_validate_mitre
+          extra_kwargs:
+            data: "{response_data}"
+            index: 1
+
+  - name: Show all references without limit
+    request:
+      verify: False
+      <<: *general_references_request
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+
+  - name: Try to get all references with limit = 0
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+
+  - name: Get three specified references (one of them does not exist in the database)
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        reference_ids:
+          - "attack-pattern--0042a9f5-f053-4769-b3ef-9ad018dfa298"
+          - "attack-pattern--005a06c6-14bf-4118-afa0-ebcd8aebb0c9"
+          - "attack-pattern--005a06c6-14bf-4118-afa0-NOTEXIST"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *references_response
+              id: "attack-pattern--0042a9f5-f053-4769-b3ef-9ad018dfa298"
+            - <<: *references_response
+              id: "attack-pattern--005a06c6-14bf-4118-afa0-ebcd8aebb0c9"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Sort references without limit
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        sort: -source
+        limit: 3
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "source"
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Show references using valid select
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        select: 'url,source,type'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'url,source,type' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to show references using invalid select
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
+  - name: Try to show references using invalid select (one select is invalid)
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        select: 'source,noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
+
+  - name: Show references using select and specifying a non-existent id in the reference_ids parameter
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        select: 'url'
+        reference_ids: 'invalid'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Search in references
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        search: 'TechNet RPC'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+      verify_response_with:
+        function: tavern_utils:test_validate_search
+        extra_kwargs:
+          search_param: 'TechNet RPC'
+      save:
+        json:
+          reference_id: data.affected_items[1].id
+
+  - name: Search references using offset and limit
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        search: 'TechNet RPC'
+        offset: 1
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{reference_id}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Try to show references using an invalid parameter
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        noexist: nothing
+    response:
+      status_code: 400
+
+  - name: Try to show references using an invalid with an extra field
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        id: "attack-pattern--01a5a209-b94c-450b-b7f9-946497d91055"
+        noexist: True
+    response:
+      status_code: 400
+
+  - name: Filter references using q parameter
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        q: "id=attack-pattern--01a5a209-b94c-450b-b7f9-946497d91055"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *references_response
+              id: "attack-pattern--01a5a209-b94c-450b-b7f9-946497d91055"
+          failed_items: []
+          total_affected_items: 6
+          total_failed_items: 0
+
+  - name: Filter references using q parameter (complex query)
+    request:
+      verify: False
+      <<: *general_references_request
+      params:
+        q: "source~Wikipedia;type!=technique;type!=mitigation"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *references_response
+              source: "Wikipedia Ifconfig"
+              type: "software"
+            - <<: *references_response
+              source: "Wikipedia pwdump"
+              type: "software"
+            - <<: *references_response
+              source: "Wikipedia FTP"
+              type: "software"
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+---
 test_name: GET /mitre/tactics
 
 marks:
