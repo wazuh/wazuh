@@ -260,8 +260,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
         pass
 
     def _execute_data_query(self):
-        """This function will add to the result the software and tactics related to each group.
-        """
+        """This function will add to the result the software and tactics related to each group."""
         super()._execute_data_query()
 
         group_ids = set()
