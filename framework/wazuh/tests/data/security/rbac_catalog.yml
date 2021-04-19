@@ -478,6 +478,7 @@ get_rbac_actions:
           - GET /mitre/tactics
           - GET /mitre/techniques
           - GET /mitre/groups
+          - GET /mitre/software
       rootcheck:clear:
         description: Clear the agents rootcheck database
         resources:
