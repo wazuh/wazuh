@@ -866,3 +866,40 @@ int wnet_select(int sock, int timeout) {
 
     return select(sock + 1, &fdset, NULL, NULL, &fdtimeout);
 }
+
+void resolve_hostname(char **hostname, int attempts) {
+    char *tmp_str;
+    char *f_ip;
+
+    assert(hostname != NULL);
+    if (OS_IsValidIP(*hostname, NULL) == 1) {
+        return;
+    }
+
+    tmp_str = strchr(*hostname, '/');
+    if (tmp_str) {
+        *tmp_str = '\0';   // LCOV_EXCL_LINE
+    }
+
+    f_ip = OS_GetHost(*hostname, attempts);
+
+    char ip_str[128] = {0};
+    if (f_ip) {
+        snprintf(ip_str, 127, "%s/%s", *hostname, f_ip);
+        free(f_ip);
+    } else {
+        snprintf(ip_str, 127, "%s/", *hostname);
+    }
+    free(*hostname);
+    os_strdup(ip_str, *hostname);
+}
+
+const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
+    char *tmp_str;
+    assert(resolved_hostname != NULL);
+
+    /* Check if we have a resolved_hostname or an IP */
+    tmp_str = strchr(resolved_hostname, '/');
+
+    return tmp_str ? ++tmp_str : resolved_hostname;
+}
