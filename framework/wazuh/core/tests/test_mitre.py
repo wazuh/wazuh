@@ -24,6 +24,7 @@ def test_WazuhDBQueryMitreMetadata(mock_wdb):
 
 
 @pytest.mark.parametrize('wdb_query_class', [
+    WazuhDBQueryMitreTactics,
     # TODO: add the rest of wdb query classes
     WazuhDBQueryMitreTechniques
 ])
@@ -45,6 +46,7 @@ def test_WazuhDBQueryMitre_classes(mock_wdb, wdb_query_class):
 
 
 @pytest.mark.parametrize('mitre_get_function, mitre_wdb_query_class', [
+    (get_tactics, WazuhDBQueryMitreTactics),
     # TODO: add the rest of wdb query classes
     (get_techniques, WazuhDBQueryMitreTechniques)
 ])
