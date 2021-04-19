@@ -10739,6 +10739,49 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - mitre_version: '1.2'
+                      deprecated: 0
+                      name: APT38
+                      id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
+                      modified_time: '2020-03-30 18:50:43.737000'
+                      created_time: '2019-01-29 21:27:24.793000'
+                      description: |-
+                        [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
+
+                        North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group.
+                      related_software:
+                        - tool--03342581-f790-4f03-ba41-e82e67392e23
+                        - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
+                        - malware--53ab35c2-d00e-491a-8753-41d35ae7e547
+                      related_techniques:
+                        - attack-pattern--df8b2a25-8bdf-4856-953c-a04372b1c161
+                        - attack-pattern--09a60ea3-a8d1-4ae5-976e-5783248b72a4
+                        - attack-pattern--8f4a33ec-8b1f-4b80-a2f6-642b2e479580
+                        - attack-pattern--57340c81-c025-4189-8fa0-fc7ede51bae4
+                        - attack-pattern--d742a578-d70e-4d0e-96a6-02a9c30204e6
+                        - attack-pattern--30973a08-aed9-4edf-8604-9084ce1b5c4f
+                        - attack-pattern--deb98323-e13f-4b0c-8d94-175379069062
+                        - attack-pattern--d1fcf083-a721-4223-aedf-bf8960798d62
+                        - attack-pattern--e6919abc-99f9-4c6c-95a5-14761e7b2add
+                        - attack-pattern--d63a3fb8-9452-4e9d-a60a-54be68d5998c
+                        - attack-pattern--6495ae23-3ab4-43c5-a94f-5638a2c31fd2
+                        - attack-pattern--32ad5c86-2bcf-47d8-8fdc-d7f3d79a7490
+                        - attack-pattern--d0613359-5781-4fd2-b5be-c269270be1f6
+                        - attack-pattern--1cfcb312-b8d7-47a4-b560-4b16cc677292
+                        - attack-pattern--0af0ca99-357d-4ba1-805f-674fdfb7bef9
+                        - attack-pattern--b80d107d-fa0d-4b60-9684-b0433e8bdba0
+                        - attack-pattern--d45a3d09-b3cf-48f4-9f0f-f521ee5cb05c
+                        - attack-pattern--7e150503-88e7-4861-866b-ff1ac82c4475
+                        - attack-pattern--ff73aa03-0090-4464-83ac-f89e233c02bc
+                  total_affected_items: 111
+                  total_failed_items: 0
+                  failed_items: []
+                message: MITRE groups information was returned
+                error: 0
+
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
