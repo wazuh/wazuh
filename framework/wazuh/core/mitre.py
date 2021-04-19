@@ -328,6 +328,62 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
             group['related_techniques'] = related_techniques.get(group['id'], list())
 
 
+class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
+
+    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
+                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
+        """Create an instance of WazuhDBQueryMitreSoftware query."""
+
+        if select is None:
+            select = set()
+        if filters is None:
+            filters = dict()
+        self.min_select_fields = min_select_fields
+        if min_select_fields is None:
+            self.min_select_fields = {'id'}
+        self.fields = fields
+        if fields is None:
+            self.fields = {'id': 'id', 'name': 'name', 'description': 'description', 'created_time': 'created_time',
+                           'modified_time': 'modified_time', 'mitre_version': 'mitre_version',
+                           'revoked_by': 'revoked_by', 'deprecated': 'deprecated'}
+
+        WazuhDBQueryMitre.__init__(self, table='software', min_select_fields=self.min_select_fields,
+                                   fields=self.fields, filters=filters, offset=offset, limit=limit, query=query,
+                                   count=count, sort=sort, default_sort_field=default_sort_field,
+                                   default_sort_order=default_sort_order, search=search,
+                                   select=list(set(self.fields.values()).intersection(set(select))),
+                                   request_slice=500)
+
+        self.relation_fields = {'related_groups', 'related_techniques'}
+
+    def _filter_status(self, status_filter):
+        pass
+
+    def _execute_data_query(self):
+        """This function will add to the result the groups and tactics related to each software."""
+        super()._execute_data_query()
+
+        software_ids = set()
+        for group in self._data:
+            software_ids.add(group['id'])
+
+        related_groups = WazuhDBQueryMitreRelational(table='use',
+                                                     filters={'target_id': list(software_ids),
+                                                              'target_type': 'software',
+                                                              'source_type': 'group'},
+                                                     dict_key='target_id', request_slice=250).run()
+        related_techniques = WazuhDBQueryMitreRelational(table='use',
+                                                         filters={'source_id': list(software_ids),
+                                                                  'target_type': 'technique',
+                                                                  'source_type': 'software'},
+                                                         dict_key='source_id', request_slice=250).run()
+
+        for software in self._data:
+            software['related_groups'] = related_groups.get(software['id'], list())
+            software['related_techniques'] = related_techniques.get(software['id'], list())
+
+
 @lru_cache(maxsize=None)
 def get_mitigations():
     """This function loads the mitigation data in order to speed up the use of the Framework function.
@@ -401,6 +457,26 @@ def get_groups():
     """
     info = {'min_select_fields': None, 'allowed_fields': None}
     db_query = WazuhDBQueryMitreGroups(limit=None)
+    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
+    info['min_select_fields'] = set(db_query.min_select_fields)
+    data = db_query.run()
+
+    return info, data
+
+
+@lru_cache(maxsize=None)
+def get_software():
+    """This function loads the MITRE groups data in order to speed up the use of the Framework function.
+    It also provides information about the min_select_fields for the select parameter and the
+    allowed_fields for the sort parameter.
+
+    Returns
+    -------
+    dict
+        Dictionary with information about the fields of the software objects and the MITRE software obtained.
+    """
+    info = {'min_select_fields': None, 'allowed_fields': None}
+    db_query = WazuhDBQueryMitreSoftware(limit=None)
     info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
     info['min_select_fields'] = set(db_query.min_select_fields)
     data = db_query.run()

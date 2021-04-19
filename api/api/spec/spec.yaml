@@ -1730,6 +1730,9 @@ components:
     Mitre_group_id:
       type: string
       description: "MITRE group ID"
+    Mitre_software_id:
+      type: string
+      description: "MITRE software ID"
     Mitre_technique_id:
       type: string
       description: "MITRE technique ID"
@@ -4051,6 +4054,14 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Mitre_group_id'
+    mitre_software_ids:
+      in: query
+      name: 'software_ids'
+      description: "List of MITRE's software IDs (separated by comma)"
+      schema:
+        type: array
+        items:
+          $ref: '#/components/schemas/MITRE_software_id'
     mitre_technique_ids:
       in: query
       name: 'technique_ids'
@@ -10922,6 +10933,71 @@ paths:
                   failed_items: [ ]
                 message: MITRE groups information was returned
                 error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /mitre/software:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE software"
+      description: "Return the software from MITRE database"
+      operationId: api.controllers.mitre_controller.get_software
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_software_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE software information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - deprecated: 0
+                      mitre_version: '1.0'
+                      created_time: '2017-05-31 21:32:40.801000'
+                      id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
+                      name: HDoor
+                      modified_time: '2019-04-25 02:33:53.419000'
+                      description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
+                      has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
+                      group. (Citation: Baumgartner Naikon 2015)"
+                      related_groups:
+                        - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
+                      related_techniques:
+                        - attack-pattern--ac08589e-ee59-4935-8667-d845e38fe579
+                        - attack-pattern--e3a12395-188d-4051-9a16-ea8e14d07b88
+                  total_affected_items: 444
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: MITRE software information was returned
+                error: 0
+
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
