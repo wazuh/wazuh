@@ -23,7 +23,7 @@
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
 
 /* oslog configurations */
-#define OSLOG_NAME              "USL OSLOG Super Mc Darwin" ///< Name to be displayed in the localfile' statistics
+#define OSLOG_NAME              "USL_OSLOG_Super_Mc_Darwin" ///< Name to be displayed in the localfile' statistics
 
 #define LOG_CMD_STR             "log"           ///< It is the name of the command used to collect macos' logs
 #define LOG_STREAM_OPT_STR      "stream"        ///< "stream" is the mode in which the "log" command is running

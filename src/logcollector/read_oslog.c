@@ -78,6 +78,8 @@ STATIC char * oslog_get_lastline(char * str);
 void * read_oslog(logreader * lf, int * rc, int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
     int count_logs = 0;
+    int status = 0;
+    int retval = 0;
     bool rlog;
     const int MAX_LINE_LEN = OS_MAXSTR - OS_LOG_HEADER;
 
@@ -95,6 +97,16 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
             w_msg_hash_queues_push(read_buffer, OSLOG_NAME, strlen(read_buffer) + 1, lf->log_target, LOCALFILE_MQ);
         }
         count_logs++;
+    }
+
+    // Checks whether the OSLog's process is still alive or exited
+    retval = waitpid(lf->oslog->log_wfd->pid, &status, WNOHANG);    // Tries to get the child' "soul"
+    if (retval == lf->oslog->log_wfd->pid) {                        // This is true in the case that the child exited
+        merror(CHILD_ERROR, lf->oslog->log_wfd->pid, status);
+        w_oslog_release();
+        lf->oslog->is_oslog_running = false;
+    } else if (retval != 0) {
+        merror(WAITPID_ERROR, errno, strerror(errno));
     }
 
     return NULL;
