@@ -240,7 +240,7 @@ async def get_groups(request, group_ids=None, pretty=False, wait_for_complete=Fa
 
     Returns
     -------
-    MITRE's softwares information
+    MITRE's groups information
     """
     f_kwargs = {
         'filters': {
@@ -297,7 +297,7 @@ async def get_software(request, software_ids=None, pretty=False, wait_for_comple
 
     Returns
     -------
-    MITRE's groups information
+    MITRE's software information
     """
     f_kwargs = {
         'filters': {
