@@ -115,12 +115,12 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
         if (list[i].command) cJSON_AddStringToObject(file,"command",list[i].command);
         if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
         if (list[i].alias) cJSON_AddStringToObject(file,"alias",list[i].alias);
-        if (list[i].query) {
+        if (list[i].query != NULL) {
             cJSON * query = cJSON_CreateObject();
-            if (list[i].query) {
+            if (*list[i].query != '\0') {
                 cJSON_AddStringToObject(query, "value", list[i].query);
             }
-            if (list[i].query_level) {
+            if (list[i].query_level != NULL) {
                 cJSON_AddStringToObject(query, "level", list[i].query_level);
             }
             if (list[i].query_type > 0) {
