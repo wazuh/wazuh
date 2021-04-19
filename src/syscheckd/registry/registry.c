@@ -95,7 +95,7 @@ registry *fim_registry_configuration(const char *key, int arch) {
     }
 
     if (ret == NULL) {
-        mdebug2(FIM_CONFIGURATION_NOTFOUND, "registry", key);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_CONFIGURATION_NOTFOUND, "registry", key);
     }
 
     return ret;
@@ -131,7 +131,7 @@ int fim_registry_validate_recursion_level(const char *key_path, const registry *
     }
 
     if (depth > configuration->recursion_level) {
-        mdebug2(FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, key_path);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_MAX_RECURSION_LEVEL, depth, configuration->recursion_level, key_path);
         return -1;
     }
 
@@ -169,7 +169,7 @@ int fim_registry_validate_ignore(const char *entry, const registry *configuratio
                 continue;
             }
             if (strncasecmp((*ignore_list)[ign_it].entry, entry, strlen((*ignore_list)[ign_it].entry)) == 0) {
-                mdebug2(FIM_REG_IGNORE_ENTRY, key ? "registry" : "value",
+                mtdebug2(SYSCHECK_LOGTAG, FIM_REG_IGNORE_ENTRY, key ? "registry" : "value",
                         (*ignore_list)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]", entry,
                         (*ignore_list)[ign_it].entry);
                 return -1;
@@ -183,7 +183,7 @@ int fim_registry_validate_ignore(const char *entry, const registry *configuratio
 
             }
             if (OSMatch_Execute(entry, strlen(entry), (*ignore_list_regex)[ign_it].regex)) {
-                mdebug2(FIM_REG_IGNORE_SREGEX, key ? "registry" : "value",
+                mtdebug2(SYSCHECK_LOGTAG, FIM_REG_IGNORE_SREGEX, key ? "registry" : "value",
                         (*ignore_list_regex)[ign_it].arch == ARCH_32BIT ? "[x32]" : "[x64]", entry,
                         (*ignore_list_regex)[ign_it].regex->raw);
                 return -1;
@@ -447,7 +447,7 @@ fim_registry_key *fim_registry_get_key_data(HKEY key_handle, const char *path, c
         retval = get_registry_permissions(key_handle, permissions);
 
         if (retval != ERROR_SUCCESS) {
-            mwarn(FIM_EXTRACT_PERM_FAIL, path, retval);
+            mtwarn(SYSCHECK_LOGTAG, FIM_EXTRACT_PERM_FAIL, path, retval);
             os_strdup("", key->perm);
         } else {
             key->perm = decode_win_permissions(permissions);
@@ -611,7 +611,7 @@ void fim_registry_process_unscanned_entries() {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
-        mwarn(FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
+        mtwarn(SYSCHECK_LOGTAG, FIM_REGISTRY_UNSCANNED_KEYS_FAIL);
     } else if (file && file->elements) {
         fim_db_process_read_file(syscheck.database, file, FIM_TYPE_REGISTRY, &syscheck.fim_entry_mutex,
                                  fim_registry_process_key_delete_event, syscheck.database_store, &_base_line,
@@ -623,7 +623,7 @@ void fim_registry_process_unscanned_entries() {
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (result != FIMDB_OK) {
-        mwarn(FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
+        mtwarn(SYSCHECK_LOGTAG, FIM_REGISTRY_UNSCANNED_VALUE_FAIL);
     } else if (file && file->elements) {
         fim_db_process_read_registry_data_file(syscheck.database, file, &syscheck.fim_entry_mutex,
                                                fim_registry_process_value_delete_event, syscheck.database_store,
@@ -690,7 +690,7 @@ void fim_registry_process_value_event(fim_entry *new,
         if (fim_db_insert_registry_data(syscheck.database, new->registry_entry.value, new->registry_entry.key->id,
                                         saved->registry_entry.value == NULL ? FIM_ADD : FIM_MODIFICATION) != FIMDB_OK) {
             // Something went wrong or the DB is full, either way we need to stop.
-            mdebug2(FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
+            mtdebug2(SYSCHECK_LOGTAG, FIM_REGISTRY_FAIL_TO_INSERT_VALUE, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
                     new->registry_entry.key->path, new->registry_entry.value->name);
             cJSON_Delete(json_event);
             fim_registry_free_value_data(saved->registry_entry.value);
@@ -734,7 +734,7 @@ void fim_read_values(HKEY key_handle,
     if (new->registry_entry.key->id == 0) {
         if (fim_db_get_registry_key_rowid(syscheck.database, new->registry_entry.key->path,
                                           new->registry_entry.key->arch, &new->registry_entry.key->id) != FIMDB_OK) {
-            mwarn(FIM_REGISTRY_FAIL_TO_GET_KEY_ID, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
+            mtwarn(SYSCHECK_LOGTAG, FIM_REGISTRY_FAIL_TO_GET_KEY_ID, new->registry_entry.key->arch == ARCH_32BIT ? "[x32]" : "[x64]",
                   new->registry_entry.key->path);
             return;
         }
@@ -827,7 +827,7 @@ void fim_open_key(HKEY root_key_handle,
     access_rights = KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
 
     if (RegOpenKeyEx(root_key_handle, sub_key, 0, access_rights, &current_key_handle) != ERROR_SUCCESS) {
-        mdebug1(FIM_REG_OPEN, sub_key, arch == ARCH_32BIT ? "[x32]" : "[x64]");
+        mtdebug1(SYSCHECK_LOGTAG, FIM_REG_OPEN, sub_key, arch == ARCH_32BIT ? "[x32]" : "[x64]");
         return;
     }
 
@@ -930,7 +930,7 @@ void fim_registry_scan() {
     int i = 0;
 
     /* Debug entries */
-    mdebug1(FIM_WINREGISTRY_START);
+    mtdebug1(SYSCHECK_LOGTAG, FIM_WINREGISTRY_START);
 
     fim_db_set_all_registry_data_unscanned(syscheck.database);
     fim_db_set_all_registry_key_unscanned(syscheck.database);
@@ -943,11 +943,11 @@ void fim_registry_scan() {
         }
 
         /* Read syscheck registry entry */
-        mdebug2(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ",
+        mtdebug2(SYSCHECK_LOGTAG, FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32] ",
                 syscheck.registry[i].entry);
 
         if (fim_set_root_key(&root_key_handle, syscheck.registry[i].entry, &sub_key) != 0) {
-            mdebug1(FIM_INV_REG, syscheck.registry[i].entry,
+            mtdebug1(SYSCHECK_LOGTAG, FIM_INV_REG, syscheck.registry[i].entry,
                     syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "[x32]");
             *syscheck.registry[i].entry = '\0';
             continue;
@@ -958,7 +958,7 @@ void fim_registry_scan() {
 
     fim_registry_process_unscanned_entries();
 
-    mdebug1(FIM_WINREGISTRY_ENDED);
+    mtdebug1(SYSCHECK_LOGTAG, FIM_WINREGISTRY_ENDED);
 
     if (_base_line == 0) {
         _base_line = 1;

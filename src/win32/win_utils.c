@@ -24,18 +24,6 @@ void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
 sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
 
-/** Prototypes **/
-int Start_win32_Syscheck();
-
-/* syscheck main thread */
-void *skthread()
-{
-
-    Start_win32_Syscheck();
-
-    return (NULL);
-}
-
 static void stop_wmodules()
 {
     wmodule * cur_module;
@@ -203,13 +191,6 @@ int local_start()
     if (hMutex == NULL) {
         merror_exit("Error creating mutex.");
     }
-    /* Start syscheck thread */
-    w_create_thread(NULL,
-                     0,
-                     (LPTHREAD_START_ROUTINE)skthread,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID);
 
     /* Launch rotation thread */
     int rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);

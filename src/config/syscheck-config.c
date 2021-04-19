@@ -1649,8 +1649,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
     }
 }
 
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp, int modules)
-{
+int read_syscheck_config_xml(const OS_XML *xml, XML_NODE node, syscheck_config *syscheck, int modules) {
     int i = 0;
     int j = 0;
     xml_node **children = NULL;
@@ -1705,8 +1704,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         check_sum="yes">/var/log</directories>
     */
 
-    syscheck_config *syscheck;
-    syscheck = (syscheck_config *)configp;
     char prefilter_cmd[OS_MAXSTR] = "";
 
     if (syscheck->disabled == SK_CONF_UNPARSED) {

@@ -63,6 +63,7 @@ typedef enum crypto_type {
 #include "wm_oscap.h"
 #include "wm_database.h"
 #include "wm_syscollector.h"
+#include "wm_syscheck.h"
 #include "wm_command.h"
 #include "wm_ciscat.h"
 #include "wm_aws.h"

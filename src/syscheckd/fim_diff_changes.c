@@ -228,10 +228,10 @@ char *fim_registry_value_diff(const char *key_name,
 
     // Check for file limit and disk quota
     if (limits_reached = fim_diff_check_limits(diff), limits_reached == 1) {
-        mdebug2(FIM_BIG_FILE_REPORT_CHANGES, full_value_name);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_BIG_FILE_REPORT_CHANGES, full_value_name);
         goto cleanup;
     } else if (limits_reached == 2){
-        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", full_value_name);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", full_value_name);
         goto cleanup;
     }
 
@@ -253,7 +253,7 @@ char *fim_registry_value_diff(const char *key_name,
     }
 
     if (fim_diff_compare(diff) == -1) {
-        mdebug2(FIM_DIFF_IDENTICAL_MD5_FILES);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_IDENTICAL_MD5_FILES);
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -274,7 +274,7 @@ char *fim_registry_value_diff(const char *key_name,
 cleanup:
 
     if (rmdir_ex(diff->tmp_folder) < 0) {
-        mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
+        mtdebug2(SYSCHECK_LOGTAG, RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
     }
 
     free_diff_data(diff);
@@ -374,12 +374,12 @@ int fim_diff_registry_tmp(const char *value_data,
 
             default:
                 // Wrong type
-                mwarn(FIM_REG_VAL_WRONG_TYPE);
+                mtwarn(SYSCHECK_LOGTAG, FIM_REG_VAL_WRONG_TYPE);
                 ret = -1;
                 break;
         }
     } else {
-        merror(FOPEN_ERROR, diff->file_origin, errno, strerror(errno));
+        mterror(SYSCHECK_LOGTAG, FOPEN_ERROR, diff->file_origin, errno, strerror(errno));
         return -1;
     }
 
@@ -404,10 +404,10 @@ char *fim_file_diff(const char *filename) {
 
     // Check for file limit and disk quota
     if (limits_reached = fim_diff_check_limits(diff), limits_reached == 1) {
-        mdebug2(FIM_BIG_FILE_REPORT_CHANGES, filename);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_BIG_FILE_REPORT_CHANGES, filename);
         goto cleanup;
     } else if (limits_reached == 2){
-        mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", filename);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", filename);
         goto cleanup;
     }
 
@@ -429,7 +429,7 @@ char *fim_file_diff(const char *filename) {
     }
 
     if (fim_diff_compare(diff) == -1) {
-        mdebug2(FIM_DIFF_IDENTICAL_MD5_FILES);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_IDENTICAL_MD5_FILES);
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -450,7 +450,7 @@ char *fim_file_diff(const char *filename) {
 cleanup:
 
     if (rmdir_ex(diff->tmp_folder) < 0) {
-        mdebug2(RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
+        mtdebug2(SYSCHECK_LOGTAG, RMDIR_ERROR, diff->tmp_folder, errno, strerror(errno));
     }
 
     free_diff_data(diff);
@@ -476,7 +476,7 @@ diff_data *initialize_file_diff_data(const char *filename){
 
     // Get absolute path of filename:
     if (abspath(filename, buffer, sizeof(buffer)) == NULL) {
-        merror(FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_GET_ABSOLUTE_PATH, filename, strerror(errno), errno);
         goto error;
     }
 
@@ -489,13 +489,13 @@ diff_data *initialize_file_diff_data(const char *filename){
     path_filtered = os_strip_char(diff->file_origin, ':');
 
     if (path_filtered == NULL) {
-        merror(FIM_ERROR_REMOVE_COLON, diff->file_origin);
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_REMOVE_COLON, diff->file_origin);
         goto error;
     }
 
     // Get cwd for Windows
     if (abspath(DIFF_DIR, abs_diff_dir_path, sizeof(abs_diff_dir_path)) == NULL) {
-        merror(FIM_ERROR_GET_ABSOLUTE_PATH, abs_diff_dir_path, strerror(errno), errno);
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_GET_ABSOLUTE_PATH, abs_diff_dir_path, strerror(errno), errno);
         os_free(path_filtered);
         goto error;
     }
@@ -511,7 +511,7 @@ diff_data *initialize_file_diff_data(const char *filename){
 
     // Check if the full_diff_path for filename, is too long
     if (strlen(abs_diff_dir_path) + strlen(diff->file_origin) + 14 > PATH_MAX) {
-        merror(FIM_DIFF_FILE_PATH_TOO_LONG, diff->file_origin);
+        mterror(SYSCHECK_LOGTAG, FIM_DIFF_FILE_PATH_TOO_LONG, diff->file_origin);
         goto error;
     }
 
@@ -582,7 +582,7 @@ int fim_diff_delete_compress_folder(const char *folder) {
     dir_size = (float)DirSize(folder) / 1024;
 
     if (rmdir_ex(folder) < 0) {
-        mdebug2(RMDIR_ERROR, folder, errno, strerror(errno));
+        mtdebug2(SYSCHECK_LOGTAG, RMDIR_ERROR, folder, errno, strerror(errno));
         return -1;
     } else if (dir_size != -1) {
         syscheck.diff_folder_size -= dir_size;
@@ -598,7 +598,7 @@ int fim_diff_delete_compress_folder(const char *folder) {
         return -1;
     }
 
-    mdebug2(FIM_DIFF_FOLDER_DELETED, folder);
+    mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_FOLDER_DELETED, folder);
     return 0;
 }
 
@@ -609,7 +609,7 @@ int fim_diff_estimate_compression(float file_size) {
 
 int fim_diff_create_compress_file(const diff_data *diff) {
     if (w_compress_gzfile(diff->file_origin, diff->compress_tmp_file) != 0) {
-        mwarn(FIM_WARN_GENDIFF_SNAPSHOT, diff->file_origin);
+        mtwarn(SYSCHECK_LOGTAG, FIM_WARN_GENDIFF_SNAPSHOT, diff->file_origin);
         return -1;
     } else if (syscheck.disk_quota_enabled) {
         unsigned int zip_size = FileSize(diff->compress_tmp_file) / 1024;
@@ -617,7 +617,7 @@ int fim_diff_create_compress_file(const diff_data *diff) {
         if (syscheck.diff_folder_size + zip_size > syscheck.disk_quota_limit) {
             if (syscheck.disk_quota_full_msg) {
                 syscheck.disk_quota_full_msg = false;
-                mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "calculate", diff->file_origin);
+                mtdebug2(SYSCHECK_LOGTAG, FIM_DISK_QUOTA_LIMIT_REACHED, "calculate", diff->file_origin);
             }
             fim_diff_modify_compress_estimation(zip_size, diff->file_size);
             return -1;
@@ -679,7 +679,7 @@ char *fim_diff_generate(const diff_data *diff) {
     diff_file_filtered = filter(diff->diff_file);
 
     if (!(uncompress_file_filtered && file_origin_filtered && diff_file_filtered)) {
-        mdebug1(FIM_DIFF_SKIPPED);
+        mtdebug1(SYSCHECK_LOGTAG, FIM_DIFF_SKIPPED);
         os_free(uncompress_file_filtered);
         os_free(file_origin_filtered);
         os_free(diff_file_filtered);
@@ -708,12 +708,12 @@ char *fim_diff_generate(const diff_data *diff) {
     if (status == 256){
 #else
     if (status == 0){
-        mdebug2(FIM_DIFF_COMMAND_OUTPUT_EQUAL);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_COMMAND_OUTPUT_EQUAL);
     } else if (status == 1){
 #endif
         diff_str = gen_diff_str(diff);
     } else {
-        merror(FIM_DIFF_COMMAND_OUTPUT_ERROR);
+        mterror(SYSCHECK_LOGTAG, FIM_DIFF_COMMAND_OUTPUT_ERROR);
     }
 
     return diff_str;
@@ -727,7 +727,7 @@ char *gen_diff_str(const diff_data *diff){
 
     fp = wfopen(diff->diff_file, "rb");
     if (!fp) {
-        merror(FIM_ERROR_GENDIFF_OPEN, diff->diff_file);
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_GENDIFF_OPEN, diff->diff_file);
         return NULL;
     }
 
@@ -736,7 +736,7 @@ char *gen_diff_str(const diff_data *diff){
     unlink(diff->diff_file);
 
     if (!n){
-        merror(FIM_ERROR_GENDIFF_READ);
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_GENDIFF_READ);
         return NULL;
     }
 
@@ -776,7 +776,7 @@ char *gen_diff_str(const diff_data *diff){
 
 void save_compress_file(const diff_data *diff){
     if (rename_ex(diff->compress_tmp_file, diff->compress_file) != 0) {
-        merror(RENAME_ERROR, diff->compress_tmp_file, diff->compress_file, errno, strerror(errno));
+        mterror(SYSCHECK_LOGTAG, RENAME_ERROR, diff->compress_tmp_file, diff->compress_file, errno, strerror(errno));
         return;
     }
     if (syscheck.disk_quota_enabled){
@@ -898,7 +898,7 @@ char *adapt_win_fc_output(char *command_output) {
     size_t written = 0;
 
     if (line = strchr(command_output, '\n'), !line) {
-        mdebug2("%s: %s", FIM_ERROR_GENDIFF_SECONDLINE_MISSING, command_output);
+        mtdebug2(SYSCHECK_LOGTAG, "%s: %s", FIM_ERROR_GENDIFF_SECONDLINE_MISSING, command_output);
         return strdup(command_output);
     }
 
@@ -957,7 +957,7 @@ int fim_diff_process_delete_file(const char *filename){
     char *buffer = NULL;
     buffer = os_strip_char(filename, ':');
     if(buffer == NULL) {
-        merror(FIM_ERROR_REMOVE_COLON, filename);
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_REMOVE_COLON, filename);
         os_free(full_path);
         return -1;
     }
@@ -970,11 +970,11 @@ int fim_diff_process_delete_file(const char *filename){
 
     ret = fim_diff_delete_compress_folder(full_path);
     if(ret == -1){
-        merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
+        mterror(SYSCHECK_LOGTAG, FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
         os_free(full_path);
         return -1;
     } else if (ret == -2){
-        mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_FOLDER_NOT_EXIST, full_path);
         os_free(full_path);
         return -1;
     }

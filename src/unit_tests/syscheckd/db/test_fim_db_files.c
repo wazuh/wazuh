@@ -34,6 +34,7 @@
 #include "config/syscheck-config.h"
 
 #include "test_fim_db.h"
+#define SYSCHECK_MODULE_TAG "wazuh-modulesd:syscheck"
 
 void fim_db_remove_validated_path(fdb_t *fim_sql,
                                   fim_entry *entry,
@@ -134,7 +135,8 @@ void test_fim_db_insert_data_no_rowid_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error inserting data row_id '0': ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Step error inserting data row_id '0': ERROR MESSAGE");
 
     int ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
 
@@ -168,7 +170,8 @@ void test_fim_db_insert_data_rowid_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error updating data row_id '1': ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Step error updating data row_id '1': ERROR MESSAGE");
     int ret;
     int row_id = 1;
     ret = fim_db_insert_data(test_data->fim_sql, test_data->entry->file_entry.data, &row_id);
@@ -208,7 +211,8 @@ void test_fim_db_insert_path_error(void **state) {
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
 
-    expect_string(__wrap__merror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Step error replacing path '/test/path': ERROR MESSAGE");
 
     ret = fim_db_insert_path(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data, 1);
 
@@ -240,7 +244,8 @@ void test_fim_db_insert_db_full(void **state) {
 
     expect_fim_db_get_count_entries(50000);
 
-    expect_string(__wrap__mdebug1, formatted_msg,
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug1, formatted_msg,
                   "Couldn't insert '/test/path' entry into DB. The DB is full, please check your configuration.");
 
     syscheck.database = test_data->fim_sql;
@@ -277,7 +282,8 @@ void test_fim_db_insert_fail_to_remove_existing_entry(void **state) {
 
     will_return(__wrap_sqlite3_errmsg,"ERROR MESSAGE");
 
-    expect_string(__wrap__merror, formatted_msg, "Step error deleting data: ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Step error deleting data: ERROR MESSAGE");
 
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
                         test_data->saved);
@@ -435,7 +441,8 @@ void test_fim_db_insert_inode_id_null_error(void **state) {
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
 
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting data row: ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Step error getting data row: ERROR MESSAGE");
 
     ret = fim_db_insert(test_data->fim_sql, test_data->entry->file_entry.path, test_data->entry->file_entry.data,
                         test_data->saved);
@@ -718,7 +725,8 @@ void test_fim_db_set_all_unscanned_failed(void **state) {
     expect_string(__wrap_sqlite3_exec, sql, "UPDATE file_entry SET scanned = 0;");
     will_return(__wrap_sqlite3_exec, "ERROR MESSAGE");
     will_return(__wrap_sqlite3_exec, SQLITE_ERROR);
-    expect_string(__wrap__merror, formatted_msg, "Error executing simple query 'UPDATE file_entry SET scanned = 0;': ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Error executing simple query 'UPDATE file_entry SET scanned = 0;': ERROR MESSAGE");
     expect_fim_db_check_transaction();
     int ret = fim_db_set_all_unscanned(test_data->fim_sql);
     assert_int_equal(ret, FIMDB_ERR);
@@ -751,9 +759,11 @@ void test_fim_db_get_not_scanned_failed(void **state) {
     expect_string(__wrap_wfopen, __modes, "w+");
     will_return(__wrap_wfopen, 0);
 #ifndef TEST_WINAGENT
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Failed to create temporal storage './tmp_19283746523452345': Success (0)");
 #else
-    expect_string(__wrap__merror, formatted_msg, "Failed to create temporal storage '.\\tmp_19283746523452345': Success (0)");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Failed to create temporal storage '.\\tmp_19283746523452345': Success (0)");
 #endif
 
     int ret = fim_db_get_not_scanned(test_data->fim_sql, &file, syscheck.database_store);
@@ -930,7 +940,8 @@ void test_fim_db_get_count_file_data_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry data: ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Step error getting count entry data: ERROR MESSAGE");
 
     int ret = fim_db_get_count_file_data(test_data->fim_sql);
 
@@ -963,7 +974,8 @@ void test_fim_db_get_count_file_entry_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error getting count entry path: ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Step error getting count entry path: ERROR MESSAGE");
 
     int ret = fim_db_get_count_file_entry(test_data->fim_sql);
 
@@ -1012,7 +1024,8 @@ void test_fim_db_set_scanned_error(void **state) {
     will_return(__wrap_sqlite3_step, 0);
     will_return(__wrap_sqlite3_step, SQLITE_ERROR);
     will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
-    expect_string(__wrap__merror, formatted_msg, "Step error setting scanned path '/test/path': ERROR MESSAGE");
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, "Step error setting scanned path '/test/path': ERROR MESSAGE");
 
     int ret = fim_db_set_scanned(test_data->fim_sql, test_data->entry->file_entry.path);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1094,7 +1107,8 @@ void test_fim_db_get_path_from_pattern_failed(void **state) {
     will_return(__wrap_wfopen, 0);
 
     will_return(__wrap_os_random, 2345);
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mterror, formatted_msg, error_msg);
 
     int ret = fim_db_get_path_from_pattern(test_data->fim_sql, "a/random/file/%", &file, syscheck.database_store);
     assert_int_equal(ret, FIMDB_ERR);
@@ -1362,7 +1376,8 @@ static void test_fim_db_file_is_scanned_error(void **state) {
     will_return(__wrap_sqlite3_errmsg, "generic error");
 
     snprintf(buffer, OS_SIZE_256, FIM_DB_FAIL_TO_GET_SCANNED_FILE, "/test/path", "generic error");
-    expect_string(__wrap__mdebug2, formatted_msg, buffer);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, buffer);
 
     ret = fim_db_file_is_scanned(&fim_sql, "/test/path");
 

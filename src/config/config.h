@@ -51,7 +51,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 
 int Read_Global(XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modules);
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const char alloc);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Alerts(XML_NODE node, void *d1, void *d2);
 int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);

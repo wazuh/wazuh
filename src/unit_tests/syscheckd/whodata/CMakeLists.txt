@@ -8,6 +8,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     target_compile_options(test_audit_healthcheck PRIVATE "-Wall")
 
     set(AUDIT_HC_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap,audit_add_rule \
+                        -Wl,--wrap=_mtdebug1,--wrap=_mtdebug2 -Wl,--wrap,_mterror -Wl,--wrap,_mtinfo \
                         -Wl,--wrap,pthread_cond_init -Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock \
                         -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,CreateThread \
                         -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos \
@@ -24,7 +25,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
     add_executable(test_audit_rule_handling test_audit_rule_handling.c)
     target_compile_options(test_audit_rule_handling PRIVATE "-Wall")
 
-    set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2,--wrap=_merror,--wrap=_mwarn,--wrap=audit_add_rule\
+    set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2,--wrap=_merror,--wrap=_mwarn,--wrap=audit_add_rule \
+                              -Wl,--wrap=_mtdebug1,--wrap=_mtdebug2,--wrap=_mterror,--wrap=_mtwarn \
                               -Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock \
                               -Wl,--wrap=pthread_rwlock_rdlock,--wrap=pthread_rwlock_wrlock,--wrap=pthread_rwlock_unlock \
                               -Wl,--wrap=fopen,--wrap=fclose,--wrap=fflush,--wrap=fgets,--wrap=fgetpos \
@@ -44,6 +46,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
 
     set(SYSCHECK_AUDIT_FLAGS "-Wl,--wrap,_mdebug1,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,_mwarn \
                               -Wl,--wrap,_minfo -Wl,--wrap,pthread_cond_wait -Wl,--wrap,pthread_mutex_lock \
+                              -Wl,--wrap=_mtdebug1,--wrap=_mtdebug2,--wrap=_mterror,--wrap=_mtwarn,--wrap=_mtinfo \
                               -Wl,--wrap,openproc -Wl,--wrap,readproc -Wl,--wrap,freeproc -Wl,--wrap,FOREVER \
                               -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,audit_add_rule -Wl,--wrap,audit_restart  \
                               -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,closeproc  -Wl,--wrap,recv -Wl,--wrap,IsDir \
@@ -65,6 +68,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
     target_compile_options(test_audit_parse PRIVATE "-Wall")
 
     set(AUDIT_PARSE_FLAGS "-Wl,--wrap=_mdebug1,--wrap=_mdebug2 -Wl,--wrap=_mwarn -Wl,--wrap=_minfo -Wl,--wrap,_merror \
+                           -Wl,--wrap=_mtdebug1,--wrap=_mtdebug2 -Wl,--wrap=_mtwarn -Wl,--wrap=_mtinfo -Wl,--wrap,_mterror \
                            -Wl,--wrap,audit_add_rule -Wl,--wrap,pthread_mutex_lock \
                            -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush \
                            -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite\
@@ -83,6 +87,7 @@ else()
     add_executable(test_win_whodata test_win_whodata.c)
     target_compile_options(test_win_whodata PRIVATE "-Wall")
     set(WIN_WHODATA_FLAGS "-Wl,--wrap,_mdebug2 -Wl,--wrap,_merror -Wl,--wrap,_mdebug1 -Wl,--wrap,_mwarn \
+                           -Wl,--wrap,_mtdebug2 -Wl,--wrap,_mterror -Wl,--wrap,_mtdebug1 -Wl,--wrap,_mtwarn -Wl,--wrap,_mtinfo \
                            -Wl,--wrap,wstr_replace -Wl,--wrap,SendMSG -Wl,--wrap,OSHash_Add_ex \
                            -Wl,--wrap,free_whodata_event -Wl,--wrap,IsFile -Wl,--wrap=remove \
                            -Wl,--wrap,wm_exec -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,atexit \

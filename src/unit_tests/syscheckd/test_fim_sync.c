@@ -250,7 +250,8 @@ static void expect_fim_db_get_first_row_error(const fdb_t *db, int type, char *p
     will_return(__wrap_fim_db_get_first_path, path);
     will_return(__wrap_fim_db_get_first_path, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, error_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -278,7 +279,8 @@ static void expect_fim_db_last_row_error(const fdb_t *db, int type, char *first_
     will_return(__wrap_fim_db_get_last_path, NULL);
     will_return(__wrap_fim_db_get_last_path, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, error_msg);
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -289,7 +291,8 @@ static void expect_fim_db_get_data_checksum_error(const fdb_t *db) {
     expect_value(__wrap_fim_db_get_data_checksum, fim_sql, db);
     will_return(__wrap_fim_db_get_data_checksum, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_CALC_CHECKSUM);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, FIM_DB_ERROR_CALC_CHECKSUM);
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -398,13 +401,15 @@ static void test_fim_sync_push_msg_queue_full(void **state) {
     expect_string(__wrap_queue_push_ex, data, msg);
     will_return(__wrap_queue_push_ex, -1);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Cannot push a data synchronization message: queue is full.");
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Cannot push a data synchronization message: queue is full.");
 
     fim_sync_push_msg(msg);
 }
 
 static void test_fim_sync_push_msg_no_response(void **state) {
-    expect_string(__wrap__mwarn, formatted_msg,
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtwarn, formatted_msg,
         "A data synchronization response was received before sending the first message.");
 
     fim_sync_push_msg("test");
@@ -486,7 +491,8 @@ static void test_fim_sync_checksum_split_get_count_range_error(void **state) {
     will_return(__wrap_fim_db_get_count_range, FIMDB_ERR);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__merror, formatted_msg, buffer);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, buffer);
 
     fim_sync_checksum_split(first, last, 1234);
 }
@@ -525,7 +531,8 @@ static void test_fim_sync_checksum_split_range_size_1_get_path_error(void **stat
     expect_fim_db_get_count_range_n("start", "top", 1);
     expect_fim_db_get_entry_from_sync_msg("start", FIM_TYPE_FILE, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, buffer);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, buffer);
 
     fim_sync_checksum_split("start", "top", 1234);
 }
@@ -565,7 +572,8 @@ static void test_fim_sync_send_list_sync_path_range_error(void **state) {
 
     expect_fim_db_get_path_range(syscheck.database, FIM_TYPE_FILE, start, top, FIM_DB_DISK, NULL, FIMDB_ERR);
 
-    expect_string(__wrap__merror, formatted_msg, FIM_DB_ERROR_SYNC_DB);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, FIM_DB_ERROR_SYNC_DB);
 
     fim_sync_send_list(start, top);
 }
@@ -592,7 +600,8 @@ static void test_fim_sync_dispatch_null_payload(void **state) {
 }
 
 static void test_fim_sync_dispatch_no_argument(void **state) {
-    expect_string(__wrap__mdebug1, formatted_msg, "(6312): Data synchronization command 'no_argument' with no argument.");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6312): Data synchronization command 'no_argument' with no argument.");
 
     fim_sync_dispatch("no_argument");
 }
@@ -603,7 +612,8 @@ static void test_fim_sync_dispatch_invalid_argument(void **state) {
 
     snprintf(payload, OS_MAXSTR, "invalid_json %.3s", json_payload->printed_payload);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"i'");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"i'");
 
     fim_sync_dispatch(payload);
 }
@@ -624,7 +634,8 @@ static void test_fim_sync_dispatch_id_not_number(void **state) {
 
     snprintf(payload, OS_MAXSTR, "invalid_id %s", json_payload->printed_payload);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"begin\":\"start\",\"end\":\"top\",\"id\":\"invalid\"}'");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"begin\":\"start\",\"end\":\"top\",\"id\":\"invalid\"}'");
 
     fim_sync_dispatch(payload);
 }
@@ -637,7 +648,8 @@ static void test_fim_sync_dispatch_drop_message(void **state) {
 
     fim_sync_cur_id = 0;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6316): Dropping message with id (1234) greater than global id (0)");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6316): Dropping message with id (1234) greater than global id (0)");
 
     fim_sync_dispatch(payload);
 }
@@ -659,8 +671,10 @@ static void test_fim_sync_dispatch_no_begin_object(void **state) {
 
     fim_sync_cur_id = 1235;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6315): Setting global ID back to lower message ID (1234)");
-    expect_string(__wrap__mdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"id\":1234,\"end\":\"top\"}'");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6315): Setting global ID back to lower message ID (1234)");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6314): Invalid data synchronization argument: '{\"id\":1234,\"end\":\"top\"}'");
 
     fim_sync_dispatch(payload);
 }
@@ -713,7 +727,8 @@ static void test_fim_sync_dispatch_unwknown_command(void **state) {
     fim_sync_cur_id = 1234;
 
     // Inside fim_sync_send_list
-    expect_string(__wrap__mdebug1, formatted_msg, "(6313): Unknown data synchronization command: 'unknown'");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "(6313): Unknown data synchronization command: 'unknown'");
 
     fim_sync_dispatch(payload);
 }

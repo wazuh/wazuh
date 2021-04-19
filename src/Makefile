@@ -665,7 +665,6 @@ BUILD_SERVER+=wazuh-agentd
 BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
-BUILD_SERVER+=wazuh-syscheckd
 BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
@@ -678,7 +677,6 @@ BUILD_SERVER+=wazuh-db
 
 BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
-BUILD_AGENT+=wazuh-syscheckd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
@@ -1356,6 +1354,44 @@ build_syscollector: build_shared_modules build_sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
+#### rootcheck #####
+
+rootcheck_c := $(wildcard rootcheck/*.c)
+rootcheck_o := $(rootcheck_c:.c=.o)
+rootcheck_o_lib := $(filter-out rootcheck/rootcheck-config.o, ${rootcheck_o})
+rootcheck_o_cmd := $(filter-out rootcheck/config.o, ${rootcheck_o})
+
+
+rootcheck/%.o: rootcheck/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"rootcheck\" -c $^ -o $@
+
+rootcheck.a: ${rootcheck_o_lib}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
+
+
+#### syscheck ######
+
+syscheck_sql := syscheckd/db/schema_fim_db.sql
+
+syscheck_c := $(wildcard syscheckd/*.c)
+syscheck_c += $(wildcard syscheckd/db/*.c)
+syscheck_c += $(wildcard syscheckd/whodata/*.c)
+syscheck_c += $(wildcard syscheckd/registry/*.c)
+
+syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
+syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
+syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
+
+syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
+	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
+
+syscheckd/%.o: syscheckd/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-modulesd\" -c $^ -o $@
+
+syscheckd/%-event.o: syscheckd/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-modulesd\" -c $^ -o $@
+
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
 
@@ -1384,7 +1420,7 @@ logcollector_c := $(wildcard logcollector/*.c)
 logcollector_o := $(logcollector_c:.c=.o)
 logcollector_eventchannel_o := $(logcollector_c:.c=-event.o)
 
-wmodules_dep := ${wmodules_o} ${wdblib_o} ${logcollector_o} ${execd_o_lib}
+wmodules_dep := ${wmodules_o} ${wdblib_o} ${logcollector_o} ${rootcheck_o_lib} ${syscheck_o} ${execd_o_lib}
 
 ifeq (${uname_S},HP-UX)
 	wmodules_dep := ${wmodules_dep} ${config_o}
@@ -1676,48 +1712,6 @@ wazuh-regex: util/wazuh-regex.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 parallel-regex: util/parallel-regex.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### rootcheck #####
-
-rootcheck_c := $(wildcard rootcheck/*.c)
-rootcheck_o := $(rootcheck_c:.c=.o)
-rootcheck_o_lib := $(filter-out rootcheck/rootcheck-config.o, ${rootcheck_o})
-rootcheck_o_cmd := $(filter-out rootcheck/config.o, ${rootcheck_o})
-
-
-rootcheck/%.o: rootcheck/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"rootcheck\" -c $^ -o $@
-
-rootcheck.a: ${rootcheck_o_lib}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
-
-
-#### syscheck ######
-
-
-syscheck_sql := syscheckd/db/schema_fim_db.sql
-
-syscheck_c := $(wildcard syscheckd/*.c)
-syscheck_c += $(wildcard syscheckd/db/*.c)
-syscheck_c += $(wildcard syscheckd/whodata/*.c)
-syscheck_c += $(wildcard syscheckd/registry/*.c)
-
-syschecklib_o := $(syschecklib_c:.c=.o) $(syscheck_sql:.sql=.o)
-syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
-syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
-
-syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
-	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
-
-syscheckd/%.o: syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-syscheckd\" -c $^ -o $@
-
-syscheckd/%-event.o: syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-syscheckd\" -c $^ -o $@
-
-wazuh-syscheckd: ${syscheck_o} rootcheck.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### Monitor #######

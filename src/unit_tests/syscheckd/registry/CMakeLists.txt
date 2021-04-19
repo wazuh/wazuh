@@ -7,6 +7,7 @@ target_compile_options(test_registry PRIVATE "-Wall")
 
 target_link_libraries(test_registry SYSCHECK_O ${TEST_DEPS})
 target_link_libraries(test_registry "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn
+                                     -Wl,--wrap=_mtdebug2,--wrap=_mtdebug1,--wrap=_mterror,--wrap=_mtwarn
                                      -Wl,--wrap=send_syscheck_msg,--wrap=os_random -Wl,--wrap,getpid
                                      -Wl,--wrap=fim_db_set_all_registry_data_unscanned
                                      -Wl,--wrap=fim_db_set_all_registry_key_unscanned
@@ -28,6 +29,7 @@ add_executable(test_events test_events.c)
 target_compile_options(test_events PRIVATE "-Wall")
 
 target_link_libraries(test_events SYSCHECK_O ${TEST_DEPS})
-target_link_libraries(test_events "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn")
+target_link_libraries(test_events "-Wl,--wrap=_mdebug2,--wrap=_mdebug1,--wrap=_merror,--wrap=_mwarn
+                                   -Wl,--wrap=_mtdebug2,--wrap=_mtdebug1,--wrap=_mterror,--wrap=_mtwarn")
 
 add_test(NAME test_events COMMAND test_events)

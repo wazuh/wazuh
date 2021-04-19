@@ -404,10 +404,20 @@ UpdateStopOSSEC()
         rm -rf $PREINSTALLEDDIR/queue/rootcheck > /dev/null 2>&1
     fi
 
-    # Deleting wazuh-logcollector from previous versions from 5.0
-    rm -rf $PREINSTALLEDDIR/bin/wazuh-logcollector > /dev/null 2>&1
-    # Deleting wazuh-execd from previous versions to 5.0
-    rm -rf $PREINSTALLEDDIR/bin/wazuh-execd > /dev/null 2>&1
+    # Deleting syscheckd if exists (it was migrated to Wazuh modules in v5.0)
+    if [ -d "$PREINSTALLEDDIR/bin/wazuh-syscheckd" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/wazuh-syscheckd > /dev/null 2>&1
+    fi
+
+    # Deleting wazuh-logcollector if exists (it was migrated to Wazuh modules in v5.0)
+    if [ -d "$PREINSTALLEDDIR/bin/wazuh-logcollector" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/wazuh-logcollector > /dev/null 2>&1
+    fi
+
+    # Deleting wazuh-execd if exists (it was migrated to Wazuh modules in v5.0)
+    if [ -d "$PREINSTALLEDDIR/bin/wazuh-execd" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/wazuh-execd > /dev/null 2>&1
+    fi
 }
 
 UpdateOldVersions()

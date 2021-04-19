@@ -13,6 +13,7 @@
 #include <cmocka.h>
 
 #include "test_fim_db.h"
+#define SYSCHECK_MODULE_TAG "wazuh-modulesd:syscheck"
 
 /**********************************************************************************************************************\
  * Auxiliar constants and variables
@@ -81,7 +82,8 @@ const fim_registry_value_data DEFAULT_REGISTRY_VALUE = {
  * */
 void expect_fim_db_check_transaction() {
     expect_fim_db_exec_simple_wquery("END;");
-    expect_string(__wrap__mdebug1, formatted_msg, "Database transaction completed.");
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_TAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Database transaction completed.");
     expect_fim_db_exec_simple_wquery("BEGIN;");
 }
 
@@ -119,7 +121,8 @@ void expect_fim_db_force_commit() {
 void expect_fim_db_read_line_from_file_fail() {
     will_return(__wrap_fseek, -1);
 
-    expect_any(__wrap__mwarn, formatted_msg);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_TAG);
+    expect_any(__wrap__mtwarn, formatted_msg);
 }
 
 void expect_fim_db_read_line_from_file_disk_success(int index, FILE *fd, const char *line, const char *line_length) {
@@ -160,13 +163,20 @@ void expect_fim_db_get_path_success(const char *path, const fim_entry *entry) {
 int setup_fim_db_group(void **state) {
     (void)state;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
 #ifndef TEST_SERVER
     will_return_always(__wrap_getDefine_Int, 0);
 #endif
 
-    Read_Syscheck_Config("../test_syscheck2.conf");
+    OS_XML xml;
+    XML_NODE node;
+    XML_NODE chld_node;
+    OS_ReadXML("../test_syscheck2.conf", &xml);
+    node = OS_GetElementsbyNode(&xml, NULL);
+    chld_node = OS_GetElementsbyNode(&xml, node[0]);
+    Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
+    OS_ClearNode(chld_node);
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
 
     syscheck.database_store = 0; // disk
     w_mutex_init(&syscheck.fim_entry_mutex, NULL);

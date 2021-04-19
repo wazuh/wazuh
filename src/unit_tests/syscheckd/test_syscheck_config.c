@@ -16,6 +16,7 @@
 
 #include "../syscheckd/syscheck.h"
 #include "../config/syscheck-config.h"
+#include "../wazuh_modules/wmodules.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
@@ -44,9 +45,16 @@ void test_Read_Syscheck_Config_success(void **state)
     expect_any_always(__wrap__mdebug1, formatted_msg);
     expect_any_always(__wrap__mwarn, formatted_msg);
 
-
-    ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
-
+    OS_XML xml;
+    XML_NODE node;
+    XML_NODE chld_node;
+    OS_ReadXML("test_syscheck_max_dir.conf", &xml);
+    node = OS_GetElementsbyNode(&xml, NULL);
+    chld_node = OS_GetElementsbyNode(&xml, node[0]);
+    ret = Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
+    OS_ClearNode(chld_node);
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.rootcheck, 0);
 
@@ -91,27 +99,21 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_non_null(syscheck.diff_size_limit);
 }
 
-void test_Read_Syscheck_Config_invalid(void **state)
-{
-    (void) state;
-    int ret;
-
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-    expect_string(__wrap__merror, formatted_msg, "(1226): Error reading XML file 'invalid.conf': XMLERR: File 'invalid.conf' not found. (line 0).");
-    ret = Read_Syscheck_Config("invalid.conf");
-
-    assert_int_equal(ret, OS_INVALID);
-}
-
 void test_Read_Syscheck_Config_undefined(void **state)
 {
     (void) state;
     int ret;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
-    ret = Read_Syscheck_Config("test_syscheck2.conf");
-
+    OS_XML xml;
+    XML_NODE node;
+    XML_NODE chld_node;
+    OS_ReadXML("test_syscheck2.conf", &xml);
+    node = OS_GetElementsbyNode(&xml, NULL);
+    chld_node = OS_GetElementsbyNode(&xml, node[0]);
+    ret = Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
+    OS_ClearNode(chld_node);
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.rootcheck, 0);
 
@@ -155,10 +157,11 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     (void) state;
     int ret;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
-    ret = Read_Syscheck_Config("test_empty_config.conf");
-
+    OS_XML xml;
+    OS_ReadXML("test_empty_config.conf", &xml);
+    assert_null(OS_GetElementsbyNode(&xml, NULL));
+    ret = Read_Syscheck(&xml, NULL, &syscheck, CWMODULE, 0);
+    OS_ClearXML(&xml);
     assert_int_equal(ret, 1);
 
     // Default values
@@ -208,8 +211,16 @@ void test_getSyscheckConfig(void **state)
     cJSON * ret;
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
-
-    Read_Syscheck_Config("test_syscheck_config.conf");
+    OS_XML xml;
+    XML_NODE node;
+    XML_NODE chld_node;
+    OS_ReadXML("test_syscheck_config.conf", &xml);
+    node = OS_GetElementsbyNode(&xml, NULL);
+    chld_node = OS_GetElementsbyNode(&xml, node[0]);
+    Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
+    OS_ClearNode(chld_node);
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
     ret = getSyscheckConfig();
     *state = ret;
 
@@ -342,9 +353,16 @@ void test_getSyscheckConfig_no_audit(void **state)
     (void) state;
     cJSON * ret;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
-    Read_Syscheck_Config("test_syscheck2.conf");
+    OS_XML xml;
+    XML_NODE node;
+    XML_NODE chld_node;
+    OS_ReadXML("test_syscheck2.conf", &xml);
+    node = OS_GetElementsbyNode(&xml, NULL);
+    chld_node = OS_GetElementsbyNode(&xml, node[0]);
+    Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
+    OS_ClearNode(chld_node);
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
 
     ret = getSyscheckConfig();
     *state = ret;
@@ -454,9 +472,11 @@ void test_getSyscheckConfig_no_directories(void **state)
     (void) state;
     cJSON * ret;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
-    Read_Syscheck_Config("test_empty_config.conf");
+    OS_XML xml;
+    OS_ReadXML("test_empty_config.conf", &xml);
+    assert_null(OS_GetElementsbyNode(&xml, NULL));
+    Read_Syscheck(&xml, NULL, &syscheck, CWMODULE, 0);
+    OS_ClearXML(&xml);
 
     ret = getSyscheckConfig();
 
@@ -468,9 +488,11 @@ void test_getSyscheckConfig_no_directories(void **state)
     (void) state;
     cJSON * ret;
 
-    expect_any_always(__wrap__mdebug1, formatted_msg);
+    OS_XML xml;
+    OS_ReadXML("test_empty_config.conf", &xml);
+    Read_Syscheck(&xml, NULL, &syscheck, CWMODULE, 0);
+    OS_ClearXML(&xml);
 
-    Read_Syscheck_Config("test_empty_config.conf");
 
     ret = getSyscheckConfig();
 
@@ -549,9 +571,21 @@ void test_SyscheckConf_DirectoriesWithCommas(void **state) {
     (void) state;
     int ret;
 
+    #ifndef WIN32
     expect_any_always(__wrap__mdebug1, formatted_msg);
+    #endif //WIN32
 
-    ret = Read_Syscheck_Config("test_syscheck3.conf");
+    OS_XML xml;
+    XML_NODE node;
+    XML_NODE chld_node;
+    OS_ReadXML("test_syscheck3.conf", &xml);
+    node = OS_GetElementsbyNode(&xml, NULL);
+    chld_node = OS_GetElementsbyNode(&xml, node[0]);
+    ret = Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
+    OS_ClearNode(chld_node);
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
+
     assert_int_equal(ret, 0);
 
     #ifdef WIN32
@@ -572,7 +606,16 @@ void test_getSyscheckInternalOptions(void **state)
 
     expect_any_always(__wrap__mdebug1, formatted_msg);
 
-    Read_Syscheck_Config("test_syscheck.conf");
+    OS_XML xml;
+    XML_NODE node;
+    XML_NODE chld_node;
+    OS_ReadXML("test_syscheck.conf", &xml);
+    node = OS_GetElementsbyNode(&xml, NULL);
+    chld_node = OS_GetElementsbyNode(&xml, node[0]);
+    Read_Syscheck(&xml, chld_node, &syscheck, CWMODULE, 0);
+    OS_ClearNode(chld_node);
+    OS_ClearNode(node);
+    OS_ClearXML(&xml);
 
     ret = getSyscheckInternalOptions();
     *state = ret;
@@ -591,7 +634,6 @@ void test_getSyscheckInternalOptions(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_success, restart_syscheck),
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_invalid, restart_syscheck),
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_undefined, restart_syscheck),
         cmocka_unit_test_teardown(test_Read_Syscheck_Config_unparsed, restart_syscheck),
         cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),
