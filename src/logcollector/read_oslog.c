@@ -201,7 +201,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
             *last_line = '\0';
             strncpy(oslog_cfg->ctxt.buffer, last_line + 1, offset - (last_line - buffer) + 1);
             oslog_cfg->ctxt.timestamp = time(NULL);
-        } else {
+        } else if (!full_buffer) {
             oslog_ctxt_backup(buffer, &oslog_cfg->ctxt);
         }
 
