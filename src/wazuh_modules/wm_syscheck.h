@@ -17,8 +17,6 @@
 
 extern const wm_context WM_SYSCHECK_CONTEXT;// Context
 
-#define WM_SYSCHECK_LOGTAG ARGV0 ":syscheck" // Tag for log messages
-
 typedef void* wm_syscheck_t;
 
 #endif

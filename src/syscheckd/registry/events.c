@@ -318,22 +318,22 @@ cJSON *fim_registry_event(const fim_entry *new,
     cJSON *json_event = NULL;
 
     if (new == NULL) {
-        mtwarn(ARGV0, FIM_REGISTRY_EVENT_NULL_ENTRY);
+        mtwarn(SYSCHECK_LOGTAG, FIM_REGISTRY_EVENT_NULL_ENTRY);
         return NULL;
     }
 
     if (new->registry_entry.key == NULL) {
-        mtwarn(ARGV0, FIM_REGISTRY_EVENT_NULL_ENTRY_KEY);
+        mtwarn(SYSCHECK_LOGTAG, FIM_REGISTRY_EVENT_NULL_ENTRY_KEY);
         return NULL;
     }
 
     if (new->type != FIM_TYPE_REGISTRY) {
-        mtwarn(ARGV0, FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE);
+        mtwarn(SYSCHECK_LOGTAG, FIM_REGISTRY_EVENT_WRONG_ENTRY_TYPE);
         return NULL;
     }
 
     if (saved && saved->type != FIM_TYPE_REGISTRY) {
-        mtwarn(ARGV0, FIM_REGISTRY_EVENT_WRONG_SAVED_TYPE);
+        mtwarn(SYSCHECK_LOGTAG, FIM_REGISTRY_EVENT_WRONG_SAVED_TYPE);
         return NULL;
     }
 

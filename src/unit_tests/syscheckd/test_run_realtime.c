@@ -51,8 +51,6 @@ void free_win32rtfim_data(win32rtfim *data);
 void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap);
 #endif
 
-#define SYSCHECK_MODULE_NAME "wazuh-modulesd:syscheck"
-
 typedef struct realtime_process_data{
     struct inotify_event *event;
     OSHashNode *node;
@@ -320,7 +318,7 @@ void test_realtime_start_failure_hash(void **state) {
     will_return(__wrap_OSHash_Create, NULL);
 
     errno = ENOMEM;
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg,
         "(1102): Could not acquire memory due to [(12)-(Cannot allocate memory)].");
 
@@ -340,7 +338,7 @@ void test_realtime_start_failure_inotify(void **state) {
     will_return(__wrap_OSHash_Create, hash);
     will_return(__wrap_inotify_init, -1);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, FIM_ERROR_INOTIFY_INITIALIZE);
 
     ret = realtime_start();
@@ -358,7 +356,7 @@ void test_realtime_adddir_realtime_start_failure(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "(1102): Could not acquire memory due to [(0)-(Success)].");
 
     ret = realtime_adddir(path, 0, 0);
@@ -390,7 +388,7 @@ void test_realtime_adddir_realtime_watch_max_reached_failure(void **state)
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, -1);
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "(6700): Unable to add inotify watch to real time monitoring: '/etc/folder'. '-1' '28': "
                                                 "The maximum limit of inotify watches has been reached.");
     errno = 28;
@@ -412,7 +410,7 @@ void test_realtime_adddir_realtime_watch_generic_failure(void **state)
 
     syscheck.realtime->fd = 1;
     will_return(__wrap_inotify_add_watch, -1);
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "(6272): Unable to add inotify watch to real time monitoring: '/etc/folder'. '-1' '0':'Success'");
 
     ret = realtime_adddir(path, 0, 0);
@@ -435,9 +433,9 @@ void test_realtime_adddir_realtime_add(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, 0);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6224): Entry '/etc/folder' already exists in the RT hash table.");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
     test_mode = 0;
@@ -471,9 +469,9 @@ void test_realtime_adddir_realtime_add_hash_failure(void **state) {
     expect_string(__wrap_OSHash_Add_ex, key, "1");
     will_return(__wrap_OSHash_Add_ex, 0);
 
-    expect_string(__wrap__mterror_exit, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror_exit, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror_exit, formatted_msg, "(6697): Out of memory. Exiting.");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "(6227): Directory added for real time monitoring: '/etc/folder'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -526,7 +524,7 @@ void test_realtime_adddir_realtime_update_failure(void **state) {
 
     will_return(__wrap_OSHash_Update_ex, 0);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/etc/folder'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -588,7 +586,7 @@ void test_realtime_process_len(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, "test");
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -622,7 +620,7 @@ void test_realtime_process_len_zero(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, "test");
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Duplicate event in real-time buffer: test");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -656,7 +654,7 @@ void test_realtime_process_len_path_separator(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, "test/");
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -684,7 +682,7 @@ void test_realtime_process_overflow(void **state) {
     will_return(__wrap_read, event);
     will_return(__wrap_read, 21);
 
-    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     expect_string(__wrap_send_log_msg, msg, "wazuh: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     will_return(__wrap_send_log_msg, 1);
@@ -717,7 +715,7 @@ void test_realtime_process_delete(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, "test");
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
 
     char *data = strdup("delete this");
@@ -725,7 +723,7 @@ void test_realtime_process_delete(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "1");
     will_return(__wrap_OSHash_Delete_ex, data);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -761,7 +759,7 @@ void test_realtime_process_move_self(void **state) {
     expect_string(__wrap_OSHash_Get_ex, key, "1");
     will_return(__wrap_OSHash_Get_ex, "test");
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Duplicate event in real-time buffer: test/test");
 
     // In delete_subdirectories_watches
@@ -774,7 +772,7 @@ void test_realtime_process_move_self(void **state) {
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, node);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test/sub'");
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
@@ -788,7 +786,7 @@ void test_realtime_process_move_self(void **state) {
     will_return(__wrap_OSHash_Delete_ex, str_data);
     will_return(__wrap_OSHash_Delete_ex, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6344): Inotify watch deleted for 'test'");
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -812,7 +810,7 @@ void test_realtime_process_failure(void **state)
     will_return(__wrap_read, NULL);
     will_return(__wrap_read, 0);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, FIM_ERROR_REALTIME_READ_BUFFER);
 
     realtime_process();
@@ -875,7 +873,7 @@ void test_delete_subdirectories_watches_deletes(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, "dummy_key");
     will_return(__wrap_OSHash_Delete_ex, data);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "(6344): Inotify watch deleted for '/test/sub'");
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
@@ -895,7 +893,7 @@ void test_realtime_sanitize_watch_map_empty_hash(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     realtime_sanitize_watch_map();
@@ -915,7 +913,7 @@ void test_realtime_sanitize_watch_map_inotify_not_connected(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     realtime_sanitize_watch_map();
@@ -942,7 +940,7 @@ void test_realtime_sanitize_watch_map_entry_with_no_configuration(void **state) 
 
     syscheck.realtime->fd = 1;
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     will_return(__wrap_inotify_rm_watch, 0);
@@ -950,7 +948,7 @@ void test_realtime_sanitize_watch_map_entry_with_no_configuration(void **state) 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     realtime_sanitize_watch_map();
@@ -983,7 +981,7 @@ void test_realtime_sanitize_watch_map_unable_to_add_more_watches(void **state) {
 
     errno = ENOSPC;
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg,
                   "(6700): Unable to add inotify watch to real time monitoring: '/media/some/path'. '-1' '28': The "
                   "maximum limit of inotify watches has been reached.");
@@ -991,7 +989,7 @@ void test_realtime_sanitize_watch_map_unable_to_add_more_watches(void **state) {
     expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Next, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     realtime_sanitize_watch_map();
@@ -1023,7 +1021,7 @@ void test_realtime_sanitize_watch_map_entry_deleted(void **state) {
 
     errno = ENOENT;
 
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Removing watch on non existent directory '/media/some/path'");
 
     will_return(__wrap_inotify_rm_watch, 0);
@@ -1031,7 +1029,7 @@ void test_realtime_sanitize_watch_map_entry_deleted(void **state) {
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     realtime_sanitize_watch_map();
@@ -1062,7 +1060,7 @@ void test_realtime_sanitize_watch_map_inotify_error(void **state) {
 
     will_return(__wrap_inotify_add_watch, -1);
 
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg,
                   "(6272): Unable to add inotify watch to real time monitoring: '/media/some/path'. '-1' "
                   "'0':'Success'");
@@ -1070,7 +1068,7 @@ void test_realtime_sanitize_watch_map_inotify_error(void **state) {
     expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Next, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     realtime_sanitize_watch_map();
@@ -1104,7 +1102,7 @@ void test_realtime_sanitize_watch_map_entry_already_up_to_date(void **state) {
     expect_value(__wrap_OSHash_Next, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Next, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     test_mode = 0;
@@ -1140,14 +1138,14 @@ void test_realtime_sanitize_watch_map_entry_with_new_watch_number(void **state) 
     expect_string(__wrap_OSHash_Get_ex, key, "4321");
     will_return(__wrap_OSHash_Get_ex, NULL);
 
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg,
                   "(6227): Directory added for real time monitoring: '/media/some/path'");
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     test_mode = 0;
@@ -1193,16 +1191,16 @@ void test_realtime_sanitize_watch_map_entry_with_new_watch_number_fail(void **st
     expect_string(__wrap_OSHash_Add_ex, key, "4321");
     will_return(__wrap_OSHash_Add_ex, 0);
 
-    expect_string(__wrap__mterror_exit, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror_exit, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror_exit, formatted_msg, FIM_CRITICAL_ERROR_OUT_MEM);
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
- expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+ expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug1, formatted_msg);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     test_mode = 1;
@@ -1243,7 +1241,7 @@ void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory(v
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     realtime_sanitize_watch_map();
@@ -1287,13 +1285,13 @@ void test_realtime_sanitize_watch_map_update_existing_watch_with_new_directory_f
 
     will_return(__wrap_OSHash_Update_ex, 0);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "Unable to update 'dirtb'. Directory not found: '/media/some/path'");
 
     expect_value(__wrap_OSHash_Begin, self, syscheck.realtime->dirtb);
     will_return(__wrap_OSHash_Begin, NULL);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
     test_mode = 1;
@@ -1365,7 +1363,7 @@ void test_realtime_adddir_whodata_non_existent_file(void **state) {
     expect_string(__wrap_check_path_type, dir, "C:\\a\\path");
     will_return(__wrap_check_path_type, 0);
 
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "(6907): 'C:\\a\\path' does not exist. Monitoring discarded.");
 
     ret = realtime_adddir("C:\\a\\path", 1, 0);
@@ -1390,7 +1388,7 @@ void test_realtime_adddir_whodata_error_adding_whodata_dir(void **state) {
     expect_value(__wrap_set_winsacl, position, 0);
     will_return(__wrap_set_winsacl, 1);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg,
         "(6619): Unable to add directory to whodata real time monitoring: 'C:\\a\\path'. It will be monitored in Realtime");
 
@@ -1454,7 +1452,7 @@ void test_realtime_adddir_realtime_start_error(void **state) {
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, NULL);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "(1102): Could not acquire memory due to [(0)-(Success)].");
 
     ret = realtime_adddir("C:\\a\\path", 0, 0);
@@ -1469,7 +1467,7 @@ void test_realtime_adddir_max_limit_reached(void **state) {
 
     expect_function_call(__wrap_pthread_mutex_lock);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg,
         "(6616): Unable to add directory to real time monitoring: 'C:\\a\\path' - Maximum size permitted.");
 
@@ -1564,7 +1562,7 @@ void test_realtime_adddir_duplicate_entry_non_existent_directory_closed_handle(v
     will_return(__wrap_OSHash_Delete_ex, rtlocald);
 
     snprintf(debug_msg, OS_SIZE_128, FIM_REALTIME_CALLBACK, "C:\\a\\path");
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, debug_msg);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -1610,7 +1608,7 @@ void test_realtime_adddir_handle_error(void **state) {
     expect_string(wrap_CreateFile, lpFileName, "C:\\a\\path");
     will_return(wrap_CreateFile, INVALID_HANDLE_VALUE);
 
-    expect_string(__wrap__mtdebug2, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug2, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg,
         "(6290): Unable to add directory to real time monitoring: 'C:\\a\\path'");
 
@@ -1636,7 +1634,7 @@ void test_realtime_adddir_success(void **state) {
 
     will_return(wrap_ReadDirectoryChangesW, 1);
 
-    expect_string(__wrap__mtdebug1, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg,
                   "(6227): Directory added for real time monitoring: 'C:\\a\\path'");
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -1652,7 +1650,7 @@ void test_RTCallBack_error_on_callback(void **state) {
     OVERLAPPED ov = {.hEvent = "C:\\a\\path"};
 
     will_return(wrap_FormatMessage, "Path not found.");
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "(6613): Real time Windows callback process: 'Path not found.' (3).");
 
     RTCallBack(ERROR_PATH_NOT_FOUND, 0, &ov);
@@ -1665,7 +1663,7 @@ void test_RTCallBack_empty_hash_table(void **state) {
     expect_any(__wrap_OSHash_Get, key);
     will_return(__wrap_OSHash_Get, NULL);
 
-    expect_string(__wrap__mterror, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, FIM_ERROR_REALTIME_WINDOWS_CALLBACK_EMPTY);
 
     RTCallBack(ERROR_SUCCESS, 1, &ov);
@@ -1681,7 +1679,7 @@ void test_RTCallBack_no_bytes_returned(void **state) {
     expect_any(__wrap_OSHash_Get, key);
     will_return(__wrap_OSHash_Get, rt);
 
-    expect_string(__wrap__mtwarn, tag, SYSCHECK_MODULE_NAME);
+    expect_string(__wrap__mtwarn, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtwarn, formatted_msg, FIM_WARN_REALTIME_OVERFLOW);
 
     // Inside realtime_win32read

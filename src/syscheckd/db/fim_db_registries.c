@@ -150,13 +150,13 @@ int fim_db_remove_registry_key(fdb_t *fim_sql, fim_entry *entry) {
                               entry->registry_entry.key->arch);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_REG_DATA_PATH]) != SQLITE_DONE) {
-        mterror(ARGV0, "Step error deleting data value from key '%s': %s", entry->registry_entry.key->path,
+        mterror(SYSCHECK_LOGTAG, "Step error deleting data value from key '%s': %s", entry->registry_entry.key->path,
                sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_REG_KEY_PATH]) != SQLITE_DONE) {
-        mterror(ARGV0, "Step error deleting key path '%s': %s", entry->registry_entry.key->path, sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error deleting key path '%s': %s", entry->registry_entry.key->path, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -170,7 +170,7 @@ int fim_db_remove_registry_value_data(fdb_t *fim_sql, fim_registry_value_data *e
     fim_db_bind_registry_data_name_key_id(fim_sql, FIMDB_STMT_DELETE_REG_DATA, entry->name, entry->id);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_DELETE_REG_DATA]) != SQLITE_DONE) {
-        mterror(ARGV0, "Step error deleting entry name '%s': %s", entry->name, sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error deleting entry name '%s': %s", entry->name, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -258,7 +258,7 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
     char *buffer = NULL;
 
     if (base == NULL) {
-        mterror(ARGV0, "Error escaping '%s'", entry->registry_entry.value->name);
+        mterror(SYSCHECK_LOGTAG, "Error escaping '%s'", entry->registry_entry.value->name);
         goto end;
     }
 
@@ -270,7 +270,7 @@ void fim_db_callback_save_reg_data_name(__attribute__((unused))fdb_t * fim_sql, 
 
     if (storage == FIM_DB_DISK) { // disk storage enabled
         if (fprintf(((fim_tmp_file *) arg)->fd, "%032ld%s\n", (unsigned long)(length), buffer) < 0) {
-            mterror(ARGV0, "Can't save entry: %s %s", entry->registry_entry.value->name, strerror(errno));
+            mterror(SYSCHECK_LOGTAG, "Can't save entry: %s %s", entry->registry_entry.value->name, strerror(errno));
             goto end;
         }
 
@@ -308,7 +308,7 @@ int fim_db_set_registry_key_scanned(fdb_t *fim_sql, const char *path, unsigned i
     fim_db_bind_registry_path(fim_sql, FIMDB_STMT_SET_REG_KEY_SCANNED, path, arch);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_SET_REG_KEY_SCANNED]) != SQLITE_DONE) {
-        mterror(ARGV0, "Step error setting scanned key path '%s': %s", path, sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error setting scanned key path '%s': %s", path, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -323,7 +323,7 @@ int fim_db_set_registry_data_scanned(fdb_t *fim_sql, const char *name, unsigned 
     fim_db_bind_registry_data_name_key_id(fim_sql, FIMDB_STMT_SET_REG_DATA_SCANNED, name, key_id);
 
     if (sqlite3_step(fim_sql->stmt[FIMDB_STMT_SET_REG_DATA_SCANNED]) != SQLITE_DONE) {
-        mterror(ARGV0, "Step error setting scanned data name '%s': %s", name, sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error setting scanned data name '%s': %s", name, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -343,11 +343,11 @@ int fim_db_get_registry_key_rowid(fdb_t *fim_sql, const char *path, unsigned int
         *rowid = sqlite3_column_int(fim_sql->stmt[FIMDB_STMT_GET_REG_ROWID], 0);
     }
     else if (res == SQLITE_DONE) {
-        mtdebug2(ARGV0, "Key %s not found in DB", path);
+        mtdebug2(SYSCHECK_LOGTAG, "Key %s not found in DB", path);
         *rowid = 0;
     }
     else {
-        mterror(ARGV0, "Step error getting registry rowid %s: %s", path, sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error getting registry rowid %s: %s", path, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -427,7 +427,7 @@ int fim_db_get_count_registry_key(fdb_t *fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_REG_KEY);
 
     if(res == FIMDB_ERR) {
-        mterror(ARGV0, "Step error getting count registry key: %s", sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error getting count registry key: %s", sqlite3_errmsg(fim_sql->db));
     }
 
     return res;
@@ -437,7 +437,7 @@ int fim_db_get_count_registry_data(fdb_t *fim_sql) {
     int res = fim_db_get_count(fim_sql, FIMDB_STMT_GET_COUNT_REG_DATA);
 
     if(res == FIMDB_ERR) {
-        mterror(ARGV0, "Step error getting count registry data: %s", sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error getting count registry data: %s", sqlite3_errmsg(fim_sql->db));
     }
 
     return res;
@@ -454,12 +454,12 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
         int count = fim_db_get_count_entries(syscheck.database);
 
         if (count == FIMDB_ERR) {
-            mtdebug1(ARGV0, "Failed to get count of entries while inserting '%s'", data->name);
+            mtdebug1(SYSCHECK_LOGTAG, "Failed to get count of entries while inserting '%s'", data->name);
             return FIMDB_ERR;
         }
 
         if (count >= syscheck.file_limit) {
-            mtdebug1(ARGV0, "Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
+            mtdebug1(SYSCHECK_LOGTAG, "Couldn't insert '%s' value entry into DB. The DB is full, please check your configuration.",
                     data->name);
             return FIMDB_FULL;
         }
@@ -469,7 +469,7 @@ int fim_db_insert_registry_data(fdb_t *fim_sql,
     fim_db_bind_insert_registry_data(fim_sql, data, key_id);
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_DATA]), res != SQLITE_DONE) {
-        mterror(ARGV0, "Step error replacing registry data '%d': %s", key_id, sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error replacing registry data '%d': %s", key_id, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -484,12 +484,12 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
         int count = fim_db_get_count_entries(syscheck.database);
 
         if (count == FIMDB_ERR) {
-            mtdebug1(ARGV0, "Failed to get count of entries while inserting '%s %s'", registry_arch[entry->arch], entry->path);
+            mtdebug1(SYSCHECK_LOGTAG, "Failed to get count of entries while inserting '%s %s'", registry_arch[entry->arch], entry->path);
             return FIMDB_ERR;
         }
 
         if (count >= syscheck.file_limit) {
-            mtdebug1(ARGV0, "Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
+            mtdebug1(SYSCHECK_LOGTAG, "Couldn't insert '%s %s' entry into DB. The DB is full, please check your configuration.",
                     registry_arch[entry->arch], entry->path);
             return FIMDB_FULL;
         }
@@ -499,7 +499,7 @@ int fim_db_insert_registry_key(fdb_t *fim_sql, fim_registry_key *entry, unsigned
     fim_db_bind_insert_registry_key(fim_sql, entry, rowid);
 
     if (res = sqlite3_step(fim_sql->stmt[FIMDB_STMT_REPLACE_REG_KEY]), res != SQLITE_DONE) {
-        mterror(ARGV0, "Step error replacing registry key '%s': %s", entry->path, sqlite3_errmsg(fim_sql->db));
+        mterror(SYSCHECK_LOGTAG, "Step error replacing registry key '%s': %s", entry->path, sqlite3_errmsg(fim_sql->db));
         return FIMDB_ERR;
     }
 
@@ -560,7 +560,7 @@ int fim_db_process_read_registry_data_file(fdb_t *fim_sql, fim_tmp_file *file, p
         id = strtoul(read_line, &split, 10);
         // Skip if the fields couldn't be extracted.
         if (split == NULL || *split != ' ') {
-            mtwarn(ARGV0, "Temporary path file '%s' is corrupt: wrong line format", file->path);
+            mtwarn(SYSCHECK_LOGTAG, "Temporary path file '%s' is corrupt: wrong line format", file->path);
             os_free(read_line);
             continue;
         }

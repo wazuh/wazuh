@@ -424,6 +424,7 @@ typedef struct _config {
  * @param node XML node to continue reading the configuration file
  * @param syscheck Syscheck configuration structure
  * @param modules Modules enabled.
+ * @return Return 0 on success or -1 on error.
  */
 int read_syscheck_config_xml(const OS_XML *xml, XML_NODE node, syscheck_config *syscheck, int modules);
 

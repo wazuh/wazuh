@@ -19,7 +19,7 @@ static registry REGISTRY_EMPTY[] = { { NULL, 0, 0, 512, 0, NULL, NULL, NULL} };
 #endif
 
 // Parse XML configuration
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, char alloc) {
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void* d1, int modules, const char alloc) {
     wmodule** wmodules = (wmodule**)d1;
     wmodule* cur_wmodule = NULL;
     syscheck_config* config = NULL;

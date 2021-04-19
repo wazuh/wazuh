@@ -1,5 +1,5 @@
 /*
- * Wazuh SYSCHECK
+ * Wazuh module for SYSCHECK
  * Copyright (C) 2015-2021, Wazuh Inc.
  * March 31, 2021.
  *
@@ -21,17 +21,13 @@
 static void* wm_syscheck_main(wm_syscheck_t *sys);        // Module main function. It won't return
 static void wm_syscheck_destroy(wm_syscheck_t *sys);      // Destroy data
 static cJSON *wm_syscheck_dump(const wm_syscheck_t *sys);
-static int wm_syscheck_sync_message(const char *data){
-    (void)data;
-    return 0;
-}
 
 const wm_context WM_SYSCHECK_CONTEXT = {
     "syscheck",
     (wm_routine)wm_syscheck_main,
     (wm_routine)(void *)wm_syscheck_destroy,
     (cJSON * (*)(const void *))wm_syscheck_dump,
-    (int(*)(const char*))wm_syscheck_sync_message,
+    (int(*)(const char*))NULL,
 };
 
 static void wm_syscheck_print_info(void) {
@@ -45,7 +41,7 @@ static void wm_syscheck_print_info(void) {
         if (syscheck.opts[r] & WHODATA_ACTIVE) {
             if (!whodata_notification) {
                 whodata_notification = 1;
-                mtinfo(WM_SYSCHECK_LOGTAG, FIM_REALTIME_INCOMPATIBLE);
+                mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_INCOMPATIBLE);
             }
             syscheck.opts[r] &= ~WHODATA_ACTIVE;
             syscheck.opts[r] |= REALTIME_ACTIVE;
@@ -57,11 +53,11 @@ static void wm_syscheck_print_info(void) {
     // TODO: allow sha256 sum on registries
     while (syscheck.registry[r].entry != NULL) {
         char optstr[1024];
-        mtinfo(WM_SYSCHECK_LOGTAG, FIM_MONITORING_REGISTRY, syscheck.registry[r].entry,
+        mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_REGISTRY, syscheck.registry[r].entry,
                 syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "",
                 syscheck_opts2str(optstr, sizeof(optstr), syscheck.registry[r].opts));
         if (syscheck.file_size_enabled){
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
+            mtinfo(SYSCHECK_LOGTAG, FIM_DIFF_FILE_SIZE_LIMIT, syscheck.registry[r].diff_size_limit, syscheck.registry[r].entry);
         }
         r++;
     }
@@ -71,77 +67,77 @@ static void wm_syscheck_print_info(void) {
         char optstr[ 1024 ];
 
 #ifdef WIN32
-        mtinfo(WM_SYSCHECK_LOGTAG, FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+        mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
 #else
         if (!syscheck.symbolic_links[r]) {
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
         } else {
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_MONITORING_LDIRECTORY, syscheck.dir[r], syscheck.symbolic_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            mtinfo(SYSCHECK_LOGTAG, FIM_MONITORING_LDIRECTORY, syscheck.dir[r], syscheck.symbolic_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
         }
 #endif//WIN32
 
         if (syscheck.tag && syscheck.tag[r] != NULL)
-            mtdebug1(WM_SYSCHECK_LOGTAG, FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
+            mtdebug1(SYSCHECK_LOGTAG, FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
 
         // Print diff file size limit
         if ((syscheck.opts[r] & CHECK_SEECHANGES) && syscheck.file_size_enabled) {
-            mtdebug2(WM_SYSCHECK_LOGTAG, FIM_DIFF_FILE_SIZE_LIMIT, syscheck.diff_size_limit[r], syscheck.dir[r]);
+            mtdebug2(SYSCHECK_LOGTAG, FIM_DIFF_FILE_SIZE_LIMIT, syscheck.diff_size_limit[r], syscheck.dir[r]);
         }
 
         r++;
     }
 
     if (!syscheck.file_size_enabled) {
-        mtinfo(WM_SYSCHECK_LOGTAG, FIM_FILE_SIZE_LIMIT_DISABLED);
+        mtinfo(SYSCHECK_LOGTAG, FIM_FILE_SIZE_LIMIT_DISABLED);
     }
 
     // Print maximum disk quota to be used by the queue/diff/local folder
     if (syscheck.disk_quota_enabled) {
-        mtdebug2(WM_SYSCHECK_LOGTAG, FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
+        mtdebug2(SYSCHECK_LOGTAG, FIM_DISK_QUOTA_LIMIT, syscheck.disk_quota_limit);
     }
     else {
-        mtinfo(WM_SYSCHECK_LOGTAG, FIM_DISK_QUOTA_LIMIT_DISABLED);
+        mtinfo(SYSCHECK_LOGTAG, FIM_DISK_QUOTA_LIMIT_DISABLED);
     }
 
     /* Print ignores. */
     if(syscheck.ignore)
         for (r = 0; syscheck.ignore[r] != NULL; r++)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
+            mtinfo(SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
     /* Print sregex ignores. */
     if(syscheck.ignore_regex)
         for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
+            mtinfo(SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
 #ifdef WIN32
     /* Print registry ignores. */
     if(syscheck.key_ignore)
         for (r = 0; syscheck.key_ignore[r].entry != NULL; r++)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
+            mtinfo(SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
 
     /* Print sregex registry ignores. */
     if(syscheck.key_ignore_regex)
         for (r = 0; syscheck.key_ignore_regex[r].regex != NULL; r++)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
+            mtinfo(SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
 
     if(syscheck.value_ignore)
         for (r = 0; syscheck.value_ignore[r].entry != NULL; r++)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
+            mtinfo(SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
 
     /* Print sregex registry ignores. */
     if(syscheck.value_ignore_regex)
         for (r = 0; syscheck.value_ignore_regex[r].regex != NULL; r++)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
+            mtinfo(SYSCHECK_LOGTAG, FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
 
     /* Print registry values with nodiff. */
     if(syscheck.registry_nodiff)
         for (r = 0; syscheck.registry_nodiff[r].entry != NULL; r++)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
+            mtinfo(SYSCHECK_LOGTAG, FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
 
     /* Print sregex registry values with nodiff. */
     if(syscheck.registry_nodiff_regex)
         for (r = 0; syscheck.registry_nodiff_regex[r].regex != NULL; r++)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
+            mtinfo(SYSCHECK_LOGTAG, FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
 
 #endif //WIN32
 
@@ -150,7 +146,7 @@ static void wm_syscheck_print_info(void) {
     if (syscheck.nodiff){
         r = 0;
         while (syscheck.nodiff[r] != NULL) {
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_NO_DIFF, syscheck.nodiff[r]);
+            mtinfo(SYSCHECK_LOGTAG, FIM_NO_DIFF, syscheck.nodiff[r]);
             r++;
         }
     }
@@ -160,9 +156,9 @@ static void wm_syscheck_print_info(void) {
     while (syscheck.dir[r] != NULL) {
         if (syscheck.opts[r] & REALTIME_ACTIVE) {
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
+            mtinfo(SYSCHECK_LOGTAG, FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
 #else
-            mtwarn(WM_SYSCHECK_LOGTAG, FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
+            mtwarn(SYSCHECK_LOGTAG, FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
             syscheck.opts[r] &= ~ REALTIME_ACTIVE;
             syscheck.opts[r] |= SCHEDULED_ACTIVE;
 #endif
@@ -172,13 +168,12 @@ static void wm_syscheck_print_info(void) {
     }
 }
 
-static void wm_syscheck_log_config(const wm_syscheck_t *sys)
-{
+static void wm_syscheck_log_config(const wm_syscheck_t *sys) {
     cJSON * config_json = wm_syscheck_dump(sys);
     if (config_json) {
         char * config_str = cJSON_PrintUnformatted(config_json);
         if (config_str) {
-            mtdebug1(WM_SYSCHECK_LOGTAG, "%s", config_str);
+            mtdebug1(SYSCHECK_LOGTAG, "%s", config_str);
             cJSON_free(config_str);
         }
         cJSON_Delete(config_json);
@@ -189,13 +184,13 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
     syscheck_config* config = (syscheck_config*)sys;
     syscheck = *config;
     read_internal(0);
-    mtdebug1(WM_SYSCHECK_LOGTAG, "Starting syscheck.");
+    mtdebug1(SYSCHECK_LOGTAG, "Starting syscheck.");
     if (syscheck.disabled == 1) {
         if (!syscheck.dir) {
-            mtinfo(WM_SYSCHECK_LOGTAG, FIM_DIRECTORY_NOPROVIDED);
+            mtinfo(SYSCHECK_LOGTAG, FIM_DIRECTORY_NOPROVIDED);
             dump_syscheck_file(&syscheck, "", 0, NULL, 0, NULL, NULL, -1);
         } else if (!syscheck.dir[0]) {
-                mtinfo(WM_SYSCHECK_LOGTAG, FIM_DIRECTORY_NOPROVIDED);
+                mtinfo(SYSCHECK_LOGTAG, FIM_DIRECTORY_NOPROVIDED);
         }
         os_free(syscheck.dir[0]);
         if (!syscheck.ignore) {
@@ -210,8 +205,8 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
         os_free(syscheck.registry[0].entry);
 #endif //WIN32
 
-        mtinfo(WM_SYSCHECK_LOGTAG, FIM_DISABLED);
-        mtinfo(WM_SYSCHECK_LOGTAG, "Module disabled. Exiting...");
+        mtinfo(SYSCHECK_LOGTAG, FIM_DISABLED);
+        mtinfo(SYSCHECK_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }
     wm_syscheck_log_config(sys);
@@ -226,7 +221,7 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
     }
     /* Connect to the queue */
     if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
-        mterror_exit(WM_SYSCHECK_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
+        mterror_exit(SYSCHECK_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
     }
 #endif //WIN32
     wm_syscheck_print_info();
@@ -237,7 +232,7 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
 #ifdef ENABLE_AUDIT
         int out = audit_init();
         if (out < 0) {
-            mtwarn(WM_SYSCHECK_LOGTAG, FIM_WARN_AUDIT_THREAD_NOSTARTED);
+            mtwarn(SYSCHECK_LOGTAG, FIM_WARN_AUDIT_THREAD_NOSTARTED);
 
             // Switch who-data to real-time mode
 
@@ -249,18 +244,18 @@ void* wm_syscheck_main(wm_syscheck_t *sys) {
             }
         }
 #else
-        mterror(WM_SYSCHECK_LOGTAG, FIM_ERROR_WHODATA_AUDIT_SUPPORT);
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_WHODATA_AUDIT_SUPPORT);
 #endif
     }
 #endif //WIN32
     /* Start the daemon */
     start_daemon();
-    mtinfo(WM_SYSCHECK_LOGTAG, "Module finished.");
+    mtinfo(SYSCHECK_LOGTAG, "Module finished.");
     return 0;
 }
 
 void wm_syscheck_destroy(wm_syscheck_t *data) {
-    mtinfo(WM_SYSCHECK_LOGTAG, "Destroy received for Syscheck.");
+    mtinfo(SYSCHECK_LOGTAG, "Destroy received for Syscheck.");
     syscheck_config* config = (syscheck_config*)data;
     Free_Syscheck(config);
 }

@@ -37,10 +37,10 @@ void init_magic(magic_t *cookie_ptr)
 
     if (!*cookie_ptr) {
         const char *err = magic_error(*cookie_ptr);
-        mterror(ARGV0, FIM_ERROR_LIBMAGIC_START, err ? err : "unknown");
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_LIBMAGIC_START, err ? err : "unknown");
     } else if (magic_load(*cookie_ptr, NULL) < 0) {
         const char *err = magic_error(*cookie_ptr);
-        mterror(ARGV0, FIM_ERROR_LIBMAGIC_LOAD, err ? err : "unknown");
+        mterror(SYSCHECK_LOGTAG, FIM_ERROR_LIBMAGIC_LOAD, err ? err : "unknown");
         magic_close(*cookie_ptr);
         *cookie_ptr = 0;
     }
