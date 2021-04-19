@@ -855,6 +855,15 @@
                 ]
             },
             {
+                "name": "mitre.py",
+                "tag": "mitre",
+                "tests": [
+                    "test_mitre_endpoints.tavern.yaml",
+                    "test_rbac_black_mitre_endpoints.tavern.yaml",
+                    "test_rbac_white_mitre_endpoints.tavern.yaml"
+                ]
+            },
+            {
                 "name": "pyDaemonModule.py",
                 "tag": "pydaemonmodule",
                 "tests": [
