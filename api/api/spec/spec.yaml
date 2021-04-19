@@ -10651,12 +10651,12 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e",
-                      created_time: "2018-10-17 00:14:20.652000",
-                      modified_time: "2019-07-19 17:44:36.953000",
-                      description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. ",
-                      name: "Lateral Movement",
-                      short_name: "lateral-movement",
+                    - id: "x-mitre-tactic--7141578b-e50b-4dcc-bfa4-08a8dd689e9e"
+                      created_time: "2018-10-17 00:14:20.652000"
+                      modified_time: "2019-07-19 17:44:36.953000"
+                      description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
+                      name: "Lateral Movement"
+                      short_name: "lateral-movement"
                       related_techniques:
                         - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
                           "attack-pattern--246fd3c7-f5e3-466d-8787-4c13d9e3b61c"
