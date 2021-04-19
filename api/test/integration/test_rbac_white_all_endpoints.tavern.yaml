@@ -1797,7 +1797,7 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /mitre/tactics
+test_name: GET /mitre/references
 
 stages:
 
