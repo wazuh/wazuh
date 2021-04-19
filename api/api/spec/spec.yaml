@@ -281,7 +281,7 @@ x-rbac-catalog:
         resources: ['*:*:*']
         effect: "deny"
     'mitre:read':
-      description: "Access techniques information from MITRE database"
+      description: "Access information from MITRE database"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:

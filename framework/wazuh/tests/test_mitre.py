@@ -18,6 +18,7 @@ with patch('wazuh.common.ossec_uid'):
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         from wazuh import mitre
+        from wazuh.core import mitre as core_mitre
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -26,6 +27,8 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 @pytest.fixture(scope='module')
 def mitre_db():
     """Get fake MITRE database cursor."""
+    core_mitre.get_groups.cache_clear()
+    core_mitre.get_techniques.cache_clear()
     return get_fake_database_data('schema_mitre_test.sql').cursor()
 
 
