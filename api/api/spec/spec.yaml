@@ -299,7 +299,7 @@ x-rbac-catalog:
     'decoders:update':
       description: "Update or upload custom decoder files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['decoders:update']
         resources: ['*:*:*']
@@ -382,7 +382,7 @@ x-rbac-catalog:
     'rules:update':
       description: "Update or upload custom rule files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/rule:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['rules:update']
         resources: ['*:*:*']
