@@ -185,7 +185,7 @@ async def get_mitigations(request, mitigation_ids=None, pretty=False, wait_for_c
 
     Returns
     -------
-    MITRE's techniques information
+    MITRE's mitigations information
     """
     f_kwargs = {'filters': {
         'id': mitigation_ids,
