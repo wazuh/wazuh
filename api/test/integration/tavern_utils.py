@@ -7,6 +7,26 @@ from json import loads
 from box import Box
 
 
+def get_values(o):
+    strings = []
+
+    try:
+        obj = o.to_dict()
+    except:
+        obj = o
+
+    if type(obj) is list:
+        for o in obj:
+            strings.extend(get_values(o))
+    elif type(obj) is dict:
+        for key in obj:
+            strings.extend(get_values(obj[key]))
+    else:
+        strings.append(obj.lower() if isinstance(obj, str) or isinstance(obj, str) else str(obj))
+
+    return strings
+
+
 def test_distinct_key(response):
     """
     :param response: Request response
@@ -228,3 +248,12 @@ def test_validate_group_configuration(response, expected_field, expected_value):
     assert response_config[expected_field] == expected_value, \
         'The received value for query does not match with the expected one. ' \
         'Received: {}. Expected: {}'.format(response_config[expected_field], expected_value)
+
+
+def test_validate_search(response, search_param):
+    search_param = search_param.lower()
+    response_json = response.json()
+    for item in response_json['data']['affected_items']:
+        values = get_values(item)
+        if not any(filter(lambda x: search_param in x, values)):
+            raise ValueError(f'{search_param} not present in {values}')

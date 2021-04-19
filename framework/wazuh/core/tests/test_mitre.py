@@ -26,7 +26,8 @@ def test_WazuhDBQueryMitreMetadata(mock_wdb):
 @pytest.mark.parametrize('wdb_query_class', [
     WazuhDBQueryMitreTactics,
     # TODO: add the rest of wdb query classes
-    WazuhDBQueryMitreTechniques
+    WazuhDBQueryMitreTechniques,
+    WazuhDBQueryMitreGroups
 ])
 @patch('wazuh.core.utils.WazuhDBConnection', return_value=InitWDBSocketMock(sql_schema_file='schema_mitre_test.sql'))
 def test_WazuhDBQueryMitre_classes(mock_wdb, wdb_query_class):
@@ -48,7 +49,8 @@ def test_WazuhDBQueryMitre_classes(mock_wdb, wdb_query_class):
 @pytest.mark.parametrize('mitre_get_function, mitre_wdb_query_class', [
     (get_tactics, WazuhDBQueryMitreTactics),
     # TODO: add the rest of wdb query classes
-    (get_techniques, WazuhDBQueryMitreTechniques)
+    (get_techniques, WazuhDBQueryMitreTechniques),
+    (get_groups, WazuhDBQueryMitreGroups)
 ])
 @patch('wazuh.core.utils.WazuhDBConnection')
 def test_mitre_get_functions(mock_wdb, mitre_get_function, mitre_wdb_query_class):

@@ -235,13 +235,13 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - <<: *tactics_response
-              name: "Persistence"
-            - <<: *tactics_response
           failed_items: []
           total_affected_items: 2
           total_failed_items: 0
+      verify_response_with:
+        function: tavern_utils:test_validate_search
+        extra_kwargs:
+          search_param: 'Persistence'
       save:
         json:
           tactic_id: data.affected_items[1].id
@@ -537,25 +537,13 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - deprecated: !anyint
-              remote_support: !anyint
-              name: "Gather Victim Network Information"
-              mitre_version: !anystr
-              id: !anystr
-              mitre_detection: !anystr
-              description: !anystr
-              modified_time: !anystr
-              network_requirements: !anyint
-              created_time: !anystr
-              related_tactics: !anything
-              related_mitigations: !anything
-              related_software: !anything
-              related_groups: !anything
-            - <<: *techniques_response
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+      verify_response_with:
+        function: tavern_utils:test_validate_search
+        extra_kwargs:
+          search_param: 'Gather Victim Network Information'
       save:
         json:
           technique_id: data.affected_items[1].id
@@ -630,6 +618,299 @@ stages:
           affected_items:
             - <<: *techniques_response
               created_time: "2020-02-11 18:42:07.281000"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+---
+test_name: GET /mitre/groups
+
+stages:
+
+  - name: Show one group
+    request: &general_groups_request
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/mitre/groups"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: &groups_response
+            - mitre_version: !anystr
+              deprecated: !anyint
+              name: !anystr
+              id: !anystr
+              modified_time: !anystr
+              created_time: !anystr
+              description: !anystr
+              related_software: !anything
+              related_techniques: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Show one group with offset = 1
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        limit: 1
+        offset: 1
+    response:
+      status_code: 200
+      save:
+        $ext:
+          function: tavern_utils:test_save_response_data_mitre
+          extra_kwargs:
+            fields:
+              - mitre_version
+              - deprecated
+              - name
+              - id
+              - modified_time
+              - created_time
+              - description
+              - related_software
+              - related_techniques
+
+  - name: Check that the offset is working properly, show two groups with offset = 0
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        limit: 2
+        offset: 0
+    response:
+      status_code: 200
+      json:
+        error: 0
+      verify_response_with:
+        - function: tavern_utils:test_validate_mitre
+          extra_kwargs:
+            data: "{response_data}"
+            index: 1
+
+  - name: Show all groups without limit
+    request:
+      verify: False
+      <<: *general_groups_request
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+
+  - name: Try to get all groups with limit = 0
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        limit: 0
+    response:
+      status_code: 400
+
+  - name: Get three specified groups (one of them does not exist in the database)
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        group_ids:
+          - "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340"
+          - "intrusion-set--025bdaa9-897d-4bad-afa6-013ba5734653"
+          - "intrusion-set--03506554-5f37-4f8f-9ce4-999999999999"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *groups_response
+              id: "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340"
+            - <<: *groups_response
+              id: "intrusion-set--025bdaa9-897d-4bad-afa6-013ba5734653"
+          failed_items: [ ]
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Sort groups without limit
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        sort: -related_software
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "related_software"
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Show groups using valid select
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        select: 'name,deprecated'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'name,deprecated,id' # required_fields={'id'}
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to show groups using invalid select
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
+
+  - name: Try to show groups using invalid select (one select is invalid)
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        select: 'name,noexists'
+    response:
+      status_code: 400
+      json:
+        <<: *invalid_select
+
+  - name: Show groups using select and specifying a non-existent id in the group_ids parameter
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        select: 'related_software'
+        group_ids: 'invalid'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
+  - name: Search in groups
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        search: "NEODYMIUM"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+      verify_response_with:
+        function: tavern_utils:test_validate_search
+        extra_kwargs:
+          search_param: "NEODYMIUM"
+      save:
+        json:
+          group_id: data.affected_items[1].id
+
+  - name: Search groups using offset and limit
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        search: "NEODYMIUM"
+        offset: 1
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: "{group_id}"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Try to show groups using an invalid parameter
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        noexist: nothing
+    response:
+      status_code: 400
+
+  - name: Try to show groups using an invalid id with an extra field
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        id: "intrusion-set--00f67a77-86a4-4adf-be26-999999999999"
+        noexist: True
+    response:
+      status_code: 400
+
+  - name: Filter groups using q parameter
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        q: "id=intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *groups_response
+              id: "intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340"
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Filter groups using q parameter (complex query)
+    request:
+      verify: False
+      <<: *general_groups_request
+      params:
+        q: "created_time<2019-01-29 21:28:00;created_time>2019-01-29 21:27:00"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - <<: *groups_response
+              created_time: "2019-01-29 21:27:24.793000"
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
