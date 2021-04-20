@@ -25,7 +25,6 @@ stages:
               wazuh-authd: !anystr
               wazuh-csyslogd: !anystr
               wazuh-dbd: !anystr
-              wazuh-execd: !anystr
               wazuh-integratord: !anystr
               wazuh-logcollector: !anystr
               wazuh-maild: !anystr
@@ -693,7 +692,6 @@ stages:
             - wazuh-csyslogd: !anything
             - wazuh-db: !anything
             - wazuh-dbd: !anything
-            - wazuh-execd: !anything
             - wazuh-integratord: !anything
             - wazuh-logcollector: !anything
             - wazuh-modulesd: !anything

@@ -1954,8 +1954,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-dbd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-execd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-integratord:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-logcollector:
@@ -2424,7 +2422,6 @@ components:
             - wazuh-authd
             - wazuh-csyslogd
             - wazuh-dbd
-            - wazuh-execd
             - wazuh-integratord
             - wazuh-maild
             - wazuh-monitord
@@ -2506,8 +2503,6 @@ components:
           wazuh-csyslogd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-dbd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-execd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-integratord:
             $ref: '#/components/schemas/LogSummary'
@@ -4667,7 +4662,6 @@ components:
         - wazuh-authd
         - wazuh-csyslogd
         - wazuh-dbd
-        - wazuh-execd
         - wazuh-integratord
         - wazuh-maild
         - wazuh-monitord
@@ -8171,7 +8165,6 @@ paths:
                       wazuh-authd: stopped
                       wazuh-csyslogd: stopped
                       wazuh-dbd: stopped
-                      wazuh-execd: running
                       wazuh-integratord: stopped
                       wazuh-logcollector: running
                       wazuh-maild: stopped
@@ -9602,7 +9595,6 @@ paths:
                       wazuh-authd: stopped
                       wazuh-csyslogd: stopped
                       wazuh-dbd: stopped
-                      wazuh-execd: running
                       wazuh-integratord: stopped
                       wazuh-logcollector: running
                       wazuh-maild: stopped

@@ -11,7 +11,6 @@ import pytest
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.manager import *
-        from wazuh.core.exception import WazuhException
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager')
 ossec_log_path = '{0}/ossec_log.log'.format(test_data_path)
@@ -180,33 +179,6 @@ def test_validation_ko(mosck_exists, mock_lockf, mock_open):
                     with patch('wazuh.core.manager.parse_execd_output', side_effect=KeyError):
                         with pytest.raises(WazuhInternalError, match='.* 1904 .*'):
                             validate_ossec_conf()
-
-
-@pytest.mark.parametrize('error_flag, error_msg', [
-    (0, ""),
-    (1, "2019/02/27 11:30:07 wazuh-clusterd: ERROR: [Cluster] [Main] Error 3004 - Error in cluster configuration: "
-        "Unspecified key"),
-    (1, "2019/02/27 11:30:24 wazuh-authd: ERROR: (1230): Invalid element in the configuration: "
-        "'use_source_i'.\n2019/02/27 11:30:24 wazuh-authd: ERROR: (1202): Configuration error at "
-        "'/var/ossec/etc/ossec.conf'.")
-])
-def test_parse_execd_output(error_flag, error_msg):
-    """Test parse_execd_output function works and returns expected message.
-
-    Parameters
-    ----------
-    error_flag : int
-        Indicate if there is an error found.
-    error_msg
-        Error message to be sent.
-    """
-    json_response = json.dumps({'error': error_flag, 'message': error_msg}).encode()
-    if not error_flag:
-        result = parse_execd_output(json_response)
-        assert result['status'] == 'OK'
-    else:
-        with pytest.raises(WazuhException, match=f'.* 1908 .*'):
-            parse_execd_output(json_response)
 
 
 @patch('wazuh.core.manager.configuration.api_conf', new={'experimental_features': True})
