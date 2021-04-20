@@ -101,7 +101,7 @@ def get_manager_status() -> typing.Dict:
         Dict whose keys are daemons and the values are the status.
     """
     processes = ['wazuh-agentlessd', 'wazuh-analysisd', 'wazuh-authd', 'wazuh-csyslogd', 'wazuh-dbd', 'wazuh-monitord',
-                 'wazuh-integratord', 'wazuh-logcollector', 'wazuh-maild', 'wazuh-remoted',
+                 'wazuh-integratord', 'wazuh-maild', 'wazuh-remoted',
                  'wazuh-reportd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db', 'wazuh-apid']
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.wazuh_path, 'var/run')
