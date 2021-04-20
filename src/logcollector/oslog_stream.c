@@ -144,9 +144,7 @@ void w_logcollector_create_oslog_env(logreader * current) {
 
     log_stream_array = w_create_oslog_stream_array(current->query, current->query_level, current->query_type);
 
-    // todo: remove testing/developing code lines !!!
-    char * mock_log_stream_array[] = {"/root/oslog.sh", NULL};
-    current->oslog->log_wfd = w_logcollector_exec_oslog_stream(mock_log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
+    current->oslog->log_wfd = w_logcollector_exec_oslog_stream(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
     if (current->oslog->log_wfd == NULL) {
         current->oslog->is_oslog_running = false;
