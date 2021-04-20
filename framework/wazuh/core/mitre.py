@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
+import copy
 from functools import lru_cache
 from typing import Union
 
@@ -18,13 +19,16 @@ SOFTWARE_REQUEST_SLICE = 64
 TECHNIQUES_REQUEST_SLICE = 32
 RELATIONAL_REQUEST_SLICE = 256
 
+# Select used for each item's references
+SELECT_FIELDS_REFERENCES = ['url', 'description', 'source', 'external_id']
+
 
 class WazuhDBQueryMitre(WazuhDBQuery):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
-                 table: str = '', sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
-                 fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None,
-                 request_slice=500):
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+                 count: bool = True, table: str = '', sort: dict = None, default_sort_field: str = 'id',
+                 default_sort_order='ASC', fields=None, search: dict = None, select: list = None,
+                 min_select_fields=None, filters=None, request_slice=500):
         """Create an instance of WazuhDBQueryMitre query."""
 
         if filters is None:
@@ -127,8 +131,8 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
-                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreMitigations query."""
 
@@ -167,19 +171,25 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
             mitigation_ids.add(mitigation['id'])
 
         related_techniques = WazuhDBQueryMitreRelational(table='mitigate', filters={'source_id': list(mitigation_ids)},
-                                                         dict_key='source_id').run()
+                                                         dict_key='source_id', limit=None).run()
 
-        # _, references = get_references()
+        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'mitigation'},
+                                                 select=SELECT_FIELDS_REFERENCES).run()
+        references_no_id = copy.deepcopy(references)
+        for row in references_no_id['items']:
+            row.pop('id')
 
         for mitigation in self._data:
             mitigation['related_techniques'] = related_techniques.get(mitigation['id'], list())
-            # mitigation['references'] = [row for row in references['items'] if row['id'] == mitigation['id']]
+            mitigation['references'] = [row_no_id for row, row_no_id in
+                                        zip(references['items'], references_no_id['items']) if
+                                        row['id'] == mitigation['id']]
 
 
 class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
-                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreReferences query."""
 
@@ -208,8 +218,8 @@ class WazuhDBQueryMitreReferences(WazuhDBQueryMitre):
 
 class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
-                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreTactics query."""
 
@@ -245,19 +255,25 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
             tactic_ids.add(tactic['id'])
 
         related_techniques = WazuhDBQueryMitreRelational(table='phase', filters={'tactic_id': list(tactic_ids)},
-                                                         dict_key='tactic_id').run()
+                                                         dict_key='tactic_id', limit=None).run()
 
-        # _, references = get_references()
+        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'tactic'},
+                                                 select=SELECT_FIELDS_REFERENCES).run()
+        references_no_id = copy.deepcopy(references)
+        for row in references_no_id['items']:
+            row.pop('id')
 
         for tactic in self._data:
             tactic['related_techniques'] = related_techniques.get(tactic['id'], list())
-            # tactic['references'] = [row for row in references['items'] if row['id'] == tactic['id']]
+            tactic['references'] = [row_no_id for row, row_no_id in
+                                    zip(references['items'], references_no_id['items']) if
+                                    row['id'] == tactic['id']]
 
 
 class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
-                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreTechniques query."""
 
@@ -300,32 +316,40 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             technique_ids.add(technique['id'])
 
         related_tactics = WazuhDBQueryMitreRelational(table='phase', filters={'tech_id': list(technique_ids)},
-                                                      dict_key='tech_id').run()
+                                                      dict_key='tech_id', limit=None).run()
         related_mitigations = WazuhDBQueryMitreRelational(table='mitigate', filters={'target_id': list(technique_ids)},
-                                                          dict_key='target_id').run()
+                                                          dict_key='target_id', limit=None).run()
         related_software = WazuhDBQueryMitreRelational(table='use',
                                                        filters={'target_id': list(technique_ids),
                                                                 'target_type': 'technique', 'source_type': 'software'},
-                                                       dict_key='target_id').run()
+                                                       dict_key='target_id',
+                                                       limit=None).run()
         related_groups = WazuhDBQueryMitreRelational(table='use',
                                                      filters={'target_id': list(technique_ids),
                                                               'target_type': 'technique', 'source_type': 'group'},
-                                                     dict_key='target_id').run()
+                                                     dict_key='target_id',
+                                                     limit=None).run()
 
-        # _, references = get_references()
+        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'technique'},
+                                                 select=SELECT_FIELDS_REFERENCES).run()
+        references_no_id = copy.deepcopy(references)
+        for row in references_no_id['items']:
+            row.pop('id')
 
         for technique in self._data:
             technique['related_tactics'] = related_tactics.get(technique['id'], list())
             technique['related_mitigations'] = related_mitigations.get(technique['id'], list())
             technique['related_software'] = related_software.get(technique['id'], list())
             technique['related_groups'] = related_groups.get(technique['id'], list())
-            # technique['references'] = [row for row in references['items'] if row['id'] == technique['id']]
+            technique['references'] = [row_no_id for row, row_no_id in
+                                       zip(references['items'], references_no_id['items']) if
+                                       row['id'] == technique['id']]
 
 
 class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
-                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreGroups query."""
 
@@ -365,24 +389,32 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
         related_software = WazuhDBQueryMitreRelational(table='use',
                                                        filters={'source_id': list(group_ids),
                                                                 'target_type': 'software', 'source_type': 'group'},
-                                                       dict_key='source_id').run()
+                                                       dict_key='source_id',
+                                                       limit=None).run()
         related_techniques = WazuhDBQueryMitreRelational(table='use',
                                                          filters={'source_id': list(group_ids),
                                                                   'target_type': 'technique', 'source_type': 'group'},
-                                                         dict_key='source_id').run()
+                                                         dict_key='source_id',
+                                                         limit=None).run()
 
-        # _, references = get_references()
+        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'group'},
+                                                 select=SELECT_FIELDS_REFERENCES).run()
+        references_no_id = copy.deepcopy(references)
+        for row in references_no_id['items']:
+            row.pop('id')
 
         for group in self._data:
             group['related_software'] = related_software.get(group['id'], list())
             group['related_techniques'] = related_techniques.get(group['id'], list())
-            # group['references'] = [row for row in group['items'] if row['id'] == group['id']]
+            group['references'] = [row_no_id for row, row_no_id in
+                                   zip(references['items'], references_no_id['items']) if
+                                   row['id'] == group['id']]
 
 
 class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
 
-    def __init__(self, offset: int = 0, limit: int = common.database_limit, query: str = '', count: bool = True,
-                 sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
+    def __init__(self, offset: int = 0, limit: Union[int, None] = common.database_limit, query: str = '',
+                 count: bool = True, sort: dict = None, default_sort_field: str = 'id', default_sort_order='ASC',
                  fields=None, search: dict = None, select: list = None, min_select_fields=None, filters=None):
         """Create an instance of WazuhDBQueryMitreSoftware query."""
 
@@ -423,19 +455,27 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
                                                      filters={'target_id': list(software_ids),
                                                               'target_type': 'software',
                                                               'source_type': 'group'},
-                                                     dict_key='target_id').run()
-        related_techniques = WazuhDBQueryMitreRelational(table='use', limit=None,
+                                                     dict_key='target_id',
+                                                     limit=None).run()
+        related_techniques = WazuhDBQueryMitreRelational(table='use',
                                                          filters={'source_id': list(software_ids),
                                                                   'target_type': 'technique',
                                                                   'source_type': 'software'},
-                                                         dict_key='source_id').run()
+                                                         dict_key='source_id',
+                                                         limit=None).run()
 
-        # references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'software'}).run()
+        references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'software'},
+                                                 select=SELECT_FIELDS_REFERENCES).run()
+        references_no_id = copy.deepcopy(references)
+        for row in references_no_id['items']:
+            row.pop('id')
 
         for software in self._data:
             software['related_groups'] = related_groups.get(software['id'], list())
             software['related_techniques'] = related_techniques.get(software['id'], list())
-            # software['references'] = [row for row in references['items'] if row['id'] == software['id']]
+            software['references'] = [row_no_id for row, row_no_id in
+                                      zip(references['items'], references_no_id['items']) if
+                                      row['id'] == software['id']]
 
 
 @lru_cache(maxsize=None)
