@@ -135,6 +135,8 @@ def process_array(array, search_text=None, complementary_search=False, search_in
         Query to filter by
     required_fields : list
         Required fields that must appear in the response
+    allowed_select_fields: list
+        List of fields allowed to select from
     filters : dict
         Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
 
@@ -343,6 +345,8 @@ def select_array(array, select=None, required_fields=None, allowed_select_fields
         Example: ['select1', 'select2.select21.select22', 'select3.select31']
     required_fields : set, optional
         Set of fields that must be in the response. These depends on the framework function.
+    allowed_select_fields: list
+        List of fields allowed to select from
 
     Raises
     ------

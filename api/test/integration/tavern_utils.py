@@ -70,8 +70,11 @@ def test_select_key_affected_items(response, select_key):
             f'Select keys are {main_keys}, but this one is different {set1}'
 
         for nested_key in nested_keys.items():
-            set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
-            assert set2 == set(), f'Nested select keys are {nested_key[1]}, but this one is different {set2}'
+            try:
+                set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
+                assert set2 == set(), f'Nested select keys are {nested_key[1]}, but this one is different {set2}'
+            except KeyError:
+                assert nested_key[0] in main_keys
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):

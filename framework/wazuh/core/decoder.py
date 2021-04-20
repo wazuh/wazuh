@@ -12,6 +12,7 @@ from wazuh.core.utils import load_wazuh_xml, add_dynamic_detail
 REQUIRED_FIELDS = ['filename', 'position']
 SORT_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status']
 DYNAMIC_OPTIONS = {'program_name', 'prematch', 'regex'}
+DECODER_FIELDS = ['filename', 'relative_dirname', 'name', 'position', 'status', 'details']
 
 
 class Status(Enum):

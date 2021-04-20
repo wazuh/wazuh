@@ -15,7 +15,7 @@ from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import check_status, load_rules_from_file, format_rule_decoder_file, REQUIRED_FIELDS, \
-    RULE_REQUIREMENTS, SORT_FIELDS
+    RULE_REQUIREMENTS, SORT_FIELDS, RULE_FIELDS
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, upload_file, delete_file_with_backup, \
     to_relative_path
 from wazuh.rbac.decorators import expose_resources
@@ -97,7 +97,7 @@ def get_rules(rule_ids=None, status=None, group=None, pci_dss=None, gpg13=None, 
     data = process_array(rules, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, select=select, sort_by=sort_by,
                          sort_ascending=sort_ascending, allowed_sort_fields=SORT_FIELDS, offset=offset,
-                         limit=limit, q=q, required_fields=REQUIRED_FIELDS)
+                         limit=limit, q=q, required_fields=REQUIRED_FIELDS, allowed_select_fields=RULE_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
