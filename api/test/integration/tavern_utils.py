@@ -66,7 +66,7 @@ def test_select_key_affected_items(response, select_key):
 
     for item in response.json()['data']['affected_items']:
         set1 = main_keys.symmetric_difference(set(item.keys()))
-        assert set1 == set() or set1.intersection({'id', 'agent_id', 'file'}), \
+        assert set1 == set() or set1.issubset(main_keys) or set1.intersection({'id', 'agent_id', 'file'}), \
             f'Select keys are {main_keys}, but this one is different {set1}'
 
         for nested_key in nested_keys.items():
