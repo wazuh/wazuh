@@ -171,7 +171,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
             mitigation_ids.add(mitigation['id'])
 
         techniques = WazuhDBQueryMitreRelational(table='mitigate', filters={'source_id': list(mitigation_ids)},
-                                                         dict_key='source_id', limit=None).run()
+                                                 dict_key='source_id', limit=None).run()
 
         references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'mitigation'},
                                                  select=SELECT_FIELDS_REFERENCES).run()
@@ -255,7 +255,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
             tactic_ids.add(tactic['id'])
 
         techniques = WazuhDBQueryMitreRelational(table='phase', filters={'tactic_id': list(tactic_ids)},
-                                                         dict_key='tactic_id', limit=None).run()
+                                                 dict_key='tactic_id', limit=None).run()
 
         references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'tactic'},
                                                  select=SELECT_FIELDS_REFERENCES).run()
@@ -316,19 +316,19 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             technique_ids.add(technique['id'])
 
         tactics = WazuhDBQueryMitreRelational(table='phase', filters={'tech_id': list(technique_ids)},
-                                                      dict_key='tech_id', limit=None).run()
+                                              dict_key='tech_id', limit=None).run()
         mitigations = WazuhDBQueryMitreRelational(table='mitigate', filters={'target_id': list(technique_ids)},
-                                                          dict_key='target_id', limit=None).run()
+                                                  dict_key='target_id', limit=None).run()
         software = WazuhDBQueryMitreRelational(table='use',
-                                                       filters={'target_id': list(technique_ids),
-                                                                'target_type': 'technique', 'source_type': 'software'},
-                                                       dict_key='target_id',
-                                                       limit=None).run()
+                                               filters={'target_id': list(technique_ids),
+                                                        'target_type': 'technique', 'source_type': 'software'},
+                                               dict_key='target_id',
+                                               limit=None).run()
         groups = WazuhDBQueryMitreRelational(table='use',
-                                                     filters={'target_id': list(technique_ids),
-                                                              'target_type': 'technique', 'source_type': 'group'},
-                                                     dict_key='target_id',
-                                                     limit=None).run()
+                                             filters={'target_id': list(technique_ids),
+                                                      'target_type': 'technique', 'source_type': 'group'},
+                                             dict_key='target_id',
+                                             limit=None).run()
 
         references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'technique'},
                                                  select=SELECT_FIELDS_REFERENCES).run()
@@ -387,15 +387,15 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
             group_ids.add(group['id'])
 
         software = WazuhDBQueryMitreRelational(table='use',
-                                                       filters={'source_id': list(group_ids),
-                                                                'target_type': 'software', 'source_type': 'group'},
-                                                       dict_key='source_id',
-                                                       limit=None).run()
+                                               filters={'source_id': list(group_ids),
+                                                        'target_type': 'software', 'source_type': 'group'},
+                                               dict_key='source_id',
+                                               limit=None).run()
         techniques = WazuhDBQueryMitreRelational(table='use',
-                                                         filters={'source_id': list(group_ids),
-                                                                  'target_type': 'technique', 'source_type': 'group'},
-                                                         dict_key='source_id',
-                                                         limit=None).run()
+                                                 filters={'source_id': list(group_ids),
+                                                          'target_type': 'technique', 'source_type': 'group'},
+                                                 dict_key='source_id',
+                                                 limit=None).run()
 
         references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'group'},
                                                  select=SELECT_FIELDS_REFERENCES).run()
@@ -452,17 +452,17 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
             software_ids.add(group['id'])
 
         groups = WazuhDBQueryMitreRelational(table='use',
-                                                     filters={'target_id': list(software_ids),
-                                                              'target_type': 'software',
-                                                              'source_type': 'group'},
-                                                     dict_key='target_id',
-                                                     limit=None).run()
+                                             filters={'target_id': list(software_ids),
+                                                      'target_type': 'software',
+                                                      'source_type': 'group'},
+                                             dict_key='target_id',
+                                             limit=None).run()
         techniques = WazuhDBQueryMitreRelational(table='use',
-                                                         filters={'source_id': list(software_ids),
-                                                                  'target_type': 'technique',
-                                                                  'source_type': 'software'},
-                                                         dict_key='source_id',
-                                                         limit=None).run()
+                                                 filters={'source_id': list(software_ids),
+                                                          'target_type': 'technique',
+                                                          'source_type': 'software'},
+                                                 dict_key='source_id',
+                                                 limit=None).run()
 
         references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'software'},
                                                  select=SELECT_FIELDS_REFERENCES).run()
@@ -479,18 +479,23 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
 
 
 @lru_cache(maxsize=None)
-def get_mitigations():
-    """This function loads the mitigation data in order to speed up the use of the Framework function.
+def get_mitre_items(mitre_class: callable):
+    """This function loads the MITRE data in order to speed up the use of the Framework function.
     It also provides information about the min_select_fields for the select parameter and the
     allowed_fields for the sort parameter.
+
+    Parameters
+    ----------
+    mitre_class : callable
+        WazuhDBQueryMitre class used to obtain certain MITRE resources.
 
     Returns
     -------
     dict
-        Dictionary with information about the fields of the mitigation objects and the mitigations obtained.
+        Dictionary with information about the fields of the MITRE objects and the items obtained.
     """
     info = {'min_select_fields': None, 'allowed_fields': None}
-    db_query = WazuhDBQueryMitreMitigations(limit=None)
+    db_query = mitre_class(limit=None)
     info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
     info['min_select_fields'] = set(db_query.min_select_fields)
     data = db_query.run()
@@ -498,114 +503,14 @@ def get_mitigations():
     return info, data
 
 
-@lru_cache(maxsize=None)
-def get_references():
-    """This function loads the reference data in order to speed up the use of the Framework function.
-    It also provides information about the min_select_fields for the select parameter and the
-    allowed_fields for the sort parameter.
-
-    Returns
-    -------
-    dict
-        Dictionary with information about the fields of the reference objects and the references obtained.
-    """
-    info = {'min_select_fields': None, 'allowed_fields': None}
-    db_query = WazuhDBQueryMitreReferences(limit=None)
-    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
-    info['min_select_fields'] = set(db_query.min_select_fields)
-    data = db_query.run()
-
-    return info, data
-
-
-@lru_cache(maxsize=None)
-def get_tactics():
-    """This function loads the tactic data in order to speed up the use of the Framework function.
-    It also provides information about the min_select_fields for the select parameter and the
-    allowed_fields for the sort parameter.
-
-    Returns
-    -------
-    dict
-        Dictionary with information about the fields of the tactic objects and the tactics obtained.
-    """
-    info = {'min_select_fields': None, 'allowed_fields': None}
-    db_query = WazuhDBQueryMitreTactics(limit=None)
-    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
-    info['min_select_fields'] = set(db_query.min_select_fields)
-    data = db_query.run()
-
-    return info, data
-
-
-@lru_cache(maxsize=None)
-def get_techniques():
-    """This function loads the technique data in order to speed up the use of the Framework function.
-    It also provides information about the min_select_fields for the select parameter and the
-    allowed_fields for the sort parameter.
-
-    Returns
-    -------
-    dict
-        Dictionary with information about the fields of the technique objects and the techniques obtained.
-    """
-    info = {'min_select_fields': None, 'allowed_fields': None}
-    db_query = WazuhDBQueryMitreTechniques(limit=None)
-    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
-    info['min_select_fields'] = set(db_query.min_select_fields)
-    data = db_query.run()
-
-    return info, data
-
-
-@lru_cache(maxsize=None)
-def get_groups():
-    """This function loads the MITRE groups data in order to speed up the use of the Framework function.
-    It also provides information about the min_select_fields for the select parameter and the
-    allowed_fields for the sort parameter.
-
-    Returns
-    -------
-    dict
-        Dictionary with information about the fields of the group objects and the MITRE groups obtained.
-    """
-    info = {'min_select_fields': None, 'allowed_fields': None}
-    db_query = WazuhDBQueryMitreGroups(limit=None)
-    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
-    info['min_select_fields'] = set(db_query.min_select_fields)
-    data = db_query.run()
-
-    return info, data
-
-
-@lru_cache(maxsize=None)
-def get_software():
-    """This function loads the MITRE groups data in order to speed up the use of the Framework function.
-    It also provides information about the min_select_fields for the select parameter and the
-    allowed_fields for the sort parameter.
-
-    Returns
-    -------
-    dict
-        Dictionary with information about the fields of the software objects and the MITRE software obtained.
-    """
-    info = {'min_select_fields': None, 'allowed_fields': None}
-    db_query = WazuhDBQueryMitreSoftware(limit=None)
-    info['allowed_fields'] = set(db_query.fields.keys()).union(set(db_query.relation_fields))
-    info['min_select_fields'] = set(db_query.min_select_fields)
-    data = db_query.run()
-
-    return info, data
-
-
-def get_results_with_select(mitre_function, filters, select, offset, limit, sort_by, sort_ascending, search_text,
+def get_results_with_select(mitre_class, filters, select, offset, limit, sort_by, sort_ascending, search_text,
                             complementary_search, search_in_fields, q):
     """Sanitize the select parameter and processes the list of MITRE resources.
 
     Parameters
     ----------
-    mitre_function : callable
-        Cached function to obtain certain MITRE resources.
+    mitre_class : callable
+        WazuhDBQueryMitre class used to obtain certain MITRE resources.
     filters : str
         Define field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
     select : list
@@ -633,7 +538,7 @@ def get_results_with_select(mitre_function, filters, select, offset, limit, sort
     list
         Processed MITRE resources array.
     """
-    fields_info, data = mitre_function()
+    fields_info, data = get_mitre_items(mitre_class)
 
     return process_array(data['items'], filters=filters, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, select=select,
