@@ -10626,6 +10626,103 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /mitre/groups:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE groups"
+      description: "Return the groups from MITRE database"
+      operationId: api.controllers.mitre_controller.get_groups
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_group_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE groups information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - mitre_version: '1.2'
+                      deprecated: 0
+                      name: APT38
+                      id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
+                      modified_time: '2020-03-30 18:50:43.737000'
+                      created_time: '2019-01-29 21:27:24.793000'
+                      description: |-
+                        [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
+
+                        North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group.
+                      software:
+                        - tool--03342581-f790-4f03-ba41-e82e67392e23
+                        - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
+                        - malware--53ab35c2-d00e-491a-8753-41d35ae7e547
+                      techniques:
+                        - attack-pattern--df8b2a25-8bdf-4856-953c-a04372b1c161
+                        - attack-pattern--09a60ea3-a8d1-4ae5-976e-5783248b72a4
+                        - attack-pattern--8f4a33ec-8b1f-4b80-a2f6-642b2e479580
+                        - attack-pattern--57340c81-c025-4189-8fa0-fc7ede51bae4
+                        - attack-pattern--d742a578-d70e-4d0e-96a6-02a9c30204e6
+                        - attack-pattern--30973a08-aed9-4edf-8604-9084ce1b5c4f
+                        - attack-pattern--deb98323-e13f-4b0c-8d94-175379069062
+                        - attack-pattern--d1fcf083-a721-4223-aedf-bf8960798d62
+                        - attack-pattern--e6919abc-99f9-4c6c-95a5-14761e7b2add
+                        - attack-pattern--d63a3fb8-9452-4e9d-a60a-54be68d5998c
+                        - attack-pattern--6495ae23-3ab4-43c5-a94f-5638a2c31fd2
+                        - attack-pattern--32ad5c86-2bcf-47d8-8fdc-d7f3d79a7490
+                        - attack-pattern--d0613359-5781-4fd2-b5be-c269270be1f6
+                        - attack-pattern--1cfcb312-b8d7-47a4-b560-4b16cc677292
+                        - attack-pattern--0af0ca99-357d-4ba1-805f-674fdfb7bef9
+                        - attack-pattern--b80d107d-fa0d-4b60-9684-b0433e8bdba0
+                        - attack-pattern--d45a3d09-b3cf-48f4-9f0f-f521ee5cb05c
+                        - attack-pattern--7e150503-88e7-4861-866b-ff1ac82c4475
+                        - attack-pattern--ff73aa03-0090-4464-83ac-f89e233c02bc
+                      references:
+                        - url: "https://content.fireeye.com/apt/rpt-apt38"
+                          description: "FireEye. (2018, October 03). APT38: Un-usual Suspects. Retrieved November 6, 2018."
+                          source: "FireEye APT38 Oct 2018"
+                        - url: "https://securelist.com/lazarus-under-the-hood/77908/"
+                          description: "GReAT. (2017, April 3). Lazarus Under the Hood. Retrieved April 17, 2019."
+                          source: "Kaspersky Lazarus Under The Hood Blog 2017"
+                        - url: "https://www.us-cert.gov/ncas/alerts/TA17-164A"
+                          description: "US-CERT. (2017, June 13). Alert (TA17-164A) HIDDEN COBRA – North Korea’s DDoS Botnet Infrastructure. Retrieved July 13, 2017."
+                          source: "US-CERT HIDDEN COBRA June 2017"
+                        - url: "https://attack.mitre.org/groups/G0082"
+                          external_id: "G0082"
+                          source: "mitre-attack"
+                  total_affected_items: 111
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: MITRE groups information was returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /mitre/metadata:
     get:
       tags:
@@ -10650,6 +10747,18 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - value: "1"
+                      key: "db_version"
+                    - value: "2.0"
+                      key: "mitre_version"
+                  total_affected_items: 2
+                  failed_items: [2]
+                  total_failed_items: 0
+                message: "Metadata information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10695,16 +10804,22 @@ paths:
               example:
                 data:
                   affected_items:
-                    - id: "course-of-action--78bb71be-92b4-46de-acd6-5f998fedf1cc"
-                      modified_time: '2020-10-20 19:52:32.439000'
-                      deprecated: 0
-                      created_time: '2020-10-19 14:57:58.771000'
-                      name: "Pre-compromise"
+                    - id: "course-of-action--00d7d21b-69d6-4797-88a2-c86f3fc97651"
+                      modified_time: '2019-07-25 11:22:19.139000'
+                      deprecated: 1
+                      created_time: '2018-10-17 00:14:20.652000'
+                      name: "Password Filter DLL Mitigation"
                       mitre_version: "1.0"
-                      description: "This category is used for any applicable mitigation activities that
-                        apply to techniques occurring before an adversary gains Initial Access, such
-                        as Reconnaissance and Resource Development techniques."
-                      related_techniques: [ ]
+                      description: "Ensure only valid password filters are registered. Filter DLLs must be present in Windows installation directory (<code>C:\\Windows\\System32\\</code> by default) of a domain controller and/or local computer with a corresponding entry in <code>HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\Notification Packages</code>. (Citation: Microsoft Install Password Filter n.d)"
+                      techniques:
+                        - "attack-pattern--b8c5c9dd-a662-479d-9428-ae745872537c"
+                      references:
+                        - source: "Microsoft Install Password Filter n.d"
+                          description: "Microsoft. (n.d.). Installing and Registering a Password Filter DLL. Retrieved November 21, 2017."
+                          url": "https://msdn.microsoft.com/library/windows/desktop/ms721766.aspx"
+                        - source: "mitre-attack"
+                          external_id: "T1174"
+                          url: "https://attack.mitre.org/mitigations/T1174"
                   total_affected_items: 267
                   total_failed_items: 0
                   failed_items: [ ]
@@ -10776,6 +10891,77 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /mitre/software:
+    get:
+      tags:
+        - MITRE
+      summary: "Get MITRE software"
+      description: "Return the software from MITRE database"
+      operationId: api.controllers.mitre_controller.get_software
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/mitre:read'
+      parameters:
+        - $ref: '#/components/parameters/mitre_software_ids'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: "Get MITRE software information"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+              example:
+                data:
+                  affected_items:
+                    - deprecated: 0
+                      mitre_version: '1.0'
+                      created_time: '2017-05-31 21:32:40.801000'
+                      id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
+                      name: HDoor
+                      modified_time: '2019-04-25 02:33:53.419000'
+                      description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
+                        has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
+                        group. (Citation: Baumgartner Naikon 2015)"
+                      groups:
+                        - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
+                      techniques:
+                        - attack-pattern--ac08589e-ee59-4935-8667-d845e38fe579
+                        - attack-pattern--e3a12395-188d-4051-9a16-ea8e14d07b88
+                      references:
+                        - source: "Baumgartner Naikon 2015"
+                          description: "Baumgartner, K., Golovkin, M.. (2015, May). The MsnMM Campaigns: The Earliest Naikon APT Campaigns. Retrieved April 10, 2019."
+                          url: "https://media.kasperskycontenthub.com/wp-content/uploads/sites/43/2018/03/07205555/TheNaikonAPT-MsnMM1.pdf"
+                        - source: "mitre-attack"
+                          external_id: "S0061"
+                          url: "https://attack.mitre.org/software/S0061"
+                  total_affected_items: 444
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: MITRE software information was returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /mitre/tactics:
     get:
       tags:
@@ -10816,7 +11002,7 @@ paths:
                       description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
                       name: "Lateral Movement"
                       short_name: "lateral-movement"
-                      related_techniques:
+                      techniques:
                         - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
                         - "attack-pattern--246fd3c7-f5e3-466d-8787-4c13d9e3b61c"
                         - "attack-pattern--2db31dcd-54da-405d-acef-b9129b816ed6"
@@ -10840,6 +11026,10 @@ paths:
                         - "attack-pattern--e624264c-033a-424d-9fd7-fc9c3bbdb03e"
                         - "attack-pattern--eb062747-2193-45de-8fa2-e62549c37ddf"
                         - "attack-pattern--f005e783-57d4-4837-88ad-dbe7faee1c51"
+                      references:
+                        - source: "mitre-attack"
+                          external_id: "TA0008"
+                          url: "https://attack.mitre.org/tactics/TA0008"
                   total_affected_items: 14
                   failed_items: []
                   total_failed_items: 0
@@ -10906,164 +11096,30 @@ paths:
                         Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
 
                         Adversaries may gather this information in various ways, such as direct collection actions via [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Phishing for Information](https://attack.mitre.org/techniques/T1598). Information about networks may also be exposed to adversaries via online or other accessible data sets (ex: [Search Open Technical Databases](https://attack.mitre.org/techniques/T1596)).(Citation: WHOIS)(Citation: DNS Dumpster)(Citation: Circl Passive DNS) Gathering this information may reveal opportunities for other forms of reconnaissance (ex: [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Search Open Websites/Domains](https://attack.mitre.org/techniques/T1593)), establishing operational resources (ex: [Acquire Infrastructure](https://attack.mitre.org/techniques/T1583) or [Compromise Infrastructure](https://attack.mitre.org/techniques/T1584)), and/or initial access (ex: [Trusted Relationship](https://attack.mitre.org/techniques/T1199)).
-                      related_tactics: [ ]
-                      related_mitigations: [ ]
-                      related_software: [ ]
-                      related_groups: [ ]
+                      tactics:
+                        - "x-mitre-tactic--daa4cbb1-b4f4-4723-a824-7f1efd6e0592"
+                      mitigations:
+                        - "course-of-action--78bb71be-92b4-46de-acd6-5f998fedf1cc"
+                      software: []
+                      groups: []
+                      references:
+                        - source: "Circl Passive DNS"
+                          description: "CIRCL Computer Incident Response Center. (n.d.). Passive DNS. Retrieved October 20, 2020."
+                          url: "https://www.circl.lu/services/passive-dns/"
+                        - source: "DNS Dumpster"
+                          description: "Hacker Target. (n.d.). DNS Dumpster. Retrieved October 20, 2020."
+                          url: "https://dnsdumpster.com/"
+                        - source: "WHOIS"
+                          description: "NTT America. (n.d.). Whois Lookup. Retrieved October 20, 2020."
+                          url: "https://www.whois.net/"
+                        - source: "mitre-attack"
+                          external_id: "T1590"
+                          url: "https://attack.mitre.org/techniques/T1590"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: [ ]
                 message: MITRE techniques information was returned
                 error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /mitre/groups:
-    get:
-      tags:
-        - MITRE
-      summary: "Get MITRE groups"
-      description: "Return the groups from MITRE database"
-      operationId: api.controllers.mitre_controller.get_groups
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/mitre:read'
-      parameters:
-        - $ref: '#/components/parameters/mitre_group_ids'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/query'
-      responses:
-        '200':
-          description: "Get MITRE groups information"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - mitre_version: '1.2'
-                      deprecated: 0
-                      name: APT38
-                      id: intrusion-set--00f67a77-86a4-4adf-be26-1a54fc713340
-                      modified_time: '2020-03-30 18:50:43.737000'
-                      created_time: '2019-01-29 21:27:24.793000'
-                      description: |-
-                        [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
-
-                        North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group.
-                      related_software:
-                        - tool--03342581-f790-4f03-ba41-e82e67392e23
-                        - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
-                        - malware--53ab35c2-d00e-491a-8753-41d35ae7e547
-                      related_techniques:
-                        - attack-pattern--df8b2a25-8bdf-4856-953c-a04372b1c161
-                        - attack-pattern--09a60ea3-a8d1-4ae5-976e-5783248b72a4
-                        - attack-pattern--8f4a33ec-8b1f-4b80-a2f6-642b2e479580
-                        - attack-pattern--57340c81-c025-4189-8fa0-fc7ede51bae4
-                        - attack-pattern--d742a578-d70e-4d0e-96a6-02a9c30204e6
-                        - attack-pattern--30973a08-aed9-4edf-8604-9084ce1b5c4f
-                        - attack-pattern--deb98323-e13f-4b0c-8d94-175379069062
-                        - attack-pattern--d1fcf083-a721-4223-aedf-bf8960798d62
-                        - attack-pattern--e6919abc-99f9-4c6c-95a5-14761e7b2add
-                        - attack-pattern--d63a3fb8-9452-4e9d-a60a-54be68d5998c
-                        - attack-pattern--6495ae23-3ab4-43c5-a94f-5638a2c31fd2
-                        - attack-pattern--32ad5c86-2bcf-47d8-8fdc-d7f3d79a7490
-                        - attack-pattern--d0613359-5781-4fd2-b5be-c269270be1f6
-                        - attack-pattern--1cfcb312-b8d7-47a4-b560-4b16cc677292
-                        - attack-pattern--0af0ca99-357d-4ba1-805f-674fdfb7bef9
-                        - attack-pattern--b80d107d-fa0d-4b60-9684-b0433e8bdba0
-                        - attack-pattern--d45a3d09-b3cf-48f4-9f0f-f521ee5cb05c
-                        - attack-pattern--7e150503-88e7-4861-866b-ff1ac82c4475
-                        - attack-pattern--ff73aa03-0090-4464-83ac-f89e233c02bc
-                  total_affected_items: 111
-                  total_failed_items: 0
-                  failed_items: [ ]
-                message: MITRE groups information was returned
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /mitre/software:
-    get:
-      tags:
-        - MITRE
-      summary: "Get MITRE software"
-      description: "Return the software from MITRE database"
-      operationId: api.controllers.mitre_controller.get_software
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/mitre:read'
-      parameters:
-        - $ref: '#/components/parameters/mitre_software_ids'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/query'
-      responses:
-        '200':
-          description: "Get MITRE software information"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - deprecated: 0
-                      mitre_version: '1.0'
-                      created_time: '2017-05-31 21:32:40.801000'
-                      id: malware--007b44b6-e4c5-480b-b5b9-56f2081b1b7b
-                      name: HDoor
-                      modified_time: '2019-04-25 02:33:53.419000'
-                      description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
-                      has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
-                      group. (Citation: Baumgartner Naikon 2015)"
-                      related_groups:
-                        - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
-                      related_techniques:
-                        - attack-pattern--ac08589e-ee59-4935-8667-d845e38fe579
-                        - attack-pattern--e3a12395-188d-4051-9a16-ea8e14d07b88
-                  total_affected_items: 444
-                  total_failed_items: 0
-                  failed_items: [ ]
-                message: MITRE software information was returned
-                error: 0
-
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

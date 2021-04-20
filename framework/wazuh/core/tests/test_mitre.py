@@ -24,7 +24,6 @@ def test_WazuhDBQueryMitreMetadata(mock_wdb):
 
 
 @pytest.mark.parametrize('wdb_query_class', [
-    # TODO: add the rest of wdb query classes
     WazuhDBQueryMitreGroups,
     WazuhDBQueryMitreMitigations,
     WazuhDBQueryMitreReferences,
@@ -50,19 +49,18 @@ def test_WazuhDBQueryMitre_classes(mock_wdb, wdb_query_class):
         pytest.fail("Related item not found in data obtained from query")
 
 
-@pytest.mark.parametrize('mitre_get_function, mitre_wdb_query_class', [
-    # TODO: add the rest of wdb query classes
-    (get_groups, WazuhDBQueryMitreGroups),
-    (get_mitigations, WazuhDBQueryMitreMitigations),
-    (get_references, WazuhDBQueryMitreReferences),
-    (get_tactics, WazuhDBQueryMitreTactics),
-    (get_techniques, WazuhDBQueryMitreTechniques),
-    (get_software, WazuhDBQueryMitreSoftware)
+@pytest.mark.parametrize('mitre_wdb_query_class', [
+    WazuhDBQueryMitreGroups,
+    WazuhDBQueryMitreMitigations,
+    WazuhDBQueryMitreReferences,
+    WazuhDBQueryMitreTactics,
+    WazuhDBQueryMitreTechniques,
+    WazuhDBQueryMitreSoftware
 ])
 @patch('wazuh.core.utils.WazuhDBConnection')
-def test_mitre_get_functions(mock_wdb, mitre_get_function, mitre_wdb_query_class):
-    """Test get_tactics function."""
-    info, data = mitre_get_function()
+def test_get_mitre_items(mock_wdb, mitre_wdb_query_class):
+    """Test get_mitre_items function."""
+    info, data = get_mitre_items(mitre_wdb_query_class)
 
     db_query_to_compare = mitre_wdb_query_class()
 

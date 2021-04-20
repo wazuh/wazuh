@@ -66,7 +66,7 @@ def mitre_mitigations(filters: dict = None, offset=0, limit=common.database_limi
     dict
         Dictionary with the information of the specified mitigations and their relationships
     """
-    data = mitre.get_results_with_select(mitre.get_mitigations, **locals())
+    data = mitre.get_results_with_select(mitre.WazuhDBQueryMitreMitigations, **locals())
 
     result = AffectedItemsWazuhResult(none_msg='No MITRE mitigations information was returned',
                                       all_msg='MITRE mitigations information was returned')
@@ -110,7 +110,7 @@ def mitre_references(filters: dict = None, offset=0, limit=common.database_limit
     dict
         Dictionary with the information of the specified references.
     """
-    data = mitre.get_results_with_select(mitre.get_references, **locals())
+    data = mitre.get_results_with_select(mitre.WazuhDBQueryMitreReferences, **locals())
 
     result = AffectedItemsWazuhResult(none_msg='No MITRE references information was returned',
                                       all_msg='MITRE references information was returned')
@@ -154,7 +154,7 @@ def mitre_techniques(filters: dict = None, offset=0, limit=common.database_limit
     dict
         Dictionary with the information of the specified techniques and their relationships
     """
-    data = mitre.get_results_with_select(mitre.get_techniques, **locals())
+    data = mitre.get_results_with_select(mitre.WazuhDBQueryMitreTechniques, **locals())
 
     result = AffectedItemsWazuhResult(none_msg='No MITRE techniques information was returned',
                                       all_msg='MITRE techniques information was returned')
@@ -198,7 +198,7 @@ def mitre_tactics(filters: dict = None, offset: int = 0, limit: int = common.dat
     dict
         Dictionary with the information of the specified tactics and their relationships.
     """
-    data = mitre.get_results_with_select(mitre.get_tactics, **locals())
+    data = mitre.get_results_with_select(mitre.WazuhDBQueryMitreTactics, **locals())
 
     result = AffectedItemsWazuhResult(none_msg='No tactics information was returned',
                                       all_msg='All tactics information was returned')
@@ -242,7 +242,7 @@ def mitre_groups(filters: dict = None, offset: int = 0, limit: int = common.data
     dict
         Dictionary with the information of the specified groups and their relationships.
     """
-    data = mitre.get_results_with_select(mitre.get_groups, **locals())
+    data = mitre.get_results_with_select(mitre.WazuhDBQueryMitreGroups, **locals())
 
     result = AffectedItemsWazuhResult(none_msg='No MITRE groups information was returned',
                                       all_msg='MITRE groups information was returned')
@@ -286,7 +286,7 @@ def mitre_software(filters: dict = None, offset: int = 0, limit: int = common.da
     dict
         Dictionary with the information of the specified software and their relationships.
     """
-    data = mitre.get_results_with_select(mitre.get_software, **locals())
+    data = mitre.get_results_with_select(mitre.WazuhDBQueryMitreSoftware, **locals())
 
     result = AffectedItemsWazuhResult(none_msg='No MITRE software information was returned',
                                       all_msg='MITRE software information was returned')

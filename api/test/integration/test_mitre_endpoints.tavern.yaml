@@ -59,7 +59,7 @@ stages:
               modified_time: !anystr
               mitre_version: !anystr
               deprecated: !anyint
-              related_techniques: !anything
+              techniques: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -84,7 +84,7 @@ stages:
               - created_time
               - modified_time
               - deprecated
-              - related_techniques
+              - techniques
 
   - name: Check that the offset is working properly, try to show two mitigations with offset = 0
     request:
@@ -151,12 +151,12 @@ stages:
       verify: False
       <<: *general_mitigations_request
       params:
-        sort: -related_techniques
+        sort: -techniques
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "related_techniques"
+            key: "techniques"
       status_code: 200
       json:
         error: 0
@@ -171,13 +171,13 @@ stages:
       verify: False
       <<: *general_mitigations_request
       params:
-        select: 'related_techniques,deprecated,name'
+        select: 'techniques,deprecated,name'
     response:
       verify_response_with:
         # Check response item keys are the selected keys
         function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
-          select_key: 'id,name,deprecated,related_techniques' # required_fields={'id'}
+          select_key: 'id,name,deprecated,techniques' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
@@ -213,7 +213,7 @@ stages:
       verify: False
       <<: *general_mitigations_request
       params:
-        select: 'related_techniques'
+        select: 'techniques'
         mitigation_ids: 'invalid'
     response:
       status_code: 200
@@ -482,8 +482,8 @@ stages:
         select: 'noexists'
     response:
       status_code: 400
-      json: &invalid_select
-        error: 1724
+      json:
+        <<: *invalid_select
 
   - name: Try to show references using invalid select (one select is invalid)
     request:
@@ -646,7 +646,7 @@ stages:
               created_time: !anystr
               modified_time: !anystr
               id: !anystr
-              related_techniques: !anything
+              techniques: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -671,7 +671,7 @@ stages:
               - description
               - created_time
               - modified_time
-              - related_techniques
+              - techniques
 
   - name: Check that the offset is working properly, try to show two tactics with offset = 0
     request:
@@ -738,12 +738,12 @@ stages:
       verify: False
       <<: *general_tactics_request
       params:
-        sort: -related_techniques
+        sort: -techniques
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "related_techniques"
+            key: "techniques"
       status_code: 200
       json:
         error: 0
@@ -758,13 +758,13 @@ stages:
       verify: False
       <<: *general_tactics_request
       params:
-        select: 'related_techniques,short_name,name'
+        select: 'techniques,short_name,name'
     response:
       verify_response_with:
         # Check response item keys are the selected keys
         function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
-          select_key: 'id,name,short_name,related_techniques' # required_fields={'id'}
+          select_key: 'id,name,short_name,techniques' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
@@ -800,7 +800,7 @@ stages:
       verify: False
       <<: *general_tactics_request
       params:
-        select: 'related_techniques'
+        select: 'techniques'
         tactic_ids: 'invalid'
     response:
       status_code: 200
@@ -943,10 +943,10 @@ stages:
               modified_time: !anystr
               network_requirements: !anyint
               created_time: !anystr
-              related_tactics: !anything
-              related_mitigations: !anything
-              related_software: !anything
-              related_groups: !anything
+              tactics: !anything
+              mitigations: !anything
+              software: !anything
+              groups: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -970,10 +970,10 @@ stages:
               - created_time
               - deprecated
               - remote_support
-              - related_tactics
-              - related_groups
-              - related_mitigations
-              - related_software
+              - tactics
+              - groups
+              - mitigations
+              - software
 
   - name: Check that the offset is working properly, try to show two techniques with offset = 0
     request:
@@ -1040,12 +1040,12 @@ stages:
       verify: False
       <<: *general_techniques_request
       params:
-        sort: -related_mitigations
+        sort: -mitigations
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "related_mitigations"
+            key: "mitigations"
       status_code: 200
       json:
         error: 0
@@ -1060,13 +1060,13 @@ stages:
       verify: False
       <<: *general_techniques_request
       params:
-        select: 'related_groups,deprecated,name'
+        select: 'groups,deprecated,name'
     response:
       verify_response_with:
         # Check response item keys are the selected keys
         function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
-          select_key: 'id,related_groups,deprecated,name' # required_fields={'id'}
+          select_key: 'id,groups,deprecated,name' # required_fields={'id'}
       status_code: 200
       json:
         error: 0
@@ -1102,7 +1102,7 @@ stages:
       verify: False
       <<: *general_techniques_request
       params:
-        select: 'related_software'
+        select: 'software'
         technique_ids: 'invalid'
     response:
       status_code: 200
@@ -1238,8 +1238,8 @@ stages:
               modified_time: !anystr
               created_time: !anystr
               description: !anystr
-              related_software: !anything
-              related_techniques: !anything
+              software: !anything
+              techniques: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -1265,8 +1265,8 @@ stages:
               - modified_time
               - created_time
               - description
-              - related_software
-              - related_techniques
+              - software
+              - techniques
 
   - name: Check that the offset is working properly, show two groups with offset = 0
     request:
@@ -1333,12 +1333,12 @@ stages:
       verify: False
       <<: *general_groups_request
       params:
-        sort: -related_software
+        sort: -software
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "related_software"
+            key: "software"
       status_code: 200
       json:
         error: 0
@@ -1395,7 +1395,7 @@ stages:
       verify: False
       <<: *general_groups_request
       params:
-        select: 'related_software'
+        select: 'software'
         group_ids: 'invalid'
     response:
       status_code: 200
@@ -1531,8 +1531,8 @@ stages:
               modified_time: !anystr
               created_time: !anystr
               description: !anystr
-              related_groups: !anything
-              related_techniques: !anything
+              groups: !anything
+              techniques: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -1558,8 +1558,8 @@ stages:
               - modified_time
               - created_time
               - description
-              - related_groups
-              - related_techniques
+              - groups
+              - techniques
 
   - name: Check that the offset is working properly, show two softwares with offset = 0
     request:
@@ -1626,12 +1626,12 @@ stages:
       verify: False
       <<: *general_software_request
       params:
-        sort: -related_groups
+        sort: -groups
     response:
       verify_response_with:
         - function: tavern_utils:test_sort_response
           extra_kwargs:
-            key: "related_groups"
+            key: "groups"
       status_code: 200
       json:
         error: 0
@@ -1688,7 +1688,7 @@ stages:
       verify: False
       <<: *general_software_request
       params:
-        select: 'related_groups'
+        select: 'groups'
         software_ids: 'invalid'
     response:
       status_code: 200
