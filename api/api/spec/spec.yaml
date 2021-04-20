@@ -10755,9 +10755,9 @@ paths:
                     - value: "2.0"
                       key: "mitre_version"
                   total_affected_items: 2
-                  failed_items: [2]
+                  failed_items: []
                   total_failed_items: 0
-                message: "Metadata information was returned"
+                message: "MITRE metadata information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10775,7 +10775,7 @@ paths:
       tags:
         - MITRE
       summary: "Get MITRE mitigations"
-      description: "Return the mitigation from MITRE database"
+      description: "Return the mitigations from MITRE database"
       operationId: api.controllers.mitre_controller.get_mitigations
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/mitre:read'

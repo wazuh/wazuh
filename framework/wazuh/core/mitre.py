@@ -85,7 +85,8 @@ class WazuhDBQueryMitreRelational(WazuhDBQueryMitre):
                 self.min_select_fields = {'tactic_id', 'tech_id'}
                 default_sort_field = 'tactic_id'
             elif table == 'mitigate' or table == 'use':
-                # source_id = mitigation_id or group_id or software_id, target_id = technique_id
+                # source_id refers to mitigation_id, group_id or software_id
+                # target_id always refers to technique_id
                 self.min_select_fields = {'source_id', 'target_id'}
                 default_sort_field = 'source_id'
         else:

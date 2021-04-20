@@ -19,6 +19,7 @@ async def get_metadata(request, pretty=False, wait_for_complete=False):
 
     Parameters
     ----------
+    request : connexion.request
     pretty : bool, optional
         Show results in human-readable format
     wait_for_complete : bool, optional
