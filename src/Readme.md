@@ -168,5 +168,20 @@ Output Example executing the SCANBUILD analysis with `agent` target:
 ```
 #> python3 build.py --scanbuild agent
 <agent>=================== Running Scanbuild   ===================<agent>
+[CleanAll: PASSED]
+[CleanExternals: PASSED]
+[MakeDeps: PASSED]
 <agent>[SCANBUILD: PASSED]<agent>
+```
+Output Example executing the SCANBUILD analysis with `winagent` target:
+```
+#> python3 build.py --scanbuild winagent
+<winagent>=================== Running Scanbuild   ===================<winagent>
+[CleanAll: PASSED]
+[CleanExternals: PASSED]
+[MakeDeps: PASSED]
+[CleanAll: PASSED]
+[MakeTarget: PASSED]
+[CleanInternals: PASSED]
+<winagent>[SCANBUILD: PASSED]<winagent>
 ```

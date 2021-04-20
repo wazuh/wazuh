@@ -274,6 +274,68 @@ def cleanFolder(moduleName, additionalFolder):
         errorString = 'Error Running Cleanfolder: additional folder not exist in delete folder dictionary.'
         raise ValueError(errorString)
 
+def cleanAll():
+    out = subprocess.run("make clean", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen('[CleanAll: PASSED]')
+    else:
+        print("make clean")
+        print(out.stderr)
+        printFail('[CleanAll: FAILED]')
+        errorString = 'Error Running CleanAll: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def cleanInternals():
+    out = subprocess.run("make clean-internals", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen('[CleanInternals: PASSED]')
+    else:
+        print("make clean-internals")
+        print(out.stderr)
+        printFail('[CleanInternals: FAILED]')
+        errorString = 'Error Running CleanInternals: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def cleanExternals():
+    out = subprocess.run("rm -rf ./external/*", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0 and not out.stderr:
+        printGreen('[CleanExternals: PASSED]')
+    else:
+        print("rm -rf ./external/*")
+        print(out.stderr)
+        printFail('[CleanExternals: FAILED]')
+        errorString = 'Error Running CleanExternals: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def makeDeps(targetName):
+    makeDepsCommand = "make deps TARGET=" + targetName
+    out = subprocess.run(makeDepsCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen('[MakeDeps: PASSED]')
+    else:
+        print(makeDepsCommand)
+        print(out.stderr)
+        printFail('[MakeDeps: FAILED]')
+        errorString = 'Error Running MakeDeps: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def makeTarget(targetName, tests, debug):
+    makeTargetCommand = "make TARGET=" + targetName
+    if tests:
+        makeTargetCommand += " TEST=1"
+    if debug:
+        makeTargetCommand += " DEBUG=1"
+
+    out = subprocess.run(makeTargetCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen('[MakeTarget: PASSED]')
+    else:
+        print(makeTargetCommand)
+        print(out.stderr)
+        printFail('[MakeTarget: FAILED]')
+        errorString = 'Error Running MakeTarget: ' + str(out.returncode)
+        raise ValueError(errorString)
+
 def configureCMake(moduleName, debugMode, testMode, withAsan):
     printHeader("<"+moduleName+">"+headerDic['configurecmake']+"<"+moduleName+">")
     currentModuleNameDir = currentDirPath(moduleName)
@@ -351,17 +413,20 @@ def runScanBuild(targetName):
 
     :param targetName: Target to be analyzed using scan-build analysis tool.
     """
-    makeDepsCommand = "make clean -j4 && rm -rf ./external/* && make deps TARGET=" + targetName + " -j4"
-    subprocess.run(makeDepsCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    printHeader("<"+targetName+">"+headerDic['scanbuild']+"<"+targetName+">")
+    cleanAll()
+    cleanExternals()
+    makeDeps(targetName)
     if targetName == "winagent":
-        subprocess.run("make clean -j4 && make TARGET=winagent DEBUG=1 -j4 && make clean-internals", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        cleanAll()
+        makeTarget("winagent", False, True)
+        cleanInternals()
         scanBuildCommand = 'scan-build-10 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc \
                             --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 \
                             --force-analyze-debug-code make TARGET=winagent DEBUG=1 -j4'
     else:
         scanBuildCommand = 'scan-build-10 --status-bugs --force-analyze-debug-code make TARGET=' + targetName + ' DEBUG=1 -j4'
 
-    printHeader("<"+targetName+">"+headerDic['scanbuild']+"<"+targetName+">")
     out = subprocess.run(scanBuildCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
     if out.returncode != 0:
