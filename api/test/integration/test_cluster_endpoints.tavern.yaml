@@ -1581,7 +1581,7 @@ stages:
       verify: False
       <<: *get_cluster_logs
       params:
-        tag: wazuh-syscheckd
+        tag: wazuh-syscheckd # TODO define how this will work with wazuh-modulesd
         limit: 2
     response:
       status_code: 200
@@ -1621,7 +1621,7 @@ stages:
       verify: False
       <<: *get_cluster_logs
       params:
-        q: tag=wazuh-syscheckd;level=info
+        q: tag=wazuh-syscheckd;level=info # TODO same as above
     response:
       status_code: 200
       verify_response_with:

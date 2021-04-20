@@ -1966,8 +1966,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-reportd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-syscheckd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-apid:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-clusterd:
@@ -2429,7 +2427,6 @@ components:
             - wazuh-remoted
             - wazuh-reportd
             - wazuh-rootcheck
-            - wazuh-syscheckd
             - sca
             - verify-agent-conf
             - wazuh-db
@@ -2517,8 +2514,6 @@ components:
           wazuh-reportd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-rootcheck:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-syscheckd:
             $ref: '#/components/schemas/LogSummary'
           sca:
             $ref: '#/components/schemas/LogSummary'
@@ -4669,7 +4664,6 @@ components:
         - wazuh-remoted
         - wazuh-reportd
         - wazuh-rootcheck
-        - wazuh-syscheckd
         - sca
         - wazuh-db
         - wazuh-modulesd
@@ -8171,7 +8165,6 @@ paths:
                       wazuh-monitord: running
                       wazuh-remoted: running
                       wazuh-reportd: stopped
-                      wazuh-syscheckd: running
                       wazuh-apid: running
                       wazuh-clusterd: running
                       wazuh-db: running
@@ -9601,7 +9594,6 @@ paths:
                       wazuh-monitord: running
                       wazuh-remoted: running
                       wazuh-reportd: stopped
-                      wazuh-syscheckd: running
                       wazuh-apid: running
                       wazuh-clusterd: running
                       wazuh-db: running
