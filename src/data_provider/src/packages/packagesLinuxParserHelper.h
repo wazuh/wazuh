@@ -193,7 +193,7 @@ namespace PackageLinuxHelper
         packageInfo["description"]  = alpmWrapper(alpm_pkg_get_desc(pArchPkg));
         return packageInfo;
     }
-};
 #endif
+};
 
 #endif // _PACKAGES_LINUX_PARSER_HELPER_H
