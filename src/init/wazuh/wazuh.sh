@@ -129,18 +129,26 @@ WazuhUpgrade()
     rm -f $DIRECTORY/wodles/cve.db
     rm -f $DIRECTORY/queue/vulnerabilities/cve.db
 
-    # Remove existing socket folder
+    # Migrate .agent_info and .wait files before removing deprecated socket folder
 
-    rm -rf $DIRECTORY/queue/ossec
+    if [ -d $DIRECTORY/queue/ossec ]; then
+        if [ -f $DIRECTORY/queue/ossec/.agent_info ]; then
+            mv -f $DIRECTORY/queue/ossec/.agent_info $DIRECTORY/queue/sockets/.agent_info
+        fi
+        if [ -f $DIRECTORY/queue/ossec/.wait ]; then
+            mv -f $DIRECTORY/queue/ossec/.wait $DIRECTORY/queue/sockets/.wait
+        fi
+        rm -rf $DIRECTORY/queue/ossec
+    fi
 
-	# Move rotated logs to new folder and remove the existing one
-	
-	if [ -d $DIRECTORY/logs/ossec ]; then
-		if [ "$(ls -A $DIRECTORY/logs/ossec)" ]; then
-			mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
-		fi
-		rm -rf $DIRECTORY/logs/ossec
-	fi
+    # Move rotated logs to new folder and remove the existing one
+
+    if [ -d $DIRECTORY/logs/ossec ]; then
+        if [ "$(ls -A $DIRECTORY/logs/ossec)" ]; then
+            mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
+        fi
+        rm -rf $DIRECTORY/logs/ossec
+    fi
 
     # Remove deprecated Wazuh tools
 
@@ -150,8 +158,8 @@ WazuhUpgrade()
     rm -f $DIRECTORY/bin/ossec-makelists
     rm -f $DIRECTORY/bin/util.sh
     rm -f $DIRECTORY/bin/rootcheck_control
-	rm -f $DIRECTORY/bin/syscheck_control
-	rm -f $DIRECTORY/bin/syscheck_update
+    rm -f $DIRECTORY/bin/syscheck_control
+    rm -f $DIRECTORY/bin/syscheck_update
 
     # Remove old Wazuh daemons
 
