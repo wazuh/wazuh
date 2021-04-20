@@ -253,6 +253,7 @@ static void getDpkgInfo(const std::string& fileName, nlohmann::json& packages)
     }
 }
 
+#ifndef CMAKE_CHECK_CENTOS5
 struct AlmpDeleter final
 {
     void operator()(alpm_handle_t* pArchHandle)
@@ -291,6 +292,7 @@ static void getPacmanInfo(const std::string& libPath, nlohmann::json& packages)
         }
     }
 }
+#endif
 
 nlohmann::json SysInfo::getPackages() const
 {
@@ -299,10 +301,12 @@ nlohmann::json SysInfo::getPackages() const
     {
         getDpkgInfo(DPKG_STATUS_PATH, packages);
     }
+#ifndef CMAKE_CHECK_CENTOS5
     if (Utils::existsDir(PACMAN_PATH))
     {
         getPacmanInfo(PACMAN_PATH, packages);
     }
+#endif
     if (Utils::existsDir(RPM_PATH))
     {
         getRpmInfo(packages);

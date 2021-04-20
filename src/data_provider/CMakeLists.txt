@@ -49,6 +49,8 @@ include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+else()
+  add_definitions(-DCMAKE_CHECK_CENTOS5=1)
 endif(NOT CMAKE_CHECK_CENTOS5)
 
 link_directories(${SRC_FOLDER})

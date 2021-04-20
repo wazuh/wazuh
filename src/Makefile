@@ -92,11 +92,6 @@ ifeq (${uname_S},Darwin)
 SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
 endif
 
-# Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
-ifeq ($(CHECK_CENTOS5), YES)
-SYSINFO_OS+=-DCMAKE_CHECK_CENTOS5=1
-endif
-
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
 RSYNC_TEST=-DUNIT_TEST=ON #--coverage
@@ -139,7 +134,11 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
+ifeq (${CHECK_CENTOS5},YES)
+		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB}
+else
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_LIBDB} -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
+endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 		OSSEC_LIBS+=-lrt -ldl -lm
@@ -826,7 +825,11 @@ ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
 
+ifeq ($(CHECK_CENTOS5),YES)
+EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB)
+else
 EXTERNAL_LIBS += $(PROCPS_LIB) $(DB_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
+endif
 endif
 endif
 ifeq (${uname_S},Darwin)
@@ -1111,6 +1114,8 @@ endif
 
 ifeq ($(CHECK_CENTOS5),YES)
 PRECOMPILED_OS := el5
+# Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
+SYSINFO_OS+=-DCMAKE_CHECK_CENTOS5=1
 endif
 
 ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
