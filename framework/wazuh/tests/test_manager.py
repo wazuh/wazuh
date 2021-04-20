@@ -59,7 +59,7 @@ manager_status = {'wazuh-agentlessd': 'running', 'wazuh-analysisd': 'running', '
  'wazuh-csyslogd': 'running', 'wazuh-dbd': 'running', 'wazuh-monitord': 'running',
  'wazuh-integratord': 'running', 'wazuh-logcollector': 'running',
  'wazuh-maild': 'running', 'wazuh-remoted': 'running', 'wazuh-reportd': 'running',
- 'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
+ 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
  'wazuh-db': 'running', 'wazuh-apid': 'running'}
 
 
@@ -144,6 +144,7 @@ def test_ossec_log_summary():
         assert result.render()['data']['total_affected_items'] == 6
         assert all(all(value == expected_result[key] for key, value in item.items())
                    for item in result.render()['data']['affected_items'])
+
 
 def test_get_api_config():
     """Checks that get_api_config method is returning current api_conf dict."""

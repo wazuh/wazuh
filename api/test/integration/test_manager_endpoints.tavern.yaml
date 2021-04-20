@@ -31,7 +31,6 @@ stages:
               wazuh-monitord: !anystr
               wazuh-remoted: !anystr
               wazuh-reportd: !anystr
-              wazuh-syscheckd: !anystr
               wazuh-apid: !anystr
               wazuh-clusterd: !anystr
               wazuh-db: !anystr
@@ -632,7 +631,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        tag: wazuh-syscheckd
+        tag: wazuh-syscheckd # TODO define how this will work with wazuh-modulesd
         limit: 1
     response:
         status_code: 200
@@ -653,7 +652,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        q: tag=wazuh-syscheckd;level=info
+        q: tag=wazuh-syscheckd;level=info # TODO same as above
     response:
       status_code: 200
       verify_response_with:
@@ -706,7 +705,6 @@ stages:
             - wazuh-monitord: !anything
             - wazuh-remoted: !anything
             - wazuh-rootcheck: !anything
-            - wazuh-syscheckd: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0

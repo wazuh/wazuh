@@ -6,7 +6,7 @@ from healthcheck_utils import get_agent_health_base
 
 
 def get_health():
-    output = os.system(
+    output = os.system(  # TODO define the log strcture with wazuh-modulesd
         "grep -q 'syscheckd: INFO: (6009): File integrity monitoring scan ended.' /var/ossec/logs/ossec.log")
 
     if output == 0:
