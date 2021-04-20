@@ -12,7 +12,7 @@
 API_PATH=${INSTALLDIR}/api
 API_PATH_BACKUP=${INSTALLDIR}/~api
 WAZUH_GROUP="wazuh"
-4_X_REVISION=40000
+4_X_REVISION="40000"
 
 
 
@@ -40,7 +40,7 @@ backup_old_api() {
     fi
 
     # Check current REVISION and perform the applicable backup
-    if [ "$1" -ge ${4_X_REVISION} ]; then
+    if [ "$1" -ge "${4_X_REVISION}" ]; then
         backup_old_api_4x
     else
         stop_api_3x
@@ -94,7 +94,7 @@ restore_old_api() {
     fi
 
     # Check current REVISION and perform the applicable restore
-    if [ "$1" -ge ${4_X_REVISION} ]; then
+    if [ "$1" -ge "${4_X_REVISION}" ]; then
         restore_old_api_4x
     fi
 
