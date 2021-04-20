@@ -40,7 +40,7 @@ void win_timeout_run() {
             /* Timed out */
             if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
 
-                mdebug1("Executing command '%s %s' after a timeout of '%ds'",
+                mtdebug1(WM_EXECD_LOGTAG, "Executing command '%s %s' after a timeout of '%ds'",
                     list_entry->command[0],
                     list_entry->parameters ? list_entry->parameters : "",
                     list_entry->time_to_block
@@ -129,7 +129,7 @@ void win_execd_run(char *exec_msg)
             added_before = 1;
 
             /* Update the timeout */
-            mdebug1("Command already received, updating time of addition to now.");
+            mtdebug1(WM_EXECD_LOGTAG, "Command already received, updating time of addition to now.");
             list_entry->time_of_addition = curr_time;
             break;
         }
@@ -149,7 +149,7 @@ void win_execd_run(char *exec_msg)
         cmd_parameters = cJSON_PrintUnformatted(json_root);
 
         /* Execute command */
-        mdebug1("Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
+        mtdebug1(WM_EXECD_LOGTAG, "Executing command '%s %s'", cmd[0], cmd_parameters ? cmd_parameters : "");
 
         wfd_t *wfd = wpopenv(cmd[0], cmd, W_BIND_STDIN);
         if (wfd) {
@@ -177,7 +177,7 @@ void win_execd_run(char *exec_msg)
             timeout_entry->time_to_block = timeout_value;
 
             /* Add command to the timeout list */
-            mdebug1("Adding command '%s %s' to the timeout list, with a timeout of '%ds'.",
+            mtdebug1(WM_EXECD_LOGTAG, "Adding command '%s %s' to the timeout list, with a timeout of '%ds'.",
                 timeout_entry->command[0],
                 timeout_entry->parameters,
                 timeout_entry->time_to_block

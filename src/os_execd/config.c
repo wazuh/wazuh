@@ -32,7 +32,7 @@ int execd_config() {
 
     /* Read XML file */
     if (OS_ReadXML(OSSECCONF, &xml) < 0) {
-        merror_exit(XML_ERROR, OSSECCONF, xml.err, xml.err_line);
+        mterror_exit(WM_EXECD_LOGTAG, XML_ERROR, OSSECCONF, xml.err, xml.err_line);
     }
 
     /* We do not validate the xml in here. It is done by other processes. */

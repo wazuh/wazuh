@@ -1413,14 +1413,13 @@ wazuh_modules/%.o: wazuh_modules/%.c
 #### wazuh modules: execd #####
 execd_c := $(wildcard os_execd/*.c)
 execd_o := $(execd_c:.c=.o)
-execd_o_lib := ${execd_o} $(filter-out config/active_response_o, ${execd_o})
 
 #### wazuh modules: logcollector #####
 logcollector_c := $(wildcard logcollector/*.c)
 logcollector_o := $(logcollector_c:.c=.o)
 logcollector_eventchannel_o := $(logcollector_c:.c=-event.o)
 
-wmodules_dep := ${wmodules_o} ${wdblib_o} ${logcollector_o} ${rootcheck_o_lib} ${syscheck_o} ${execd_o_lib}
+wmodules_dep := ${wmodules_o} ${wdblib_o} ${logcollector_o} ${rootcheck_o_lib} ${syscheck_o} ${execd_o}
 
 ifeq (${uname_S},HP-UX)
 	wmodules_dep := ${wmodules_dep} ${config_o}

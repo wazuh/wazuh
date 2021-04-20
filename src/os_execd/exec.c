@@ -93,7 +93,7 @@ void execd_start(int q) {
             int wp;
             wp = waitpid((pid_t) - 1, NULL, WNOHANG);
             if (wp < 0 && errno != ECHILD) {
-                merror(WAITPID_ERROR, errno, strerror(errno));
+                mterror(WM_EXECD_LOGTAG, WAITPID_ERROR, errno, strerror(errno));
                 break;
             }
             /* if = 0, we still need to wait for the child process */
@@ -130,7 +130,7 @@ void execd_start(int q) {
                     fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
                     wpclose(wfd);
                 } else {
-                    merror(EXEC_CMD_FAIL, strerror(errno), errno);
+                    mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
                 }
 
                 /* Delete current node - already sets the pointer to next */
@@ -162,13 +162,13 @@ void execd_start(int q) {
 
         /* Check for error */
         if (!FD_ISSET(q, &fdset)) {
-            merror(SELECT_ERROR, errno, strerror(errno));
+            mterror(WM_EXECD_LOGTAG, SELECT_ERROR, errno, strerror(errno));
             continue;
         }
 
         /* Receive the message */
         if (OS_RecvUnix(q, OS_MAXSTR, buffer) == 0) {
-            merror(QUEUE_ERROR, EXECQUEUE, strerror(errno));
+            mterror(WM_EXECD_LOGTAG, QUEUE_ERROR, EXECQUEUE, strerror(errno));
             continue;
         }
 
@@ -179,7 +179,7 @@ void execd_start(int q) {
 
         /* Parse message */
         if (json_root = cJSON_Parse(buffer), !json_root) {
-            merror(EXEC_INV_JSON, buffer);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_JSON, buffer);
             continue;
         }
 
@@ -188,7 +188,7 @@ void execd_start(int q) {
         if (json_command && (json_command->type == cJSON_String)) {
             name = json_command->valuestring;
         } else {
-            merror(EXEC_INV_CMD, buffer);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_CMD, buffer);
             cJSON_Delete(json_root);
             continue;
         }
@@ -222,7 +222,7 @@ void execd_start(int q) {
             /* Start api socket */
             int api_sock;
             if ((api_sock = StartMQ(EXECQUEUEA, WRITE, 1)) < 0) {
-                merror(QUEUE_ERROR, EXECQUEUEA, strerror(errno));
+                mterror(WM_EXECD_LOGTAG, QUEUE_ERROR, EXECQUEUEA, strerror(errno));
                 os_free(output);
                 continue;
             }
@@ -230,7 +230,7 @@ void execd_start(int q) {
             if ((rc = OS_SendUnix(api_sock, output, 0)) < 0) {
                 /* Error on the socket */
                 if (rc == OS_SOCKTERR) {
-                    merror("socketerr (not available).");
+                    mterror(WM_EXECD_LOGTAG, "socketerr (not available).");
                     os_free(output);
                     close(api_sock);
                     continue;
@@ -272,7 +272,7 @@ void execd_start(int q) {
             read_exec_config();
             cmd[0] = get_command_by_name(name, &timeout_value);
             if (!cmd[0]) {
-                merror(EXEC_INV_NAME, name);
+                mterror(WM_EXECD_LOGTAG, EXEC_INV_NAME, name);
                 cJSON_Delete(json_root);
                 continue;
             }
@@ -324,7 +324,7 @@ void execd_start(int q) {
                                 snprintf(ntimes, 16, "%d", ntimes_int);
                                 if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
                                     free(ntimes);
-                                    merror("At execd_start: OSHash_Update() failed");
+                                    mterror(WM_EXECD_LOGTAG, "At execd_start: OSHash_Update() failed");
                                 }
                             }
                             mtdebug1(WM_EXECD_LOGTAG, "Repeated offender. Setting timeout to '%ds'", new_timeout);
@@ -357,7 +357,7 @@ void execd_start(int q) {
                 fwrite(cmd_parameters, 1, strlen(cmd_parameters), wfd->file);
                 wpclose(wfd);
             } else {
-                merror(EXEC_CMD_FAIL, strerror(errno), errno);
+                mterror(WM_EXECD_LOGTAG, EXEC_CMD_FAIL, strerror(errno), errno);
                 os_free(cmd_parameters);
                 cJSON_Delete(json_root);
                 continue;
@@ -390,7 +390,7 @@ void execd_start(int q) {
                             snprintf(ntimes, 16, "%d", ntimes_int);
                             if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
                                 free(ntimes);
-                                merror("At execd_start: OSHash_Update() failed");
+                                mterror(WM_EXECD_LOGTAG, "At execd_start: OSHash_Update() failed");
                             }
                         }
                         timeout_value = new_timeout;
@@ -423,7 +423,7 @@ void execd_start(int q) {
                 );
 
                 if (!OSList_AddData(timeout_list, timeout_entry)) {
-                    merror(LIST_ADD_ERROR);
+                    mterror(WM_EXECD_LOGTAG, LIST_ADD_ERROR);
                     free_timeout_entry(timeout_entry);
                 }
             }
@@ -456,7 +456,7 @@ STATIC int CheckManagerConfiguration(char ** output) {
     int timeout = 2000;
     char command_in[PATH_MAX] = {0};
     char *output_msg = NULL;
-    char *daemons[] = { "bin/wazuh-authd", "bin/wazuh-remoted", "bin/wazuh-analysisd", "bin/wazuh-logcollector", "bin/wazuh-integratord",  "bin/wazuh-syscheckd", "bin/wazuh-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/wazuh-agentlessd", "bin/wazuh-integratord", "bin/wazuh-dbd", "bin/wazuh-csyslogd", NULL };
+    char *daemons[] = { "bin/wazuh-authd", "bin/wazuh-remoted", "bin/wazuh-analysisd", "bin/wazuh-integratord", "bin/wazuh-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/wazuh-agentlessd", "bin/wazuh-integratord", "bin/wazuh-dbd", "bin/wazuh-csyslogd", NULL };
     int i;
     ret_val = 0;
 

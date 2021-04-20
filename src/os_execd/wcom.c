@@ -78,7 +78,7 @@ size_t wcom_dispatch(char *command, char ** output){
             os_strdup("ok ", *output);
             if (timeout == -1 || timeout > max_restart_lock) {
                 if (timeout > max_restart_lock) {
-                    mwarn("Timeout exceeds the maximum allowed.");
+                    mtwarn(WM_EXECD_LOGTAG, "Timeout exceeds the maximum allowed.");
                 }
                 timeout = max_restart_lock;
             }

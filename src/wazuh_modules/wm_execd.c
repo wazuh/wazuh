@@ -23,7 +23,6 @@ static void* wm_execd_main(wm_execd_t *data);        // Module main function. It
 static void wm_execd_destroy(wm_execd_t *data);      // Destroy data
 const char *WM_EXECD_LOCATION = "execd";             // Location field for event sending
 cJSON *wm_execd_dump(const wm_execd_t *data);
-int wm_execd_message(const char *data);
 
 const wm_context WM_EXECD_CONTEXT = {
     "execd",
