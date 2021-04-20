@@ -1075,7 +1075,7 @@ stages:
         data:
           affected_items:
             - internal:
-                execd:
+                modulesd:
                   max_restart_lock: !anyint
                   request_timeout: !anyint
           failed_items: []

@@ -153,38 +153,12 @@ def validate_ossec_conf():
         finally:
             wcom_socket.close()
 
-        try:
-            response = parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-        except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhInternalError(1904, extra_message=str(e))
+        # TODO Add new socket wcom (4.3)
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
-    return response
-
-
-def parse_execd_output(output: str) -> Dict:
-    """
-    Parses output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
-    :param output: Raw output from execd
-    :return: Cleaned log message in a dictionary structure
-    """
-    json_output = json.loads(output)
-    error_flag = json_output['error']
-    if error_flag != 0:
-        errors = []
-        log_lines = json_output['message'].splitlines(keepends=False)
-        for line in log_lines:
-            match = _re_logtest.match(line)
-            if match:
-                errors.append(match.group(1))
-        errors = list(OrderedDict.fromkeys(errors))
-        raise WazuhError(1908, extra_message=', '.join(errors))
-    else:
-        response = {'status': 'OK'}
-
-    return response
+    return NotImplementedError
 
 
 def get_api_conf():
