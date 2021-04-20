@@ -350,6 +350,12 @@ CREATE TABLE IF NOT EXISTS vuln_cves (
 CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);
 CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
 
+CREATE TABLE IF NOT EXISTS syscollector_sync_status (
+    hotfix_sync_status INTEGER(1) DEFAULT 0,
+    PRIMARY KEY (hotfix_sync_status)
+);
+INSERT INTO syscollector_sync_status (hotfix_sync_status) VALUES (0);
+
 BEGIN;
 
 INSERT INTO metadata (key, value) VALUES ('db_version', '7');

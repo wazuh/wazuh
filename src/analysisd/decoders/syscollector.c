@@ -1550,6 +1550,15 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
             free(msg);
             return -1;
         } else if (strcmp(msg_type, "hotfix_end") == 0) {
+            char response2[4096];
+            char * msg2 = NULL;
+            os_calloc(OS_SIZE_1024, sizeof(char), msg2);
+            snprintf(msg2, OS_SIZE_1024 - 1, "agent %s sql UPDATE syscollector_sync_status SET hotfix_sync_status = 1", lf->agent_id);
+
+            wdbc_query_ex(socket, msg2, response2, sizeof(response2));
+            mdebug1("Result of legacy agents synced status: %s", response2);
+            free(msg2);
+
             snprintf(msg, OS_SIZE_1024 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);
 
             if (wdbc_query_ex(socket, msg, response, sizeof(response)) != 0 || wdbc_parse_result(response, NULL) != WDBC_OK) {
@@ -2035,5 +2044,3 @@ int decode_dbsync(char const *agent_id, char *msg_type, cJSON *logJSON, int *soc
     }
     return ret_val;
 }
-
-

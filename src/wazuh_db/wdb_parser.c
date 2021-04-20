@@ -1399,6 +1399,18 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         default:
             snprintf(output, OS_MAXSTR + 1, "ok ");
         }
+        cJSON* data =NULL;
+        char* out;
+
+        if (strcmp(output, "ok ")==0 )
+            data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 1;");
+        else
+            data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 0;");
+
+        out = cJSON_PrintUnformatted(data);
+        mdebug1("Result of new agents sync status: %s", out);
+        os_free(out);
+        cJSON_Delete(data);
 
         return 0;
     } else if (strncmp(curr, "integrity_clear", 15) == 0) {
@@ -3901,6 +3913,16 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
             mdebug1("Cannot save Hotfix information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Hotfix information.");
         } else {
+            cJSON* data =NULL;
+            char* out;
+
+            data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 0;");
+            out = cJSON_PrintUnformatted(data);
+            mdebug1("Result of legacy agents not synced status: %s", out);
+            os_free(out);
+            cJSON_Delete(data);
+
+
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
