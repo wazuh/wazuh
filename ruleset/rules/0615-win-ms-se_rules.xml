@@ -150,7 +150,6 @@
   <rule id="63616" level="5">
     <if_sid>63604,63605</if_sid>
     <field name="win.system.message">\.*DOS/EICAR_Test_File</field>
-    <options>alert_by_email</options>
     <description>Microsoft Security Essentials - EICAR test file detected</description>
     <options>no_full_log</options>
   </rule>
