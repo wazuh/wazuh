@@ -482,8 +482,8 @@ stages:
         select: 'noexists'
     response:
       status_code: 400
-      json: &invalid_select
-        error: 1724
+      json:
+        <<: *invalid_select
 
   - name: Try to show references using invalid select (one select is invalid)
     request:
