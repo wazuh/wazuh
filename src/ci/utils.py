@@ -364,15 +364,13 @@ def runScanBuild(targetName):
     printHeader("<"+targetName+">"+headerDic['scanbuild']+"<"+targetName+">")
     out = subprocess.run(scanBuildCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
-    if out.returncode == 0:
-        printGreen('[Scan-build: PASSED]')
-    else:
+    if out.returncode != 0:
         print(scanBuildCommand)
         if out.returncode == 1:
             print(out.stdout)
         else:
             print(out.stderr)
-        printFail('[Scan-build: FAILED]')
+        printFail('[SCANBUILD: FAILED]')
         errorString = 'Error Running Scan-build: ' + str(out.returncode)
         raise ValueError(errorString)
 
