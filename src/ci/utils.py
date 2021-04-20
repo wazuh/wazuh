@@ -307,8 +307,10 @@ def cleanExternals():
         errorString = 'Error Running CleanExternals: ' + str(out.returncode)
         raise ValueError(errorString)
 
-def makeDeps(targetName):
+def makeDeps(targetName, srcOnly):
     makeDepsCommand = "make deps TARGET=" + targetName
+    if srcOnly:
+        makeDepsCommand += " EXTERNAL_SRC_ONLY=yes"
     out = subprocess.run(makeDepsCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     if out.returncode == 0:
         printGreen('[MakeDeps: PASSED]')
@@ -416,20 +418,23 @@ def runScanBuild(targetName):
     printHeader("<"+targetName+">"+headerDic['scanbuild']+"<"+targetName+">")
     cleanAll()
     cleanExternals()
-    makeDeps(targetName)
     if targetName == "winagent":
-        cleanAll()
+        makeDeps(targetName, True)
         makeTarget("winagent", False, True)
         cleanInternals()
         scanBuildCommand = 'scan-build-10 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc \
                             --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 \
                             --force-analyze-debug-code make TARGET=winagent DEBUG=1 -j4'
     else:
+        makeDeps(targetName, False)
         scanBuildCommand = 'scan-build-10 --status-bugs --force-analyze-debug-code make TARGET=' + targetName + ' DEBUG=1 -j4'
 
     out = subprocess.run(scanBuildCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
-    if out.returncode != 0:
+    if out.returncode == 0:
+        printGreen('[ScanBuild: PASSED]')
+    else:
+        printFail('[ScanBuild: FAILED]')
         print(scanBuildCommand)
         if out.returncode == 1:
             print(out.stdout)

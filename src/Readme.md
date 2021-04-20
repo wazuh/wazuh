@@ -158,11 +158,10 @@ Scan-build analysis winagent:
   1. clean previous compiled binaries.
   2. remove externals libraries.
   3. download externals libraries for windows.
-  4. clean externals.
-  5. compile winagent.
-  6. clean internals.
-  7. run scan-build for winagent specifying the cc and cxx compiler and the target.
-Steps 4-6 were added to fix an issue found running scan-build on winagent using pre-compiled externals libraries. If all the checks passed it returns 0 and prints a "[SCANBUILD: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns an error code.
+  4. compile winagent.
+  5. clean internals.
+  6. run scan-build for winagent specifying the cc and cxx compiler and the target.
+Steps 4-5 were added to fix an issue found running scan-build on winagent using pre-compiled externals libraries. If all the checks passed it returns 0 and prints a "[SCANBUILD: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns an error code.
 
 Output Example executing the SCANBUILD analysis with `agent` target:
 ```
@@ -171,6 +170,7 @@ Output Example executing the SCANBUILD analysis with `agent` target:
 [CleanAll: PASSED]
 [CleanExternals: PASSED]
 [MakeDeps: PASSED]
+[ScanBuild: PASSED]
 <agent>[SCANBUILD: PASSED]<agent>
 ```
 Output Example executing the SCANBUILD analysis with `winagent` target:
@@ -180,8 +180,8 @@ Output Example executing the SCANBUILD analysis with `winagent` target:
 [CleanAll: PASSED]
 [CleanExternals: PASSED]
 [MakeDeps: PASSED]
-[CleanAll: PASSED]
 [MakeTarget: PASSED]
 [CleanInternals: PASSED]
+[ScanBuild: PASSED]
 <winagent>[SCANBUILD: PASSED]<winagent>
 ```
