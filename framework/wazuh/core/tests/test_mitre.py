@@ -59,7 +59,7 @@ def test_WazuhDBQueryMitre_classes(mock_wdb, wdb_query_class):
 ])
 @patch('wazuh.core.utils.WazuhDBConnection')
 def test_get_mitre_items(mock_wdb, mitre_wdb_query_class):
-    """Test get_tactics function."""
+    """Test get_mitre_items function."""
     info, data = get_mitre_items(mitre_wdb_query_class)
 
     db_query_to_compare = mitre_wdb_query_class()
