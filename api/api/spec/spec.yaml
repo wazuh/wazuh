@@ -10670,11 +10670,11 @@ paths:
                         [APT38](https://attack.mitre.org/groups/G0082) is a financially-motivated threat group that is backed by the North Korean regime. The group mainly targets banks and financial institutions and has targeted more than 16 organizations in at least 13 countries since at least 2014.(Citation: FireEye APT38 Oct 2018)
 
                         North Korean group definitions are known to have significant overlap, and the name [Lazarus Group](https://attack.mitre.org/groups/G0032) is known to encompass a broad range of activity. Some organizations use the name Lazarus Group to refer to any activity attributed to North Korea.(Citation: US-CERT HIDDEN COBRA June 2017) Some organizations track North Korean clusters or groups such as Bluenoroff,(Citation: Kaspersky Lazarus Under The Hood Blog 2017) [APT37](https://attack.mitre.org/groups/G0067), and [APT38](https://attack.mitre.org/groups/G0082) separately, while other organizations may track some activity associated with those group names by the name Lazarus Group.
-                      related_software:
+                      software:
                         - tool--03342581-f790-4f03-ba41-e82e67392e23
                         - tool--afc079f3-c0ea-4096-b75d-3f05338b7f60
                         - malware--53ab35c2-d00e-491a-8753-41d35ae7e547
-                      related_techniques:
+                      techniques:
                         - attack-pattern--df8b2a25-8bdf-4856-953c-a04372b1c161
                         - attack-pattern--09a60ea3-a8d1-4ae5-976e-5783248b72a4
                         - attack-pattern--8f4a33ec-8b1f-4b80-a2f6-642b2e479580
@@ -10788,7 +10788,7 @@ paths:
                       description: "This category is used for any applicable mitigation activities that
                         apply to techniques occurring before an adversary gains Initial Access, such
                         as Reconnaissance and Resource Development techniques."
-                      related_techniques: [ ]
+                      techniques: [ ]
                   total_affected_items: 267
                   total_failed_items: 0
                   failed_items: [ ]
@@ -10903,9 +10903,9 @@ paths:
                       description: "[HDoor](https://attack.mitre.org/software/S0061) is malware that
                         has been customized and used by the [Naikon](https://attack.mitre.org/groups/G0019)
                         group. (Citation: Baumgartner Naikon 2015)"
-                      related_groups:
+                      groups:
                         - intrusion-set--2a158b0a-7ef8-43cb-9985-bf34d1e12050
-                      related_techniques:
+                      techniques:
                         - attack-pattern--ac08589e-ee59-4935-8667-d845e38fe579
                         - attack-pattern--e3a12395-188d-4051-9a16-ea8e14d07b88
                   total_affected_items: 444
@@ -10964,7 +10964,7 @@ paths:
                       description: "The adversary is trying to move through your environment.\n\nLateral Movement consists of techniques that adversaries use to enter and control remote systems on a network. Following through on their primary objective often requires exploring the network to find their target and subsequently gaining access to it. Reaching their objective often involves pivoting through multiple systems and accounts to gain. Adversaries might install their own remote access tools to accomplish Lateral Movement or use legitimate credentials with native network and operating system tools, which may be stealthier. "
                       name: "Lateral Movement"
                       short_name: "lateral-movement"
-                      related_techniques:
+                      techniques:
                         - "attack-pattern--01327cde-66c4-4123-bf34-5f258d59457b"
                         - "attack-pattern--246fd3c7-f5e3-466d-8787-4c13d9e3b61c"
                         - "attack-pattern--2db31dcd-54da-405d-acef-b9129b816ed6"
@@ -11054,10 +11054,10 @@ paths:
                         Before compromising a victim, adversaries may gather information about the victim's networks that can be used during targeting. Information about networks may include a variety of details, including administrative data (ex: IP ranges, domain names, etc.) as well as specifics regarding its topology and operations.
 
                         Adversaries may gather this information in various ways, such as direct collection actions via [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Phishing for Information](https://attack.mitre.org/techniques/T1598). Information about networks may also be exposed to adversaries via online or other accessible data sets (ex: [Search Open Technical Databases](https://attack.mitre.org/techniques/T1596)).(Citation: WHOIS)(Citation: DNS Dumpster)(Citation: Circl Passive DNS) Gathering this information may reveal opportunities for other forms of reconnaissance (ex: [Active Scanning](https://attack.mitre.org/techniques/T1595) or [Search Open Websites/Domains](https://attack.mitre.org/techniques/T1593)), establishing operational resources (ex: [Acquire Infrastructure](https://attack.mitre.org/techniques/T1583) or [Compromise Infrastructure](https://attack.mitre.org/techniques/T1584)), and/or initial access (ex: [Trusted Relationship](https://attack.mitre.org/techniques/T1199)).
-                      related_tactics: [ ]
-                      related_mitigations: [ ]
-                      related_software: [ ]
-                      related_groups: [ ]
+                      tactics: [ ]
+                      mitigations: [ ]
+                      software: [ ]
+                      groups: [ ]
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: [ ]

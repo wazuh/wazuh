@@ -156,7 +156,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
                                    select=list(set(self.fields.values()).intersection(set(select))),
                                    request_slice=MITIGATIONS_REQUEST_SLICE)
 
-        self.relation_fields = {'related_techniques', 'references'}
+        self.relation_fields = {'techniques', 'references'}
 
     def _filter_status(self, status_filter):
         pass
@@ -170,7 +170,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
         for mitigation in self._data:
             mitigation_ids.add(mitigation['id'])
 
-        related_techniques = WazuhDBQueryMitreRelational(table='mitigate', filters={'source_id': list(mitigation_ids)},
+        techniques = WazuhDBQueryMitreRelational(table='mitigate', filters={'source_id': list(mitigation_ids)},
                                                          dict_key='source_id', limit=None).run()
 
         references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'mitigation'},
@@ -180,7 +180,7 @@ class WazuhDBQueryMitreMitigations(WazuhDBQueryMitre):
             row.pop('id')
 
         for mitigation in self._data:
-            mitigation['related_techniques'] = related_techniques.get(mitigation['id'], list())
+            mitigation['techniques'] = techniques.get(mitigation['id'], list())
             mitigation['references'] = [row_no_id for row, row_no_id in
                                         zip(references['items'], references_no_id['items']) if
                                         row['id'] == mitigation['id']]
@@ -241,7 +241,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
                                    default_sort_order=default_sort_order, search=search,
                                    select=list(set(self.fields.values()).intersection(set(select))))
 
-        self.relation_fields = {'related_techniques', 'references'}
+        self.relation_fields = {'techniques', 'references'}
 
     def _filter_status(self, status_filter):
         pass
@@ -254,7 +254,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
         for tactic in self._data:
             tactic_ids.add(tactic['id'])
 
-        related_techniques = WazuhDBQueryMitreRelational(table='phase', filters={'tactic_id': list(tactic_ids)},
+        techniques = WazuhDBQueryMitreRelational(table='phase', filters={'tactic_id': list(tactic_ids)},
                                                          dict_key='tactic_id', limit=None).run()
 
         references = WazuhDBQueryMitreReferences(limit=None, filters={'type': 'tactic'},
@@ -264,7 +264,7 @@ class WazuhDBQueryMitreTactics(WazuhDBQueryMitre):
             row.pop('id')
 
         for tactic in self._data:
-            tactic['related_techniques'] = related_techniques.get(tactic['id'], list())
+            tactic['techniques'] = techniques.get(tactic['id'], list())
             tactic['references'] = [row_no_id for row, row_no_id in
                                     zip(references['items'], references_no_id['items']) if
                                     row['id'] == tactic['id']]
@@ -299,7 +299,7 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
                                    select=list(set(self.fields.values()).intersection(set(select))),
                                    request_slice=TECHNIQUES_REQUEST_SLICE)
 
-        self.relation_fields = {'related_tactics', 'related_mitigations', 'related_software', 'related_groups',
+        self.relation_fields = {'tactics', 'mitigations', 'software', 'groups',
                                 'references'}
 
     def _filter_status(self, status_filter):
@@ -315,16 +315,16 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
         for technique in self._data:
             technique_ids.add(technique['id'])
 
-        related_tactics = WazuhDBQueryMitreRelational(table='phase', filters={'tech_id': list(technique_ids)},
+        tactics = WazuhDBQueryMitreRelational(table='phase', filters={'tech_id': list(technique_ids)},
                                                       dict_key='tech_id', limit=None).run()
-        related_mitigations = WazuhDBQueryMitreRelational(table='mitigate', filters={'target_id': list(technique_ids)},
+        mitigations = WazuhDBQueryMitreRelational(table='mitigate', filters={'target_id': list(technique_ids)},
                                                           dict_key='target_id', limit=None).run()
-        related_software = WazuhDBQueryMitreRelational(table='use',
+        software = WazuhDBQueryMitreRelational(table='use',
                                                        filters={'target_id': list(technique_ids),
                                                                 'target_type': 'technique', 'source_type': 'software'},
                                                        dict_key='target_id',
                                                        limit=None).run()
-        related_groups = WazuhDBQueryMitreRelational(table='use',
+        groups = WazuhDBQueryMitreRelational(table='use',
                                                      filters={'target_id': list(technique_ids),
                                                               'target_type': 'technique', 'source_type': 'group'},
                                                      dict_key='target_id',
@@ -337,10 +337,10 @@ class WazuhDBQueryMitreTechniques(WazuhDBQueryMitre):
             row.pop('id')
 
         for technique in self._data:
-            technique['related_tactics'] = related_tactics.get(technique['id'], list())
-            technique['related_mitigations'] = related_mitigations.get(technique['id'], list())
-            technique['related_software'] = related_software.get(technique['id'], list())
-            technique['related_groups'] = related_groups.get(technique['id'], list())
+            technique['tactics'] = tactics.get(technique['id'], list())
+            technique['mitigations'] = mitigations.get(technique['id'], list())
+            technique['software'] = software.get(technique['id'], list())
+            technique['groups'] = groups.get(technique['id'], list())
             technique['references'] = [row_no_id for row, row_no_id in
                                        zip(references['items'], references_no_id['items']) if
                                        row['id'] == technique['id']]
@@ -373,7 +373,7 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
                                    select=list(set(self.fields.values()).intersection(set(select))),
                                    request_slice=GROUPS_REQUEST_SLICE)
 
-        self.relation_fields = {'related_software', 'related_techniques', 'references'}
+        self.relation_fields = {'software', 'techniques', 'references'}
 
     def _filter_status(self, status_filter):
         pass
@@ -386,12 +386,12 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
         for group in self._data:
             group_ids.add(group['id'])
 
-        related_software = WazuhDBQueryMitreRelational(table='use',
+        software = WazuhDBQueryMitreRelational(table='use',
                                                        filters={'source_id': list(group_ids),
                                                                 'target_type': 'software', 'source_type': 'group'},
                                                        dict_key='source_id',
                                                        limit=None).run()
-        related_techniques = WazuhDBQueryMitreRelational(table='use',
+        techniques = WazuhDBQueryMitreRelational(table='use',
                                                          filters={'source_id': list(group_ids),
                                                                   'target_type': 'technique', 'source_type': 'group'},
                                                          dict_key='source_id',
@@ -404,8 +404,8 @@ class WazuhDBQueryMitreGroups(WazuhDBQueryMitre):
             row.pop('id')
 
         for group in self._data:
-            group['related_software'] = related_software.get(group['id'], list())
-            group['related_techniques'] = related_techniques.get(group['id'], list())
+            group['software'] = software.get(group['id'], list())
+            group['techniques'] = techniques.get(group['id'], list())
             group['references'] = [row_no_id for row, row_no_id in
                                    zip(references['items'], references_no_id['items']) if
                                    row['id'] == group['id']]
@@ -438,7 +438,7 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
                                    select=list(set(self.fields.values()).intersection(set(select))),
                                    request_slice=SOFTWARE_REQUEST_SLICE)
 
-        self.relation_fields = {'related_groups', 'related_techniques', 'references'}
+        self.relation_fields = {'groups', 'techniques', 'references'}
 
     def _filter_status(self, status_filter):
         pass
@@ -451,13 +451,13 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
         for group in self._data:
             software_ids.add(group['id'])
 
-        related_groups = WazuhDBQueryMitreRelational(table='use',
+        groups = WazuhDBQueryMitreRelational(table='use',
                                                      filters={'target_id': list(software_ids),
                                                               'target_type': 'software',
                                                               'source_type': 'group'},
                                                      dict_key='target_id',
                                                      limit=None).run()
-        related_techniques = WazuhDBQueryMitreRelational(table='use',
+        techniques = WazuhDBQueryMitreRelational(table='use',
                                                          filters={'source_id': list(software_ids),
                                                                   'target_type': 'technique',
                                                                   'source_type': 'software'},
@@ -471,8 +471,8 @@ class WazuhDBQueryMitreSoftware(WazuhDBQueryMitre):
             row.pop('id')
 
         for software in self._data:
-            software['related_groups'] = related_groups.get(software['id'], list())
-            software['related_techniques'] = related_techniques.get(software['id'], list())
+            software['groups'] = groups.get(software['id'], list())
+            software['techniques'] = techniques.get(software['id'], list())
             software['references'] = [row_no_id for row, row_no_id in
                                       zip(references['items'], references_no_id['items']) if
                                       row['id'] == software['id']]
