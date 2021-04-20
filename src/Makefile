@@ -92,6 +92,11 @@ ifeq (${uname_S},Darwin)
 SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
 endif
 
+# Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
+ifeq ($(CHECK_CENTOS5), YES)
+SYSINFO_OS+=-DCMAKE_CHECK_CENTOS5=1
+endif
+
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
 RSYNC_TEST=-DUNIT_TEST=ON #--coverage
