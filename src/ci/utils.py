@@ -19,6 +19,7 @@ headerDic = {\
 'valgrind':         '=================== Running Valgrind    ===================',\
 'cppcheck':         '=================== Running cppcheck    ===================',\
 'asan':             '=================== Running ASAN        ===================',\
+'scanbuild':        '=================== Running Scanbuild   ===================',\
 'testtool':         '=================== Running TEST TOOL   ===================',\
 'cleanfolder':      '=================== Clean build Folders ===================',\
 'configurecmake':   '=================== Running CMake Conf  ===================',\
@@ -343,6 +344,39 @@ def runASAN(moduleName):
         runTestTool(str(moduleName), testToolCommand, element['is_smoke_with_configuration'])
 
     printGreen("<"+moduleName+">"+"[ASAN: PASSED]"+"<"+moduleName+">")
+
+def runScanBuild(targetName):
+    """
+    Executes scan-build for 'targetName'.
+
+    :param targetName: Target to be analyzed using scan-build analysis tool.
+    """
+    makeDepsCommand = "make clean -j4 && rm -rf ./external/* && make deps TARGET=" + targetName + " -j4"
+    subprocess.run(makeDepsCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if targetName == "winagent":
+        subprocess.run("make clean -j4 && make TARGET=winagent DEBUG=1 -j4 && make clean-internals", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        scanBuildCommand = 'scan-build-10 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc \
+                            --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 \
+                            --force-analyze-debug-code make TARGET=winagent DEBUG=1 -j4'
+    else:
+        scanBuildCommand = 'scan-build-10 --status-bugs --force-analyze-debug-code make TARGET=' + targetName + ' DEBUG=1 -j4'
+
+    printHeader("<"+targetName+">"+headerDic['scanbuild']+"<"+targetName+">")
+    out = subprocess.run(scanBuildCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+    if out.returncode == 0:
+        printGreen('[Scan-build: PASSED]')
+    else:
+        print(scanBuildCommand)
+        if out.returncode == 1:
+            print(out.stdout)
+        else:
+            print(out.stderr)
+        printFail('[Scan-build: FAILED]')
+        errorString = 'Error Running Scan-build: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+    printGreen("<"+targetName+">"+"[SCANBUILD: PASSED]"+"<"+targetName+">")
 
 def runReadyToReview(moduleName):
     """
