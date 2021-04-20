@@ -25,7 +25,7 @@
 /* oslog configurations */
 #define OSLOG_NAME              "USL_OSLOG_Super_Mc_Darwin" ///< Name to be displayed in the localfile' statistics
 
-#define LOG_CMD_STR             "log"           ///< It is the name of the command used to collect macos' logs
+#define LOG_CMD_STR             "/usr/bin/log"  ///< It is the name of the command used to collect macos' logs
 #define LOG_STREAM_OPT_STR      "stream"        ///< "stream" is the mode in which the "log" command is running
 
 #define STYLE_OPT_STR           "--style"       ///< This precedes the logs' output style to be used by "log stream"
@@ -55,7 +55,8 @@
                                     x[11]?x[11]:"", x[12]?x[12]:"", \
                                     x[13]?x[13]:""
 
-#define OSLOG_START_REGEX       "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d+:\\d+:\\d+" ///< regex to determine the start of a log (unchecked)
+/** regex to determine the start of a log */
+#define OSLOG_START_REGEX       "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d"
 #define OSLOG_TIMEOUT_OUT       5
 
 #include <pthread.h>
