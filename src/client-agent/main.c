@@ -19,11 +19,11 @@
 
 
 /* Prototypes */
-static void help_agentd(void) __attribute((noreturn));
+static void help_agentd(char *home_path) __attribute((noreturn));
 
 
 /* Print help statement */
-static void help_agentd()
+static void help_agentd(char *home_path)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config]", ARGV0);
@@ -36,8 +36,9 @@ static void help_agentd()
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
-    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out(" ");
+    os_free(home_path);
     exit(1);
 }
 
@@ -47,11 +48,11 @@ int main(int argc, char **argv)
     int c = 0;
     int test_config = 0;
     int debug_level = 0;
-    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
+    char *home_path = w_homedir(argv[0]);
 
     const char *user = USER;
     const char *group = GROUPGLOBAL;
-    const char *cfg = DEFAULTCPATH;
+    const char *cfg = OSSECCONF;
 
     uid_t uid;
     gid_t gid;
@@ -61,13 +62,22 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
+	/* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
+    }
+
+    agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
+
     while ((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help_agentd();
+                help_agentd(home_path);
                 break;
             case 'd':
                 nowDebug();
@@ -104,12 +114,10 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             default:
-                help_agentd();
+                help_agentd(home_path);
                 break;
         }
     }
-
-    mdebug1(STARTED_MSG);
 
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
@@ -127,6 +135,10 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    mdebug1(WAZUH_HOMEDIR, home_path);
+    os_free(home_path);
+    mdebug1(STARTUP_MSG, (int)getpid());
 
     /* Read config */
     if (ClientConf(cfg) < 0) {

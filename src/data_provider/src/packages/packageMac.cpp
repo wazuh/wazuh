@@ -45,4 +45,6 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
     package["description"] = m_packageWrapper->description();
     package["architecture"] = m_packageWrapper->architecture();
     package["format"] = m_packageWrapper->format();
+    package["source"] = m_packageWrapper->source();
+    package["location"] = m_packageWrapper->location();
 }

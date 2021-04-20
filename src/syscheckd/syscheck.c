@@ -98,11 +98,9 @@ int Start_win32_Syscheck()
 {
     int debug_level = 0;
     int r = 0;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
     /* Read internal options */
     read_internal(debug_level);
-
-    mdebug1(STARTED_MSG);
 
     /* Check if the configuration is present */
     if (File_DateofChange(cfg) < 0) {

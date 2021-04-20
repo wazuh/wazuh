@@ -115,7 +115,7 @@ getPreinstalledDirByType()
     # Checking for Darwin
     if [ "X${NUNAME}" = "XDarwin" ]; then
         if [ -f /Library/StartupItems/WAZUH/WAZUH ]; then
-            PREINSTALLEDDIR=`sed -n 's/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
+            PREINSTALLEDDIR=`sed -n 's/^ *//; s/^\s*\(.*\)\/bin\/wazuh-control start$/\1/p' /Library/StartupItems/WAZUH/WAZUH`
             if [ -d "$PREINSTALLEDDIR" ]; then
                 return 0;
             else

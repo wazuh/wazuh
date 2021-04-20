@@ -16,7 +16,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 
 #include "../wrappers/posix/dirent_wrappers.h"
@@ -27,9 +27,6 @@
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../wrappers/posix/stat_wrappers.h"
-
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
 
 extern int test_mode;
 int set_payload = 0;
@@ -63,13 +60,13 @@ gid_t __wrap_Privsep_GetGroup(const char *name) {
 
 /* setup/teardown */
 
-int setup_wdb_agent(void **state) {
+int setup_wdb_global_helpers(void **state) {
     test_mode = 1;
 
     return 0;
 }
 
-int teardown_wdb_agent(void **state) {
+int teardown_wdb_global_helpers(void **state) {
     test_mode = 0;
 
     return 0;
@@ -144,7 +141,6 @@ void test_wdb_create_agent_db_error_opening_dest_profile(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
@@ -168,7 +164,6 @@ void test_wdb_create_agent_db_error_writing_profile(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -198,7 +193,6 @@ void test_wdb_create_agent_db_error_getting_ids(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -236,7 +230,6 @@ void test_wdb_create_agent_db_error_changing_owner(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -279,7 +272,6 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -325,7 +317,6 @@ void test_wdb_create_agent_db_success(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -614,7 +605,6 @@ void test_wdb_insert_agent_success(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -666,10 +656,8 @@ void test_wdb_insert_agent_success_keep_date(void **state)
 \"internal_key\":\"e6ecef1698e21e8fb160e81c722a0523d72554dc1fc3e4374e247f4baac52301\",\"group\":\"default\",\"date_add\":1577851261}";
     const char *response = "ok";
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -732,7 +720,6 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
     // Opening destination database file
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_fopen, path, "var/db/agents/001-agent1.db");
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 1);
@@ -2135,6 +2122,33 @@ void test_wdb_get_agent_name_success(void **state) {
     os_free(name);
 }
 
+void test_wdb_get_agent_name_not_found(void **state) {
+    cJSON *root = NULL;
+    cJSON *row = NULL;
+    cJSON *str = NULL;
+    int id = 1;
+    char *name = NULL;
+
+    root = __real_cJSON_CreateArray();
+    __real_cJSON_AddItemToArray(root, row);
+
+    // Calling Wazuh DB
+    will_return(__wrap_wdbc_query_parse_json, 0);
+    will_return(__wrap_wdbc_query_parse_json, root);
+
+    // Getting JSON data
+    will_return(__wrap_cJSON_GetObjectItem, str);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    name = wdb_get_agent_name(id, NULL);
+
+    assert_string_equal("", name);
+
+    __real_cJSON_Delete(root);
+    os_free(name);
+}
+
 /* Tests wdb_remove_agent_db */
 
 void test_wdb_remove_agent_db_error_removing_db(void **state) {
@@ -2143,7 +2157,6 @@ void test_wdb_remove_agent_db_error_removing_db(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    will_return(__wrap_isChroot, 0);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_INVALID);
 
@@ -2158,7 +2171,6 @@ void test_wdb_remove_agent_db_error_removing_db_shm_wal(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    will_return_always(__wrap_isChroot, 0);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
 
@@ -2183,7 +2195,6 @@ void test_wdb_remove_agent_db_success(void **state) {
     char *name = "agent1";
 
     // Removing DB files
-    will_return_always(__wrap_isChroot, 0);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
@@ -2427,7 +2438,6 @@ void test_wdb_remove_agent_success(void **state)
     expect_function_call(__wrap_cJSON_Delete);
 
     // Removing DB files
-    will_return_always(__wrap_isChroot, 0);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db");
     will_return(__wrap_remove, OS_SUCCESS);
     expect_string(__wrap_remove, filename, "var/db/agents/001-agent1.db-shm");
@@ -3931,7 +3941,7 @@ void test_wdb_update_groups_error_json(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, "Error querying Wazuh DB to update groups.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -3992,7 +4002,7 @@ void test_wdb_update_groups_error_max_path(void **state) {
     // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4042,7 +4052,7 @@ void test_wdb_update_groups_error_removing_group_db(void **state) {
     // Handling result
     expect_string(__wrap__merror, formatted_msg, "At wdb_remove_group_from_belongs_db(): couldn't delete 'test_group' from 'belongs' table.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4076,9 +4086,9 @@ void test_wdb_update_groups_error_adding_new_groups(void **state) {
     // Adding new groups
     will_return(__wrap_opendir, 0);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory '/var/ossec/etc/shared': error.");
+    expect_string(__wrap__merror, formatted_msg, "Couldn't open directory 'etc/shared': error.");
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 
@@ -4116,7 +4126,7 @@ void test_wdb_update_groups_success(void **state) {
     // Adding new groups
     will_return(__wrap_opendir, 1);
     will_return(__wrap_readdir, dir_ent);
-    expect_string(__wrap_IsDir, file, "/var/ossec/etc/shared/test_group");
+    expect_string(__wrap_IsDir, file, "etc/shared/test_group");
     will_return(__wrap_IsDir, 0);
 
     //// Call to wdb_find_group
@@ -4143,7 +4153,7 @@ void test_wdb_update_groups_success(void **state) {
 
     will_return(__wrap_readdir, NULL);
 
-    ret = wdb_update_groups(DEFAULTDIR SHAREDCFG_DIR, NULL);
+    ret = wdb_update_groups(SHAREDCFG_DIR, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 
@@ -4274,10 +4284,8 @@ void test_get_agent_date_added_error_open_file(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -4290,10 +4298,8 @@ void test_get_agent_date_added_error_no_data(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -4313,10 +4319,8 @@ void test_get_agent_date_added_error_no_date(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -4336,10 +4340,8 @@ void test_get_agent_date_added_error_invalid_date(void **state) {
     time_t date_add = 0;
     int agent_id = 1;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -4347,7 +4349,7 @@ void test_get_agent_date_added_error_invalid_date(void **state) {
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "001 agent1 any 2020:01:01 01-01-01");
 
-    expect_string(__wrap__merror, formatted_msg, "Invalid date format in file '/queue/agents-timestamp' for agent '1'");
+    expect_string(__wrap__merror, formatted_msg, "Invalid date format in file 'queue/agents-timestamp' for agent '1'");
 
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, OS_SUCCESS);
@@ -4363,10 +4365,8 @@ void test_get_agent_date_added_success(void **state) {
     struct tm test_time;
     time_t date_returned = 0;
 
-    will_return(__wrap_isChroot, 0);
-
     // Opening destination database file
-    expect_string(__wrap_fopen, path, "/var/ossec/queue/agents-timestamp");
+    expect_string(__wrap_fopen, path, "queue/agents-timestamp");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 1);
 
@@ -4773,161 +4773,162 @@ int main()
     const struct CMUnitTest tests[] =
     {
         /* Tests wdb_create_agent_db */
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_no_name, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_creating_source_profile, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_reopening_source_profile, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_opening_dest_profile, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_writing_profile, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_getting_ids, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_owner, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_mode, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_no_name, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_creating_source_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_reopening_source_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_opening_dest_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_writing_profile, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_getting_ids, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_owner, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_error_changing_mode, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_create_agent_db_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_insert_agent */
-        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success_keep_date, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_agent_success_keep_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_name */
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_name_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_data */
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_invalid_data, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_invalid_data, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_data_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_info */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_info_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_info_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_info_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_info_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_labels */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_labels_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_set_agent_labels */
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_set_agent_labels_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_keepalive */
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_keepalive_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_connection_status */
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_connection_status_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_delete_agent_belongs */
-        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_delete_agent_belongs_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_name */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_name_not_found, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_remove_agent_db */
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db_shm_wal, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_error_removing_db_shm_wal, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_db_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_remove_agent */
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_delete_belongs_and_name, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_error_delete_belongs_and_name, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_keepalive */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_name_nor_ip, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_empty_json_response, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_name_nor_ip, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_error_empty_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_keepalive_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agent_group */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agent_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_find_agent */
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_invalid_parameters, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_input, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_output, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_find_agent_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_invalid_parameters, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_input, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_error_json_output, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_find_agent_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_all_agents */
-        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_query_error, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_parse_error, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_all_agents_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_group */
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_multi_group, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_error_multi_group, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_find_group */
-        cmocka_unit_test_setup_teardown(test_wdb_find_group_error_no_json_response, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_find_group_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_find_group_error_no_json_response, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_find_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_insert_group */
-        cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_insert_group_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_group_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_insert_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_belongs */
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_belongs_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_agent_multi_group */
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_deleting_agent, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_update_belongs_single, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_update_belongs_multi, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_deleting_agent, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_update_belongs_single, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_error_update_belongs_multi, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_agent_multi_group_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_remove_group_from_belongs_db */
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_from_belongs_db_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_remove_group_db */
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_removing_belongs, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_removing_belongs, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_remove_group_db_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_update_groups */
-        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_json, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_max_path, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_removing_group_db, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_adding_new_groups, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_update_groups_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_json, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_max_path, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_removing_group_db, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_error_adding_new_groups, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_update_groups_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_agent_belongs_first_time */
-        cmocka_unit_test_setup_teardown(test_wdb_agent_belongs_first_time_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_agent_belongs_first_time_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests get_agent_date_added */
-        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_open_file, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_data, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_date, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_invalid_date, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_get_agent_date_added_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_open_file, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_data, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_no_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_error_invalid_date, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_get_agent_date_added_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_reset_agents_connection */
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_socket, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_sql_execution, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_result, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_socket, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_sql_execution, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_error_result, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_reset_agents_connection_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_get_agents_by_connection_status */
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_query_error, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_parse_error, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_get_agents_by_connection_status_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_disconnect_agents */
-        cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_query_error, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_parse_error, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_success, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_query_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_wdbc_parse_error, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_disconnect_agents_success, setup_wdb_global_helpers, teardown_wdb_global_helpers),
         /* Tests wdb_parse_chunk_to_int */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_ok, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_due, setup_wdb_agent, teardown_wdb_agent),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_err, setup_wdb_agent, teardown_wdb_agent),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_ok, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_due, setup_wdb_global_helpers, teardown_wdb_global_helpers),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_chunk_to_int_err, setup_wdb_global_helpers, teardown_wdb_global_helpers),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

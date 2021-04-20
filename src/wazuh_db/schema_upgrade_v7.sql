@@ -31,6 +31,17 @@ INSERT INTO _sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remo
 DROP TABLE IF EXISTS sys_ports;
 ALTER TABLE _sys_ports RENAME TO sys_ports;
 
+CREATE TABLE IF NOT EXISTS vuln_cves (
+    name TEXT,
+    version TEXT,
+    architecture TEXT,
+    cve TEXT,
+    PRIMARY KEY (name, version, architecture, cve)
+);
+
+CREATE INDEX IF NOT EXISTS packages_id ON vuln_cves (name);
+CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
+
 ALTER TABLE sys_netiface ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(checksum <> '');
 ALTER TABLE sys_netproto ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(checksum <> '');
 ALTER TABLE sys_netaddr ADD COLUMN checksum TEXT DEFAULT '' NOT NULL CHECK(checksum <> '');

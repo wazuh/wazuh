@@ -16,7 +16,7 @@
 #include "monitord.h"
 #include "config/config.h"
 #include "string_op.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "time.h"
 
 /* Global variables */
@@ -41,9 +41,9 @@ void Monitord()
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
     /* /var/ossec/logs/ossec.log */
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    snprintf(path, PATH_MAX, "%s", LOGFILE);
     /* /var/ossec/logs/ossec.json */
-    snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
+    snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #endif
 
     /* Connect to the message queue or exit */

@@ -229,7 +229,7 @@ void *send_ip(){
     ssize_t length;
     fd_set fdset;
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
         mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
         return NULL;
     }

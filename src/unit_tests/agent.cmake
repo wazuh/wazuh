@@ -22,8 +22,8 @@ endif()
 
 if(NOT ${uname} STREQUAL "Darwin")
   add_subdirectory(client-agent)
+  add_subdirectory(logcollector)
+  add_subdirectory(os_execd)
 endif()
 
 add_subdirectory(wazuh_modules)
-add_subdirectory(logcollector)
-add_subdirectory(os_execd)

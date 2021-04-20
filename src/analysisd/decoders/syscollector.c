@@ -118,7 +118,7 @@ static const char* PORTS_FIELDS[] = {
     "inode",
     "state",
     "pid",
-    "process_name",
+    "process",
     "checksum",
     "item_id",
     NULL

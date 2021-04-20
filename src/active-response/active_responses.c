@@ -13,11 +13,7 @@ void write_debug_file (const char *ar_name, const char *msg) {
     char path[PATH_MAX];
     char *timestamp = w_get_timestamp(time(NULL));
 
-#ifndef WIN32
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOG_FILE);
-#else
     snprintf(path, PATH_MAX, "%s", LOG_FILE);
-#endif
 
     FILE *ar_log_file = fopen(path, "a");
 

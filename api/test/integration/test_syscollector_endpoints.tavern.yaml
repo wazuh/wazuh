@@ -7,10 +7,10 @@ marks:
 stages:
 
   - name: Get the OS of an agent
-    request: &os_request_000
+    request: &os_request_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/os"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/os"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -47,7 +47,7 @@ stages:
   - name: Invalid selector
     request:
       verify: False
-      <<: *os_request_000
+      <<: *os_request_001
       params:
         select: wrongParam
     response: &error_response_1724
@@ -81,7 +81,7 @@ stages:
   - name: OS of an agent, select
     request:
       verify: False
-      <<: *os_request_000
+      <<: *os_request_001
       params:
         select: "{field}"
     response:
@@ -98,9 +98,9 @@ test_name: GET /syscollector/{agent_id}/hardware
 stages:
 
   - name: Hardware of an agent
-    request: &hardware_request_000
+    request: &hardware_request_002
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hardware"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -135,7 +135,7 @@ stages:
   - name: Not allowed selector
     request:
       verify: False
-      <<: *hardware_request_000
+      <<: *hardware_request_002
       params:
         select: wrongParam
     response:
@@ -163,7 +163,7 @@ stages:
   - name: Hardware of an agent, select
     request:
       verify: False
-      <<: *hardware_request_000
+      <<: *hardware_request_002
       params:
         select: "{field}"
     response:
@@ -180,9 +180,9 @@ test_name: GET /syscollector/{agent_id}/packages
 stages:
 
   - name: Packages of and agent
-    request: &packages_request_000
+    request: &packages_request_003
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/003/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -219,7 +219,7 @@ stages:
   - name: Multiple selectors with limit
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         select: scan.id,description,architecture
         limit: 1
@@ -240,7 +240,7 @@ stages:
   - name: Not allowed selector
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         select: wrongParam
     response:
@@ -249,7 +249,7 @@ stages:
   - name: Filter by query
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         q: scan.id={expected_scan_id};architecture={expected_architecture};description={expected_description}
     response:
@@ -270,7 +270,7 @@ stages:
   - name: Limit and offset
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         offset: 0
         limit: 2
@@ -299,7 +299,7 @@ stages:
   - name: Limit and offset test
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         offset: 1
         limit: 2
@@ -330,7 +330,7 @@ stages:
   - name: Wrong limit
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         offset: 0
         limit: 1a
@@ -340,7 +340,7 @@ stages:
   - name: Invalid limit
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         offset: 0
         limit: 0
@@ -350,7 +350,7 @@ stages:
   - name: Filter sort
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         sort: -name
         limit: 2
@@ -366,7 +366,7 @@ stages:
   - name: Filter sort 2
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         sort: +name
         limit: 2
@@ -382,7 +382,7 @@ stages:
   - name: Wrong sort
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         sort: wrongParam
     response: &error_response_1403
@@ -393,7 +393,7 @@ stages:
   - name: Search an expected name
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         search: "{expected_name}"
     response:
@@ -407,7 +407,7 @@ stages:
   - name: Search an expected vendor
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         search: ubuntu
         limit: 1
@@ -422,7 +422,7 @@ stages:
   - name: Filter by vendor
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         vendor: "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>"
         limit: 1
@@ -437,7 +437,7 @@ stages:
   - name: Search an expected name
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         name: "binutils"
         limit: 1
@@ -455,7 +455,7 @@ stages:
   - name: Filter by name
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         name: "{expected_name}"
         limit: 1
@@ -473,7 +473,7 @@ stages:
   - name: Filter by architecture
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         architecture: "{expected_architecture}"
         limit: 1
@@ -492,7 +492,7 @@ stages:
   - name: Filter by format
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         format: "{expected_format}"
         limit: 1
@@ -507,7 +507,7 @@ stages:
   - name: Filter by version
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         version: "{expected_version}"
         limit: 1
@@ -522,7 +522,7 @@ stages:
   - name: Filter by format
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         format: "{expected_format}"
         limit: 1
@@ -558,7 +558,7 @@ stages:
   - name: Packages of an agent, select
     request:
       verify: False
-      <<: *packages_request_000
+      <<: *packages_request_003
       params:
         select: "{field:s}"
     response:
@@ -575,9 +575,9 @@ test_name: GET /syscollector/{agent_id}/processes
 stages:
 
   - name: Processes of an agent with limit = 1
-    request: &processes_request_000
+    request: &processes_request_004
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/processes"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/004/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -588,7 +588,7 @@ stages:
       json:
         error: !anyint
         data:
-          affected_items: &processes_response_000
+          affected_items: &processes_response_004
             - cmd: !anystr
               egroup: !anystr
               euser: !anystr
@@ -646,7 +646,7 @@ stages:
   - name: Filter by pid
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         pid: "{expected_pid}"
         limit: 1
@@ -661,7 +661,7 @@ stages:
   - name: Filter by ppid
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         ppid: "{expected_ppid}"
         limit: 1
@@ -676,7 +676,7 @@ stages:
   - name: Filter by state
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         state: "{expected_state}"
         limit: 1
@@ -691,7 +691,7 @@ stages:
   - name: Filter by egroup
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         egroup: "{expected_egroup}"
         limit: 1
@@ -706,7 +706,7 @@ stages:
   - name: Filter by fgroup
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         fgroup: "{expected_fgroup}"
         limit: 1
@@ -721,7 +721,7 @@ stages:
   - name: Filter by sgroup
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         sgroup: "{expected_sgroup}"
         limit: 1
@@ -736,7 +736,7 @@ stages:
   - name: Filter by rgroup
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         rgroup: "{expected_rgroup}"
         limit: 1
@@ -751,7 +751,7 @@ stages:
   - name: Filter by euser
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         euser: "{expected_euser}"
         limit: 1
@@ -766,7 +766,7 @@ stages:
   - name: Filter by ruser
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         ruser: "{expected_ruser}"
         limit: 1
@@ -781,7 +781,7 @@ stages:
   - name: Filter by suser
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         suser: "{expected_suser}"
         limit: 1
@@ -796,7 +796,7 @@ stages:
   - name: Filter by nlwp
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         nlwp: "{expected_nlwp}"
         limit: 1
@@ -811,7 +811,7 @@ stages:
   - name: Filter by pgrp
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         pgrp: "{expected_pgrp}"
         limit: 1
@@ -826,7 +826,7 @@ stages:
   - name: Filter by priority
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         priority: "{expected_priority}"
         limit: 1
@@ -841,7 +841,7 @@ stages:
   - name: Filter by name
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         name: "{expected_name}"
         limit: 1
@@ -856,7 +856,7 @@ stages:
   - name: Select by
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         select: tty,sgroup,share,session,scan.id
         limit: 1
@@ -876,7 +876,7 @@ stages:
   - name: Filter by query
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         q: state={expected_state};pid={expected_pid};pgrp={expected_pgrp}
     response:
@@ -890,7 +890,7 @@ stages:
   - name: Wrong param
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         select: wrongParam
     response:
@@ -899,7 +899,7 @@ stages:
   - name: offset and limit
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         offset: 0
         limit: 2
@@ -909,8 +909,8 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *processes_response_000
-            - <<: *processes_response_000
+            - <<: *processes_response_004
+            - <<: *processes_response_004
       save:
         json:
           offset_test_cmd: data.affected_items[1].cmd
@@ -946,7 +946,7 @@ stages:
   - name: offset and limit check
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         offset: 1
         limit: 1
@@ -991,7 +991,7 @@ stages:
   - name: Wrong limit
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         limit: 0
     response:
@@ -1039,7 +1039,7 @@ stages:
   - name: Processes of an agent, sort
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         sort: "{field}"
     response:
@@ -1052,7 +1052,7 @@ stages:
   - name: Processes of an agent, select
     request:
       verify: False
-      <<: *processes_request_000
+      <<: *processes_request_004
       params:
         select: "{field}"
         limit: 1
@@ -1070,10 +1070,10 @@ test_name: GET /syscollector/{agent_id}/ports
 stages:
 
   - name: Ports of an agent
-    request: &port_request_000
+    request: &port_request_005
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/ports"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/005/ports"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -1086,7 +1086,7 @@ stages:
   - name: Ports of an agent, limit
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         limit: 1
     response:
@@ -1121,7 +1121,7 @@ stages:
   - name: Filter protocol
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         protocol: "{expected_protocol}"
         limit: 1
@@ -1136,7 +1136,7 @@ stages:
   - name: Filter local.ip
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         local.ip: "{expected_local_ip}"
         limit: 1
@@ -1151,7 +1151,7 @@ stages:
   - name: Filter local.port
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         local.port: "{expected_local_port}"
         limit: 1
@@ -1166,7 +1166,7 @@ stages:
   - name: Filter remote.ip
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         remote.ip: "{expected_remote_ip}"
         limit: 1
@@ -1181,7 +1181,7 @@ stages:
   - name: Filter tx_queue
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         tx_queue: "{expected_tx_queue}"
         limit: 1
@@ -1196,7 +1196,7 @@ stages:
   - name: Filter status
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         state: "{expected_state}"
         limit: 1
@@ -1212,7 +1212,7 @@ stages:
     skip: True # This test cannot be performed as usual because the column adapter exists in the database but the field is always empty
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         pid: "???"
     response:
@@ -1221,7 +1221,7 @@ stages:
   - name: Filter by query
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         q: local.ip={expected_local_ip};state={expected_state};tx_queue={expected_tx_queue};remote.ip={expected_remote_ip}
         limit: 1
@@ -1236,7 +1236,7 @@ stages:
   - name: Not allowed selector
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         select: wrong
     response:
@@ -1245,7 +1245,7 @@ stages:
   - name: Wrong limit
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         limit: 0
     response:
@@ -1254,7 +1254,7 @@ stages:
   - name: Wrong filter
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         wrongFilter: true
     response:
@@ -1263,7 +1263,7 @@ stages:
   - name: Invalid select
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         select: wrong
     response:
@@ -1293,7 +1293,7 @@ stages:
   - name: Port of an agent, select
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         select: "{field}"
         limit: 1
@@ -1312,7 +1312,7 @@ stages:
   - name: Port of an agent, sort
     request:
       verify: False
-      <<: *port_request_000
+      <<: *port_request_005
       params:
         sort: "{field}"
         limit: 1
@@ -1329,10 +1329,10 @@ test_name: GET /syscollector/{agent_id}/netaddr
 stages:
 
   - name: Netaddress of an agent
-    request: &netaddr_request_000
+    request: &netaddr_request_002
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/002/netaddr"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1362,7 +1362,7 @@ stages:
   - name: Filter by iface
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         iface: "{expected_iface}"
     response:
@@ -1376,7 +1376,7 @@ stages:
   - name: Filter by iface (incorrect)
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         iface: "invalid"
     response:
@@ -1389,7 +1389,7 @@ stages:
   - name: Filter by netmask
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         netmask: "{expected_netmask}"
     response:
@@ -1403,7 +1403,7 @@ stages:
   - name: Filter by netmask (incorrect)
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         netmask: "invalid"
     response:
@@ -1416,7 +1416,7 @@ stages:
   - name: Filter by address
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         address: "{expected_address}"
     response:
@@ -1430,7 +1430,7 @@ stages:
   - name: Filter by address (incorrect)
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         address: "invalid"
     response:
@@ -1443,7 +1443,7 @@ stages:
   - name: Filter by proto
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         proto: "{expected_proto}"
     response:
@@ -1457,7 +1457,7 @@ stages:
   - name: Filter by proto (incorrect)
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         proto: "invalid"
     response:
@@ -1470,7 +1470,7 @@ stages:
   - name: Filter by broadcast
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         broadcast: "{expected_broadcast}"
     response:
@@ -1484,7 +1484,7 @@ stages:
   - name: Filter by broadcast (incorrect)
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         broadcast: "invalid"
     response:
@@ -1497,7 +1497,7 @@ stages:
   - name: Search broadcast
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         search: "{expected_broadcast}"
         limit: 1
@@ -1512,7 +1512,7 @@ stages:
   - name: Search protocol
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         search: "{expected_proto}"
         limit: 1
@@ -1527,7 +1527,7 @@ stages:
   - name: Search address
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         search: "{expected_address}"
         limit: 1
@@ -1542,7 +1542,7 @@ stages:
   - name: Search netmask
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         search: "{expected_netmask}"
         limit: 1
@@ -1557,7 +1557,7 @@ stages:
   - name: Search iface
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         search: "{expected_iface}"
         limit: 1
@@ -1572,7 +1572,7 @@ stages:
   - name: Select proto, netmask, broadcast
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         select: proto,broadcast,netmask
     response:
@@ -1588,7 +1588,7 @@ stages:
   - name: Not allowed selector
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         select: wrongSelector
     response:
@@ -1597,7 +1597,7 @@ stages:
   - name: Pagination
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         limit: 1
         offset: 1
@@ -1612,7 +1612,7 @@ stages:
   - name: Wrong limit
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         limit: 0
     response:
@@ -1621,7 +1621,7 @@ stages:
   - name: Wrong param
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         wrong: 0
     response:
@@ -1630,7 +1630,7 @@ stages:
   - name: Sort
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         sort: +proto
         limit: 1
@@ -1645,7 +1645,7 @@ stages:
   - name: Invalid sort
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         sort: -wrong
     response:
@@ -1654,7 +1654,7 @@ stages:
   - name: Filter by query with broadcast and iface
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         q: broadcast={expected_broadcast};iface={expected_iface}
     response:
@@ -1685,7 +1685,7 @@ stages:
 
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         select: "{field}"
         limit: 1
@@ -1704,7 +1704,7 @@ stages:
   - name: Netaddress of an agent, sort
     request:
       verify: False
-      <<: *netaddr_request_000
+      <<: *netaddr_request_002
       params:
         sort: "{field}"
         limit: 1
@@ -1721,10 +1721,10 @@ test_name: GET /syscollector/{agent_id}/netproto
 stages:
 
   - name: Netprotocol of an agent
-    request: &netproto_request_000
+    request: &netproto_request_003
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/003/netproto"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -1734,7 +1734,7 @@ stages:
       json:
         error: !anyint
         data:
-          affected_items: &netproto_response_000
+          affected_items: &netproto_response_003
             - dhcp: !anystr
               gateway: !anystr
               iface: !anystr
@@ -1753,7 +1753,7 @@ stages:
   - name: Filter by iface
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         iface: "{expected_iface}"
     response:
@@ -1762,12 +1762,12 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netproto_response_000
+            - <<: *netproto_response_003
 
   - name: Filter by iface (incorrect)
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         iface: "invalid"
     response:
@@ -1780,7 +1780,7 @@ stages:
   - name: Filter by type
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         type: "{expected_type}"
     response:
@@ -1789,12 +1789,12 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netproto_response_000
+            - <<: *netproto_response_003
 
   - name: Filter by type (incorrect)
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         type: "invalid"
     response:
@@ -1807,7 +1807,7 @@ stages:
   - name: Filter by gateway
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         gateway: "{expected_gateway}"
     response:
@@ -1816,12 +1816,12 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netproto_response_000
+            - <<: *netproto_response_003
 
   - name: Filter by gateway (incorrect)
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         gateway: "invalid"
     response:
@@ -1834,7 +1834,7 @@ stages:
   - name: Filter by dhcp
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         dhcp: "{expected_dhcp}"
     response:
@@ -1843,12 +1843,12 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netproto_response_000
+            - <<: *netproto_response_003
 
   - name: Filter by dhcp (incorrect)
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         dhcp: "invalid"
     response:
@@ -1857,7 +1857,7 @@ stages:
   - name: Select proto, netmask, broadcast
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         select: iface,gateway,dhcp
     response:
@@ -1873,7 +1873,7 @@ stages:
   - name: Search dhcp
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         search: "{expected_dhcp}"
         limit: 1
@@ -1888,7 +1888,7 @@ stages:
   - name: Search gateway
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         search: "{expected_gateway}"
         limit: 1
@@ -1903,7 +1903,7 @@ stages:
   - name: Search type
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         search: "{expected_type}"
         limit: 1
@@ -1918,7 +1918,7 @@ stages:
   - name: Search scan.id
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         search: "{expected_scan_id}"
         limit: 1
@@ -1934,7 +1934,7 @@ stages:
   - name: Search iface
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         search: "{expected_iface}"
         limit: 1
@@ -1949,7 +1949,7 @@ stages:
   - name: Not allowed selector
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         select: wrongSelector
     response:
@@ -1958,7 +1958,7 @@ stages:
   - name: Wrong limit
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         limit: 0
     response:
@@ -1967,7 +1967,7 @@ stages:
   - name: Wrong param
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         wrong: 0
     response:
@@ -1976,7 +1976,7 @@ stages:
   - name: Sort
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         sort: +dhcp
         limit: 1
@@ -1986,12 +1986,12 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netproto_response_000
+            - <<: *netproto_response_003
 
   - name: Invalid sort
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         sort: -wrong
     response:
@@ -2015,7 +2015,7 @@ stages:
   - name: Netprotocol of an agent, select
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         select: "{field}"
         limit: 1
@@ -2035,7 +2035,7 @@ stages:
 
     request:
       verify: False
-      <<: *netproto_request_000
+      <<: *netproto_request_003
       params:
         sort: "{field}"
         limit: 1
@@ -2052,10 +2052,10 @@ test_name: GET /syscollector/{agent_id}/netiface
 stages:
 
   - name: Netiface of an agent
-    request: &netiface_request_000
+    request: &netiface_request_008
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/008/netiface"
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
@@ -2065,7 +2065,7 @@ stages:
       json:
         error: !anyint
         data:
-          affected_items: &netiface_response_000
+          affected_items: &netiface_response_008
             - mac: !anystr
               mtu: !anyint
               name: !anystr
@@ -2104,7 +2104,7 @@ stages:
   - name: Select type, rx.bytes, tx.errors, tx.dropped, mac
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         select: type,rx.bytes,tx.errors,tx.dropped,mac
     response:
@@ -2124,7 +2124,7 @@ stages:
   - name: Search mac
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         search: "{expected_mac}"
         limit: 1
@@ -2139,7 +2139,7 @@ stages:
   - name: Search rx.bytes
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         search: "{expected_rx_bytes}"
         limit: 1
@@ -2155,7 +2155,7 @@ stages:
   - name: Search tx.errors
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         search: !int "{expected_tx_errors}"
         limit: 1
@@ -2172,7 +2172,7 @@ stages:
   - name: Search tx.dropped
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         search: "{expected_tx_dropped}"
         limit: 1
@@ -2188,7 +2188,7 @@ stages:
   - name: Not allowed selector
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         select: wrongSelector
     response:
@@ -2197,7 +2197,7 @@ stages:
   - name: Wrong limit
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         limit: 0
     response:
@@ -2206,7 +2206,7 @@ stages:
   - name: Wrong param
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         wrong: 0
     response:
@@ -2215,7 +2215,7 @@ stages:
   - name: Sort
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         sort: +type
         limit: 1
@@ -2225,12 +2225,12 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
 
   - name: Invalid sort
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         sort: -wrong
     response:
@@ -2239,7 +2239,7 @@ stages:
   - name: Offset and limit
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         limit: 1
         offset: 0
@@ -2249,13 +2249,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Offset = 1 and limit = 1
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         limit: 1
         offset: 1
@@ -2270,7 +2270,7 @@ stages:
   - name: Filter mtu
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         mtu: "{expected_mtu}"
     response:
@@ -2279,14 +2279,14 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter adapter
     skip: True # This test cannot be performed as usual because the column adapter exists in the database but the field is always empty
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         adapter: "???"
     response:
@@ -2295,7 +2295,7 @@ stages:
   - name: Filter name
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         name: "{expected_name}"
     response:
@@ -2304,13 +2304,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter type
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         type: "{expected_type}"
     response:
@@ -2319,13 +2319,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter state
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         state: "{expected_state}"
     response:
@@ -2334,13 +2334,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter tx.packets
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.packets: "{expected_tx_packets}"
     response:
@@ -2349,13 +2349,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter rx.packets
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.packets: "{expected_rx_packets}"
     response:
@@ -2364,13 +2364,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter tx.dropped
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.dropped: "{expected_tx_dropped}"
     response:
@@ -2379,13 +2379,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter rx.dropped
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.dropped: "{expected_rx_dropped}"
     response:
@@ -2394,13 +2394,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter tx.bytes
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.bytes: "{expected_tx_bytes}"
     response:
@@ -2409,13 +2409,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter rx.bytes
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.bytes: "{expected_rx_bytes}"
     response:
@@ -2424,13 +2424,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter tx.errors
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.errors: "{expected_tx_errors}"
     response:
@@ -2439,13 +2439,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter rx.errors
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.errors: "{expected_rx_errors}"
     response:
@@ -2454,13 +2454,13 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - <<: *netiface_response_000
+            - <<: *netiface_response_008
           total_affected_items: !anyint
 
   - name: Filter by query
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         q: mac={expected_mac};state={expected_state}
     response:
@@ -2475,7 +2475,7 @@ stages:
   - name: Filter invalid tx.packets
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.packets: -1
     response:
@@ -2484,7 +2484,7 @@ stages:
   - name: Filter invalid tx.packets
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.packets: 999999
     response:
@@ -2498,7 +2498,7 @@ stages:
   - name: Filter invalid rx.packets
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.packets: -1
     response:
@@ -2507,7 +2507,7 @@ stages:
   - name: Filter invalid rx.packets
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.packets: 999999
     response:
@@ -2521,7 +2521,7 @@ stages:
   - name: Filter invalid tx.dropped
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.dropped: -1
     response:
@@ -2530,7 +2530,7 @@ stages:
   - name: Filter invalid tx.dropped
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.dropped: 999999
     response:
@@ -2544,7 +2544,7 @@ stages:
   - name: Filter invalid rx.dropped
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.dropped: -1
     response:
@@ -2553,7 +2553,7 @@ stages:
   - name: Filter invalid rx.dropped
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.dropped: 999999
     response:
@@ -2567,7 +2567,7 @@ stages:
   - name: Filter invalid tx.bytes
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.bytes: -1
     response:
@@ -2576,7 +2576,7 @@ stages:
   - name: Filter invalid tx.bytes
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.bytes: 999999
     response:
@@ -2590,7 +2590,7 @@ stages:
   - name: Filter invalid rx.bytes
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.bytes: -1
     response:
@@ -2599,7 +2599,7 @@ stages:
   - name: Filter invalid rx.bytes
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.bytes: 999999
     response:
@@ -2613,7 +2613,7 @@ stages:
   - name: Filter invalid tx.errors
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.errors: -1
     response:
@@ -2622,7 +2622,7 @@ stages:
   - name: Filter invalid tx.errors
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         tx.errors: 999999
     response:
@@ -2636,7 +2636,7 @@ stages:
   - name: Filter invalid rx.errors
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.errors: -1
     response:
@@ -2645,7 +2645,7 @@ stages:
   - name: Filter invalid rx.errors
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         rx.errors: 999999
     response:
@@ -2684,7 +2684,7 @@ stages:
   - name: Netiface of an agent, select
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         select: "{field}"
         limit: 1
@@ -2703,7 +2703,7 @@ stages:
   - name: Netiface of an agent, sort
     request:
       verify: False
-      <<: *netiface_request_000
+      <<: *netiface_request_008
       params:
         sort: "{field}"
         limit: 1
@@ -4252,10 +4252,10 @@ test_name: GET /syscollector/{agent_id}/hotfixes
 stages:
 
   - name: Get all hotfixes from agent
-    request: &hotfix_request_000
+    request: &hotfix_request_001
       verify: False
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
@@ -4273,7 +4273,7 @@ stages:
   - name: Filter hotfix with non-existent query
     request:
       verify: False
-      <<: *hotfix_request_000
+      <<: *hotfix_request_001
       params:
         q: 'hotfix=0'
     response:

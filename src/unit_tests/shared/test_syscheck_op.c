@@ -289,7 +289,7 @@ static void test_normalize_path_success(void **state) {
 }
 
 static void test_normalize_path_linux_dir(void **state) {
-    char *test_string = strdup("/var/ossec/unchanged/path");
+    char *test_string = strdup("unchanged/path");
 
     if(test_string != NULL) {
         *state = test_string;
@@ -299,7 +299,7 @@ static void test_normalize_path_linux_dir(void **state) {
 
     normalize_path(test_string);
 
-    assert_string_equal(test_string, "/var/ossec/unchanged/path");
+    assert_string_equal(test_string, "unchanged/path");
 }
 
 static void test_normalize_path_null_input(void **state) {
@@ -311,9 +311,9 @@ static void test_normalize_path_null_input(void **state) {
 /* remove_empty_folders tests */
 static void test_remove_empty_folders_success(void **state) {
 #ifndef TEST_WINAGENT
-    char *input = "/var/ossec/queue/diff/local/test-dir/";
-    char *first_subdir = "/var/ossec/queue/diff/local/test-dir";
-    char *second_subdir = "/var/ossec/queue/diff/local";
+    char *input = "queue/diff/local/test-dir/";
+    char *first_subdir = "queue/diff/local/test-dir";
+    char *second_subdir = "queue/diff/local";
 #else
     char *input = "queue/diff\\local\\test-dir\\";
     char *first_subdir = "queue/diff\\local\\test-dir";
@@ -345,11 +345,11 @@ static void test_remove_empty_folders_success(void **state) {
 
 static void test_remove_empty_folders_recursive_success(void **state) {
 #ifndef TEST_WINAGENT
-    char *input = "/var/ossec/queue/diff/local/dir1/dir2/";
+    char *input = "queue/diff/local/dir1/dir2/";
     static const char *parent_dirs[] = {
-        "/var/ossec/queue/diff/local/dir1/dir2",
-        "/var/ossec/queue/diff/local/dir1",
-        "/var/ossec/queue/diff/local"
+        "queue/diff/local/dir1/dir2",
+        "queue/diff/local/dir1",
+        "queue/diff/local"
     };
 #else
     char *input = "queue/diff\\local\\dir1\\dir2\\";
@@ -473,8 +473,8 @@ static void test_remove_empty_folders_absolute_path(void **state) {
 
 static void test_remove_empty_folders_non_empty_dir(void **state) {
 #ifndef TEST_WINAGENT
-    char *input = "/var/ossec/queue/diff/local/test-dir/";
-    static const char *parent_dir = "/var/ossec/queue/diff/local/test-dir";
+    char *input = "queue/diff/local/test-dir/";
+    static const char *parent_dir = "queue/diff/local/test-dir";
 #else
     char *input = "queue/diff\\local\\c\\test-dir\\";
     static const char *parent_dir = "queue/diff\\local\\c\\test-dir";
@@ -497,8 +497,8 @@ static void test_remove_empty_folders_non_empty_dir(void **state) {
 
 static void test_remove_empty_folders_error_removing_dir(void **state) {
 #ifndef TEST_WINAGENT
-    char *input = "/var/ossec/queue/diff/local/test-dir/";
-    static const char *parent_dir = "/var/ossec/queue/diff/local/test-dir";
+    char *input = "queue/diff/local/test-dir/";
+    static const char *parent_dir = "queue/diff/local/test-dir";
 #else
     char *input = "queue/diff\\local\\test-dir\\";
     static const char *parent_dir = "queue/diff\\local\\test-dir";
@@ -2094,7 +2094,7 @@ static void test_get_group(void **state) {
 static void test_ag_send_syscheck_success(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
@@ -2112,7 +2112,7 @@ static void test_ag_send_syscheck_success(void **state) {
 static void test_ag_send_syscheck_unable_to_connect(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 
@@ -2129,7 +2129,7 @@ static void test_ag_send_syscheck_unable_to_connect(void **state) {
 static void test_ag_send_syscheck_error_sending_message(void **state) {
     char *input = "This is a mock message, it wont be sent anywhere";
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, DEFAULTDIR SYS_LOCAL_SOCK);
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SYS_LOCAL_SOCK);
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
 

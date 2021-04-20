@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+from typing import Union
 
 from aiohttp import web
 from connexion.lifecycle import ConnexionResponse
@@ -18,31 +19,74 @@ from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import database_limit
+from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
 
 async def delete_agents(request, pretty=False, wait_for_complete=False, agents_list=None, purge=False, status=None,
-                        older_than="7d"):
-    """Delete all agents or a list of them with optional criteria based on the status or time of the last connection.
+                        q=None, older_than=None, manager=None, version=None, group=None, node_name=None, name=None,
+                        ip=None):
+    """Delete all agents or a list of them based on optional criteria.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param agents_list: List of agent's IDs.
-    :param purge: Delete an agent from the key store
-    :param status: Filters by agent status. Use commas to enter multiple statuses.
-    :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-    ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, uses the register date.
-    :return: AllItemsResponseAgentIDs
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    agents_list : list
+        List of agent's IDs.
+    purge : bool
+        Delete an agent from the key store.
+    status : str
+        Filter by agent status. Use commas to enter multiple statuses.
+    q : str
+        Query to filter agents by.
+    older_than : str
+        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’.
+    manager : str
+        Filter by manager hostname to which agents are connected.
+    version : str
+        Filter by agents version.
+    group : str
+        Filter by group of agents.
+    node_name : str
+        Filter by node name.
+    name : str
+        Filter by agent name.
+    ip : str
+        Filter by agent IP.
+
+    Returns
+    -------
+    ApiResponse
+        Agents which have been deleted.
     """
     if 'all' in agents_list:
         agents_list = None
     f_kwargs = {'agent_list': agents_list,
                 'purge': purge,
-                'status': status,
-                'older_than': older_than,
-                'use_only_authd': configuration.api_conf['use_only_authd']
+                'use_only_authd': configuration.api_conf['use_only_authd'],
+                'filters': {
+                    'status': status,
+                    'older_than': older_than,
+                    'manager': manager,
+                    'version': version,
+                    'group': group,
+                    'node_name': node_name,
+                    'name': name,
+                    'ip': ip,
+                    'registerIP': request.query.get('registerIP', None)
+                },
+                'q': q
                 }
+
+    # Add nested fields to kwargs filters
+    nested = ['os.version', 'os.name', 'os.platform']
+    for field in nested:
+        f_kwargs['filters'][field] = request.query.get(field, None)
+
     dapi = DistributedAPI(f=agent.delete_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
@@ -141,6 +185,39 @@ async def add_agent(request, pretty=False, wait_for_complete=False):
                           rbac_permissions=request['token_info']['rbac_policies']
                           )
 
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+
+async def reconnect_agents(request, pretty: bool = False, wait_for_complete: bool = False,
+                           agents_list: Union[list, str] = '*') -> web.Response:
+    """Force reconnect all agents or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format. Default `False`
+    wait_for_complete : bool
+        Disable timeout response. Default `False`
+    agents_list : Union[list, str]
+        List of agent IDs. All possible values from 000 onwards. Default `*`
+
+    Returns
+    -------
+    Response
+    """
+    f_kwargs = {'agent_list': agents_list}
+
+    dapi = DistributedAPI(f=agent.reconnect_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          rbac_permissions=request['token_info']['rbac_policies'],
+                          broadcasting=agents_list == '*',
+                          logger=logger
+                          )
     data = raise_if_exc(await dapi.distribute_function())
 
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
@@ -916,7 +993,25 @@ async def restart_agents_by_group(request, group_id, pretty=False, wait_for_comp
     :param group_id: Group ID.
     :return: AllItemsResponseAgents
     """
-    f_kwargs = {'group_id': group_id}
+    f_kwargs = {'group_list': [group_id], 'select': ['id']}
+
+    dapi = DistributedAPI(f=agent.get_agents_in_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request['token_info']['rbac_policies']
+                          )
+
+    agents = raise_if_exc(await dapi.distribute_function())
+    agent_list = [a['id'] for a in agents.affected_items]
+
+    if not agent_list:
+        data = AffectedItemsWazuhResult(none_msg='Restart command was not sent to any agent')
+        return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+    f_kwargs = {'agent_list': agent_list}
 
     dapi = DistributedAPI(f=agent.restart_agents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

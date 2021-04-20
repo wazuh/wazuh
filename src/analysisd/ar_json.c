@@ -8,28 +8,13 @@
 */
 
 #include "config.h"
+#include "shared.h"
 #include "format/to_json.h"
 
 #define VERSION 1
 #ifndef ARGV0
 #define ARGV0 "wazuh-analysisd"
 #endif
-
-/**
- * @return Node name, remember to free memory after return.
- */
-static char *get_node_name()
-{
-    char* node_name = NULL;
-    OS_XML xml;
-
-    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
-    if (OS_ReadXML(DEFAULTCPATH, &xml) >= 0) {
-        node_name = OS_GetOneContentforElement(&xml, xml_node);
-    }
-    OS_ClearXML(&xml);
-    return node_name;
-}
 
 /**
  * @brief Build the JSON message

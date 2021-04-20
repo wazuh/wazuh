@@ -18,6 +18,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/linux/inotify_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/mq_op_wrappers.h"
 #include "../wrappers/wazuh/shared/randombytes_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
@@ -94,10 +95,6 @@ static int setup_group(void ** state) {
 #endif
 
     will_return_always(__wrap_os_random, 12345);
-
-#ifdef TEST_AGENT
-    will_return_always(__wrap_isChroot, 1);
-#endif
 
     if(Read_Syscheck_Config("test_syscheck.conf"))
         fail();
@@ -289,7 +286,7 @@ void test_fim_send_msg_retry(void **state) {
 
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_StartMQ_call(DEFAULTQPATH, WRITE, 0);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, 0);
 
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
 
@@ -302,9 +299,9 @@ void test_fim_send_msg_retry_error(void **state) {
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
     expect_string(__wrap__merror, formatted_msg, QUEUE_SEND);
 
-    expect_StartMQ_call(DEFAULTQPATH, WRITE, -1);
+    expect_StartMQ_call(DEFAULTQUEUE, WRITE, -1);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: '/var/ossec/queue/sockets/queue'. Giving up.");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1211): Unable to access queue: 'queue/sockets/queue'. Giving up.");
 
     // This code shouldn't run
     expect_w_send_sync_msg("test", SYSCHECK, SYSCHECK_MQ, -1);
@@ -538,15 +535,19 @@ void test_fim_send_sync_msg_0_eps(void ** state) {
 }
 
 void test_send_syscheck_msg_10_eps(void ** state) {
-    (void) state;
     syscheck.max_eps = 10;
+    cJSON *event = cJSON_CreateObject();
+
+    if (event == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
 
     // We must not sleep the first 9 times
 
     for (int i = 1; i < syscheck.max_eps; i++) {
-        expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-        expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
-        send_syscheck_msg("");
+        expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
+        expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
+        send_syscheck_msg(event);
     }
 
 #ifndef TEST_WINAGENT
@@ -556,20 +557,26 @@ void test_send_syscheck_msg_10_eps(void ** state) {
 #endif
 
     // After 10 times, sleep one second
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-    expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
+    expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
 
-    send_syscheck_msg("");
+    send_syscheck_msg(event);
+
+    cJSON_Delete(event);
 }
 
 void test_send_syscheck_msg_0_eps(void ** state) {
-    (void) state;
     syscheck.max_eps = 0;
+    cJSON *event = cJSON_CreateObject();
+
+    if (event == NULL) {
+        fail_msg("Failed to create cJSON object");
+    }
 
     // We must not sleep
-    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: ");
-    expect_w_send_sync_msg("", SYSCHECK, SYSCHECK_MQ, 0);
-    send_syscheck_msg("");
+    expect_string(__wrap__mdebug2, formatted_msg, "(6321): Sending FIM event: {}");
+    expect_w_send_sync_msg("{}", SYSCHECK, SYSCHECK_MQ, 0);
+    send_syscheck_msg(event);
 }
 
 void test_fim_send_scan_info(void **state) {
@@ -637,7 +644,7 @@ void test_fim_link_check_delete(void **state) {
 
     expect_string(__wrap_remove_audit_rule_syscheck, path, syscheck.symbolic_links[pos]);
 
-    expect_fim_configuration_directory_call(pointed_folder, "file", -1);
+    expect_fim_configuration_directory_call(pointed_folder, -1);
     fim_link_check_delete(pos);
 
     assert_string_equal(syscheck.dir[pos], link_path);
@@ -697,8 +704,8 @@ void test_fim_delete_realtime_watches(void **state) {
     char *link_path = "/link";
     char *pointed_folder = "/folder";
 
-    expect_fim_configuration_directory_call(pointed_folder, "file", 0);
-    expect_fim_configuration_directory_call("data", "file", 0);
+    expect_fim_configuration_directory_call(pointed_folder, 0);
+    expect_fim_configuration_directory_call("data", 0);
 
     will_return(__wrap_inotify_rm_watch, 1);
 

@@ -15,8 +15,7 @@
 #define WM_OSCAP_DEF_TIMEOUT    1800    // Default runtime limit (30 minutes)
 
 #define WM_OSCAP_LOGTAG ARGV0 ":oscap"
-#define WM_OSCAP_DEFAULT_DIR WM_DEFAULT_DIR "/oscap"
-#define WM_OSCAP_SCRIPT_PATH WM_OSCAP_DEFAULT_DIR "/oscap.py"
+#define WM_OSCAP_SCRIPT_PATH "wodles/oscap/oscap.py"
 
 typedef enum wm_oscap_eval_t { WM_OSCAP_XCCDF = 1, WM_OSCAP_OVAL } wm_oscap_eval_t;
 

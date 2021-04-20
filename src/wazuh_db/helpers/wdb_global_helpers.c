@@ -9,16 +9,13 @@
  * Foundation.
  */
 
-#include "wdb.h"
+#include "wdb_global_helpers.h"
 #include "defs.h"
 #include "wazuhdb_op.h"
 
 #ifdef WIN32
 #define chown(x, y, z) 0
 #endif
-
-#define WDBQUERY_SIZE OS_BUFFER_SIZE
-#define WDBOUTPUT_SIZE OS_MAXSTR
 
 static const char *global_db_commands[] = {
     [WDB_INSERT_AGENT] = "global insert-agent %s",
@@ -688,6 +685,8 @@ char* wdb_get_agent_name(int id, int *sock) {
     json_name = cJSON_GetObjectItem(root->child,"name");
     if (cJSON_IsString(json_name) && json_name->valuestring != NULL) {
         os_strdup(json_name->valuestring, output);
+    } else {
+        os_strdup("", output);
     }
 
     cJSON_Delete(root);
@@ -903,7 +902,7 @@ int wdb_remove_agent(int id, int *sock) {
             if (WDBC_OK == wdbc_parse_result(wdboutput, &payload)) {
                 result = wdb_delete_agent_belongs(id, query_sock);
 
-                if ((OS_SUCCESS == result) && name &&
+                if ((OS_SUCCESS == result) && name && *name &&
                      OS_INVALID == wdb_remove_agent_db(id, name)) {
                      mdebug1("Unable to remove agent DB: %d - %s", id, name);
                 }
@@ -1214,7 +1213,7 @@ int wdb_create_agent_db(int id, const char *name) {
         }
     }
 
-    snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
 
     if (!(dest = fopen(path, "w"))) {
         fclose(source);
@@ -1260,14 +1259,14 @@ int wdb_remove_agent_db(int id, const char * name) {
     char path[PATH_MAX];
     char path_aux[PATH_MAX];
 
-    snprintf(path, PATH_MAX, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
+    snprintf(path, PATH_MAX, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
 
     if (!remove(path)) {
-        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
+        snprintf(path_aux, PATH_MAX, "%s/agents/%03d-%s.db-shm", WDB_DIR, id, name);
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }
-        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
+        snprintf(path_aux, PATH_MAX, "%s/agents/%03d-%s.db-wal", WDB_DIR, id, name);
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }
@@ -1374,7 +1373,7 @@ time_t get_agent_date_added(int agent_id) {
     struct tm t;
     time_t t_of_sec;
 
-    snprintf(path, PATH_MAX, "%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
+    snprintf(path, PATH_MAX, "%s", TIMESTAMP_FILE);
 
     fp = fopen(path, "r");
 

@@ -379,7 +379,7 @@ stages:
   - name: Get all hotfixes from an agent (Deny)
     request: &hotfix_request_deny
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hotfixes"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/hotfixes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET

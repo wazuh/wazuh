@@ -14,9 +14,13 @@ info:
     information between parties as a JSON object. Perform a call with `basicAuth` to `GET /security/user/authenticate`
     and obtain a JWT token in order to run any endpoint.
 
+    JWT tokens have a default duration of 900 seconds. To change this value, you must perform a call with a valid
+    JWT token to `PUT /security/config`. After this change, you will need to get a new JWT token as all previously
+    issued tokens are revoked when any change is performed on security configuration.
+
     Login with USER and PASSWORD:
 
-    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate`
+    `curl -u <USER>:<PASSWORD> -k -X GET "https://<HOST_IP>:55000/security/user/authenticate"`
     ```json
     {
         "data": {
@@ -29,14 +33,19 @@ info:
 
     `curl -k -X <METHOD> "https://<HOST_IP>:55000/<ENDPOINT>" -H  "Authorization: Bearer <YOUR_JWT_TOKEN>"`
 
+    Change the token base duration:
+
+    `curl -k -X PUT "https://<HOST_IP>:55000/security/config" -H "Authorization: Bearer <YOUR_JWT_TOKEN>"
+    -d '{"auth_token_exp_timeout":<NEW_EXPIRE_TIME_IN_SECONDS>}'`
+
     <SecurityDefinitions />
 
-  version: '4.2.0'
-  x-revision: '40200'
+  version: '4.3.0'
+  x-revision: '40301'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.2/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/4.3/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -140,6 +149,15 @@ x-rbac-catalog:
         actions: ['agent:upgrade']
         resources: ['agent:id:001', 'agent:group:mediterranean']
         effect: "allow"
+    'agent:reconnect':
+      description: "Force reconnect agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'agent:reconnect' ]
+        resources: [ 'agent:id:050', 'agent:id:049' ]
+        effect: "deny"
     'agent:restart':
       description: "Restart agents"
       resources:
@@ -160,10 +178,10 @@ x-rbac-catalog:
     'group:read':
       description: "Access agent groups information (id, name, agents, etc)"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/group:id'
       example:
         actions: ['group:create']
-        resources: ['*:*:*']
+        resources: ['group:id:*']
         effect: "allow"
     'group:update_config':
       description: "Change the configuration of agent groups"
@@ -281,7 +299,7 @@ x-rbac-catalog:
     'decoders:update':
       description: "Update or upload custom decoder files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['decoders:update']
         resources: ['*:*:*']
@@ -364,7 +382,7 @@ x-rbac-catalog:
     'rules:update':
       description: "Update or upload custom rule files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/rule:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['rules:update']
         resources: ['*:*:*']
@@ -503,6 +521,15 @@ x-rbac-catalog:
         actions: ['task:status']
         resources: ['*:*:*']
         effect: "deny"
+    'vulnerability:read':
+      description: "Allow reading agents' vulnerabilities information"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'vulnerability:read' ]
+        resources: [ 'agent:id:011', 'agent:group:us-west' ]
+        effect: "allow"
 
 components:
   responses:
@@ -529,7 +556,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -596,7 +623,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of request per minute reached"
             remediation: "This limit can be changed in security.yaml file. More information here:
-            https://documentation.wazuh.com/4.2/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -609,7 +636,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -1634,7 +1661,7 @@ components:
                       type: string
                     date_end_master:
                       type: string
-                    total_agentinfo:
+                    n_synced_chunks:
                       type: integer
                       format: int32
                 last_sync_integrity:
@@ -2185,7 +2212,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.2/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.3/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_edps:
           type: number
@@ -3764,6 +3791,13 @@ components:
         - syscheck
         - rootcheck
         - wmodules
+    cve:
+      in: query
+      name: cve
+      description: "Filter by CVE"
+      schema:
+        type: string
+        format: alphanumeric
     decoder_name:
       in: query
       name: decoder_names
@@ -3912,7 +3946,7 @@ components:
       required: true
       schema:
         type: string
-        pattern: '^[\-\w]+$'
+        format: cdb_filename_path
     agents_list:
       in: query
       name: agents_list
@@ -3989,7 +4023,7 @@ components:
     name:
       in: query
       name: name
-      description: "Filter by agent name"
+      description: "Filter by name"
       schema:
         type: string
         format: alphanumeric
@@ -4468,6 +4502,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    cve_version:
+      in: query
+      name: version
+      description: "Filter by CVE version"
+      schema:
+        type: string
+        format: alphanumeric_symbols
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -5229,7 +5270,7 @@ components:
         type: array
         items:
           type: string
-          pattern: '^[\w\-]+\.xml(,[\w\-]+\.xml)*$'
+          format: xml_filename
     xml_filename_path:
       in: path
       name: filename
@@ -5237,7 +5278,7 @@ components:
       required: true
       schema:
         type: string
-        pattern: '^[\w\-]+\.xml$'
+        format: xml_filename_path
 
 
 tags:
@@ -5279,6 +5320,10 @@ tags:
     description: "File integrity monitoring"
   - name: Syscollector
     description: "Syscollector information"
+  - name: Tasks
+    description: "Tasks information"
+  - name: Vulnerability
+    description: "Vulnerabilities information"
 
 security:
   - jwt: []
@@ -5305,10 +5350,10 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.2.0"
+                api_version: "v4.3.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.2/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/4.3/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
 
@@ -5367,8 +5412,7 @@ paths:
       tags:
       - Agents
       summary: "Delete agents"
-      description: "Delete agents with optional criteria based on the status or time of the last
-      connection"
+      description: "Delete all agents or a list of them based on optional criteria"
       operationId: api.controllers.agent_controller.delete_agents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:delete'
@@ -5379,6 +5423,17 @@ paths:
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.platform'
+        - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.name'
+        - $ref: '#/components/parameters/manager_host'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/ip'
+        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Delete agents"
@@ -5392,13 +5447,6 @@ paths:
                     data:
                       allOf:
                         - $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-                        - type: object
-                          properties:
-                            older_than:
-                              type: string
-                              format: timeframe
-                              description: "Return older than parameter used. It can be the default value or the
-                              parameter sent by the user"
               example:
                 data:
                   affected_items:
@@ -6318,8 +6366,16 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: "Restart command sent to all agents"
-                  error: 0
+                  data:
+                    affected_items:
+                      - '002'
+                      - '003'
+                      - '005'
+                    total_affected_items: 3
+                    total_failed_items: 0
+                    failed_items: []
+                    message: "Restart command sent to all agents"
+                    error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7258,6 +7314,52 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /agents/reconnect:
+    put:
+      tags:
+        - Agents
+      summary: "Force reconnect agents"
+      description: "Force reconnect all agents or a list of them"
+      operationId: api.controllers.agent_controller.reconnect_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:reconnect'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Agents reconnected"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  message: 'Force reconnect command was sent to all agents'
+                  error: 0
+                  data:
+                    affected_items:
+                      - '002'
+                      - '004'
+                    total_affected_items: 2
+                    failed_items: [ ]
+                    total_failed_items: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /agents/restart:
     put:
       tags:
@@ -7716,7 +7818,7 @@ paths:
                         last_sync_agentinfo:
                           date_start_master: "2019-01-11T18:52:57.72Z"
                           date_end_master: "2019-01-11T18:52:57.73Z"
-                          total_agentinfo: 1
+                          n_synced_chunks: 1
                         sync_integrity_free: true
                         last_sync_agentgroups:
                           date_end_master: "2019-01-11T18:52:51.56Z"
@@ -11764,7 +11866,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/filename'
+        - $ref: '#/components/parameters/xml_filename'
         - $ref: '#/components/parameters/get_dirnames_path'
         - $ref: '#/components/parameters/statusRLDParam'
       responses:
@@ -13914,7 +14016,7 @@ paths:
       description: "This method should be called to get an API token using an authorization context body. This token
       will expire after auth_token_exp_timeout seconds (default: 900). This value can be changed using PUT
       /security/config"
-      operationId: api.controllers.security_controller.login_user
+      operationId: api.controllers.security_controller.run_as_login
       parameters:
         - $ref: '#/components/parameters/raw'
       security:
@@ -13999,6 +14101,7 @@ paths:
                                     - agent:read
                                     - agent:delete
                                     - agent:modify_group
+                                    - agent:reconnect
                                     - agent:restart
                                     - agent:upgrade
                                   resources:
@@ -14259,6 +14362,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -14519,6 +14623,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -14750,6 +14855,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -14980,6 +15086,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -15718,7 +15825,7 @@ paths:
   /tasks/status:
     get:
       tags:
-        - tasks
+        - Tasks
       summary: "List tasks"
       description: "Returns all available information about the specified tasks"
       operationId: api.controllers.task_controller.get_tasks_status
@@ -15763,6 +15870,64 @@ paths:
                   failed_items: [ ]
                 message: All specified task's status were returned
 
+  /vulnerability/{agent_id}:
+    get:
+      tags:
+        - Vulnerability
+      summary: "Get vulnerabilities"
+      description: "Return the vulnerabilities of an agent"
+      operationId: api.controllers.vulnerability_controller.get_vulnerability_agent
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/vulnerability:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/cve'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/cve_version'
+      responses:
+        '200':
+          description: "Get agent vulnerabilities"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - cve: CVE-2020-27350
+                      architecture: amd64
+                      version: 1.2.32ubuntu0.1
+                      name: apt
+                    - cve: CVE-2019-18276
+                      architecture: amd64
+                      version: 4.3-14ubuntu1.4
+                      name: bash
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: [ ]
+                message: All selected vulnerabilities were returned
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.2/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.3/user-manual/api/index.html'

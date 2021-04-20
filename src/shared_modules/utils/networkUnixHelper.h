@@ -18,7 +18,7 @@
 #include <memory>
 #include <system_error>
 #include <net/if.h>
-	
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
@@ -53,7 +53,7 @@ namespace Utils
             else
             {
                 throw std::system_error
-                {   
+                {
                     ret,
                     std::system_category(),
                     "Error reading networks"

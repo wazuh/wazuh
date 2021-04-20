@@ -236,7 +236,7 @@ int test_setup_ports_valid_msg(void **state)
             \"inode\" : \"54\",\
             \"state\" : \"55\",\
             \"pid\" : \"56\",\
-            \"process_name\" : \"57\",\
+            \"process\" : \"57\",\
             \"checksum\" : \"58\",\
             \"item_id\" : \"59\"\
         }}"), lf->log == NULL)

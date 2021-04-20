@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "remoted.h"
-#include "wazuh_db/wdb.h"
+#include "wazuh_db/helpers/wdb_global_helpers.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -580,7 +580,7 @@ int _close_sock(keystore * keys, int sock) {
 
 int key_request_connect() {
 #ifndef WIN32
-    return OS_ConnectUnixDomain(isChroot() ? WM_KEY_REQUEST_SOCK : WM_KEY_REQUEST_SOCK_PATH, SOCK_DGRAM, OS_MAXSTR);
+    return OS_ConnectUnixDomain(WM_KEY_REQUEST_SOCK, SOCK_DGRAM, OS_MAXSTR);
 #else
     return -1;
 #endif

@@ -36,13 +36,14 @@ typedef enum fdb_stmt {
     FIMDB_STMT_DELETE_PATH,
     FIMDB_STMT_DELETE_DATA,
     FIMDB_STMT_GET_PATHS_INODE,
-    FIMDB_STMT_GET_PATHS_INODE_COUNT,
     FIMDB_STMT_SET_SCANNED,
     FIMDB_STMT_GET_INODE_ID,
     FIMDB_STMT_GET_COUNT_PATH,
     FIMDB_STMT_GET_COUNT_DATA,
     FIMDB_STMT_GET_INODE,
     FIMDB_STMT_GET_PATH_FROM_PATTERN,
+    FIMDB_STMT_DATA_ROW_EXISTS,
+    FIMDB_STMT_PATH_IS_SCANNED,
     // Registries
 #ifdef WIN32
     FIMDB_STMT_REPLACE_REG_DATA,
@@ -314,11 +315,6 @@ typedef struct fim_entry {
 
 } fim_entry;
 
-
-typedef struct fim_inode_data {
-    int items;
-    char ** paths;
-} fim_inode_data;
 
 typedef struct fdb_transaction_t
 {

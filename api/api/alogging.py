@@ -6,11 +6,16 @@ import logging
 import re
 
 from aiohttp.abc import AbstractAccessLogger
+from werkzeug.exceptions import Unauthorized
 
+from api.authentication import decode_token
 from wazuh.core.wlogging import WazuhLogger
 
 # compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+\]|\s+\*\s+')
+
+# Variable used to specify an unknown user
+UNKNOWN_USER_STRING = "unknown_user"
 
 
 class AccessLogger(AbstractAccessLogger):
@@ -22,7 +27,18 @@ class AccessLogger(AbstractAccessLogger):
             query['password'] = '****'
         if 'password' in body:
             body['password'] = '****'
-        self.logger.info(f'{request.get("user", "unknown_user")} '
+        if 'key' in body and '/agents' in request.path:
+            body['key'] = '****'
+        # With permanent redirect, not found responses or any response with no token information,
+        # decode the JWT token to get the username
+        user = request.get('user', '')
+        if not user:
+            try:
+                user = decode_token(request.headers["authorization"][7:])["sub"]
+            except Unauthorized:
+                user = UNKNOWN_USER_STRING
+
+        self.logger.info(f'{user} '
                          f'{request.remote} '
                          f'"{request.method} {request.path}" '
                          f'with parameters {json.dumps(query)} and body {json.dumps(body)} '

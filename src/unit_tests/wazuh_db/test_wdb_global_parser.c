@@ -25,7 +25,7 @@ static int test_setup(void **state) {
     os_calloc(1,sizeof(test_struct_t),init_data);
     os_calloc(1,sizeof(wdb_t),init_data->wdb);
     os_strdup("000",init_data->wdb->id);
-    os_calloc(256,sizeof(char),init_data->output);
+    os_calloc(OS_MAXSTR,sizeof(char),init_data->output);
     os_calloc(1,sizeof(sqlite3 *),init_data->wdb->db);
     *state = init_data;
     return 0;
@@ -1769,6 +1769,36 @@ void test_wdb_parse_global_sync_agent_info_get_last_id_success(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
+void test_wdb_parse_global_sync_agent_info_get_size_limit(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global sync-agent-info-get";
+    char sync_info[WDB_MAX_RESPONSE_SIZE + 1] = {0};
+    char content = 'A';
+    for (size_t i = 0; i < WDB_MAX_RESPONSE_SIZE; i++) {
+        sync_info[i] = content;
+        content = content <= 'z' ? content+1 : 'A';
+    }
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: sync-agent-info-get");
+    expect_value(__wrap_wdb_global_sync_agent_info_get, *last_agent_id, 0);
+    will_return(__wrap_wdb_global_sync_agent_info_get, sync_info);
+    will_return(__wrap_wdb_global_sync_agent_info_get, WDBC_OK);
+
+    ret = wdb_parse(query, data->output);
+
+    char delims[] = " ";
+    char* payload = NULL;
+    char* status = NULL;
+    status = strtok_r(data->output, delims, &payload);
+
+    assert_string_equal(status, "ok");
+    assert_string_equal(payload, sync_info);
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 /* Tests wdb_parse_global_sync_agent_info_set */
 
 void test_wdb_parse_global_sync_agent_info_set_syntax_error(void **state)
@@ -2377,6 +2407,7 @@ int main()
         /* Tests wdb_parse_global_sync_agent_info_get */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_last_id_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_get_size_limit, test_setup, test_teardown),
         /* Tests wdb_parse_global_sync_agent_info_set */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_invalid_json, test_setup, test_teardown),
@@ -2386,7 +2417,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_set_label_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_sync_agent_info_set_success, test_setup, test_teardown),
         /* Tests wdb_parse_global_disconnect_agents */
-
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_last_id_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_disconnect_agents_keepalive_error, test_setup, test_teardown),

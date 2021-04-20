@@ -7,7 +7,7 @@
  * Foundation
  */
 
-#include "wdb_agent_wrappers.h"
+#include "wdb_global_helpers_wrappers.h"
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>

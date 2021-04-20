@@ -602,7 +602,7 @@ char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t c
     char *response = NULL;
     int length = 0;
 
-    const char *path = isChroot() ? REMOTE_REQ_SOCK : DEFAULTDIR REMOTE_REQ_SOCK;
+    const char *path = REMOTE_REQ_SOCK;
 
     int sock = OS_ConnectUnixDomain(path, SOCK_STREAM, OS_MAXSTR);
 

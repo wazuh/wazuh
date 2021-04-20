@@ -92,7 +92,7 @@ int __wrap_Read_Syscheck_Config(const char * file)
     return mock();
 }
 
-int __wrap_rootcheck_init(int value)
+int __wrap_rootcheck_init(int value, char * home_path)
 {
     return mock();
 }
@@ -121,8 +121,6 @@ void test_Start_win32_Syscheck_no_config_file(void **state)
     syscheck.dir = SYSCHECK_EMPTY;
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
 
     expect_string(__wrap__minfo, formatted_msg, "(6678): No directory provided for syscheck to monitor.");
     expect_string(__wrap__minfo, formatted_msg, "(6001): File integrity monitoring disabled.");
@@ -159,8 +157,6 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state)
     syscheck.registry = REGISTRY_EMPTY;
     syscheck.disabled = 1;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
-
     will_return_always(__wrap_getDefine_Int, 1);
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
     will_return(__wrap_File_DateofChange, 0);
@@ -187,8 +183,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state)
     syscheck.registry = NULL;
     syscheck.disabled = 0;
     char info_msg[OS_MAXSTR];
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
 
     will_return_always(__wrap_getDefine_Int, 1);
 
@@ -232,8 +226,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state)
     syscheck.dir = SYSCHECK_EMPTY;
 
     char info_msg[OS_MAXSTR];
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
 
     will_return_always(__wrap_getDefine_Int, 1);
 
@@ -297,8 +289,6 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state)
 
     char info_msg[OS_MAXSTR];
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
-
     will_return_always(__wrap_getDefine_Int, 1);
 
     expect_string(__wrap_File_DateofChange, file, "ossec.conf");
@@ -359,8 +349,6 @@ void test_Start_win32_Syscheck_whodata_active(void **state)
     syscheck.nodiff = NULL;
 
     char info_msg[OS_MAXSTR];
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Starting ...");
 
     will_return_always(__wrap_getDefine_Int, 1);
 

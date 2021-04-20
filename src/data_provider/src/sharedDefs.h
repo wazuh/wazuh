@@ -24,6 +24,8 @@ constexpr auto WM_SYS_NET_DIR {"/proc/net/" };
 constexpr auto DPKG_PATH {"/var/lib/dpkg/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 
+constexpr auto RPM_PATH {"/var/lib/rpm/"};
+
 constexpr auto UNKNOWN_VALUE { " " };
 constexpr auto MAC_ADDRESS_COUNT_SEGMENTS {6ull};
 

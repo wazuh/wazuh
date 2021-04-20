@@ -12,6 +12,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/externals/openssl/bio_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
@@ -603,17 +604,17 @@ void test_w_enrollment_store_key_entry_cannot_open(void **state) {
     const char* key_string = "KEY EXAMPLE STRING";
     char key_file[1024];
 #ifdef WIN32
-    expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+    expect_string(__wrap_fopen, filename, KEYS_FILE);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 0);
 #else
-    expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+    expect_string(__wrap_TempFile, source, KEYS_FILE);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, NULL);
     will_return(__wrap_TempFile, NULL);
     will_return(__wrap_TempFile, -1);
 #endif
-    snprintf(key_file, 1024, "(1103): Could not open file '%s' due to [(2)-(No such file or directory)].", KEYSFILE_PATH);
+    snprintf(key_file, 1024, "(1103): Could not open file '%s' due to [(2)-(No such file or directory)].", KEYS_FILE);
     expect_string(__wrap__merror, formatted_msg, key_file);
     int ret = w_enrollment_store_key_entry(key_string);
     assert_int_equal(ret, -1);
@@ -625,7 +626,7 @@ void test_w_enrollment_store_key_entry_chmod_fail(void **state) {
     const char* key_string = "KEY EXAMPLE STRING";
     char key_file[1024];
 
-    expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+    expect_string(__wrap_TempFile, source, KEYS_FILE);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, strdup("client.keys.temp"));
     will_return(__wrap_TempFile, 6);
@@ -646,7 +647,7 @@ void test_w_enrollment_store_key_entry_success(void **state) {
     FILE file;
     const char* key_string = "KEY EXAMPLE STRING";
 #ifdef WIN32
-    expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+    expect_string(__wrap_fopen, filename, KEYS_FILE);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, &file);
 
@@ -654,7 +655,7 @@ void test_w_enrollment_store_key_entry_success(void **state) {
     expect_string(wrap_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
     will_return(wrap_fprintf, 0);
 #else
-    expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+    expect_string(__wrap_TempFile, source, KEYS_FILE);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, strdup("client.keys.temp"));
     will_return(__wrap_TempFile, 6);
@@ -667,7 +668,7 @@ void test_w_enrollment_store_key_entry_success(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "KEY EXAMPLE STRING\n");
 
     expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
-    expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
+    expect_string(__wrap_OS_MoveFile, dst, KEYS_FILE);
     will_return(__wrap_OS_MoveFile, 0);
 #endif
     int ret = w_enrollment_store_key_entry(key_string);
@@ -705,7 +706,7 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
     will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-    expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+    expect_string(__wrap_fopen, filename, KEYS_FILE);
     expect_string(__wrap_fopen, mode, "w");
     will_return(__wrap_fopen, 4);
 
@@ -713,7 +714,7 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
     will_return(wrap_fprintf, 0);
 #else
-    expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+    expect_string(__wrap_TempFile, source, KEYS_FILE);
     expect_value(__wrap_TempFile, copy, 0);
     will_return(__wrap_TempFile, strdup("client.keys.temp"));
     will_return(__wrap_TempFile, 4);
@@ -726,7 +727,7 @@ void test_w_enrollment_process_agent_key_valid_key(void **state) {
     expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
 
     expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
-    expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
+    expect_string(__wrap_OS_MoveFile, dst, KEYS_FILE);
     will_return(__wrap_OS_MoveFile, 0);
 #endif
     expect_string(__wrap__minfo, formatted_msg, "Valid key received");
@@ -802,7 +803,7 @@ void test_w_enrollment_process_response_success(void **state) {
         expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
         will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-        expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+        expect_string(__wrap_fopen, filename, KEYS_FILE);
         expect_string(__wrap_fopen, mode, "w");
         will_return(__wrap_fopen, 4);
 
@@ -810,7 +811,7 @@ void test_w_enrollment_process_response_success(void **state) {
         expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
         will_return(wrap_fprintf, 0);
 #else
-        expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+        expect_string(__wrap_TempFile, source, KEYS_FILE);
         expect_value(__wrap_TempFile, copy, 0);
         will_return(__wrap_TempFile, strdup("client.keys.temp"));
         will_return(__wrap_TempFile, 4);
@@ -823,7 +824,7 @@ void test_w_enrollment_process_response_success(void **state) {
         expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
 
         expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
-        expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
+        expect_string(__wrap_OS_MoveFile, dst, KEYS_FILE);
         will_return(__wrap_OS_MoveFile, 0);
 #endif
         expect_string(__wrap__minfo, formatted_msg, "Valid key received");
@@ -908,7 +909,7 @@ void test_w_enrollment_request_key(void **state) {
             expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
             will_return(__wrap_OS_IsValidIP, 1);
 #ifdef WIN32
-            expect_string(__wrap_fopen, filename, KEYSFILE_PATH);
+            expect_string(__wrap_fopen, filename, KEYS_FILE);
             expect_string(__wrap_fopen, mode, "w");
             will_return(__wrap_fopen, 4);
 
@@ -916,7 +917,7 @@ void test_w_enrollment_request_key(void **state) {
             expect_string(wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
             will_return(wrap_fprintf, 0);
 #else
-            expect_string(__wrap_TempFile, source, KEYSFILE_PATH);
+            expect_string(__wrap_TempFile, source, KEYS_FILE);
             expect_value(__wrap_TempFile, copy, 0);
             will_return(__wrap_TempFile, strdup("client.keys.temp"));
             will_return(__wrap_TempFile, 4);
@@ -929,7 +930,7 @@ void test_w_enrollment_request_key(void **state) {
             expect_string(__wrap_fprintf, formatted_msg, "006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f\n");
 
             expect_string(__wrap_OS_MoveFile, src, "client.keys.temp");
-            expect_string(__wrap_OS_MoveFile, dst, KEYSFILE_PATH);
+            expect_string(__wrap_OS_MoveFile, dst, KEYS_FILE);
             will_return(__wrap_OS_MoveFile, 0);
 #endif
             expect_string(__wrap__minfo, formatted_msg, "Valid key received");
@@ -982,7 +983,7 @@ void test_w_enrollment_load_pass_null_cert(void **state) {
 void test_w_enrollment_load_pass_empty_file(void **state) {
     w_enrollment_cert *cert = *state;
 
-    expect_string(__wrap_fopen, filename, AUTHDPASS_PATH);
+    expect_string(__wrap_fopen, filename, AUTHD_PASS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 4);
 #ifdef WIN32
@@ -995,7 +996,7 @@ void test_w_enrollment_load_pass_empty_file(void **state) {
     will_return(__wrap_fgets, NULL);
 #endif
     char buff[1024];
-    snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
+    snprintf(buff, 1024, "Using password specified on file: %s", AUTHD_PASS);
     expect_string(__wrap__minfo, formatted_msg, buff);
     expect_string(__wrap__minfo, formatted_msg, "No authentication password provided");
 
@@ -1006,7 +1007,7 @@ void test_w_enrollment_load_pass_empty_file(void **state) {
 void test_w_enrollment_load_pass_file_with_content(void **state) {
     w_enrollment_cert *cert = *state;
 
-    expect_string(__wrap_fopen, filename, AUTHDPASS_PATH);
+    expect_string(__wrap_fopen, filename, AUTHD_PASS);
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 4);
 #ifdef WIN32
@@ -1019,7 +1020,7 @@ void test_w_enrollment_load_pass_file_with_content(void **state) {
     will_return(__wrap_fgets, "content_password");
 #endif
     char buff[1024];
-    snprintf(buff, 1024, "Using password specified on file: %s", AUTHDPASS_PATH);
+    snprintf(buff, 1024, "Using password specified on file: %s", AUTHD_PASS);
     expect_string(__wrap__minfo, formatted_msg, buff);
 
     w_enrollment_load_pass(cert);

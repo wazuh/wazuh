@@ -172,6 +172,10 @@ void AddtoIGnore(Eventinfo *lf, int pos)
     w_rwlock_wrlock(&file_update_rwlock);
     fseek(fp_ignore[pos], 0, SEEK_END);
 
+#ifdef TESTRULE
+    return;
+#endif
+
     /* Assign the values to the FTS */
     fprintf(fp_ignore[pos], "\n%s %s %s %s %s %s %s %s",
             (lf->decoder_info->name && (lf->generated_rule->ignore & FTS_NAME)) ?

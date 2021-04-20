@@ -10,6 +10,7 @@ link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_subdirectory(sysInfoPackagesLinuxHelper)
+  add_subdirectory(sysInfoPackagesBerkeleyDB)
   add_subdirectory(sysInfoNetworkLinux)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   add_subdirectory(sysInfoNetworkBSD)

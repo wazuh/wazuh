@@ -546,7 +546,7 @@ os_info *get_unix_version()
             info->os_platform = strdup("ubuntu");
             while (fgets(buff, sizeof(buff) - 1, version_release)) {
                 tag = strtok_r(buff, "=", &save_ptr);
-                if (strcmp(tag,"DISTRIB_RELEASE") == 0){
+                if (tag && strcmp(tag,"DISTRIB_RELEASE") == 0){
                     info->os_version = strdup(strtok_r(NULL, "\n", &save_ptr));
                     break;
                 }

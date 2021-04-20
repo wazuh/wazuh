@@ -32,10 +32,6 @@
 #define FULL 2
 #define FLOOD 3
 
-
-/* Resolve hostname */
-void resolveHostname(char **hostname, int attempts);
-
 /* Client configuration */
 int ClientConf(const char *cfgfile);
 
@@ -91,6 +87,9 @@ void start_agent(int is_startup);
 
 /* Connect to the server */
 bool connect_server(int initial_id, bool verbose);
+
+/* Send agent stopped message to server */
+void send_agent_stopped_message();
 
 /**
  * Tries to enroll to a server indicated by server_rip
@@ -152,6 +151,7 @@ extern int min_eps;
 /* Global variables. Only modified during startup. */
 
 extern time_t available_server;
+extern time_t last_connection_time;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;

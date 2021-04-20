@@ -10,7 +10,7 @@
 #include "shared.h"
 
 #ifndef WIN32
-#define LOG_FILE "/logs/active-responses.log"
+#define LOG_FILE "logs/active-responses.log"
 #else
 #define LOG_FILE "active-response\\active-responses.log"
 #endif

@@ -5,27 +5,61 @@
 
 import logging
 import os
+import sys
 from unittest.mock import patch, MagicMock, call
 
 import pytest
+from werkzeug.exceptions import Unauthorized
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
+        sys.modules['api.authentication'] = MagicMock()
         from api import alogging
 
+        del sys.modules['api.authentication']
 
-@patch('api.alogging.logging.Logger')
+
+@pytest.mark.parametrize('side_effect, user', [
+    (Unauthorized, ''),
+    ([{"sub": "test"}], ''),
+    (None, 'wazuh')
+])
 @patch('api.alogging.json.dumps')
-def test_accesslogger_log(mock_dumps, mock_logger_info):
-    """Tests expected methods are called when using log()"""
-    request = MagicMock()
-    alogging.AccessLogger.log(MagicMock(), request=request, response=MagicMock(), time=0.0)
+def test_accesslogger_log(mock_dumps, side_effect, user):
+    """Test expected methods are called when using log().
 
-    assert request.method_calls[0] == call.query.keys()
-    assert request.method_calls[1] == call.get('body', dict())
-    assert request.method_calls[2] == call.get('user', 'unknown_user')
+    Parameters
+    ----------
+    side_effect : function
+        Side effect used in the decode_token mock.
+    user : str
+        User returned by the request.get function of alogging.py, which is mocked using a class.
+    """
 
+    # Create a class with a mocked get method for request
+    class MockedRequest(MagicMock):
+        def get(self, *args, **kwargs):
+            return user
 
+    # Mock decode_token and logger.info
+    with patch('api.alogging.decode_token', side_effect=side_effect) as mock_decode_token:
+        with patch('logging.Logger.info') as mock_logger_info:
+
+            # Create an AccessLogger object and log a mocked call
+            test_access_logger = alogging.AccessLogger(logger=logging.getLogger('test'), log_format=MagicMock())
+            test_access_logger.log(request=MockedRequest(), response=MagicMock(), time=0.0)
+
+            # If not user, decode_token must be called to get the user and logger.info must be called with the user
+            # if we have token_info or UNKNOWN_USER if not
+            if not user:
+                mock_decode_token.assert_called_once()
+                expected_user = side_effect[0][
+                    "sub"] if side_effect is not Unauthorized else alogging.UNKNOWN_USER_STRING
+                assert mock_logger_info.call_args.args[0].split(" ")[0] == expected_user
+
+            # If user, logger.info must be called with the user
+            else:
+                assert mock_logger_info.call_args.args[0].split(" ")[0] == user
 
 
 @patch('wazuh.core.wlogging.WazuhLogger.__init__')

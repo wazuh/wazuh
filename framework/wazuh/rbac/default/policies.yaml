@@ -16,6 +16,7 @@ default_policies:
           - agent:read
           - agent:delete
           - agent:modify_group
+          - agent:reconnect
           - agent:restart
           - agent:upgrade
         resources:
@@ -341,4 +342,14 @@ default_policies:
           - task:status
         resources:
           - '*:*:*'
+        effect: allow
+
+  vulnerability_read:
+    description: Allow reading agents' vulnerabilities information.
+    policies:
+      vulnerability:
+        actions:
+          - vulnerability:read
+        resources:
+          - agent:id:*
         effect: allow

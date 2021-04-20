@@ -25,6 +25,7 @@
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
 #include "packages/packagesLinuxParserHelper.h"
+#include "packages/berkeleyRpmDbHelper.h"
 
 struct ProcTableDeleter
 {
@@ -210,17 +211,14 @@ void SysInfo::getMemory(nlohmann::json& info) const
 static nlohmann::json getRpmInfo()
 {
     nlohmann::json ret;
-    auto rawData{ Utils::exec("rpm -qa --qf '%{name}\t%{arch}\t%{summary}\t%{size}\t%{epoch}\t%{release}\t%{version}\t%{vendor}\t%{installtime:date}\t%{group}\t\n'")};
-    if (!rawData.empty())
+    BerkeleyRpmDBReader db(std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE));
+
+    for (std::string row = db.getNext() ; !row.empty() ; row = db.getNext())
     {
-        const auto rows { Utils::split(rawData,'\n') };
-        for (auto row : rows)
+        const auto& package{ PackageLinuxHelper::parseRpm(row) };
+        if (!package.empty())
         {
-            const auto& package{ PackageLinuxHelper::parseRpm(row) };
-            if (!package.empty())
-            {
-                ret.push_back(package);
-            }
+            ret.push_back(package);
         }
     }
     return ret;
@@ -266,7 +264,7 @@ nlohmann::json SysInfo::getPackages() const
     {
         packages = getDpkgInfo(DPKG_STATUS_PATH);
     }
-    else
+    else if (Utils::existsDir(RPM_PATH))
     {
         packages = getRpmInfo();
     }

@@ -14,7 +14,7 @@
 
 /* Prototypes */
 static int  proc_read(int pid);
-static int  proc_chdir(int pid);
+static int  proc_opendir(int pid);
 static int  proc_stat(int pid);
 static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_total);
 
@@ -39,33 +39,29 @@ static int proc_read(int pid)
 }
 
 /* If /proc is mounted, check to see if the pid is present */
-static int proc_chdir(int pid)
+static int proc_opendir(int pid)
 {
-    int ret = 0;
-    char curr_dir[OS_SIZE_1024 + 1];
-    char dir[OS_SIZE_1024 + 1];
+    char    dir[OS_SIZE_1024 + 1];
+    DIR     *dp = NULL;
 
     if (noproc) {
         return (0);
     }
-    if (getcwd(curr_dir, OS_SIZE_1024) == NULL) {
-        return (0);
+    
+    dp  = opendir("/proc");
+    if (!dp) {
+        return 0;
     }
-    if (chdir("/proc") == -1) {
-        return (0);
-    }
-
+    closedir(dp);
+    
     snprintf(dir, OS_SIZE_1024, "/proc/%d", pid);
-    if (chdir(dir) == 0) {
-        ret = 1;
+    dp  = opendir(dir);
+    if (!dp) {
+        return 0;
     }
+    closedir(dp);
 
-    /* Returning to the previous directory */
-    if (chdir(curr_dir) == -1) {
-        return (0);
-    }
-
-    return (ret);
+    return (1);
 }
 
 /* If /proc is mounted, check to see if the pid is present there */
@@ -98,7 +94,7 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
     int _ps0 = -1;
     int _proc_stat  = 0;
     int _proc_read  = 0;
-    int _proc_chdir = 0;
+    int _proc_opendir = 0;
 
     pid_t i = 1;
     pid_t my_pid;
@@ -140,11 +136,11 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
         /* /proc test */
         _proc_stat = proc_stat(i);
         _proc_read = proc_read(i);
-        _proc_chdir = proc_chdir(i);
+        _proc_opendir = proc_opendir(i);
 
         /* If PID does not exist, move on */
         if (!_kill0     && !_gsid0     && !_gpid0 &&
-                !_proc_stat && !_proc_read && !_proc_chdir) {
+                !_proc_stat && !_proc_read && !_proc_opendir) {
             continue;
         }
 
@@ -203,11 +199,11 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
 
         _proc_stat = proc_stat(i);
         _proc_read = proc_read(i);
-        _proc_chdir = proc_chdir(i);
+        _proc_opendir = proc_opendir(i);
 
         /* If it matches, process was terminated in the meantime, so move on */
         if (!_gsid1 && !_kill1 && !_gpid1 && !_proc_stat &&
-                !_proc_read && !_proc_chdir) {
+                !_proc_read && !_proc_opendir) {
             continue;
         }
 
@@ -257,7 +253,7 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
                 (*_errors)++;
             }
         } else if (_proc_read != _proc_stat  ||
-                   _proc_read != _proc_chdir ||
+                   _proc_read != _proc_opendir ||
                    _proc_stat != _kill1) {
             /* Check if the pid is a thread (not showing in /proc */
             if (!noproc && !check_rc_readproc((int)i)) {

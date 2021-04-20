@@ -45,15 +45,22 @@ int main(int argc, char **argv)
 
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
-    char *dir  = DEFAULTDIR;
+    char *home_path = w_homedir(argv[0]);
     char *user = USER;
     char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = OSSECCONF;
 
     integrator_config = NULL;
 
     /* Setting the name */
     OS_SetName(ARGV0);
+
+	/* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror(CHDIR_ERROR, home_path, errno, strerror(errno));
+        os_free(home_path);
+        exit(1);
+    }
 
     while((c = getopt(argc, argv, "Vdhtfu:g:")) != -1){
         switch(c){
@@ -97,9 +104,6 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
-
-    /* Starting daemon */
-    mdebug1(STARTED_MSG);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
@@ -158,7 +162,8 @@ int main(int argc, char **argv)
     w_create_thread(intgcom_main, NULL);
 
     /* Basic start up completed. */
-    mdebug1(PRIVSEP_MSG ,dir,user);
+    mdebug1(PRIVSEP_MSG, home_path, user);
+    os_free(home_path);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -172,5 +177,6 @@ int main(int argc, char **argv)
 
     /* the real daemon now */
     OS_IntegratorD(integrator_config);
+
     exit(0);
 }

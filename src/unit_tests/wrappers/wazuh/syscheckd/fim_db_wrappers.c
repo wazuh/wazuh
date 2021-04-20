@@ -331,3 +331,41 @@ void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val) {
     expect_string(__wrap_fim_db_remove_path, path, path);
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
+
+int __wrap_fim_db_file_is_scanned(__attribute__((unused)) fdb_t *fim_sql, const char *path) {
+    check_expected(path);
+    return mock();
+}
+
+int __wrap_fim_db_data_exists(__attribute__((unused)) fdb_t *fim_sql, unsigned long int inode, unsigned long int dev) {
+    check_expected(inode);
+    check_expected(dev);
+    return mock();
+}
+
+int __wrap_fim_db_append_paths_from_inode(__attribute__((unused)) fdb_t *fim_sql,
+                                          unsigned long int inode,
+                                          unsigned long int dev,
+                                          OSList *list,
+                                          rb_tree *tree) {
+    char **paths;
+    int i;
+
+    check_expected(inode);
+    check_expected(dev);
+    assert_non_null(list);
+    assert_non_null(tree);
+
+    paths = mock_type(char **);
+    if (paths == NULL) {
+        return 0;
+    }
+
+    for (i = 0; paths[i]; i++) {
+        rb_node *leaf = rbtree_insert(tree, paths[i], NULL);
+
+        OSList_AddData(list, leaf->key);
+    }
+
+    return i;
+}

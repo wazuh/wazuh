@@ -19,7 +19,6 @@
 
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
 #define AUDIT_KEY "wazuh_fim"
-#define AUDIT_SOCKET DEFAULTDIR "/queue/sockets/audit"
 
 typedef struct {
     char *path;

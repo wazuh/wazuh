@@ -17,8 +17,7 @@
 #include "config/config.h"
 #include "wmodules_def.h"
 
-#define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"        // Default modules directory.
-#define WM_STATE_DIR    DEFAULTDIR "/var/wodles"    // Default directory for states.
+#define WM_STATE_DIR    "var/wodles"               // Default directory for states.
 #define WM_DIR_WIN      "wodles"                    // Default directory for states (Windows)
 #define WM_STRING_MAX   67108864                    // Max. dynamic string size (64 MB).
 #define WM_BUFFER_MAX   1024                        // Max. static buffer size.
