@@ -1494,7 +1494,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
             snprintf(msg2, OS_SIZE_1024 - 1, "agent %s sql UPDATE syscollector_sync_status SET packages_sync_status = 1", lf->agent_id);
 
             wdbc_query_ex(socket, msg2, response2, sizeof(response2));
-            mdebug1("Result of Package legacy agents synced status: %s", response2);
+            mwarn("Result of Package legacy agents synced status: %s", response2);
             free(msg2);
 
 
@@ -1566,7 +1566,7 @@ int decode_hotfix(Eventinfo *lf, cJSON * logJSON, int *socket) {
             snprintf(msg2, OS_SIZE_1024 - 1, "agent %s sql UPDATE syscollector_sync_status SET hotfix_sync_status = 1", lf->agent_id);
 
             wdbc_query_ex(socket, msg2, response2, sizeof(response2));
-            mdebug1("Result of Hotfix legacy agents synced status: %s", response2);
+            mwarn("Result of Hotfix legacy agents synced status: %s", response2);
             free(msg2);
 
             snprintf(msg, OS_SIZE_1024 - 1, "agent %s hotfix del %d", lf->agent_id, scan_id->valueint);

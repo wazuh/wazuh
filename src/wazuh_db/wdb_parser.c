@@ -3816,7 +3816,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
 
             data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET packages_sync_status = 0;");
             out = cJSON_PrintUnformatted(data);
-            mdebug1("Result of legacy Packages agents not synced status: %s", out);
+            mwarn("Result of legacy Packages agents not synced status: %s", out);
             os_free(out);
             cJSON_Delete(data);
 
@@ -3916,7 +3916,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
 
             data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 0;");
             out = cJSON_PrintUnformatted(data);
-            mdebug1("Result of legacy Hotfix agents not synced status: %s", out);
+            mwarn("Result of legacy Hotfix agents not synced status: %s", out);
             os_free(out);
             cJSON_Delete(data);
 
