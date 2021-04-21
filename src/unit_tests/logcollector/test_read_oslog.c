@@ -73,11 +73,30 @@ void test_oslog_ctxt_restore_true(void ** state) {
 
 }
 
+/* oslog_ctxt_backup */
+
+void test_oslog_ctxt_backup_success(void ** state) {
+
+    w_oslog_ctxt_t ctxt;
+    char buffer[OS_MAXSTR + 1];
+    buffer[OS_MAXSTR] = '\0';
+
+    strncpy(buffer,"test",OS_MAXSTR);
+
+    oslog_ctxt_backup(buffer, &ctxt);
+
+    assert_non_null(ctxt.buffer);
+    assert_non_null(ctxt.timestamp);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
-        // Test w_logcollector_validate_oslog_stream_predicate
+        // Test oslog_ctxt_restore
         cmocka_unit_test(test_oslog_ctxt_restore_false),
         cmocka_unit_test(test_oslog_ctxt_restore_true),
+        // Test
+        cmocka_unit_test(test_oslog_ctxt_backup_success),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
