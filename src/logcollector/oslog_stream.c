@@ -81,12 +81,7 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
         if (is_predicate_valid) {
             w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
 
-            const size_t QUERY_STR_LEN = strlen(predicate) + 2 + 1; // The "2" is due to the added chars ''
-            os_malloc(QUERY_STR_LEN, oslog_array[oslog_array_idx]);
-            const int snprintf_retval = snprintf(oslog_array[oslog_array_idx], QUERY_STR_LEN, "'%s'", predicate);
-            if (snprintf_retval < 0) {
-                merror(SNPRINTF_ERROR, strerror(errno), errno);
-            }
+            w_strdup(predicate, oslog_array[oslog_array_idx++]);
         }
     }
 
