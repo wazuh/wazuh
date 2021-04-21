@@ -374,12 +374,21 @@ def select_array(array, select=None, required_fields=None, allowed_select_fields
                 next_element = None
             return {split_select[0]: next_element} if next_element else None
 
+    def detect_nested_select(user_select):
+        nested = set()
+        no_nested = set()
+        for element in user_select:
+            no_nested.add(element) if '.' not in element else nested.add(element)
+
+        return nested, no_nested
+
     if required_fields is None:
         required_fields = set()
-    select = set(select)
 
-    if allowed_select_fields and not select.issubset(allowed_select_fields):
-        raise WazuhError(1724, "{}".format(', '.join(select)))
+    select_nested, select_no_nested = detect_nested_select(set(select))
+    if allowed_select_fields and not select_no_nested.issubset(allowed_select_fields):
+        raise WazuhError(1724, "{}".format(', '.join(select_no_nested)))
+    select = select_nested.union(select_no_nested)
 
     result_list = list()
     for item in array:

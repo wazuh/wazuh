@@ -10,7 +10,7 @@ import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
-from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS
+from wazuh.core.decoder import load_decoders_from_file, check_status, REQUIRED_FIELDS, SORT_FIELDS, DECODER_FIELDS
 from wazuh.core.exception import WazuhInternalError, WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.rule import format_rule_decoder_file
@@ -80,7 +80,7 @@ def get_decoders(names=None, status=None, filename=None, relative_dirname=None, 
     data = process_array(decoders, search_text=search_text, search_in_fields=search_in_fields,
                          complementary_search=complementary_search, sort_by=sort_by, sort_ascending=sort_ascending,
                          allowed_sort_fields=SORT_FIELDS, offset=offset, select=select, limit=limit, q=q,
-                         required_fields=REQUIRED_FIELDS)
+                         required_fields=REQUIRED_FIELDS, allowed_select_fields=DECODER_FIELDS)
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
