@@ -40,6 +40,13 @@ OSList *timeout_list;
 STATIC OSHash *repeated_hash;
 STATIC int CheckManagerConfiguration(char ** output);
 
+#ifdef WAZUH_UNIT_TESTING
+STATIC void execd_start(int q);
+#else
+STATIC void execd_start(int q) __attribute__((noreturn));
+#endif
+
+
 /** @copydoc execd_start */
 void execd_start(int q) {
     int i, childcount = 0;
