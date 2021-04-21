@@ -90,6 +90,11 @@ void* wm_aws_main(wm_aws *aws_config) {
                 wm_strcat(&log_info, cur_bucket->trail_prefix, ' ');
             }
 
+            if (cur_bucket->trail_suffix) {
+                wm_strcat(&log_info, ", Path suffix:", '\0');
+                wm_strcat(&log_info, cur_bucket->trail_suffix, ' ');
+            }
+
             if (cur_bucket->type) {
                 wm_strcat(&log_info, ", Type:", '\0');
                 wm_strcat(&log_info, cur_bucket->type, ' ');
@@ -190,6 +195,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->aws_account_id) cJSON_AddStringToObject(buck,"aws_account_id",iter->aws_account_id);
             if (iter->aws_account_alias) cJSON_AddStringToObject(buck,"aws_account_alias",iter->aws_account_alias);
             if (iter->trail_prefix) cJSON_AddStringToObject(buck,"path",iter->trail_prefix);
+            if (iter->trail_suffix) cJSON_AddStringToObject(buck,"path_suffix",iter->trail_suffix);
             if (iter->only_logs_after) cJSON_AddStringToObject(buck,"only_logs_after",iter->only_logs_after);
             if (iter->regions) cJSON_AddStringToObject(buck,"regions",iter->regions);
             if (iter->type) cJSON_AddStringToObject(buck,"type",iter->type);
@@ -348,6 +354,10 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     if (exec_bucket->trail_prefix) {
         wm_strcat(&command, "--trail_prefix", ' ');
         wm_strcat(&command, exec_bucket->trail_prefix, ' ');
+    }
+    if (exec_bucket->trail_suffix) {
+        wm_strcat(&command, "--trail_suffix", ' ');
+        wm_strcat(&command, exec_bucket->trail_suffix, ' ');
     }
     if (exec_bucket->only_logs_after) {
         wm_strcat(&command, "--only_logs_after", ' ');
