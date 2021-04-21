@@ -115,7 +115,7 @@ int local_start()
     while (rc < agt->server_count) {
         if (OS_IsValidIP(agt->server[rc].rip, NULL) != 1) {
             mdebug2("Resolving server hostname: %s", agt->server[rc].rip);
-            resolveHostname(&agt->server[rc].rip, 5);
+            resolve_hostname(&agt->server[rc].rip, 5);
             mdebug2("Server hostname resolved: %s", agt->server[rc].rip);
         }
         rc++;
@@ -361,9 +361,18 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 
 char *get_agent_ip()
 {
-    char *agent_ip = NULL;
-
+    static char agent_ip[IPSIZE + 1] = { '\0' };
+    static time_t last_update = 0;
+    time_t now = time(NULL);
     cJSON *object;
+
+    if ((now - last_update) < agt->main_ip_update_interval) {
+        return strdup(agent_ip);
+    }
+
+    last_update = now;
+    agent_ip[0] = '\0';
+
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
         const int error_code = sysinfo_network_ptr(&object);
         if (error_code == 0) {
@@ -385,7 +394,7 @@ char *get_agent_ip()
                             cJSON *address = cJSON_GetObjectItem(ipv4, "address");
                             if (address && cJSON_GetStringValue(address))
                             {
-                                os_strdup(address->valuestring, agent_ip);
+                                strncpy(agent_ip, address->valuestring, IPSIZE);
                                 break;
                             }
                         }
@@ -398,7 +407,12 @@ char *get_agent_ip()
             merror("Unable to get system network information. Error code: %d.", error_code);
         }
     }
-    return agent_ip;
+
+    if (agent_ip[0] == '\0') {
+        last_update = 0;
+    }
+
+    return strdup(agent_ip);
 }
 
 #endif

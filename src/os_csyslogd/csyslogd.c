@@ -82,7 +82,10 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     /* Connect to syslog */
 
     for (s = 0; syslog_config[s]; s++) {
-        syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port, syslog_config[s]->server, 0);
+        mdebug2("Resolving server hostname: %s", syslog_config[s]->server);
+        resolve_hostname(&syslog_config[s]->server, 5);
+
+        syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port, get_ip_from_resolved_hostname(syslog_config[s]->server), 0);
 
         if (syslog_config[s]->socket < 0) {
             merror(CONNS_ERROR, syslog_config[s]->server, syslog_config[s]->port, "udp", strerror(errno));
