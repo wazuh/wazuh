@@ -1382,6 +1382,7 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         return 0;
     }
     if (strncmp(curr, "integrity_check_", 16) == 0) {
+        int flag_sync = 0;
         switch (wdbi_query_checksum(wdb, component, curr, next)) {
         case -1:
             mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
@@ -1397,18 +1398,29 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
             break;
 
         default:
+            flag_sync = 1;
             snprintf(output, OS_MAXSTR + 1, "ok ");
         }
         cJSON* data =NULL;
-        char* out;
+        char* out = NULL;
+        if(component == WDB_SYSCOLLECTOR_HOTFIXES ) {
+             if (1 == flag_sync )
+                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 1;");
+             else
+                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 0;");
 
-        if (strcmp(output, "ok ")==0 )
-            data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 1;");
-        else
-            data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 0;");
+            out = cJSON_PrintUnformatted(data);
+            mdebug1("Result of new agents Hotfix sync status flag %d: %s",flag_sync, out);
 
-        out = cJSON_PrintUnformatted(data);
-        mdebug1("Result of new agents sync status: %s", out);
+        } else if (component == WDB_SYSCOLLECTOR_PACKAGES) {
+            if (1 == flag_sync )
+                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET packages_sync_status = 1;");
+            else
+                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET packages_sync_status = 0;");
+
+            out = cJSON_PrintUnformatted(data);
+            mdebug1("Result of new agents Packages sync status flag %d: %s",flag_sync, out);
+        }
         os_free(out);
         cJSON_Delete(data);
 
@@ -3822,6 +3834,16 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
+
+            cJSON* data =NULL;
+            char* out;
+
+            data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET packages_sync_status = 0;");
+            out = cJSON_PrintUnformatted(data);
+            mdebug1("Result of legacy Packages agents not synced status: %s", out);
+            os_free(out);
+            cJSON_Delete(data);
+
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
@@ -3918,7 +3940,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
 
             data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 0;");
             out = cJSON_PrintUnformatted(data);
-            mdebug1("Result of legacy agents not synced status: %s", out);
+            mdebug1("Result of legacy Hotfix agents not synced status: %s", out);
             os_free(out);
             cJSON_Delete(data);
 

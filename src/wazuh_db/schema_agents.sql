@@ -352,7 +352,7 @@ CREATE INDEX IF NOT EXISTS cves_id ON vuln_cves (cve);
 
 CREATE TABLE IF NOT EXISTS syscollector_sync_status (
     hotfix_sync_status INTEGER(1) DEFAULT 0,
-    PRIMARY KEY (hotfix_sync_status)
+    packages_sync_status INTEGER(1) DEFAULT 0
 );
 INSERT INTO syscollector_sync_status (hotfix_sync_status) VALUES (0);
 
