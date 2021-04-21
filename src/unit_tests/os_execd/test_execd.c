@@ -40,7 +40,6 @@ int __wrap_CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(v
 
 static int group_setup(void ** state) {
     test_mode = 1;
-    is_disabled = 0;
     return 0;
 }
 
@@ -95,11 +94,10 @@ static void test_execd_start_ok(void **state) {
                             "}"
                         "}"
                     "}";
-
-    timeout_list = OSList_Create();
+    int timeout = 0;
 
     will_return(__wrap_CreateThreadJoinable, 0);
-
+    will_return(__wrap_time, now);
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -136,12 +134,14 @@ static void test_execd_start_ok(void **state) {
                                                                         "}"
                                                                     "}'");
 
-    expect_string(__wrap_fopen, path, DEFAULTAR);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
+    will_return(__wrap_time, now);
+
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'active-response/bin/restart-wazuh.sh {"
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
@@ -166,33 +166,15 @@ static void test_execd_start_ok(void **state) {
                                                                                                 "},"
                                                                                                 "\"location\":\"syscheck\""
                                                                                             "},"
-                                                                                            "\"program\":\"active-response/bin/restart-wazuh.sh\""
+                                                                                            "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "restart-wazuh0 - restart-wazuh.sh - 0\n");
-
-    expect_string(__wrap_fopen, path, "active-response/bin/restart-wazuh.sh");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
-
-    expect_value(__wrap_fclose, _File, (FILE *) 100);
-    will_return(__wrap_fclose, 1);
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, NULL);
-
-    expect_value(__wrap_fclose, _File, (FILE *) 100);
-    will_return(__wrap_fclose, 1);
 
     will_return(__wrap_wpopenv, wfd);
     will_return(__wrap_fwrite, 0);
     will_return(__wrap_wpclose, 0);
 
     execd_start(queue);
-
-    os_free(timeout_list);
 }
 
 static void test_execd_start_timeout(void **state) {
@@ -226,125 +208,10 @@ static void test_execd_start_timeout(void **state) {
                             "}"
                         "}"
                     "}";
-
-    timeout_list = OSList_Create();
-
-    will_return(__wrap_CreateThreadJoinable, 0);
-
-    will_return(__wrap_select, 1);
-
-    expect_value(__wrap_OS_RecvUnix, socket, queue);
-    expect_value(__wrap_OS_RecvUnix, sizet, OS_MAXSTR);
-    will_return(__wrap_OS_RecvUnix, message);
-    will_return(__wrap_OS_RecvUnix, strlen(message));
-
-    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh0\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
-                                                                            "}"
-                                                                        "}"
-                                                                    "}'");
-
-    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'active-response/bin/restart-wazuh.sh {"
-                                                                                        "\"version\":\"1\","
-                                                                                        "\"origin\":{"
-                                                                                            "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-modulesd\""
-                                                                                        "},"
-                                                                                        "\"command\":\"add\","
-                                                                                        "\"parameters\":{"
-                                                                                            "\"extra_args\":[],"
-                                                                                            "\"alert\":{"
-                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                                "\"rule\":{"
-                                                                                                    "\"level\":5,"
-                                                                                                    "\"description\":\"File added to the system.\","
-                                                                                                    "\"id\":\"554\""
-                                                                                                "},"
-                                                                                                "\"id\":\"1609860180.513333\","
-                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                                "\"syscheck\":{"
-                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                                    "\"mode\":\"realtime\","
-                                                                                                    "\"event\":\"added\""
-                                                                                                "},"
-                                                                                                "\"location\":\"syscheck\""
-                                                                                            "},"
-                                                                                            "\"program\":\"active-response/bin/restart-wazuh.sh\""
-                                                                                        "}"
-                                                                                    "}'");
-
-    will_return(__wrap_wpopenv, wfd);
-    will_return(__wrap_fwrite, 0);
-    will_return(__wrap_wpclose, 0);
-
-    execd_start(queue);
-
-    os_free(timeout_list);
-}
-
-static void test_execd_start_wpopenv_err(void **state) {
-    wfd_t * wfd = *state;
-    int queue = 1;
-    int now = 123456789;
-    char *message = "{"
-                        "\"version\":\"1\","
-                        "\"origin\":{"
-                            "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
-                        "},"
-                        "\"command\":\"restart-wazuh0\","
-                        "\"parameters\":{"
-                            "\"extra_args\":[],"
-                            "\"alert\":{"
-                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                "\"rule\":{"
-                                    "\"level\":5,"
-                                    "\"description\":\"File added to the system.\","
-                                    "\"id\":\"554\""
-                                "},"
-                                "\"id\":\"1609860180.513333\","
-                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                "\"syscheck\":{"
-                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                    "\"mode\":\"realtime\","
-                                    "\"event\":\"added\""
-                                "},"
-                                "\"location\":\"syscheck\""
-                            "}"
-                        "}"
-                    "}";
-    int timeout = 0;
-
-    timeout_list = OSList_Create();
+    int timeout = 10;
 
     will_return(__wrap_CreateThreadJoinable, 0);
-
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -380,10 +247,6 @@ static void test_execd_start_wpopenv_err(void **state) {
                                                                             "}"
                                                                         "}"
                                                                     "}'");
-
-    expect_string(__wrap_fopen, path, DEFAULTAR);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
 
     will_return(__wrap_time, now);
 
@@ -392,111 +255,11 @@ static void test_execd_start_wpopenv_err(void **state) {
     will_return(__wrap_get_command_by_name, "restart-wazuh");
 
     expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'active-response/bin/restart-wazuh.sh {"
-                                                                                        "\"version\":\"1\","
-                                                                                        "\"origin\":{"
-                                                                                            "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-modulesd\""
-                                                                                        "},"
-                                                                                        "\"command\":\"add\","
-                                                                                        "\"parameters\":{"
-                                                                                            "\"extra_args\":[],"
-                                                                                            "\"alert\":{"
-                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                                "\"rule\":{"
-                                                                                                    "\"level\":5,"
-                                                                                                    "\"description\":\"File added to the system.\","
-                                                                                                    "\"id\":\"554\""
-                                                                                                "},"
-                                                                                                "\"id\":\"1609860180.513333\","
-                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                                "\"syscheck\":{"
-                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                                    "\"mode\":\"realtime\","
-                                                                                                    "\"event\":\"added\""
-                                                                                                "},"
-                                                                                                "\"location\":\"syscheck\""
-                                                                                            "},"
-                                                                                            "\"program\":\"active-response/bin/restart-wazuh.sh\""
-                                                                                        "}"
-                                                                                    "}'");
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, "restart-wazuh0 - restart-wazuh.sh - 0\n");
-
-    expect_string(__wrap_fopen, path, "active-response/bin/restart-wazuh.sh");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
-
-    expect_value(__wrap_fclose, _File, (FILE *) 100);
-    will_return(__wrap_fclose, 1);
-
-    expect_any(__wrap_fgets, __stream);
-    will_return(__wrap_fgets, NULL);
-
-    expect_value(__wrap_fclose, _File, (FILE *) 100);
-    will_return(__wrap_fclose, 1);
-
-    will_return(__wrap_wpopenv, NULL);
-    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "(1317): Could not launch command Success (0)");
-
-    will_return(__wrap_time, now);
-    will_return(__wrap_select, 1);
-
-    expect_value(__wrap_OS_RecvUnix, socket, queue);
-    expect_value(__wrap_OS_RecvUnix, sizet, OS_MAXSTR);
-    will_return(__wrap_OS_RecvUnix, message);
-    will_return(__wrap_OS_RecvUnix, strlen(message));
-
-    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
-                                                                        "\"version\":\"1\","
-                                                                        "\"origin\":{"
-                                                                            "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
-                                                                        "},"
-                                                                        "\"command\":\"restart-wazuh0\","
-                                                                        "\"parameters\":{"
-                                                                            "\"extra_args\":[],"
-                                                                            "\"alert\":{"
-                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
-                                                                                "\"rule\":{"
-                                                                                    "\"level\":5,"
-                                                                                    "\"description\":\"File added to the system.\","
-                                                                                    "\"id\":\"554\""
-                                                                                "},"
-                                                                                "\"id\":\"1609860180.513333\","
-                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
-                                                                                "\"syscheck\":{"
-                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
-                                                                                    "\"mode\":\"realtime\","
-                                                                                    "\"event\":\"added\""
-                                                                                "},"
-                                                                                "\"location\":\"syscheck\""
-                                                                            "}"
-                                                                        "}"
-                                                                    "}'");
-
-    will_return(__wrap_time, now);
-
-    /*expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
-    will_return(__wrap_get_command_by_name, timeout);
-    will_return(__wrap_get_command_by_name, "restart-wazuh");*/
-
-    expect_string(__wrap_fopen, path, "etc/ossec.conf");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
-
-    expect_value(__wrap_fclose, _File, (FILE *) 100);
-    will_return(__wrap_fclose, 1);
-
-    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -525,9 +288,228 @@ static void test_execd_start_wpopenv_err(void **state) {
     will_return(__wrap_fwrite, 0);
     will_return(__wrap_wpclose, 0);
 
-    execd_start(queue);
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Adding command 'restart-wazuh {"
+                                                                                    "\"version\":\"1\","
+                                                                                    "\"origin\":{"
+                                                                                        "\"name\":\"node01\","
+                                                                                        "\"module\":\"wazuh-modulesd\""
+                                                                                    "},"
+                                                                                    "\"command\":\"delete\","
+                                                                                    "\"parameters\":{"
+                                                                                        "\"extra_args\":[],"
+                                                                                        "\"alert\":{"
+                                                                                            "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
+                                                                                            "\"rule\":{"
+                                                                                                "\"level\":5,"
+                                                                                                "\"description\":\"File added to the system.\","
+                                                                                                "\"id\":\"554\""
+                                                                                            "},"
+                                                                                            "\"id\":\"1609860180.513333\","
+                                                                                            "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
+                                                                                            "\"syscheck\":{"
+                                                                                                "\"path\":\"/home/vagrant/file/n41.txt\","
+                                                                                                "\"mode\":\"realtime\","
+                                                                                                "\"event\":\"added\""
+                                                                                            "},"
+                                                                                            "\"location\":\"syscheck\""
+                                                                                        "},"
+                                                                                        "\"program\":\"restart-wazuh\""
+                                                                                    "}"
+                                                                                "}' to the timeout list, with a timeout of '10s'.");
 
-    os_free(timeout_list);
+    execd_start(queue);
+}
+
+static void test_execd_start_wpopenv_err(void **state) {
+    wfd_t * wfd = *state;
+    int queue = 1;
+    int now = 123456789;
+    char *message = "{"
+                        "\"version\":\"1\","
+                        "\"origin\":{"
+                            "\"name\":\"node01\","
+                            "\"module\":\"wazuh-modulesd\""
+                        "},"
+                        "\"command\":\"restart-wazuh0\","
+                        "\"parameters\":{"
+                            "\"extra_args\":[],"
+                            "\"alert\":{"
+                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
+                                "\"rule\":{"
+                                    "\"level\":5,"
+                                    "\"description\":\"File added to the system.\","
+                                    "\"id\":\"554\""
+                                "},"
+                                "\"id\":\"1609860180.513333\","
+                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
+                                "\"syscheck\":{"
+                                    "\"path\":\"/home/vagrant/file/n41.txt\","
+                                    "\"mode\":\"realtime\","
+                                    "\"event\":\"added\""
+                                "},"
+                                "\"location\":\"syscheck\""
+                            "}"
+                        "}"
+                    "}";
+    int timeout = 0;
+
+    will_return(__wrap_CreateThreadJoinable, 0);
+    will_return(__wrap_time, now);
+    will_return(__wrap_select, 1);
+
+    expect_value(__wrap_OS_RecvUnix, socket, queue);
+    expect_value(__wrap_OS_RecvUnix, sizet, OS_MAXSTR);
+    will_return(__wrap_OS_RecvUnix, message);
+    will_return(__wrap_OS_RecvUnix, strlen(message));
+
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
+                                                                        "\"version\":\"1\","
+                                                                        "\"origin\":{"
+                                                                            "\"name\":\"node01\","
+                                                                            "\"module\":\"wazuh-modulesd\""
+                                                                        "},"
+                                                                        "\"command\":\"restart-wazuh0\","
+                                                                        "\"parameters\":{"
+                                                                            "\"extra_args\":[],"
+                                                                            "\"alert\":{"
+                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
+                                                                                "\"rule\":{"
+                                                                                    "\"level\":5,"
+                                                                                    "\"description\":\"File added to the system.\","
+                                                                                    "\"id\":\"554\""
+                                                                                "},"
+                                                                                "\"id\":\"1609860180.513333\","
+                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
+                                                                                "\"syscheck\":{"
+                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
+                                                                                    "\"mode\":\"realtime\","
+                                                                                    "\"event\":\"added\""
+                                                                                "},"
+                                                                                "\"location\":\"syscheck\""
+                                                                            "}"
+                                                                        "}"
+                                                                    "}'");
+
+    will_return(__wrap_time, now);
+
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
+
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+                                                                                        "\"version\":\"1\","
+                                                                                        "\"origin\":{"
+                                                                                            "\"name\":\"node01\","
+                                                                                            "\"module\":\"wazuh-modulesd\""
+                                                                                        "},"
+                                                                                        "\"command\":\"add\","
+                                                                                        "\"parameters\":{"
+                                                                                            "\"extra_args\":[],"
+                                                                                            "\"alert\":{"
+                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
+                                                                                                "\"rule\":{"
+                                                                                                    "\"level\":5,"
+                                                                                                    "\"description\":\"File added to the system.\","
+                                                                                                    "\"id\":\"554\""
+                                                                                                "},"
+                                                                                                "\"id\":\"1609860180.513333\","
+                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
+                                                                                                "\"syscheck\":{"
+                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
+                                                                                                    "\"mode\":\"realtime\","
+                                                                                                    "\"event\":\"added\""
+                                                                                                "},"
+                                                                                                "\"location\":\"syscheck\""
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
+                                                                                        "}"
+                                                                                    "}'");
+
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1317): Could not launch command Success (0)");
+
+    will_return(__wrap_time, now);
+    will_return(__wrap_select, 1);
+
+    expect_value(__wrap_OS_RecvUnix, socket, queue);
+    expect_value(__wrap_OS_RecvUnix, sizet, OS_MAXSTR);
+    will_return(__wrap_OS_RecvUnix, message);
+    will_return(__wrap_OS_RecvUnix, strlen(message));
+
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
+                                                                        "\"version\":\"1\","
+                                                                        "\"origin\":{"
+                                                                            "\"name\":\"node01\","
+                                                                            "\"module\":\"wazuh-modulesd\""
+                                                                        "},"
+                                                                        "\"command\":\"restart-wazuh0\","
+                                                                        "\"parameters\":{"
+                                                                            "\"extra_args\":[],"
+                                                                            "\"alert\":{"
+                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
+                                                                                "\"rule\":{"
+                                                                                    "\"level\":5,"
+                                                                                    "\"description\":\"File added to the system.\","
+                                                                                    "\"id\":\"554\""
+                                                                                "},"
+                                                                                "\"id\":\"1609860180.513333\","
+                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
+                                                                                "\"syscheck\":{"
+                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
+                                                                                    "\"mode\":\"realtime\","
+                                                                                    "\"event\":\"added\""
+                                                                                "},"
+                                                                                "\"location\":\"syscheck\""
+                                                                            "}"
+                                                                        "}"
+                                                                    "}'");
+
+    will_return(__wrap_time, now);
+
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
+
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+                                                                                        "\"version\":\"1\","
+                                                                                        "\"origin\":{"
+                                                                                            "\"name\":\"node01\","
+                                                                                            "\"module\":\"wazuh-modulesd\""
+                                                                                        "},"
+                                                                                        "\"command\":\"add\","
+                                                                                        "\"parameters\":{"
+                                                                                            "\"extra_args\":[],"
+                                                                                            "\"alert\":{"
+                                                                                                "\"timestamp\":\"2021-01-05T15:23:00.547+0000\","
+                                                                                                "\"rule\":{"
+                                                                                                    "\"level\":5,"
+                                                                                                    "\"description\":\"File added to the system.\","
+                                                                                                    "\"id\":\"554\""
+                                                                                                "},"
+                                                                                                "\"id\":\"1609860180.513333\","
+                                                                                                "\"full_log\":\"File '/home/vagrant/file/n41.txt' added\\nMode: realtime\\n\","
+                                                                                                "\"syscheck\":{"
+                                                                                                    "\"path\":\"/home/vagrant/file/n41.txt\","
+                                                                                                    "\"mode\":\"realtime\","
+                                                                                                    "\"event\":\"added\""
+                                                                                                "},"
+                                                                                                "\"location\":\"syscheck\""
+                                                                                            "},"
+                                                                                            "\"program\":\"restart-wazuh\""
+                                                                                        "}"
+                                                                                    "}'");
+    will_return(__wrap_wpopenv, wfd);
+    will_return(__wrap_fwrite, 0);
+    will_return(__wrap_wpclose, 0);
+
+    execd_start(queue);
 }
 
 static void test_execd_start_get_command_err(void **state) {
@@ -564,24 +546,13 @@ static void test_execd_start_get_command_err(void **state) {
     int timeout = 0;
 
     will_return(__wrap_CreateThreadJoinable, 0);
-
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
     expect_value(__wrap_OS_RecvUnix, sizet, OS_MAXSTR);
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
-
-    will_return(__wrap_read_exec_config, 1);
-
-    expect_string(__wrap_fopen, path, OSSECCONF);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, (FILE *) 100);
-
-    expect_value(__wrap_fclose, _File, (FILE *) 100);
-    will_return(__wrap_fclose, 1);
 
     expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
     expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
@@ -618,6 +589,8 @@ static void test_execd_start_get_command_err(void **state) {
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, NULL);
 
+    will_return(__wrap_read_exec_config, 0);
+
     expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, NULL);
@@ -634,8 +607,8 @@ static void test_execd_start_get_command_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -669,12 +642,12 @@ static void test_execd_start_get_command_err(void **state) {
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -700,9 +673,7 @@ static void test_execd_start_get_command_err(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
     execd_start(queue);
@@ -742,8 +713,8 @@ static void test_execd_start_get_name_err(void **state) {
                     "}";
     int timeout = 0;
 
+    will_return(__wrap_CreateThreadJoinable, 0);
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -751,8 +722,8 @@ static void test_execd_start_get_name_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{}'");
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{}'");
 
     will_return(__wrap_time, now);
 
@@ -760,7 +731,6 @@ static void test_execd_start_get_name_err(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(1316): Invalid AR command: '{}'");
 
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -768,8 +738,8 @@ static void test_execd_start_get_name_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message2);
     will_return(__wrap_OS_RecvUnix, strlen(message2));
 
-    expect_string(__wrap__mdebug2, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -803,12 +773,12 @@ static void test_execd_start_get_name_err(void **state) {
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -834,9 +804,7 @@ static void test_execd_start_get_name_err(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
     execd_start(queue);
@@ -876,8 +844,8 @@ static void test_execd_start_json_err(void **state) {
                     "}";
     int timeout = 0;
 
+    will_return(__wrap_CreateThreadJoinable, 0);
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -885,8 +853,8 @@ static void test_execd_start_json_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: 'unknown'");
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: 'unknown'");
 
     will_return(__wrap_time, now);
 
@@ -894,7 +862,6 @@ static void test_execd_start_json_err(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(1315): Invalid JSON message: 'unknown'");
 
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -902,8 +869,8 @@ static void test_execd_start_json_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message2);
     will_return(__wrap_OS_RecvUnix, strlen(message2));
 
-    expect_string(__wrap__mdebug2, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -937,12 +904,12 @@ static void test_execd_start_json_err(void **state) {
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, tag, WM_EXECD_LOGTAG);
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -968,9 +935,7 @@ static void test_execd_start_json_err(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
     execd_start(queue);
@@ -980,10 +945,10 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_execd_start_ok, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_execd_start_timeout, test_setup_file, test_teardown_file),
-        //cmocka_unit_test_setup_teardown(test_execd_start_wpopenv_err, test_setup_file, test_teardown_file),
-        //cmocka_unit_test_setup_teardown(test_execd_start_get_command_err, test_setup_file, test_teardown_file),
-        //cmocka_unit_test_setup_teardown(test_execd_start_get_name_err, test_setup_file, test_teardown_file),
-        //cmocka_unit_test_setup_teardown(test_execd_start_json_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_wpopenv_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_get_command_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_get_name_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_json_err, test_setup_file, test_teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
