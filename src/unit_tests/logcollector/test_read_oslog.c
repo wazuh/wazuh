@@ -108,6 +108,34 @@ void test_oslog_ctxt_clean_success(void ** state) {
 
 }
 
+/* oslog_ctxt_is_expired */
+
+void test_oslog_ctxt_is_expired_true(void ** state) {
+
+    w_oslog_ctxt_t ctxt;
+    time_t timeout = (time_t) OSLOG_TIMEOUT_OUT;
+
+    ctxt.timestamp = (time_t) 1;
+
+    bool ret = oslog_ctxt_is_expired(timeout, &ctxt);
+
+    assert_true(ret);
+
+}
+
+void test_oslog_ctxt_is_expired_false(void ** state) {
+
+    w_oslog_ctxt_t ctxt;
+    time_t timeout = (time_t) OSLOG_TIMEOUT_OUT;
+
+    ctxt.timestamp = time(NULL);
+
+    bool ret = oslog_ctxt_is_expired(timeout, &ctxt);
+
+    assert_false(ret);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test oslog_ctxt_restore
@@ -117,6 +145,9 @@ int main(void) {
         cmocka_unit_test(test_oslog_ctxt_backup_success),
         // Test oslog_ctxt_clean
         cmocka_unit_test(test_oslog_ctxt_clean_success),
+        // Test oslog_ctxt_is_expired
+        cmocka_unit_test(test_oslog_ctxt_is_expired_true),
+        cmocka_unit_test(test_oslog_ctxt_is_expired_false),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
