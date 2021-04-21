@@ -9,18 +9,25 @@
 <timestamp> <severity> <component> [<context>] <message>
 -->
 <decoder name="mongodb">
-    <prematch>^\d+-\d+-\d+T\d+:\d+:\d+.\d+\p\d+ \w \S+\s+[\w+] </prematch>
+    <prematch>^\s*[\.*]</prematch>
 </decoder>
 
+<!--
+<decoder name="mongodb-test">
+    <parent>mongodb</parent>
+    <regex offset="after_parent">(\.*)</regex>
+    <order>something</order>
+</decoder>
+-->
 
 <!--
 2017-03-27T19:32:31.916+0200 I ACCESS   [conn10000] Successfully authenticated as principal snapshots on myUser
 -->
 <decoder name="mongodb-successauth">
     <parent>mongodb</parent>
-    <prematch offset="after_parent">^Successfully authenticated</prematch>
-    <regex>^\d+-\d+-\d+T\d+:\d+:\d+.\d+\p\d+ (\w) (\S+)\s+[(\w+)] Successfully authenticated as principal snapshots on (\w+)</regex>
-    <order>mongodb.severity,mongodb.component,mongodb.context,srcuser</order>
+    <prematch offset="after_parent">^\s*Successfully authenticated</prematch>
+    <regex>^\s*[(\w+)]\s*Successfully authenticated as principal snapshots on (\w+)</regex>
+    <order>mongodb.context,srcuser</order>
 </decoder>
 
 
@@ -29,9 +36,9 @@
 -->
 <decoder name="mongodb-endconnection">
     <parent>mongodb</parent>
-    <prematch offset="after_parent">^end connection</prematch>
-    <regex>^\d+-\d+-\d+T\d+:\d+:\d+.\d+\p\d+ (\w) (\S+)\s+[(\w+)] end connection (\S+):(\d+) \((\d+)</regex>
-    <order>mongodb.severity,mongodb.component,mongodb.context,srcip,srcport,mongodb.connections</order>
+    <prematch offset="after_parent">^\s*end connection</prematch>
+    <regex>^\s*[(\w+)]\s*end connection (\S+):(\d+) \((\d+)</regex>
+    <order>mongodb.context,srcip,srcport,mongodb.connections</order>
 </decoder>
 
 <!--
@@ -40,9 +47,9 @@
 
 <decoder name="mongodb-connectionaccepted">
     <parent>mongodb</parent>
-    <prematch offset="after_parent">^connection accepted</prematch>
-    <regex>^\d+-\d+-\d+T\d+:\d+:\d+.\d+\p\d+ (\w) (\S+)\s+[(\w+)] connection accepted from (\S+):(\d+) #(\d+) \((\d+)</regex>
-    <order>mongodb.severity,mongodb.component,mongodb.context,srcip,srcport,mongodb.nconnection,mongodb.connections</order>
+    <prematch offset="after_parent">^\s*connection accepted</prematch>
+    <regex>^\s*[(\w+)]\s*connection accepted from (\S+):(\d+) #(\d+) \((\d+)</regex>
+    <order>mongodb.context,srcip,srcport,mongodb.nconnection,mongodb.connections</order>
 </decoder>
 
 <!--
@@ -50,9 +57,9 @@
 -->
 <decoder name="mongodb-authfailed">
     <parent>mongodb</parent>
-    <prematch offset="after_parent">^\S+ authentication failed</prematch>
-    <regex>^\d+-\d+-\d+T\d+:\d+:\d+.\d+\p\d+ (\w) (\S+)\s+[(\w+)] \S+ authentication failed for (\S+) on (\S+) from client (\S+) ;</regex>
-    <order>mongodb.severity,mongodb.component,mongodb.context,srcuser,mongodb.database,srcip</order>
+    <prematch offset="after_parent">^\s*\S+\s*authentication failed</prematch>
+    <regex>^\s*[(\w+)]\s*\S+\s*authentication failed for (\S+) on (\S+) from client (\S+) ;</regex>
+    <order>mongodb.context,srcuser,mongodb.database,srcip</order>
 </decoder>
 
 <!--
@@ -60,6 +67,6 @@
 -->
 <decoder name="mongodb-generic">
     <parent>mongodb</parent>
-    <regex>^\d+-\d+-\d+T\d+:\d+:\d+.\d+\p\d+ (\w) (\S+)\s+[(\w+)] </regex>
-    <order>mongodb.severity,mongodb.component,mongodb.context</order>
+    <regex>^\s*[(\w+)]\s*</regex>
+    <order>mongodb.context</order>
 </decoder>
