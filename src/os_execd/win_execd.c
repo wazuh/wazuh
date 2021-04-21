@@ -24,6 +24,7 @@
 extern w_queue_t * winexec_queue;
 
 /* Timeout list */
+OSList *timeout_list;
 OSListNode *timeout_node;
 
 void win_timeout_run() {

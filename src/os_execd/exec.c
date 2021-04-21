@@ -22,13 +22,6 @@ static int  exec_timeout[MAX_AR + 1];
 static int  exec_size = 0;
 static int  f_time_reading = 1;
 
-#ifdef WAZUH_UNIT_TESTING
-// Remove static qualifier when unit testing
-#define STATIC
-#else
-#define STATIC static
-#endif
-
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
 time_t pending_upg = 0;
 
