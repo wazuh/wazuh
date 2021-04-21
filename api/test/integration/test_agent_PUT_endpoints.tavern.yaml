@@ -342,11 +342,15 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-        content-type: "application/xml"
     response:
-      status_code: 400
+      status_code: 200
       json:
-        error: 1755
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          failed_items: []
+          total_failed_items: 0
 
     # PUT /agents/group/group2/restart (Agents 009 and 010 are disconnected)
   - name: Restart all agents from group2
@@ -356,7 +360,6 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-        content-type: "application/xml"
     response:
       status_code: 200
       json:
@@ -389,7 +392,6 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-        content-type: "application/xml"
     response:
       <<: *resource_not_found_group
 
@@ -632,7 +634,7 @@ test_name: PUT /agents/{agent_id}/group/{group_id}
 
 stages:
 
-  # PUT /agents/001/group/group2
+  # PUT /agents/001/group/group1
   - name: Assign agent 001 to group1
     request:
       verify: False
@@ -648,7 +650,6 @@ stages:
           affected_items:
             - "001"
           total_affected_items: 1
-    delay_after: !float "{restart_delay}"
 
     # PUT /agents/wrong_id/group/group1
   - name: Try to assign an agent with an invalid id
@@ -685,11 +686,11 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
-    # PUT /agents/001/group/group3?force_single_group=true
-  - name: Assign agent 001 to group3 with force_single_group
+    # PUT /agents/002/group/group3?force_single_group=true
+  - name: Assign agent 002 to group3 with force_single_group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group3?force_single_group=true"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/group3?force_single_group=true"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -701,9 +702,8 @@ stages:
         error: 0
         data:
           affected_items:
-            - "001"
+            - "002"
           total_affected_items: 1
-    delay_after: !float "{restart_delay}"
 
 ---
 test_name: PUT /agents/{agent_id}/restart
@@ -767,11 +767,11 @@ stages:
       json:
         <<: *error_spec
 
-    # PUT /agents/002/restart
+    # PUT /agents/003/restart
   - name: Restart an agent
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/002/restart"
+      url: "{protocol:s}://{host:s}:{port:d}/agents/003/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -781,7 +781,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - "002"
+            - "003"
           total_affected_items: 1
     delay_after: !float "{restart_delay}"
 

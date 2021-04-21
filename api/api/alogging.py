@@ -27,7 +27,8 @@ class AccessLogger(AbstractAccessLogger):
             query['password'] = '****'
         if 'password' in body:
             body['password'] = '****'
-
+        if 'key' in body and '/agents' in request.path:
+            body['key'] = '****'
         # With permanent redirect, not found responses or any response with no token information,
         # decode the JWT token to get the username
         user = request.get('user', '')

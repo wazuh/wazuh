@@ -79,3 +79,4 @@ set(TEST_EVENT_DEPS -Wl,--start-group ${WAZUHLIB} ${WAZUHEXT} DEPENDENCIES_O -Wl
 add_subdirectory(client-agent)
 add_subdirectory(wazuh_modules)
 add_subdirectory(os_execd)
+add_subdirectory(win32)
