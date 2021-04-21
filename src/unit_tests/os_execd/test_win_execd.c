@@ -95,11 +95,12 @@ static void win_execd_run(void **state) {
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -125,9 +126,7 @@ static void win_execd_run(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
     win_execd_run(message);
@@ -170,11 +169,12 @@ static void test_win_execd_run_timeout(void **state) {
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -200,16 +200,15 @@ static void test_win_execd_run_timeout(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Adding command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Adding command 'restart-wazuh {"
                                                                                     "\"version\":\"1\","
                                                                                     "\"origin\":{"
                                                                                         "\"name\":\"node01\","
-                                                                                        "\"module\":\"wazuh-execd\""
+                                                                                        "\"module\":\"wazuh-modulesd\""
                                                                                     "},"
                                                                                     "\"command\":\"delete\","
                                                                                     "\"parameters\":{"
@@ -274,11 +273,12 @@ static void test_win_execd_run_wpopenv_err(void **state) {
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -305,7 +305,8 @@ static void test_win_execd_run_wpopenv_err(void **state) {
 
     will_return(__wrap_wpopenv, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1317): Could not launch command Success (0)");
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1317): Could not launch command Success (0)");
 
     win_execd_run(message);
 }
@@ -353,7 +354,8 @@ static void test_win_execd_run_get_command_err(void **state) {
     will_return(__wrap_get_command_by_name, timeout);
     will_return(__wrap_get_command_by_name, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'restart-wazuh0' provided.");
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1311): Invalid command name 'restart-wazuh0' provided.");
 
     win_execd_run(message);
 }
@@ -365,7 +367,8 @@ static void test_win_execd_run_get_name_err(void **state) {
     char *message = "{}";
     int timeout = 0;
 
-    expect_string(__wrap__merror, formatted_msg, "(1316): Invalid AR command: '{}'");
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1316): Invalid AR command: '{}'");
 
     win_execd_run(message);
 }
@@ -377,7 +380,8 @@ static void test_win_execd_run_json_err(void **state) {
     char *message = "unknown";
     int timeout = 0;
 
-    expect_string(__wrap__merror, formatted_msg, "(1315): Invalid JSON message: 'unknown'");
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1315): Invalid JSON message: 'unknown'");
 
     win_execd_run(message);
 }
