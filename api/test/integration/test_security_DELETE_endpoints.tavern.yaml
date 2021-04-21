@@ -105,9 +105,9 @@ stages:
       params:
         policy_ids: 999
     response:
-      status_code: 200
+      status_code: 404
       json:
-        <<: *error
+        error: 4002
 
   # DELETE /security/roles/{non-existent role_id}/policies/{policy_id}
   - name: Try to delete a non-existent role-policy (role non-existent)
@@ -120,9 +120,9 @@ stages:
       params:
         policy_ids: 3
     response:
-      status_code: 200
+      status_code: 404
       json:
-        <<: *error
+        error: 4002
 
   # DELETE /security/roles/{role_id}/policies/{policy_id}
   - name: Try to delete a non-existent role-policy (policy non-existent)
@@ -137,7 +137,15 @@ stages:
     response:
       status_code: 200
       json:
-        <<: *error
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4008
+              id: !anything
+          total_affected_items: 0
+          total_failed_items: 1
 
 ---
 test_name: DELETE /security/roles/{role_id}/rules
@@ -178,9 +186,9 @@ stages:
       params:
         rule_ids: 999
     response:
-      status_code: 200
+      status_code: 404
       json:
-        <<: *error
+        error: 4002
 
   # DELETE /security/roles/{non-existent role_id}/rules/{rule_id}
   - name: Try to delete a non-existent role-rule (role non-existent)
@@ -193,16 +201,9 @@ stages:
       params:
         rule_ids: 100
     response:
-      status_code: 200
+      status_code: 404
       json:
-        error: !anyint
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 4002
-              id: !anything
-          total_failed_items: 1
+        error: 4002
 
   # DELETE /security/roles/{role_id}/rules/{rule_id}
   - name: Try to delete a non-existent role-rule (reserved role)
@@ -284,9 +285,9 @@ stages:
       params:
         role_ids: 104
     response:
-      status_code: 200
+      status_code: 404
       json:
-        <<: *error
+        error: 5001
 
   # DELETE /security/user/{user_id}/roles/{role_id}
   - name: Try to delete a non-existent user-role (role non-existent)
@@ -301,7 +302,16 @@ stages:
     response:
       status_code: 200
       json:
-        <<: *error
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 4002
+              id:
+              - 999
+          total_affected_items: 0
+          total_failed_items: 1
 
 ---
 test_name: DELETE /security/policies/{policy_id}
