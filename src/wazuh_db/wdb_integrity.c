@@ -323,7 +323,7 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
 
         case 2: // Data is synchronized
             wdbi_update_completion(wdb, component, timestamp);
-
+        }
         cJSON* data =NULL;
         char* out = NULL;
         if(component == WDB_SYSCOLLECTOR_HOTFIXES ) {
@@ -355,7 +355,7 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
 
         os_free(out);
         cJSON_Delete(data);
-        }
+
 
     } else if (strcmp(command, "integrity_check_left") == 0) {
         item = cJSON_GetObjectItem(data, "tail");
