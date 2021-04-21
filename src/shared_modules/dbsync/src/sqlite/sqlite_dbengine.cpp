@@ -465,6 +465,7 @@ void SQLiteDBEngine::initialize(const std::string& path,
                     m_sqliteConnection = m_sqliteFactory->createConnection(dbPath);
                     const auto createDBQueryList { Utils::split(tableStmtCreation,';') };
                     m_sqliteConnection->execute("PRAGMA temp_store = memory;");
+                    m_sqliteConnection->execute("PRAGMA journal_mode = memory;");
                     m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
                     for (const auto& query : createDBQueryList)
                     {
