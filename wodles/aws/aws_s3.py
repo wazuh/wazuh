@@ -474,8 +474,7 @@ class AWSBucket(WazuhIntegration):
         self.prefix = prefix
         self.suffix = suffix
         self.delete_file = delete_file
-        # If not empty, both self.prefix and self.suffix always have a trailing '/'
-        self.bucket_path = f"{self.bucket}/{self.prefix}{self.suffix}"
+        self.bucket_path = self.bucket + '/' + self.prefix
         self.aws_organization_id = aws_organization_id
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
@@ -833,6 +832,10 @@ class AWSLogsBucket(AWSBucket):
     """
     Abstract class for logs generated from services such as CloudTrail or Config
     """
+    def __init__(self, **kwargs):
+        AWSBucket.__init__(self, **kwargs)
+        # If not empty, both self.prefix and self.suffix always have a trailing '/'
+        self.bucket_path = f"{self.bucket}/{self.prefix}{self.suffix}"
 
     def get_base_prefix(self):
         base_path = '{}AWSLogs/{}'.format(self.prefix, self.suffix)
