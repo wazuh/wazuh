@@ -1382,7 +1382,6 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         return 0;
     }
     if (strncmp(curr, "integrity_check_", 16) == 0) {
-        int flag_sync = 0;
         switch (wdbi_query_checksum(wdb, component, curr, next)) {
         case -1:
             mdebug1("DB(%s) Cannot query Syscollector range checksum.", wdb->id);
@@ -1398,31 +1397,8 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
             break;
 
         default:
-            flag_sync = 1;
             snprintf(output, OS_MAXSTR + 1, "ok ");
         }
-        cJSON* data =NULL;
-        char* out = NULL;
-        if(component == WDB_SYSCOLLECTOR_HOTFIXES ) {
-             if (1 == flag_sync )
-                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 1;");
-             else
-                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 0;");
-
-            out = cJSON_PrintUnformatted(data);
-            mdebug1("Result of new agents Hotfix sync status flag %d: %s",flag_sync, out);
-
-        } else if (component == WDB_SYSCOLLECTOR_PACKAGES) {
-            if (1 == flag_sync )
-                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET packages_sync_status = 1;");
-            else
-                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET packages_sync_status = 0;");
-
-            out = cJSON_PrintUnformatted(data);
-            mdebug1("Result of new agents Packages sync status flag %d: %s",flag_sync, out);
-        }
-        os_free(out);
-        cJSON_Delete(data);
 
         return 0;
     } else if (strncmp(curr, "integrity_clear", 15) == 0) {

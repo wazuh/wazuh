@@ -323,6 +323,38 @@ int wdbi_query_checksum(wdb_t * wdb, wdb_component_t component, const char * com
 
         case 2: // Data is synchronized
             wdbi_update_completion(wdb, component, timestamp);
+
+        cJSON* data =NULL;
+        char* out = NULL;
+        if(component == WDB_SYSCOLLECTOR_HOTFIXES ) {
+             if (1 == retval || 0 == retval) {
+                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 0;");
+                out = cJSON_PrintUnformatted(data);
+                mdebug1("Result of new agents Hotfix not synced: %s", out);
+             }
+
+             else if (2 == retval ) {
+                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET hotfix_sync_status = 1;");
+                out = cJSON_PrintUnformatted(data);
+                mdebug1("Result of new agents Hotfix synced: %s", out);
+             }
+        } else if (component == WDB_SYSCOLLECTOR_PACKAGES) {
+             if (1 == retval || 0 == retval) {
+                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET packages_sync_status = 0;");
+                out = cJSON_PrintUnformatted(data);
+                mdebug1("Result of new agents Packages not synced: %s", out);
+             }
+
+             else if (2 == retval ) {
+                data = wdb_exec(wdb->db, "UPDATE syscollector_sync_status SET packages_sync_status = 1;");
+                out = cJSON_PrintUnformatted(data);
+                mdebug1("Result of new agents Packages synced: %s", out);
+             }
+
+        }
+
+        os_free(out);
+        cJSON_Delete(data);
         }
 
     } else if (strcmp(command, "integrity_check_left") == 0) {
