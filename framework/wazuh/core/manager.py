@@ -31,7 +31,7 @@ def status():
     return get_manager_status()
 
 
-def get_ossec_log_fields(log):
+def get_wazuh_log_fields(log):
     regex_category = re.compile(
         r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
@@ -52,8 +52,8 @@ def get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), tag, level.lower(), description
 
 
-def get_ossec_logs(limit=2000):
-    """Return last <limit> lines of ossec.log file.
+def get_wazuh_logs(limit=2000):
+    """Return last <limit> lines of wazuh.log file.
 
     Returns
     -------
@@ -62,12 +62,12 @@ def get_ossec_logs(limit=2000):
     """
     logs = []
 
-    for line in tail(common.ossec_log, limit):
-        log_fields = get_ossec_log_fields(line)
+    for line in tail(common.wazuh_log, limit):
+        log_fields = get_wazuh_log_fields(line)
         if log_fields:
             date, tag, level, description = log_fields
 
-            # We transform local time (ossec.log) to UTC with ISO8601 maintaining time integrity
+            # We transform local time (wazuh.log) to UTC with ISO8601 maintaining time integrity
             log_line = {'timestamp': date.astimezone(timezone.utc),
                         'tag': tag, 'level': level, 'description': description}
             logs.append(log_line)
@@ -89,7 +89,7 @@ def get_logs_summary(limit=2000):
         Number of logs for every tag
     """
     tags = dict()
-    logs = get_ossec_logs(limit)
+    logs = get_wazuh_logs(limit)
 
     for log in logs:
         if log['tag'] in tags:

@@ -6,7 +6,7 @@ from healthcheck_utils import get_agent_health_base
 
 
 def get_health():
-    output = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/ossec.log")
+    output = os.system("grep -q 'wazuh-modulesd:syscollector: INFO: Evaluation finished.' /var/ossec/logs/wazuh.log")
 
     if output == 0:
         return 0

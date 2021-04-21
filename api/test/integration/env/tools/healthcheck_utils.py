@@ -24,17 +24,17 @@ def get_agent_health_base():
 
     shared_conf_restart = os.system(
         "grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
-        "/var/ossec/logs/ossec.log")
+        "/var/ossec/logs/wazuh.log")
     agent_connection = os.system(
-        "grep -q 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/ossec.log")
+        "grep -q 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/wazuh.log")
 
     if shared_conf_restart == 0 and agent_connection == 0:
         # No -q option as we need the output
         output_agent_restart = os.popen(
             "grep 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
-            "/var/ossec/logs/ossec.log").read().split("\n")
+            "/var/ossec/logs/wazuh.log").read().split("\n")
         output_agent_connection = os.popen(
-            "grep 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/ossec.log").read().split("\n")
+            "grep 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/wazuh.log").read().split("\n")
 
         t1 = get_timestamp(output_agent_restart[-2])
         t2 = get_timestamp(output_agent_connection[-2])
