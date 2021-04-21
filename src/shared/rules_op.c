@@ -798,7 +798,7 @@ int OS_ReadXMLRules(const char *rulefile,
 
                     if (!(config_ruleinfo->alert_opts & SAME_EXTRAINFO)) {
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
-                    } 
+                    }
                 } else if (strcasecmp(rule_opt[k]->element,
                                       xml_global_frequency) == 0) {
                     config_ruleinfo->context_opts |= FIELD_GFREQUENCY;
@@ -1117,6 +1117,14 @@ int OS_ReadXMLRules(const char *rulefile,
                 */
 
                 k++;
+            }
+
+            /* Check for valid overwrite */
+            if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
+                && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
+                merror("Invalid use of overwrite option. "
+                       "Could not overwrite parent rule at rule '%d'.", config_ruleinfo->sigid);
+                goto cleanup;
             }
 
             /* Check for a valid use of frequency */

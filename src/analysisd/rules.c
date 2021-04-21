@@ -92,7 +92,7 @@ void Rules_OP_CreateRules() {
 
 }
 
-int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node, 
+int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_node,
                        EventList **last_event_list, OSStore **decoder_list, OSList* log_msg)
 {
     OS_XML xml;
@@ -594,7 +594,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     } else if (strcasecmp(rule_opt[k]->element, xml_group) == 0) {
                         config_ruleinfo->group = loadmemory(config_ruleinfo->group, rule_opt[k]->content, log_msg);
- 
+
                     } else if (strcasecmp(rule_opt[k]->element, xml_comment) == 0) {
 
                         char *newline;
@@ -828,7 +828,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                         lookup_type = LR_ADDRESS_MATCH_VALUE;
                                     } else {
                                         smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
-                                        smerror(log_msg, "List match lookup=\"%s\" is not valid.", 
+                                        smerror(log_msg, "List match lookup=\"%s\" is not valid.",
                                                 rule_opt[k]->values[list_att_num]);
                                         goto cleanup;
                                     }
@@ -875,7 +875,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                     os_calloc(1, sizeof(OSMatch), matcher);
                                     if (!OSMatch_Compile(rule_opt[k]->values[list_att_num], matcher, 0)) {
                                         smerror(log_msg, INVALID_CONFIG, rule_opt[k]->element, rule_opt[k]->content);
-                                        smerror(log_msg, REGEX_COMPILE, rule_opt[k]->values[list_att_num], 
+                                        smerror(log_msg, REGEX_COMPILE, rule_opt[k]->values[list_att_num],
                                             matcher->error);
                                         goto cleanup;
                                     }
@@ -1615,6 +1615,14 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     goto cleanup;
                 }
 
+                /* Check for valid overwrite */
+                if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
+                    && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
+                    smerror(log_msg, "Invalid use of overwrite option. "
+                            "Could not overwrite parent rule at rule '%d'.", config_ruleinfo->sigid);
+                    goto cleanup;
+                }
+
                 /* Check for valid use of frequency */
                 if ((config_ruleinfo->context_opts || config_ruleinfo->same_field
                     || config_ruleinfo->different_field || config_ruleinfo->frequency)
@@ -1835,7 +1843,7 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
 
                     os_free(location);
                 }
-                
+
                 /* Add location */
                 if (action) {
                     w_calloc_expression_t(&config_ruleinfo->action, action_type);
@@ -3204,7 +3212,7 @@ w_exp_type_t w_check_attr_type(xml_node * node, w_exp_type_t default_type, int r
     const char * xml_type = "type";
     const char * str_type = w_get_attr_val_by_name(node, xml_type);
 
-    if (!str_type) { 
+    if (!str_type) {
         return default_type;
     }
 

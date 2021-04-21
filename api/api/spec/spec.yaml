@@ -178,10 +178,10 @@ x-rbac-catalog:
     'group:read':
       description: "Access agent groups information (id, name, agents, etc)"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/group:id'
       example:
         actions: ['group:create']
-        resources: ['*:*:*']
+        resources: ['group:id:*']
         effect: "allow"
     'group:update_config':
       description: "Change the configuration of agent groups"
@@ -299,7 +299,7 @@ x-rbac-catalog:
     'decoders:update':
       description: "Update or upload custom decoder files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['decoders:update']
         resources: ['*:*:*']
@@ -382,7 +382,7 @@ x-rbac-catalog:
     'rules:update':
       description: "Update or upload custom rule files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/rule:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['rules:update']
         resources: ['*:*:*']
@@ -1661,7 +1661,7 @@ components:
                       type: string
                     date_end_master:
                       type: string
-                    total_agentinfo:
+                    n_synced_chunks:
                       type: integer
                       format: int32
                 last_sync_integrity:
@@ -7879,7 +7879,7 @@ paths:
                         last_sync_agentinfo:
                           date_start_master: "2019-01-11T18:52:57.72Z"
                           date_end_master: "2019-01-11T18:52:57.73Z"
-                          total_agentinfo: 1
+                          n_synced_chunks: 1
                         sync_integrity_free: true
                         last_sync_agentgroups:
                           date_end_master: "2019-01-11T18:52:51.56Z"

@@ -168,7 +168,9 @@
 #define EXEC_INV_CMD    "(1316): Invalid AR command: '%s'"
 #define EXEC_CMD_FAIL   "(1317): Could not launch command %s (%d)"
 
-#define AR_NOAGENT_ERROR    "(1320): Agent '%s' not found."
+#define AR_NOAGENT_ERROR                "(1320): Agent '%s' not found."
+#define EXEC_QUEUE_CONNECTION_ERROR     "(1321): Error communicating with queue '%s'."
+#define EXEC_QUEUE_BUSY                 "(1322): Socket busy."
 
 /* List operations */
 #define LIST_ERROR      "(1290): Unable to create a new list (calloc)."
