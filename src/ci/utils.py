@@ -19,6 +19,7 @@ headerDic = {\
 'valgrind':         '=================== Running Valgrind    ===================',\
 'cppcheck':         '=================== Running cppcheck    ===================',\
 'asan':             '=================== Running ASAN        ===================',\
+'scanbuild':        '=================== Running Scanbuild   ===================',\
 'testtool':         '=================== Running TEST TOOL   ===================',\
 'cleanfolder':      '=================== Clean build Folders ===================',\
 'configurecmake':   '=================== Running CMake Conf  ===================',\
@@ -273,6 +274,70 @@ def cleanFolder(moduleName, additionalFolder):
         errorString = 'Error Running Cleanfolder: additional folder not exist in delete folder dictionary.'
         raise ValueError(errorString)
 
+def cleanAll():
+    out = subprocess.run("make clean", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen('[CleanAll: PASSED]')
+    else:
+        print("make clean")
+        print(out.stderr)
+        printFail('[CleanAll: FAILED]')
+        errorString = 'Error Running CleanAll: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def cleanInternals():
+    out = subprocess.run("make clean-internals", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen('[CleanInternals: PASSED]')
+    else:
+        print("make clean-internals")
+        print(out.stderr)
+        printFail('[CleanInternals: FAILED]')
+        errorString = 'Error Running CleanInternals: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def cleanExternals():
+    out = subprocess.run("rm -rf ./external/*", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0 and not out.stderr:
+        printGreen('[CleanExternals: PASSED]')
+    else:
+        print("rm -rf ./external/*")
+        print(out.stderr)
+        printFail('[CleanExternals: FAILED]')
+        errorString = 'Error Running CleanExternals: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def makeDeps(targetName, srcOnly):
+    makeDepsCommand = "make deps TARGET=" + targetName
+    if srcOnly:
+        makeDepsCommand += " EXTERNAL_SRC_ONLY=yes"
+    out = subprocess.run(makeDepsCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen('[MakeDeps: PASSED]')
+    else:
+        print(makeDepsCommand)
+        print(out.stderr)
+        printFail('[MakeDeps: FAILED]')
+        errorString = 'Error Running MakeDeps: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+def makeTarget(targetName, tests, debug):
+    makeTargetCommand = "make TARGET=" + targetName
+    if tests:
+        makeTargetCommand += " TEST=1"
+    if debug:
+        makeTargetCommand += " DEBUG=1"
+
+    out = subprocess.run(makeTargetCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if out.returncode == 0:
+        printGreen('[MakeTarget: PASSED]')
+    else:
+        print(makeTargetCommand)
+        print(out.stderr)
+        printFail('[MakeTarget: FAILED]')
+        errorString = 'Error Running MakeTarget: ' + str(out.returncode)
+        raise ValueError(errorString)
+
 def configureCMake(moduleName, debugMode, testMode, withAsan):
     printHeader("<"+moduleName+">"+headerDic['configurecmake']+"<"+moduleName+">")
     currentModuleNameDir = currentDirPath(moduleName)
@@ -343,6 +408,43 @@ def runASAN(moduleName):
         runTestTool(str(moduleName), testToolCommand, element['is_smoke_with_configuration'])
 
     printGreen("<"+moduleName+">"+"[ASAN: PASSED]"+"<"+moduleName+">")
+
+def runScanBuild(targetName):
+    """
+    Executes scan-build for 'targetName'.
+
+    :param targetName: Target to be analyzed using scan-build analysis tool.
+    """
+    printHeader("<"+targetName+">"+headerDic['scanbuild']+"<"+targetName+">")
+    cleanAll()
+    cleanExternals()
+    if targetName == "winagent":
+        makeDeps(targetName, True)
+        makeTarget("winagent", False, True)
+        cleanInternals()
+        scanBuildCommand = 'scan-build-10 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc \
+                            --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 \
+                            --force-analyze-debug-code make TARGET=winagent DEBUG=1 -j4'
+    else:
+        makeDeps(targetName, False)
+        scanBuildCommand = 'scan-build-10 --status-bugs --force-analyze-debug-code make TARGET=' + targetName + ' DEBUG=1 -j4'
+
+    out = subprocess.run(scanBuildCommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+    if out.returncode == 0:
+        printGreen('[ScanBuild: PASSED]')
+    else:
+        printFail('[ScanBuild: FAILED]')
+        print(scanBuildCommand)
+        if out.returncode == 1:
+            print(out.stdout)
+        else:
+            print(out.stderr)
+        printFail('[SCANBUILD: FAILED]')
+        errorString = 'Error Running Scan-build: ' + str(out.returncode)
+        raise ValueError(errorString)
+
+    printGreen("<"+targetName+">"+"[SCANBUILD: PASSED]"+"<"+targetName+">")
 
 def runReadyToReview(moduleName):
     """

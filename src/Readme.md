@@ -14,6 +14,7 @@ There are several modules needed in order to the tool to work correctly.
   - valgrind
   - lcov
   - gcov
+  - scan-build-10
 
 ## Compile Wazuh
 In order to run unit tests on a specific wazuh target, the project needs to be built with the `DEBUG` and `TEST` options as shown below:
@@ -25,23 +26,27 @@ make TARGET=server|agent DEBUG=1 TEST=1
 Once the code is compiled and built successfully the following line should be executed:
 
 ```
-usage: python3 build.py [-h] [-r READYTOREVIEW] [-m MAKE] [-t TESTS] [-c COVERAGE] [-v VALGRIND] [--clean CLEAN] [--cppcheck CPPCHECK]
+usage: build.py [-h] [-r READYTOREVIEW] [-m MAKE] [-t TESTS] [-c COVERAGE] [-v VALGRIND] [--clean CLEAN] [--cppcheck CPPCHECK] [--asan ASAN] [--scanbuild SCANBUILD]
 
 optional arguments:
   -h, --help            show this help message and exit
   -r READYTOREVIEW, --readytoreview READYTOREVIEW
-                        Run all the quality checks needed to create a PR. Example: python3 build.py -r <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
+                        Run all the quality checks needed to create a PR. Example: python3 build.py -r
+                        <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   -m MAKE, --make MAKE  Compile the lib. Example: python3 build.py -m <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   -t TESTS, --tests TESTS
-                        Run tests (should be configured with TEST=on). Example: python3 build.py -t <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
+                        Run tests (should be configured with TEST=on). Example: python3 build.py -t
+                        <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   -c COVERAGE, --coverage COVERAGE
-                        Collect tests coverage and generates report. Example: python3 build.py -c <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
+                        Collect tests coverage and generates report. Example: python3 build.py -c
+                        <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   -v VALGRIND, --valgrind VALGRIND
                         Run valgrind on tests. Example: python3 build.py -v <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --clean CLEAN         Clean the lib. Example: python3 build.py --clean <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --cppcheck CPPCHECK   Run cppcheck on the code. Example: python3 build.py --cppcheck <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
   --asan ASAN           Run ASAN on the code. Example: python3 build.py --asan <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector>
-
+  --scanbuild SCANBUILD
+                        Run scan-build on the code. Example: python3 build.py --scanbuild <agent|server|winagent>
 
 Ready to review checks:
   1. runs cppcheck on <data_provider|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|wazuh_modules/syscollector> folder.
@@ -141,4 +146,42 @@ shared_modules/dbsync > [make: PASSED]
 [Cleanfolder: PASSED]
 [TestTool: PASSED]
 <shared_modules/dbsync>[ASAN: PASSED]<shared_modules/dbsync>
+```
+Scan-build analysis agent/server:
+  1. clean previous compiled binaries.
+  2. remove externals libraries.
+  3. download externals libraries based on the specified target.
+  4. run scan-build on the specified target.
+If all the checks passed it returns 0 and prints a "[SCANBUILD: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns an error code.
+
+Scan-build analysis winagent:
+  1. clean previous compiled binaries.
+  2. remove externals libraries.
+  3. download externals libraries for windows.
+  4. compile winagent.
+  5. clean internals.
+  6. run scan-build for winagent specifying the cc and cxx compiler and the target.
+Steps 4-5 were added to fix an issue found running scan-build on winagent using pre-compiled externals libraries. If all the checks passed it returns 0 and prints a "[SCANBUILD: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns an error code.
+
+Output Example executing the SCANBUILD analysis with `agent` target:
+```
+#> python3 build.py --scanbuild agent
+<agent>=================== Running Scanbuild   ===================<agent>
+[CleanAll: PASSED]
+[CleanExternals: PASSED]
+[MakeDeps: PASSED]
+[ScanBuild: PASSED]
+<agent>[SCANBUILD: PASSED]<agent>
+```
+Output Example executing the SCANBUILD analysis with `winagent` target:
+```
+#> python3 build.py --scanbuild winagent
+<winagent>=================== Running Scanbuild   ===================<winagent>
+[CleanAll: PASSED]
+[CleanExternals: PASSED]
+[MakeDeps: PASSED]
+[MakeTarget: PASSED]
+[CleanInternals: PASSED]
+[ScanBuild: PASSED]
+<winagent>[SCANBUILD: PASSED]<winagent>
 ```
