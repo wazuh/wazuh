@@ -18,8 +18,10 @@
 #include "stringHelper.h"
 #include "json.hpp"
 #include "timeHelper.h"
+#ifndef CMAKE_CHECK_CENTOS5
 #include <alpm.h>
 #include <package.h>
+#endif
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -160,6 +162,7 @@ namespace PackageLinuxHelper
         return ret;
     }
 
+#ifndef CMAKE_CHECK_CENTOS5
     static nlohmann::json parsePacman(const alpm_list_t *pItem)
     {
         const auto pArchPkg{reinterpret_cast<alpm_pkg_t*>(pItem->data)};
@@ -190,6 +193,7 @@ namespace PackageLinuxHelper
         packageInfo["description"]  = alpmWrapper(alpm_pkg_get_desc(pArchPkg));
         return packageInfo;
     }
+#endif
 };
 
 #endif // _PACKAGES_LINUX_PARSER_HELPER_H

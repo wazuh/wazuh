@@ -46,8 +46,12 @@ include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
+if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+else()
+  add_definitions(-DCMAKE_CHECK_CENTOS5=1)
+endif(NOT CMAKE_CHECK_CENTOS5)
 
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
@@ -56,8 +60,10 @@ link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
+if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
+endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
 
 
