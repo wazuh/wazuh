@@ -3,12 +3,9 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
+import api.configuration as configuration
 from copy import deepcopy
 from functools import lru_cache
-
-import api.configuration as configuration
-from api.util import raise_if_exc
-# Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
@@ -20,6 +17,7 @@ from wazuh.rbac.orm import AuthenticationManager, PoliciesManager, RolesManager,
     TokenManager, UserRolesManager, RolesRulesManager, RulesManager
 from wazuh.rbac.orm import SecurityError, max_id_reserved
 
+# Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
 _user_password = re.compile(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$')
 
 
@@ -742,12 +740,12 @@ def remove_user_role(user_id, role_ids):
                 result.affected_items.append(auth.get_user_id(int(user_id[0])))
             result.affected_items.sort(key=str)
             invalid_users_tokens(users=user_id)
+
     return result
 
 
-
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'rule:id:{rule_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023,5001]})
+                  post_proc_kwargs={'exclude_codes': [4002, 4008, 4022, 4023]})
 def set_role_rule(role_id, rule_ids, run_as=False):
     """Create a relationship between a role and one or more rules.
 
@@ -839,7 +837,7 @@ def remove_role_rule(role_id, rule_ids):
 
 
 @expose_resources(actions=['security:update'], resources=['role:id:{role_id}', 'policy:id:{policy_ids}'],
-                  post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011,5001]})
+                  post_proc_kwargs={'exclude_codes': [4002, 4007, 4008, 4011]})
 def set_role_policy(role_id, policy_ids, position=None):
     """Create a relationship between a role and a policy
 
