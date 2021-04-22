@@ -25,6 +25,7 @@ static const char *XML_AWS_ORGANIZATION_ID = "aws_organization_id";
 static const char *XML_AWS_ACCOUNT_ID = "aws_account_id";
 static const char *XML_AWS_ACCOUNT_ALIAS = "aws_account_alias";
 static const char *XML_TRAIL_PREFIX = "path";
+static const char *XML_TRAIL_SUFFIX = "path_suffix";
 static const char *XML_ONLY_LOGS_AFTER = "only_logs_after";
 static const char *XML_REGION = "regions";
 static const char *XML_LOG_GROUP = "aws_log_groups";
@@ -254,6 +255,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->trail_prefix);
                             os_strdup(children[j]->content, cur_bucket->trail_prefix);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_TRAIL_SUFFIX)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->trail_suffix);
+                            os_strdup(children[j]->content, cur_bucket->trail_suffix);
                         }
                     } else if (!strcmp(children[j]->element, XML_ONLY_LOGS_AFTER)) {
                         if (strlen(children[j]->content) != 0) {
