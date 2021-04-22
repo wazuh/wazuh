@@ -65,7 +65,7 @@ int wmodules_hs_receivemsg(const int wmoduleshs, int * execdqueue) {
         const char *jsonErrPtr;
         cJSON * messageJSON = cJSON_ParseWithOpts(msg, &jsonErrPtr, 0);
         if (!messageJSON) {
-            mdebug2("Parse JSON error '%s'", msg);
+            mdebug2("Parse JSON error '%s' - '%s'", msg, jsonErrPtr);
         } else {
             wmodules_hc_parse_msg(messageJSON, execdqueue);
             cJSON_Delete(messageJSON);
