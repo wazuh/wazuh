@@ -125,7 +125,7 @@ stages:
         error: 4002
 
   # DELETE /security/roles/{role_id}/policies/{policy_id}.
-  - name: Try to delete a non-existent role-policy from a default role (policy non-existent)
+  - name: Try to delete a non-existent role-policy (default role, policy non-existent)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/security/roles/3/policies"
@@ -143,7 +143,8 @@ stages:
           failed_items:
             - error:
                 code: 4008
-              id: [3]
+              id:
+                - 3
           total_affected_items: 0
           total_failed_items: 1
 
@@ -166,7 +167,8 @@ stages:
           failed_items:
             - error:
                 code: 4007
-              id: [999]
+              id:
+                - 999
           total_affected_items: 0
           total_failed_items: 1
 ---

@@ -3,10 +3,10 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
-import api.configuration as configuration
-
 from copy import deepcopy
 from functools import lru_cache
+
+import api.configuration as configuration
 from wazuh.core import common
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
