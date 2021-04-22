@@ -40,6 +40,7 @@ These logs are located in the following directory: %PROGRAMFILES%\Microsoft\Exch
 Exploitation can be identified by searching for log entries where the AuthenticatedUser is empty and the AnchorMailbox contains the pattern of ServerInfo~*/*
 -->
     <rule id="91002" level="12">
+        <decoded_as>HTTPProxyLog</decoded_as>
         <regex type="pcre2">,,[^,]*,ServerInfo~[^,]*/[^,]*</regex>
         <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-26855)</description>
         <mitre>
@@ -56,6 +57,7 @@ They could authenticate by exploiting the CVE-2021-26855 SSRF vulnerability or b
 admin’s credentials.
 -->
     <rule id="91003" level="12">
+        <decoded_as>ECPServerLog</decoded_as>
         <regex type="pcre2">Set-.+VirtualDirectory.+?Url.+\<\w+.*\>.*?\<\/\w+\>.+?VirtualDirectory</regex>
         <description>MS Exchange - Possible ProxyLogon vulnerability exploitation (CVE-2021-27065)</description>
         <mitre>
@@ -70,6 +72,7 @@ Files should only be downloaded to the %PROGRAMFILES%\Microsoft\Exchange Server\
 In case of exploitation, files are downloaded to other directories (UNC or local paths)
 -->
     <rule id="91004" level="12">
+        <decoded_as>OABGenLog</decoded_as>
         <match>Download failed and temporary file</match>
         <regex type="pcre2" negate="yes">[A-Z]:\\Program Files( \(x86\))?\\Microsoft\\Exchange Server\\V15\\ClientAccess\\OAB\\Temp</regex>
         <description>MS Exchange - Possible post-authentication arbitrary file write vulnerability exploitation (CVE-2021-26858)</description>
