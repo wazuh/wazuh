@@ -122,6 +122,15 @@ All notable changes to this project will be documented in this file.
 - **Framework:**
   - Deprecated `update_ruleset` script. ([#6904](https://github.com/wazuh/wazuh/issues/6904))
 
+
+## [v4.1.5]
+
+### Fixed
+
+- **Core:**
+  - Fixed a bug in Vulnerability Detector that made Modulesd crash while updating the NVD feed due to a missing CPE entry. ([4cbd1e8](https://github.com/wazuh/wazuh/commit/4cbd1e85eeee0eb0d8247fa7228f590a9dd24153))
+
+
 ## [v4.1.4] - 2021-03-25
 
 ### Fixed
