@@ -817,8 +817,6 @@ def remove_role_rule(role_id, rule_ids):
             role_rule = rrm.remove_rule_in_role(role_id=int(role_id[0]), rule_id=int(rule_id))
             if role_rule == SecurityError.INVALID:
                 result.add_failed_item(id_=rule_id, error=WazuhError(4024))
-            elif role_rule == SecurityError.ROLE_NOT_EXIST:
-                result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
             elif role_rule == SecurityError.RULE_NOT_EXIST:
                 result.add_failed_item(id_=rule_id, error=WazuhError(4022))
             elif role_rule == SecurityError.ADMIN_RESOURCES:
@@ -937,8 +935,6 @@ def remove_role_policy(role_id, policy_ids):
             role_policy = rpm.remove_policy_in_role(role_id=role_id[0], policy_id=policy_id)
             if role_policy == SecurityError.INVALID:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4010))
-            elif role_policy == SecurityError.ROLE_NOT_EXIST:
-                result.add_failed_item(id_=int(role_id[0]), error=WazuhError(4002))
             elif role_policy == SecurityError.POLICY_NOT_EXIST:
                 result.add_failed_item(id_=policy_id, error=WazuhError(4007))
             elif role_policy == SecurityError.ADMIN_RESOURCES:
