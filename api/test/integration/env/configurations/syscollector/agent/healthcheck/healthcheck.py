@@ -15,4 +15,4 @@ def get_health():
 
 
 if __name__ == "__main__":
-    exit(get_health() or get_agent_health_base())
+    exit(get_health() or get_agent_health_base(agent_old=False if len(sys.argv) == 0 else sys.argv[1]))

@@ -24,4 +24,4 @@ done
 
 /var/ossec/bin/wazuh-control start || /var/ossec/bin/ossec-control start
 
-tail -f /var/ossec/logs/wazuh.log
+tail -f /var/ossec/logs/wazuh.log || tail -f /var/ossec/logs/ossec.log

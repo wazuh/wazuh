@@ -16,25 +16,26 @@ def get_timestamp(log):
     return t
 
 
-def get_agent_health_base():
+def get_agent_health_base(agent_old=False):
     # Get agent health. The agent will be healthy if it has been connected to the manager after been
     # restarted due to shared configuration changes.
     # Using agentd when using grep as the module name can vary between ossec-agentd and wazuh-agentd,
     # depending on the agent version.
 
+    wazuh_log_file = "/var/ossec/logs/wazuh.log" if not agent_old else "/var/ossec/logs/ossec.log"
+
     shared_conf_restart = os.system(
-        "grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
-        "/var/ossec/logs/wazuh.log")
+        f"grep -q 'agentd: INFO: Agent is restarting due to shared configuration changes.' {wazuh_log_file}")
     agent_connection = os.system(
-        "grep -q 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/wazuh.log")
+        f"grep -q 'agentd: INFO: (4102): Connected to the server' {wazuh_log_file}")
 
     if shared_conf_restart == 0 and agent_connection == 0:
         # No -q option as we need the output
         output_agent_restart = os.popen(
-            "grep 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
-            "/var/ossec/logs/wazuh.log").read().split("\n")
+            f"grep 'agentd: INFO: Agent is restarting due to shared configuration changes.' "
+            f"{wazuh_log_file}").read().split("\n")
         output_agent_connection = os.popen(
-            "grep 'agentd: INFO: (4102): Connected to the server' /var/ossec/logs/wazuh.log").read().split("\n")
+            f"grep 'agentd: INFO: (4102): Connected to the server' {wazuh_log_file}").read().split("\n")
 
         t1 = get_timestamp(output_agent_restart[-2])
         t2 = get_timestamp(output_agent_connection[-2])
