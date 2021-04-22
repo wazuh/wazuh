@@ -37,6 +37,7 @@
 #define FLUENT_WM_NAME "fluent-forward"
 #define AGENT_UPGRADE_WM_NAME "agent-upgrade"
 #define TASK_MANAGER_WM_NAME "task-manager"
+#define GITHUB_WM_NAME "github"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -77,6 +78,7 @@ typedef enum crypto_type {
 #include "wm_task_general.h"
 #include "agent_upgrade/wm_agent_upgrade.h"
 #include "task_manager/wm_task_manager.h"
+#include "wm_github.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
