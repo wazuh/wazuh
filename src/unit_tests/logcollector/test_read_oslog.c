@@ -25,7 +25,7 @@ bool oslog_ctxt_restore(char * buffer, w_oslog_ctxt_t * ctxt);
 void oslog_ctxt_backup(char * buffer, w_oslog_ctxt_t * ctxt);
 void oslog_ctxt_clean(w_oslog_ctxt_t * ctxt);
 bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
-char * oslog_get_lastline(char * str);
+char * oslog_get_valid_lastline(char * str);
 
 /* setup/teardown */
 
@@ -136,6 +136,119 @@ void test_oslog_ctxt_is_expired_false(void ** state) {
 
 }
 
+/* oslog_get_valid_lastline */
+
+void test_oslog_get_valid_lastline_str_null(void ** state) {
+
+    char * str = NULL;
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_null(ret);
+
+}
+
+void test_oslog_get_valid_lastline_str_empty(void ** state) {
+
+    char * str = '\0';
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_null(ret);
+
+}
+
+void test_oslog_get_valid_lastline_str_without_new_line(void ** state) {
+
+    char * str = NULL;
+
+    os_strdup("2021-04-22 12:00:00.230270-0700 test", str);
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_null(ret);
+    os_free(str);
+
+}
+
+void test_oslog_get_valid_lastline_str_with_new_line_end(void ** state) {
+
+    char * str = NULL;
+
+    os_strdup("2021-04-22 12:00:00.230270-0700 test\n", str);
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_null(ret);
+    os_free(str);
+
+}
+
+void test_oslog_get_valid_lastline_str_with_new_line_not_end(void ** state) {
+
+    char * str = NULL;
+
+    os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2", str);
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test2");
+    os_free(str);
+
+}
+
+void test_oslog_get_valid_lastline_str_with_two_new_lines_end(void ** state) {
+
+    char * str = NULL;
+
+    os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2\n", str);
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test2\n");
+    os_free(str);
+
+}
+
+void test_oslog_get_valid_lastline_str_with_two_new_lines_not_end(void ** state) {
+
+    char * str = NULL;
+
+    os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2\n2021-04-22 12:00:00.230270-0700 test3", str);
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test3");
+    os_free(str);
+
+}
+
+void test_oslog_get_valid_lastline_str_with_three_new_lines_end(void ** state) {
+
+    char * str = NULL;
+
+    os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2\n2021-04-22 12:00:00.230270-0700 test3\n", str);
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test3\n");
+    os_free(str);
+
+}
+
+void test_oslog_get_valid_lastline_str_with_three_new_lines_not_end(void ** state) {
+
+    char * str = NULL;
+
+    os_strdup("2021-04-22 12:00:00.230270-0700 test\n2021-04-22 12:00:00.230270-0700 test2\n2021-04-22 12:00:00.230270-0700 test3\n2021-04-22 12:00:00.230270-0700 test4", str);
+
+    char * ret =oslog_get_valid_lastline(str);
+
+    assert_string_equal(ret, "\n2021-04-22 12:00:00.230270-0700 test4");
+    os_free(str);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Test oslog_ctxt_restore
@@ -148,6 +261,15 @@ int main(void) {
         // Test oslog_ctxt_is_expired
         cmocka_unit_test(test_oslog_ctxt_is_expired_true),
         cmocka_unit_test(test_oslog_ctxt_is_expired_false),
+        // Test oslog_get_valid_lastline
+        cmocka_unit_test(test_oslog_get_valid_lastline_str_null),
+        cmocka_unit_test(test_oslog_get_valid_lastline_str_empty),
+        cmocka_unit_test(test_oslog_get_valid_lastline_str_without_new_line),
+        cmocka_unit_test(test_oslog_get_valid_lastline_str_with_new_line_end),
+        cmocka_unit_test(test_oslog_get_valid_lastline_str_with_new_line_not_end),
+        cmocka_unit_test(test_oslog_get_valid_lastline_str_with_two_new_lines_end),
+        cmocka_unit_test(test_oslog_get_valid_lastline_str_with_two_new_lines_not_end),
+        cmocka_unit_test(test_oslog_get_valid_lastline_str_with_three_new_lines_not_end),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
