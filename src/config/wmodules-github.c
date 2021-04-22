@@ -8,25 +8,28 @@
 */
 
 #include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_github.h"
 
 static const char *XML_ENABLED = "enabled";
 
-int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
+int wm_github_read(__attribute__((unused)) const OS_XML *xml, xml_node **nodes, wmodule *module) {
     wm_github* data = NULL;
+
     if (!module->data) {
         // Default initialization
         module->context = &WM_GITHUB_CONTEXT;
         module->tag = strdup(module->context->name);
-        wm_github* data;
         os_calloc(1, sizeof(wm_github), data);
         data->enabled = 0;
         module->data = data;
     }
 
+    if (!nodes) {
+        return 0;
+    }
+
     data = module->data;
 
-    for(int i = 0; nodes[i]; i++)
+    for (int i = 0; nodes[i]; i++)
     {
         if(!nodes[i]->element) {
             merror(XML_ELEMNULL);
