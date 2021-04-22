@@ -344,21 +344,22 @@ class AWSBucket(WazuhIntegration):
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
-                 prefix, delete_file, aws_organization_id, region):
+                 prefix, suffix, delete_file, aws_organization_id, region):
         """
         AWS Bucket constructor.
 
-        :param reparse: Wether to parse already parsed logs or not
+        :param reparse: Whether to parse already parsed logs or not
         :param access_key: AWS access key id
         :param secret_key: AWS secret access key
         :param profile: AWS profile
         :param iam_role_arn: IAM Role
         :param bucket: Bucket name to extract logs from
         :param only_logs_after: Date after which obtain logs.
-        :param skip_on_error: Wether to continue processing logs or stop when an error takes place
+        :param skip_on_error: Whether to continue processing logs or stop when an error takes place
         :param account_alias: Alias of the AWS account where the bucket is.
         :param prefix: Prefix to filter files in bucket
-        :param delete_file: Wether to delete an already processed file from a bucket or not
+        :param suffix: Suffix to filter files in bucket
+        :param delete_file: Whether to delete an already processed file from a bucket or not
         :param aws_organization_id: The AWS organization ID
         """
 
@@ -471,6 +472,7 @@ class AWSBucket(WazuhIntegration):
         self.skip_on_error = skip_on_error
         self.account_alias = account_alias
         self.prefix = prefix
+        self.suffix = suffix
         self.delete_file = delete_file
         self.bucket_path = self.bucket + '/' + self.prefix
         self.aws_organization_id = aws_organization_id
@@ -830,15 +832,19 @@ class AWSLogsBucket(AWSBucket):
     """
     Abstract class for logs generated from services such as CloudTrail or Config
     """
+    def __init__(self, **kwargs):
+        AWSBucket.__init__(self, **kwargs)
+        # If not empty, both self.prefix and self.suffix always have a trailing '/'
+        self.bucket_path = f"{self.bucket}/{self.prefix}{self.suffix}"
 
     def get_base_prefix(self):
-        base_prefix = '{}AWSLogs/'.format(self.prefix)
+        base_path = '{}AWSLogs/{}'.format(self.prefix, self.suffix)
         if self.aws_organization_id:
-            base_prefix = '{base_prefix}{aws_organization_id}/'.format(
-                base_prefix=base_prefix,
+            base_path = '{base_prefix}{aws_organization_id}/'.format(
+                base_prefix=base_path,
                 aws_organization_id=self.aws_organization_id)
 
-        return base_prefix
+        return base_path
 
     def get_service_prefix(self, account_id):
         return '{base_prefix}{aws_account_id}/{aws_service}/'.format(
@@ -2825,6 +2831,9 @@ def get_script_arguments():
     parser.add_argument('-l', '--trail_prefix', dest='trail_prefix',
                         help='Log prefix for S3 key',
                         default='', type=arg_valid_prefix)
+    parser.add_argument('-L', '--trail_suffix', dest='trail_suffix',
+                        help='Log suffix for S3 key',
+                        default='', type=arg_valid_prefix)
     parser.add_argument('-s', '--only_logs_after', dest='only_logs_after',
                         help='Only parse logs after this date - format YYYY-MMM-DD',
                         default=datetime.strftime(datetime.utcnow(), '%Y-%b-%d'), type=arg_valid_date)
@@ -2889,6 +2898,7 @@ def main(argv):
                                  skip_on_error=options.skip_on_error,
                                  account_alias=options.aws_account_alias,
                                  prefix=options.trail_prefix,
+                                 suffix=options.trail_suffix,
                                  delete_file=options.deleteFile,
                                  aws_organization_id=options.aws_organization_id,
                                  region=options.regions[0] if options.regions else None
