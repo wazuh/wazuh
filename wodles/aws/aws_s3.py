@@ -768,7 +768,7 @@ class AWSBucket(WazuhIntegration):
             for event in event_list:
                 if event_should_be_skipped(event):
                     debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" field. '
-                          f'The event will be skipped.', 1)
+                          f'The event will be skipped.', 2)
                     continue
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
                 # Change dynamic fields to strings; truncate values as needed
