@@ -4,6 +4,7 @@
 
 import re
 import api.configuration as configuration
+
 from copy import deepcopy
 from functools import lru_cache
 from wazuh.core import common
