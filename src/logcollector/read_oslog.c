@@ -67,13 +67,14 @@ STATIC void oslog_ctxt_clean(w_oslog_ctxt_t * ctxt);
 STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
 
 /**
- * @brief Get pointer to the beginning of the last line in the string s.
+ * @brief Get pointer to the beginning of the last line in the string str.
  *
+ * @warning If the `str` has one line, return NULL
  * @warning If the `str` ends with a `\n`, it is ignored.
  * @param str to get last line
  * @return pointer to the beginning of the last line
  */
-STATIC char * oslog_get_lastline(char * str);
+STATIC char * oslog_get_valid_lastline(char * str);
 
 void * read_oslog(logreader * lf, int * rc, int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
@@ -187,7 +188,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
         */
 
 
-        last_line = oslog_get_lastline(buffer);
+        last_line = oslog_get_valid_lastline(buffer);
 
         /* If there are 2 logs, they are separated for sending */
         if (str_endline && last_line != NULL) {
@@ -273,7 +274,7 @@ STATIC void oslog_ctxt_backup(char * buffer, w_oslog_ctxt_t * ctxt) {
     ctxt->timestamp = time(NULL);
 }
 
-STATIC char * oslog_get_lastline(char * str) {
+STATIC char * oslog_get_valid_lastline(char * str) {
 
     char * retval = NULL;
     char ignored_char = '\0';
