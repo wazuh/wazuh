@@ -747,9 +747,7 @@ class AWSBucket(WazuhIntegration):
                 expression_to_evaluate = json_item[field_list[0]]
             except TypeError:
                 if isinstance(json_item, list):
-                    for i in json_item:
-                        if check_recursive(i, field_list[0], regex=regex):
-                            return True
+                    return any(check_recursive(i, field_list[0], regex=regex) for i in json_item)
                 return False
             except KeyError:
                 return False
@@ -758,25 +756,18 @@ class AWSBucket(WazuhIntegration):
                     try:
                         return re.match(regex, exp) is not None
                     except TypeError:
-                        if isinstance(exp, list):
-                            for ex in exp:
-                                if check_regex(ex):
-                                    return True
-                    return False
-
+                        return isinstance(exp, list) and any(check_regex(ex) for ex in exp)
                 return check_regex(expression_to_evaluate)
             return check_recursive(expression_to_evaluate, field_list[1], regex=regex)
 
-        def event_should_be_skipped():
-            if self.discard_field and self.discard_regex:
-                if check_recursive(event, nested_field=self.discard_field, regex=self.discard_regex):
-                    return True
-            return False
+        def event_should_be_skipped(event_):
+            return self.discard_field and self.discard_regex \
+                   and check_recursive(event_, nested_field=self.discard_field, regex=self.discard_regex)
 
         if event_list is not None:
             for event in event_list:
-                if event_should_be_skipped():
-                    debug(f'+++ The "{self.discard_regex}" regex found a match in the "{self.discard_field}" field. '
+                if event_should_be_skipped(event):
+                    debug(f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" field. '
                           f'The event will be skipped.', 1)
                     continue
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
