@@ -76,6 +76,17 @@ STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
  */
 STATIC char * oslog_get_valid_lastline(char * str);
 
+/**
+ * @brief Check the `log stream` cli command header.
+ * 
+ * Detects predicate errors, discards filter headers and columun description.
+ * Returns true if the line is not a part of a header
+ * @param oslog_cfg oslog configuration
+ * @param buffer string to check
+ * @return Returns false if the buffer read is a log otherwise returns true 
+ */
+STATIC bool oslog_header_check(w_oslog_config_t * oslog_cfg, char * buffer);
+
 void * read_oslog(logreader * lf, int * rc, int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
     int count_logs = 0;
@@ -134,7 +145,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
         offset = strlen(str);
 
         /* If the context it's expired then free it and return log */
-        if (oslog_ctxt_is_expired((time_t) OSLOG_TIMEOUT_OUT, &oslog_cfg->ctxt)) {
+        if (oslog_ctxt_is_expired((time_t) OSLOG_TIMEOUT, &oslog_cfg->ctxt)) {
             oslog_ctxt_clean(&oslog_cfg->ctxt);
             /* delete last end-of-line character */
             if (buffer[offset - 1] == '\n') {
@@ -175,17 +186,18 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
             continue;
         }
 
-        /* If this point has been reached, it is because:
-            - The buffer is full, one log is incomplete/complete
-            - The buffer is full, there is a complete log and an incomplete log.
-            - The buffer is full, there are remnants of one multiline
-            - The buffer is full, there are remnants of one multiline, and incomplete log
-            - The buffer is not full, there are remnants of one multiline
-            - The buffer is not full, there are remnants of a multiline and incomplete log
-            - The buffer is not full, there is a complete log and incomplete log
-            - The buffer is not full, there is a log that may be multiline (incomplete log).
-        */
+        /* Check if the first line is the header or an error in the predicate. */
+        if (!oslog_cfg->processed_header) {
+            /* processes and discards lines up to the first log */
+            if (oslog_header_check(oslog_cfg, buffer)) {
+                // Force continue reading
+                *buffer = '\0';
+                retval = true;
+                break;
+            }
+        }
 
+        /* If this point has been reached have full or partial logs to process in the buffer. */
 
         last_line = oslog_get_valid_lastline(buffer);
 
@@ -289,6 +301,40 @@ STATIC char * oslog_get_valid_lastline(char * str) {
 
     retval = strrchr(str, '\n');
     str[size - 1] = ignored_char;
+
+    return retval;
+}
+
+STATIC bool oslog_header_check(w_oslog_config_t * oslog_cfg, char * buffer) {
+
+    const char * LOG_ERROR_STR = "log:";
+    const ssize_t LOG_ERROR_LENGHT = 4;
+    bool retval = true;
+    const ssize_t buffer_size = strlen(buffer);
+
+    /* if the buffer has a log, no more headers exist */
+    if (w_expression_match(oslog_cfg->start_log_regex, buffer, NULL, NULL)) {
+        oslog_cfg->processed_header = true;
+        retval = false;
+    }
+    /* Error in the execution of the `log stream` cli command, probably an error in the predicate. */
+    else if (strncmp(buffer, LOG_ERROR_STR, LOG_ERROR_LENGHT) == 0) {
+
+        // "log: error description:\n"
+        if (*(buffer + buffer_size - 2) == ':') {
+            *(buffer + buffer_size - 2) = '\0';
+        } else if (*(buffer + buffer_size - 1) == '\n') {
+            *(buffer + buffer_size - 1) = '\0';
+        }
+        merror(LOGCOLLECTOR_OSLOG_ERROR_AFTER_EXEC, buffer);
+    }
+    /* Header of rows or remaining error lines in the predicate */
+    else {
+        if (*(buffer + buffer_size - 1) == '\n') {
+            *(buffer + buffer_size - 1) = '\0';
+        }
+        mdebug2("Reading other log headers or errors: '%s'", buffer);
+    }
 
     return retval;
 }
