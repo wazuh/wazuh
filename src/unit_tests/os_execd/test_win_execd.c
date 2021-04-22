@@ -58,7 +58,7 @@ static int test_teardown_file(void **state) {
 
 /* Tests */
 
-static void win_execd_run(void **state) {
+static void win_execd_run_ok(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -388,7 +388,7 @@ static void test_win_execd_run_json_err(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(win_execd_run, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(win_execd_run_ok, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_win_execd_run_timeout, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_win_execd_run_wpopenv_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_win_execd_run_get_command_err, test_setup_file, test_teardown_file),
