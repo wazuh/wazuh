@@ -34,6 +34,12 @@ class WazuhDBConnection:
         except OSError as e:
             raise WazuhInternalError(2005, e)
 
+    def close(self):
+        self.__conn.close()
+
+    def __del__(self):
+        self.close()
+
     def __query_input_validation(self, query):
         """
         Checks input queries have the correct format
@@ -190,6 +196,23 @@ class WazuhDBConnection:
                 break
 
         return response
+
+    def send(self, query, raw=True):
+        """Send a message to the wdb socket.
+
+        Parameters
+        ----------
+        query : str
+            Query to be executed in wazuh-db.
+        raw : bool
+            Whether to process the response.
+
+        Returns
+        -------
+        str, dict
+            Result of the query.
+        """
+        return self._send(query, raw)
 
     def execute(self, query, count=False, delete=False, update=False):
         """

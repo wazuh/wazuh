@@ -32,6 +32,7 @@ typedef struct wm_aws_bucket {
     char *aws_account_id;               // AWS account ID(s)
     char *aws_account_alias;            // AWS account alias
     char *trail_prefix;                 // Trail prefix
+    char *trail_suffix;                 // Trail suffix
     char *only_logs_after;              // Date (YYYY-MMM-DD) to only parse logs after
     char *regions;                      // CSV of regions to parse
     char *type;                         // String defining bucket type.

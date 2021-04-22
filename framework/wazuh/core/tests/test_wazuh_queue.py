@@ -3,15 +3,16 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import patch
+
 import pytest
 
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.exception import WazuhException
+from wazuh.core.wazuh_queue import WazuhQueue
 
 
 @patch('wazuh.core.wazuh_queue.WazuhQueue._connect')
 def test_WazuhQueue__init__(mock_conn):
-    """Tests WazuhQueue.__init__ function works"""
+    """Test WazuhQueue.__init__ function."""
 
     WazuhQueue('test_path')
 
@@ -21,7 +22,7 @@ def test_WazuhQueue__init__(mock_conn):
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.socket.socket.setsockopt')
 def test_WazuhQueue_protected_connect(mock_set, mock_conn):
-    """Tests WazuhQueue._connect function works"""
+    """Test WazuhQueue._connect function."""
 
     WazuhQueue('test_path')
 
@@ -34,7 +35,7 @@ def test_WazuhQueue_protected_connect(mock_set, mock_conn):
 
 @patch('wazuh.core.wazuh_queue.socket.socket.connect', side_effect=Exception)
 def test_WazuhQueue_protected_connect_ko(mock_conn):
-    """Tests WazuhQueue._connect function exceptions works"""
+    """Test WazuhQueue._connect function exceptions."""
 
     with pytest.raises(WazuhException, match=".* 1010 .*"):
         WazuhQueue('test_path')
@@ -47,7 +48,15 @@ def test_WazuhQueue_protected_connect_ko(mock_conn):
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhQueue.MAX_MSG_SIZE', new=0)
 def test_WazuhQueue_protected_send(mock_conn, send_response, error):
-    """Tests WazuhQueue._send function works"""
+    """Test WazuhQueue._send function.
+
+    Parameters
+    ----------
+    send_response : int
+        Returned value of the socket send mocked function.
+    error : bool
+        Indicates whether a WazuhException will be raised or not.
+    """
 
     queue = WazuhQueue('test_path')
 
@@ -65,7 +74,7 @@ def test_WazuhQueue_protected_send(mock_conn, send_response, error):
 @patch('wazuh.core.wazuh_queue.WazuhQueue.MAX_MSG_SIZE', new=0)
 @patch('socket.socket.send', side_effect=Exception)
 def test_WazuhQueue_protected_send_ko(mock_send, mock_conn):
-    """Tests WazuhQueue._send function exceptions works"""
+    """Test WazuhQueue._send function exceptions."""
 
     queue = WazuhQueue('test_path')
 
@@ -78,7 +87,7 @@ def test_WazuhQueue_protected_send_ko(mock_send, mock_conn):
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.socket.socket.close')
 def test_WazuhQueue_close(mock_close, mock_conn):
-    """Tests WazuhQueue.close function works"""
+    """Test WazuhQueue.close function."""
 
     queue = WazuhQueue('test_path')
 
@@ -93,14 +102,26 @@ def test_WazuhQueue_close(mock_close, mock_conn):
     ('test_msg', '001', 'ar-message'),
     ('test_msg', None, 'ar-message'),
     ('syscheck restart', '000', None),
+    ('force_reconnect', '000', None),
     ('restart-ossec0', '001', None),
     ('syscheck restart', None, None),
+    ('force_reconnect', None, None),
     ('restart-ossec0', None, None)
 ])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhQueue._send')
 def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_type):
-    """Tests WazuhQueue.send_msg_to_agent function works"""
+    """Test WazuhQueue.send_msg_to_agent function.
+
+    Parameters
+    ----------
+    msg : str
+        Message sent to the agent.
+    agent_id : str
+        String indicating the agent ID.
+    msg_type : str
+        String indicating the message type.
+    """
 
     queue = WazuhQueue('test_path')
 
@@ -111,16 +132,25 @@ def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
 
 
 @pytest.mark.parametrize('msg, agent_id, msg_type, expected_exception', [
-    ('test_msg', '000', 'ar-message', 1652),
     ('test_msg', '000', None, 1012),
-    ('syscheck restart', '001', None, 1601),
-    ('syscheck restart', None, None, 1601),
-    ('restart-ossec0', None, None, 1702)
+    ('syscheck restart', None, None, 1014),
 ])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=Exception)
 def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, msg_type, expected_exception):
-    """Tests WazuhQueue.send_msg_to_agent function exception works"""
+    """Test WazuhQueue.send_msg_to_agent function exceptions.
+
+    Parameters
+    ----------
+    msg : str
+        Message sent to the agent.
+    agent_id : str
+        String indicating the agent ID.
+    msg_type : str
+        String indicating the message type.
+    expected_exception : int
+        Expected Wazuh exception.
+    """
 
     queue = WazuhQueue('test_path')
 

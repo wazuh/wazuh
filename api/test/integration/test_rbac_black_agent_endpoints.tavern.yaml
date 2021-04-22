@@ -133,7 +133,7 @@ test_name: GET /agents/{agent_id}/config/{component}/{configuration}
 
 stages:
 
-  - name: Try tp get Request-Agent-Client for agent 004 (Denied)
+  - name: Try to get Request-Agent-Client for agent 004 (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/004/config/agent/client"
@@ -144,7 +144,6 @@ stages:
       <<: *permission_denied
 
   - name: Get Request-Agent-Client for agent 003 (Allowed)
-    delay_before: !float "{active_reponse_delay}"
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/003/config/agent/client"
@@ -762,7 +761,7 @@ stages:
     response:
       <<: *permission_denied
 
-  - name: Remove agent 009 from all groups Partially allowed, user agnostic)
+  - name: Remove agent 009 from all groups (Partially allowed, user agnostic)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/009/group"
@@ -808,7 +807,6 @@ stages:
                 - 'group3'
           total_affected_items: 0
           total_failed_items: 3
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE /agents/group?group_id=group_id
@@ -847,7 +845,6 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: 0
-    delay_after: !float "{global_db_delay}"
 
   - name: Remove a list of agents from group1 (Partially allowed, user aware)
     request:
@@ -879,7 +876,6 @@ stages:
                 - '999'
           total_affected_items: 0
           total_failed_items: 5
-    delay_after: !float "{global_db_delay}"
 
 ---
 test_name: DELETE groups?groups_list=group_id
@@ -974,7 +970,6 @@ stages:
                 - 'group2'
           total_affected_items: 0
           total_failed_items: 1
-    delay_after: !float "{global_db_delay}"
 
   - name: Try to delete a list of groups (Partially allowed, indirectly denied to delete group2, user aware)
     request:
@@ -1120,7 +1115,6 @@ stages:
                 - '006'
           total_affected_items: 1
           total_failed_items: 1
-    delay_after: !float "{global_db_delay}"
 
   - name: Try to delete a list of agents (Partially allowed, user aware)
     request:
@@ -1304,7 +1298,6 @@ stages:
                 - '002'
           total_affected_items: 1
           total_failed_items: 2
-    delay_after: !float "{restart_delay}"
 
   - name: Try to assign all agents to group1 (Partially allowed, user agnostic)
     request:
@@ -1344,7 +1337,6 @@ stages:
         "{file_xml:s}"
     response:
       status_code: 200
-    delay_after: !float "{restart_delay}"
 
   - name: Try to update group3 configuration (Denied)
     request:
@@ -1372,7 +1364,6 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-        content-type: "application/xml"
     response:
       status_code: 403
       json:
@@ -1386,7 +1377,6 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
-        content-type: "application/xml"
     response:
       status_code: 200
       json:
@@ -1398,6 +1388,71 @@ stages:
           failed_items: []
           total_failed_items: 0
     delay_after: !float "{restart_delay}"
+
+---
+test_name: PUT /agents/reconnect
+
+stages:
+
+  - name: Try to reconnect agent 001 (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "001"
+    response:
+      <<: *permission_denied
+
+  - name: Try to reconnect a list of agents (Partially allowed, user aware)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        agents_list: "000,001,002,005"
+    response:
+      status_code: 200
+      json:
+        error: 2
+        data:
+          affected_items:
+            - '005'
+          failed_items:
+            - error:
+                code: 4000
+              id:
+                - '000'
+                - '001'
+                - '002'
+          total_affected_items: 1
+          total_failed_items: 3
+    delay_after: !float "{reconnect_delay}"
+
+  - name: Try to reconnect all agents (Partially allowed, user agnostic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/reconnect"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - '003'
+            - '005'
+            - '007'
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+    delay_after: !float "{reconnect_delay}"
 
 ---
 test_name: PUT /agents/restart
@@ -1654,4 +1709,3 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node_rbac
           extra_kwargs:
             permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
-    delay_after: !float "{global_db_delay}"

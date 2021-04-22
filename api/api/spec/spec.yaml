@@ -45,7 +45,7 @@ info:
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/4.2/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/4.3/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -149,6 +149,15 @@ x-rbac-catalog:
         actions: ['agent:upgrade']
         resources: ['agent:id:001', 'agent:group:mediterranean']
         effect: "allow"
+    'agent:reconnect':
+      description: "Force reconnect agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/agent:id'
+        - $ref: '#/x-rbac-catalog/resources/agent:group'
+      example:
+        actions: [ 'agent:reconnect' ]
+        resources: [ 'agent:id:050', 'agent:id:049' ]
+        effect: "deny"
     'agent:restart':
       description: "Restart agents"
       resources:
@@ -169,10 +178,10 @@ x-rbac-catalog:
     'group:read':
       description: "Access agent groups information (id, name, agents, etc)"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
+        - $ref: '#/x-rbac-catalog/resources/group:id'
       example:
         actions: ['group:create']
-        resources: ['*:*:*']
+        resources: ['group:id:*']
         effect: "allow"
     'group:update_config':
       description: "Change the configuration of agent groups"
@@ -290,7 +299,7 @@ x-rbac-catalog:
     'decoders:update':
       description: "Update or upload custom decoder files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/decoder:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['decoders:update']
         resources: ['*:*:*']
@@ -373,7 +382,7 @@ x-rbac-catalog:
     'rules:update':
       description: "Update or upload custom rule files"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/rule:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['rules:update']
         resources: ['*:*:*']
@@ -547,7 +556,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -614,7 +623,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of request per minute reached"
             remediation: "This limit can be changed in security.yaml file. More information here:
-            https://documentation.wazuh.com/4.2/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -627,7 +636,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/4.2/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/4.3/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -1652,7 +1661,7 @@ components:
                       type: string
                     date_end_master:
                       type: string
-                    total_agentinfo:
+                    n_synced_chunks:
                       type: integer
                       format: int32
                 last_sync_integrity:
@@ -2203,7 +2212,7 @@ components:
           type: number
           format: float
           description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.2/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
+          (https://documentation.wazuh.com/4.3/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
           #fts)"
         hostinfo_edps:
           type: number
@@ -5341,10 +5350,10 @@ paths:
                     $ref: '#/components/schemas/BasicInfo'
               example:
                 title: "Wazuh API"
-                api_version: "v4.2.0"
+                api_version: "v4.3.0"
                 revision: '40100'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/4.2/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/4.3/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11+0000"
 
@@ -6357,8 +6366,16 @@ paths:
                       data:
                         $ref: '#/components/schemas/AllItemsResponseAgentIDs'
                 example:
-                  message: "Restart command sent to all agents"
-                  error: 0
+                  data:
+                    affected_items:
+                      - '002'
+                      - '003'
+                      - '005'
+                    total_affected_items: 3
+                    total_failed_items: 0
+                    failed_items: []
+                    message: "Restart command sent to all agents"
+                    error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -7297,6 +7314,52 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /agents/reconnect:
+    put:
+      tags:
+        - Agents
+      summary: "Force reconnect agents"
+      description: "Force reconnect all agents or a list of them"
+      operationId: api.controllers.agent_controller.reconnect_agents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:reconnect'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agents_list'
+      responses:
+        '200':
+          description: "Agents reconnected"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
+                example:
+                  message: 'Force reconnect command was sent to all agents'
+                  error: 0
+                  data:
+                    affected_items:
+                      - '002'
+                      - '004'
+                    total_affected_items: 2
+                    failed_items: [ ]
+                    total_failed_items: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /agents/restart:
     put:
       tags:
@@ -7755,7 +7818,7 @@ paths:
                         last_sync_agentinfo:
                           date_start_master: "2019-01-11T18:52:57.72Z"
                           date_end_master: "2019-01-11T18:52:57.73Z"
-                          total_agentinfo: 1
+                          n_synced_chunks: 1
                         sync_integrity_free: true
                         last_sync_agentgroups:
                           date_end_master: "2019-01-11T18:52:51.56Z"
@@ -14038,6 +14101,7 @@ paths:
                                     - agent:read
                                     - agent:delete
                                     - agent:modify_group
+                                    - agent:reconnect
                                     - agent:restart
                                     - agent:upgrade
                                   resources:
@@ -14298,6 +14362,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -14558,6 +14623,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -14789,6 +14855,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -15019,6 +15086,7 @@ paths:
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -15862,4 +15930,4 @@ paths:
 
 externalDocs:
   description: "Find more about Wazuh API usage"
-  url: 'https://documentation.wazuh.com/4.2/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/4.3/user-manual/api/index.html'
