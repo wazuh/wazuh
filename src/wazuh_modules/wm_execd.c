@@ -99,12 +99,10 @@ void* wm_execd_main(wm_execd_t *data) {
 
     if (queue) {
         close(queue);
-        queue = 0;
     }
 
     if (queue_health_status) {
         close(queue_health_status);
-        queue_health_status = 0;
     }
 #endif // WIN32
     mtinfo(WM_EXECD_LOGTAG, "Module finished.");
