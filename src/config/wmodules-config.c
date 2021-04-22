@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "wazuh_modules/wm_execd.h"
 #include "wazuh_modules/wmodules.h"
 
 static const char *XML_NAME = "name";

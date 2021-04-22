@@ -210,6 +210,8 @@ void wm_handler(int signum)
                 if (0 != pthread_join(cur_module->thread, NULL)) {
                     mdebug2("Thread cannot be joined.");
                 }
+            } else if (0 == strncmp(cur_module->context->name, "execd", strlen(cur_module->context->name))) {
+                cur_module->context->destroy(cur_module->data);
             }
         }
         exit(EXIT_SUCCESS);

@@ -9,7 +9,11 @@
  */
 
 #include "shared.h"
+#include "list_op.h"
 #include "os_regex/os_regex.h"
+#include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
+#include "../external/cJSON/cJSON.h"
 #include "execd.h"
 
 static char exec_names[MAX_AR + 1][OS_FLSIZE + 1];
@@ -18,13 +22,86 @@ static int  exec_timeout[MAX_AR + 1];
 static int  exec_size = 0;
 static int  f_time_reading = 1;
 
+int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
+time_t pending_upg = 0;
 
-/* Read the shared exec config
- * Returns 1 on success or 0 on failure
- * Format of the file is 'name - command - timeout'
- */
-int ReadExecConfig()
-{
+#ifndef WIN32
+
+/** @copydoc exec_command */
+void exec_command(char *const *cmd) {
+    pid_t pid;
+
+    /* Fork and leave it running */
+    pid = fork();
+    if (pid == 0) {
+        if (execv(*cmd, cmd) < 0) {
+            mterror(WM_EXECD_LOGTAG, EXEC_CMDERROR, *cmd, strerror(errno));
+            exit(1);
+        }
+
+        exit(0);
+    }
+}
+
+#else
+
+/** @copydoc exec_cmd_win */
+void exec_cmd_win(char *cmd) {
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+
+    ZeroMemory( &si, sizeof(si) );
+    si.cb = sizeof(si);
+    ZeroMemory( &pi, sizeof(pi) );
+
+    if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL,
+                       &si, &pi)) {
+        mterror(WM_EXECD_LOGTAG, "Unable to create active response process. ");
+        return;
+    }
+
+    /* Wait until process exits */
+    WaitForSingleObject(pi.hProcess, INFINITE );
+
+    /* Close process and thread */
+    CloseHandle( pi.hProcess );
+    CloseHandle( pi.hThread );
+
+    return;
+}
+#endif /* !WIN32 */
+
+//
+// Independent OS functions.
+//
+
+/** @copydoc free_timeout_entry */
+void free_timeout_entry(timeout_data *timeout_entry) {
+    char **tmp_str;
+
+    if (!timeout_entry) {
+        return;
+    }
+
+    tmp_str = timeout_entry->command;
+
+    /* Clear the command arguments */
+    if (tmp_str) {
+        while (*tmp_str) {
+            os_free(*tmp_str);
+            *tmp_str = NULL;
+            tmp_str++;
+        }
+        os_free(timeout_entry->command);
+    }
+
+    os_free(timeout_entry->parameters);
+
+    os_free(timeout_entry);
+}
+
+/** @copydoc read_exec_config */
+int read_exec_config() {
     int i = 0, j = 0, dup_entry = 0;
     FILE *fp;
     FILE *process_file;
@@ -41,7 +118,7 @@ int ReadExecConfig()
     /* Open file */
     fp = fopen(DEFAULTAR, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
+        mterror(WM_EXECD_LOGTAG, FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (0);
     }
 
@@ -55,14 +132,14 @@ int ReadExecConfig()
         // The command name must not start with '!'
 
         if (buffer[0] == '!') {
-            merror(EXEC_INV_CONF, DEFAULTAR);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
 
         /* Clean up the buffer */
         tmp_str = strstr(buffer, " - ");
         if (!tmp_str) {
-            merror(EXEC_INV_CONF, DEFAULTAR);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
         *tmp_str = '\0';
@@ -77,7 +154,7 @@ int ReadExecConfig()
         /* Search for ' ' and - */
         tmp_str = strstr(tmp_str, " - ");
         if (!tmp_str) {
-            merror(EXEC_INV_CONF, DEFAULTAR);
+            mterror(WM_EXECD_LOGTAG, EXEC_INV_CONF, DEFAULTAR);
             continue;
         }
         *tmp_str = '\0';
@@ -86,7 +163,7 @@ int ReadExecConfig()
         // Directory transversal test
 
         if (w_ref_parent_folder(str_pt)) {
-            merror("Active response command '%s' vulnerable to directory transversal attack. Ignoring.", str_pt);
+            mterror(WM_EXECD_LOGTAG, "Active response command '%s' vulnerable to directory transversal attack. Ignoring.", str_pt);
             exec_cmd[exec_size][0] = '\0';
         } else {
             /* Write the full command path */
@@ -97,7 +174,7 @@ int ReadExecConfig()
             process_file = fopen(exec_cmd[exec_size], "r");
             if (!process_file) {
                 if (f_time_reading) {
-                    minfo("Active response command not present: '%s'. "
+                    mtinfo(WM_EXECD_LOGTAG, "Active response command not present: '%s'. "
                             "Not using it on this system.",
                             exec_cmd[exec_size]);
                 }
@@ -147,13 +224,8 @@ int ReadExecConfig()
     return (1);
 }
 
-/* Returns a pointer to the command name (full path)
- * Returns NULL if name cannot be found
- * If timeout is not NULL, write the timeout for that
- * command to it
- */
-char *GetCommandbyName(const char *name, int *timeout)
-{
+/** @copydoc get_command_by_name*/
+char *get_command_by_name(const char *name, int *timeout) {
     int i = 0;
 
     // Filter custom commands
@@ -162,7 +234,7 @@ char *GetCommandbyName(const char *name, int *timeout)
         static char command[OS_FLSIZE];
 
         if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, name + 1) >= (int)sizeof(command)) {
-            mwarn("Cannot execute command '%32s...': path too long.", name + 1);
+            mtwarn(WM_EXECD_LOGTAG, "Cannot execute command '%32s...': path too long.", name + 1);
             return NULL;
         }
 
@@ -179,54 +251,3 @@ char *GetCommandbyName(const char *name, int *timeout)
 
     return (NULL);
 }
-
-#ifndef WIN32
-
-/* Execute command given. Must be a argv** NULL terminated.
- * Prints error to log message in case of problems
- */
-void ExecCmd(char *const *cmd)
-{
-    pid_t pid;
-
-    /* Fork and leave it running */
-    pid = fork();
-    if (pid == 0) {
-        if (execv(*cmd, cmd) < 0) {
-            merror(EXEC_CMDERROR, *cmd, strerror(errno));
-            exit(1);
-        }
-
-        exit(0);
-    }
-
-    return;
-}
-
-#else
-
-void ExecCmd_Win32(char *cmd)
-{
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-
-    ZeroMemory( &si, sizeof(si) );
-    si.cb = sizeof(si);
-    ZeroMemory( &pi, sizeof(pi) );
-
-    if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL,
-                       &si, &pi)) {
-        merror("Unable to create active response process. ");
-        return;
-    }
-
-    /* Wait until process exits */
-    WaitForSingleObject(pi.hProcess, INFINITE );
-
-    /* Close process and thread */
-    CloseHandle( pi.hProcess );
-    CloseHandle( pi.hThread );
-
-    return;
-}
-#endif

@@ -38,6 +38,7 @@
 #define FLUENT_WM_NAME "fluent-forward"
 #define AGENT_UPGRADE_WM_NAME "agent-upgrade"
 #define TASK_MANAGER_WM_NAME "task-manager"
+#define EXECD_WM_NAME "execd"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -78,6 +79,7 @@ typedef enum crypto_type {
 #include "wm_gcp.h"
 #include "wm_task_general.h"
 #include "wm_logcollector.h"
+#include "wm_execd.h"
 #include "agent_upgrade/wm_agent_upgrade.h"
 #include "task_manager/wm_task_manager.h"
 

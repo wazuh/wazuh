@@ -25,14 +25,16 @@
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/posix/select_wrappers.h"
-#include "../wrappers/wazuh/os_execd/exec_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../wrappers/wazuh/os_execd/exec_wrappers.h"
 
 extern int test_mode;
 
-void ExecdStart(int q);
+int __wrap_CreateThreadJoinable(pthread_t *lthread, void * (*function_pointer)(void *), void *data) {
+    return mock_type(int);
+}
 
 /* Setup/Teardown */
 
@@ -61,7 +63,7 @@ static int test_teardown_file(void **state) {
 
 /* Tests */
 
-static void test_ExecdStart_ok(void **state) {
+static void test_execd_start_ok(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -94,8 +96,8 @@ static void test_ExecdStart_ok(void **state) {
                     "}";
     int timeout = 0;
 
+    will_return(__wrap_CreateThreadJoinable, 0);
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -103,7 +105,8 @@ static void test_ExecdStart_ok(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -133,15 +136,16 @@ static void test_ExecdStart_ok(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -167,15 +171,13 @@ static void test_ExecdStart_ok(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_timeout(void **state) {
+static void test_execd_start_timeout(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -208,8 +210,8 @@ static void test_ExecdStart_timeout(void **state) {
                     "}";
     int timeout = 10;
 
+    will_return(__wrap_CreateThreadJoinable, 0);
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -217,7 +219,8 @@ static void test_ExecdStart_timeout(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -247,15 +250,16 @@ static void test_ExecdStart_timeout(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -281,16 +285,15 @@ static void test_ExecdStart_timeout(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Adding command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Adding command 'restart-wazuh {"
                                                                                     "\"version\":\"1\","
                                                                                     "\"origin\":{"
                                                                                         "\"name\":\"node01\","
-                                                                                        "\"module\":\"wazuh-execd\""
+                                                                                        "\"module\":\"wazuh-modulesd\""
                                                                                     "},"
                                                                                     "\"command\":\"delete\","
                                                                                     "\"parameters\":{"
@@ -315,10 +318,10 @@ static void test_ExecdStart_timeout(void **state) {
                                                                                     "}"
                                                                                 "}' to the timeout list, with a timeout of '10s'.");
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_wpopenv_err(void **state) {
+static void test_execd_start_wpopenv_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -326,7 +329,7 @@ static void test_ExecdStart_wpopenv_err(void **state) {
                         "\"version\":\"1\","
                         "\"origin\":{"
                             "\"name\":\"node01\","
-                            "\"module\":\"wazuh-analysisd\""
+                            "\"module\":\"wazuh-modulesd\""
                         "},"
                         "\"command\":\"restart-wazuh0\","
                         "\"parameters\":{"
@@ -351,8 +354,8 @@ static void test_ExecdStart_wpopenv_err(void **state) {
                     "}";
     int timeout = 0;
 
+    will_return(__wrap_CreateThreadJoinable, 0);
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -360,11 +363,12 @@ static void test_ExecdStart_wpopenv_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
+                                                                            "\"module\":\"wazuh-modulesd\""
                                                                         "},"
                                                                         "\"command\":\"restart-wazuh0\","
                                                                         "\"parameters\":{"
@@ -390,15 +394,16 @@ static void test_ExecdStart_wpopenv_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -425,10 +430,10 @@ static void test_ExecdStart_wpopenv_err(void **state) {
 
     will_return(__wrap_wpopenv, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1317): Could not launch command Success (0)");
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1317): Could not launch command Success (0)");
 
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -436,11 +441,12 @@ static void test_ExecdStart_wpopenv_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
-                                                                            "\"module\":\"wazuh-analysisd\""
+                                                                            "\"module\":\"wazuh-modulesd\""
                                                                         "},"
                                                                         "\"command\":\"restart-wazuh0\","
                                                                         "\"parameters\":{"
@@ -466,15 +472,16 @@ static void test_ExecdStart_wpopenv_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -498,17 +505,14 @@ static void test_ExecdStart_wpopenv_err(void **state) {
                                                                                             "\"program\":\"restart-wazuh\""
                                                                                         "}"
                                                                                     "}'");
-
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_get_command_err(void **state) {
+static void test_execd_start_get_command_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -541,8 +545,8 @@ static void test_ExecdStart_get_command_err(void **state) {
                     "}";
     int timeout = 0;
 
+    will_return(__wrap_CreateThreadJoinable, 0);
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -550,7 +554,8 @@ static void test_ExecdStart_get_command_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -580,17 +585,18 @@ static void test_ExecdStart_get_command_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, NULL);
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, NULL);
 
-    will_return(__wrap_ReadExecConfig, 0);
+    will_return(__wrap_read_exec_config, 0);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, NULL);
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, NULL);
 
-    expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'restart-wazuh0' provided.");
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1311): Invalid command name 'restart-wazuh0' provided.");
 
     will_return(__wrap_time, now);
 
@@ -601,7 +607,8 @@ static void test_ExecdStart_get_command_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -631,15 +638,16 @@ static void test_ExecdStart_get_command_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -665,15 +673,13 @@ static void test_ExecdStart_get_command_err(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_get_name_err(void **state) {
+static void test_execd_start_get_name_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -707,8 +713,8 @@ static void test_ExecdStart_get_name_err(void **state) {
                     "}";
     int timeout = 0;
 
+    will_return(__wrap_CreateThreadJoinable, 0);
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -716,14 +722,15 @@ static void test_ExecdStart_get_name_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{}'");
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{}'");
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap__merror, formatted_msg, "(1316): Invalid AR command: '{}'");
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1316): Invalid AR command: '{}'");
 
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -731,7 +738,8 @@ static void test_ExecdStart_get_name_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message2);
     will_return(__wrap_OS_RecvUnix, strlen(message2));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -761,15 +769,16 @@ static void test_ExecdStart_get_name_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -795,15 +804,13 @@ static void test_ExecdStart_get_name_err(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
-static void test_ExecdStart_json_err(void **state) {
+static void test_execd_start_json_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
     int now = 123456789;
@@ -837,8 +844,8 @@ static void test_ExecdStart_json_err(void **state) {
                     "}";
     int timeout = 0;
 
+    will_return(__wrap_CreateThreadJoinable, 0);
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -846,14 +853,15 @@ static void test_ExecdStart_json_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message);
     will_return(__wrap_OS_RecvUnix, strlen(message));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: 'unknown'");
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: 'unknown'");
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap__merror, formatted_msg, "(1315): Invalid JSON message: 'unknown'");
+    expect_string(__wrap__mterror, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1315): Invalid JSON message: 'unknown'");
 
     will_return(__wrap_time, now);
-
     will_return(__wrap_select, 1);
 
     expect_value(__wrap_OS_RecvUnix, socket, queue);
@@ -861,7 +869,8 @@ static void test_ExecdStart_json_err(void **state) {
     will_return(__wrap_OS_RecvUnix, message2);
     will_return(__wrap_OS_RecvUnix, strlen(message2));
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Received message: '{"
+    expect_string(__wrap__mtdebug2, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug2, formatted_msg, "Received message: '{"
                                                                         "\"version\":\"1\","
                                                                         "\"origin\":{"
                                                                             "\"name\":\"node01\","
@@ -891,15 +900,16 @@ static void test_ExecdStart_json_err(void **state) {
 
     will_return(__wrap_time, now);
 
-    expect_string(__wrap_GetCommandbyName, name, "restart-wazuh0");
-    will_return(__wrap_GetCommandbyName, timeout);
-    will_return(__wrap_GetCommandbyName, "restart-wazuh");
+    expect_string(__wrap_get_command_by_name, name, "restart-wazuh0");
+    will_return(__wrap_get_command_by_name, timeout);
+    will_return(__wrap_get_command_by_name, "restart-wazuh");
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command 'restart-wazuh {"
+    expect_string(__wrap__mtdebug1, tag, WM_EXECD_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Executing command 'restart-wazuh {"
                                                                                         "\"version\":\"1\","
                                                                                         "\"origin\":{"
                                                                                             "\"name\":\"node01\","
-                                                                                            "\"module\":\"wazuh-execd\""
+                                                                                            "\"module\":\"wazuh-modulesd\""
                                                                                         "},"
                                                                                         "\"command\":\"add\","
                                                                                         "\"parameters\":{"
@@ -925,22 +935,20 @@ static void test_ExecdStart_json_err(void **state) {
                                                                                     "}'");
 
     will_return(__wrap_wpopenv, wfd);
-
     will_return(__wrap_fwrite, 0);
-
     will_return(__wrap_wpclose, 0);
 
-    ExecdStart(queue);
+    execd_start(queue);
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_ExecdStart_ok, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_timeout, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_wpopenv_err, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_get_command_err, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_get_name_err, test_setup_file, test_teardown_file),
-        cmocka_unit_test_setup_teardown(test_ExecdStart_json_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_ok, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_timeout, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_wpopenv_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_get_command_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_get_name_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_execd_start_json_err, test_setup_file, test_teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

@@ -122,9 +122,32 @@ int local_start()
     minfo(ENC_READ);
     OS_ReadKeys(&keys, 1, 0);
 
-    /* Read execd config */
-    if (!WinExecd_Start()) {
-        agt->execdq = -1;
+    /* If there is no file to monitor, create a clean entry
+     * for the mark messages.
+     */
+    if (logff == NULL) {
+        os_calloc(2, sizeof(logreader), logff);
+        logff[0].file = NULL;
+        logff[0].ffile = NULL;
+        logff[0].logformat = NULL;
+        logff[0].fp = NULL;
+        logff[1].file = NULL;
+        logff[1].logformat = NULL;
+
+        minfo(NO_FILE);
+    }
+
+    /* No sockets defined */
+    if (logsk == NULL) {
+        os_calloc(2, sizeof(logsocket), logsk);
+        logsk[0].name = NULL;
+        logsk[0].location = NULL;
+        logsk[0].mode = 0;
+        logsk[0].prefix = NULL;
+        logsk[1].name = NULL;
+        logsk[1].location = NULL;
+        logsk[1].mode = 0;
+        logsk[1].prefix = NULL;
     }
 
     /* Initialize sender */

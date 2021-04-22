@@ -14,11 +14,11 @@
 #include <cmocka.h>
 #include "../../common.h"
 
-int __wrap_ReadExecConfig() {
+int __wrap_read_exec_config() {
     return mock();
 }
 
-char *__wrap_GetCommandbyName(const char *name, int *timeout) {
+char *__wrap_get_command_by_name(const char *name, int *timeout) {
     check_expected(name);
 
     *timeout = mock();

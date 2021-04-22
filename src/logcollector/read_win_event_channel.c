@@ -466,9 +466,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         wprovider_name = convert_unix_string(provider_name);
 
         if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-            mterror(WM_LOGCOLLECTOR_LOGTAG, 
-                "Could not get message for (%s)",
-                channel->evt_log);
+            mterror(WM_LOGCOLLECTOR_LOGTAG, "Could not get message for (%s)", channel->evt_log);
         }
         else {
             cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
