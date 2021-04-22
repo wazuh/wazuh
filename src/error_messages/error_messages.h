@@ -139,6 +139,7 @@
 /* logcollector */
 #define SYSTEM_ERROR     "(1600): Internal error. Exiting.."
 #define LOGCOLLECTOR_OSLOG_IREGEX_ERROR        "(1601): Invalid internal oslog regex."
+#define LOGCOLLECTOR_OSLOG_ERROR_AFTER_EXEC    "(1602): error execution %s"
 
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
