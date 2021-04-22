@@ -1,7 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v4.1.4] 
+## [v4.1.5]
+
+### Fixed
+
+- **Core:**
+  - Fixed a bug in Vulnerability Detector that made Modulesd crash while updating the NVD feed due to a missing CPE entry. ([4cbd1e8](https://github.com/wazuh/wazuh/commit/4cbd1e85eeee0eb0d8247fa7228f590a9dd24153))
+
+
+## [v4.1.4] - 2021-03-25
 
 ### Fixed
 
@@ -15,7 +23,7 @@ All notable changes to this project will be documented in this file.
 
 - **External dependencies:**
   - Upgraded Python version from 3.8.6 to 3.9.2 and several Python dependencies. ([#7943](https://github.com/wazuh/wazuh/pull/7943))
-  
+
 ### Fixed
 
 - **Core:**
