@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for Security Configuration Assessment
+ * Wazuh Module for GitHub logs
  * Copyright (C) 2015-2021, Wazuh Inc.
  * July 3, 2020.
  *
@@ -9,7 +9,8 @@
  * Foundation.
  */
 
-#include "wm_github.h"
+#include "wmodules.h"
+#include "shared.h"
 
 static void* wm_github_main(wm_github* github_config);    // Module main function. It won't return
 static void wm_github_destroy(wm_github* github_config);
@@ -25,7 +26,12 @@ const wm_context WM_GITHUB_CONTEXT = {
 };
 
 void * wm_github_main(wm_github* github_config) {
-    mtinfo(WM_GITHUB_LOGTAG, "Module GitHub started");
+
+    if (github_config->enabled) {
+        mtinfo(WM_GITHUB_LOGTAG, "Module GitHub started");
+    } else {
+        mtinfo(WM_GITHUB_LOGTAG, "Module GitHub disabled");
+    }
     return NULL;
 }
 
