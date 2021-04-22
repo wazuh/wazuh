@@ -57,7 +57,7 @@
 
 /** regex to determine the start of a log */
 #define OSLOG_START_REGEX       "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d"
-#define OSLOG_TIMEOUT_OUT       5
+#define OSLOG_TIMEOUT           5
 
 #include <pthread.h>
 
@@ -152,6 +152,7 @@ typedef struct {
  */
 typedef struct {
     w_expression_t * start_log_regex; ///< used to check the start of a new log
+    bool processed_header;            ///< True if the stream header was processed
     w_oslog_ctxt_t ctxt;              ///< store current status when read log is in process
     char * last_read_timestamp;       ///< timestamp of last log queued (Used for only future event)
     wfd_t * log_wfd;                  ///< `log stream` IPC connector
