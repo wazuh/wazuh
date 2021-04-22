@@ -63,6 +63,7 @@ static int teardown_file(void **state) {
 
 /* w_logcollector_validate_oslog_stream_predicate */
 void test_w_logcollector_validate_oslog_stream_predicate_empty(void ** state) {
+
     char predicate[] = "";
 
     bool ret = w_logcollector_validate_oslog_stream_predicate(predicate);
@@ -71,6 +72,7 @@ void test_w_logcollector_validate_oslog_stream_predicate_empty(void ** state) {
 }
 
 void test_w_logcollector_validate_oslog_stream_predicate_existing(void ** state) {
+
     char predicate[] = "test";
 
     bool ret = w_logcollector_validate_oslog_stream_predicate(predicate);
@@ -87,7 +89,7 @@ void test_w_create_oslog_stream_array_NULL(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -107,7 +109,7 @@ void test_w_create_oslog_stream_array_level_default(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -130,7 +132,7 @@ void test_w_create_oslog_stream_array_level_info(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -153,7 +155,7 @@ void test_w_create_oslog_stream_array_level_debug(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -174,7 +176,7 @@ void test_w_create_oslog_stream_array_type_activity(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -194,7 +196,7 @@ void test_w_create_oslog_stream_array_type_log(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -214,7 +216,7 @@ void test_w_create_oslog_stream_array_type_trace(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -234,7 +236,7 @@ void test_w_create_oslog_stream_array_type_activity_log(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -256,7 +258,7 @@ void test_w_create_oslog_stream_array_type_activity_trace(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -278,7 +280,7 @@ void test_w_create_oslog_stream_array_type_log_trace(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -300,7 +302,7 @@ void test_w_create_oslog_stream_array_type_activity_log_trace(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -326,7 +328,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity(void ** state)
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -351,7 +353,7 @@ void test_w_create_oslog_stream_array_level_default_type_log(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -376,7 +378,7 @@ void test_w_create_oslog_stream_array_level_default_type_trace(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -401,7 +403,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log(void ** st
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -428,7 +430,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_trace(void ** 
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -455,7 +457,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_trace(void ** state
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -482,7 +484,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_trace(void
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -511,7 +513,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -536,7 +538,7 @@ void test_w_create_oslog_stream_array_level_info_type_log(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -561,7 +563,7 @@ void test_w_create_oslog_stream_array_level_info_type_trace(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -586,7 +588,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log(void ** state
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -613,7 +615,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_trace(void ** sta
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -640,7 +642,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_trace(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -667,7 +669,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_trace(void **
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -696,7 +698,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -721,7 +723,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -746,7 +748,7 @@ void test_w_create_oslog_stream_array_level_debug_type_trace(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -771,7 +773,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log(void ** stat
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -798,7 +800,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_trace(void ** st
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -825,7 +827,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_trace(void ** state) 
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -852,7 +854,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace(void *
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -884,12 +886,12 @@ void test_w_create_oslog_stream_array_predicate(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
     assert_string_equal(ret[4], "--predicate");
-    assert_string_equal(ret[5], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[5], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[6]);
 
     free_strarray(ret);
@@ -909,14 +911,14 @@ void test_w_create_oslog_stream_array_level_default_predicate(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
     assert_string_equal(ret[4], "--level");
     assert_string_equal(ret[5], "default");
     assert_string_equal(ret[6], "--predicate");
-    assert_string_equal(ret[7], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[7], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[8]);
 
     free_strarray(ret);
@@ -937,14 +939,14 @@ void test_w_create_oslog_stream_array_level_info_predicate(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
     assert_string_equal(ret[4], "--level");
     assert_string_equal(ret[5], "info");
     assert_string_equal(ret[6], "--predicate");
-    assert_string_equal(ret[7], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[7], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[8]);
 
     free_strarray(ret);
@@ -965,14 +967,14 @@ void test_w_create_oslog_stream_array_level_debug_predicate(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
     assert_string_equal(ret[4], "--level");
     assert_string_equal(ret[5], "debug");
     assert_string_equal(ret[6], "--predicate");
-    assert_string_equal(ret[7], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[7], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[8]);
 
     free_strarray(ret);
@@ -991,14 +993,14 @@ void test_w_create_oslog_stream_array_type_activity_predicate(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
     assert_string_equal(ret[4], "--type");
     assert_string_equal(ret[5], "activity");
     assert_string_equal(ret[6], "--predicate");
-    assert_string_equal(ret[7], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[7], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[8]);
 
     free_strarray(ret);
@@ -1016,14 +1018,14 @@ void test_w_create_oslog_stream_array_type_log_predicate(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
     assert_string_equal(ret[4], "--type");
     assert_string_equal(ret[5], "log");
     assert_string_equal(ret[6], "--predicate");
-    assert_string_equal(ret[7], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[7], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[8]);
 
     free_strarray(ret);
@@ -1041,14 +1043,14 @@ void test_w_create_oslog_stream_array_type_trace_predicate(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
     assert_string_equal(ret[4], "--type");
     assert_string_equal(ret[5], "trace");
     assert_string_equal(ret[6], "--predicate");
-    assert_string_equal(ret[7], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[7], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[8]);
 
     free_strarray(ret);
@@ -1066,7 +1068,7 @@ void test_w_create_oslog_stream_array_type_activity_log_predicate(void ** state)
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1075,7 +1077,7 @@ void test_w_create_oslog_stream_array_type_activity_log_predicate(void ** state)
     assert_string_equal(ret[6], "--type");
     assert_string_equal(ret[7], "log");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1093,7 +1095,7 @@ void test_w_create_oslog_stream_array_type_activity_trace_predicate(void ** stat
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1102,7 +1104,7 @@ void test_w_create_oslog_stream_array_type_activity_trace_predicate(void ** stat
     assert_string_equal(ret[6], "--type");
     assert_string_equal(ret[7], "trace");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1120,7 +1122,7 @@ void test_w_create_oslog_stream_array_type_log_trace_predicate(void ** state) {
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1129,7 +1131,7 @@ void test_w_create_oslog_stream_array_type_log_trace_predicate(void ** state) {
     assert_string_equal(ret[6], "--type");
     assert_string_equal(ret[7], "trace");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1147,7 +1149,7 @@ void test_w_create_oslog_stream_array_type_activity_log_trace_predicate(void ** 
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1158,7 +1160,7 @@ void test_w_create_oslog_stream_array_type_activity_log_trace_predicate(void ** 
     assert_string_equal(ret[8], "--type");
     assert_string_equal(ret[9], "trace");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1178,7 +1180,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_predicate(void
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1187,7 +1189,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_predicate(void
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "default");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1208,7 +1210,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_predicate(void ** s
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1217,7 +1219,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_predicate(void ** s
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "default");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1238,7 +1240,7 @@ void test_w_create_oslog_stream_array_level_default_type_trace_predicate(void **
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1247,7 +1249,7 @@ void test_w_create_oslog_stream_array_level_default_type_trace_predicate(void **
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "default");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1268,7 +1270,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_predicate(
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1279,7 +1281,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_predicate(
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "default");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1300,7 +1302,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_trace_predicat
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1311,7 +1313,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_trace_predicat
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "default");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1332,7 +1334,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_trace_predicate(voi
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1343,7 +1345,7 @@ void test_w_create_oslog_stream_array_level_default_type_log_trace_predicate(voi
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "default");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1364,7 +1366,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_trace_pred
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1377,7 +1379,7 @@ void test_w_create_oslog_stream_array_level_default_type_activity_log_trace_pred
     assert_string_equal(ret[10], "--level");
     assert_string_equal(ret[11], "default");
     assert_string_equal(ret[12], "--predicate");
-    assert_string_equal(ret[13], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[13], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[14]);
 
     free_strarray(ret);
@@ -1398,7 +1400,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_predicate(void **
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1407,7 +1409,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_predicate(void **
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "info");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1428,7 +1430,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_predicate(void ** stat
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1437,7 +1439,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_predicate(void ** stat
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "info");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1458,7 +1460,7 @@ void test_w_create_oslog_stream_array_level_info_type_trace_predicate(void ** st
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1467,7 +1469,7 @@ void test_w_create_oslog_stream_array_level_info_type_trace_predicate(void ** st
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "info");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1488,7 +1490,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_predicate(voi
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1499,7 +1501,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_predicate(voi
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "info");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1520,7 +1522,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_trace_predicate(v
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1531,7 +1533,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_trace_predicate(v
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "info");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1552,7 +1554,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_trace_predicate(void *
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1563,7 +1565,7 @@ void test_w_create_oslog_stream_array_level_info_type_log_trace_predicate(void *
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "info");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1584,7 +1586,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_trace_predica
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1597,7 +1599,7 @@ void test_w_create_oslog_stream_array_level_info_type_activity_log_trace_predica
     assert_string_equal(ret[10], "--level");
     assert_string_equal(ret[11], "info");
     assert_string_equal(ret[12], "--predicate");
-    assert_string_equal(ret[13], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[13], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[14]);
 
     free_strarray(ret);
@@ -1618,7 +1620,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_predicate(void *
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1627,7 +1629,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_predicate(void *
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "debug");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1648,7 +1650,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_predicate(void ** sta
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1657,7 +1659,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_predicate(void ** sta
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "debug");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1678,7 +1680,7 @@ void test_w_create_oslog_stream_array_level_debug_type_trace_predicate(void ** s
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1687,7 +1689,7 @@ void test_w_create_oslog_stream_array_level_debug_type_trace_predicate(void ** s
     assert_string_equal(ret[6], "--level");
     assert_string_equal(ret[7], "debug");
     assert_string_equal(ret[8], "--predicate");
-    assert_string_equal(ret[9], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[9], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[10]);
 
     free_strarray(ret);
@@ -1708,7 +1710,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_predicate(vo
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1719,7 +1721,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_predicate(vo
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "debug");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1740,7 +1742,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_trace_predicate(
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1751,7 +1753,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_trace_predicate(
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "debug");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1772,7 +1774,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_trace_predicate(void 
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1783,7 +1785,7 @@ void test_w_create_oslog_stream_array_level_debug_type_log_trace_predicate(void 
     assert_string_equal(ret[8], "--level");
     assert_string_equal(ret[9], "debug");
     assert_string_equal(ret[10], "--predicate");
-    assert_string_equal(ret[11], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[11], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[12]);
 
     free_strarray(ret);
@@ -1804,7 +1806,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predic
 
     char ** ret = w_create_oslog_stream_array(predicate, level, type);
 
-    assert_string_equal(ret[0], "log");
+    assert_string_equal(ret[0], "/usr/bin/log");
     assert_string_equal(ret[1], "stream");
     assert_string_equal(ret[2], "--style");
     assert_string_equal(ret[3], "syslog");
@@ -1817,7 +1819,7 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predic
     assert_string_equal(ret[10], "--level");
     assert_string_equal(ret[11], "debug");
     assert_string_equal(ret[12], "--predicate");
-    assert_string_equal(ret[13], "'processImagePath CONTAINS[c] 'com.apple.geod''");
+    assert_string_equal(ret[13], "processImagePath CONTAINS[c] 'com.apple.geod'");
     assert_null(ret[14]);
 
     free_strarray(ret);
