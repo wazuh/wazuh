@@ -122,6 +122,29 @@ type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes e
     <order>audit.file.name, audit.file.inode, audit.file.mode</order>
 </decoder>
 
+<!--
+type=SYSCALL msg=audit(1618817033.109:3315672): arch=c000003e syscall=2 success=no exit=-13 a0=7ffd92fc41b9 a1=0 a2=1fffffffffff0000 a3=7ffd92fc1a20 items=1 ppid=13297 pid=2621 auid=1201400146 uid=1201400146 gid=1201400146 euid=1201400146 suid=1201400146 fsuid=1201400146 egid=1201400146 sgid=1201400146 fsgid=1201400146 tty=pts0 ses=53321 comm="cat" exe="/usr/bin/cat" key="audit-wazuh-e" type=CWD msg=audit(1618817033.109:3315672):  cwd="/home/tester" type=PATH msg=audit(1618817033.109:3315672): item=0 name="/home/test/.ssh/id_rsa" objtype=UNKNOWN cap_fp=0000000000000000 cap_fi=0000000000000000 cap_fe=0 cap_fver=0 type=PROCTITLE msg=audit(1618817033.109:3315672): proctitle=636174002f686f6d652f746573742f2e7373682f69645f727361
+-->
+
+<!-- PATH - FILE Simple-->
+<decoder name="auditd-syscall">
+    <parent>auditd</parent>
+    <regex offset="after_regex">type=PATH msg=audit\(\S+\): item=\S+ name="(\.+)"</regex>
+    <order>audit.file.name</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+        <parent>auditd</parent>
+        <regex offset="after_regex">objtype=(\S+)</regex>
+        <order>audit.objtype</order>
+</decoder>
+
+<decoder name="auditd-syscall">
+        <parent>auditd</parent>
+        <regex offset="after_regex">proctitle=(\S+)</regex>
+        <order>audit.proctitle</order>
+</decoder>
+
 
 <!--
 type=CONFIG_CHANGE msg=audit(1480085540.632:5846): auid=0 ses=1 op="remove rule" key="audit-wazuh-w" list=4 res=1
