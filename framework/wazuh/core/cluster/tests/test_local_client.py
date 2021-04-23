@@ -8,8 +8,8 @@ from unittest.mock import patch
 import pytest
 import uvloop
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         from wazuh.core.exception import WazuhException
         from wazuh.core.cluster.local_client import LocalClient
 

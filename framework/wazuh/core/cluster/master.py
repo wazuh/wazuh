@@ -802,7 +802,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                             mtime_epoch = timegm(mtime.timetuple())
                             utils.safe_move(tmp_unmerged_path, full_unmerged_name,
-                                            ownership=(common.ossec_uid(), common.ossec_gid()),
+                                            ownership=(common.wazuh_uid(), common.wazuh_gid()),
                                             permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
                                             time=(mtime_epoch, mtime_epoch)
                                             )
@@ -819,7 +819,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 else:
                     zip_path = os.path.join(decompressed_files_path, name)
                     utils.safe_move(zip_path, full_path,
-                                    ownership=(common.ossec_uid(), common.ossec_gid()),
+                                    ownership=(common.wazuh_uid(), common.wazuh_gid()),
                                     permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions']
                                     )
 

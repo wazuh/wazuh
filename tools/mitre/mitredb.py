@@ -282,7 +282,7 @@ def main(database=None):
     # User and group permissions        
     os.chmod(database, 0o660)
     uid = pwd.getpwnam("root").pw_uid
-    gid = grp.getgrnam("ossec").gr_gid
+    gid = grp.getgrnam("wazuh").gr_gid
     os.chown(database, uid, gid)
 
     conn.close()

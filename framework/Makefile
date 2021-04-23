@@ -4,16 +4,16 @@
 #
 # Syntax: make [ all | build | install | examples | clean ]
 
-OSSEC_GROUP       = ossec
+WAZUH_GROUP       = wazuh
 INSTALLDIR       ?= /var/ossec
 
 CC           = gcc
 CFLAGS       = -pipe -Wall -Wextra
 THREAD_FLAGS = -pthread
 RM_FILE      = rm -f
-INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
-INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
-INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
+INSTALL_DIR  = install -o root -g ${WAZUH_GROUP} -m 0750  -d
+INSTALL_EXEC = install -o root -g ${WAZUH_GROUP} -m 0750
+INSTALL_FILE = install -o root -g ${WAZUH_GROUP} -m 0640
 
 ifdef DEBUG
 	CFLAGS+=-g -I ../src

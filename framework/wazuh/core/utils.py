@@ -503,7 +503,7 @@ def delete_wazuh_file(full_path):
         raise WazuhError(1906)
 
 
-def safe_move(source, target, ownership=(common.ossec_uid(), common.ossec_gid()), time=None, permissions=None):
+def safe_move(source, target, ownership=(common.wazuh_uid(), common.wazuh_gid()), time=None, permissions=None):
     """Moves a file even between filesystems
 
     This function is useful to move files even when target directory is in a different filesystem from the source.

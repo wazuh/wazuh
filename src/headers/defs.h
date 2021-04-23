@@ -92,16 +92,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define RECONNECT_TIME  60      // Time to reconnect
 
 /* User Configuration */
-#ifndef MAILUSER
-#define MAILUSER        "ossecm"
-#endif
-
 #ifndef USER
-#define USER            "ossec"
-#endif
-
-#ifndef REMUSER
-#define REMUSER         "ossecr"
+#define USER            "wazuh"
 #endif
 
 #ifndef ROOTUSER
@@ -109,7 +101,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 #ifndef GROUPGLOBAL
-#define GROUPGLOBAL     "ossec"
+#define GROUPGLOBAL     "wazuh"
 #endif
 
 // Wazuh home environment variable

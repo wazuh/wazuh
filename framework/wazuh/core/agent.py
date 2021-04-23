@@ -1117,7 +1117,7 @@ class Agent:
                 f_group.write(group_id)
 
             if new_file:
-                chown(agent_group_path, common.ossec_uid(), common.ossec_gid())
+                chown(agent_group_path, common.wazuh_uid(), common.wazuh_gid())
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhInternalError(1005, extra_message=str(e))
