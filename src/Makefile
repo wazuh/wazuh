@@ -13,6 +13,7 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
+uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
@@ -1023,6 +1024,7 @@ endif
 
 TAR := tar -xf
 GUNZIP := gunzip
+GZIP := gzip
 CURL := curl -so
 DEPS_VERSION = 14
 RESOURCES_URL := https://packages.wazuh.com/deps/$(DEPS_VERSION)
@@ -1031,8 +1033,11 @@ PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
 cpu_arch := ${uname_P}
-ifneq (,$(filter ${cpu_arch},unknown Unknown))
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
 	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
+endif
+ifneq (,$(filter ${cpu_arch},unknown Unknown not))
+	cpu_arch := ${uname_M}
 endif
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 PRECOMPILED_ARCH := /amd64
@@ -1058,7 +1063,7 @@ PRECOMPILED_OS := el5
 endif
 
 ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
-# If EXTERNAL_SRC_ONLY=YES is not defined, lets look for the precompiled libs
+# If EXTERNAL_SRC_ONLY=YES is not defined, lets look for the precompiled lib
 PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
@@ -1078,10 +1083,18 @@ deps: $(EXTERNAL_TAR)
 
 # Python interpreter
 ifeq (,$(filter ${PYTHON_SOURCE},YES yes y Y 1))
-external/$(CPYTHON).tar.gz:
 ifneq (,$(PRECOMPILED_RES))
-	$(CURL) $@ $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external/%,%,$@)
+external/$(CPYTHON).tar.gz: external-precompiled/$(CPYTHON).tar.gz
+	test -e $(patsubst %.gz,%,$@) ||\
+	($(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@) &&\
+	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
+	test -d $(patsubst %.tar.gz,%,$@) || (cd external && $(GZIP) $(patsubst external/%.gz,%,$@))
+
+external-precompiled/$(CPYTHON).tar.gz:
+	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
+	-cd external && test -e $(patsubst external-precompiled/%,%,$@) && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
 else
+external/$(CPYTHON).tar.gz:
 	$(CURL) $@ $(RESOURCES_URL)/libraries/sources/$(patsubst external/%,%,$@)
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
@@ -1707,7 +1720,7 @@ syscheck_o := $(syschecklib_o:.c=.o) $(syscheck_c:.c=.o) $(syscheck_sql:.sql=.o)
 syscheck_eventchannel_o := $(syscheck_c:.c=-event.o) $(syscheck_sql:.sql=.o)
 
 syscheckd/db/schema_fim_db.o: syscheckd/db/schema_fim_db.sql
-	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
+	${QUIET_CC}echo 'const char *schema_fim_sql = "'"`cat $< | sed s/\\\\\\\/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\/g | tr -d \\\n`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
 
 syscheckd/%.o: syscheckd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-syscheckd\" -c $^ -o $@

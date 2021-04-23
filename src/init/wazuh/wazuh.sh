@@ -129,18 +129,26 @@ WazuhUpgrade()
     rm -f $PREINSTALLEDDIR/wodles/cve.db
     rm -f $PREINSTALLEDDIR/queue/vulnerabilities/cve.db
 
-    # Remove existing socket folder
+    # Migrate .agent_info and .wait files before removing deprecated socket folder
 
-    rm -rf $PREINSTALLEDDIR/queue/ossec
+    if [ -d $PREINSTALLEDDIR/queue/ossec ]; then
+        if [ -f $PREINSTALLEDDIR/queue/ossec/.agent_info ]; then
+            mv -f $PREINSTALLEDDIR/queue/ossec/.agent_info $PREINSTALLEDDIR/queue/sockets/.agent_info
+        fi
+        if [ -f $PREINSTALLEDDIR/queue/ossec/.wait ]; then
+            mv -f $PREINSTALLEDDIR/queue/ossec/.wait $PREINSTALLEDDIR/queue/sockets/.wait
+        fi
+        rm -rf $PREINSTALLEDDIR/queue/ossec
+    fi
 
-	# Move rotated logs to new folder and remove the existing one
+    # Move rotated logs to new folder and remove the existing one
 
-	if [ -d $PREINSTALLEDDIR/logs/ossec ]; then
-		if [ "$(ls -A $PREINSTALLEDDIR/logs/ossec)" ]; then
-			mv -f $PREINSTALLEDDIR/logs/ossec/* $PREINSTALLEDDIR/logs/wazuh
-		fi
-		rm -rf $PREINSTALLEDDIR/logs/ossec
-	fi
+    if [ -d $PREINSTALLEDDIR/logs/ossec ]; then
+        if [ "$(ls -A $PREINSTALLEDDIR/logs/ossec)" ]; then
+            mv -f $PREINSTALLEDDIR/logs/ossec/* $PREINSTALLEDDIR/logs/wazuh
+        fi
+        rm -rf $PREINSTALLEDDIR/logs/ossec
+    fi
 
     # Remove deprecated Wazuh tools
 
@@ -150,8 +158,8 @@ WazuhUpgrade()
     rm -f $PREINSTALLEDDIR/bin/ossec-makelists
     rm -f $PREINSTALLEDDIR/bin/util.sh
     rm -f $PREINSTALLEDDIR/bin/rootcheck_control
-	rm -f $PREINSTALLEDDIR/bin/syscheck_control
-	rm -f $PREINSTALLEDDIR/bin/syscheck_update
+    rm -f $PREINSTALLEDDIR/bin/syscheck_control
+    rm -f $PREINSTALLEDDIR/bin/syscheck_update
 
     # Remove old Wazuh daemons
 

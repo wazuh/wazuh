@@ -959,7 +959,7 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
             if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
                 agt_version = json_agt_version->valuestring;
             } else {
-                merror("Failed to get agent '%d' version.", id_array[i]);
+                mdebug2("Failed to get agent '%d' version.", id_array[i]);
                 cJSON_Delete(json_agt_info);
                 continue;
             }

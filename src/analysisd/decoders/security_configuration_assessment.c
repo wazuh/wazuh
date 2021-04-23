@@ -148,7 +148,7 @@ end:
 static int ConnectToSecurityConfigurationAssessmentSocket() {
 
     if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
-        merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
+        mwarn(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
         return -1;
     }
 
@@ -158,7 +158,7 @@ static int ConnectToSecurityConfigurationAssessmentSocket() {
 static int ConnectToSecurityConfigurationAssessmentSocketRemoted() {
 
     if ((cfgar_socket = StartMQ(CFGARQUEUE, WRITE, 1)) < 0) {
-        merror(QUEUE_ERROR, CFGARQUEUE, strerror(errno));
+        mwarn(QUEUE_ERROR, CFGARQUEUE, strerror(errno));
         return -1;
     }
 
