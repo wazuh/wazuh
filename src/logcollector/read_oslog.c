@@ -6,7 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 #include "shared.h"
 #include "logcollector.h"
 
@@ -338,3 +338,5 @@ STATIC bool oslog_header_check(w_oslog_config_t * oslog_cfg, char * buffer) {
 
     return retval;
 }
+
+#endif

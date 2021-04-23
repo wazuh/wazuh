@@ -106,6 +106,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it);
  */
 void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
 
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 /**
  * @brief Read oslog logs
  *
@@ -115,6 +116,7 @@ void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_oslog(logreader *lf, int *rc, int drop_it);
+#endif
 
 /* Read DJB multilog format */
 /* Initializes multilog */
@@ -275,8 +277,7 @@ extern int OUTPUT_QUEUE_SIZE;
 extern rlim_t nofile;
 #endif
 
-// ifdef DARWIN
-#ifndef WIN32
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 /**
  * @brief This function is called to release oslog's resources
  */
