@@ -72,73 +72,16 @@ static int free_string(void **state) {
     return 0;
 }
 
-static int setup_add_audit_rules(void **state) {
-    syscheck.symbolic_links = calloc(2, sizeof(char *));
 
-    if (syscheck.symbolic_links == NULL) {
-        return -1;
-    }
+static directory_t DIRECTORIES[] = {
+    [0] = {.path="/test0", .options = WHODATA_ACTIVE},
+    [1] = {.path ="/test1", .options = WHODATA_ACTIVE}
+};
 
-    syscheck.symbolic_links[0] = NULL;
-
-    return 0;
-}
-
-static int teardown_add_audit_rules(void **state) {
-    if (syscheck.symbolic_links[0] != NULL) {
-        free(syscheck.symbolic_links[0]);
-        syscheck.symbolic_links[0] = NULL;
-    }
-
-    if (syscheck.symbolic_links != NULL) {
-        free(syscheck.symbolic_links);
-        syscheck.symbolic_links = NULL;
-    }
-
-    return 0;
-}
+static directory_t *DIR_LINKS[] = { [0] = &DIRECTORIES[0], [1] = &DIRECTORIES[1], [2] = NULL };
 
 static int setup_syscheck_dir_links(void **state) {
-    syscheck.dir = calloc(2, sizeof(char *));
-    syscheck.opts = calloc(2, sizeof(int));
-
-    if (syscheck.dir == NULL) {
-        return -1;
-    }
-
-    if (setup_add_audit_rules(NULL) == -1) {
-        return -1;
-    }
-
-    syscheck.dir[0] = strdup("/test0");
-    syscheck.opts[0] |= WHODATA_ACTIVE;
-    syscheck.dir[1] = strdup("/test1");
-    syscheck.opts[1] |= WHODATA_ACTIVE;
-
-    return 0;
-}
-
-static int teardown_syscheck_dir_links(void **state) {
-    int i = 0;
-
-    for (i = 0; i <= 1; i++) {
-        if (syscheck.dir[i] != NULL) {
-            free(syscheck.dir[i]);
-            syscheck.dir[i] = NULL;
-        }
-    }
-
-    if (syscheck.dir != NULL) {
-        free(syscheck.dir);
-        syscheck.dir = NULL;
-    }
-
-    if (syscheck.opts != NULL) {
-        free(syscheck.opts);
-        syscheck.opts = NULL;
-    }
-
-    teardown_add_audit_rules(NULL);
+    syscheck.directories = DIR_LINKS;
 
     return 0;
 }
@@ -907,8 +850,6 @@ void test_audit_read_events_select_success_recv_error_audit_reconnect(void **sta
     // In audit_reload_rules()
     expect_function_call(__wrap_fim_audit_reload_rules);
     audit_read_events(audit_sock, READING_MODE);
-
-    free(syscheck.dir);
 }
 
 void test_audit_read_events_select_success_recv_success(void **state) {
@@ -1055,11 +996,11 @@ void test_audit_no_rules_to_realtime(void **state) {
     audit_no_rules_to_realtime();
 
     // Check that the options have been correctly changed
-    if (syscheck.opts[0] & WHODATA_ACTIVE) {
+    if (syscheck.directories[0]->options & WHODATA_ACTIVE) {
         fail();
     }
 
-    if (syscheck.opts[1] & REALTIME_ACTIVE) {
+    if (syscheck.directories[1]->options & REALTIME_ACTIVE) {
         fail();
     }
 }
@@ -1096,7 +1037,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_endline, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
-        cmocka_unit_test_setup_teardown(test_audit_no_rules_to_realtime, setup_syscheck_dir_links, teardown_syscheck_dir_links),
+        cmocka_unit_test_setup(test_audit_no_rules_to_realtime, setup_syscheck_dir_links),
         };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
