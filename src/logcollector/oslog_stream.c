@@ -7,7 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 #include "oslog_stream.h"
 
 // Remove STATIC qualifier from tests
@@ -153,3 +153,5 @@ void w_logcollector_create_oslog_env(logreader * current) {
 
     free_strarray(log_stream_array);
 }
+
+#endif
