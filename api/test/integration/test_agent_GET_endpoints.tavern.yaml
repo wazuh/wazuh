@@ -1403,7 +1403,6 @@ stages:
         data:
           internal:
             logcollector:
-              debug: !anyint
               force_reload: !anyint
               input_threads: !anyint
               loop_timeout: !anyint
@@ -1433,7 +1432,6 @@ stages:
         data:
           internal:
             logcollector:
-              debug: !anyint
               force_reload: !anyint
               input_threads: !anyint
               loop_timeout: !anyint
