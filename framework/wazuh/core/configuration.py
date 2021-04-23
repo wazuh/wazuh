@@ -12,7 +12,8 @@ from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
 from uuid import uuid4
-from xml.dom.minidom import parseString
+
+from defusedxml.minidom import parseString
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
@@ -669,7 +670,7 @@ def upload_group_configuration(group_id, file_content):
             for character, replacement in custom_entities.items():
                 file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
 
-            # Beautify xml file using a minidom.Document
+            # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')
 
             # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
