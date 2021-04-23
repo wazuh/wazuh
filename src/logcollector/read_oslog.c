@@ -20,7 +20,7 @@
 /**
  * @brief Gets a log from `log stream`
  *
- * @param [out] buffer Contains the read log 
+ * @param [out] buffer Contains the read log
  * @param length Buffer's max length
  * @param stream File pointer to log stream's output pipe
  * @param oslog_cfg oslog configuration structure
@@ -101,7 +101,7 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
             } else {
                 mdebug2("ULS: Discarting empty message...");
             }
-            
+
         }
         count_logs++;
     }
@@ -140,27 +140,26 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
             if (buffer[offset - 1] == '\n') {
                 buffer[offset - 1] = '\0';
             }
-            retval = true;
-            return retval;
+            return true;
         }
 
         str += offset;
     }
 
     /* Get stream data, the minimum chunk size of the log is one line */
-    char * last_line; // Pointer to the last line stored in the buffer
-    bool full_buffer; // True if buffer is full (forces data to be sent)
-    bool str_endline; // True if the last line read ends with an 'endline' chractaer
-    bool split;       // True if the log in the buffer will be split to send in separate pieces
+    char * last_line = NULL; // Pointer to the last line stored in the buffer
+    bool is_buffer_full;        // True if buffer is full (forces data to be sent)
+    bool str_endline;        // True if the last line read ends with an 'endline' chractaer
+    bool do_split;              // True if the log in the buffer will be split to send in separate pieces
     while (can_read() && (fgets(str, length - offset, stream) != NULL)) {
 
         chunk_sz = strlen(str);
         offset += chunk_sz;
         str += chunk_sz;
         last_line = NULL;
-        full_buffer = false;
+        is_buffer_full = false;
         str_endline = (*(str - 1) == '\n');
-        split = false;
+        do_split = false;
 
         /* Avoid fgets infinite loop behavior when size parameter is 1
          * If we didn't get the new line, because the size is large, send what we got so far.
@@ -168,7 +167,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
         if (offset + 1 == length) {
             // Clean context and force send the log
             oslog_ctxt_clean(&oslog_cfg->ctxt);
-            full_buffer = true;
+            is_buffer_full = true;
         } else if (!str_endline) {
             mdebug2("ULS: Inclomplete message...");
             // Save the context
@@ -192,10 +191,10 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
 
         /* If there are 2 logs, they are separated for sending */
         if (str_endline && last_line != NULL) {
-            split = w_expression_match(oslog_cfg->start_log_regex, last_line + 1, NULL, NULL);
+            do_split = w_expression_match(oslog_cfg->start_log_regex, last_line + 1, NULL, NULL);
         }
 
-        if (!split && full_buffer) {
+        if (!do_split && is_buffer_full) {
             /* If only one-line log in the buffer it is sent and the rest of the line is discarded,
              * otherwise, it must be split, store the last line and send them separately.
              * If the line is incomplete, it is impossible to differentiate
@@ -203,16 +202,14 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
              */
             if (!str_endline) {
                 if (last_line == NULL) {
+                    char c;
                     // Discard the rest of the one line log, moving the pointer to the next end of line
-                    while (true) {
-                        char c = fgetc(stream); // if stream its closed ?, check errno and break loop
-                        if (c == '\n' || c == '\0' || c == EOF) {
-                            break;
-                        }
-                    }
+                    do {
+                        c = fgetc(stream);
+                    } while (c != '\n' && c != '\0' && c != EOF);
                     mdebug2("Max lenght oslog message... The remaining surplus was discarded");
                 } else {
-                    split = true;
+                    do_split = true;
                     mdebug2("Max lenght oslog message... The remaining surplus was send separately");
                 }
             }
@@ -220,16 +217,16 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
 
         /* split the logs */
         /* If a new log is received, we store it in the context and send the oldest one. */
-        if (split) {
+        if (do_split) {
             oslog_ctxt_clean(&oslog_cfg->ctxt);
             *last_line = '\0';
             strncpy(oslog_cfg->ctxt.buffer, last_line + 1, offset - (last_line - buffer) + 1);
             oslog_cfg->ctxt.timestamp = time(NULL);
-        } else if (!full_buffer) {
+        } else if (!is_buffer_full) {
             oslog_ctxt_backup(buffer, &oslog_cfg->ctxt);
         }
 
-        if (split || full_buffer) {
+        if (do_split || is_buffer_full) {
             retval = true;
             /* delete last end-of-line character  */
             if (buffer[offset - 1] == '\n') {
