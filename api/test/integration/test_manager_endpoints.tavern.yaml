@@ -658,7 +658,7 @@ stages:
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "tag"
-            expected_values: "wazuh-syscheckd"
+            expected_values: "wazuh-modulesd:syscheck"
         - function: tavern_utils:test_expected_value
           extra_kwargs:
             key: "level"
@@ -697,7 +697,6 @@ stages:
             - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:execd: !anything
             - wazuh-modulesd:logcollector: !anything
             - wazuh-modulesd:osquery: !anything
             - wazuh-modulesd:syscheck: !anything
