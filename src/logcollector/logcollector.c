@@ -127,11 +127,9 @@ static pthread_rwlock_t files_update_rwlock;
 static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 
-// ifdef DARWIN
-#ifndef WIN32
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 static wfd_t * oslog_wfd = NULL;
 #endif
-// endif
 
 /* Handle file management */
 void LogCollectorStart()
@@ -337,8 +335,7 @@ void LogCollectorStart()
                 merror("Missing command argument. Ignoring it.");
             }
         }
-//ifdef Darwin
-#ifndef WIN32 //todo : remove this when having the right define
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
         else if (strcmp(current->logformat, OSLOG) == 0) {
             w_logcollector_create_oslog_env(current);
             current->read = read_oslog;
@@ -353,8 +350,7 @@ void LogCollectorStart()
                 }
             }
         }
-#endif  //todo : remove this when having the right define
-//endif Darwin
+#endif
         else if (j < 0) {
             set_read(current, i, j);
             if (current->file) {
@@ -2135,12 +2131,12 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                             current->read(current, &r, 0);
                         }
                     }
-//#ifdef darwin
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
                     /* Read process `log` in stream  (oslog) */
                     else if (current->oslog != NULL && current->oslog->is_oslog_running) {
                         current->read(current, &r, 0);
                     }
-//#endif darwin
+#endif
                     w_mutex_unlock(&current->mutex);
                     w_rwlock_unlock(&files_update_rwlock);
                     continue;
@@ -2911,8 +2907,7 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
     return true;
 }
 
-// ifdef DARWIN
-#ifndef WIN32
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 void w_oslog_release(void) {
     if (oslog_wfd != NULL) {
         mdebug1("Releasing OSLog resources.");
@@ -2924,4 +2919,3 @@ void w_oslog_release(void) {
     }
 }
 #endif
-// endif
