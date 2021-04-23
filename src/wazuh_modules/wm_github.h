@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for Security Configuration Assessment
+ * Wazuh Module for GitHub logs
  * Copyright (C) 2015-2021, Wazuh Inc.
  * November 25, 2018.
  *
@@ -33,7 +33,7 @@ typedef struct wm_github {
     char *event_type;                       // Event types to include: web/git/all
 } wm_github;
 
-#define WM_GITHUB_LOGTAG GITHUB_WM_NAME
+#define WM_GITHUB_LOGTAG ARGV0 ":" GITHUB_WM_NAME
 
 extern const wm_context WM_GITHUB_CONTEXT;   // Context
 

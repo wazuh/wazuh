@@ -7,7 +7,7 @@
  * Foundation
 */
 
-#include "wazuh_modules/wm_github.h"
+#include "wazuh_modules/wmodules.h"
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_RUN_ON_START = "run_on_start";
@@ -56,22 +56,28 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     int i = 0;
     int j = 0;
     xml_node **children = NULL;
-    wm_github* github_config;
+    wm_github* github_config = NULL;
     const char *wm_github_default_event_type = "all";
 
-    // Default initialization
-    module->context = &WM_GITHUB_CONTEXT;
-    module->tag = strdup(module->context->name);
-    os_calloc(1, sizeof(wm_github), github_config);
-    github_config->enabled =            WM_GITHUB_DEFAULT_ENABLED;
-    github_config->run_on_start =       WM_GITHUB_DEFAULT_RUN_ON_START;
-    github_config->only_future_events = WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS;
-    github_config->interval =           WM_GITHUB_DEFAULT_INTERVAL;
-    github_config->time_delay =         WM_GITHUB_DEFAULT_DELAY;
-    os_strdup(wm_github_default_event_type, github_config->event_type);
-    module->data = github_config;
+    if (!module->data) {
+        // Default initialization
+        module->context = &WM_GITHUB_CONTEXT;
+        module->tag = strdup(module->context->name);
+        os_calloc(1, sizeof(wm_github), github_config);
+        github_config->enabled =            WM_GITHUB_DEFAULT_ENABLED;
+        github_config->run_on_start =       WM_GITHUB_DEFAULT_RUN_ON_START;
+        github_config->only_future_events = WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS;
+        github_config->interval =           WM_GITHUB_DEFAULT_INTERVAL;
+        github_config->time_delay =         WM_GITHUB_DEFAULT_DELAY;
+        os_strdup(wm_github_default_event_type, github_config->event_type);
+        module->data = github_config;
+    } else {
+        github_config = module->data;
+    }
 
-    // Iterate over module subelements
+    if (!nodes) {
+        return 0;
+    }
 
     for (i = 0; nodes[i]; i++){
         if (!nodes[i]->element) {
@@ -159,5 +165,5 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         }
     }
 
-    return 0;
+    return OS_SUCCESS;
 }
