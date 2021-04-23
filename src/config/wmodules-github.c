@@ -9,7 +9,7 @@
 
 #include "wazuh_modules/wm_github.h"
 
-static const char *XML_DISABLED = "disabled";
+static const char *XML_ENABLED = "enabled";
 static const char *XML_RUN_ON_START = "run_on_start";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_TIME_DELAY = "time_delay";
@@ -41,6 +41,7 @@ time_t time_convert(const char *time_c) {
         time_i *= 60;
         break;
     case 's':
+        break;
     case '\0':
         break;
     default:
@@ -56,20 +57,19 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     int j = 0;
     xml_node **children = NULL;
     wm_github* github_config;
+    const char *wm_github_default_event_type = "all";
 
-    if (!module->data) {
-        // Default initialization
-        module->context = &WM_GITHUB_CONTEXT;
-        module->tag = strdup(module->context->name);
-        os_calloc(1, sizeof(wm_github), github_config);
-        github_config->enabled = 1;
-        github_config->run_on_start = 1;
-        github_config->only_future_events = 1;
-        github_config->interval = WM_GITHUB_DEFAULT_INTERVAL;
-        github_config->time_delay = WM_GITHUB_DEFAULT_DELAY;
-        github_config->event_type = "all";
-        module->data = github_config;
-    }
+    // Default initialization
+    module->context = &WM_GITHUB_CONTEXT;
+    module->tag = strdup(module->context->name);
+    os_calloc(1, sizeof(wm_github), github_config);
+    github_config->enabled =            WM_GITHUB_DEFAULT_ENABLED;
+    github_config->run_on_start =       WM_GITHUB_DEFAULT_RUN_ON_START;
+    github_config->only_future_events = WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS;
+    github_config->interval =           WM_GITHUB_DEFAULT_INTERVAL;
+    github_config->time_delay =         WM_GITHUB_DEFAULT_DELAY;
+    os_strdup(wm_github_default_event_type, github_config->event_type);
+    module->data = github_config;
 
     // Iterate over module subelements
 
@@ -77,13 +77,13 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         if (!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
-        } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
+        } else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (!strcmp(nodes[i]->content, "yes"))
-                github_config->enabled = 0;
-            else if (!strcmp(nodes[i]->content, "no"))
                 github_config->enabled = 1;
+            else if (!strcmp(nodes[i]->content, "no"))
+                github_config->enabled = 0;
             else {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_GITHUB_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
@@ -144,7 +144,7 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             }
             for (j = 0; children[j]; j++){
                 if (!strcmp(children[j]->element, XML_EVENT_TYPE)) {
-                    if (strcmp(children[j]->content, "all") || strcmp(children[j]->content, "git") || strcmp(children[j]->content, "web")) {
+                    if (strcmp(children[j]->content, "all") && strcmp(children[j]->content, "git") && strcmp(children[j]->content, "web")) {
                         merror("Invalid content for tag '%s' at module '%s'.", XML_EVENT_TYPE, WM_GITHUB_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
