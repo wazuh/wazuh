@@ -9,7 +9,6 @@ from collections.abc import KeysView
 from io import StringIO
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import patch, MagicMock, mock_open
-from xml.etree import ElementTree
 
 import pytest
 
@@ -1171,9 +1170,8 @@ def test_WazuhDBQuery_general_run(mock_socket_conn, mock_isfile, execute_value, 
 
 
 @pytest.mark.parametrize('execute_value, rbac_ids, negate, final_rbac_ids, expected_result', [
-    (
-            [{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}],
-            {'items': [{'id': '099'}], 'totalItems': 1}),
+    ([{'id': 99}, {'id': 100}], ['001', '099', '101'], False, [{'id': 99}],
+     {'items': [{'id': '099'}], 'totalItems': 1}),
     ([{'id': 1}], [], True, [{'id': 1}], {'items': [{'id': '001'}], 'totalItems': 1}),
     ([{'id': i} for i in range(30000)], [str(i).zfill(3) for i in range(15001)], True,
      [{'id': i} for i in range(15001, 30000)],
