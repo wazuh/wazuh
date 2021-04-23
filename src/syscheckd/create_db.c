@@ -48,13 +48,12 @@ static const char *FIM_EVENT_MODE[] = {
 };
 
 static cJSON *
-_fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, const struct stat *statbuf);
+_fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data);
 
 #ifndef WIN32
 static cJSON *_fim_file_force_update(const fim_entry *saved,
                                      const directory_t *configuration,
-                                     event_data_t *evt_data,
-                                     const struct stat *statbuf);
+                                     event_data_t *evt_data);
 #endif
 
 void fim_delete_file_event(fdb_t *fim_sql,
@@ -240,7 +239,6 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
     directory_t *configuration;
     int depth;
     fim_entry *saved_entry = NULL;
-    struct stat statbuf;
 
 #ifdef WIN32
     // Ignore the recycle bin.
@@ -279,7 +277,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
     }
 
     // Deleted file. Sending alert.
-    if (w_stat(path, &statbuf) == -1) {
+    if (w_stat(path, &(evt_data->statbuf)) == -1) {
         if(errno != ENOENT) {
             mdebug1(FIM_STAT_FAILED, path, errno, strerror(errno));
             return;
@@ -313,7 +311,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
         return;
     }
 
-    switch (statbuf.st_mode & S_IFMT) {
+    switch (evt_data->statbuf.st_mode & S_IFMT) {
 #ifndef WIN32
     case FIM_LINK:
         // Fallthrough
@@ -329,7 +327,7 @@ void fim_checker(const char *path, event_data_t *evt_data, const directory_t *pa
 
         check_max_fps();
 
-        fim_file(path, configuration, evt_data, &statbuf);
+        fim_file(path, configuration, evt_data);
         break;
 
     case FIM_DIRECTORY:
@@ -415,7 +413,6 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
  */
 static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *stack, rb_tree *tree, cJSON **event) {
     event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
-    struct stat statbuf;
     fim_entry *entry;
     directory_t *configuration = NULL;
 
@@ -430,7 +427,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         return FIM_FILE_ERROR;
     }
 
-    if (w_stat(entry->file_entry.path, &statbuf) == -1) {
+    if (w_stat(entry->file_entry.path, &(evt_data.statbuf)) == -1) {
         if (errno != ENOENT) {
             mdebug1(FIM_STAT_FAILED, entry->file_entry.path, errno, strerror(errno));
             free_entry(entry);
@@ -461,12 +458,13 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         return FIM_FILE_DELETED;
     }
 
-    if (entry->file_entry.data->dev == statbuf.st_dev && entry->file_entry.data->inode == statbuf.st_ino) {
+    if (entry->file_entry.data->dev == evt_data.statbuf.st_dev &&
+        entry->file_entry.data->inode == evt_data.statbuf.st_ino) {
         goto end;
     }
 
     // We need to check if the new inode is being used in the DB
-    switch (fim_db_data_exists(syscheck.database, statbuf.st_ino, statbuf.st_dev)) {
+    switch (fim_db_data_exists(syscheck.database, evt_data.statbuf.st_ino, evt_data.statbuf.st_dev)) {
     case FIMDB_ERR:
         free_entry(entry);
         return FIM_FILE_ERROR;
@@ -478,7 +476,8 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
     }
 
     // The inode is currently being used, scan those files first
-    if (fim_db_append_paths_from_inode(syscheck.database, statbuf.st_ino, statbuf.st_dev, stack, tree) == 0) {
+    if (fim_db_append_paths_from_inode(syscheck.database, evt_data.statbuf.st_ino, evt_data.statbuf.st_dev, stack,
+                                       tree) == 0) {
         // We have somehow reached a point an infinite loop could happen, we will need to update the current file
         // forcefully which will generate a false positive alert
         configuration = fim_configuration_directory(path);
@@ -488,7 +487,7 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
             return FIM_FILE_ERROR;
         }
 
-        *event = _fim_file_force_update(entry, configuration, &evt_data, &statbuf);
+        *event = _fim_file_force_update(entry, configuration, &evt_data);
         free_entry(entry);
         return FIM_FILE_UPDATED;
     }
@@ -506,7 +505,7 @@ end:
         return FIM_FILE_ERROR;
     }
 
-    *event = _fim_file(path, configuration, &evt_data, &statbuf);
+    *event = _fim_file(path, configuration, &evt_data);
 
     free_entry(entry);
     return FIM_FILE_UPDATED;
@@ -671,14 +670,17 @@ static int fim_update_db_data(const char *path,
  * @param path The path to the file being processed.
  * @param configuration The configuration associated with the file being processed.
  * @param evt_data Information on how the event was triggered.
- * @param statbuf A struct stat with the information extracted from the file.
  */
 static cJSON *
-_fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, const struct stat *statbuf) {
+_fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data) {
     fim_entry new;
     fim_entry *saved = NULL;
     cJSON *json_event = NULL;
     char *diff = NULL;
+
+    assert(path != NULL);
+    assert(configuration != NULL);
+    assert(evt_data != NULL);
 
     if (evt_data->mode == FIM_SCHEDULED) {
         // Prevent analysis of the same file twice during the same scan
@@ -695,7 +697,7 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
     }
 
     new.file_entry.path = (char *)path;
-    new.file_entry.data = fim_get_data(path, configuration, statbuf);
+    new.file_entry.data = fim_get_data(path, configuration, &(evt_data->statbuf));
     if (new.file_entry.data == NULL) {
         mdebug1(FIM_GET_ATTRIBUTES, path);
         return NULL;
@@ -733,13 +735,11 @@ _fim_file(const char *path, const directory_t *configuration, event_data_t *evt_
  * @param saved Information extracted from FIM DB about the file being processed.
  * @param configuration The configuration associated with the file being processed.
  * @param evt_data Information on how the event was triggered.
- * @param statbuf A struct stat with the information extracted from the file.
  * @return A JSON event, NULL if no event is triggered.
  */
 static cJSON *_fim_file_force_update(const fim_entry *saved,
                                      const directory_t *configuration,
-                                     event_data_t *evt_data,
-                                     const struct stat *statbuf) {
+                                     event_data_t *evt_data) {
     fim_entry new;
     cJSON *json_event = NULL;
     char *diff = NULL;
@@ -747,11 +747,10 @@ static cJSON *_fim_file_force_update(const fim_entry *saved,
     assert(saved != NULL);
     assert(configuration != NULL);
     assert(evt_data != NULL);
-    assert(statbuf != NULL);
 
     // Get file attributes
     new.file_entry.path = (char *)saved->file_entry.path;
-    new.file_entry.data = fim_get_data(new.file_entry.path, configuration, statbuf);
+    new.file_entry.data = fim_get_data(new.file_entry.path, configuration, &(evt_data->statbuf));
     if (new.file_entry.data == NULL) {
         mdebug1(FIM_GET_ATTRIBUTES, new.file_entry.path);
         return NULL;
@@ -777,11 +776,11 @@ static cJSON *_fim_file_force_update(const fim_entry *saved,
 }
 #endif
 
-void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, const struct stat *statbuf) {
+void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data) {
     cJSON *json_event = NULL;
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
-    json_event = _fim_file(path, configuration, evt_data, statbuf);
+    json_event = _fim_file(path, configuration, evt_data);
     w_mutex_unlock(&syscheck.fim_entry_mutex);
 
     if (json_event && _base_line && evt_data->report_event) {

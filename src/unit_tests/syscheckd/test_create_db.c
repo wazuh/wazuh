@@ -1222,11 +1222,9 @@ static void expect_fim_db_set_scanned(fdb_t *db, const char *file_path, int ret)
 }
 
 static void test_fim_file_add(void **state) {
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_MTIME | CHECK_SHA256SUM | CHECK_SEECHANGES };
-    struct stat statbuf = DEFAULT_STATBUF;
-
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1246,8 +1244,8 @@ static void test_fim_file_add(void **state) {
     will_return(__wrap_fim_db_get_path, NULL);
 
 #ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, statbuf.st_dev);
+    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
+    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
     will_return(__wrap_fim_db_data_exists, 0);
 
     expect_fim_db_insert(syscheck.database, file_path, FIMDB_OK);
@@ -1262,17 +1260,15 @@ static void test_fim_file_add(void **state) {
 #ifdef TEST_WINAGENT
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
-    fim_file(file_path, &configuration, &evt_data, &statbuf);
+    fim_file(file_path, &configuration, &evt_data);
 }
 
 
 static void test_fim_file_modify(void **state) {
     fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-    struct stat statbuf = DEFAULT_STATBUF;
-
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1327,8 +1323,8 @@ static void test_fim_file_modify(void **state) {
                                         0x400, 0);
 
 #ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, statbuf.st_dev);
+    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
+    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
     will_return(__wrap_fim_db_data_exists, 0);
 #endif
 
@@ -1345,17 +1341,15 @@ static void test_fim_file_modify(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
 
-    fim_file(file_path, &configuration, &evt_data, &statbuf);
+    fim_file(file_path, &configuration, &evt_data);
 }
 
 static void test_fim_file_no_attributes(void **state) {
     char buffer1[OS_SIZE_256];
     char buffer2[OS_SIZE_256];
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-    struct stat statbuf = DEFAULT_STATBUF;
-
 #ifdef TEST_WINAGENT
     char file_path[] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1401,15 +1395,14 @@ static void test_fim_file_no_attributes(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
 
-    fim_file(file_path, &configuration, &evt_data, &statbuf);
+    fim_file(file_path, &configuration, &evt_data);
 }
 
 static void test_fim_file_error_on_insert(void **state) {
     fim_data_t *fim_data = *state;
-    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true };
+    event_data_t evt_data = { .mode = FIM_SCHEDULED, .w_evt = NULL, .report_event = true, .statbuf = DEFAULT_STATBUF };
     directory_t configuration = { .options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MD5SUM |
                                              CHECK_SHA1SUM | CHECK_SHA256SUM };
-    struct stat statbuf = DEFAULT_STATBUF;
 #ifdef TEST_WINAGENT
     char file_path[OS_SIZE_256] = "c:\\windows\\system32\\cmd.exe";
 #else
@@ -1473,8 +1466,8 @@ static void test_fim_file_error_on_insert(void **state) {
     will_return(__wrap_fim_db_get_path, fim_data->fentry);
 
 #ifndef TEST_WINAGENT
-    expect_value(__wrap_fim_db_data_exists, inode, statbuf.st_ino);
-    expect_value(__wrap_fim_db_data_exists, dev, statbuf.st_dev);
+    expect_value(__wrap_fim_db_data_exists, inode, evt_data.statbuf.st_ino);
+    expect_value(__wrap_fim_db_data_exists, dev, evt_data.statbuf.st_dev);
     will_return(__wrap_fim_db_data_exists, 0);
 #endif
 
@@ -1485,7 +1478,7 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_function_call(__wrap_pthread_mutex_unlock);
 #endif
 
-    fim_file(file_path, &configuration, &evt_data, &statbuf);
+    fim_file(file_path, &configuration, &evt_data);
 }
 
 static void test_fim_checker_scheduled_configuration_directory_error(void **state) {

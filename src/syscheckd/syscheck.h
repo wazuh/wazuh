@@ -71,6 +71,7 @@ typedef struct _event_data_s {
     int report_event;
     fim_event_mode mode;
     fim_event_type type;
+    struct stat statbuf;
     whodata_evt *w_evt;
 } event_data_t;
 
@@ -192,9 +193,8 @@ int fim_directory(const char *dir, event_data_t *evt_data, const directory_t *co
  * @param [in] path Path of the file to check
  * @param [in] configuration Configuration block associated with a previous event.
  * @param [in] evt_data Information associated to the triggered event
- * @param [in] statbuf Buffer acquired from a stat command with information linked to 'path'
  */
-void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data, const struct stat *statbuf);
+void fim_file(const char *path, const directory_t *configuration, event_data_t *evt_data);
 
 /**
  * @brief Process FIM realtime event
