@@ -7,7 +7,7 @@
 
 # Tests list and flags
 list(APPEND tests_names "test_wm_github")
-list(APPEND tests_flags "-Wl,--wrap=_merror")
+list(APPEND tests_flags "-Wl,--wrap=_mwarn,--wrap=_merror")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")

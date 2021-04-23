@@ -20,15 +20,19 @@
 
 #include "wmodules.h"
 
+typedef struct wm_github_auth {
+    char *org_name;                         // Organization name
+    char *api_token;                        // Personal access token
+    struct wm_github_auth *next;
+} wm_github_auth;
+
 typedef struct wm_github {
     int enabled;
     int run_on_start;
     int only_future_events;
     time_t interval;                         // Interval betweeen events in seconds
     time_t time_delay;
-    // api_auth
-    char *org_name;                         // Organization name
-    char *api_token;                        // Personal access token
+    wm_github_auth *auth;
     // api_parameters
     char *event_type;                       // Event types to include: web/git/all
 } wm_github;

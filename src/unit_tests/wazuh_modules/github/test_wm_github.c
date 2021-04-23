@@ -37,8 +37,11 @@ static int teardown_test_read(void **state) {
     OS_ClearNode(test->nodes);
     OS_ClearXML(&(test->xml));
     if((wm_github*)test->module->data){
-        os_free(((wm_github*)test->module->data)->org_name);
-        os_free(((wm_github*)test->module->data)->api_token);
+        if(((wm_github*)test->module->data)->auth){
+            os_free(((wm_github*)test->module->data)->auth->org_name);
+            os_free(((wm_github*)test->module->data)->auth->api_token);
+            os_free(((wm_github*)test->module->data)->auth);
+        }
         os_free(((wm_github*)test->module->data)->event_type);
     }
     os_free(test->module->data);
@@ -72,8 +75,8 @@ void test_read_configuration(void **state) {
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
     assert_int_equal(module_data->only_future_events, 0);
-    assert_string_equal(module_data->org_name, "Wazuh");
-    assert_string_equal(module_data->api_token, "Wazuh_token");
+    assert_string_equal(module_data->auth->org_name, "Wazuh");
+    assert_string_equal(module_data->auth->api_token, "Wazuh_token");
     assert_string_equal(module_data->event_type, "git");
 }
 
@@ -93,8 +96,8 @@ void test_read_default_configuration(void **state) {
     assert_int_equal(module_data->interval, 600);
     assert_int_equal(module_data->time_delay, 1);
     assert_int_equal(module_data->only_future_events, 0);
-    assert_string_equal(module_data->org_name, "Wazuh");
-    assert_string_equal(module_data->api_token, "Wazuh_token");
+    assert_string_equal(module_data->auth->org_name, "Wazuh");
+    assert_string_equal(module_data->auth->api_token, "Wazuh_token");
     assert_string_equal(module_data->event_type, "all");
 }
 
@@ -151,6 +154,38 @@ void test_read_interval_d(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
     wm_github *module_data = (wm_github*)test->module->data;
     assert_int_equal(module_data->interval, 259200);
+}
+
+void test_repeatd_tag(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+        "<api_parameters>"
+            "<event_type>git</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
+    wm_github *module_data = (wm_github*)test->module->data;
+    assert_int_equal(module_data->enabled, 0);
+    assert_int_equal(module_data->run_on_start, 1);
+    assert_int_equal(module_data->interval, 600);
+    assert_int_equal(module_data->time_delay, 1);
+    assert_int_equal(module_data->only_future_events, 0);
+    assert_string_equal(module_data->auth->org_name, "Wazuh");
+    assert_string_equal(module_data->auth->api_token, "Wazuh_token");
+    assert_string_equal(module_data->event_type, "git");
 }
 
 void test_fake_tag(void **state) {
@@ -271,6 +306,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_interval_m, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_h, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_d, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_repeatd_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_2, setup_test_read, teardown_test_read),

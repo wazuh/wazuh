@@ -57,6 +57,7 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     int j = 0;
     xml_node **children = NULL;
     wm_github* github_config = NULL;
+    wm_github_auth *github_auth = NULL;
     const char *wm_github_default_event_type = "all";
 
     if (!module->data) {
@@ -76,7 +77,7 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     }
 
     if (!nodes) {
-        return 0;
+        return OS_SUCCESS;
     }
 
     for (i = 0; nodes[i]; i++){
@@ -123,6 +124,17 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
+
+            // Create auth node
+            if (github_auth) {
+                os_calloc(1, sizeof(wm_github_auth), github_auth->next);
+                github_auth = github_auth->next;
+            } else {
+                // First github_auth
+                os_calloc(1, sizeof(wm_github_auth), github_auth);
+                github_config->auth = github_auth;
+            }
+
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
                 continue;
             }
@@ -133,17 +145,23 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
-                    os_strdup(children[j]->content, github_config->org_name);
+                    free(github_auth->org_name);
+                    os_strdup(children[j]->content, github_auth->org_name);
+
                 } else if (!strcmp(children[j]->element, XML_API_TOKEN)) {
                     if (strlen(children[j]->content) == 0) {
                         merror("Empty content for tag '%s' at module '%s'.", XML_API_TOKEN, WM_GITHUB_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
-                    os_strdup(children[j]->content, github_config->api_token);
+                    free(github_auth->api_token);
+                    os_strdup(children[j]->content, github_auth->api_token);
                 }
             }
             OS_ClearNode(children);
+
+
+
         } else if (!strcmp(nodes[i]->element, XML_API_PARAMETERS)) {
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
                 continue;
@@ -155,6 +173,7 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                         OS_ClearNode(children);
                         return OS_INVALID;
                     }
+                    free(github_config->event_type);
                     os_strdup(children[j]->content, github_config->event_type);
                 }
             }
