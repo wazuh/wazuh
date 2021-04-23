@@ -2439,8 +2439,11 @@ components:
             - wazuh-modulesd:database
             - wazuh-modulesd:docker-listener
             - wazuh-modulesd:download
+            - wazuh-modulesd:execd
+            - wazuh-modulesd:logcollector
             - wazuh-modulesd:oscap
             - wazuh-modulesd:osquery
+            - wazuh-modulesd:syscheck
             - wazuh-modulesd:syscollector
             - wazuh-modulesd:vulnerability-detector
         timestamp:
@@ -2532,9 +2535,15 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:download:
             $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:execd:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:logcollector:
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:oscap:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:osquery:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:syscheck:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:syscollector:
             $ref: '#/components/schemas/LogSummary'
@@ -4670,8 +4679,11 @@ components:
         - wazuh-modulesd:database
         - wazuh-modulesd:docker-listener
         - wazuh-modulesd:download
+        - wazuh-modulesd:execd
+        - wazuh-modulesd:logcollector
         - wazuh-modulesd:oscap
         - wazuh-modulesd:osquery
+        - wazuh-modulesd:syscheck
         - wazuh-modulesd:syscollector
         - wazuh-modulesd:vulnerability-detector
     log_level:

@@ -158,7 +158,7 @@ def validate_ossec_conf():
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
-    return NotImplementedError
+    return NotImplementedError  # https://github.com/wazuh/wazuh/issues/7968
 
 
 def get_api_conf():

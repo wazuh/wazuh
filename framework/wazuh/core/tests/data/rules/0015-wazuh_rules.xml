@@ -555,7 +555,7 @@
 
   <rule id="700" level="0">
     <category>wazuh</category>
-    <decoded_as>wazuh-logcollector</decoded_as> # TODO define how this will work
+    <decoded_as>wazuh-modulesd:logcollector</decoded_as>
     <description>Logcollector Messages Grouped</description>
   </rule>
 

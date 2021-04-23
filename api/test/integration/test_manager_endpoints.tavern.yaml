@@ -622,7 +622,7 @@ stages:
             total_failed_items: 0
 
   # GET /manager/logs
-  - name: Filters -> tag=wazuh-syscheckd, limit=1
+  - name: Filters -> tag=wazuh-modulesd:syscheck, limit=1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
@@ -630,7 +630,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        tag: wazuh-syscheckd # TODO define how this will work with wazuh-modulesd
+        tag: "wazuh-modulesd:syscheck"
         limit: 1
     response:
         status_code: 200
@@ -643,7 +643,7 @@ stages:
             total_affected_items: !anyint
             total_failed_items: 0
 
-  - name: Filters by query (tag=wazuh-syscheckd, level=info)
+  - name: Filters by query (tag=wazuh-modulesd:syscheck, level=info)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/logs"
@@ -651,7 +651,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        q: tag=wazuh-syscheckd;level=info # TODO same as above
+        q: "tag=wazuh-modulesd:syscheck;level=info"
     response:
       status_code: 200
       verify_response_with:
@@ -697,7 +697,10 @@ stages:
             - wazuh-modulesd:control: !anything
             - wazuh-modulesd:database: !anything
             - wazuh-modulesd:download: !anything
+            - wazuh-modulesd:execd: !anything
+            - wazuh-modulesd:logcollector: !anything
             - wazuh-modulesd:osquery: !anything
+            - wazuh-modulesd:syscheck: !anything
             - wazuh-modulesd:syscollector: !anything
             - wazuh-modulesd:task-manager: !anything
             - wazuh-monitord: !anything
