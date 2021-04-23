@@ -18,61 +18,61 @@
 #endif
 
 /**
- * @brief Get log from `log stream`.
+ * @brief Gets a log from `log stream`
  *
- * @param buffer readed log output
- * @param length buffer max lenth
- * @param stream log file
- * @param oslog_cfg oslog configuration
- * @return  true if a new log was collected.
+ * @param [out] buffer Contains the read log 
+ * @param length Buffer's max length
+ * @param stream File pointer to log stream's output pipe
+ * @param oslog_cfg oslog configuration structure
+ * @return  true if a new log was collected,
  *          false otherwise
  */
 STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_config_t * oslog_cfg);
 
 /**
- * @brief Restore read context from backup
+ * @brief Restores the context from backup
  *
- * Restores the buffer from a context backup
- * `buffer` must be allocated, function does not check, allocate or release memory from the buffer
+ * @warning Notice that `buffer` must be previously allocated, the function does
+ * not verify nor allocate or release the buffer memory
  * @param buffer Destination buffer
- * @param ctxt context backup
- * @return true if a context was restored. Otherwise returns false
+ * @param ctxt Backup context
+ * @return true if the context was restored, otherwise returns false
  */
 STATIC bool oslog_ctxt_restore(char * buffer, w_oslog_ctxt_t * ctxt);
 
 /**
- * @brief Generate a backup of the reading context
+ * @brief Generates a backup of the reading context
  *
- * If the backup exists, the new content is appended and updates the new offset
- * @param buffer to backup
- * @param ctxt backup destination
+ * @param buffer Context to backup
+ * @param ctxt Context's backup destination
  */
 STATIC void oslog_ctxt_backup(char * buffer, w_oslog_ctxt_t * ctxt);
 
 /**
- * @brief Clean a context backup
+ * @brief Cleans the backup context
  *
- * Does not check or release memory from the buffer
+ * @warning Notice that this function does not release the context memory
  * @param ctxt context backup to clean
  */
 STATIC void oslog_ctxt_clean(w_oslog_ctxt_t * ctxt);
 
 /**
- * @brief check if a context in a backup expired
+ * @brief Checks if a backup context has expired
  *
- * @param timeout A timeout that a context without updating is valid.
- * @param ctxt context to check
- * @return true if the context does not exist or expired. Otherwise returns false
+ * @todo  Remove timeout and use a define
+ * @param timeout A timeout that a context without updating is valid
+ * @param ctxt Context to check
+ * @return true if the context has expired, otherwise returns false
  */
 STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
 
 /**
- * @brief Get pointer to the beginning of the last line in the string str.
+ * @brief Gets the pointer to the beginning of the last line contained in the string
  *
- * @warning If the `str` has one line, return NULL
- * @warning If the `str` ends with a `\n`, it is ignored.
- * @param str to get last line
- * @return pointer to the beginning of the last line
+ * @warning If `str` has one line, returns NULL
+ * @warning If `str` ends with a `\n`, this newline character is ignored
+ * @param str String to be analyzed
+ * @return Pointer to the beginning of the last line, NULL otherwise
  */
 STATIC char * oslog_get_valid_lastline(char * str);
 
