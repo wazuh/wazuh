@@ -483,8 +483,8 @@ static fim_sanitize_state_t fim_process_file_from_db(const char *path, OSList *s
         configuration = fim_configuration_directory(path);
         if (configuration == NULL) {
             // This should not happen
-            free_entry(entry);
-            return FIM_FILE_ERROR;
+            free_entry(entry);     // LCOV_EXCL_LINE
+            return FIM_FILE_ERROR; // LCOV_EXCL_LINE
         }
 
         *event = _fim_file_force_update(entry, configuration, &evt_data);
@@ -501,8 +501,8 @@ end:
     configuration = fim_configuration_directory(path);
     if (configuration == NULL) {
         // This should not happen
-        free_entry(entry);
-        return FIM_FILE_ERROR;
+        free_entry(entry);     // LCOV_EXCL_LINE
+        return FIM_FILE_ERROR; // LCOV_EXCL_LINE
     }
 
     *event = _fim_file(path, configuration, &evt_data);
@@ -825,9 +825,9 @@ void fim_whodata_event(whodata_evt * w_evt) {
         // Otherwise, it could be a file deleted or a directory moved (or renamed).
         fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
 #ifndef WIN32
-        char** paths = NULL;
-        const unsigned long int inode = strtoul(w_evt->inode,NULL,10);
-        const unsigned long int dev = strtoul(w_evt->dev,NULL,10);
+        char **paths = NULL;
+        const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
+        const unsigned long int dev = strtoul(w_evt->dev, NULL, 10);
 
         w_mutex_lock(&syscheck.fim_entry_mutex);
         paths = fim_db_get_paths_from_inode(syscheck.database, inode, dev);
@@ -1136,15 +1136,15 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
         }
     }
 
-    if (!(configuration->options & CHECK_MD5SUM)) {
+    if ((configuration->options & CHECK_MD5SUM) == 0) {
         data->hash_md5[0] = '\0';
     }
 
-    if (!(configuration->options & CHECK_SHA1SUM)) {
+    if ((configuration->options & CHECK_SHA1SUM) == 0) {
         data->hash_sha1[0] = '\0';
     }
 
-    if (!(configuration->options & CHECK_SHA256SUM)) {
+    if ((configuration->options & CHECK_SHA256SUM) == 0) {
         data->hash_sha256[0] = '\0';
     }
 

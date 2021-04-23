@@ -196,6 +196,8 @@ void start_daemon()
     if (nice(syscheck.process_priority) == -1) {
         merror(NICE_ERROR, strerror(errno), errno);
     }
+#else
+    set_priority_windows_thread();
 #endif
 
 #ifndef WIN32
@@ -469,8 +471,6 @@ int fim_whodata_initialize() {
     int retval = 0;
     directory_t *dir_it;
 
-    set_priority_windows_thread();
-
     foreach_array(dir_it, syscheck.directories) {
         if ((dir_it->options & WHODATA_ACTIVE) == 0) {
             continue;
@@ -515,21 +515,6 @@ int fim_whodata_initialize() {
 
 #elif defined ENABLE_AUDIT
 int fim_whodata_initialize() {
-    directory_t *dir_it;
-
-    foreach_array(dir_it, syscheck.directories) {
-        char *path;
-
-        if ((dir_it->options & WHODATA_ACTIVE) == 0) {
-            continue;
-        }
-
-        path = fim_get_real_path(dir_it);
-        realtime_adddir(path, dir_it, (dir_it->options & CHECK_FOLLOW) ? 1 : 0);
-
-        os_free(path);
-    }
-
     audit_set_db_consistency();
 
     return 0;

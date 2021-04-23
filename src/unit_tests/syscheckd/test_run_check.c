@@ -231,11 +231,6 @@ void test_fim_whodata_initialize(void **state)
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
-    will_return(wrap_GetCurrentThread, (HANDLE)123456);
-
-    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -320,12 +315,6 @@ void test_fim_whodata_initialize_fail_set_policies(void **state)
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
-
-    will_return(wrap_GetCurrentThread, (HANDLE)123456);
-
-    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
@@ -472,11 +461,6 @@ void test_fim_whodata_initialize_eventchannel(void **state) {
         NULL
     };
     char expanded_dirs[1][OS_SIZE_1024];
-
-    will_return(wrap_GetCurrentThread, (HANDLE)123456);
-    expect_SetThreadPriority_call((HANDLE)123456, THREAD_PRIORITY_LOWEST, true);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "(6320): Setting process priority to: '10'");
 
     // Expand directories
     for(i = 0; dirs[i]; i++) {
