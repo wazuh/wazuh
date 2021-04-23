@@ -12,16 +12,29 @@
 #ifndef WM_GITHUB_H
 #define WM_GITHUB_H
 
+#define WM_GITHUB_DEFAULT_INTERVAL 600
+#define WM_GITHUB_DEFAULT_DELAY 1
+
 #include "wmodules.h"
 
-int wm_github_read(xml_node **nodes, wmodule *module);
-
-extern const wm_context WM_GITHUB_CONTEXT;   // Context
-
-typedef struct _wm_github {
+typedef struct wm_github {
     int enabled;
+    int run_on_start;
+    int only_future_events;
+    time_t interval;                         // Interval betweeen events in seconds
+    time_t time_delay;
+    // api_auth
+    char *org_name;                         // Organization name
+    char *api_token;                        // Personal access token
+    // api_parameters
+    char *event_type;                       // Event types to include: web/git/all
 } wm_github;
 
 #define WM_GITHUB_LOGTAG GITHUB_WM_NAME
+
+extern const wm_context WM_GITHUB_CONTEXT;   // Context
+
+// Parse XML
+int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif
