@@ -113,7 +113,7 @@ void test_oslog_ctxt_clean_success(void ** state) {
 void test_oslog_ctxt_is_expired_true(void ** state) {
 
     w_oslog_ctxt_t ctxt;
-    time_t timeout = (time_t) OSLOG_TIMEOUT_OUT;
+    time_t timeout = (time_t) OSLOG_TIMEOUT;
 
     ctxt.timestamp = (time_t) 1;
 
@@ -126,7 +126,7 @@ void test_oslog_ctxt_is_expired_true(void ** state) {
 void test_oslog_ctxt_is_expired_false(void ** state) {
 
     w_oslog_ctxt_t ctxt;
-    time_t timeout = (time_t) OSLOG_TIMEOUT_OUT;
+    time_t timeout = (time_t) OSLOG_TIMEOUT;
 
     ctxt.timestamp = time(NULL);
 
