@@ -7,6 +7,9 @@ import logging
 import os
 import re
 import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
@@ -462,14 +465,24 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
-    """
-    Returns ossec.conf (manager) as dictionary.
+def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf, run_import=False):
+    """Returns ossec.conf (manager) as dictionary.
 
-    :param section: Filters by section (i.e. rules).
-    :param field: Filters by field in section (i.e. included).
-    :param conf_file: Path of the configuration file to read.
-    :return: ossec.conf (manager) as dictionary.
+    Parameters
+    ----------
+    section : str
+        Filters by section (i.e. rules).
+    field : str
+        Filters by field in section (i.e. included).
+    conf_file : str
+        Path of the configuration file to read.
+    run_import : bool
+        This flag indicates whether this function has been called from a module load (True) or from a function (False).
+
+    Returns
+    -------
+    dict
+        ossec.conf (manager) as dictionary.
     """
     try:
         # Read XML
@@ -478,7 +491,11 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
     except Exception as e:
-        raise WazuhError(1101, extra_message=str(e))
+        if not run_import:
+            raise WazuhError(1101, extra_message=str(e))
+        else:
+            print(f"wazuh-apid: There is an error in the ossec.conf file: {str(e)}")
+            sys.exit(0)
 
     if section:
         try:

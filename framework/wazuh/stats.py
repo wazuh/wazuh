@@ -22,7 +22,7 @@ except ImportError:
 
 DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
 MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-cluster_enabled = not read_cluster_config()['disabled']
+cluster_enabled = not read_cluster_config(run_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 
