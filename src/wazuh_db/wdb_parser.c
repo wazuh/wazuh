@@ -3810,6 +3810,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
+            wdbi_set_sync_status_not_ready(wdb, WDB_SYSCOLLECTOR_PACKAGES);
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
@@ -3831,6 +3832,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             mdebug1("Cannot delete old Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Package information.");
         } else {
+            wdbi_update_completion(wdb, WDB_SYSCOLLECTOR_PACKAGES, (unsigned)time(NULL));
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
@@ -3901,6 +3903,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
             mdebug1("Cannot save Hotfix information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Hotfix information.");
         } else {
+            wdbi_set_sync_status_not_ready(wdb, WDB_SYSCOLLECTOR_HOTFIXES);
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
@@ -3916,6 +3919,7 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output) {
             mdebug1("Cannot delete old Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Hotfix information.");
         } else {
+            wdbi_update_completion(wdb, WDB_SYSCOLLECTOR_HOTFIXES, (unsigned)time(NULL));
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 

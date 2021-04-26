@@ -337,7 +337,8 @@ CREATE TABLE IF NOT EXISTS sync_info (
     last_attempt INTEGER DEFAULT 0,
     last_completion INTEGER DEFAULT 0,
     n_attempts INTEGER DEFAULT 0,
-    n_completions INTEGER DEFAULT 0
+    n_completions INTEGER DEFAULT 0,
+    sync_status INTEGER(1) DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS vuln_cves (
@@ -356,5 +357,8 @@ INSERT INTO metadata (key, value) VALUES ('db_version', '7');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');
+INSERT INTO sync_info (component) VALUES ('syscollector-packages');
+INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');
+
 
 COMMIT;

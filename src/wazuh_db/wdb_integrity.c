@@ -229,7 +229,7 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp)
  * @param timestamp Synchronization event timestamp (field "id");
  */
 
-static void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
+void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
 
     assert(wdb != NULL);
 
@@ -386,4 +386,19 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 end:
     cJSON_Delete(data);
     return retval;
+}
+
+void wdbi_set_sync_status_not_ready(wdb_t * wdb, wdb_component_t component) {
+    assert(wdb != NULL);
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_STATUS_NOT_READY) == -1) {
+        return;
+    }
+
+    sqlite3_stmt * stmt = wdb->stmt[WDB_STMT_SYNC_STATUS_NOT_READY];
+    sqlite3_bind_text(stmt, 1, COMPONENT_NAMES[component], -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        mdebug1("DB(%s) sqlite3_step(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+    }
 }
