@@ -77,6 +77,7 @@ typedef enum crypto_type {
 #include "wm_task_general.h"
 #include "agent_upgrade/wm_agent_upgrade.h"
 #include "task_manager/wm_task_manager.h"
+#include "wm_monitor.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
