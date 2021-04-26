@@ -2080,19 +2080,20 @@ class AWSCLBBucket(AWSCustomBucket):
 class AWSNLBBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'clb'
+        db_table_name = 'nlb'
         AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
-    def load_information_from_file(self, log_key):
+    def load_information_from_file(self, file):
         """Load data from a CLB access log file."""
-        with self.decompress_file(log_key=log_key) as f:
+        with self.decompress_file(log_key=file) as f:
             fieldnames = (
-                "time", "elb", "client_port", "backend_port", "request_processing_time", "backend_processing_time",
-                "response_processing_time", "elb_status_code", "backend_status_code", "received_bytes", "sent_bytes",
-                "request", "user_agent", "ssl_cipher", "ssl_protocol")
+                "type", "version", "time", "elb", "listener", "client_ip", "destination_ip", "connection_time",
+                "tls_handshake_time", "received_bytes", "sent_bytes", "incoming_tls_alert", "chosen_cert_arn",
+                "chosen_cert_serial", "tls_cipher", "tls_protocol_version", "tls_named_group", "domain_name",
+                "alpn_fe_protocol", "alpn_client_preference_list")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
 
-            [dict(x, source='clb') for x in tsv_file]
+            tsv_file = [dict(x, source='nlb') for x in tsv_file]
 
             # Split ip_addr:port field into ip_addr and port fields
             for log_entry in tsv_file:
