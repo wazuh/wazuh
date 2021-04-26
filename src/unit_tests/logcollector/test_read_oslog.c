@@ -20,12 +20,14 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/linux/socket_wrappers.h"
+#include "../wrappers/wazuh/shared/expression_wrappers.h"
 
 bool oslog_ctxt_restore(char * buffer, w_oslog_ctxt_t * ctxt);
 void oslog_ctxt_backup(char * buffer, w_oslog_ctxt_t * ctxt);
 void oslog_ctxt_clean(w_oslog_ctxt_t * ctxt);
 bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
 char * oslog_get_valid_lastline(char * str);
+bool oslog_header_check(w_oslog_config_t * oslog_cfg, char * buffer);
 
 /* setup/teardown */
 

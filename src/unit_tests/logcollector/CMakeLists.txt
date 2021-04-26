@@ -72,7 +72,7 @@ list(APPEND logcollector_flags "-Wl,--wrap,wpopenv -Wl,--wrap,fileno -Wl,--wrap,
                                 -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,wpclose")
 
 list(APPEND logcollector_names "test_read_oslog")
-list(APPEND logcollector_flags "")
+list(APPEND logcollector_flags "-Wl,--wrap,w_expression_match")
 
 list(LENGTH logcollector_names count)
 math(EXPR count "${count} - 1")
