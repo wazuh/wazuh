@@ -197,6 +197,23 @@ class WazuhDBConnection:
 
         return response
 
+    def send(self, query, raw=True):
+        """Send a message to the wdb socket.
+
+        Parameters
+        ----------
+        query : str
+            Query to be executed in wazuh-db.
+        raw : bool
+            Whether to process the response.
+
+        Returns
+        -------
+        str, dict
+            Result of the query.
+        """
+        return self._send(query, raw)
+
     def execute(self, query, count=False, delete=False, update=False):
         """
         Sends a sql query to wdb socket

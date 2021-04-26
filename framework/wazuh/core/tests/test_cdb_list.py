@@ -9,8 +9,8 @@ import shutil
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core import common
         from wazuh.core.cdb_list import check_path, get_list_from_file, iterate_lists, \
             split_key_value_with_quotes, validate_cdb_list, create_list_file, delete_list, get_filenames_paths

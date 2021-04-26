@@ -14,8 +14,8 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../..'))
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_uid'):
         with patch('wazuh.core.common.manager_conf',
                    new=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager_base.conf')):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
@@ -346,8 +346,8 @@ def test_agent_delete_agents(socket_mock, send_mock, mock_remove, agent_list, fi
 @patch('wazuh.core.common.client_keys', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
-@patch('wazuh.core.agent.common.ossec_uid')
-@patch('wazuh.core.agent.common.ossec_gid')
+@patch('wazuh.core.agent.common.wazuh_uid')
+@patch('wazuh.core.agent.common.wazuh_gid')
 @patch('wazuh.core.agent.safe_move')
 @patch('builtins.open')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -489,8 +489,8 @@ def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array,
     'invalid-group'
 ])
 @patch('wazuh.core.common.shared_path', new=test_shared_path)
-@patch('wazuh.core.common.ossec_gid', return_value=getgrnam('root'))
-@patch('wazuh.core.common.ossec_uid', return_value=getpwnam('root'))
+@patch('wazuh.core.common.wazuh_gid', return_value=getgrnam('root'))
+@patch('wazuh.core.common.wazuh_uid', return_value=getpwnam('root'))
 @patch('wazuh.agent.chown_r')
 def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     """Test `create_group` function from agent module.

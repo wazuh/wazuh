@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
         from wazuh.core import decoder
 

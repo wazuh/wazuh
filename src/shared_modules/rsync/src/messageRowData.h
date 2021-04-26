@@ -37,19 +37,22 @@ namespace RSync
         // LCOV_EXCL_STOP
         void send(const ResultCallback callback, const nlohmann::json& config, const nlohmann::json& data) override
         {
-            nlohmann::json outputMessage;
-            outputMessage["component"] = config.at("component");
-            outputMessage["type"] = "state";
+            if(!data.empty())
+            {
+                nlohmann::json outputMessage;
+                outputMessage["component"] = config.at("component");
+                outputMessage["type"] = "state";
 
-            nlohmann::json outputData;
-            outputData["index"] = data.at(config.at("index").get_ref<const std::string&>());
-            const auto lastEvent{config.find("last_event")};
-            outputData["timestamp"] = (lastEvent != config.end()) ? data.at(lastEvent->get_ref<const std::string&>()) : "";
-            outputData["attributes"] = data;
+                nlohmann::json outputData;
+                outputData["index"] = data.at(config.at("index").get_ref<const std::string&>());
+                const auto lastEvent{config.find("last_event")};
+                outputData["timestamp"] = (lastEvent != config.end()) ? data.at(lastEvent->get_ref<const std::string&>()) : "";
+                outputData["attributes"] = data;
 
-            outputMessage["data"] = outputData;
+                outputMessage["data"] = outputData;
 
-            callback(outputMessage.dump());
+                callback(outputMessage.dump());
+            }
         }
     };
 };// namespace RSync

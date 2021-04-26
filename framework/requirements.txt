@@ -47,7 +47,7 @@ pyasn1-modules==0.2.8
 pyasn1==0.4.8
 pycparser==2.20
 python-dateutil==2.8.1
-python-jose==3.0.1
+python-jose==3.1.0
 pytz==2020.1
 requests==2.23.0
 rsa==4.7.2
@@ -57,6 +57,7 @@ setuptools==46.1.3
 six==1.14.0
 SQLAlchemy==1.3.11
 swagger-ui-bundle==0.0.3
+tabulate==0.8.9
 urllib3==1.25.9
 uvloop==0.15.2
 websocket-client==0.57.0

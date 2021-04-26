@@ -511,7 +511,7 @@ def create_group(group_id):
     try:
         mkdir_with_mode(group_path)
         copyfile(group_def_path, path.join(group_path, 'shared.conf'))
-        chown_r(group_path, common.ossec_uid(), common.ossec_gid())
+        chown_r(group_path, common.ossec_uid(), common.wazuh_gid())
         chmod_r(group_path, 0o660)
         chmod(group_path, 0o770)
         msg = f"Group '{group_id}' created."
