@@ -2097,9 +2097,8 @@ class AWSNLBBucket(AWSCustomBucket):
 
             # Split ip_addr:port field into ip_addr and port fields
             for log_entry in tsv_file:
-                fields = log_entry['client_ip'].split(':'), log_entry['destination_ip'].split(':')
-                log_entry['client_ip'], log_entry['client_port'] = fields[0][0], fields[0][1]
-                log_entry['destination_ip'], log_entry['destination_port'] = fields[1][0], fields[1][1]
+                log_entry['client_ip'], log_entry['client_port'] = log_entry['client_ip'].split(':')
+                log_entry['destination_ip'], log_entry['destination_port'] = log_entry['destination_ip'].split(':')
 
             return tsv_file
 
