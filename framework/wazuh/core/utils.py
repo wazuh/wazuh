@@ -10,7 +10,6 @@ import operator
 import re
 import stat
 import sys
-import time
 import typing
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -20,7 +19,7 @@ from os.path import join, basename, relpath
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
-from uuid import uuid4
+from tempfile import mkstemp
 from xml.etree.ElementTree import ElementTree
 
 from defusedxml.ElementTree import fromstring
@@ -1646,9 +1645,9 @@ def upload_file(content, path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.wazuh_path, time.time(), str(uuid4().hex[:8]))
+    handle, tmp_file_path = mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".tmp")
     try:
-        with open(tmp_file_path, 'w') as tmp_file:
+        with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
             tmp_file.write(final_file)
         chmod(tmp_file_path, 0o660)

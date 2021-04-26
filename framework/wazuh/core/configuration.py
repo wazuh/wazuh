@@ -7,11 +7,10 @@ import logging
 import os
 import re
 import subprocess
-import time
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
-from uuid import uuid4
+from tempfile import mkstemp
 
 from defusedxml.minidom import parseString
 
@@ -655,10 +654,10 @@ def upload_group_configuration(group_id, file_content):
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
-    tmp_file_path = os_path.join(common.wazuh_path, "tmp", f"api_tmp_file_{time.time()}_{str(uuid4().hex[:8])}.xml")
+    handle, tmp_file_path = mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".xml")
     # create temporary file for parsing xml input and validate XML format
     try:
-        with open(tmp_file_path, 'w') as tmp_file:
+        with open(handle, 'w') as tmp_file:
             custom_entities = {
                 '_custom_open_tag_': '\\<',
                 '_custom_close_tag_': '\\>',
