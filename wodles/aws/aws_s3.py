@@ -2083,9 +2083,9 @@ class AWSNLBBucket(AWSCustomBucket):
         db_table_name = 'nlb'
         AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
-    def load_information_from_file(self, file):
-        """Load data from a CLB access log file."""
-        with self.decompress_file(log_key=file) as f:
+    def load_information_from_file(self, log_key):
+        """Load data from a NLB access log file."""
+        with self.decompress_file(log_key=log_key) as f:
             fieldnames = (
                 "type", "version", "time", "elb", "listener", "client_ip", "destination_ip", "connection_time",
                 "tls_handshake_time", "received_bytes", "sent_bytes", "incoming_tls_alert", "chosen_cert_arn",
