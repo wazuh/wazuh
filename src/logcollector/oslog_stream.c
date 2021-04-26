@@ -10,11 +10,13 @@
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 #include "oslog_stream.h"
 
-// Remove STATIC qualifier from tests
+// Remove STATIC/INLINE qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
 #define STATIC
+#define INLINE
 #else
 #define STATIC static
+#define INLINE inline
 #endif
 
 /**
@@ -133,19 +135,35 @@ STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t f
     return oslog_wfd;
 }
 
+/**
+ * @brief Checks whether the `log` command can be executed or not by using the access() function
+ * 
+ * @return true when `log` command can be executed, false otherwise.
+ */
+STATIC INLINE bool w_is_log_cmd_executable(void) {
+    const int retval = access(LOG_CMD_STR, X_OK);
+    if (retval == 0) {
+        return true;
+    }
+    merror(ACCESS_ERROR, LOG_CMD_STR, X_OK, strerror(errno), errno);
+    return false;
+}
+
 void w_logcollector_create_oslog_env(logreader * current) {
 
     char ** log_stream_array = NULL;
 
-    log_stream_array = w_create_oslog_stream_array(current->query, current->query_level, current->query_type);
+    current->oslog->is_oslog_running = false;
 
-    current->oslog->log_wfd = w_logcollector_exec_oslog_stream(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
+    if (w_is_log_cmd_executable()) {
+        log_stream_array = w_create_oslog_stream_array(current->query, current->query_level, current->query_type);
 
-    if (current->oslog->log_wfd == NULL) {
-        current->oslog->is_oslog_running = false;
-    } else {
-        current->oslog->is_oslog_running = true;
-        minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_stream_array));
+        current->oslog->log_wfd = w_logcollector_exec_oslog_stream(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
+
+        if (current->oslog->log_wfd != NULL && current->oslog->log_wfd->file != NULL) {
+            current->oslog->is_oslog_running = true;
+            minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_stream_array));
+        }
     }
 
     os_free(current->file);
