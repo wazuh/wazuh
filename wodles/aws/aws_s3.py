@@ -2122,49 +2122,13 @@ class AWSNLBBucket(AWSCustomBucket):
         """Load data from a NLB access log file."""
         with self.decompress_file(log_key=log_key) as f:
             fieldnames = (
-                "type", "version", "time", "elb", "listener", "client_ip", "destination_ip", "connection_time",
+                "type", "version", "time", "elb", "listener", "client_port", "destination_port", "connection_time",
                 "tls_handshake_time", "received_bytes", "sent_bytes", "incoming_tls_alert", "chosen_cert_arn",
                 "chosen_cert_serial", "tls_cipher", "tls_protocol_version", "tls_named_group", "domain_name",
                 "alpn_fe_protocol", "alpn_client_preference_list")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
 
-            tsv_file = [dict(x, source='nlb') for x in tsv_file]
-
-            # Split ip_addr:port field into ip_addr and port fields
-            for log_entry in tsv_file:
-<<<<<<< HEAD
-                fields = log_entry['client_ip'].split(':'), log_entry['destination_ip'].split(':')
-                log_entry['client_ip'], log_entry['client_port'] = fields[0][0], fields[0][1]
-                log_entry['destination_ip'], log_entry['destination_port'] = fields[1][0], fields[1][1]
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-<<<<<<< HEAD
-            tsv_file = [dict(x, source='nlb') for x in tsv_file]
-=======
-                log_entry['client_ip'], log_entry['client_port'] = log_entry['client_ip'].split(':')
-                log_entry['destination_ip'], log_entry['destination_port'] = log_entry['destination_ip'].split(':')
->>>>>>> Enhance code
-
-            # Split ip_addr:port field into ip_addr and port fields
-            for log_entry in tsv_file:
-                try:
-                    log_entry['client_ip'], log_entry['client_port'] = log_entry['client_port'].split(':')
-                    log_entry['destination_ip'], log_entry['destination_port'] = \
-                        log_entry['destination_port'].split(':')
-                except ValueError:
-                    log_entry['client_ip'] = log_entry['client_port']
-                    log_entry['destination_ip'] = log_entry['destination_port']
-
-=======
->>>>>>> Add fix to nlb parsing
-=======
-                print(log_entry)
->>>>>>> Change files to offline testing
-=======
-
->>>>>>> Change code to online version with the new parsing
-            return tsv_file
+            return [dict(x, source='nlb') for x in tsv_file]
 
 
 class AWSService(WazuhIntegration):
