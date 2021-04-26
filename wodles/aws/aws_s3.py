@@ -676,10 +676,8 @@ class AWSBucket(WazuhIntegration):
                 # Python 2
                 return gzip.GzipFile(fileobj=raw_object, mode='r')
 
-        print('dec hola')
         raw_object = io.BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
         if log_key[-3:] == '.gz':
-            print('dec hola')
             return decompress_gzip(raw_object)
         elif log_key[-4:] == '.zip':
             zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
@@ -2083,7 +2081,7 @@ class AWSNLBBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
         db_table_name = 'nlb'
-        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        # AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
     def load_information_from_file(self, log_key):
         """Load data from a NLB access log file."""
@@ -2102,7 +2100,7 @@ class AWSNLBBucket(AWSCustomBucket):
                 fields = log_entry['client_ip'].split(':'), log_entry['destination_ip'].split(':')
                 log_entry['client_ip'], log_entry['client_port'] = fields[0][0], fields[0][1]
                 log_entry['destination_ip'], log_entry['destination_port'] = fields[1][0], fields[1][1]
-
+                print(log_entry)
             return tsv_file
 
 
@@ -2951,11 +2949,19 @@ def main(argv):
         sys.exit(12)
 
 
+def main_de_enrique():
+    bucket_type = AWSNLBBucket()
+
+    file = './166157441623_elasticloadbalancing_us-west-1_net.demo-3130-prod-Wazuh.f279b3dd67f9c98e_20200801T0050Z_256f6bdd.log'
+
+    bucket_type.load_information_from_file(file)
+
 if __name__ == '__main__':
     try:
         debug('Args: {args}'.format(args=str(sys.argv)), 2)
         signal.signal(signal.SIGINT, handler)
-        main(sys.argv[1:])
+        # main(sys.argv[1:])
+        main_de_enrique()
         sys.exit(0)
     except Exception as e:
         print("Unknown error: {}".format(e))
