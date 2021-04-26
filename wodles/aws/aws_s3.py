@@ -515,7 +515,6 @@ class AWSBucket(WazuhIntegration):
                 ))
             except Exception as e:
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
-                raise e
 
     def create_table(self):
         try:
@@ -1682,7 +1681,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 ))
             except Exception as e:
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
-                raise e
 
 
 class AWSCustomBucket(AWSBucket):
@@ -1894,7 +1892,6 @@ class AWSCustomBucket(AWSBucket):
                 ))
             except Exception as e:
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
-                raise e
 
     def db_count_custom(self):
         """Counts the number of rows in DB for a region
