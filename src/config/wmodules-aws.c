@@ -30,6 +30,8 @@ static const char *XML_ONLY_LOGS_AFTER = "only_logs_after";
 static const char *XML_REGION = "regions";
 static const char *XML_LOG_GROUP = "aws_log_groups";
 static const char *XML_REMOVE_LOG_STREAMS = "remove_log_streams";
+static const char *XML_DISCARD_FIELD = "field";
+static const char *XML_DISCARD_REGEX = "discard_regex";
 static const char *XML_BUCKET_TYPE = "type";
 static const char *XML_SERVICE_TYPE = "type";
 static const char *XML_BUCKET_NAME = "name";
@@ -271,6 +273,21 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             free(cur_bucket->regions);
                             os_strdup(children[j]->content, cur_bucket->regions);
                         }
+                    } else if (strcmp(children[j]->element, XML_DISCARD_REGEX) == 0) {
+                        if (strlen(children[j]->content) != 0) {
+                            const char * field_attr = w_get_attr_val_by_name(children[j], XML_DISCARD_FIELD);
+                            if ((field_attr) && (strlen(field_attr) != 0)) {
+                                free(cur_bucket->discard_field);
+                                os_strdup(field_attr, cur_bucket->discard_field);
+
+                                free(cur_bucket->discard_regex);
+                                os_strdup(children[j]->content, cur_bucket->discard_regex);
+                            } else {
+                                mwarn("Required attribute '%s' is missing in '%s'. No event will be skipped.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                            }
+                        } else {
+                            mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
+                        }
                     } else {
                         merror("No such child tag '%s' of bucket at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);
                         OS_ClearNode(children);
@@ -391,6 +408,21 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_LOG_STREAMS, WM_AWS_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
+                    }
+                } else if (strcmp(children[j]->element, XML_DISCARD_REGEX) == 0) {
+                    if (strlen(children[j]->content) != 0) {
+                        const char * field_attr = w_get_attr_val_by_name(children[j], XML_DISCARD_FIELD);
+                        if ((field_attr) && (strlen(field_attr) != 0)) {
+                            free(cur_service->discard_field);
+                            os_strdup(field_attr, cur_service->discard_field);
+
+                            free(cur_service->discard_regex);
+                            os_strdup(children[j]->content, cur_service->discard_regex);
+                        } else {
+                            mwarn("Required attribute '%s' is missing in '%s'. No event will be skipped.", XML_DISCARD_FIELD, XML_DISCARD_REGEX);
+                        }
+                    } else {
+                        mwarn("No value was provided for '%s'. No event will be skipped.", XML_DISCARD_REGEX);
                     }
                 } else {
                     merror("No such child tag '%s' of service at module '%s'.", children[j]->element, WM_AWS_CONTEXT.name);

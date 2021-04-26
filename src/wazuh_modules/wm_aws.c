@@ -200,6 +200,8 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->regions) cJSON_AddStringToObject(buck,"regions",iter->regions);
             if (iter->type) cJSON_AddStringToObject(buck,"type",iter->type);
             if (iter->remove_from_bucket) cJSON_AddStringToObject(buck,"remove_from_bucket","yes"); else cJSON_AddStringToObject(buck,"remove_from_bucket","no");
+            if (iter->discard_field) cJSON_AddStringToObject(buck,"discard_field",iter->discard_field);
+            if (iter->discard_regex) cJSON_AddStringToObject(buck,"discard_regex",iter->discard_regex);
             cJSON_AddItemToArray(arr_buckets,buck);
         }
         if (cJSON_GetArraySize(arr_buckets) > 0) {
@@ -224,6 +226,8 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->regions) cJSON_AddStringToObject(service,"regions",iter->regions);
             if (iter->aws_log_groups) cJSON_AddStringToObject(service,"aws_log_groups",iter->aws_log_groups);
             if (iter->remove_log_streams) cJSON_AddStringToObject(service,"remove_log_streams","yes"); else cJSON_AddStringToObject(service,"remove_log_streams","no");
+            if (iter->discard_field) cJSON_AddStringToObject(service,"discard_field",iter->discard_field);
+            if (iter->discard_regex) cJSON_AddStringToObject(service,"discard_regex",iter->discard_regex);
             cJSON_AddItemToArray(arr_services,service);
         }
         if (cJSON_GetArraySize(arr_services) > 0) {
@@ -366,6 +370,14 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     if (exec_bucket->regions) {
         wm_strcat(&command, "--regions", ' ');
         wm_strcat(&command, exec_bucket->regions, ' ');
+    }
+    if (exec_bucket->discard_field) {
+        wm_strcat(&command, "--discard-field", ' ');
+        wm_strcat(&command, exec_bucket->discard_field, ' ');
+    }
+    if (exec_bucket->discard_regex) {
+        wm_strcat(&command, "--discard-regex", ' ');
+        wm_strcat(&command, exec_bucket->discard_regex, ' ');
     }
     if (exec_bucket->type) {
         wm_strcat(&command, "--type", ' ');
@@ -517,6 +529,14 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     }
     if (exec_service->remove_log_streams) {
         wm_strcat(&command, "--remove-log-streams", ' ');
+    }
+    if (exec_service->discard_field) {
+        wm_strcat(&command, "--discard-field", ' ');
+        wm_strcat(&command, exec_service->discard_field, ' ');
+    }
+    if (exec_service->discard_regex) {
+        wm_strcat(&command, "--discard-regex", ' ');
+        wm_strcat(&command, exec_service->discard_regex, ' ');
     }
     if (isDebug()) {
         wm_strcat(&command, "--debug", ' ');
