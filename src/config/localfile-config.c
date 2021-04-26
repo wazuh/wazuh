@@ -475,7 +475,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         merror(MISS_LOG_FORMAT);
         return (OS_INVALID);
     }
-//ifdef Darwin
+//#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     /* Verify oslog config*/
     if (log_config->oslog_count > 1) {
         merror(DUP_OSLOG);
@@ -487,7 +487,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         merror(INV_OSLOG);
         return (OS_INVALID);
     }
-//endif Darwin
+//#endif
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
 
