@@ -515,6 +515,13 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         return -1;
     }
 
+    cJSON * version = cJSON_GetObjectItem(data, "version");
+
+    if (!cJSON_IsNumber(version)) {
+        // Synchronization messages without the "version" attribute are ignored, but won't trigger any error message.
+        return 0;
+    }
+
     cJSON * attributes = cJSON_GetObjectItem(data, "attributes");
 
     if (!cJSON_IsObject(attributes)) {
@@ -538,7 +545,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
         item_type = "registry_key";
     } else if (strncmp(item_type, "registry_", 9) == 0) {
         int full_path_length;
-        char *path_escaped = wstr_replace(path, ":", "::");
+        char *path_escaped = wstr_replace(path, ":", "\\:");
 
         arch = cJSON_GetStringValue(cJSON_GetObjectItem(data, "arch"));
 
@@ -565,7 +572,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
                 return -1;
             }
 
-            value_name_escaped = wstr_replace(value_name, ":", "::");
+            value_name_escaped = wstr_replace(value_name, ":", "\\:");
 
             full_path_length = snprintf(NULL, 0, "%s %s:%s", arch, path_escaped, value_name_escaped);
 

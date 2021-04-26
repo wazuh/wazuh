@@ -864,7 +864,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         f.write(content)
                     safe_move(tmp_unmerged_path, full_unmerged_name,
                               permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
-                              ownership=(common.ossec_uid(), common.ossec_gid())
+                              ownership=(common.wazuh_uid(), common.wazuh_gid())
                               )
             else:
                 # Create destination dir if it doesn't exist.
@@ -873,7 +873,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 # Move the file from zipdir (directory containing unzipped files) to <wazuh_path>/filename.
                 safe_move(os.path.join(zip_path, filename), full_filename_path,
                           permissions=self.cluster_items['files'][data['cluster_item_key']]['permissions'],
-                          ownership=(common.ossec_uid(), common.ossec_gid())
+                          ownership=(common.wazuh_uid(), common.wazuh_gid())
                           )
 
         logger = self.task_loggers['Integrity sync']
