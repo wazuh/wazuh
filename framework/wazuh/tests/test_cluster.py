@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 with patch('wazuh.core.common.wazuh_uid'):
-    with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         with patch('wazuh.core.common.manager_conf',
                    new=os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'manager_base.conf')):
             sys.modules['wazuh.rbac.orm'] = MagicMock()

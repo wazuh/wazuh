@@ -16,7 +16,7 @@ from wazuh.core import common
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../../../../../../api'))
 
 with patch('wazuh.common.wazuh_uid'):
-    with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         with patch('wazuh.core.common.manager_conf',
                    new=os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                     '../../../../tests/data/manager_base.conf')):
