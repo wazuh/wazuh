@@ -482,6 +482,14 @@ All notable changes to this project will be documented in this file.
 - Removed references to `manage_agents` in the installation process. ([#5840](https://github.com/wazuh/wazuh/pull/5840))
 - Removed compatibility with deprecated configuration at Vulnerability Detector. ([#5879](https://github.com/wazuh/wazuh/pull/5879))
 
+
+## [v3.13.3]
+
+### Fixed
+
+- Fixed a bug in Vulnerability Detector that made Modulesd crash while updating the NVD feed due to a missing CPE entry. ([#8346](https://github.com/wazuh/wazuh/pull/8346))
+
+
 ## [v3.13.2] - 2020-09-21
 
 ### Fixed
