@@ -405,17 +405,32 @@ UpdateStopOSSEC()
     fi
 
     # Deleting syscheckd if exists (it was migrated to Wazuh modules in v5.0)
-    if [ -d "$PREINSTALLEDDIR/bin/wazuh-syscheckd" ]; then
+    # Version 4.1 and below
+    if [ -f "$PREINSTALLEDDIR/bin/ossec-syscheckd" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/ossec-syscheckd > /dev/null 2>&1
+    fi
+    # Version 4.2
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-syscheckd" ]; then
         rm -rf $PREINSTALLEDDIR/bin/wazuh-syscheckd > /dev/null 2>&1
     fi
 
-    # Deleting wazuh-logcollector if exists (it was migrated to Wazuh modules in v5.0)
-    if [ -d "$PREINSTALLEDDIR/bin/wazuh-logcollector" ]; then
+    # Deleting logcollector if exists (it was migrated to Wazuh modules in v5.0)
+    # Version 4.1 and below
+    if [ -f "$PREINSTALLEDDIR/bin/ossec-logcollector" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/ossec-logcollector > /dev/null 2>&1
+    fi
+    # Version 4.2
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-logcollector" ]; then
         rm -rf $PREINSTALLEDDIR/bin/wazuh-logcollector > /dev/null 2>&1
     fi
 
-    # Deleting wazuh-execd if exists (it was migrated to Wazuh modules in v5.0)
-    if [ -d "$PREINSTALLEDDIR/bin/wazuh-execd" ]; then
+    # Deleting execd if exists (it was migrated to Wazuh modules in v5.0)
+    # Version 4.1 and below
+    if [ -f "$PREINSTALLEDDIR/bin/ossec-execd" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/ossec-execd > /dev/null 2>&1
+    fi
+    # Version 4.2
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-execd" ]; then
         rm -rf $PREINSTALLEDDIR/bin/wazuh-execd > /dev/null 2>&1
     fi
 }
