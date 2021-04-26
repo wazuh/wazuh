@@ -49,8 +49,6 @@ include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
-else()
-  add_definitions(-DCMAKE_CHECK_CENTOS5=1)
 endif(NOT CMAKE_CHECK_CENTOS5)
 
 link_directories(${SRC_FOLDER})
@@ -75,11 +73,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1
                   -D_WIN32_WINNT=0x600
                   -DWIN_EXPORT)
+elseif(CMAKE_CHECK_CENTOS5)
+  file(GLOB SYSINFO_SRC
+      "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
+      "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/legacyLinuxPackages.cpp")
+#  add_definitions(-DDEF_VARIABLE_LINUX_TYPE=LinuxType::CENTOS5)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
+      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
+      "${CMAKE_SOURCE_DIR}/src/packages/*Packages.cpp")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"

@@ -24,8 +24,11 @@
 #include "network/networkFamilyDataAFactory.h"
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
-#include "packages/packagesLinuxParserHelper.h"
 #include "packages/berkeleyRpmDbHelper.h"
+#include "packages/packageDataAFactory.h"
+#include "packages/packagesLinux.h"
+#include "packages/linuxPackages.cpp"
+#include "packages/legacyLinuxPackages.cpp" 
 
 struct ProcTableDeleter
 {
@@ -208,109 +211,11 @@ void SysInfo::getMemory(nlohmann::json& info) const
     info["ram_usage"] = 100 - (100*memFree/ramTotal);
 }
 
-static void getRpmInfo(nlohmann::json& packages)
-{
-    BerkeleyRpmDBReader db {std::make_shared<BerkeleyDbWrapper>(RPM_DATABASE)};
-
-    for (std::string row{db.getNext()}; !row.empty() ; row = db.getNext())
-    {
-        const auto& package{ PackageLinuxHelper::parseRpm(row) };
-        if (!package.empty())
-        {
-            packages.push_back(package);
-        }
-    }
-}
-
-static void getDpkgInfo(const std::string& fileName, nlohmann::json& packages)
-{
-    std::fstream file{fileName, std::ios_base::in};
-    if (file.is_open())
-    {
-        while(file.good())
-        {
-            std::string line;
-            std::vector<std::string> data;
-            do
-            {
-                std::getline(file, line);
-                if(line.front() == ' ')//additional info
-                {
-                    data.back() = data.back() + line + "\n";
-                }
-                else
-                {
-                    data.push_back(line + "\n");
-                }
-            }
-            while(!line.empty());//end of package item info
-            const auto& packageInfo{ PackageLinuxHelper::parseDpkg(data) };
-            if (!packageInfo.empty())
-            {
-                packages.push_back(packageInfo);
-            }
-        }
-    }
-}
-
-#ifndef CMAKE_CHECK_CENTOS5
-struct AlmpDeleter final
-{
-    void operator()(alpm_handle_t* pArchHandle)
-    {
-        alpm_release(pArchHandle);
-    }
-};
-
-static void getPacmanInfo(const std::string& libPath, nlohmann::json& packages)
-{
-    constexpr auto ROOT_PATH {"/"};
-    alpm_errno_t err {ALPM_ERR_OK};
-    auto pArchHandle {alpm_initialize(ROOT_PATH, libPath.c_str(), &err)};
-    if (!pArchHandle)
-    {
-        throw std::runtime_error
-        {
-            std::string{"alpm_initialize failure: "} + alpm_strerror(err)
-        };
-    }
-    const std::unique_ptr<alpm_handle_t, AlmpDeleter> spDbHandle{pArchHandle};
-    auto pDbLocal {alpm_get_localdb(spDbHandle.get())};
-    if (!pDbLocal)
-    {
-        throw std::runtime_error
-        {
-            std::string{"alpm_get_localdb failure: "} + alpm_strerror(alpm_errno(spDbHandle.get()))
-        };
-    }
-    for (auto pArchItem{alpm_db_get_pkgcache(pDbLocal)}; pArchItem; pArchItem = alpm_list_next(pArchItem))
-    {
-        const auto& packageInfo{ PackageLinuxHelper::parsePacman(pArchItem) };
-        if (!packageInfo.empty())
-        {
-            packages.push_back(packageInfo);
-        }
-    }
-}
-#endif
 
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-    if (Utils::existsDir(DPKG_PATH))
-    {
-        getDpkgInfo(DPKG_STATUS_PATH, packages);
-    }
-#ifndef CMAKE_CHECK_CENTOS5
-    if (Utils::existsDir(PACMAN_PATH))
-    {
-        getPacmanInfo(PACMAN_PATH, packages);
-    }
-#endif
-    if (Utils::existsDir(RPM_PATH))
-    {
-        getRpmInfo(packages);
-    }
+    FactoryPackagesCreator<LinuxType::CENTOS5>::getPackages(packages); //DEF_VARIABLE_LINUX_TYPE
     return packages;
 }
 

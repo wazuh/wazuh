@@ -41,6 +41,12 @@ enum OSType
     WINDOWS
 };
 
+enum LinuxType
+{
+    ALL,
+    CENTOS5
+};
+
 enum PortType
 {
     UDP_IPV4,
