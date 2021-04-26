@@ -17,6 +17,9 @@
 #define STATIC static
 #endif
 
+#define LOG_ERROR_STR    "log:"
+#define LOG_ERROR_LENGHT 4
+
 /**
  * @brief Gets a log from `log stream`
  *
@@ -77,22 +80,20 @@ STATIC bool oslog_ctxt_is_expired(time_t timeout, w_oslog_ctxt_t * ctxt);
 STATIC char * oslog_get_valid_lastline(char * str);
 
 /**
- * @brief Check the `log stream` cli command header.
+ * @brief Checks whether the `log stream` cli command returns a header or a log.
  * 
- * Detects predicate errors, discards filter headers and columun description.
- * Returns true if the line is not a part of a header
- * @param oslog_cfg oslog configuration
- * @param buffer string to check
- * @return Returns false if the buffer read is a log otherwise returns true 
+ * Detects predicate errors and discards filtering headers and columun descriptions.
+ * @param oslog_cfg oslog configuration structure
+ * @param buffer line to check
+ * @return Returns false if the read line is a log, otherwise returns true 
  */
-STATIC bool oslog_header_check(w_oslog_config_t * oslog_cfg, char * buffer);
+STATIC bool oslog_is_header(w_oslog_config_t * oslog_cfg, char * buffer);
 
 void * read_oslog(logreader * lf, int * rc, int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
     int count_logs = 0;
     int status = 0;
     int retval = 0;
-    bool rlog;
     const int MAX_LINE_LEN = OS_MAXSTR - OS_LOG_HEADER;
 
     if (can_read() == 0) {
@@ -102,15 +103,15 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    while (rlog = oslog_getlog(read_buffer, MAX_LINE_LEN, lf->oslog->log_wfd->file, lf->oslog),
-           rlog && (maximum_lines == 0 || count_logs < maximum_lines)) {
+    while (oslog_getlog(read_buffer, MAX_LINE_LEN, lf->oslog->log_wfd->file, lf->oslog)
+           && (maximum_lines == 0 || count_logs < maximum_lines)) {
 
         if (drop_it == 0) {
             unsigned long size = strlen(read_buffer);
             if (size > 0) {
                 w_msg_hash_queues_push(read_buffer, OSLOG_NAME, size + 1, lf->log_target, LOCALFILE_MQ);
             } else {
-                mdebug2("ULS: Discarting empty message...");
+                mdebug2("ULS: Discarding empty message...");
             }
 
         }
@@ -132,19 +133,23 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
 
 STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_config_t * oslog_cfg) {
 
-    bool retval = false; // True if there is buffered log to send
+    bool retval = false; // This variable will be set to true if there is a buffered log
 
-    int offset = 0;      // Amount of buffered data to be sent
-    char * str = buffer; // Where to save the new data read
-    int chunk_sz = 0;    // Size of the last data read
+    int offset = 0;          // Amount of chars in the buffer
+    char * str = buffer;     // Auxiliar buffer pointer, it points where the new data will be stored
+    int chunk_sz = 0;        // Size of the last read data
+    char * last_line = NULL; // Pointer to the last line stored in the buffer
+    bool is_buffer_full;     // Will be set to true if the buffer is full (forces data to be sent)
+    bool is_endline;         // Will be set to true if the last read line ends with an '\n' character
+    bool do_split;           // Indicates whether the buffer will be splited (two chunks at most)
 
     *str = '\0';
 
-    /* Check if a context restore is needed for incomplete logs */
+    /* Checks if a context recover is needed for incomplete logs */
     if (oslog_ctxt_restore(str, &oslog_cfg->ctxt)) {
         offset = strlen(str);
 
-        /* If the context it's expired then free it and return log */
+        /* If the context is expired then frees it and returns the log */
         if (oslog_ctxt_is_expired((time_t) OSLOG_TIMEOUT, &oslog_cfg->ctxt)) {
             oslog_ctxt_clean(&oslog_cfg->ctxt);
             /* delete last end-of-line character */
@@ -157,11 +162,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
         str += offset;
     }
 
-    /* Get stream data, the minimum chunk size of the log is one line */
-    char * last_line = NULL; // Pointer to the last line stored in the buffer
-    bool is_buffer_full;        // True if buffer is full (forces data to be sent)
-    bool str_endline;        // True if the last line read ends with an 'endline' chractaer
-    bool do_split;              // True if the log in the buffer will be split to send in separate pieces
+    /* Gets streamed data, the minimum chunk size of a log is one line */
     while (can_read() && (fgets(str, length - offset, stream) != NULL)) {
 
         chunk_sz = strlen(str);
@@ -169,66 +170,64 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
         str += chunk_sz;
         last_line = NULL;
         is_buffer_full = false;
-        str_endline = (*(str - 1) == '\n');
+        is_endline = (*(str - 1) == '\n');
         do_split = false;
 
         /* Avoid fgets infinite loop behavior when size parameter is 1
          * If we didn't get the new line, because the size is large, send what we got so far.
          */
         if (offset + 1 == length) {
-            // Clean context and force send the log
+            // Cleans the context and forces to send a log
             oslog_ctxt_clean(&oslog_cfg->ctxt);
             is_buffer_full = true;
-        } else if (!str_endline) {
+        } else if (!is_endline) {
             mdebug2("ULS: Inclomplete message...");
-            // Save the context
+            // Saves the context
             oslog_ctxt_backup(buffer, &oslog_cfg->ctxt);
             continue;
         }
 
-        /* Check if the first line is the header or an error in the predicate. */
-        if (!oslog_cfg->processed_header) {
-            /* processes and discards lines up to the first log */
-            if (oslog_header_check(oslog_cfg, buffer)) {
-                // Force continue reading
-                *buffer = '\0';
+        /* Checks if the first line is the header or an error in the predicate. */
+        if (!oslog_cfg->is_header_processed) {
+            /* Processes and discards lines up to the first log */
+            if (oslog_is_header(oslog_cfg, buffer)) {
+                // Forces to continue reading
                 retval = true;
+                *buffer = '\0';
                 break;
             }
         }
 
-        /* If this point has been reached have full or partial logs to process in the buffer. */
+        /* If this point has been reached, there is something to process in the buffer. */
 
         last_line = oslog_get_valid_lastline(buffer);
 
-        /* If there are 2 logs, they are separated for sending */
-        if (str_endline && last_line != NULL) {
+        /* If there are 2 logs, they should be splited before sending them */
+        if (is_endline && last_line != NULL) {
             do_split = w_expression_match(oslog_cfg->start_log_regex, last_line + 1, NULL, NULL);
         }
 
         if (!do_split && is_buffer_full) {
-            /* If only one-line log in the buffer it is sent and the rest of the line is discarded,
-             * otherwise, it must be split, store the last line and send them separately.
-             * If the line is incomplete, it is impossible to differentiate
-             * whether it belongs to the current log or to a new log.
+            /* If the buffer is full but the message is larger than the buffer size, 
+             * then the rest of the message is discarded up to the '\n' character.
              */
-            if (!str_endline) {
+            if (!is_endline) {
                 if (last_line == NULL) {
                     char c;
-                    // Discard the rest of the one line log, moving the pointer to the next end of line
+                    // Discards the rest of the log, up to the end of line
                     do {
                         c = fgetc(stream);
                     } while (c != '\n' && c != '\0' && c != EOF);
-                    mdebug2("Max lenght oslog message... The remaining surplus was discarded");
+                    mdebug2("Max oslog message length reached... The rest of the message was discarded");
                 } else {
                     do_split = true;
-                    mdebug2("Max lenght oslog message... The remaining surplus was send separately");
+                    mdebug2("Max oslog message length reached... The rest of the message will be send separately");
                 }
             }
         }
 
-        /* split the logs */
-        /* If a new log is received, we store it in the context and send the oldest one. */
+        /* splits the logs */
+        /* If a new log is received, we store it in the context and send the previous one. */
         if (do_split) {
             oslog_ctxt_clean(&oslog_cfg->ctxt);
             *last_line = '\0';
@@ -240,7 +239,7 @@ STATIC bool oslog_getlog(char * buffer, int length, FILE * stream, w_oslog_confi
 
         if (do_split || is_buffer_full) {
             retval = true;
-            /* delete last end-of-line character  */
+            /* deletes last end-of-line character  */
             if (buffer[offset - 1] == '\n') {
                 buffer[offset - 1] = '\0';
             }
@@ -293,7 +292,7 @@ STATIC char * oslog_get_valid_lastline(char * str) {
         return retval;
     }
 
-    /* Ignore last character */
+    /* Ignores the last character */
     size = strlen(str);
 
     ignored_char = str[size - 1];
@@ -305,33 +304,31 @@ STATIC char * oslog_get_valid_lastline(char * str) {
     return retval;
 }
 
-STATIC bool oslog_header_check(w_oslog_config_t * oslog_cfg, char * buffer) {
+STATIC bool oslog_is_header(w_oslog_config_t * oslog_cfg, char * buffer) {
 
-    const char * LOG_ERROR_STR = "log:";
-    const ssize_t LOG_ERROR_LENGHT = 4;
     bool retval = true;
     const ssize_t buffer_size = strlen(buffer);
 
-    /* if the buffer has a log, no more headers exist */
+    /* if the buffer contains a log, then there won't be headers anymore */
     if (w_expression_match(oslog_cfg->start_log_regex, buffer, NULL, NULL)) {
-        oslog_cfg->processed_header = true;
+        oslog_cfg->is_header_processed = true;
         retval = false;
     }
-    /* Error in the execution of the `log stream` cli command, probably an error in the predicate. */
+    /* Error in the execution of the `log stream` cli command, probably there is an error in the predicate. */
     else if (strncmp(buffer, LOG_ERROR_STR, LOG_ERROR_LENGHT) == 0) {
 
         // "log: error description:\n"
-        if (*(buffer + buffer_size - 2) == ':') {
-            *(buffer + buffer_size - 2) = '\0';
-        } else if (*(buffer + buffer_size - 1) == '\n') {
-            *(buffer + buffer_size - 1) = '\0';
+        if (buffer[buffer_size - 2] == ':') {
+            buffer[buffer_size - 2] = '\0';
+        } else if (buffer[buffer_size - 1] == '\n') {
+            buffer[buffer_size - 1] = '\0';
         }
         merror(LOGCOLLECTOR_OSLOG_ERROR_AFTER_EXEC, buffer);
     }
-    /* Header of rows or remaining error lines in the predicate */
+    /* Rows header or remaining error lines */
     else {
-        if (*(buffer + buffer_size - 1) == '\n') {
-            *(buffer + buffer_size - 1) = '\0';
+        if (buffer[buffer_size - 1] == '\n') {
+            buffer[buffer_size - 1] = '\0';
         }
         mdebug2("Reading other log headers or errors: '%s'", buffer);
     }
