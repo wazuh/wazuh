@@ -1,0 +1,1571 @@
+<!--
+  -  GitHub rules
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!--
+ID: 91100 - 91399
+-->
+
+<group name="github,git,">
+
+    <!-- GitHub wodle -->
+    <rule id="91100" level="0">
+        <decoded_as>json</decoded_as>
+        <action type="osregex">\.+</action>
+        <description>GitHub alert.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- # account
+            billing_plan_change
+            plan_change
+            pending_plan_change
+            pending_subscription_change
+    -->
+    <rule id="91101" level="6">
+        <if_sid>91100</if_sid>
+        <action type="osregex">account.\.+</action>
+        <description>GitHub Account Category.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- account.billing_plan_change -->
+    <rule id="91102" level="9">
+        <if_sid>91101</if_sid>
+        <action>account.billing_plan_change</action>
+        <description>GitHub Account billing plan change.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- account.pending_plan_change -->
+    <rule id="91103" level="7">
+        <if_sid>91101</if_sid>
+        <action>account.pending_plan_change</action>
+        <description>GitHub Account pending plan change.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- account.pending_subscription_change -->
+    <rule id="91104" level="7">
+        <if_sid>91101</if_sid>
+        <action>account.pending_subscription_change</action>
+        <description>GitHub Account pending subscription change.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- advisory_credit
+            accept
+            create
+            decline
+            destroy
+    -->
+    <rule id="91105" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">advisory_credit.\.+</action>
+        <description>GitHub Advisory credit.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- advisory_credit.accept -->
+    <rule id="91106" level="6">
+        <if_sid>91105</if_sid>
+        <action>advisory_credit.accept</action>
+        <description>GitHub Advisory credit accept.</description>
+        <options>no_full_log</options>
+    </rule>
+    
+    <!-- advisory_credit.create -->
+    <rule id="91107" level="6">
+        <if_sid>91105</if_sid>
+        <action>advisory_credit.create</action>
+        <description>GitHub Advisory credit create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- advisory_credit.decline -->
+    <rule id="91108" level="6">
+        <if_sid>91105</if_sid>
+        <action>advisory_credit.decline</action>
+        <description>GitHub Advisory credit decline.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- advisory_credit.destroy -->
+    <rule id="91109" level="6">
+        <if_sid>91105</if_sid>
+        <action>advisory_credit.destroy</action>
+        <description>GitHub Advisory credit destroy.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- billing
+            change_billing_type
+            change_email 
+    -->
+    <rule id="91110" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">billing.\.+</action>
+        <description>GitHub Billing.</description>
+        <options>no_full_log</options>
+    </rule>
+    
+    <!-- billing.change_billing_type -->
+    <rule id="91111" level="7">
+        <if_sid>91110</if_sid>
+        <action>billing.change_billing_type</action>
+        <description>GitHub Billing change billing type.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- billing.change_billing_email -->
+    <rule id="91112" level="7">
+        <if_sid>91110</if_sid>
+        <action>billing.change_billing_email</action>
+        <description>GitHub Billing change billing email.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- free id's from 91113 to 91114 -->
+
+    <!-- dependabot_alerts 
+            disable
+            enable
+    -->
+    <rule id="91115" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">dependabot_alerts.\.+</action>
+        <description>GitHub Dependabot alerts.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_alerts.disable -->
+    <rule id="91116" level="7">
+        <if_sid>91115</if_sid>
+        <action>dependabot_alerts.disable</action>
+        <description>GitHub Dependabot alerts disable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_alerts.enable -->
+    <rule id="91117" level="7">
+        <if_sid>91115</if_sid>
+        <action>dependabot_alerts.enable</action>
+        <description>GitHub Dependabot alerts enable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_alerts_new_repos
+            disable
+            enable
+     -->
+    <rule id="91118" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">dependabot_alerts_new_repos.\.+</action>
+        <description>GitHub Dependabot alerts new repos.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_alerts_new_repos.disable -->
+    <rule id="91119" level="7">
+        <if_sid>91118</if_sid>
+        <action>dependabot_alerts_new_repos.disable</action>
+        <description>GitHub Dependabot alerts new repos disable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_alerts_new_repos.enable -->
+    <rule id="91120" level="7">
+        <if_sid>91118</if_sid>
+        <action>dependabot_alerts_new_repos.enable</action>
+        <description>GitHub Dependabot alerts new repos enable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_security_updates 
+            disable
+            enable
+    -->
+    <rule id="91121" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">dependabot_security_updates.\.+</action>
+        <description>GitHub Dependabot security updates.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_security_updates.disable -->
+    <rule id="91122" level="7">
+        <if_sid>91121</if_sid>
+        <action>dependabot_security_updates.disable</action>
+        <description>GitHub Dependabot security updates disable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_security_updates.enable -->
+    <rule id="91123" level="7">
+        <if_sid>91121</if_sid>
+        <action>dependabot_security_updates.enable</action>
+        <description>GitHub Dependabot security updates enable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_security_updates_new_repos 
+            disable
+            enable
+    -->
+    <rule id="91124" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">dependabot_security_updates_new_repos.\.+</action>
+        <description>GitHub Dependabot security updates new repos.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_security_updates_new_repos.disable -->
+    <rule id="91125" level="7">
+        <if_sid>91124</if_sid>
+        <action>dependabot_security_updates_new_repos.disable</action>
+        <description>GitHub Dependabot security updates new repos disable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependabot_security_updates_new_repos.enable -->
+    <rule id="91126" level="7">
+        <if_sid>91124</if_sid>
+        <action>dependabot_security_updates_new_repos.enable</action>
+        <description>GitHub Dependabot security updates new repos enable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependency_graph 
+            disable
+            enable
+    -->
+    <rule id="91127" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">dependency_graph.\.+</action>
+        <description>GitHub Dependency graph.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependency_graph.disable -->
+    <rule id="91128" level="7">
+        <if_sid>91127</if_sid>
+        <action>dependency_graph.disable</action>
+        <description>GitHub Dependency graph disable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependency_graph.enable -->
+    <rule id="91129" level="7">
+        <if_sid>91127</if_sid>
+        <action>dependency_graph.enable</action>
+        <description>GitHub Dependency graph enable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependency_graph_new_repos
+            disable
+            enable
+    -->
+    <rule id="91130" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">dependency_graph_new_repos.\.+</action>
+        <description>GitHub Dependency graph new repos.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependency_graph_new_repos.disable -->
+    <rule id="91131" level="7">
+        <if_sid>91130</if_sid>
+        <action>dependency_graph_new_repos.disable</action>
+        <description>GitHub Dependency graph new repos disable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- dependency_graph_new_repos.enable -->
+    <rule id="91132" level="7">
+        <if_sid>91130</if_sid>
+        <action>dependency_graph_new_repos.enable</action>
+        <description>GitHub Dependency graph new repos enable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- discussion_post 
+            update
+            destroy
+    -->
+    <rule id="91133" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">discussion_post.\.+</action>
+        <description>GitHub Discussion post.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- discussion_post.update -->
+    <rule id="91134" level="7">
+        <if_sid>91133</if_sid>
+        <action>discussion_post.update</action>
+        <description>GitHub Discussion post update.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- discussion_post.destroy -->
+    <rule id="91135" level="7">
+        <if_sid>91133</if_sid>
+        <action>discussion_post.destroy</action>
+        <description>GitHub Discussion post destroy.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- discussion_post_reply 
+            update
+            destroy
+    -->
+    <rule id="91136" level="7">
+        <if_sid>91100</if_sid>
+        <action type="osregex">discussion_post_reply.\.+</action>
+        <description>GitHub Discussion post reply.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- discussion_post_reply.update -->
+    <rule id="91137" level="7">
+        <if_sid>91136</if_sid>
+        <action>discussion_post_reply.update</action>
+        <description>GitHub Discussion post replay update.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- discussion_post_reply.destroy -->
+    <rule id="91138" level="7">
+        <if_sid>91136</if_sid>
+        <action>discussion_post_reply.destroy</action>
+        <description>GitHub Discussion post replay destroy.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- 91139 is free -->
+
+    <!-- enterprise 
+            remove_self_hosted_runner
+            register_self_hosted_runner
+            runner_group_created
+            runner_group_removed
+            runner_group_runner_removed
+            runner_group_runners_added
+            runner_group_runners_updated
+            runner_group_updated
+            self_hosted_runner_updated
+    -->
+    <rule id="91140" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">enterprise.\.+</action>
+        <description>GitHub Enterprise.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.remove_self_hosted_runner -->
+    <rule id="91141" level="8">
+        <if_sid>91140</if_sid>
+        <action>enterprise.remove_self_hosted_runner</action>
+        <description>GitHub Enterprise Remove self hosted runner.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.register_self_hosted_runner -->
+    <rule id="91142" level="8">
+        <if_sid>91140</if_sid>
+        <action>enterprise.register_self_hosted_runner</action>
+        <description>GitHub Enterprise Register self hosted runner.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.runner_group_created -->
+    <rule id="91143" level="8">
+        <if_sid>91140</if_sid>
+        <action>enterprise.runner_group_created</action>
+        <description>GitHub Enterprise Runner group created.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.runner_group_removed -->
+    <rule id="91144" level="8">
+        <if_sid>91140</if_sid>
+        <action>enterprise.runner_group_removed</action>
+        <description>GitHub Enterprise Runner group removed.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.runner_group_runner_removed -->
+    <rule id="91145" level="8">
+        <if_sid>91140</if_sid>
+        <action>enterprise.runner_group_runner_removed</action>
+        <description>GitHub Enterprise Runner group runner removed.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.runner_group_runners_added -->
+    <rule id="91146" level="8">
+        <if_sid>91140</if_sid>
+        <action>enterprise.runner_group_runners_added</action>
+        <description>GitHub Enterprise Runner group runners added.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.runner_group_runners_updated -->
+    <rule id="91147" level="7">
+        <if_sid>91140</if_sid>
+        <action>enterprise.runner_group_runners_updated</action>
+        <description>GitHub Enterprise Runner group runners updated.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.runner_group_updated -->
+    <rule id="91148" level="7">
+        <if_sid>91140</if_sid>
+        <action>enterprise.runner_group_updated</action>
+        <description>GitHub Enterprise Runner group updated.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- enterprise.self_hosted_runner_updated -->
+    <rule id="91149" level="7">
+        <if_sid>91140</if_sid>
+        <action>enterprise.self_hosted_runner_updated</action>
+        <description>GitHub Enterprise Self hosted runner updated.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- environment 
+        create_actions_secret
+        delete
+        remove_actions_secret
+        update_actions_secret
+        add_protection_rule
+    -->
+    <rule id="91150" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">environment.\.+</action>
+        <description>GitHub Environment.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!--  environment.create_actions_secret -->
+    <rule id="91151" level="9">
+        <if_sid>91150</if_sid>
+        <action>environment.create_actions_secret</action>
+        <description>GitHub Environment Create actions secret.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!--  environment.delete -->
+    <rule id="91152" level="9">
+        <if_sid>91150</if_sid>
+        <action>environment.delete</action>
+        <description>GitHub Environment Delete.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!--  environment.remove_actions_secret -->
+    <rule id="91153" level="8">
+        <if_sid>91150</if_sid>
+        <action>environment.remove_actions_secret</action>
+        <description>GitHub Environment Remove actions secret.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!--  environment.update_actions_secret -->
+    <rule id="91154" level="8">
+        <if_sid>91150</if_sid>
+        <action>environment.update_actions_secret</action>
+        <description>GitHub Environment Update actions secret.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!--  environment.add_protection_rule -->
+    <rule id="91155" level="6">
+        <if_sid>91150</if_sid>
+        <action>environment.add_protection_rule</action>
+        <description>GitHub Environment Add protection rule.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- git
+            clone
+            fetch
+            push
+    -->
+    <rule id="91156" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">git.\.+</action>
+        <description>GitHub Git.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- git.clone -->
+    <rule id="91157" level="5">
+        <if_sid>91156</if_sid>
+        <action>git.clone</action>
+        <description>GitHub Git clone.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- git.fetch -->
+    <rule id="91158" level="5">
+        <if_sid>91156</if_sid>
+        <action>git.fetch</action>
+        <description>GitHub Git fetch.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- git.push -->
+    <rule id="91159" level="7">
+        <if_sid>91156</if_sid>
+        <action>git.push</action>
+        <description>GitHub Git push.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- hook
+            create
+            config_changed
+            destroy
+            events_changed 
+    -->
+    <rule id="91160" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">hook.\.+</action>
+        <description>GitHub Hook.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- hook.create -->
+    <rule id="91161" level="9">
+        <if_sid>91160</if_sid>
+        <action >hook.create</action>
+        <description>GitHub Hook create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- hook.config_changed -->
+    <rule id="91162" level="8">
+        <if_sid>91160</if_sid>
+        <action >hook.config_changed</action>
+        <description>GitHub Hook config changed.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- hook.destroy -->
+    <rule id="91163" level="7">
+        <if_sid>91160</if_sid>
+        <action >hook.destroy</action>
+        <description>GitHub Hook destroy.</description>
+        <options>no_full_log</options>
+    </rule>    
+
+    <!-- hook.events_changed --> 
+    <rule id="91164" level="7">
+        <if_sid>91160</if_sid>
+        <action >hook.events_changed</action>
+        <description>GitHub Hook events changed.</description>
+        <options>no_full_log</options>
+    </rule>    
+
+    <!-- integration_installation
+            create
+            close
+    -->
+    <rule id="91165" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">integration_installation.\.+</action>
+        <description>GitHub Integration installation.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- integration_installation.create -->
+    <rule id="91166" level="7">
+        <if_sid>91165</if_sid>
+        <action>integration_installation.create</action>
+        <description>GitHub Integration installation create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- integration_installation.close -->
+    <rule id="91167" level="3">
+        <if_sid>91165</if_sid>
+        <action>integration_installation.close</action>
+        <description>GitHub Integration installation close.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- issues 
+            deletes_enabled
+    -->
+    <rule id="91168" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">issues.\.+</action>
+        <description>GitHub Issues.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- issues.deletes_enabled -->
+    <rule id="91169" level="9">
+        <if_sid>91168</if_sid>
+        <action>issues.deletes_enabled</action>
+        <description>GitHub Issues deletes enabled.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- marketplace_agreement_signature
+            create
+     -->
+    <rule id="91170" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">marketplace_agreement_signature.\.+</action>
+        <description>GitHub Marketplace agreement signature.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- marketplace_agreement_signature.create -->
+    <rule id="91171" level="7">
+        <if_sid>91170</if_sid>
+        <action>marketplace_agreement_signature.create</action>
+        <description>GitHub Marketplace agreement signature create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- marketplace_listing 
+            approve
+            create
+            delist
+            redraft
+            reject
+    -->
+    <rule id="91172" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">marketplace_listing.\.+</action>
+        <description>GitHub Marketplace listing.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- marketplace_listing.approve -->
+    <rule id="91173" level="6">
+        <if_sid>91172</if_sid>
+        <action>marketplace_listing.approve</action>
+        <description>GitHub Marketplace listing approve.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- marketplace_listing.create -->
+    <rule id="91174" level="6">
+        <if_sid>91172</if_sid>
+        <action>marketplace_listing.create</action>
+        <description>GitHub Marketplace listing create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- marketplace_listing.delist -->
+    <rule id="91175" level="6">
+        <if_sid>91172</if_sid>
+        <action>marketplace_listing.delist</action>
+        <description>GitHub Marketplace listing delist.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- marketplace_listing.redraft -->
+    <rule id="91176" level="6">
+        <if_sid>91172</if_sid>
+        <action>marketplace_listing.redraft</action>
+        <description>GitHub Marketplace listing redraft.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- marketplace_listing.reject -->
+    <rule id="91177" level="6">
+        <if_sid>91172</if_sid>
+        <action>marketplace_listing.reject</action>
+        <description>GitHub Marketplace listing reject.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- members_can_create_pages
+            enable
+            disable
+     -->
+    <rule id="91178" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">members_can_create_pages.\.+</action>
+        <description>GitHub Members can create pages.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- members_can_create_pages.enable -->
+    <rule id="91179" level="6">
+        <if_sid>91178</if_sid>
+        <action>members_can_create_pages.enable</action>
+        <description>GitHub Members can create pages enable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- members_can_create_pages.disable -->
+    <rule id="91180" level="6">
+        <if_sid>91178</if_sid>
+        <action>members_can_create_pages.disable</action>
+        <description>GitHub Members can create pages disable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- oauth_application
+            create
+            destroy
+            reset_secret
+            revoke_tokens
+            transfer
+    -->
+    <rule id="91181" level="6">
+        <if_sid>91100</if_sid>
+        <action type="osregex">oauth_application.\.+</action>
+        <description>GitHub Oauth application.</description>
+        <options>no_full_log</options>
+    </rule>
+    
+    <!-- oauth_application.create -->
+    <rule id="91182" level="9">
+        <if_sid>91181</if_sid>
+        <action>oauth_application.create</action>
+        <description>GitHub Oauth application create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- oauth_application.destroy -->
+    <rule id="91183" level="7">
+        <if_sid>91181</if_sid>
+        <action>oauth_application.destroy</action>
+        <description>GitHub Oauth application destroy.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- oauth_application.reset_secret -->
+    <rule id="91184" level="9">
+        <if_sid>91181</if_sid>
+        <action>oauth_application.reset_secret</action>
+        <description>GitHub Oauth application reset secret.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- oauth_application.revoke_tokens -->
+    <rule id="91185" level="7">
+        <if_sid>91181</if_sid>
+        <action>oauth_application.revoke_tokens</action>
+        <description>GitHub Oauth application revoke tokens.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- oauth_application.transfer -->
+    <rule id="91186" level="7">
+        <if_sid>91181</if_sid>
+        <action>oauth_application.transfer</action>
+        <description>GitHub Oauth application transfer.</description>
+        <options>no_full_log</options>
+    </rule>            
+            
+
+    <!-- org 
+            add_billing_manager (# sample log)
+            add_member  (# sample log)
+            advanced_security_policy_selected_member_disabled
+            advanced_security_policy_selected_member_enabled
+            audit_log_export    (# sample log)
+            audit_log_git_event_export  (# sample log)
+            block_user  (# sample log)
+            cancel_invitation   (# sample log)
+            create  (# sample log)
+            create_actions_secret   (# sample log)
+            disable_member_team_creation_permission
+            disable_oauth_app_restrictions  (# sample log)
+            disable_saml
+            disable_two_factor_requirement  (# sample log)
+            display_commenter_full_name_enabled (# sample log)
+            enable_member_team_creation_permission
+            enable_oauth_app_restrictions   (# sample log)
+            enable_saml
+            enable_two_factor_requirement   (# sample log)
+            invite_member   (# sample log)
+            oauth_app_access_approved
+            oauth_app_access_denied
+            oauth_app_access_requested
+            register_self_hosted_runner
+            remove_actions_secret   (# sample log)
+            remove_billing_manager
+            remove_member   (# sample log)
+            remove_outside_collaborator
+            remove_self_hosted_runner
+            restore_member  (# sample log)
+            revoke_external_identity
+            revoke_sso_session
+            runner_group_created
+            runner_group_removed
+            runner_group_runner_removed
+            runner_group_runners_added
+            runner_group_runners_updated
+            runner_group_updated
+            self_hosted_runner_updated
+            set_actions_retention_limit (# sample log)
+            unblock_user
+            unblock_user    (# sample log)
+            update_actions_secret
+            update_actions_settings (# sample log)
+            update_default_repository_permission    (# sample log)
+            update_member
+            update_member_repository_creation_permission
+            update_new_repository_default_branch_setting    (# sample log)
+            update_saml_provider_settings
+            update_terms_of_service (# sample log)
+    -->
+    <rule id="91187" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">org.\.+</action>
+        <description>GitHub Orgnaization.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.add_billing_manager -->
+    <rule id="91188" level="9">
+        <if_sid>91187</if_sid>
+        <action>org.add_billing_manager</action>
+        <description>GitHub Orgnaization add billing manager.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.add_member -->
+    <rule id="91189" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.add_member</action>
+        <description>GitHub Orgnaization add member.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.advanced_security_policy_selected_member_disabled -->
+    <rule id="91190" level="9">
+        <if_sid>91187</if_sid>
+        <action>org.advanced_security_policy_selected_member_disabled</action>
+        <description>GitHub Orgnaization advanced security policy selected member disabled.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.advanced_security_policy_selected_member_enabled -->
+    <rule id="91191" level="9">
+        <if_sid>91187</if_sid>
+        <action>org.advanced_security_policy_selected_member_enabled</action>
+        <description>GitHub Orgnaization advanced security policy selected member enabled.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.audit_log_export -->
+    <rule id="91192" level="9">
+        <if_sid>91187</if_sid>
+        <action>org.audit_log_export</action>
+        <description>GitHub Orgnaization audit log export.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.audit_log_git_event_export -->
+    <rule id="91193" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.audit_log_git_event_export</action>
+        <description>GitHub Orgnaization audit log git event export.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.block_user -->
+    <rule id="91194" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.block_user</action>
+        <description>GitHub Orgnaization block user.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.cancel_invitation -->
+    <rule id="91195" level="6">
+        <if_sid>91187</if_sid>
+        <action>org.cancel_invitation</action>
+        <description>GitHub Orgnaization cancel invitation.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.create -->
+    <rule id="91196" level="9">
+        <if_sid>91187</if_sid>
+        <action>org.create</action>
+        <description>GitHub Orgnaization create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.create_actions_secret -->
+    <rule id="91197" level="11">
+        <if_sid>91187</if_sid>
+        <action>org.create_actions_secret</action>
+        <description>GitHub Orgnaization create actions secret.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.disable_member_team_creation_permission -->
+    <rule id="91198" level="9">
+        <if_sid>91187</if_sid>
+        <action>org.disable_member_team_creation_permission</action>
+        <description>GitHub Orgnaization disable member team creation permission.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.disable_oauth_app_restrictions -->
+    <rule id="91199" level="10">
+        <if_sid>91187</if_sid>
+        <action>org.disable_oauth_app_restrictions</action>
+        <description>GitHub Orgnaization disable oauth app restrictions.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.disable_saml -->
+    <rule id="91200" level="10">
+        <if_sid>91187</if_sid>
+        <action>org.disable_saml</action>
+        <description>GitHub Orgnaization disable saml.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.disable_two_factor_requirement -->
+    <rule id="91201" level="10">
+        <if_sid>91187</if_sid>
+        <action>org.disable_two_factor_requirement</action>
+        <description>GitHub Orgnaization disable two factor requirement.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.display_commenter_full_name_enabled -->
+    <rule id="91202" level="6">
+        <if_sid>91187</if_sid>
+        <action>org.display_commenter_full_name_enabled</action>
+        <description>GitHub Orgnaization display commenter full name enabled.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.enable_member_team_creation_permission -->
+    <rule id="91203" level="6">
+        <if_sid>91187</if_sid>
+        <action>org.enable_member_team_creation_permission</action>
+        <description>GitHub Orgnaization enable member team creation permission.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.enable_oauth_app_restrictions -->
+    <rule id="91204" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.enable_oauth_app_restrictions</action>
+        <description>GitHub Orgnaization enable oauth app restrictions.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.enable_saml -->
+    <rule id="91205" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.enable_saml</action>
+        <description>GitHub Orgnaization enable saml.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.enable_two_factor_requirement -->
+    <rule id="91206" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.enable_two_factor_requirement</action>
+        <description>GitHub Orgnaization enable two factor requirement.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.invite_member -->
+    <rule id="91207" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.invite_member</action>
+        <description>GitHub Orgnaization invite member.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.oauth_app_access_approved -->
+    <rule id="91208" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.oauth_app_access_approved</action>
+        <description>GitHub Orgnaization oauth app access approved.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.oauth_app_access_denied -->
+    <rule id="91209" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.oauth_app_access_denied</action>
+        <description>GitHub Orgnaization oauth app access denied.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.oauth_app_access_requested -->
+    <rule id="91210" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.oauth_app_access_requested</action>
+        <description>GitHub Orgnaization oauth app access requested.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.register_self_hosted_runner -->
+    <rule id="91211" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.register_self_hosted_runner</action>
+        <description>GitHub Orgnaization register self hosted runner.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.remove_actions_secret -->
+    <rule id="91212" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.remove_actions_secret</action>
+        <description>GitHub Orgnaization remove actions secret.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.remove_billing_manager -->
+    <rule id="91213" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.remove_billing_manager</action>
+        <description>GitHub Orgnaization remove billing manager.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.remove_member -->
+    <rule id="91214" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.remove_member</action>
+        <description>GitHub Orgnaization remove member.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.remove_outside_collaborator -->
+    <rule id="91215" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.remove_outside_collaborator</action>
+        <description>GitHub Orgnaization remove outside collaborator.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.remove_self_hosted_runner -->
+    <rule id="91216" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.remove_self_hosted_runner</action>
+        <description>GitHub Orgnaization remove self hosted runner.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.restore_member -->
+    <rule id="91217" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.restore_member</action>
+        <description>GitHub Orgnaization restore member.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.revoke_external_identity -->
+    <rule id="91218" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.revoke_external_identity</action>
+        <description>GitHub Orgnaization revoke external identity.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.revoke_sso_session -->
+    <rule id="91219" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.revoke_sso_session</action>
+        <description>GitHub Orgnaization revoke sso session.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.runner_group_created -->
+    <rule id="91220" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.runner_group_created</action>
+        <description>GitHub Orgnaization runner group created.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.runner_group_removed -->
+    <rule id="91221" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.runner_group_removed</action>
+        <description>GitHub Orgnaization runner group removed.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.runner_group_runner_removed -->
+    <rule id="91222" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.runner_group_runner_removed</action>
+        <description>GitHub Orgnaization runner group runner removed.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.runner_group_runners_added -->
+    <rule id="91223" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.runner_group_runners_added</action>
+        <description>GitHub Orgnaization runner group runners added.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.runner_group_runners_updated -->
+    <rule id="91224" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.runner_group_runners_updated</action>
+        <description>GitHub Orgnaization runner group runners updated.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.runner_group_updated -->
+    <rule id="91225" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.runner_group_updated</action>
+        <description>GitHub Orgnaization runner group updated.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.self_hosted_runner_updated -->
+    <rule id="91226" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.self_hosted_runner_updated</action>
+        <description>GitHub Orgnaization self hosted runner updated.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.set_actions_retention_limit -->
+    <rule id="91227" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.set_actions_retention_limit</action>
+        <description>GitHub Orgnaization set actions retention limit.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.unblock_user -->
+    <rule id="91228" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.unblock_user</action>
+        <description>GitHub Orgnaization unblock user.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.update_actions_secret -->
+    <rule id="91229" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.update_actions_secret</action>
+        <description>GitHub Orgnaization update actions secret.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.update_actions_settings -->
+    <rule id="91230" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.update_actions_settings</action>
+        <description>GitHub Orgnaization update actions settings.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.update_default_repository_permission -->
+    <rule id="91231" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.update_default_repository_permission</action>
+        <description>GitHub Orgnaization update default repository permission.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.update_member -->
+    <rule id="91232" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.update_member</action>
+        <description>GitHub Orgnaization update member.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.update_member_repository_creation_permission -->
+    <rule id="91233" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.update_member_repository_creation_permission</action>
+        <description>GitHub Orgnaization update member repository creation permission.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.update_new_repository_default_branch_setting -->
+    <rule id="91234" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.update_new_repository_default_branch_setting</action>
+        <description>GitHub Orgnaization update new repository default branch setting.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.update_saml_provider_settings -->
+    <rule id="91235" level="8">
+        <if_sid>91187</if_sid>
+        <action>org.update_saml_provider_settings</action>
+        <description>GitHub Orgnaization update saml provider settings.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org.update_terms_of_service -->    
+    <rule id="91236" level="7">
+        <if_sid>91187</if_sid>
+        <action>org.update_terms_of_service</action>
+        <description>GitHub Orgnaization update terms of service.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- free id's from 91237 to 91238  -->
+
+    <!-- org_credential_authorization 
+            grant
+            deauthorized
+            revoke
+    -->
+    <rule id="91239" level="5">
+        <if_sid>91100</if_sid>
+        <action type="osregex">org_credential_authorization.\.+</action>
+        <description>GitHub Orgnaization credential authorization.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org_credential_authorization.grant -->
+    <rule id="91240" level="9">
+        <if_sid>91239</if_sid>
+        <action>org_credential_authorization.grant</action>
+        <description>GitHub Orgnaization credential authorization grant.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org_credential_authorization.deauthorized -->
+    <rule id="91241" level="7">
+        <if_sid>91239</if_sid>
+        <action>org_credential_authorization.deauthorized</action>
+        <description>GitHub Orgnaization credential authorization deauthorized.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- org_credential_authorization.revoke -->
+    <rule id="91242" level="7">
+        <if_sid>91239</if_sid>
+        <action>org_credential_authorization.revoke</action>
+        <description>GitHub Orgnaization credential authorization revoke.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- organization_default_label
+            create
+            update
+            destroy
+    -->
+    <rule id="91243" level="5">
+        <if_sid>91100</if_sid>
+        <action type="osregex">organization_default_label.\.+</action>
+        <description>GitHub Orgnaization default label.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- organization_default_label.create -->
+    <rule id="91244" level="7">
+        <if_sid>91243</if_sid>
+        <action>organization_default_label.create</action>
+        <description>GitHub Orgnaization default label create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- organization_default_label.update -->
+    <rule id="91245" level="7">
+        <if_sid>91243</if_sid>
+        <action>organization_default_label.update</action>
+        <description>GitHub Orgnaization default label update.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- organization_default_label.destroy -->
+    <rule id="91246" level="7">
+        <if_sid>91243</if_sid>
+        <action>organization_default_label.destroy</action>
+        <description>GitHub Orgnaization default label destroy.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- packages
+            package_version_published
+            package_version_deleted
+            package_deleted
+            package_version_restored
+            package_restored
+     -->
+    <rule id="91247" level="5">
+        <if_sid>91100</if_sid>
+        <action type="osregex">packages.\.+</action>
+        <description>GitHub Packages.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- packages.package_version_published -->
+    <rule id="91248" level="7">
+        <if_sid>91247</if_sid>
+        <action>packages.package_version_published</action>
+        <description>GitHub Package version published.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- packages.package_version_deleted -->
+    <rule id="91249" level="7">
+        <if_sid>91247</if_sid>
+        <action>packages.package_version_deleted</action>
+        <description>GitHub Package version deleted.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- packages.package_deleted -->
+    <rule id="91250" level="6">
+        <if_sid>91247</if_sid>
+        <action>packages.package_deleted</action>
+        <description>GitHub Package deleted.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- packages.package_version_restored -->
+    <rule id="91251" level="6">
+        <if_sid>91247</if_sid>
+        <action>packages.package_version_restored</action>
+        <description>GitHub Package version restored.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- packages.package_restored -->
+    <rule id="91252" level="6">
+        <if_sid>91247</if_sid>
+        <action>packages.package_restored</action>
+        <description>GitHub Package restored.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- payment_method
+            clear
+            create
+            update
+    -->
+    <rule id="91253" level="5">
+        <if_sid>91100</if_sid>
+        <action type="osregex">payment_method.\.+</action>
+        <description>GitHub Payment method.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- payment_method.clear -->
+    <rule id="91254" level="7">
+        <if_sid>91253</if_sid>
+        <action>payment_method.clear</action>
+        <description>GitHub Payment method clear.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- payment_method.create -->
+    <rule id="91255" level="7">
+        <if_sid>91253</if_sid>
+        <action>payment_method.create</action>
+        <description>GitHub Payment method create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- payment_method.create -->
+    <rule id="91256" level="7">
+        <if_sid>91253</if_sid>
+        <action>payment_method.update</action>
+        <description>GitHub Payment method update.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- profile_picture
+            update
+    -->
+    <rule id="91257" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">profile_picture.\.+</action>
+        <description>GitHub Profile picture.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- profile_picture.update -->
+    <rule id="91258" level="4">
+        <if_sid>91257</if_sid>
+        <action>profile_picture.update</action>
+        <description>GitHub Profile picture update.</description>
+        <options>no_full_log</options>
+    </rule>
+
+
+    <!-- project 
+            create
+            link
+            rename
+            update
+            delete
+            unlink
+            update_org_permission
+            update_team_permission
+            update_user_permission
+    -->
+    <rule id="91259" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">project.\.+</action>
+        <description>GitHub Project.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.create -->
+    <rule id="91260" level="7">
+        <if_sid>91259</if_sid>
+        <action>project.create</action>
+        <description>GitHub Project create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.link -->
+    <rule id="91261" level="5">
+        <if_sid>91259</if_sid>
+        <action>project.link</action>
+        <description>GitHub Project link.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.rename -->
+    <rule id="91262" level="5">
+        <if_sid>91259</if_sid>
+        <action>project.rename</action>
+        <description>GitHub Project rename.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.update -->
+    <rule id="91263" level="5">
+        <if_sid>91259</if_sid>
+        <action>project.update</action>
+        <description>GitHub Project update.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.delete -->
+    <rule id="91264" level="5">
+        <if_sid>91259</if_sid>
+        <action>project.delete</action>
+        <description>GitHub Project delete.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.unlink -->
+    <rule id="91265" level="5">
+        <if_sid>91259</if_sid>
+        <action>project.unlink</action>
+        <description>GitHub Project unlink.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.update_org_permission -->
+    <rule id="91266" level="6">
+        <if_sid>91259</if_sid>
+        <action>project.update_org_permission</action>
+        <description>GitHub Project update org permission.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.update_team_permission -->
+    <rule id="91267" level="5">
+        <if_sid>91259</if_sid>
+        <action>project.update_team_permission</action>
+        <description>GitHub Project update team permission.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- project.update_user_permission -->
+    <rule id="91268" level="5">
+        <if_sid>91259</if_sid>
+        <action>project.update_user_permission</action>
+        <description>GitHub Project update user permission.</description>
+        <options>no_full_log</options>
+    </rule>
+    
+    <!-- organization_domain
+            create
+            delete
+    -->
+    <rule id="91269" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">organization_domain.\.+</action>
+        <description>GitHub Organization domain.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- organization_domain.create -->
+    <rule id="91270" level="6">
+        <if_sid>91269</if_sid>
+        <action>organization_domain.create</action>
+        <description>GitHub Organization domain create.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- organization_domain.delete -->
+    <rule id="91271" level="6">
+        <if_sid>91269</if_sid>
+        <action>organization_domain.delete</action>
+        <description>GitHub Organization domain delete.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- private_repository_forking
+            enable
+            disable
+    -->
+    <rule id="91272" level="5">
+        <if_sid>91100</if_sid>
+        <action type="osregex">private_repository_forking.\.+</action>
+        <description>GitHub Private repository forking.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- private_repository_forking.enable -->
+    <rule id="91273" level="7">
+        <if_sid>91272</if_sid>
+        <action>private_repository_forking.enable</action>
+        <description>GitHub Private repository forking enable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- private_repository_forking.disable -->
+    <rule id="91274" level="7">
+        <if_sid>91272</if_sid>
+        <action>private_repository_forking.disable</action>
+        <description>GitHub Private repository forking disable.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- protected_branch -->
+    <!-- pull_request -->
+    <!-- pull_request_review -->
+    <!-- pull_request_review_comment -->
+    <!-- repo -->
+    <!-- repository_advisory -->
+    <!-- repository_content_analysis -->
+    <!-- repository_dependency_graph -->
+    <!-- repository_secret_scanning -->
+    <!-- repository_vulnerability_alert -->
+    <!-- repository_vulnerability_alerts -->
+    <!-- secret_scanning -->
+    <!-- secret_scanning_new_repos -->
+    <!-- sponsors -->
+    <!-- team -->
+    <!-- team_discussions -->
+    <!-- workflows -->
+
+</group>
