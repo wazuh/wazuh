@@ -12,7 +12,7 @@ import pytest
 from wazuh.core import common
 
 with patch('wazuh.common.wazuh_uid'):
-    with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         with patch('wazuh.core.common.manager_conf'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators

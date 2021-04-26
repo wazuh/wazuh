@@ -8,7 +8,7 @@ import pytest
 with patch('wazuh.common.getgrnam'):
     with patch('wazuh.common.getpwnam'):
         with patch('wazuh.common.wazuh_uid'):
-            with patch('wazuh.common.wazuh_uid'):
+            with patch('wazuh.common.wazuh_gid'):
                 with patch('wazuh.core.common.manager_conf'):
                     sys.modules['wazuh.rbac.orm'] = MagicMock()
 

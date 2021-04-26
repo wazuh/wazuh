@@ -13,7 +13,7 @@ import uvloop
 from wazuh.core.exception import WazuhException
 
 with patch('wazuh.core.common.wazuh_uid'):
-    with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         with patch('wazuh.core.common.manager_conf'):
             sys.modules['wazuh.rbac.orm'] = MagicMock()
             import wazuh.rbac.decorators
