@@ -6,12 +6,12 @@ import functools
 import json
 import operator
 import os
-import random
 import shutil
 from calendar import timegm
 from datetime import datetime
 from time import time
 from typing import Tuple, Dict, Callable
+from uuid import uuid4
 
 import wazuh.core.cluster.cluster
 from wazuh.core import cluster as metadata, common, exception, utils
@@ -252,7 +252,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         request_result : dict
             API response.
         """
-        request_id = str(random.randint(0, 2**10 - 1))
+        request_id = str(uuid4())
         # Create an event to wait for the response.
         self.server.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
 

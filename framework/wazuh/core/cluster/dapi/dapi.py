@@ -8,7 +8,6 @@ import json
 import logging
 import operator
 import os
-import random
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -84,7 +83,6 @@ class DistributedAPI:
         self.cluster_items = wazuh.core.cluster.utils.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.node_info = wazuh.core.cluster.cluster.get_node() if node is None else node.get_node()
-        self.request_id = str(random.randint(0, 2 ** 10 - 1))
         self.request_type = request_type
         self.wait_for_complete = wait_for_complete
         self.from_cluster = from_cluster

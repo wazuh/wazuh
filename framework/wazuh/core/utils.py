@@ -7,11 +7,9 @@ import glob
 import hashlib
 import json
 import operator
-import random
 import re
 import stat
 import sys
-import time
 import typing
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -21,8 +19,11 @@ from os.path import join, basename, relpath
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
-from xml.dom.minidom import parseString
-from xml.etree import ElementTree
+from tempfile import mkstemp
+from xml.etree.ElementTree import ElementTree
+
+from defusedxml.ElementTree import fromstring
+from defusedxml.minidom import parseString
 
 import wazuh.core.results as results
 from api import configuration
@@ -753,7 +754,7 @@ def load_wazuh_xml(xml_path, data=None):
                '\n'.join([f'<!ENTITY {name} "{value}">' for name, value in custom_entities.items()]) + \
                '\n]>\n'
 
-    return ElementTree.fromstring(entities + '<root_tag>' + data + '</root_tag>')
+    return fromstring(entities + '<root_tag>' + data + '</root_tag>', forbid_entities=False)
 
 
 class WazuhVersion:
@@ -1626,7 +1627,7 @@ def upload_file(content, path, check_xml_formula_values=True):
     def escape_formula_values(xml_string):
         """Prepend with a single quote possible formula injections."""
         formula_characters = ('=', '+', '-', '@')
-        et = ElementTree.ElementTree(ElementTree.fromstring(f'<root>{xml_string}</root>'))
+        et = ElementTree(fromstring(f'<root>{xml_string}</root>'))
         full_preprend, beginning_preprend = list(), list()
         for node in et.iter():
             if node.tag and node.tag.startswith(formula_characters):
@@ -1644,9 +1645,9 @@ def upload_file(content, path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.tmp'.format(common.wazuh_path, time.time(), random.randint(0, 1000))
+    handle, tmp_file_path = mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".tmp")
     try:
-        with open(tmp_file_path, 'w') as tmp_file:
+        with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
             tmp_file.write(final_file)
         chmod(tmp_file_path, 0o660)
