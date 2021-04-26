@@ -2115,26 +2115,26 @@ class AWSCLBBucket(AWSCustomBucket):
 class AWSNLBBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        db_table_name = 'nlb'
-        # AWSCustomBucket.__init__(self, db_table_name, **kwargs)
+        db_table_name = 'clb'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
     def load_information_from_file(self, log_key):
-        """Load data from a NLB access log file."""
-        with open(log_key, "r+") as file:
+        """Load data from a CLB access log file."""
+        with self.decompress_file(log_key=log_key) as f:
             fieldnames = (
-                "type", "version", "time", "elb", "listener", "client_ip", "destination_ip", "connection_time",
-                "tls_handshake_time", "received_bytes", "sent_bytes", "incoming_tls_alert", "chosen_cert_arn",
-                "chosen_cert_serial", "tls_cipher", "tls_protocol_version", "tls_named_group", "domain_name",
-                "alpn_fe_protocol", "alpn_client_preference_list")
-            tsv_file = csv.DictReader(file, fieldnames=fieldnames, delimiter=' ')
+                "time", "elb", "client_port", "backend_port", "request_processing_time", "backend_processing_time",
+                "response_processing_time", "elb_status_code", "backend_status_code", "received_bytes", "sent_bytes",
+                "request", "user_agent", "ssl_cipher", "ssl_protocol")
+            tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
 
-            tsv_file = [dict(x, source='nlb') for x in tsv_file]
+            [dict(x, source='clb') for x in tsv_file]
 
             # Split ip_addr:port field into ip_addr and port fields
             for log_entry in tsv_file:
                 fields = log_entry['client_ip'].split(':'), log_entry['destination_ip'].split(':')
                 log_entry['client_ip'], log_entry['client_port'] = fields[0][0], fields[0][1]
                 log_entry['destination_ip'], log_entry['destination_port'] = fields[1][0], fields[1][1]
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 <<<<<<< HEAD
@@ -2155,6 +2155,9 @@ class AWSNLBBucket(AWSCustomBucket):
 =======
                 print(log_entry)
 >>>>>>> Change files to offline testing
+=======
+
+>>>>>>> Change code to online version with the new parsing
             return tsv_file
 
 
@@ -3016,19 +3019,11 @@ def main(argv):
         sys.exit(12)
 
 
-def main_de_enrique():
-    bucket_type = AWSNLBBucket()
-
-    file = './166157441623_elasticloadbalancing_us-west-1_net.demo-3130-prod-Wazuh.f279b3dd67f9c98e_20200801T0050Z_256f6bdd.log'
-
-    bucket_type.load_information_from_file(file)
-
 if __name__ == '__main__':
     try:
         debug('Args: {args}'.format(args=str(sys.argv)), 2)
         signal.signal(signal.SIGINT, handler)
-        # main(sys.argv[1:])
-        main_de_enrique()
+        main(sys.argv[1:])
         sys.exit(0)
     except Exception as e:
         print("Unknown error: {}".format(e))
