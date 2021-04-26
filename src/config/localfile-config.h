@@ -152,7 +152,7 @@ typedef struct {
  */
 typedef struct {
     w_expression_t * start_log_regex; ///< used to check the start of a new log
-    bool processed_header;            ///< True if the stream header was processed
+    bool is_header_processed;            ///< True if the stream header was processed
     w_oslog_ctxt_t ctxt;              ///< store current status when read log is in process
     char * last_read_timestamp;       ///< timestamp of last log queued (Used for only future event)
     wfd_t * log_wfd;                  ///< `log stream` IPC connector
