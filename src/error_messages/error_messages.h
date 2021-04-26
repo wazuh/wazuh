@@ -107,6 +107,7 @@
 #define TCP_NOT_SUPPORT "(1247): TCP not supported for this operating system."
 #define TCP_EPIPE       "(1248): Unable to send message. Connection has been closed by remote server."
 #define CONN_REF        "(1249): Unable to send message. Connection with remote server refused."
+#define ACCESS_ERROR    "(1250): Error trying to execute \"%s\": %s (%d)."
 
 #define MAILQ_ERROR     "(1221): No Mail queue at %s"
 #define IMSG_ERROR      "(1222): Invalid msg: %s"

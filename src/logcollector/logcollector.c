@@ -339,7 +339,7 @@ void LogCollectorStart()
         else if (strcmp(current->logformat, OSLOG) == 0) {
             w_logcollector_create_oslog_env(current);
             current->read = read_oslog;
-            if (current->oslog->log_wfd->file != NULL) {
+            if (current->oslog->is_oslog_running) {
                 if (atexit(w_oslog_release)) {
                     merror(ATEXIT_ERROR);
                 }
