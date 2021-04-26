@@ -9,11 +9,10 @@
  * Foundation.
  */
 
-#include "packagesLinux.h"
 #include "sharedDefs.h"
 #include <alpm.h>
 #include <package.h>
-#include "packages/packagesLinuxParserHelper.h"
+#include "packagesLinuxParserHelper.h"
 
 struct AlmpDeleter final
 {

@@ -26,9 +26,6 @@
 #include "ports/portImpl.h"
 #include "packages/berkeleyRpmDbHelper.h"
 #include "packages/packageDataAFactory.h"
-#include "packages/packagesLinux.h"
-#include "packages/linuxPackages.cpp"
-#include "packages/legacyLinuxPackages.cpp" 
 
 struct ProcTableDeleter
 {

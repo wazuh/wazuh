@@ -9,9 +9,9 @@
  * Foundation.
  */
 
-#include "packagesLinux.h"
 #include "sharedDefs.h"
 #include "packagesLegacyLinuxParserHelper.h"
+#include "berkeleyRpmDbHelper.h"
 
 void getRpmInfo(nlohmann::json& packages)
 {

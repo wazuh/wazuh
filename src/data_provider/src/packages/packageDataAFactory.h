@@ -17,7 +17,6 @@
 #include "sharedDefs.h"
 #include "packagesLinux.h"
 
-
 template <LinuxType linuxType>
 class FactoryPackagesCreator final
 {

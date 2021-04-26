@@ -20,11 +20,8 @@
 #include "timeHelper.h"
 #include "berkeleyRpmDbHelper.h"
 
-class PackagesType{
-    public:
-        static void getPacmanInfo(const std::string& libPath, nlohmann::json& jsonPackages);
-        static void getRpmInfo(nlohmann::json& jsonPackages);
-        static void getDpkgInfo(const std::string& libPath, nlohmann::json& jsonPackages);
-};
+void getPacmanInfo(const std::string& libPath, nlohmann::json& jsonPackages);
+void getRpmInfo(nlohmann::json& jsonPackages);
+void getDpkgInfo(const std::string& libPath, nlohmann::json& jsonPackages);
 
 #endif // _PACKAGES_LINUX_H
