@@ -434,8 +434,10 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
     }
 
 #else
-    for (int i = 0; syscheck.dir[i]; i++) {
-        if (syscheck.opts[i] & REALTIME_ACTIVE) {
+    directory_t *dir_it;
+
+    foreach_array(dir_it, syscheck.directories) {
+        if (dir_it->options & REALTIME_ACTIVE) {
             mwarn(FIM_WARN_REALTIME_UNSUPPORTED);
             break;
         }

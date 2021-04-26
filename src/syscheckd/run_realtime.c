@@ -636,8 +636,9 @@ int realtime_start()
     return (0);
 }
 
-int realtime_adddir(__attribute__((unused)) const char *dir, __attribute__((unused))int whodata, __attribute__((unused))int followsl)
-{
+int realtime_adddir(__attribute__((unused)) const char *dir,
+                    __attribute__((unused)) directory_t *configuration,
+                    __attribute__((unused)) int followsl) {
     return (0);
 }
 
