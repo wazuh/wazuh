@@ -11,8 +11,8 @@ from unittest.mock import ANY, patch, mock_open, call
 import pytest
 from freezegun import freeze_time
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.agent import *
         from wazuh.core.exception import WazuhException
         from api.util import remove_nones_to_dict
@@ -683,8 +683,8 @@ def test_agent_remove_authd(mock_wazuh_socket):
 @patch('wazuh.core.agent.makedirs')
 @patch('wazuh.core.agent.chmod_r')
 @freeze_time('1975-01-01')
-@patch("wazuh.core.common.ossec_uid", return_value=getpwnam("root"))
-@patch("wazuh.core.common.ossec_gid", return_value=getgrnam("root"))
+@patch("wazuh.core.common.wazuh_uid", return_value=getpwnam("root"))
+@patch("wazuh.core.common.wazuh_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('wazuh.core.wdb.WazuhDBConnection.run_wdb_command')
 @patch('socket.socket.connect')
@@ -846,14 +846,14 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 ])
 @patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
 @patch('wazuh.core.agent.safe_move')
-@patch('wazuh.core.common.ossec_uid')
-@patch('wazuh.core.common.ossec_gid')
+@patch('wazuh.core.common.wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid')
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.fcntl.lockf')
 @patch('wazuh.core.agent.get_manager_name')
 @patch('socket.socket.connect')
-def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_stat, mock_ossec_gid,
-                          mosck_ossec_uid, mock_safe_move, mkstemp_mock, ip, id, key, force):
+def test_agent_add_manual(socket_mock, mock_get_manager_name, mock_lockf, mock_stat, mock_wazuh_gid,
+                          mosck_wazuh_uid, mock_safe_move, mkstemp_mock, ip, id, key, force):
     """Tests if method _add_manual() works as expected"""
     key = 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5' \
           'MjBkODNjNTVjZDE5N2YyMzk3NzA0YWRhNjg1YzQz'
@@ -883,13 +883,13 @@ def test_get_manager_name(mock_connect, mock_send):
 
 
 @patch('wazuh.core.agent.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file'])
-@patch('wazuh.core.common.ossec_uid')
-@patch('wazuh.core.common.ossec_gid')
+@patch('wazuh.core.common.wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 @patch('wazuh.core.agent.stat')
 @patch('wazuh.core.agent.fcntl.lockf')
-def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock_ossec_gid, mosck_ossec_uid,
+def test_agent_add_manual_ko(mock_lockf, mock_stat, mock_chmod, mock_chown, mock_wazuh_gid, mosck_wazuh_uid,
                              mock_mkstemp):
     """Tests if method _add_manual() raises expected exceptions"""
     key = 'MDAyIHdpbmRvd3MtYWdlbnQyIGFueSAzNDA2MjgyMjEwYmUwOWVlMWViNDAyZTYyODZmNWQ2OTE5' \
@@ -1310,8 +1310,8 @@ def test_agent_get_agents_group_file(group_exists):
 
 
 @patch('builtins.open')
-@patch('wazuh.core.common.ossec_uid')
-@patch('wazuh.core.common.ossec_gid')
+@patch('wazuh.core.common.wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid')
 @patch('wazuh.core.agent.chown')
 @patch('wazuh.core.agent.chmod')
 def test_agent_set_agent_group_file(mock_chmod, mock_chown, mock_gid, mock_uid, mock_open):
@@ -1618,8 +1618,8 @@ def test_expand_group(group, expected_agents):
 @patch('wazuh.core.agent.makedirs')
 @patch('wazuh.core.agent.chmod_r')
 @freeze_time('1975-01-01')
-@patch("wazuh.core.common.ossec_uid", return_value=getpwnam("root"))
-@patch("wazuh.core.common.ossec_gid", return_value=getgrnam("root"))
+@patch("wazuh.core.common.wazuh_uid", return_value=getpwnam("root"))
+@patch("wazuh.core.common.wazuh_gid", return_value=getgrnam("root"))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_remove_manual_ko(socket_mock, send_mock, grp_mock, pwd_mock, chmod_r_mock, makedirs_mock, isdir_mock,

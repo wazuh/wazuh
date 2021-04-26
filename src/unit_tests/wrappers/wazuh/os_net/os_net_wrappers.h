@@ -29,6 +29,8 @@ int __wrap_OS_SendSecureTCP(int sock, uint32_t size, const void * msg);
 
 int __wrap_OS_SendUnix(int socket, const char *msg, int size);
 
+void expect_OS_SendUnix_call(int socket, const char *msg, int size, int ret);
+
 int __wrap_OS_RecvSecureTCP(int sock, char * ret, uint32_t size);
 
 int __wrap_OS_RecvUnix(int socket, int sizet, char *ret);

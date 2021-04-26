@@ -12,8 +12,8 @@ import pytest
 from api.util import parse_api_param
 from wazuh.core.exception import WazuhError
 
-with patch('wazuh.common.ossec_uid'):
-    with patch('wazuh.common.ossec_gid'):
+with patch('wazuh.common.wazuh_uid'):
+    with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
 

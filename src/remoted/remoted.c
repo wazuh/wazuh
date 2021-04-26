@@ -108,7 +108,7 @@ void HandleRemote(int uid)
 
     /* Revoke privileges */
     if (Privsep_SetUser(uid) < 0) {
-        merror_exit(SETUID_ERROR, REMUSER, errno, strerror(errno));
+        merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
     }
 
     /* Create PID */

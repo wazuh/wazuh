@@ -29,7 +29,7 @@ int __wrap_getpwnam_r(const char *name,
         return ERANGE;
     }
 
-    if (strcmp(name, "ossec") == 0) {
+    if (strcmp(name, "wazuh") == 0) {
         pwd->pw_uid = 1000;
         *result = pwd;
     }

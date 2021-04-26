@@ -24,8 +24,6 @@ services:
       dockerfile: base/manager/manager.Dockerfile
     image: integration_test_wazuh-manager
     hostname: wazuh-worker1
-    ports:
-      - "55001:55000"
     volumes:
       - ./configurations/tmp/manager:/tmp
       - ./tools/:/tools
@@ -41,8 +39,6 @@ services:
       dockerfile: base/manager/manager.Dockerfile
     image: integration_test_wazuh-manager
     hostname: wazuh-worker2
-    ports:
-      - "55002:55000"
     volumes:
       - ./configurations/tmp/manager:/tmp
       - ./tools/:/tools

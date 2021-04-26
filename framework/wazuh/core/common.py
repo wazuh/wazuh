@@ -7,12 +7,11 @@ import os
 import subprocess
 from contextvars import ContextVar
 from copy import deepcopy
+from functools import lru_cache
 from functools import wraps
 from grp import getgrnam
 from pwd import getpwnam
 from typing import Dict, Any
-from copy import deepcopy
-from functools import lru_cache
 
 try:
     here = os.path.abspath(os.path.dirname(__file__))
@@ -181,8 +180,8 @@ database_limit = 500
 maximum_database_limit = 1000
 limit_seconds = 1800  # 600*3
 
-_ossec_uid = None
-_ossec_gid = None
+_wazuh_uid = None
+_wazuh_gid = None
 
 # Version variables (legacy, required, etc)
 AR_LEGACY_VERSION = 'Wazuh v4.2.0'
@@ -192,13 +191,17 @@ ACTIVE_CONFIG_VERSION = 'Wazuh v3.7.0'
 CHECK_CONFIG_COMMAND = 'check-manager-configuration'
 RESTART_WAZUH_COMMAND = 'restart-wazuh'
 
+# User and group name
+USER_NAME = 'wazuh'
+GROUP_NAME = 'wazuh'
 
-def ossec_uid():
-    return getpwnam("ossec").pw_uid if globals()['_ossec_uid'] is None else globals()['_ossec_uid']
+
+def wazuh_uid():
+    return getpwnam(USER_NAME).pw_uid if globals()['_wazuh_uid'] is None else globals()['_wazuh_uid']
 
 
-def ossec_gid():
-    return getgrnam("ossec").gr_gid if globals()['_ossec_gid'] is None else globals()['_ossec_gid']
+def wazuh_gid():
+    return getgrnam(GROUP_NAME).gr_gid if globals()['_wazuh_gid'] is None else globals()['_wazuh_gid']
 
 
 # Multigroup variables
@@ -209,6 +212,7 @@ rbac: ContextVar[Dict] = ContextVar('rbac', default={'rbac_mode': 'black'})
 current_user: ContextVar[str] = ContextVar('current_user', default='')
 broadcast: ContextVar[bool] = ContextVar('broadcast', default=False)
 cluster_nodes: ContextVar[list] = ContextVar('cluster_nodes', default=list())
+cluster_integrity_mtime: ContextVar[Dict] = ContextVar('cluster_integrity_mtime', default={})
 
 _context_cache = dict()
 
