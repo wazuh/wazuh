@@ -676,8 +676,10 @@ class AWSBucket(WazuhIntegration):
                 # Python 2
                 return gzip.GzipFile(fileobj=raw_object, mode='r')
 
+        print('dec hola')
         raw_object = io.BytesIO(self.client.get_object(Bucket=self.bucket, Key=log_key)['Body'].read())
         if log_key[-3:] == '.gz':
+            print('dec hola')
             return decompress_gzip(raw_object)
         elif log_key[-4:] == '.zip':
             zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
@@ -2085,15 +2087,23 @@ class AWSNLBBucket(AWSCustomBucket):
 
     def load_information_from_file(self, log_key):
         """Load data from a NLB access log file."""
-        with self.decompress_file(log_key=log_key) as f:
+        with open(log_key, "r+") as file:
             fieldnames = (
-                "type", "version", "time", "elb", "listener", "client_port", "destination_port", "connection_time",
+                "type", "version", "time", "elb", "listener", "client_ip", "destination_ip", "connection_time",
                 "tls_handshake_time", "received_bytes", "sent_bytes", "incoming_tls_alert", "chosen_cert_arn",
                 "chosen_cert_serial", "tls_cipher", "tls_protocol_version", "tls_named_group", "domain_name",
                 "alpn_fe_protocol", "alpn_client_preference_list")
-            tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+            tsv_file = csv.DictReader(file, fieldnames=fieldnames, delimiter=' ')
 
-            return [dict(x, source='nlb') for x in tsv_file]
+            tsv_file = [dict(x, source='nlb') for x in tsv_file]
+
+            # Split ip_addr:port field into ip_addr and port fields
+            for log_entry in tsv_file:
+                fields = log_entry['client_ip'].split(':'), log_entry['destination_ip'].split(':')
+                log_entry['client_ip'], log_entry['client_port'] = fields[0][0], fields[0][1]
+                log_entry['destination_ip'], log_entry['destination_port'] = fields[1][0], fields[1][1]
+
+            return tsv_file
 
 
 class AWSService(WazuhIntegration):
