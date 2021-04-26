@@ -22,11 +22,15 @@ static const char *XML_API_TOKEN = "api_token";
 static const char *XML_API_PARAMETERS = "api_parameters";
 static const char *XML_EVENT_TYPE = "event_type";
 
+static const char *EVENT_TYPE_ALL = "all";
+static const char *EVENT_TYPE_GIT = "git";
+static const char *EVENT_TYPE_WEB = "web";
+
 time_t time_convert(const char *time_c) {
     char *endptr;
     time_t time_i = strtoul(time_c, &endptr, 0);
 
-    if (time_i == 0 || time_i == UINT_MAX) {
+    if (time_i <= 0 || time_i >= UINT_MAX) {
         return OS_INVALID;
     }
 
@@ -58,7 +62,6 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     xml_node **children = NULL;
     wm_github* github_config = NULL;
     wm_github_auth *github_auth = NULL;
-    const char *wm_github_default_event_type = "all";
 
     if (!module->data) {
         // Default initialization
@@ -70,14 +73,14 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         github_config->only_future_events = WM_GITHUB_DEFAULT_ONLY_FUTURE_EVENTS;
         github_config->interval =           WM_GITHUB_DEFAULT_INTERVAL;
         github_config->time_delay =         WM_GITHUB_DEFAULT_DELAY;
-        os_strdup(wm_github_default_event_type, github_config->event_type);
+        os_strdup(EVENT_TYPE_ALL, github_config->event_type);
         module->data = github_config;
     } else {
         github_config = module->data;
     }
 
     if (!nodes) {
-        return OS_SUCCESS;
+        return OS_INVALID;
     }
 
     for (i = 0; nodes[i]; i++){
@@ -160,15 +163,13 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             }
             OS_ClearNode(children);
 
-
-
         } else if (!strcmp(nodes[i]->element, XML_API_PARAMETERS)) {
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
                 continue;
             }
             for (j = 0; children[j]; j++){
                 if (!strcmp(children[j]->element, XML_EVENT_TYPE)) {
-                    if (strcmp(children[j]->content, "all") && strcmp(children[j]->content, "git") && strcmp(children[j]->content, "web")) {
+                    if (strcmp(children[j]->content, EVENT_TYPE_ALL) && strcmp(children[j]->content, EVENT_TYPE_GIT) && strcmp(children[j]->content, EVENT_TYPE_WEB)) {
                         merror("Invalid content for tag '%s' at module '%s'.", XML_EVENT_TYPE, WM_GITHUB_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
