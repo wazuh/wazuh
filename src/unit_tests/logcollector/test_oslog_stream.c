@@ -23,7 +23,7 @@
 
 bool w_logcollector_validate_oslog_stream_predicate(char * predicate);
 char ** w_create_oslog_stream_array(char * predicate, char * level, int type);
-wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t flags);
+wfd_t * w_logcollector_exec_oslog(char ** oslog_array, u_int32_t flags);
 void w_logcollector_create_oslog_env(logreader * current);
 
 /* setup/teardown */
@@ -1828,8 +1828,8 @@ void test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predic
 
 }
 
-/* w_logcollector_exec_oslog_stream */
-void test_w_logcollector_exec_oslog_stream_wpopenv_error(void ** state) {
+/* w_logcollector_exec_oslog */
+void test_w_logcollector_exec_oslog_wpopenv_error(void ** state) {
     char * oslog_array = NULL;
     os_strdup("log stream", oslog_array);
     u_int32_t flags = 0;
@@ -1838,14 +1838,14 @@ void test_w_logcollector_exec_oslog_stream_wpopenv_error(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_logcollector_exec_oslog(&oslog_array, flags);
 
     assert_null(ret);
     os_free(oslog_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_fileno_error(void ** state) {
+void test_w_logcollector_exec_oslog_fileno_error(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
@@ -1863,14 +1863,14 @@ void test_w_logcollector_exec_oslog_stream_fileno_error(void ** state) {
 
     will_return(__wrap_wpclose, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_logcollector_exec_oslog(&oslog_array, flags);
 
     assert_ptr_equal(ret, 0);
     os_free(oslog_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_fp_to_fd_error(void ** state) {
+void test_w_logcollector_exec_oslog_fp_to_fd_error(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
@@ -1888,14 +1888,14 @@ void test_w_logcollector_exec_oslog_stream_fp_to_fd_error(void ** state) {
 
     will_return(__wrap_wpclose, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_logcollector_exec_oslog(&oslog_array, flags);
 
     assert_ptr_equal(ret, 0);
     os_free(oslog_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_get_flags_error(void ** state) {
+void test_w_logcollector_exec_oslog_get_flags_error(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
@@ -1915,14 +1915,14 @@ void test_w_logcollector_exec_oslog_stream_get_flags_error(void ** state) {
 
     will_return(__wrap_wpclose, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_logcollector_exec_oslog(&oslog_array, flags);
 
     assert_ptr_equal(ret, 0);
     os_free(oslog_array);
 
 }
 
-void test_w_logcollector_exec_oslog_stream_set_flags_error(void ** state) {
+void test_w_logcollector_exec_oslog_set_flags_error(void ** state) {
     wfd_t * wfd = *state;
     wfd->file = (FILE*) 1234;
 
@@ -1944,7 +1944,7 @@ void test_w_logcollector_exec_oslog_stream_set_flags_error(void ** state) {
 
     will_return(__wrap_wpclose, 0);
 
-    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+    wfd_t * ret = w_logcollector_exec_oslog(&oslog_array, flags);
 
     assert_ptr_equal(ret, 0);
     os_free(oslog_array);
@@ -2021,12 +2021,12 @@ int main(void) {
         cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_trace_predicate),
         cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_log_trace_predicate),
         cmocka_unit_test(test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predicate),
-        // Test w_logcollector_exec_oslog_stream
-        cmocka_unit_test(test_w_logcollector_exec_oslog_stream_wpopenv_error),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_fileno_error, setup_file, teardown_file),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_fp_to_fd_error, setup_file, teardown_file),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_get_flags_error, setup_file, teardown_file),
-        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_set_flags_error, setup_file, teardown_file),
+        // Test w_logcollector_exec_oslog
+        cmocka_unit_test(test_w_logcollector_exec_oslog_wpopenv_error),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_fileno_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_fp_to_fd_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_get_flags_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_set_flags_error, setup_file, teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
