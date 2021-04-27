@@ -148,10 +148,6 @@ int main(int argc, char **argv)
         merror_exit(USER_ERROR, user, group, strerror(errno), errno);
     }
 
-    /* Reading configuration */
-    if (MonitordConfig(cfg, &mond, no_agents, day_wait) != OS_SUCCESS ) {
-        merror_exit(CONFIG_ERROR, cfg);
-    }
 
     /* If we have any reports configured, read smtp/emailfrom */
     if (mond.reports) {
