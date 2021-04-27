@@ -7,7 +7,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+#define RUNTIME_TERROR_DEVELOPING // todo: delete this line after development
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING)) ||  defined(RUNTIME_TERROR_DEVELOPING)
 #include "oslog_stream.h"
 
 // Remove STATIC/INLINE qualifier from tests
@@ -24,7 +25,7 @@
  * @param predicate Contains the `log stream`'s predicate filter to be used as a string
  * @return true if valid, otherwise false
  */
-STATIC bool w_logcollector_validate_oslog_stream_predicate(char * predicate) {
+STATIC INLINE bool w_logcollector_validate_oslog_stream_predicate(char * predicate) {
 
     // todo : improve this function
     if (strlen(predicate) > 0) {
@@ -96,7 +97,7 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
  * @param flags Are the flags to be used along with wpopenv()
  * @return A pointer to a fulfilled wfd_t structure, on success, or NULL
  */
-STATIC wfd_t * w_logcollector_exec_oslog_stream(char ** oslog_array, u_int32_t flags) {
+STATIC wfd_t * w_logcollector_exec_oslog(char ** oslog_array, u_int32_t flags) {
 
     int oslog_fd = -1;
     int oslog_fd_flags = 0;
@@ -158,7 +159,7 @@ void w_logcollector_create_oslog_env(logreader * current) {
     if (w_is_log_cmd_executable()) {
         log_stream_array = w_create_oslog_stream_array(current->query, current->query_level, current->query_type);
 
-        current->oslog->log_wfd = w_logcollector_exec_oslog_stream(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
+        current->oslog->log_wfd = w_logcollector_exec_oslog(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
         if (current->oslog->log_wfd != NULL && current->oslog->log_wfd->file != NULL) {
             current->oslog->is_oslog_running = true;
