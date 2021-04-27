@@ -212,7 +212,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-    FactoryPackagesCreator<LinuxType::CENTOS5>::getPackages(packages); //DEF_VARIABLE_LINUX_TYPE
+    FactoryPackagesCreator<DEF_VARIABLE_LINUX_TYPE>::getPackages(packages);
     return packages;
 }
 

@@ -86,6 +86,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
       "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
       "${CMAKE_SOURCE_DIR}/src/packages/*Packages.cpp")
+  add_definitions(-DDEF_VARIABLE_LINUX_TYPE=LinuxType::ALL)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"
