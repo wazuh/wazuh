@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _PACKAGES_LINUX_PARSER_HELPER_H
-#define _PACKAGES_LINUX_PARSER_HELPER_H
+#ifndef _PACKAGE_LINUX_PARSER_HELPER_H
+#define _PACKAGE_LINUX_PARSER_HELPER_H
 
 #include <fstream>
 #include "sharedDefs.h"
@@ -22,6 +22,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+
+// Parse helpers for standard Linux packaging systems (rpm, dpkg, ...)
 namespace PackageLinuxHelper
 {
     static nlohmann::json parseRpm(const std::string& packageInfo)
@@ -160,4 +162,4 @@ namespace PackageLinuxHelper
 
 };
 
-#endif // _PACKAGES_LINUX_PARSER_HELPER_H
+#endif // _PACKAGE_LINUX_PARSER_HELPER_H

@@ -43,8 +43,8 @@ enum OSType
 
 enum LinuxType
 {
-    ALL,
-    CENTOS5
+    STANDARD,
+    LEGACY
 };
 
 enum PortType

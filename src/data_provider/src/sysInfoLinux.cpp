@@ -25,7 +25,7 @@
 #include "ports/portLinuxWrapper.h"
 #include "ports/portImpl.h"
 #include "packages/berkeleyRpmDbHelper.h"
-#include "packages/packageDataAFactory.h"
+#include "packages/packageLinuxDataRetriever.h"
 
 struct ProcTableDeleter
 {
@@ -212,7 +212,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
 nlohmann::json SysInfo::getPackages() const
 {
     nlohmann::json packages;
-    FactoryPackagesCreator<DEF_VARIABLE_LINUX_TYPE>::getPackages(packages);
+    FactoryPackagesCreator<LINUX_TYPE>::getPackages(packages);
     return packages;
 }
 

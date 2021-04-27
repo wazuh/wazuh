@@ -9,8 +9,8 @@
  * Foundation.
  */
 
-#ifndef _PACKAGES_LINUX_PARSER_HELPER_H
-#define _PACKAGES_LINUX_PARSER_HELPER_H
+#ifndef _PACKAGE_LINUX_PARSER_HELPER_EXTRA_H
+#define _PACKAGE_LINUX_PARSER_HELPER_EXTRA_H
 
 #include <fstream>
 #include "sharedDefs.h"
@@ -24,6 +24,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+
+// Parse helper for partially incompatible Linux packaging systems (pacman, ...)
 namespace PackageLinuxHelper
 {
     static nlohmann::json parsePacman(const alpm_list_t *pItem)
@@ -59,4 +61,4 @@ namespace PackageLinuxHelper
 
 };
 
-#endif // _PACKAGES_LINUX_PARSER_HELPER_H
+#endif // _PACKAGE_LINUX_PARSER_HELPER_EXTRA_H

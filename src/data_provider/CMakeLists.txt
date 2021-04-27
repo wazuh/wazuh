@@ -78,15 +78,15 @@ elseif(CMAKE_CHECK_CENTOS5)
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/legacyLinuxPackages.cpp")
-  add_definitions(-DDEF_VARIABLE_LINUX_TYPE=LinuxType::CENTOS5)
+      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParser.cpp")
+  add_definitions(-DLINUX_TYPE=LinuxType::LEGACY) # Partial compilation in legacy systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/*Packages.cpp")
-  add_definitions(-DDEF_VARIABLE_LINUX_TYPE=LinuxType::ALL)
+      "${CMAKE_SOURCE_DIR}/src/packages/packageLinux*.cpp")
+  add_definitions(-DLINUX_TYPE=LinuxType::STANDARD) # Standard compilation in compatible systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Mac.cpp"

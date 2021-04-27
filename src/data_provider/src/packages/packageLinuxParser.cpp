@@ -10,8 +10,9 @@
  */
 
 #include "sharedDefs.h"
-#include "packagesLegacyLinuxParserHelper.h"
+#include "packageLinuxParserHelper.h"
 #include "berkeleyRpmDbHelper.h"
+
 
 void getRpmInfo(nlohmann::json& packages)
 {

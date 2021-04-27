@@ -12,7 +12,8 @@
 #include "sharedDefs.h"
 #include <alpm.h>
 #include <package.h>
-#include "packagesLinuxParserHelper.h"
+#include "packageLinuxParserHelperExtra.h"
+
 
 struct AlmpDeleter final
 {

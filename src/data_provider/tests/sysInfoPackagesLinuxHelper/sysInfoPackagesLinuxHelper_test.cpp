@@ -10,8 +10,8 @@
  */
 
 #include "sysInfoPackagesLinuxHelper_test.h"
-#include "packages/packagesLinuxParserHelper.h"
-#include "packages/packagesLegacyLinuxParserHelper.h"
+#include "packages/packageLinuxParserHelper.h"
+#include "packages/packageLinuxParserHelperExtra.h"
 #include <alpm.h>
 #include <package.h>
 #include <handle.h>
