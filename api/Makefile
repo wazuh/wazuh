@@ -1,5 +1,5 @@
 # Makefile for Wazuh API
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # May 3, 2017
 #
 # Syntax: make [ all | backup | install | restore | service ]

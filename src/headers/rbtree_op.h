@@ -3,7 +3,7 @@
  * @brief RB tree data structure declaration
  * @date 2019-08-21
  *
- * @copyright Copyright (c) 2019 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 /*
