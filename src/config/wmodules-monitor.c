@@ -11,12 +11,20 @@
 
 #ifndef CLIENT
 #include "wazuh_modules/wmodules.h"
+#include "../monitord/monitord.h"
+
+#define DEFAULT_NO_AGENT 0
+#define DEFAULT_DAY_WAIT -1
 
 // Parse XML configuration
-int wm_sys_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
+int wm_monitor_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
     if (module) {
-        module->context = &WM_SYS_CONTEXT;
+        module->context = &WM_MONITOR_CONTEXT;
         module->tag = strdup(module->context->name);
+        /* Reading configuration */
+        if (MonitordConfig(OSSECCONF, &mond, DEFAULT_NO_AGENT, DEFAULT_DAY_WAIT) != OS_SUCCESS ) {
+            merror(CONFIG_ERROR, OSSECCONF);
+        }
     }
     return 0;
 }
