@@ -88,7 +88,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -110,8 +110,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - board_serial: !anything
-              cpu:
+            - cpu:
                 cores: !anything
                 mhz: !anything
                 name: !anything
@@ -128,7 +127,6 @@ stages:
         message: !anystr
       save:
         json:
-          board_serial: data.affected_items[0].board_serial
           cpu_name: data.affected_items[0].cpu.name
           ram_total: data.affected_items[0].ram.total
 
@@ -148,7 +146,6 @@ marks:
   - parametrize:
       key: field
       vals:
-        - board_serial
         - cpu.cores
         - cpu.mhz
         - cpu.name
@@ -170,7 +167,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -565,7 +562,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -1060,7 +1057,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -1301,7 +1298,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -1693,7 +1690,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -2023,7 +2020,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -2692,7 +2689,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -2797,7 +2794,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -2819,8 +2816,7 @@ stages:
         error: !anyint
         data:
           affected_items:
-            - board_serial: !anything
-              cpu:
+            - cpu:
                 cores: !anything
                 mhz: !anything
                 name: !anything
@@ -2833,7 +2829,6 @@ stages:
                 time: !anything
       save:
         json:
-          board_serial: data.affected_items[0].board_serial
           cpu_name: data.affected_items[0].cpu.name
           ram_total: data.affected_items[0].ram.total
 
@@ -2853,7 +2848,6 @@ marks:
   - parametrize:
       key: field
       vals:
-        - board_serial
         - cpu.cores
         - cpu.mhz
         - cpu.name
@@ -2875,7 +2869,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
 
@@ -3228,7 +3222,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -3573,7 +3567,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:
@@ -4225,7 +4219,7 @@ stages:
       status_code: 200
       verify_response_with:
         # Check response item keys are the selected keys
-        function: tavern_utils:test_select_key_affected_items_with_agent_id
+        function: tavern_utils:test_select_key_affected_items
         extra_kwargs:
           select_key: "{field:s}"
       json:

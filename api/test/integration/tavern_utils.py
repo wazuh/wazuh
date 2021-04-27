@@ -24,7 +24,14 @@ def test_token_raw_format(response):
 
 
 def test_select_key_affected_items(response, select_key):
-    """
+    """Check that all items in response have no other keys than those specified in 'select_key'.
+
+    Absence of 'select_key' in response does not raise any error. However, extra keys in response (not specified
+    in 'select_key') will raise assertion error.
+
+    Some keys like 'id', 'agent_id', etc. are accepted even if not specified in 'select_key' since
+    they ignore the 'select' param in API.
+
     :param response: Request response
     :param select_key: Keys requested in select parameter.
         Lists and nested fields accepted e.g: id,cpu.mhz,json
@@ -45,13 +52,17 @@ def test_select_key_affected_items(response, select_key):
             main_keys.update({key})
 
     for item in response.json()['data']['affected_items']:
+        # Get keys in response that are not specified in 'select_keys'
         set1 = main_keys.symmetric_difference(set(item.keys()))
-        assert set1 == set() or set1.intersection({'id', 'agent_id', 'file'}), \
-            f'Select keys are {main_keys}, but this one is different {set1}'
+        # Check if there are keys in response that were not specified in 'select_keys', apart from those which can be
+        # mandatory (id, agent_id, etc).
+        assert (set1 == set() or set1 == set1.intersection({'id', 'agent_id', 'file'} | main_keys)), \
+            f'Select keys are {main_keys}, but the response contains these keys: {set1}'
 
         for nested_key in nested_keys.items():
             set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
-            assert set2 == set(), f'Nested select keys are {nested_key[1]}, but this one is different {set2}'
+            assert set2 == set(), f'Nested select keys are {nested_key[1]}, but the response contains these nested ' \
+                                  f'keys {set2}'
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):

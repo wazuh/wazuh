@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2014 Daniel B. Cid
  * All rights reserved.
  *
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     /* Highly recommended not to run as root. However, some integrations
      * may require it. */
     char *home_path = w_homedir(argv[0]);
-    char *user = MAILUSER;
+    char *user = USER;
     char *group = GROUPGLOBAL;
     char *cfg = OSSECCONF;
 

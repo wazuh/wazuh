@@ -41,7 +41,7 @@
 # Force the use of authd when adding and removing agents. Values: yes, no
 # use_only_authd: no
 
-# Drop privileges (Run as ossec user)
+# Drop privileges (Run as wazuh user)
 # drop_privileges: yes
 
 # Enable features under development

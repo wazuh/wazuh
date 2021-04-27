@@ -1,6 +1,6 @@
 /*
  * Queue (abstract data type)
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * June 22, 2018
  *
  * This program is free software; you can redistribute it

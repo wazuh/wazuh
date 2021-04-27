@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -25,16 +25,13 @@ static const char *get_ip(const Eventinfo *lf);
 int conn_error_sent = 0;
 
 void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *ar) {
-    char exec_msg[OS_SIZE_8192 + 1];
-    char msg[OS_SIZE_8192 + 1];
+    char * exec_msg = NULL;
+    char * msg = NULL;
     const char *ip;
     const char *user;
     char *filename = NULL;
+
     char *extra_args = NULL;
-
-    memset(exec_msg, 0, OS_SIZE_8192 + 1);
-    memset(msg, 0, OS_SIZE_8192 + 1);
-
     /* Clean the IP */
     ip = "-";
     if (lf->srcip) {
@@ -43,6 +40,9 @@ void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *a
             return;
         }
     }
+
+    os_calloc(OS_MAXSTR + 1, sizeof(char), exec_msg);
+    os_calloc(OS_MAXSTR + 1, sizeof(char), msg);
 
     /* Get username */
     user = "-";
@@ -101,8 +101,8 @@ void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *a
                 wlabel_t *agt_labels = NULL;
                 char *agt_version = NULL;
 
-                memset(exec_msg, 0, OS_SIZE_8192 + 1);
-                memset(msg, 0, OS_SIZE_8192 + 1);
+                memset(exec_msg, 0, OS_MAXSTR + 1);
+                memset(msg, 0, OS_MAXSTR + 1);
 
                 snprintf(c_agent_id, OS_SIZE_16, "%.3d", id_array[i]);
 
@@ -122,7 +122,7 @@ void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *a
                     if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
                         agt_version = json_agt_version->valuestring;
                     } else {
-                        merror("Failed to get agent '%d' version.", id_array[i]);
+                        mdebug2("Failed to get agent '%d' version.", id_array[i]);
                         labels_free(agt_labels);
                         cJSON_Delete(json_agt_info);
                         continue;
@@ -198,7 +198,7 @@ void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *a
                 if(cJSON_IsString(json_agt_version) && json_agt_version->valuestring != NULL) {
                     agt_version = json_agt_version->valuestring;
                 } else {
-                    merror("Failed to get agent '%d' version.", agt_id);
+                    mdebug2("Failed to get agent '%d' version.", agt_id);
                     labels_free(agt_labels);
                     cJSON_Delete(json_agt_info);
                     goto cleanup;
@@ -236,6 +236,8 @@ void OS_Exec(int *execq, int *arq, const Eventinfo *lf, const active_response *a
     /* Clean up Memory */
     os_free(filename);
     os_free(extra_args);
+    os_free(exec_msg);
+    os_free(msg);
 
     return;
 }
@@ -321,6 +323,7 @@ void getActiveResponseInString( const Eventinfo *lf,
  * @param[in] agent_id Agent ID to identify where the AR will be executed.
  * @param[in] msg Message that can be in JSON or string format
  * @param[out] exec_msg Complete massage containing the message and the header.
+ * @pre exec_msg is OS_MAXSTR + 1 or more bytes long.
  * @return void.
  */
 void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, char *exec_msg) {
@@ -336,9 +339,7 @@ void get_exec_msg(const active_response *ar, char *agent_id, const char *msg, ch
             (ar->location & SPECIFIC_AGENT || ar->location & ALL_AGENTS) ? SPECIFIC_AGENT_C : NONE_C,
             agent_id);
 
-    strcpy(exec_msg, temp_msg);
-    strcat(exec_msg, " ");
-    strcat(exec_msg, msg);
+    os_snprintf(exec_msg, OS_MAXSTR + 1, "%s %s", temp_msg, msg);
 }
 
 /**

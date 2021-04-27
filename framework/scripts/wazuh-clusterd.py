@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import argparse
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     # set correct permissions on cluster.log file
     if os.path.exists('{0}/logs/cluster.log'.format(common.wazuh_path)):
-        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.ossec_uid(), common.ossec_gid())
+        os.chown('{0}/logs/cluster.log'.format(common.wazuh_path), common.wazuh_uid(), common.wazuh_gid())
         os.chmod('{0}/logs/cluster.log'.format(common.wazuh_path), 0o660)
 
     main_logger = set_logging(foreground_mode=args.foreground, debug_mode=debug_mode)
@@ -142,10 +142,10 @@ if __name__ == '__main__':
     if not args.foreground:
         pyDaemonModule.pyDaemon()
 
-    # Drop privileges to ossec
+    # Drop privileges to wazuh
     if not args.root:
-        os.setgid(common.ossec_gid())
-        os.setuid(common.ossec_uid())
+        os.setgid(common.wazuh_gid())
+        os.setuid(common.wazuh_uid())
 
     pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
 
@@ -156,6 +156,6 @@ if __name__ == '__main__':
         main_logger.info("SIGINT received. Bye!")
     except MemoryError:
         main_logger.error("Directory '/tmp' needs read, write & execution "
-                          "permission for 'ossec' user")
+                          "permission for 'wazuh' user")
     except Exception as e:
         main_logger.error(f"Unhandled exception: {e}")
