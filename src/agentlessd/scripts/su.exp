@@ -2,7 +2,7 @@
 
 # Agentless monitoring
 #
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Copyright (C) 2009 Trend Micro Inc.
 # All rights reserved.
 #

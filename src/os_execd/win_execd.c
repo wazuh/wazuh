@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -98,7 +98,11 @@ int WinExecd_Start()
 // Create a thread to run windows AR simultaneous
 DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
     while(1) {
-        WinExecdRun(queue_pop_ex(winexec_queue));
+        char* exec_msg = queue_pop_ex(winexec_queue);
+        if (exec_msg) {
+            WinExecdRun(exec_msg);
+            os_free(exec_msg);
+        }
     }
 }
 

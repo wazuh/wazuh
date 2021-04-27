@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -747,13 +747,14 @@ void test_getActiveResponseInJSON_extra_args(void **state){
     test_struct_t *data  = (test_struct_t *)*state;
     cJSON *json_msj = NULL;
 
-    char msg[OS_SIZE_8192 + 1];
+    char * msg;
     char *c_device = NULL;
     const char *alert_info = "[{\"test\":\"test\"}]";
     char *extra_args = "-arg1 --arg2 arg3 ; cat /etc/passwd";
     char *result = "[\"-arg1\",\"--arg2\",\"arg3\",\";\",\"cat\",\"/etc/passwd\"]";
     char *node = NULL;
 
+    os_malloc(OS_MAXSTR + 1, msg);
     os_strdup("node01", node);
 
     will_return(__wrap_Eventinfo_to_jsonstr, strdup(alert_info));
@@ -777,6 +778,7 @@ void test_getActiveResponseInJSON_extra_args(void **state){
     assert_string_equal(c_device, result);
 
     os_free(c_device);
+    os_free(msg);
 }
 
 void test_send_exec_msg(void **state){

@@ -2,7 +2,7 @@
 #
 # name: wazuh
 # purpose: Init script for Wazuh
-# Copyright (C) 2015-2020, Wazuh Inc. <support@wazuh.com>
+# Copyright (C) 2015-2021, Wazuh Inc. <support@wazuh.com>
 #
 
 WAZUH_HOME=WAZUH_HOME_TMP

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2015-2020, Wazuh Inc.
+* Copyright (C) 2015-2021, Wazuh Inc.
 * December 05, 2018.
 *
 * This program is free software; you can redistribute it
@@ -148,7 +148,7 @@ end:
 static int ConnectToSecurityConfigurationAssessmentSocket() {
 
     if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
-        merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
+        mwarn(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
         return -1;
     }
 
@@ -158,7 +158,7 @@ static int ConnectToSecurityConfigurationAssessmentSocket() {
 static int ConnectToSecurityConfigurationAssessmentSocketRemoted() {
 
     if ((cfgar_socket = StartMQ(CFGARQUEUE, WRITE, 1)) < 0) {
-        merror(QUEUE_ERROR, CFGARQUEUE, strerror(errno));
+        mwarn(QUEUE_ERROR, CFGARQUEUE, strerror(errno));
         return -1;
     }
 

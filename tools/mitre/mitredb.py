@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 #
@@ -282,7 +282,7 @@ def main(database=None):
     # User and group permissions        
     os.chmod(database, 0o660)
     uid = pwd.getpwnam("root").pw_uid
-    gid = grp.getgrnam("ossec").gr_gid
+    gid = grp.getgrnam("wazuh").gr_gid
     os.chown(database, uid, gid)
 
     conn.close()
