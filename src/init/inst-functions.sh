@@ -973,11 +973,11 @@ InstallServer()
     ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/default
 
     if [ ! -f ${INSTALLDIR}/etc/shared/default/shared.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${WAZUH_GROUP} ../etc/shared.conf ${INSTALLDIR}/etc/shared/default
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/shared.conf ${INSTALLDIR}/etc/shared/default
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/shared/shared-template.conf ]; then
-        ${INSTALL} -m 0660 -o ossec -g ${WAZUH_GROUP} ../etc/shared.conf ${INSTALLDIR}/etc/shared/shared-template.conf
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/shared.conf ${INSTALLDIR}/etc/shared/shared-template.conf
     fi
 
     # Install the plugins files
