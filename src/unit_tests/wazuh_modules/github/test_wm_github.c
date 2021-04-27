@@ -470,6 +470,27 @@ void test_error_api_auth(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
 
+void test_error_api_auth_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<invalid>Wazuh</invalid>"
+            "<invalid>Wazuh_token</invalid>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "No such tag 'invalid' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
 void test_error_org_name(void **state) {
     const char *string =
         "<enabled>no</enabled>\n"
@@ -552,6 +573,27 @@ void test_error_api_token_1(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
 
+void test_error_event_type_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<invalid>all</invalid>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "No such tag 'invalid' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -573,10 +615,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_invalid_time_delay_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_time_delay_2, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_api_auth, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_api_auth_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_org_name, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_org_name_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_api_token, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_api_token_1, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_event_type_1, setup_test_read, teardown_test_read),
 
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

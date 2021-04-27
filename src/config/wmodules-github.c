@@ -158,8 +158,13 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                     }
                     free(github_auth->api_token);
                     os_strdup(children[j]->content, github_auth->api_token);
+                } else {
+                    merror("No such tag '%s' at module '%s'.", children[j]->element, WM_GITHUB_CONTEXT.name);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
                 }
             }
+            OS_ClearNode(children);
             if(github_auth->org_name == NULL) {
                 merror("'%s' is missing at module '%s'.", XML_ORG_NAME, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
@@ -167,7 +172,6 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 merror("'%s' is missing at module '%s'.", XML_API_TOKEN, WM_GITHUB_CONTEXT.name);
                 return OS_INVALID;
             }
-            OS_ClearNode(children);
 
         } else if (!strcmp(nodes[i]->element, XML_API_PARAMETERS)) {
             if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
@@ -182,6 +186,10 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                     }
                     free(github_config->event_type);
                     os_strdup(children[j]->content, github_config->event_type);
+                } else {
+                    merror("No such tag '%s' at module '%s'.", children[j]->element, WM_GITHUB_CONTEXT.name);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
                 }
             }
             OS_ClearNode(children);
