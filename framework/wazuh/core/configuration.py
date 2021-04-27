@@ -8,8 +8,6 @@ import os
 import re
 import subprocess
 import sys
-import time
-import xml.etree.ElementTree as ET
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
