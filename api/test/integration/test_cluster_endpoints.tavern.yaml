@@ -1164,6 +1164,7 @@ stages:
           affected_items:
             - internal:
                 logcollector:
+                  debug: !anyint
                   force_reload: !anyint
                   input_threads: !anyint
                   loop_timeout: !anyint
