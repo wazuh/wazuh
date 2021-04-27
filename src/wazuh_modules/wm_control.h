@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for Agent control
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * January, 2019
  *
  * This program is free software; you can redistribute it
