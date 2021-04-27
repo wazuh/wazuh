@@ -40,6 +40,12 @@ static int teardown_test_read(void **state) {
         if(((wm_github*)test->module->data)->auth){
             os_free(((wm_github*)test->module->data)->auth->org_name);
             os_free(((wm_github*)test->module->data)->auth->api_token);
+            if(((wm_github*)test->module->data)->auth->next) {
+                os_free(((wm_github*)test->module->data)->auth->next->org_name);
+                os_free(((wm_github*)test->module->data)->auth->next->api_token);
+                os_free(((wm_github*)test->module->data)->auth->next->next);
+            }
+            os_free(((wm_github*)test->module->data)->auth->next);
             os_free(((wm_github*)test->module->data)->auth);
         }
         os_free(((wm_github*)test->module->data)->event_type);
@@ -80,6 +86,41 @@ void test_read_configuration(void **state) {
     assert_string_equal(module_data->event_type, "git");
 }
 
+void test_read_configuration_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>yes</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_auth>"
+            "<org_name>Wazuh1</org_name>"
+            "<api_token>Wazuh_token1</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>git</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),0);
+    wm_github *module_data = (wm_github*)test->module->data;
+    assert_int_equal(module_data->enabled, 0);
+    assert_int_equal(module_data->run_on_start, 1);
+    assert_int_equal(module_data->interval, 600);
+    assert_int_equal(module_data->time_delay, 1);
+    assert_int_equal(module_data->only_future_events, 0);
+    assert_string_equal(module_data->auth->org_name, "Wazuh");
+    assert_string_equal(module_data->auth->api_token, "Wazuh_token");
+    assert_string_equal(module_data->auth->next->org_name, "Wazuh1");
+    assert_string_equal(module_data->auth->next->api_token, "Wazuh_token1");
+    assert_string_equal(module_data->event_type, "git");
+}
+
 void test_read_default_configuration(void **state) {
     const char *string =
         "<api_auth>"
@@ -103,7 +144,18 @@ void test_read_default_configuration(void **state) {
 
 void test_read_interval(void **state) {
     const char *string =
+        "<enabled>yes</enabled>\n"
+        "<run_on_start>yes</run_on_start>\n"
         "<interval>10</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>git</event_type>"
+        "</api_parameters>"
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
@@ -114,7 +166,18 @@ void test_read_interval(void **state) {
 
 void test_read_interval_s(void **state) {
     const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>yes</run_on_start>\n"
         "<interval>50s</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>git</event_type>"
+        "</api_parameters>"
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
@@ -125,7 +188,18 @@ void test_read_interval_s(void **state) {
 
 void test_read_interval_m(void **state) {
     const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>yes</run_on_start>\n"
         "<interval>1m</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>git</event_type>"
+        "</api_parameters>"
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
@@ -136,7 +210,18 @@ void test_read_interval_m(void **state) {
 
 void test_read_interval_h(void **state) {
     const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>yes</run_on_start>\n"
         "<interval>2h</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>git</event_type>"
+        "</api_parameters>"
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
@@ -147,7 +232,18 @@ void test_read_interval_h(void **state) {
 
 void test_read_interval_d(void **state) {
     const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>yes</run_on_start>\n"
         "<interval>3d</interval>\n"
+        "<time_delay>10</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>git</event_type>"
+        "</api_parameters>"
     ;
     test_structure *test = *state;
     test->nodes = string_to_xml_node(string, &(test->xml));
@@ -237,7 +333,7 @@ void test_invalid_content_2(void **state) {
         "<run_on_start>no</run_on_start>\n"
         "<interval>10m</interval>\n"
         "<time_delay>1s</time_delay>"
-        "<only_future_events>no</only_future_events>"
+        "<only_future_events>yes</only_future_events>"
         "<api_auth>"
             "<org_name>Wazuh</org_name>"
             "<api_token>Wazuh_token</api_token>"
@@ -248,6 +344,69 @@ void test_invalid_content_2(void **state) {
     ;
     test_structure *test = *state;
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'event_type' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_invalid_content_3(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<only_future_events>invalid</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'only_future_events' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_invalid_content_4(void **state) {
+    const char *string =
+        "<enabled>invalid</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<only_future_events>yes</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'enabled' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_invalid_content_5(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>invalid</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<only_future_events>yes</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'interval' at module 'github'.");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
@@ -294,12 +453,110 @@ void test_invalid_time_delay_2(void **state) {
     assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
 }
 
+void test_error_api_auth(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'api_auth' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
 
+void test_error_org_name(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name></org_name>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'org_name' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_error_org_name_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<api_token>Wazuh_token</api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "'org_name' is missing at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_error_api_token(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+            "<api_token></api_token>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "Empty content for tag 'api_token' at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
+
+void test_error_api_token_1(void **state) {
+    const char *string =
+        "<enabled>no</enabled>\n"
+        "<run_on_start>no</run_on_start>\n"
+        "<interval>10m</interval>\n"
+        "<time_delay>1s</time_delay>"
+        "<only_future_events>no</only_future_events>"
+        "<api_auth>"
+            "<org_name>Wazuh</org_name>"
+        "</api_auth>"
+        "<api_parameters>"
+            "<event_type>all</event_type>"
+        "</api_parameters>"
+    ;
+    test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "'api_token' is missing at module 'github'.");
+    test->nodes = string_to_xml_node(string, &(test->xml));
+    assert_int_equal(wm_github_read(&(test->xml), test->nodes, test->module),-1);
+}
 
 int main(void) {
 
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_configuration_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_default_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_interval_s, setup_test_read, teardown_test_read),
@@ -310,8 +567,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fake_tag, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_content_2, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_content_3, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_content_4, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_invalid_content_5, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_time_delay_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_invalid_time_delay_2, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_api_auth, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_org_name, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_org_name_1, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_api_token, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_error_api_token_1, setup_test_read, teardown_test_read),
+
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

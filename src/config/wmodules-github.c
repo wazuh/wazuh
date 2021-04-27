@@ -127,7 +127,6 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_API_AUTH)) {
-
             // Create auth node
             if (github_auth) {
                 os_calloc(1, sizeof(wm_github_auth), github_auth->next);
@@ -161,6 +160,13 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                     os_strdup(children[j]->content, github_auth->api_token);
                 }
             }
+            if(github_auth->org_name == NULL) {
+                merror("'%s' is missing at module '%s'.", XML_ORG_NAME, WM_GITHUB_CONTEXT.name);
+                return OS_INVALID;
+            } else if(github_auth->api_token == NULL) {
+                merror("'%s' is missing at module '%s'.", XML_API_TOKEN, WM_GITHUB_CONTEXT.name);
+                return OS_INVALID;
+            }
             OS_ClearNode(children);
 
         } else if (!strcmp(nodes[i]->element, XML_API_PARAMETERS)) {
@@ -185,5 +191,9 @@ int wm_github_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         }
     }
 
+    if (!github_auth) {
+        merror("Empty content for tag '%s' at module '%s'.", XML_API_AUTH, WM_GITHUB_CONTEXT.name);
+        return OS_INVALID;
+    }
     return OS_SUCCESS;
 }
