@@ -39,6 +39,7 @@ void * wm_github_main(wm_github* github_config) {
 void wm_github_destroy(wm_github* github_config) {
     mtinfo(WM_GITHUB_LOGTAG, "Module GitHub finished");
     wm_github_auth_destroy(github_config->auth);
+    os_free(github_config->event_type);
     os_free(github_config);
 }
 
@@ -49,7 +50,9 @@ void wm_github_auth_destroy(wm_github_auth** github_auth)
     while (current != NULL)
     {
         next = current->next;
-        free(current);
+        os_free(current->api_token);
+        os_free(current->org_name);
+        os_free(current);
         current = next;
     }
     *github_auth = NULL;
