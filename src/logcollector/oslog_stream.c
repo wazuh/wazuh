@@ -7,8 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-#define RUNTIME_TERROR_DEVELOPING // todo: delete this line after development
-#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING)) ||  defined(RUNTIME_TERROR_DEVELOPING)
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 #include "oslog_stream.h"
 
 // Remove STATIC/INLINE qualifier from tests
@@ -25,7 +24,7 @@
  * @param predicate Contains the `log stream`'s predicate filter to be used as a string
  * @return true if valid, otherwise false
  */
-STATIC INLINE bool w_logcollector_validate_oslog_stream_predicate(char * predicate) {
+STATIC INLINE bool w_logcollector_validate_oslog_predicate(char * predicate) {
 
     // todo : improve this function
     if (strlen(predicate) > 0) {
@@ -35,18 +34,107 @@ STATIC INLINE bool w_logcollector_validate_oslog_stream_predicate(char * predica
 }
 
 /**
- * @brief Executes the `log stream` command with its arguments and sets to non-blocking the output pipe
+ * @brief Generates the `log show` command array with its arguments
+ * @param predicate Contains the `log show`'s predicate filter to be used as a string
+ * @param level Contains, or not, the `log show`'s level filter to be used as a string (default/info/debug)
+ * @param type Contains the `log show`'s type filters to be used (as combined bit flags)
+ * @return A pointer to an array containing the executable arguments
+ */
+STATIC char ** w_create_oslog_show_array(char * start_date, char * query, char * level, int type) {
+
+    char ** oslog_array = NULL;
+    char * type_predicate = NULL;
+    char * predicate = NULL;
+    size_t oslog_array_idx = 0;
+
+    os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), oslog_array);
+
+    // Adding `log` and `show` to the array
+    w_strdup(LOG_CMD_STR, oslog_array[oslog_array_idx++]);
+    w_strdup(LOG_SHOW_OPT_STR, oslog_array[oslog_array_idx++]);
+
+    // Adding the style lines to the array (`--style syslog`)
+    w_strdup(STYLE_OPT_STR, oslog_array[oslog_array_idx++]);
+    w_strdup(SYSLOG_STR, oslog_array[oslog_array_idx++]);
+
+    // Adding the starting date lines to the array (`--start 2021-04-27 12:29:25-0700`)
+    w_strdup(SHOW_START_OPT_STR, oslog_array[oslog_array_idx++]);
+    w_strdup(start_date, oslog_array[oslog_array_idx++]);
+
+    // Log Show's Level section: adds, or not, the `--debug` and/or `--info`. This that assumes `debug` contains `info`
+    if (level != NULL) {
+        if (strcmp(level, OSLOG_LEVEL_DEFAULT_STR) != 0) {
+            // If the level is not `default`, because it is set to `info` or `debug`, then the info logs are acquired
+            w_strdup(SHOW_INFO_OPT_STR, oslog_array[oslog_array_idx++]);
+            if (strcmp(level, OSLOG_LEVEL_DEBUG_STR) == 0) {
+                // Only when the level is set to `debug` the debug logs are acquired
+                w_strdup(SHOW_DEBUG_OPT_STR, oslog_array[oslog_array_idx++]);
+            }
+        }
+    }
+
+    // Log Stream's Type section
+    if (type != 0) {
+        if (type & OSLOG_TYPE_ACTIVITY) {
+            w_strdup(SHOW_TYPE_ACTIVITY_STR, type_predicate);
+        }
+        if (type & OSLOG_TYPE_LOG) {
+            if (type_predicate == NULL) {
+                w_strdup(SHOW_TYPE_LOG_STR, type_predicate);
+            } else {
+                type_predicate = w_strcat(type_predicate, SHOW_OR_TYPE_LOG_STR, strlen(SHOW_OR_TYPE_LOG_STR));
+            }
+        }
+        if (type & OSLOG_TYPE_TRACE) {
+            if (type_predicate == NULL) {
+                w_strdup(SHOW_TYPE_TRACE_STR, type_predicate);
+            } else {
+                type_predicate = w_strcat(type_predicate, SHOW_OR_TYPE_TRACE_STR, strlen(SHOW_OR_TYPE_TRACE_STR));
+            }
+        }
+    }
+
+    // Log Stream's (full) Predicate section
+    if (query != NULL) {
+        const bool is_predicate_valid = w_logcollector_validate_oslog_predicate(query);
+        if (is_predicate_valid) {
+            w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
+
+            if (type_predicate != NULL) {
+                const int PREDICATE_SIZE = strlen(query) + strlen(type_predicate) + strlen(QUERY_AND_TYPE_PREDICATE);
+                os_calloc(PREDICATE_SIZE, sizeof(char), predicate);
+                snprintf(predicate, PREDICATE_SIZE, QUERY_AND_TYPE_PREDICATE, query, type_predicate);
+            }
+            w_strdup(predicate, oslog_array[oslog_array_idx++]);
+
+        } else if (type_predicate != NULL) {
+            w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
+            w_strdup(type_predicate, oslog_array[oslog_array_idx++]);
+        }
+    } else if (type_predicate != NULL) {
+        w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
+        w_strdup(type_predicate, oslog_array[oslog_array_idx++]);
+    }
+
+    os_free(predicate);
+    os_free(type_predicate);
+
+    return oslog_array;
+}
+
+/**
+ * @brief Generates the `log stream` command array with its arguments
  * @param predicate Contains the `log stream`'s predicate filter to be used as a string
  * @param level Contains, or not, the `log stream`'s level filter to be used as a string (default/info/debug)
  * @param type Contains the `log stream`'s type filters to be used (as combined bit flags)
- * @return A pointer to a fulfilled wfd_t structure, on success, or NULL
+ * @return A pointer to an array containing the executable arguments
  */
 STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int type) {
 
     char ** oslog_array = NULL;
     size_t oslog_array_idx = 0;
 
-    os_calloc(MAX_LOG_CMD_ARGS + 1, sizeof(char *), oslog_array);
+    os_calloc(MAX_LOG_STREAM_CMD_ARGS + 1, sizeof(char *), oslog_array);
 
     // Adding `log` and `stream` to the array
     w_strdup(LOG_CMD_STR, oslog_array[oslog_array_idx++]);
@@ -80,7 +168,7 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
 
     // Log Stream's Predicate section
     if (predicate != NULL) {
-        const bool is_predicate_valid = w_logcollector_validate_oslog_stream_predicate(predicate);
+        const bool is_predicate_valid = w_logcollector_validate_oslog_predicate(predicate);
         if (is_predicate_valid) {
             w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
 
@@ -146,17 +234,29 @@ STATIC INLINE bool w_is_log_cmd_executable(void) {
     if (retval == 0) {
         return true;
     }
-    merror(ACCESS_ERROR, LOG_CMD_STR, X_OK, strerror(errno), errno);
+    merror(ACCESS_ERROR, LOG_CMD_STR, strerror(errno), errno);
     return false;
 }
 
 void w_logcollector_create_oslog_env(logreader * current) {
-
+    char ** log_show_array = NULL;
     char ** log_stream_array = NULL;
 
     current->oslog->is_oslog_running = false;
 
     if (w_is_log_cmd_executable()) {
+
+        if (!current->future) {
+            log_show_array = w_create_oslog_show_array("2021-04-27 12:29:25-0700", 
+                                                        current->query, 
+                                                        current->query_level, 
+                                                        current->query_type);
+            
+            //w_logcollector_exec_oslog(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
+
+        }
+
+
         log_stream_array = w_create_oslog_stream_array(current->query, current->query_level, current->query_type);
 
         current->oslog->log_wfd = w_logcollector_exec_oslog(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
@@ -170,6 +270,7 @@ void w_logcollector_create_oslog_env(logreader * current) {
     os_free(current->file);
     current->fp = NULL;
 
+    free_strarray(log_show_array);
     free_strarray(log_stream_array);
 }
 

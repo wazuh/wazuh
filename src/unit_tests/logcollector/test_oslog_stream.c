@@ -21,7 +21,7 @@
 #include "../wrappers/libc/stdio_wrappers.h"
 #include "../wrappers/linux/socket_wrappers.h"
 
-bool w_logcollector_validate_oslog_stream_predicate(char * predicate);
+bool w_logcollector_validate_oslog_predicate(char * predicate);
 char ** w_create_oslog_stream_array(char * predicate, char * level, int type);
 wfd_t * w_logcollector_exec_oslog(char ** oslog_array, u_int32_t flags);
 void w_logcollector_create_oslog_env(logreader * current);
@@ -61,21 +61,21 @@ static int teardown_file(void **state) {
 
 /* tests */
 
-/* w_logcollector_validate_oslog_stream_predicate */
-void test_w_logcollector_validate_oslog_stream_predicate_empty(void ** state) {
+/* w_logcollector_validate_oslog_predicate */
+void test_w_logcollector_validate_oslog_predicate_empty(void ** state) {
 
     char predicate[] = "";
 
-    bool ret = w_logcollector_validate_oslog_stream_predicate(predicate);
+    bool ret = w_logcollector_validate_oslog_predicate(predicate);
     assert_false(ret);
 
 }
 
-void test_w_logcollector_validate_oslog_stream_predicate_existing(void ** state) {
+void test_w_logcollector_validate_oslog_predicate_existing(void ** state) {
 
     char predicate[] = "test";
 
-    bool ret = w_logcollector_validate_oslog_stream_predicate(predicate);
+    bool ret = w_logcollector_validate_oslog_predicate(predicate);
     assert_true(ret);
 
 }
@@ -1953,9 +1953,9 @@ void test_w_logcollector_exec_oslog_set_flags_error(void ** state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        // Test w_logcollector_validate_oslog_stream_predicate
-        cmocka_unit_test(test_w_logcollector_validate_oslog_stream_predicate_empty),
-        cmocka_unit_test(test_w_logcollector_validate_oslog_stream_predicate_existing),
+        // Test w_logcollector_validate_oslog_predicate
+        cmocka_unit_test(test_w_logcollector_validate_oslog_predicate_empty),
+        cmocka_unit_test(test_w_logcollector_validate_oslog_predicate_existing),
         // Test w_create_oslog_stream_array
         cmocka_unit_test(test_w_create_oslog_stream_array_NULL),
         cmocka_unit_test(test_w_create_oslog_stream_array_level_default),
