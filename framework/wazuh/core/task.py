@@ -25,7 +25,7 @@ class WazuhDBQueryTask(WazuhDBQuery):
         if filters is None:
             filters = {}
         if min_select_fields is None:
-            min_select_fields = {'task_id', 'agent_id', 'status', 'command', 'create_time'}
+            min_select_fields = {'task_id'}
         if fields is None:
             fields = tasks_fields
 

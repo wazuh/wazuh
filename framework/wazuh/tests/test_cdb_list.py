@@ -366,8 +366,9 @@ def test_upload_list_file_ko(mock_remove, mock_lists_path):
 
         # Exception while trying to create list file
         with patch('wazuh.cdb_list.exists', return_value=False):
-            with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
-                upload_list_file(filename='test', content='test:content', overwrite=False)
+            with patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']):
+                with pytest.raises(WazuhInternalError, match=r'\b1005\b'):
+                    upload_list_file(filename='test', content='test:content', overwrite=False)
 
 
 @patch('wazuh.core.cdb_list.delete_wazuh_file')

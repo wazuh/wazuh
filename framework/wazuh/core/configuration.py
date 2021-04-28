@@ -7,10 +7,11 @@ import logging
 import os
 import re
 import subprocess
+import sys
+import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
-from tempfile import mkstemp
 
 from defusedxml.minidom import parseString
 
@@ -462,14 +463,24 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
-    """
-    Returns ossec.conf (manager) as dictionary.
+def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf, from_import=False):
+    """Returns ossec.conf (manager) as dictionary.
 
-    :param section: Filters by section (i.e. rules).
-    :param field: Filters by field in section (i.e. included).
-    :param conf_file: Path of the configuration file to read.
-    :return: ossec.conf (manager) as dictionary.
+    Parameters
+    ----------
+    section : str
+        Filters by section (i.e. rules).
+    field : str
+        Filters by field in section (i.e. included).
+    conf_file : str
+        Path of the configuration file to read.
+    from_import : bool
+        This flag indicates whether this function has been called from a module load (True) or from a function (False).
+
+    Returns
+    -------
+    dict
+        ossec.conf (manager) as dictionary.
     """
     try:
         # Read XML
@@ -478,7 +489,11 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
     except Exception as e:
-        raise WazuhError(1101, extra_message=str(e))
+        if not from_import:
+            raise WazuhError(1101, extra_message=str(e))
+        else:
+            print(f"wazuh-apid: There is an error in the ossec.conf file: {str(e)}")
+            sys.exit(0)
 
     if section:
         try:
@@ -654,7 +669,7 @@ def upload_group_configuration(group_id, file_content):
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
-    handle, tmp_file_path = mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".xml")
+    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".xml")
     # create temporary file for parsing xml input and validate XML format
     try:
         with open(handle, 'w') as tmp_file:

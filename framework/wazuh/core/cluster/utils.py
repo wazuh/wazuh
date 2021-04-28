@@ -25,7 +25,7 @@ logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.wazuh_path, "var/run/.api_execq_lock")
 
 
-def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
+def read_cluster_config(config_file=common.ossec_conf, from_import=False) -> typing.Dict:
     """Read cluster configuration from ossec.conf.
 
     If some fields are missing in the ossec.conf cluster configuration, they are replaced
@@ -36,6 +36,8 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
     ----------
     config_file : str
         Path to configuration file.
+    from_import : bool
+        This flag indicates whether this function has been called from a module load (True) or from a function (False).
 
     Returns
     -------
@@ -55,7 +57,7 @@ def read_cluster_config(config_file=common.ossec_conf) -> typing.Dict:
     }
 
     try:
-        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)['cluster']
+        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
     except WazuhException as e:
         if e.code == 1106:
             # If no cluster configuration is present in ossec.conf, return default configuration but disabling it.

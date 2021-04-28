@@ -2123,7 +2123,19 @@ class AWSNLBBucket(AWSCustomBucket):
                 "alpn_fe_protocol", "alpn_client_preference_list")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
 
-            return [dict(x, source='nlb') for x in tsv_file]
+            tsv_file = [dict(x, source='nlb') for x in tsv_file]
+
+            # Split ip_addr:port field into ip_addr and port fields
+            for log_entry in tsv_file:
+                try:
+                    log_entry['client_ip'], log_entry['client_port'] = log_entry['client_port'].split(':')
+                    log_entry['destination_ip'], log_entry['destination_port'] = \
+                        log_entry['destination_port'].split(':')
+                except ValueError:
+                    log_entry['client_ip'] = log_entry['client_port']
+                    log_entry['destination_ip'] = log_entry['destination_port']
+
+            return tsv_file
 
 
 class AWSService(WazuhIntegration):
