@@ -97,7 +97,7 @@ class WazuhDBConnection:
 
         # Max size socket buffer is 64KB
         if data_size >= MAX_SOCKET_BUFFER_SIZE:
-            raise ValueError
+            raise WazuhInternalError(2009)
 
         if data[0] == "err":
             raise WazuhError(2003, data[1])
@@ -222,10 +222,11 @@ class WazuhDBConnection:
             try:
                 request = query_lower.replace(':limit', 'limit {}'.format(step)).replace(':offset', 'offset {}'.format(off))
                 response.extend(self._send(request))
-            except ValueError:
+            except WazuhInternalError:
                 # if the step is already 1, it can't be divided
                 if step == 1:
-                    raise WazuhInternalError(2007)
+                    raise WazuhInternalError(2009)
+
                 send_request_to_wdb(query_lower, step // 2, off, response)
                 # Add step // 2 remaining when the step is odd to avoid losing information
                 send_request_to_wdb(query_lower, step // 2 + step % 2, step // 2 + off, response)
@@ -297,7 +298,7 @@ class WazuhDBConnection:
                     send_request_to_wdb(query_lower, step, off, response)
             except ValueError as e:
                 raise WazuhError(2006, str(e))
-            except WazuhError as e:
+            except (WazuhError, WazuhInternalError) as e:
                 raise e
             except Exception as e:
                 raise WazuhInternalError(2007, str(e))
