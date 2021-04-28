@@ -50,7 +50,7 @@ def get_task_status(filters: dict = None, select: list = None, search: dict = No
                                       none_msg='No status was returned')
 
     db_query = WazuhDBQueryTask(filters=filters, offset=offset, limit=limit, query=q, sort=sort, search=search,
-                                 select=select)
+                                select=select)
     data = db_query.run()
 
     # Sort result array
@@ -59,7 +59,10 @@ def get_task_status(filters: dict = None, select: list = None, search: dict = No
 
     # Add zeros to agent IDs
     for element in data['items']:
-        element['agent_id'] = str(element['agent_id']).zfill(3)
+        try:
+            element['agent_id'] = str(element['agent_id']).zfill(3)
+        except KeyError:
+            pass
 
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
