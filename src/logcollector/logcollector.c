@@ -103,7 +103,15 @@ OSHash * msg_queues_table;
 OSHash * files_status;
 ///< Use for log messages
 char *files_status_name = "file_status";
+///< OSLog last timestamp processed.
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+typedef struct {
+    pthread_mutex_t mutex;
+    char timestamp[OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN + 1];
+} oslog_status_t;
 
+oslog_status_t oslog_status = { .mutex = PTHREAD_MUTEX_INITIALIZER, .timestamp = "" };
+#endif
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
@@ -2755,6 +2763,17 @@ STATIC void w_load_files_status(cJSON * global_json) {
             }
         }
     }
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+    cJSON * oslog = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_OSLOG);
+    cJSON * ts = cJSON_GetObjectItem(oslog, OS_LOGCOLLECTOR_JSON_TIMESTAMP);
+    char * timestamp = cJSON_GetStringValue(ts);
+    if (timestamp != NULL && strlen(timestamp) == OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN) {
+        w_mutex_lock(&oslog_status.mutex);
+        strncpy(oslog_status.timestamp, timestamp, OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN);
+        w_mutex_unlock(&oslog_status.mutex);
+    }
+#endif
+
 }
 
 STATIC char * w_save_files_status_to_cJSON() {
@@ -2787,6 +2806,14 @@ STATIC char * w_save_files_status_to_cJSON() {
         hash_node = OSHash_Next(files_status, &index, hash_node);
     }
     w_rwlock_unlock(&files_status->mutex);
+
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+    cJSON * oslog = cJSON_CreateObject();
+    w_mutex_lock(&oslog_status.mutex);
+    cJSON_AddItemToObject(oslog, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(oslog_status.timestamp));
+    w_mutex_unlock(&oslog_status.mutex);
+    cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_OSLOG, oslog);
+#endif
 
     char * global_json_str = cJSON_PrintUnformatted(global_json);
     cJSON_Delete(global_json);
@@ -2918,4 +2945,11 @@ void w_oslog_release(void) {
         oslog_wfd = NULL;
     }
 }
+
+void w_update_oslog_status(char * timestamp) {
+    w_mutex_lock(&oslog_status.mutex);
+    strncpy(oslog_status.timestamp, timestamp, OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN);
+    w_mutex_unlock(&oslog_status.mutex);
+}
+
 #endif
