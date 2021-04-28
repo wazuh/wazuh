@@ -82,6 +82,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
      *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
+     *   or  2021-04-21 10:16:09.404756-0700 (for macos ULS --syslog output)
      */
     if (
         (
@@ -132,6 +133,19 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             (pieces[14] == ':') &&
             (pieces[17] == ':') &&
             (pieces[20] == ' ') && (lf->log += 21)
+        )
+     ||
+        (
+            (loglen > 33) &&
+            (isdigit(pieces[0])) &&
+            (pieces[4] == '-') &&
+            (pieces[7] == '-') &&
+            (pieces[10] == ' ') &&
+            (pieces[13] == ':') &&
+            (pieces[16] == ':') &&
+            (pieces[19] == '.') &&
+            (pieces[26] == '-') &&
+            (pieces[31] == ' ') && (lf->log += 32)
         )
 
     ) {
