@@ -449,8 +449,6 @@ def chmod_r(filepath, mode):
     :param filepath: Path to the file.
     :param mode: file mode in octal.
     """
-    chmod(filepath, mode)
-
     if path.isdir(filepath):
         for item in listdir(filepath):
             itempath = path.join(filepath, item)
@@ -458,6 +456,8 @@ def chmod_r(filepath, mode):
                 chmod(itempath, mode)
             elif path.isdir(itempath):
                 chmod_r(itempath, mode)
+
+    chmod(filepath, mode)
 
 
 def chown_r(filepath, uid, gid):
