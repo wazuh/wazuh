@@ -33,7 +33,6 @@ void * wm_github_main(wm_github* github_config) {
     } else {
         mtinfo(WM_GITHUB_LOGTAG, "Module GitHub disabled.");
     }
-    mtinfo(WM_GITHUB_LOGTAG, "GitHub configuration: %s", cJSON_PrintUnformatted(wm_github_dump(github_config)));
     return NULL;
 }
 
