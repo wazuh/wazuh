@@ -779,8 +779,6 @@ char *format_path(char *dir) {
 #ifndef WIN32
 char **expand_wildcards(const char *path) {
     /* Check for glob */
-    /* The mingw32 builder used by travis.ci can't find glob.h
-     * Yet glob must work on actual win32. */
     char **paths;
 
     if (strchr(path, '*') ||
@@ -815,6 +813,117 @@ char **expand_wildcards(const char *path) {
     }
 
     return paths;
+}
+#else
+char **expand_wildcards(const char *path) {
+    /* Check for glob */
+    WIN32_FIND_DATA FindFileData;
+    HANDLE hFind;
+    char **pending_expand = NULL;
+    char **expanded_paths = NULL;
+    char *pattern = NULL;
+    char *next_glob = NULL;
+    char *parent_path = NULL;
+    int pending_expand_index = 0;
+    int expanded_index = 0;
+    int glob_pos = 0;
+    bool end_expansion = false;
+
+    os_calloc(2, sizeof(char *), pending_expand);
+    pending_expand[1] = NULL;
+
+    os_strdup(path, pending_expand[0]);
+    // Loop until there is not any directory to expand.
+    while(end_expansion == false) {
+        end_expansion = true;
+        os_calloc(2, sizeof(char *), expanded_paths);
+        for (pending_expand_index = 0; pending_expand[pending_expand_index] != NULL; pending_expand_index++) {
+            pattern = pending_expand[pending_expand_index];
+            os_strdup(pattern, parent_path);
+            glob_pos = strcspn(pattern, "*?");
+
+            next_glob = strchr(pattern + glob_pos, PATH_SEP);
+
+            // Find the next regex to be appended in case there is an expanded folder.
+            if (next_glob != NULL) {
+                *next_glob = '\0';
+                next_glob++;
+            }
+
+            char *look_back = strrchr(parent_path + glob_pos, PATH_SEP);
+            if (look_back) {
+                *look_back = '\0';
+            }
+
+            hFind = FindFirstFile(pattern, &FindFileData);
+            if (hFind == INVALID_HANDLE_VALUE) {
+                long unsigned errcode = GetLastError();
+                if (errcode == 2) {
+                    mdebug2("No file/folder that matches %s.", pattern);
+                }
+                static bool reported = true;
+                if (reported == false) {
+                    mwarn("FindFirstFile failed (%lu) - '%s'\n", errcode, pattern);
+                } else {
+                    mdebug2("FindFirstFile failed (%lu) - '%s'\n", errcode, pattern);
+                }
+
+                os_free(pending_expand[pending_expand_index]);
+                os_free(parent_path);
+                next_glob = NULL;
+                pattern = NULL;
+                continue;
+            }
+
+            do {
+                if (strcmp(FindFileData.cFileName, ".") == 0 || strcmp(FindFileData.cFileName, "..") == 0) {
+                    continue;
+                }
+                // If there is a next glob to expand
+                if (next_glob != NULL) {
+                    // At this point expanded_paths[expanded_index] contains the path of the parent folder.
+                    /*NOTE:
+                        In windows, a directory tree with infinite levels can be done by mounting a drive inside a
+                        folder within the drive (something like C:\pointer->C:\pointer->C:\................).
+                        This kind of links contains the attribute FILE_ATTRIBUTE_REPARSE_POINT. By ignoring it,
+                        we avoid the possibility of expanding infinitely :)
+                    */
+                    if (FindFileData.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) {
+                        // If it is a directory, we expand it.
+                        os_strdup(parent_path, expanded_paths[expanded_index]);
+                        wm_strcat(&expanded_paths[expanded_index], FindFileData.cFileName, PATH_SEP);
+                        wm_strcat(&expanded_paths[expanded_index], next_glob, PATH_SEP);
+                        end_expansion = false;
+                    } else {
+                        // If it's a file and we have a glob to expand, ignore the file path
+                        continue;
+                    }
+                } else {
+                    // If there is not a next glob, save the entry without expanding.
+                    os_strdup(parent_path, expanded_paths[expanded_index]);
+                    wm_strcat(&expanded_paths[expanded_index], FindFileData.cFileName, PATH_SEP);
+                }
+
+                os_realloc(expanded_paths, (expanded_index + 2) * sizeof(char *), expanded_paths);
+                expanded_index++;
+                expanded_paths[expanded_index] = NULL;
+
+            } while(FindNextFileA(hFind, &FindFileData));
+
+            FindClose(hFind);
+            // Now, free the memory, as the path that needed to be expanded is no longer needed and it's expansion is
+            // saved in expanded_paths vector.
+            os_free(pending_expand[pending_expand_index]);
+            os_free(parent_path);
+            next_glob = NULL;
+            pattern = NULL;
+        }
+        expanded_index = 0;
+        os_free(pending_expand);
+        pending_expand = expanded_paths;
+    }
+
+    return expanded_paths;
 }
 #endif
 
@@ -1200,8 +1309,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 continue;
             }
 #ifdef WIN32
-            dump_syscheck_file(syscheck, clean_path, opts, restrictfile, recursion_limit, clean_tag, NULL,
-                    tmp_diff_size);
+            char **paths = expand_wildcards(clean_path);
+            for (int exp = 0; paths[exp]; exp++) {
+                dump_syscheck_file(syscheck, paths[exp], opts, restrictfile, recursion_limit, clean_tag, NULL,
+                                   tmp_diff_size);
+                os_free(paths[exp]);
+            }
+            os_free(paths)
+
 #else
             char **paths = expand_wildcards(clean_path);
             if (paths == NULL) {
