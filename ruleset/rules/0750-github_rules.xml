@@ -6,7 +6,7 @@
 -->
 
 <!--
-ID: 91100 - 91399
+ID: 91100 - 91449
 -->
 
 <group name="github,git,">
@@ -826,7 +826,7 @@ ID: 91100 - 91399
     <rule id="91187" level="3">
         <if_sid>91100</if_sid>
         <action type="osregex">org.\.+</action>
-        <description>GitHub Orgnaization.</description>
+        <description>GitHub Organization.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -834,7 +834,7 @@ ID: 91100 - 91399
     <rule id="91188" level="9">
         <if_sid>91187</if_sid>
         <action>org.add_billing_manager</action>
-        <description>GitHub Orgnaization add billing manager.</description>
+        <description>GitHub Organization add billing manager.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -842,7 +842,7 @@ ID: 91100 - 91399
     <rule id="91189" level="7">
         <if_sid>91187</if_sid>
         <action>org.add_member</action>
-        <description>GitHub Orgnaization add member.</description>
+        <description>GitHub Organization add member.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -850,7 +850,7 @@ ID: 91100 - 91399
     <rule id="91190" level="9">
         <if_sid>91187</if_sid>
         <action>org.advanced_security_policy_selected_member_disabled</action>
-        <description>GitHub Orgnaization advanced security policy selected member disabled.</description>
+        <description>GitHub Organization advanced security policy selected member disabled.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -858,7 +858,7 @@ ID: 91100 - 91399
     <rule id="91191" level="9">
         <if_sid>91187</if_sid>
         <action>org.advanced_security_policy_selected_member_enabled</action>
-        <description>GitHub Orgnaization advanced security policy selected member enabled.</description>
+        <description>GitHub Organization advanced security policy selected member enabled.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -866,7 +866,7 @@ ID: 91100 - 91399
     <rule id="91192" level="9">
         <if_sid>91187</if_sid>
         <action>org.audit_log_export</action>
-        <description>GitHub Orgnaization audit log export.</description>
+        <description>GitHub Organization audit log export.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -874,7 +874,7 @@ ID: 91100 - 91399
     <rule id="91193" level="7">
         <if_sid>91187</if_sid>
         <action>org.audit_log_git_event_export</action>
-        <description>GitHub Orgnaization audit log git event export.</description>
+        <description>GitHub Organization audit log git event export.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -882,7 +882,7 @@ ID: 91100 - 91399
     <rule id="91194" level="7">
         <if_sid>91187</if_sid>
         <action>org.block_user</action>
-        <description>GitHub Orgnaization block user.</description>
+        <description>GitHub Organization block user.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -890,7 +890,7 @@ ID: 91100 - 91399
     <rule id="91195" level="6">
         <if_sid>91187</if_sid>
         <action>org.cancel_invitation</action>
-        <description>GitHub Orgnaization cancel invitation.</description>
+        <description>GitHub Organization cancel invitation.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -898,7 +898,7 @@ ID: 91100 - 91399
     <rule id="91196" level="9">
         <if_sid>91187</if_sid>
         <action>org.create</action>
-        <description>GitHub Orgnaization create.</description>
+        <description>GitHub Organization create.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -906,7 +906,7 @@ ID: 91100 - 91399
     <rule id="91197" level="11">
         <if_sid>91187</if_sid>
         <action>org.create_actions_secret</action>
-        <description>GitHub Orgnaization create actions secret.</description>
+        <description>GitHub Organization create actions secret.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -914,7 +914,7 @@ ID: 91100 - 91399
     <rule id="91198" level="9">
         <if_sid>91187</if_sid>
         <action>org.disable_member_team_creation_permission</action>
-        <description>GitHub Orgnaization disable member team creation permission.</description>
+        <description>GitHub Organization disable member team creation permission.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -922,7 +922,7 @@ ID: 91100 - 91399
     <rule id="91199" level="10">
         <if_sid>91187</if_sid>
         <action>org.disable_oauth_app_restrictions</action>
-        <description>GitHub Orgnaization disable oauth app restrictions.</description>
+        <description>GitHub Organization disable oauth app restrictions.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -930,7 +930,7 @@ ID: 91100 - 91399
     <rule id="91200" level="10">
         <if_sid>91187</if_sid>
         <action>org.disable_saml</action>
-        <description>GitHub Orgnaization disable saml.</description>
+        <description>GitHub Organization disable saml.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -938,7 +938,7 @@ ID: 91100 - 91399
     <rule id="91201" level="10">
         <if_sid>91187</if_sid>
         <action>org.disable_two_factor_requirement</action>
-        <description>GitHub Orgnaization disable two factor requirement.</description>
+        <description>GitHub Organization disable two factor requirement.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -946,7 +946,7 @@ ID: 91100 - 91399
     <rule id="91202" level="6">
         <if_sid>91187</if_sid>
         <action>org.display_commenter_full_name_enabled</action>
-        <description>GitHub Orgnaization display commenter full name enabled.</description>
+        <description>GitHub Organization display commenter full name enabled.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -954,7 +954,7 @@ ID: 91100 - 91399
     <rule id="91203" level="6">
         <if_sid>91187</if_sid>
         <action>org.enable_member_team_creation_permission</action>
-        <description>GitHub Orgnaization enable member team creation permission.</description>
+        <description>GitHub Organization enable member team creation permission.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -962,7 +962,7 @@ ID: 91100 - 91399
     <rule id="91204" level="7">
         <if_sid>91187</if_sid>
         <action>org.enable_oauth_app_restrictions</action>
-        <description>GitHub Orgnaization enable oauth app restrictions.</description>
+        <description>GitHub Organization enable oauth app restrictions.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -970,7 +970,7 @@ ID: 91100 - 91399
     <rule id="91205" level="7">
         <if_sid>91187</if_sid>
         <action>org.enable_saml</action>
-        <description>GitHub Orgnaization enable saml.</description>
+        <description>GitHub Organization enable saml.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -978,7 +978,7 @@ ID: 91100 - 91399
     <rule id="91206" level="7">
         <if_sid>91187</if_sid>
         <action>org.enable_two_factor_requirement</action>
-        <description>GitHub Orgnaization enable two factor requirement.</description>
+        <description>GitHub Organization enable two factor requirement.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -986,7 +986,7 @@ ID: 91100 - 91399
     <rule id="91207" level="8">
         <if_sid>91187</if_sid>
         <action>org.invite_member</action>
-        <description>GitHub Orgnaization invite member.</description>
+        <description>GitHub Organization invite member.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -994,7 +994,7 @@ ID: 91100 - 91399
     <rule id="91208" level="8">
         <if_sid>91187</if_sid>
         <action>org.oauth_app_access_approved</action>
-        <description>GitHub Orgnaization oauth app access approved.</description>
+        <description>GitHub Organization oauth app access approved.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1002,7 +1002,7 @@ ID: 91100 - 91399
     <rule id="91209" level="8">
         <if_sid>91187</if_sid>
         <action>org.oauth_app_access_denied</action>
-        <description>GitHub Orgnaization oauth app access denied.</description>
+        <description>GitHub Organization oauth app access denied.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1010,7 +1010,7 @@ ID: 91100 - 91399
     <rule id="91210" level="8">
         <if_sid>91187</if_sid>
         <action>org.oauth_app_access_requested</action>
-        <description>GitHub Orgnaization oauth app access requested.</description>
+        <description>GitHub Organization oauth app access requested.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1018,7 +1018,7 @@ ID: 91100 - 91399
     <rule id="91211" level="8">
         <if_sid>91187</if_sid>
         <action>org.register_self_hosted_runner</action>
-        <description>GitHub Orgnaization register self hosted runner.</description>
+        <description>GitHub Organization register self hosted runner.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1026,7 +1026,7 @@ ID: 91100 - 91399
     <rule id="91212" level="8">
         <if_sid>91187</if_sid>
         <action>org.remove_actions_secret</action>
-        <description>GitHub Orgnaization remove actions secret.</description>
+        <description>GitHub Organization remove actions secret.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1034,7 +1034,7 @@ ID: 91100 - 91399
     <rule id="91213" level="8">
         <if_sid>91187</if_sid>
         <action>org.remove_billing_manager</action>
-        <description>GitHub Orgnaization remove billing manager.</description>
+        <description>GitHub Organization remove billing manager.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1042,7 +1042,7 @@ ID: 91100 - 91399
     <rule id="91214" level="8">
         <if_sid>91187</if_sid>
         <action>org.remove_member</action>
-        <description>GitHub Orgnaization remove member.</description>
+        <description>GitHub Organization remove member.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1050,7 +1050,7 @@ ID: 91100 - 91399
     <rule id="91215" level="8">
         <if_sid>91187</if_sid>
         <action>org.remove_outside_collaborator</action>
-        <description>GitHub Orgnaization remove outside collaborator.</description>
+        <description>GitHub Organization remove outside collaborator.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1058,7 +1058,7 @@ ID: 91100 - 91399
     <rule id="91216" level="8">
         <if_sid>91187</if_sid>
         <action>org.remove_self_hosted_runner</action>
-        <description>GitHub Orgnaization remove self hosted runner.</description>
+        <description>GitHub Organization remove self hosted runner.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1066,7 +1066,7 @@ ID: 91100 - 91399
     <rule id="91217" level="8">
         <if_sid>91187</if_sid>
         <action>org.restore_member</action>
-        <description>GitHub Orgnaization restore member.</description>
+        <description>GitHub Organization restore member.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1074,7 +1074,7 @@ ID: 91100 - 91399
     <rule id="91218" level="8">
         <if_sid>91187</if_sid>
         <action>org.revoke_external_identity</action>
-        <description>GitHub Orgnaization revoke external identity.</description>
+        <description>GitHub Organization revoke external identity.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1082,7 +1082,7 @@ ID: 91100 - 91399
     <rule id="91219" level="8">
         <if_sid>91187</if_sid>
         <action>org.revoke_sso_session</action>
-        <description>GitHub Orgnaization revoke sso session.</description>
+        <description>GitHub Organization revoke sso session.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1090,7 +1090,7 @@ ID: 91100 - 91399
     <rule id="91220" level="7">
         <if_sid>91187</if_sid>
         <action>org.runner_group_created</action>
-        <description>GitHub Orgnaization runner group created.</description>
+        <description>GitHub Organization runner group created.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1098,7 +1098,7 @@ ID: 91100 - 91399
     <rule id="91221" level="7">
         <if_sid>91187</if_sid>
         <action>org.runner_group_removed</action>
-        <description>GitHub Orgnaization runner group removed.</description>
+        <description>GitHub Organization runner group removed.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1106,7 +1106,7 @@ ID: 91100 - 91399
     <rule id="91222" level="7">
         <if_sid>91187</if_sid>
         <action>org.runner_group_runner_removed</action>
-        <description>GitHub Orgnaization runner group runner removed.</description>
+        <description>GitHub Organization runner group runner removed.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1114,7 +1114,7 @@ ID: 91100 - 91399
     <rule id="91223" level="7">
         <if_sid>91187</if_sid>
         <action>org.runner_group_runners_added</action>
-        <description>GitHub Orgnaization runner group runners added.</description>
+        <description>GitHub Organization runner group runners added.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1122,7 +1122,7 @@ ID: 91100 - 91399
     <rule id="91224" level="7">
         <if_sid>91187</if_sid>
         <action>org.runner_group_runners_updated</action>
-        <description>GitHub Orgnaization runner group runners updated.</description>
+        <description>GitHub Organization runner group runners updated.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1130,7 +1130,7 @@ ID: 91100 - 91399
     <rule id="91225" level="7">
         <if_sid>91187</if_sid>
         <action>org.runner_group_updated</action>
-        <description>GitHub Orgnaization runner group updated.</description>
+        <description>GitHub Organization runner group updated.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1138,7 +1138,7 @@ ID: 91100 - 91399
     <rule id="91226" level="7">
         <if_sid>91187</if_sid>
         <action>org.self_hosted_runner_updated</action>
-        <description>GitHub Orgnaization self hosted runner updated.</description>
+        <description>GitHub Organization self hosted runner updated.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1146,7 +1146,7 @@ ID: 91100 - 91399
     <rule id="91227" level="7">
         <if_sid>91187</if_sid>
         <action>org.set_actions_retention_limit</action>
-        <description>GitHub Orgnaization set actions retention limit.</description>
+        <description>GitHub Organization set actions retention limit.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1154,7 +1154,7 @@ ID: 91100 - 91399
     <rule id="91228" level="8">
         <if_sid>91187</if_sid>
         <action>org.unblock_user</action>
-        <description>GitHub Orgnaization unblock user.</description>
+        <description>GitHub Organization unblock user.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1162,7 +1162,7 @@ ID: 91100 - 91399
     <rule id="91229" level="8">
         <if_sid>91187</if_sid>
         <action>org.update_actions_secret</action>
-        <description>GitHub Orgnaization update actions secret.</description>
+        <description>GitHub Organization update actions secret.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1170,7 +1170,7 @@ ID: 91100 - 91399
     <rule id="91230" level="7">
         <if_sid>91187</if_sid>
         <action>org.update_actions_settings</action>
-        <description>GitHub Orgnaization update actions settings.</description>
+        <description>GitHub Organization update actions settings.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1178,7 +1178,7 @@ ID: 91100 - 91399
     <rule id="91231" level="7">
         <if_sid>91187</if_sid>
         <action>org.update_default_repository_permission</action>
-        <description>GitHub Orgnaization update default repository permission.</description>
+        <description>GitHub Organization update default repository permission.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1186,7 +1186,7 @@ ID: 91100 - 91399
     <rule id="91232" level="7">
         <if_sid>91187</if_sid>
         <action>org.update_member</action>
-        <description>GitHub Orgnaization update member.</description>
+        <description>GitHub Organization update member.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1194,7 +1194,7 @@ ID: 91100 - 91399
     <rule id="91233" level="8">
         <if_sid>91187</if_sid>
         <action>org.update_member_repository_creation_permission</action>
-        <description>GitHub Orgnaization update member repository creation permission.</description>
+        <description>GitHub Organization update member repository creation permission.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1202,7 +1202,7 @@ ID: 91100 - 91399
     <rule id="91234" level="8">
         <if_sid>91187</if_sid>
         <action>org.update_new_repository_default_branch_setting</action>
-        <description>GitHub Orgnaization update new repository default branch setting.</description>
+        <description>GitHub Organization update new repository default branch setting.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1210,7 +1210,7 @@ ID: 91100 - 91399
     <rule id="91235" level="8">
         <if_sid>91187</if_sid>
         <action>org.update_saml_provider_settings</action>
-        <description>GitHub Orgnaization update saml provider settings.</description>
+        <description>GitHub Organization update saml provider settings.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1218,7 +1218,7 @@ ID: 91100 - 91399
     <rule id="91236" level="7">
         <if_sid>91187</if_sid>
         <action>org.update_terms_of_service</action>
-        <description>GitHub Orgnaization update terms of service.</description>
+        <description>GitHub Organization update terms of service.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1232,7 +1232,7 @@ ID: 91100 - 91399
     <rule id="91239" level="5">
         <if_sid>91100</if_sid>
         <action type="osregex">org_credential_authorization.\.+</action>
-        <description>GitHub Orgnaization credential authorization.</description>
+        <description>GitHub Organization credential authorization.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1240,7 +1240,7 @@ ID: 91100 - 91399
     <rule id="91240" level="9">
         <if_sid>91239</if_sid>
         <action>org_credential_authorization.grant</action>
-        <description>GitHub Orgnaization credential authorization grant.</description>
+        <description>GitHub Organization credential authorization grant.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1248,7 +1248,7 @@ ID: 91100 - 91399
     <rule id="91241" level="7">
         <if_sid>91239</if_sid>
         <action>org_credential_authorization.deauthorized</action>
-        <description>GitHub Orgnaization credential authorization deauthorized.</description>
+        <description>GitHub Organization credential authorization deauthorized.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1256,7 +1256,7 @@ ID: 91100 - 91399
     <rule id="91242" level="7">
         <if_sid>91239</if_sid>
         <action>org_credential_authorization.revoke</action>
-        <description>GitHub Orgnaization credential authorization revoke.</description>
+        <description>GitHub Organization credential authorization revoke.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1268,7 +1268,7 @@ ID: 91100 - 91399
     <rule id="91243" level="5">
         <if_sid>91100</if_sid>
         <action type="osregex">organization_default_label.\.+</action>
-        <description>GitHub Orgnaization default label.</description>
+        <description>GitHub Organization default label.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1276,7 +1276,7 @@ ID: 91100 - 91399
     <rule id="91244" level="7">
         <if_sid>91243</if_sid>
         <action>organization_default_label.create</action>
-        <description>GitHub Orgnaization default label create.</description>
+        <description>GitHub Organization default label create.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1284,7 +1284,7 @@ ID: 91100 - 91399
     <rule id="91245" level="7">
         <if_sid>91243</if_sid>
         <action>organization_default_label.update</action>
-        <description>GitHub Orgnaization default label update.</description>
+        <description>GitHub Organization default label update.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -1292,7 +1292,7 @@ ID: 91100 - 91399
     <rule id="91246" level="7">
         <if_sid>91243</if_sid>
         <action>organization_default_label.destroy</action>
-        <description>GitHub Orgnaization default label destroy.</description>
+        <description>GitHub Organization default label destroy.</description>
         <options>no_full_log</options>
     </rule>
 
@@ -2805,6 +2805,16 @@ ID: 91100 - 91399
         <if_sid>91406</if_sid>
         <action>workflows.prepared_workflow_job</action>
         <description>GitHub Workflows prepared workflow job.</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <!-- GitHub generic rule
+        This rule capture unknown rules
+    -->
+    <rule id="91449" level="3">
+        <if_sid>91100</if_sid>
+        <action type="osregex">\.+</action>
+        <description>GitHub Generic rule.</description>
         <options>no_full_log</options>
     </rule>
 
