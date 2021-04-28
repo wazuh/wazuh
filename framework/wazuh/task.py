@@ -53,11 +53,7 @@ def get_task_status(filters: dict = None, select: list = None, search: dict = No
                                 select=select)
     data = db_query.run()
 
-    # Sort result array
-    if sort and 'json' not in sort['fields']:
-        data['items'] = sort_array(data['items'], sort_by=sort['fields'], sort_ascending=sort['order'] == 'asc')
-
-    # Add zeros to agent IDs
+    # Fill with zeros the agent_id
     for element in data['items']:
         try:
             element['agent_id'] = str(element['agent_id']).zfill(3)
