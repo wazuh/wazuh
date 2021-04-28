@@ -21,20 +21,20 @@
  * @param libPath Path to pacman's database directory
  * @param jsonPackages JSON to be filled
  */
-void    getPacmanInfo(const std::string& libPath, nlohmann::json& jsonPackages);
+void getPacmanInfo(const std::string& libPath, nlohmann::json& jsonPackages);
 
 /**
  * @brief Fills a JSON object with all available rpm-related information
  * @param jsonPackages JSON to be filled
  */
-void    getRpmInfo(nlohmann::json& jsonPackages);
+void getRpmInfo(nlohmann::json& jsonPackages);
 
 /**
  * @brief Fills a JSON object with all available dpkg-related information
  * @param libPath Path to dpkg's database directory
  * @param jsonPackages JSON to be filled
  */
-void    getDpkgInfo(const std::string& libPath, nlohmann::json& jsonPackages);
+void getDpkgInfo(const std::string& libPath, nlohmann::json& jsonPackages);
 
 
 // Exception template
