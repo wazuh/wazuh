@@ -15,9 +15,6 @@ from wazuh.rbac.decorators import expose_resources
 
 logger = logging.getLogger('wazuh')
 
-cluster_enabled = not read_cluster_config()['disabled']
-node_id = get_node().get('node') if cluster_enabled else None
-
 
 @expose_resources(actions=["task:status"], resources=["*:*:*"], post_proc_kwargs={'exclude_codes': [1817]})
 def get_task_status(filters: dict = None, select: list = None, search: dict = None, offset: int = 0,
