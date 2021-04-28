@@ -20,7 +20,7 @@ from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, p
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config()['disabled']
+cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
 
 

@@ -15,9 +15,6 @@ from wazuh.rbac.decorators import expose_resources
 
 logger = logging.getLogger('wazuh')
 
-cluster_enabled = not read_cluster_config()['disabled']
-node_id = get_node().get('node') if cluster_enabled else None
-
 
 @expose_resources(actions=["task:status"], resources=["*:*:*"], post_proc_kwargs={'exclude_codes': [1817]})
 def get_task_status(filters: dict = None, select: list = None, search: dict = None, offset: int = 0,
@@ -50,16 +47,15 @@ def get_task_status(filters: dict = None, select: list = None, search: dict = No
                                       none_msg='No status was returned')
 
     db_query = WazuhDBQueryTask(filters=filters, offset=offset, limit=limit, query=q, sort=sort, search=search,
-                                 select=select)
+                                select=select)
     data = db_query.run()
 
-    # Sort result array
-    if sort and 'json' not in sort['fields']:
-        data['items'] = sort_array(data['items'], sort_by=sort['fields'], sort_ascending=sort['order'] == 'asc')
-
-    # Add zeros to agent IDs
+    # Fill with zeros the agent_id
     for element in data['items']:
-        element['agent_id'] = str(element['agent_id']).zfill(3)
+        try:
+            element['agent_id'] = str(element['agent_id']).zfill(3)
+        except KeyError:
+            pass
 
     result.affected_items.extend(data['items'])
     result.total_affected_items = data['totalItems']
