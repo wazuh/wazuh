@@ -135,7 +135,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
-//ifdef Darwin
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
             const char * type_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_type_attr);
             if (type_attr) {
                 logf[pl].query_type = w_logcollector_get_oslog_type(type_attr);
@@ -153,7 +153,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     os_strdup(level_attr, logf[pl].query_level);
                 }
             }
-//endif Darwin
+#endif
             os_strdup(node[i]->content, logf[pl].query);
         } else if (strcmp(node[i]->element, xml_localfile_target) == 0) {
             // Count number of targets
@@ -355,7 +355,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
             } else if (strcmp(logf[pl].logformat, EVENTLOG) == 0) {
             } else if (strcmp(logf[pl].logformat, EVENTCHANNEL) == 0) {
-//ifdef Darwin
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
             } else if (strcmp(logf[pl].logformat, OSLOG) == 0) {
                 log_config->oslog_count++;
                 os_calloc(1, sizeof(w_oslog_config_t), logf[pl].oslog);
@@ -367,7 +367,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     return (OS_INVALID);
                 }
 
-//endif Darwin
+#endif
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -475,7 +475,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         merror(MISS_LOG_FORMAT);
         return (OS_INVALID);
     }
-//#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+#if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     /* Verify oslog config*/
     if (log_config->oslog_count > 1) {
         merror(DUP_OSLOG);
@@ -487,7 +487,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         merror(INV_OSLOG);
         return (OS_INVALID);
     }
-//#endif
+#endif
     /* Verify Multiline Regex Config */
     if (strcmp(logf[pl].logformat, MULTI_LINE_REGEX) == 0) {
 

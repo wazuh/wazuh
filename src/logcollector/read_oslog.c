@@ -89,8 +89,36 @@ STATIC char * oslog_get_valid_lastline(char * str);
  */
 STATIC bool oslog_is_header(w_oslog_config_t * oslog_cfg, char * buffer);
 
+/**
+ * @brief Trim milliseconds from a macOS ULS full timestamp
+ * 
+ * @param full_timestamp Timestamp to trim
+ * @warning @full_timestamp must be an array with \ref OS_LOGCOLLECTOR_FULL_TIMESTAMP_LEN +1 length
+ * @warning @full_timestamp must be in format i.e 2020-11-09 05:45:08.000000-0800
+ * @warning return value will be in short format timestamp i.e 2020-11-09 05:45:08-0800
+ * @return Allocated short timestamp. NULL on error
+ */
+STATIC char * w_oslog_trim_full_timestamp(const char * full_timestamp) {
+    char * short_timestamp = NULL;
+
+    if (w_strlen(full_timestamp) == OS_LOGCOLLECTOR_FULL_TIMESTAMP_LEN
+        && full_timestamp[OS_LOGCOLLECTOR_FULL_TIMESTAMP_LEN-1] != '\0') {
+
+        os_calloc(OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN + 1, sizeof(char), short_timestamp);
+        memcpy(short_timestamp, full_timestamp, OS_LOGCOLLECTOR_BASIC_TIMESTAMP_LEN);
+        memcpy(short_timestamp + OS_LOGCOLLECTOR_BASIC_TIMESTAMP_LEN,
+                full_timestamp + OS_LOGCOLLECTOR_BASIC_TIMESTAMP_LEN + OS_LOGCOLLECTOR_TIMESTAMP_MS_LEN,
+                OS_LOGCOLLECTOR_TIMESTAMP_TZ_LEN);
+    }
+
+    return short_timestamp;
+}
+
 void * read_oslog(logreader * lf, int * rc, int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
+    char full_timestamp[OS_LOGCOLLECTOR_FULL_TIMESTAMP_LEN + 1] = {'\0'};
+    char * short_timestamp = NULL;
+
     int count_logs = 0;
     int status = 0;
     int retval = 0;
@@ -115,7 +143,15 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
             }
 
         }
+        memcpy(full_timestamp, read_buffer, OS_LOGCOLLECTOR_FULL_TIMESTAMP_LEN);
+        full_timestamp[OS_LOGCOLLECTOR_FULL_TIMESTAMP_LEN] = '\0';
         count_logs++;
+    }
+
+    short_timestamp = w_oslog_trim_full_timestamp(full_timestamp);
+    if (short_timestamp != NULL) {
+        w_update_oslog_status(short_timestamp);
+        os_free(short_timestamp);
     }
 
     /* Checks whether the OSLog's process is still alive or exited */
