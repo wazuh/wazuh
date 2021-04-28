@@ -83,7 +83,6 @@ If objFSO.folderExists(home_dir & "logs\") Then
     objFSO.CreateFolder(home_dir & "logs")
 End If
 
-' If ossec.conf exists, it means Wazuh version < 5.0.0
 If objFSO.fileExists(home_dir & "ossec.conf") Then
 
 ' Remove ossec.json
