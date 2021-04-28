@@ -26,6 +26,7 @@
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
+#include "../wrappers/posix/pthread_wrappers.h"
 
 extern OSHash *files_status;
 
@@ -52,14 +53,6 @@ static int teardown_group(void **state) {
 }
 
 /* wraps */
-
-int __wrap_pthread_rwlock_rdlock(pthread_mutex_t * mutex) {
-    return mock_type(int);
-}
-
-int __wrap_pthread_rwlock_unlock(pthread_mutex_t * mutex) {
-    return mock_type(int);
-}
 
 /* tests */
 
@@ -251,10 +244,10 @@ void test_w_save_files_status_to_cJSON_begin_NULL(void ** state) {
 
     OSHashNode *hash_node = NULL;
 
-    will_return(__wrap_pthread_rwlock_rdlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);    
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     char * ret = w_save_files_status_to_cJSON();
     assert_null(ret);
@@ -274,8 +267,7 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
-will_return(__wrap_pthread_rwlock_rdlock, 0);
-will_return(__wrap_pthread_rwlock_unlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);    
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -303,6 +295,7 @@ will_return(__wrap_pthread_rwlock_unlock, 0);
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
 
@@ -325,10 +318,10 @@ void test_w_save_file_status_str_NULL(void ** state) {
     //test_w_save_files_status_to_cJSON_begin_NULL
     OSHashNode *hash_node = NULL;
 
-    will_return(__wrap_pthread_rwlock_rdlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     w_save_file_status();
 
@@ -348,7 +341,7 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
-    will_return(__wrap_pthread_rwlock_rdlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -376,7 +369,7 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -409,7 +402,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
-    will_return(__wrap_pthread_rwlock_rdlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -437,7 +430,7 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -478,7 +471,7 @@ void test_w_save_file_status_OK(void ** state) {
     hash_node->key = "test";
     hash_node->data = data;
 
-    will_return(__wrap_pthread_rwlock_rdlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -506,7 +499,7 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
-    will_return(__wrap_pthread_rwlock_unlock, 0);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
