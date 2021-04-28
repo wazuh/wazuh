@@ -44,7 +44,14 @@ def test_token_raw_format(response):
 
 
 def test_select_key_affected_items(response, select_key):
-    """
+    """Check that all items in response have no other keys than those specified in 'select_key'.
+
+    Absence of 'select_key' in response does not raise any error. However, extra keys in response (not specified
+    in 'select_key') will raise assertion error.
+
+    Some keys like 'id', 'agent_id', etc. are accepted even if not specified in 'select_key' since
+    they ignore the 'select' param in API.
+
     :param response: Request response
     :param select_key: Keys requested in select parameter.
         Lists and nested fields accepted e.g: id,cpu.mhz,json
@@ -65,6 +72,7 @@ def test_select_key_affected_items(response, select_key):
             main_keys.update({key})
 
     for item in response.json()['data']['affected_items']:
+        # Get keys in response that are not specified in 'select_keys'
         set1 = main_keys.symmetric_difference(set(item.keys()))
         assert set1 == set() or set1.issubset(main_keys) or set1.intersection({'id', 'agent_id', 'file'}), \
             f'Select keys are {main_keys}, but this one is different {set1}'

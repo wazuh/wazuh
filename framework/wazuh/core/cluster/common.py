@@ -13,6 +13,7 @@ import struct
 import traceback
 from importlib import import_module
 from typing import Tuple, Dict, Callable
+from uuid import uuid4
 
 import cryptography.fernet
 
@@ -189,7 +190,7 @@ class ReceiveFileTask:
         """
         self.wazuh_common = wazuh_common
         self.coro = self.set_up_coro()
-        self.task_id = task_id.decode() if task_id else str(random.randint(0, 2 ** 32))
+        self.task_id = task_id.decode() if task_id else str(uuid4())
         self.received_information = asyncio.Event()
         self.task = asyncio.create_task(self.coro(self.task_id, self.received_information))
         self.task.add_done_callback(self.done_callback)

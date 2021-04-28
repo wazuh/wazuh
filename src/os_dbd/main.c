@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -50,7 +50,7 @@ static void help_dbd(char *home_path)
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
+    print_out("    -u <user>   User to run as (default: %s)", USER);
     print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
     print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
     print_out("    -D <dir>    Directory to chroot and chdir into (default: %s)", home_path);
@@ -69,8 +69,8 @@ int main(int argc, char **argv)
     gid_t gid;
     unsigned int d;
 
-    /* Use MAILUSER (read only) */
-    const char *user = MAILUSER;
+    /* Use USER (read only) */
+    const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = OSSECCONF;
     char *home_path = w_homedir(argv[0]);

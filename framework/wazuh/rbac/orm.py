@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -23,6 +23,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from api.configuration import security_conf
 from api.constants import SECURITY_PATH
+from wazuh.core.common import wazuh_uid, wazuh_gid
 
 # Max reserved ID value
 max_id_reserved = 99
@@ -1364,7 +1365,7 @@ class PoliciesManager:
                         try:
                             if not check_default:
                                 policies = sorted([p.id for p in self.get_policies()]) or [0]
-                                policy_id = max(filter(lambda x: not(x > cloud_reserved_range), policies)) + 1
+                                policy_id = max(filter(lambda x: not (x > cloud_reserved_range), policies)) + 1
 
                             elif check_default and \
                                     self.session.query(Policies).order_by(desc(Policies.id)
@@ -2445,7 +2446,7 @@ class RolesRulesManager:
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
 # Only if executing as root
-chown(_auth_db_file, 'ossec', 'ossec')
+chown(_auth_db_file, wazuh_uid(), wazuh_gid())
 os.chmod(_auth_db_file, 0o640)
 
 default_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'default')
@@ -2494,7 +2495,7 @@ with open(os.path.join(default_path, "policies.yaml"), 'r') as stream:
                                 linked_roles = [role.id for role in rpm.get_all_roles_from_policy(policy_id=policy_id)]
                                 new_positions = dict()
                                 for role in linked_roles:
-                                    new_positions[role] = [p.id for p in rpm.get_all_policies_from_role(role_id=role)]\
+                                    new_positions[role] = [p.id for p in rpm.get_all_policies_from_role(role_id=role)] \
                                         .index(policy_id)
 
                                 pm.delete_policy(policy_id=policy_id)

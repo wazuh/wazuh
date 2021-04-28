@@ -7,8 +7,8 @@ import pytest
 
 with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
-        with patch('wazuh.core.common.ossec_uid'):
-            with patch('wazuh.core.common.ossec_gid'):
+        with patch('wazuh.core.common.wazuh_uid'):
+            with patch('wazuh.core.common.wazuh_gid'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
                 from wazuh.core.cluster import utils
@@ -37,6 +37,12 @@ def test_read_cluster_config():
     with patch('wazuh.core.cluster.utils.get_ossec_conf', side_effect=WazuhError(1001)):
         with pytest.raises(WazuhError, match='.* 3006 .*'):
             utils.read_cluster_config()
+
+    with patch('wazuh.core.configuration.load_wazuh_xml', return_value=SystemExit):
+        with pytest.raises(SystemExit) as pytest_wrapped_e:
+            utils.read_cluster_config(from_import=True)
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
 
     with patch('wazuh.core.cluster.utils.get_ossec_conf', side_effect=KeyError(1)):
         with pytest.raises(WazuhError, match='.* 3006 .*'):

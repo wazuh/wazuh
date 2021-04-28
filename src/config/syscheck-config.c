@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -2552,15 +2552,19 @@ static void process_option(char ***syscheck_option, xml_node *node) {
     }
 
     for (int i = 0; new_opt[i]; i++) {
-        if(*new_opt[i] != '\0') {
+        if (*new_opt[i] != '\0') {
             clean_path = format_path(new_opt[i]);
-            if (clean_path && !os_IsStrOnArray(dir, syscheck_option[0])) {
+            if (clean_path == NULL) {
+                mwarn(FIM_WARN_FORMAT_PATH, new_opt[i]);
+                os_free(new_opt[i]);
+                continue;
+            }
+
+            if (!os_IsStrOnArray(dir, syscheck_option[0])) {
                 os_realloc(syscheck_option[0], sizeof(char *) * (counter_opt + 2), syscheck_option[0]);
                 os_strdup(clean_path, syscheck_option[0][counter_opt]);
                 syscheck_option[0][counter_opt + 1] = NULL;
                 counter_opt++;
-            } else {
-                mwarn(FIM_WARN_FORMAT_PATH, new_opt[i]);
             }
             os_free(clean_path);
         }

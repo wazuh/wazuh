@@ -1,6 +1,6 @@
 /*
  * SQL Schema for FIM database
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
@@ -76,6 +76,6 @@ CREATE TABLE IF NOT EXISTS registry_data (
 CREATE INDEX IF NOT EXISTS key_name_index ON registry_data (key_id, name);
 
 CREATE VIEW IF NOT EXISTS registry_view (path, checksum) AS
-    SELECT arch || ' ' || replace(path, ':', '::') || ':', checksum FROM registry_key
+    SELECT arch || ' ' || replace(replace(path, '\', '\\'), ':', '\:') || ':', checksum FROM registry_key
     UNION ALL
-    SELECT arch || ' ' || replace(path, ':', '::') || ':' || replace(name, ':', '::'), registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.id=registry_data.key_id;
+    SELECT arch || ' ' || replace(replace(path, '\', '\\'), ':', '\:') || ':' || replace(replace(name, '\', '\\'), ':', '\:'), registry_data.checksum FROM registry_key INNER JOIN registry_data ON registry_key.id=registry_data.key_id;

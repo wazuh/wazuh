@@ -67,7 +67,7 @@ def build_and_up(interval: int = 10, build: bool = True):
     os.chdir(pwd)
     values = {
         'interval': interval,
-        'max_retries': 30,
+        'max_retries': 60,
         'retries': 0
     }
     # Get current branch
