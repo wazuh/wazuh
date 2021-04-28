@@ -235,6 +235,21 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
             goto end;
         }
         upd->dist_ref = FEED_REDHAT;
+    } else if (strcasestr(feed, vu_feed_tag[FEED_ALAS])) {
+        // Amazon Linux 1
+        if (!version || !strcmp(version, "1") || strcasestr(version, vu_feed_tag[FEED_AL1])) {
+            os_index = CVE_AL1;
+            upd->dist_tag_ref = FEED_AL1;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_AL1];
+        // Amazon Linux 2
+        } else if (!strcmp(version, "2") || strcasestr(version, vu_feed_tag[FEED_AL2])) {
+            os_index = CVE_AL2;
+            upd->dist_tag_ref = FEED_AL2;
+            os_strdup(version, upd->version);
+            upd->dist_ext = vu_feed_ext[FEED_AL2];
+        }
+        upd->dist_ref = FEED_ALAS;
     } else if (strcasestr(feed, vu_feed_tag[FEED_MSU])) {
         os_index = CVE_MSU;
         upd->dist_tag_ref = FEED_MSU;
@@ -510,7 +525,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     }
 
     /**
-     *  single_provider = Ubuntu, Debian and RedHat.
+     *  single_provider = Ubuntu, Debian, Amazon and RedHat.
      *  Those which use the <os> tag.
      **/
     if (!multi_provider) {
@@ -947,6 +962,7 @@ int wm_vuldet_read_provider_content(xml_node **node, char *name, char multi_prov
 char wm_vuldet_provider_type(char *pr_name) {
     if (strcasestr(pr_name, vu_feed_tag[FEED_CANONICAL]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_DEBIAN]) ||
+        strcasestr(pr_name, vu_feed_tag[FEED_ALAS]) ||
         strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
         return 0;
     } else if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) ||
