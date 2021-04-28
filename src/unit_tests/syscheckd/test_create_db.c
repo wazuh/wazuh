@@ -2567,14 +2567,10 @@ void test_fim_delete_file_event_no_conf(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    snprintf(buffer_msg, OS_SIZE_128, FIM_DELETE_EVENT_PATH_NOCONF, fim_data->fentry->file_entry.path);
-
     snprintf(buffer_config, OS_SIZE_128, FIM_CONFIGURATION_NOTFOUND, "file", fim_data->fentry->file_entry.path);
 
     // Inside fim_configuration_directory
     expect_string(__wrap__mdebug2, formatted_msg, buffer_config);
-
-    expect_string(__wrap__mdebug2, formatted_msg, buffer_msg);
 
     fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }
@@ -3460,11 +3456,7 @@ void test_fim_delete_file_event_remove_success(void **state) {
 
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
 
-    snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
-    expect_string(__wrap__mdebug2, formatted_msg, buffer);
-
     fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
-
 }
 
 void test_fim_delete_file_event_no_conf(void **state) {
@@ -3552,9 +3544,6 @@ void test_fim_delete_file_event_different_mode_scheduled(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     expect_fim_db_remove_path(syscheck.database, fim_data->fentry->file_entry.path, FIMDB_OK);
-
-    snprintf(buffer, OS_SIZE_128, FIM_FILE_MSG_DELETE, fim_data->fentry->file_entry.path);
-    expect_string(__wrap__mdebug2, formatted_msg, buffer);
 
     fim_delete_file_event(syscheck.database, fim_data->fentry, &syscheck.fim_entry_mutex, &evt_data, NULL, NULL);
 }

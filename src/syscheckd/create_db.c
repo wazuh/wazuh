@@ -96,7 +96,6 @@ void fim_generate_delete_event(fdb_t *fim_sql,
     w_mutex_unlock(mutex);
 
     if (json_event != NULL) {
-        mdebug2(FIM_FILE_MSG_DELETE, entry->file_entry.path);
         send_syscheck_msg(json_event);
     }
 

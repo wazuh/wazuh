@@ -184,7 +184,7 @@ int set_winsacl(const char *dir, directory_t *configuration) {
         retval = 0;
         goto end;
     case 1:
-        mdebug1(FIM_SACL_CHECK_CONFIGURE, dir);
+        mdebug2(FIM_SACL_CHECK_CONFIGURE, dir);
         configuration->dirs_status.status |= WD_IGNORE_REST;
 
         // Empty SACL
