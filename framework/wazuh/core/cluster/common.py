@@ -304,8 +304,9 @@ class Handler(asyncio.Protocol):
         self.counter = (self.counter + 1) % (2 ** 32)
         return self.counter
 
-    def msg_build(self, command: bytes, counter: int, data: bytes) -> bytes:
-        """Build a message with header + payload.
+    def msg_build(self, command: bytes, counter: int, data: bytes) -> list[bytearray]:
+        """Build a message with header + payload. If message size is more than request_chunk, return the message
+        divided.
 
         It contains a header in self.header_format format that includes self.counter, the data size and the command.
         The data is also encrypted and added to the bytearray starting from the position self.header_len.
@@ -331,11 +332,31 @@ class Handler(asyncio.Protocol):
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
         encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
-        out_msg = bytearray(self.header_len + len(encrypted_data))
-        out_msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
-        out_msg[self.header_len:self.header_len + len(encrypted_data)] = encrypted_data
+        message_size = self.header_len + len(encrypted_data)
+        # Message size is <= request_chunk, send the message
+        if message_size <= self.request_chunk:
+            msg = bytearray(message_size)
+            msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
+            msg[self.header_len:message_size] = encrypted_data
+            return [msg]
+        # Message size > request_chunk, send the message divided
+        else:
+            msg_list = []
+            partial_data_size = 0
+            data_size = len(encrypted_data)
+            while partial_data_size < data_size:
+                message_size = self.request_chunk \
+                    if data_size - partial_data_size + self.header_len >= self.request_chunk \
+                    else data_size - partial_data_size + self.header_len
+                msg = bytearray(message_size)
+                msg[:self.header_len] = struct.pack(self.header_format, counter, message_size - self.header_len,
+                                                    command)
+                msg[self.header_len:message_size] = encrypted_data[
+                                                    partial_data_size:partial_data_size + message_size - self.header_len]
+                partial_data_size += message_size - self.header_len
+                msg_list.append(msg)
 
-        return out_msg
+            return msg_list
 
     def msg_parse(self) -> bool:
         """Parse an incoming message.
@@ -416,7 +437,9 @@ class Handler(asyncio.Protocol):
         msg_counter = self.next_counter()
         self.box[msg_counter] = response
         try:
-            self.push(self.msg_build(command, msg_counter, data))
+            msgs = self.msg_build(command, msg_counter, data)
+            for msg in msgs:
+                self.push(msg)
         except MemoryError:
             self.request_chunk //= 2
             raise exception.WazuhClusterError(3026)
@@ -589,7 +612,9 @@ class Handler(asyncio.Protocol):
             command, payload = b'err', json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)),
                                                   cls=WazuhJSONEncoder).encode()
         if command is not None:
-            self.push(self.msg_build(command, counter, payload))
+            msgs = self.msg_build(command, counter, payload)
+            for msg in msgs:
+                self.push(msg)
 
     def close(self):
         """Close the connection."""
