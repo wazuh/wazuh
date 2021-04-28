@@ -430,9 +430,6 @@ class Handler(asyncio.Protocol):
         response_data : bytes
             Response from peer.
         """
-        if len(data) > self.request_chunk:
-            raise exception.WazuhClusterError(3033)
-
         response = Response()
         msg_counter = self.next_counter()
         self.box[msg_counter] = response
