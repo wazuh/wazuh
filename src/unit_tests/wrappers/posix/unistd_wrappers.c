@@ -88,3 +88,16 @@ int __wrap_symlink(const char *path1, const char *path2) {
     check_expected(path2);
     return mock();
 }
+
+int __wrap_access (const char *__name, int __type) {
+    check_expected(__name);
+    check_expected(__type);
+    return mock();
+}
+
+#ifdef WIN32
+int __wrap__access (const char *__name, int __type) {
+    check_expected(__name);
+    check_expected(__type);
+}
+#endif
