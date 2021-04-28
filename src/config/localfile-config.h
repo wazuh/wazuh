@@ -26,7 +26,8 @@
 #define OSLOG_NAME              "USL_OSLOG_Super_Mc_Darwin" ///< Name to be displayed in the localfile' statistics
 
 #define LOG_CMD_STR             "/usr/bin/log"  ///< It is the name of the command used to collect macos' logs
-#define LOG_STREAM_OPT_STR      "stream"        ///< "stream" is the mode in which the "log" command is running
+#define LOG_STREAM_OPT_STR      "stream"        ///< "stream" is a mode in which the "log" command can be executed
+#define LOG_SHOW_OPT_STR        "show"          ///< "show" is a mode in which the "log" command can be executed
 
 #define STYLE_OPT_STR           "--style"       ///< This precedes the logs' output style to be used by "log stream"
 #define SYSLOG_STR              "syslog"        ///< This is the style chosen to show the "log stream" output
@@ -34,6 +35,11 @@
 #define PREDICATE_OPT_STR       "--predicate"   ///< This precedes the "query" filter to be used by "log stream"
 #define TYPE_OPT_STR            "--type"        ///< This precedes a "type" filter to be used by "log stream"
 #define LEVEL_OPT_STR           "--level"       ///< This precedes the "level" filter to be used by "log stream"
+
+#define SHOW_INFO_OPT_STR       "--info"        ///< "show" option to get up to the intermediate logging level in oslog
+#define SHOW_DEBUG_OPT_STR      "--debug"       ///< "show" option to get all the logging levels in oslog
+
+#define SHOW_START_OPT_STR      "--start"       ///< This precedes the logs' starting date to be used by "log show"
 
 #define OSLOG_LEVEL_DEFAULT_STR "default"  ///< Represents the lowest loggin level in oslog
 #define OSLOG_LEVEL_INFO_STR    "info"     ///< Represents the intermediate loggin level in oslog
@@ -45,15 +51,26 @@
 #define OSLOG_TYPE_LOG          (0x1 << 1) ///< Flag used to filter by `log` logs
 #define OSLOG_TYPE_TRACE        (0x1 << 2) ///< Flag used to filter by `trace` logs
 
-#define MAX_LOG_CMD_ARGS        14              ///< This value takes into account the largest case of use
+#define SHOW_TYPE_ACTIVITY_STR  "eventType == activityCreateEvent "         \
+                                "OR eventType == activityTransitionEvent "  \
+                                "OR eventType == userActionEvent"
+#define SHOW_TYPE_LOG_STR       "eventType == logEvent"
+#define SHOW_TYPE_TRACE_STR     "eventType == traceEvent"
+#define SHOW_OR_TYPE_LOG_STR    " OR eventType == logEvent"
+#define SHOW_OR_TYPE_TRACE_STR  " OR eventType == traceEvent"
 
-/** This macro is used for logging the full "log stream" command with its arguments (see MAX_LOG_CMD_ARGS)**/
+#define MAX_LOG_STREAM_CMD_ARGS 14                          ///< This value takes into account the largest case of use
+#define MAX_LOG_SHOW_CMD_ARGS   MAX_LOG_STREAM_CMD_ARGS     ///< This value takes into account the largest case of use
+
+/** This macro is used for logging the full "log stream" command with its arguments (see MAX_LOG_STREAM_CMD_ARGS) **/
 #define GET_LOG_STREAM_PARAMS(x)    x[0]?x[0]:"", x[1]?x[1]:"", x[2]?x[2]:"",\
                                     x[3]?x[3]:"", x[4]?x[4]:"", x[5]?x[5]:"",\
                                     x[6]?x[6]:"", x[7]?x[7]:"", x[8]?x[8]:"",\
                                     x[9]?x[9]:"", x[10]?x[10]:"",   \
                                     x[11]?x[11]:"", x[12]?x[12]:"", \
                                     x[13]?x[13]:""
+
+#define QUERY_AND_TYPE_PREDICATE    "( %s ) AND ( %s )"
 
 /** regex to determine the start of a log */
 #define OSLOG_START_REGEX       "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d"
