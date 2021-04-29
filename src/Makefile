@@ -1368,19 +1368,16 @@ endif
 
 wazuh_monitor_o :=
 
-ifeq (${TARGET},server)
-# monitor only needs to be added when a server target is being compiled
 monitor_c := $(wildcard monitord/*.c)
 monitor_o := $(monitor_c:.c=.o)
+
+ifeq (${TARGET},server)
+# monitor only needs to be added when a server target is being compiled
 wazuh_monitor_o := ${monitor_o} os_maild/sendcustomemail.o
+endif # TARGET=server
 
 monitord/%.o: monitord/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-modules\" -c $< -o $@
-
-wazuh-monitord: ${wazuh_monitor_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-endif # TARGET=server
 
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
