@@ -105,11 +105,6 @@ OSHash * files_status;
 char *files_status_name = "file_status";
 ///< OSLog last timestamp processed.
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-typedef struct {
-    pthread_mutex_t mutex;
-    char timestamp[OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN + 1];
-} oslog_status_t;
-
 oslog_status_t oslog_status = { .mutex = PTHREAD_MUTEX_INITIALIZER, .timestamp = "" };
 #endif
 static int _cday = 0;
@@ -345,13 +340,13 @@ void LogCollectorStart()
         }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
         else if (strcmp(current->logformat, OSLOG) == 0) {
-            w_logcollector_create_oslog_env(current);
+            w_oslog_create_env(current);
             current->read = read_oslog;
             if (current->oslog->is_oslog_running) {
                 if (atexit(w_oslog_release)) {
                     merror(ATEXIT_ERROR);
                 }
-                oslog_wfd = current->oslog->log_wfd;    // OSLog's info needs to be globally reachable to be released
+                oslog_wfd = current->oslog->stream_wfd;    // OSLog's info needs to be globally reachable to be released
                 for(int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
                     mdebug1("Socket target for '%s' -> %s", OSLOG_NAME, current->target[tg_idx]);
                     w_logcollector_state_add_target(OSLOG_NAME, current->target[tg_idx]);
