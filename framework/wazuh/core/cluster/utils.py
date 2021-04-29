@@ -230,7 +230,6 @@ def read_config(config_file=common.ossec_conf):
 
 # Context vars
 context_tag: ContextVar[str] = ContextVar('tag', default='')
-context_subtag: ContextVar[str] = ContextVar('subtag', default='')
 
 
 class ClusterFilter(logging.Filter):
@@ -257,7 +256,7 @@ class ClusterFilter(logging.Filter):
 
     def filter(self, record):
         record.tag = context_tag.get() if context_tag.get() != '' else self.tag
-        record.subtag = context_subtag.get() if context_subtag.get() != '' else self.subtag
+        record.subtag = self.subtag
         return True
 
     def update_tag(self, new_tag: str):
