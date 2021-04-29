@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import fcntl
@@ -25,7 +25,7 @@ logger = logging.getLogger('wazuh')
 execq_lockfile = join(common.wazuh_path, "var/run/.api_execq_lock")
 
 
-def read_cluster_config(config_file=common.manager_conf) -> typing.Dict:
+def read_cluster_config(config_file=common.manager_conf, from_import=False) -> typing.Dict:
     """Read cluster configuration from manager.conf.
 
     If some fields are missing in the manager.conf cluster configuration, they are replaced
@@ -36,6 +36,8 @@ def read_cluster_config(config_file=common.manager_conf) -> typing.Dict:
     ----------
     config_file : str
         Path to configuration file.
+    from_import : bool
+        This flag indicates whether this function has been called from a module load (True) or from a function (False).
 
     Returns
     -------
@@ -55,7 +57,7 @@ def read_cluster_config(config_file=common.manager_conf) -> typing.Dict:
     }
 
     try:
-        config_cluster = get_manager_conf(section='cluster', conf_file=config_file)['cluster']
+        config_cluster = get_manager_conf(section='cluster', conf_file=config_file, from_import=from_import)['cluster']
     except WazuhException as e:
         if e.code == 1106:
             # If no cluster configuration is present in manager.conf, return default configuration but disabling it.

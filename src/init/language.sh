@@ -1,6 +1,6 @@
 #!/bin/sh
 # language.sh
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 catError()

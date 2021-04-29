@@ -4,11 +4,11 @@ import asyncio
 import itertools
 import logging
 import os
-import random
 import ssl
 import time
 import traceback
 from typing import Tuple, Dict
+from uuid import uuid4
 
 import uvloop
 
@@ -41,7 +41,7 @@ class AbstractServerHandler(c_common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {random.randint(0, 1000)}",
+        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}",
                          cluster_items=cluster_items)
         self.server = server
         self.loop = loop

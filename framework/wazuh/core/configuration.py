@@ -1,28 +1,25 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
 import logging
 import os
-import random
 import re
 import subprocess
-import time
-import xml.etree.ElementTree as ET
+import sys
+import tempfile
 from configparser import RawConfigParser, NoOptionError
 from io import StringIO
 from os import remove, path as os_path
 
-from xml.dom.minidom import parseString
+from defusedxml.minidom import parseString
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.wazuh_socket import WazuhSocket
-from wazuh.core.results import WazuhResult
-from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
-
 from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
+from wazuh.core.wazuh_socket import WazuhSocket
 
 logger = logging.getLogger('wazuh')
 
@@ -466,14 +463,24 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_manager_conf(section=None, field=None, conf_file=common.manager_conf):
-    """
-    Returns manager.conf as dictionary.
+def get_manager_conf(section=None, field=None, conf_file=common.manager_conf, from_import=False):
+    """Return manager.conf (manager) as dictionary.
 
-    :param section: Filters by section (i.e. rules).
-    :param field: Filters by field in section (i.e. included).
-    :param conf_file: Path of the configuration file to read.
-    :return: manager.conf as dictionary.
+    Parameters
+    ----------
+    section : str
+        Filters by section (i.e. rules).
+    field : str
+        Filters by field in section (i.e. included).
+    conf_file : str
+        Path of the configuration file to read.
+    from_import : bool
+        This flag indicates whether this function has been called from a module load (True) or from a function (False).
+
+    Returns
+    -------
+    dict
+        manager.conf (manager) as dictionary.
     """
     try:
         # Read XML
@@ -482,7 +489,11 @@ def get_manager_conf(section=None, field=None, conf_file=common.manager_conf):
         # Parse XML to JSON
         data = _wazuhconf2json(xml_data)
     except Exception as e:
-        raise WazuhError(1101, extra_message=str(e))
+        if not from_import:
+            raise WazuhError(1101, extra_message=str(e))
+        else:
+            print(f"wazuh-apid: There is an error in the ossec.conf file: {str(e)}")
+            sys.exit(0)
 
     if section:
         try:
@@ -658,10 +669,10 @@ def upload_group_configuration(group_id, file_content):
     if not os_path.exists(os_path.join(common.shared_path, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
     # path of temporary files for parsing xml input
-    tmp_file_path = os_path.join(common.wazuh_path, "tmp", f"api_tmp_file_{time.time()}_{random.randint(0, 1000)}.xml")
+    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".xml")
     # create temporary file for parsing xml input and validate XML format
     try:
-        with open(tmp_file_path, 'w') as tmp_file:
+        with open(handle, 'w') as tmp_file:
             custom_entities = {
                 '_custom_open_tag_': '\\<',
                 '_custom_close_tag_': '\\>',
@@ -673,7 +684,7 @@ def upload_group_configuration(group_id, file_content):
             for character, replacement in custom_entities.items():
                 file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
 
-            # Beautify xml file using a minidom.Document
+            # Beautify xml file using a defusedxml.minidom.parseString
             xml = parseString(f'<root>\n{file_content}\n</root>')
 
             # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
