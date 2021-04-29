@@ -16,7 +16,7 @@
 #ifndef WM_MONITOR
 #define WM_MONITOR
 
-extern const wm_context WM_MONITOR_CONTEXT;     // Context
+extern const wm_context WM_MONITOR_CONTEXT; // Context
 
 #define WM_MONITOR_LOGTAG ARGV0 ":monitor"  // Tag for log messages
 
