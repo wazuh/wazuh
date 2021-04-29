@@ -41,7 +41,7 @@ cJSON* __wrap_wdb_agents_insert_vuln_cves(__attribute__((unused)) wdb_t *wdb,
     return mock_ptr_type(cJSON*);
 }
 
-int __wrap_wdb_agents_update_status_vuln_cves(__attribute__((unused)) wdb_t *wdb, const char* old_status, const char* new_status, const char* type) {
+int __wrap_wdb_agents_update_vuln_cves_status(__attribute__((unused)) wdb_t *wdb, const char* old_status, const char* new_status, const char* type) {
     check_expected(old_status);
     check_expected(new_status);
     check_expected(type);
@@ -54,7 +54,7 @@ int __wrap_wdb_agents_remove_vuln_cves(__attribute__((unused)) wdb_t *wdb, const
     return mock();
 }
 
-wdbc_result __wrap_wdb_agents_remove_by_status_vuln_cves(__attribute__((unused)) wdb_t *wdb, const char* status, char **output) {
+wdbc_result __wrap_wdb_agents_remove_vuln_cves_by_status(__attribute__((unused)) wdb_t *wdb, const char* status, char **output) {
     check_expected(status);
     os_strdup(mock_ptr_type(char*), *output);
     return mock();
