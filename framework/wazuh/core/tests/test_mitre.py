@@ -9,8 +9,8 @@ import pytest
 
 from wazuh.tests.util import InitWDBSocketMock
 
-with patch('wazuh.core.common.ossec_uid'):
-    with patch('wazuh.core.common.ossec_gid'):
+with patch('wazuh.core.common.wazuh_uid'):
+    with patch('wazuh.core.common.wazuh_gid'):
         from wazuh.core.mitre import *
 
 
