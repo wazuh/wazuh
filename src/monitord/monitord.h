@@ -16,6 +16,7 @@
 #define ARGV0 "wazuh-monitord"
 #endif
 
+#include "../headers/store_op.h"
 #include "config/reports-config.h"
 #include "config/global-config.h"
 

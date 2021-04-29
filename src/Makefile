@@ -661,7 +661,7 @@ BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
-BUILD_SERVER+=wazuh-monitord
+#BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
 BUILD_SERVER+=wazuh-analysisd
@@ -1365,6 +1365,19 @@ build_syscollector: build_shared_modules build_sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${WIN_CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
+#### Monitor #######
+
+monitor_c := $(wildcard monitord/*.c)
+monitor_o := $(monitor_c:.c=.o)
+wazuh_monitor_o := ${monitor_o} os_maild/sendcustomemail.o
+
+monitord/%.o: monitord/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-modules\" -c $< -o $@
+
+wazuh-monitord: ${wazuh_monitor_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+
 #### Wazuh modules ##
 wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
 
@@ -1383,7 +1396,16 @@ wmodules_o := $(wmodules_c:.c=.o)
 wazuh_modules/%.o: wazuh_modules/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-wmodules_dep := ${wmodules_o} ${wdblib_o}
+
+wmodules_dep_list :=
+ifeq (${TARGET},server)
+# monitor only needs to be added when a server target is being compiled
+wmodules_dep_list := ${wmodules_o} ${wdblib_o} ${wazuh_monitor_o}
+else
+wmodules_dep_list := ${wmodules_o} ${wdblib_o}
+endif
+
+wmodules_dep := ${wmodules_dep_list}
 
 ifeq (${uname_S},HP-UX)
 	wmodules_dep := ${wmodules_dep} ${config_o}
@@ -1730,18 +1752,6 @@ syscheckd/%-event.o: syscheckd/%.c
 
 wazuh-syscheckd: ${syscheck_o} rootcheck.a
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### Monitor #######
-
-monitor_c := $(wildcard monitord/*.c)
-monitor_o := $(monitor_c:.c=.o)
-
-monitord/%.o: monitord/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-monitord\" -c $< -o $@
-
-wazuh-monitord: ${monitor_o} os_maild/sendcustomemail.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 
 #### reportd #######
 
