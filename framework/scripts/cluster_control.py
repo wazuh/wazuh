@@ -122,7 +122,7 @@ async def print_health(config, more, filter_node):
                 str(node_info['status']['last_sync_agentinfo']['date_start_master']),
                 str(node_info['status']['last_sync_agentinfo']['date_end_master']))
             msg2 += "                Number of synchronized chunks: {}.\n".format(
-                str(node_info['status']['last_sync_agentinfo']['total_agentinfo']))
+                str(node_info['status']['last_sync_agentinfo']['n_synced_chunks']))
 
     print(msg1)
 
