@@ -661,7 +661,6 @@ BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
-#BUILD_SERVER+=wazuh-monitord
 BUILD_SERVER+=wazuh-reportd
 BUILD_SERVER+=wazuh-authd
 BUILD_SERVER+=wazuh-analysisd
