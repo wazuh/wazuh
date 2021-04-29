@@ -1143,7 +1143,7 @@ void test_wdb_set_sys_osinfo_triaged_error_socket(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 osinfo set_triaged");
 
-    ret = wwdb_set_sys_osinfo_triageddb_agents_sys_osinfo_set_triaged(id, NULL);
+    ret = wdb_set_sys_osinfo_triaged(id, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
