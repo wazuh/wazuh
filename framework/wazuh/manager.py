@@ -12,7 +12,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError
-from wazuh.core.manager import status, get_api_conf, get_ossec_logs, get_logs_summary, validate_ossec_conf
+from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, get_logs_summary, validate_ossec_conf
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml
 from wazuh.rbac.decorators import expose_resources
@@ -43,9 +43,9 @@ def get_status():
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_by=None,
+def wazuh_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_by=None,
               sort_ascending=True, search_text=None, complementary_search=False, search_in_fields=None, q=''):
-    """Gets logs from ossec.log.
+    """Gets logs from wazuh.log.
 
     :param level: Filters by log level: all, error or info.
     :param tag: Filters by log category/tag (i.e. wazuh-remoted).
@@ -65,7 +65,7 @@ def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_
                                       none_msg=f"Could not read logs"
                                                f"{' in specified node' if node_id != 'manager' else ''}"
                                       )
-    logs = get_ossec_logs()
+    logs = get_wazuh_logs()
 
     query = []
     level and query.append(f'level={level}')
@@ -84,8 +84,8 @@ def ossec_log(level=None, tag=None, offset=0, limit=common.database_limit, sort_
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def ossec_log_summary():
-    """Summary of ossec.log.
+def wazuh_log_summary():
+    """Summary of wazuh.log.
 
     :return: AffectedItemsWazuhResult
     """

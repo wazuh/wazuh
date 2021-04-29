@@ -427,7 +427,7 @@ async def get_log_node(request, node_id, pretty=False, wait_for_complete=False, 
                 'q': q}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.ossec_log,
+    dapi = DistributedAPI(f=manager.wazuh_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
@@ -451,7 +451,7 @@ async def get_log_summary_node(request, node_id, pretty=False, wait_for_complete
     f_kwargs = {'node_id': node_id}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.ossec_log_summary,
+    dapi = DistributedAPI(f=manager.wazuh_log_summary,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,

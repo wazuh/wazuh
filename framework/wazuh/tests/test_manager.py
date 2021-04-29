@@ -90,8 +90,8 @@ def test_get_status(mock_status):
     (None, 'random', 0, None, True, ''),
     (None, 'warning', 2, None, False, '')
 ])
-def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
-    """Test reading ossec.log file contents.
+def test_wazuh_log(tag, level, total_items, sort_by, sort_ascending, q):
+    """Test reading wazuh.log file contents.
 
     Parameters
     ----------
@@ -100,18 +100,18 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
     tag : str
         Filters by log category (i.e. wazuh-remoted).
     total_items : int
-        Expected items to be returned after calling ossec_log.
+        Expected items to be returned after calling wazuh_log.
     sort_by : list
         Fields to sort the items by.
     sort_ascending : boolean
         Sort in ascending (true) or descending (false) order.
     """
     with patch('wazuh.core.manager.tail') as tail_patch:
-        # Return ossec_log_file when calling tail() method
-        ossec_log_file = get_logs()
-        tail_patch.return_value = ossec_log_file.splitlines()
+        # Return wazuh_log_file when calling tail() method
+        wazuh_log_file = get_logs()
+        tail_patch.return_value = wazuh_log_file.splitlines()
 
-        result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=sort_ascending, q=q)
+        result = wazuh_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=sort_ascending, q=q)
 
         # Assert type, number of items and presence of trailing characters
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
@@ -120,14 +120,14 @@ def test_ossec_log(tag, level, total_items, sort_by, sort_ascending, q):
         if tag is not None and level != 'wazuh-modulesd:syscollector':
             assert all('\n' not in log['description'] for log in result.render()['data']['affected_items'])
         if sort_by:
-            reversed_result = ossec_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending, q=q)
+            reversed_result = wazuh_log(level=level, tag=tag, sort_by=sort_by, sort_ascending=not sort_ascending, q=q)
             for i in range(total_items):
                 assert result.render()['data']['affected_items'][i][sort_by[0]] == \
                        reversed_result.render()['data']['affected_items'][total_items - 1 - i][sort_by[0]]
 
 
-def test_ossec_log_summary():
-    """Tests ossec_log_summary function works and returned data match with expected"""
+def test_wazuh_log_summary():
+    """Tests wazuh_log_summary function works and returned data match with expected"""
     expected_result = {
         'wazuh-csyslogd': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
         'wazuh-execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
@@ -139,7 +139,7 @@ def test_ossec_log_summary():
 
     logs = get_logs().splitlines()
     with patch('wazuh.core.manager.tail', return_value=logs):
-        result = ossec_log_summary()
+        result = wazuh_log_summary()
 
         # Assert data match what was expected and type of the result.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'

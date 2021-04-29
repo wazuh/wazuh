@@ -104,8 +104,8 @@ variables:
 
     <localfile>
     <log_format>full_command</log_format>
-    <alias>ciscat-ossec-log</alias>
-    <command>grep 'wazuh-modulesd:ciscat:' /opt/ossec/logs/ossec.log | tail -20</command>
+    <alias>ciscat-wazuh-log</alias>
+    <command>grep 'wazuh-modulesd:ciscat:' /opt/ossec/logs/wazuh.log | tail -20</command>
     <frequency>86400</frequency>
     </localfile>
 
