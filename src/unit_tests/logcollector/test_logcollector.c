@@ -27,6 +27,10 @@
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
+<<<<<<< HEAD
+=======
+
+>>>>>>> Fix logcollector UT after adding only_future_events for macOS ULS
 
 extern OSHash *files_status;
 
@@ -39,6 +43,8 @@ void w_load_files_status(cJSON *global_json);
 void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
+
+extern oslog_status_t oslog_status;
 
 
 /* setup/teardown */
@@ -268,6 +274,8 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     hash_node->data = data;
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);    
+    strcpy(oslog_status.timestamp,"hi 123");
+
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -296,6 +304,21 @@ void test_w_save_files_status_to_cJSON_OK(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_string(__wrap_cJSON_CreateString, string, "hi 123");
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
 
     will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
 
@@ -342,6 +365,8 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     hash_node->data = data;
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
+    strcpy(oslog_status.timestamp,"hi 123");
+
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -370,6 +395,21 @@ void test_w_save_file_status_wfopen_error(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_string(__wrap_cJSON_CreateString, string, "hi 123");
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -403,6 +443,8 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     hash_node->data = data;
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
+    strcpy(oslog_status.timestamp,"hi 123");
+
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -431,6 +473,21 @@ void test_w_save_file_status_fwrite_error(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_string(__wrap_cJSON_CreateString, string, "hi 123");
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -472,6 +529,8 @@ void test_w_save_file_status_OK(void ** state) {
     hash_node->data = data;
 
     expect_function_call(__wrap_pthread_rwlock_rdlock);
+    strcpy(oslog_status.timestamp,"hi 123");
+
     expect_value(__wrap_OSHash_Begin, self, files_status);
     will_return(__wrap_OSHash_Begin, hash_node);
 
@@ -500,6 +559,21 @@ void test_w_save_file_status_OK(void ** state) {
     expect_value(__wrap_OSHash_Next, self, files_status);
     will_return(__wrap_OSHash_Next, NULL);
     expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+
+    expect_string(__wrap_cJSON_CreateString, string, "hi 123");
+    will_return(__wrap_cJSON_CreateString, (cJSON *) 1);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
+
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_cJSON_AddItemToObject);
+    will_return(__wrap_cJSON_AddItemToObject, true);
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
 
@@ -532,6 +606,12 @@ void test_w_load_files_status_empty_array(void ** state) {
 
     will_return(__wrap_cJSON_GetArraySize, 0);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -550,6 +630,12 @@ void test_w_load_files_status_path_NULL(void ** state) {
     //Path
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -567,6 +653,12 @@ void test_w_load_files_status_path_str_NULL(void ** state) {
 
     //Path
     will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
@@ -596,6 +688,12 @@ void test_w_load_files_status_no_file(void ** state) {
     expect_string(__wrap_stat, __file, file);
     will_return(__wrap_stat, &stat_buf);
     will_return(__wrap_stat, -1);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     w_load_files_status(global_json);
 
@@ -627,6 +725,12 @@ void test_w_load_files_status_hash_NULL(void ** state) {
     //Hash
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -656,6 +760,12 @@ void test_w_load_files_status_hash_str_NULL(void ** state) {
 
     //Hash
     will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
@@ -694,6 +804,12 @@ void test_w_load_files_status_offset_NULL(void ** state) {
     //Offset
     will_return(__wrap_cJSON_GetObjectItem, NULL);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -728,6 +844,12 @@ void test_w_load_files_status_offset_str_NULL(void ** state) {
 
     //Offset
     will_return(__wrap_cJSON_GetObjectItem, 1);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
 
     will_return(__wrap_cJSON_GetStringValue, NULL);
 
@@ -767,6 +889,12 @@ void test_w_load_files_status_invalid_offset(void ** state) {
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
     will_return(__wrap_cJSON_GetStringValue, "-1");
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     w_load_files_status(global_json);
 
@@ -821,6 +949,12 @@ void test_w_load_files_status_update_add_fail(void ** state) {
 
     expect_string(__wrap__merror, formatted_msg, "(1298): Failure to add 'test' to 'file_status' hash table");
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -872,6 +1006,12 @@ void test_w_load_files_status_update_fail(void ** state) {
     expect_string(__wrap_OSHash_Add_ex, key, file);
     will_return(__wrap_OSHash_Add_ex, 2);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
+
     w_load_files_status(global_json);
 
 }
@@ -919,6 +1059,11 @@ void test_w_load_files_status_OK(void ** state) {
 
     will_return(__wrap_OSHash_Update_ex, 1);
 
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
     w_load_files_status(global_json);
 
 }
@@ -1078,6 +1223,12 @@ void test_w_initialize_file_status_OK(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     will_return(__wrap_OSHash_Update_ex, 1);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetObjectItem, NULL);
+
+    will_return(__wrap_cJSON_GetStringValue, NULL);
 
     expect_function_call(__wrap_cJSON_Delete);
 
