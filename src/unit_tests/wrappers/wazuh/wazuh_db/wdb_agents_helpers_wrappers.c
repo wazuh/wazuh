@@ -14,7 +14,7 @@
 #include <cmocka.h>
 #include <stdlib.h>
 
-cJSON* __wrap_wdb_agents_vuln_cves_insert(int id,
+cJSON* __wrap_wdb_insert_vuln_cves(int id,
                                           const char *name,
                                           const char *version,
                                           const char *architecture,
@@ -36,13 +36,13 @@ cJSON* __wrap_wdb_agents_vuln_cves_insert(int id,
     return mock_ptr_type(cJSON*);
 }
 
-int __wrap_wdb_agents_vuln_cves_clear(int id,
+int __wrap_wdb_clear_vuln_cves(int id,
                                      __attribute__((unused)) int *sock) {
     check_expected(id);
     return mock_type(int);
 }
 
-cJSON* __wrap_wdb_agents_vuln_cves_remove_by_status(int id,
+cJSON* __wrap_wdb_remove_vuln_cves_by_status(int id,
                                                     const char *status,
                                                     __attribute__((unused)) int *sock) {
     check_expected(id);
@@ -50,7 +50,7 @@ cJSON* __wrap_wdb_agents_vuln_cves_remove_by_status(int id,
     return mock_ptr_type(cJSON*);
 }
 
-int __wrap_wdb_agents_vuln_cves_update_status(int id,
+int __wrap_wdb_update_vuln_cves_status(int id,
                                               const char *old_status,
                                               const char *new_status,
                                               __attribute__((unused)) int *sock) {
