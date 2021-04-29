@@ -8,9 +8,11 @@
  * Foundation
  */
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-#include "oslog_stream.h"
+#include "oslog.h"
 
-// Remove STATIC/INLINE qualifier from tests
+extern oslog_status_t oslog_status;
+
+// Removes STATIC/INLINE qualifiers from the tests
 #ifdef WAZUH_UNIT_TESTING
 #define STATIC
 #define INLINE
@@ -21,12 +23,12 @@
 
 /**
  * @brief Validates whether the predicate is valid or not
- * @param predicate Contains the `log stream`'s predicate filter to be used as a string
+ * @param predicate Contains the `log`'s predicate filter to be used as a string
  * @return true if valid, otherwise false
  */
-STATIC INLINE bool w_logcollector_validate_oslog_predicate(char * predicate) {
+STATIC INLINE bool w_oslog_is_predicate_valid(char * predicate) {
 
-    // todo : improve this function
+    // todo : improve this function? or remove it?
     if (strlen(predicate) > 0) {
         return true;
     }
@@ -40,12 +42,13 @@ STATIC INLINE bool w_logcollector_validate_oslog_predicate(char * predicate) {
  * @param type Contains the `log show`'s type filters to be used (as combined bit flags)
  * @return A pointer to an array containing the executable arguments
  */
-STATIC char ** w_create_oslog_show_array(char * start_date, char * query, char * level, int type) {
+STATIC char ** w_oslog_create_show_array(char * start_date, char * query, char * level, int type) {
 
-    char ** oslog_array = NULL;
-    char * type_predicate = NULL;
     char * predicate = NULL;
+    char * type_predicate = NULL;
+
     size_t oslog_array_idx = 0;
+    char ** oslog_array = NULL;
 
     os_calloc(MAX_LOG_SHOW_CMD_ARGS + 1, sizeof(char *), oslog_array);
 
@@ -96,8 +99,7 @@ STATIC char ** w_create_oslog_show_array(char * start_date, char * query, char *
 
     // Log Stream's (full) Predicate section
     if (query != NULL) {
-        const bool is_predicate_valid = w_logcollector_validate_oslog_predicate(query);
-        if (is_predicate_valid) {
+        if (w_oslog_is_predicate_valid(query)) {
             w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
 
             if (type_predicate != NULL) {
@@ -129,10 +131,10 @@ STATIC char ** w_create_oslog_show_array(char * start_date, char * query, char *
  * @param type Contains the `log stream`'s type filters to be used (as combined bit flags)
  * @return A pointer to an array containing the executable arguments
  */
-STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int type) {
+STATIC char ** w_oslog_create_stream_array(char * predicate, char * level, int type) {
 
-    char ** oslog_array = NULL;
     size_t oslog_array_idx = 0;
+    char ** oslog_array = NULL;
 
     os_calloc(MAX_LOG_STREAM_CMD_ARGS + 1, sizeof(char *), oslog_array);
 
@@ -168,8 +170,7 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
 
     // Log Stream's Predicate section
     if (predicate != NULL) {
-        const bool is_predicate_valid = w_logcollector_validate_oslog_predicate(predicate);
-        if (is_predicate_valid) {
+        if (w_oslog_is_predicate_valid(predicate)) {
             w_strdup(PREDICATE_OPT_STR, oslog_array[oslog_array_idx++]);
 
             w_strdup(predicate, oslog_array[oslog_array_idx++]);
@@ -180,12 +181,12 @@ STATIC char ** w_create_oslog_stream_array(char * predicate, char * level, int t
 }
 
 /**
- * @brief Executes the `log stream` command with its arguments and sets to non-blocking the output pipe
+ * @brief Executes the `log stream/show` command with its arguments and sets to non-blocking the output pipe
  * @param oslog_array Contains the arguments of the command to be executed
  * @param flags Are the flags to be used along with wpopenv()
  * @return A pointer to a fulfilled wfd_t structure, on success, or NULL
  */
-STATIC wfd_t * w_logcollector_exec_oslog(char ** oslog_array, u_int32_t flags) {
+STATIC wfd_t * w_oslog_exec(char ** oslog_array, u_int32_t flags) {
 
     int oslog_fd = -1;
     int oslog_fd_flags = 0;
@@ -229,7 +230,7 @@ STATIC wfd_t * w_logcollector_exec_oslog(char ** oslog_array, u_int32_t flags) {
  * 
  * @return true when `log` command can be executed, false otherwise.
  */
-STATIC INLINE bool w_is_log_cmd_executable(void) {
+STATIC INLINE bool w_oslog_is_log_executable(void) {
     const int retval = access(LOG_CMD_STR, X_OK);
     if (retval == 0) {
         return true;
@@ -238,32 +239,43 @@ STATIC INLINE bool w_is_log_cmd_executable(void) {
     return false;
 }
 
-void w_logcollector_create_oslog_env(logreader * current) {
+void w_oslog_create_env(logreader * current) {
     char ** log_show_array = NULL;
     char ** log_stream_array = NULL;
 
     current->oslog->is_oslog_running = false;
 
-    if (w_is_log_cmd_executable()) {
+    current->oslog->show_wfd = NULL;
+    current->oslog->stream_wfd = NULL;
 
-        if (!current->future) {
-            log_show_array = w_create_oslog_show_array("2021-04-27 12:29:25-0700", 
+    if (w_oslog_is_log_executable()) {
+
+        /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
+        if (!current->future && oslog_status.timestamp[0] != '\0') {
+            log_show_array = w_oslog_create_show_array( oslog_status.timestamp, 
                                                         current->query, 
                                                         current->query_level, 
                                                         current->query_type);
-            
-            //w_logcollector_exec_oslog(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
+            current->oslog->show_wfd = w_oslog_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
+
+            if (current->oslog->show_wfd != NULL) {
+                current->oslog->is_oslog_running = true;
+                minfo(LOGCOLLECTOR_LOG_SHOW_INFO, OSLOG_GET_LOG_PARAMS(log_show_array));
+            } else {
+                merror(LOGCOLLECTOR_OSLOG_SHOW_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_show_array));
+            }
         }
 
+        log_stream_array = w_oslog_create_stream_array(current->query, current->query_level, current->query_type);
 
-        log_stream_array = w_create_oslog_stream_array(current->query, current->query_level, current->query_type);
+        current->oslog->stream_wfd = w_oslog_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
-        current->oslog->log_wfd = w_logcollector_exec_oslog(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
-
-        if (current->oslog->log_wfd != NULL && current->oslog->log_wfd->file != NULL) {
+        if (current->oslog->stream_wfd != NULL) {
             current->oslog->is_oslog_running = true;
-            minfo(LOG_STREAM_INFO, GET_LOG_STREAM_PARAMS(log_stream_array));
+            minfo(LOGCOLLECTOR_LOG_STREAM_INFO, OSLOG_GET_LOG_PARAMS(log_stream_array));
+        } else {
+            merror(LOGCOLLECTOR_OSLOG_STREAM_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_stream_array));
         }
     }
 

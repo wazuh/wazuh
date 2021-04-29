@@ -23,9 +23,10 @@
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
 
 /* oslog configurations */
-#define OSLOG_NAME              "USL_OSLOG_Super_Mc_Darwin" ///< Name to be displayed in the localfile' statistics
+#define OSLOG_NAME              "ULS_OSLOG_Super_Mc_Darwin" ///< Name to be displayed in the localfile' statistics
 
 #define LOG_CMD_STR             "/usr/bin/log"  ///< It is the name of the command used to collect macos' logs
+
 #define LOG_STREAM_OPT_STR      "stream"        ///< "stream" is a mode in which the "log" command can be executed
 #define LOG_SHOW_OPT_STR        "show"          ///< "show" is a mode in which the "log" command can be executed
 
@@ -59,11 +60,12 @@
 #define SHOW_OR_TYPE_LOG_STR    " OR eventType == logEvent"
 #define SHOW_OR_TYPE_TRACE_STR  " OR eventType == traceEvent"
 
-#define MAX_LOG_STREAM_CMD_ARGS 14                          ///< This value takes into account the largest case of use
-#define MAX_LOG_SHOW_CMD_ARGS   MAX_LOG_STREAM_CMD_ARGS     ///< This value takes into account the largest case of use
+#define MAX_LOG_CMD_ARGS        14
+#define MAX_LOG_STREAM_CMD_ARGS MAX_LOG_CMD_ARGS    ///< This value takes into account the largest case of use
+#define MAX_LOG_SHOW_CMD_ARGS   MAX_LOG_CMD_ARGS    ///< This value takes into account the largest case of use
 
 /** This macro is used for logging the full "log stream" command with its arguments (see MAX_LOG_STREAM_CMD_ARGS) **/
-#define GET_LOG_STREAM_PARAMS(x)    x[0]?x[0]:"", x[1]?x[1]:"", x[2]?x[2]:"",\
+#define OSLOG_GET_LOG_PARAMS(x)     x[0]?x[0]:"", x[1]?x[1]:"", x[2]?x[2]:"",\
                                     x[3]?x[3]:"", x[4]?x[4]:"", x[5]?x[5]:"",\
                                     x[6]?x[6]:"", x[7]?x[7]:"", x[8]?x[8]:"",\
                                     x[9]?x[9]:"", x[10]?x[10]:"",   \
@@ -172,7 +174,8 @@ typedef struct {
     bool is_header_processed;            ///< True if the stream header was processed
     w_oslog_ctxt_t ctxt;              ///< store current status when read log is in process
     char * last_read_timestamp;       ///< timestamp of last log queued (Used for only future event)
-    wfd_t * log_wfd;                  ///< `log stream` IPC connector
+    wfd_t * stream_wfd;                 ///< `log stream` IPC connector
+    wfd_t * show_wfd;                   ///< `log show` IPC connector
     /** Indicates if `log stream` is currently running. if not running, localfiles with oslog format will be ignored */
     bool is_oslog_running;
 } w_oslog_config_t;

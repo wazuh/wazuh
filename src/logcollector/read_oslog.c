@@ -131,7 +131,7 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    while (oslog_getlog(read_buffer, MAX_LINE_LEN, lf->oslog->log_wfd->file, lf->oslog)
+    while (oslog_getlog(read_buffer, MAX_LINE_LEN, lf->oslog->stream_wfd->file, lf->oslog)
            && (maximum_lines == 0 || count_logs < maximum_lines)) {
 
         if (drop_it == 0) {
@@ -155,9 +155,9 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
     }
 
     /* Checks whether the OSLog's process is still alive or exited */
-    retval = waitpid(lf->oslog->log_wfd->pid, &status, WNOHANG);    // Tries to get the child' "soul"
-    if (retval == lf->oslog->log_wfd->pid) {                        // This is true in the case that the child exited
-        merror(CHILD_ERROR, lf->oslog->log_wfd->pid, status);
+    retval = waitpid(lf->oslog->stream_wfd->pid, &status, WNOHANG);    // Tries to get the child' "soul"
+    if (retval == lf->oslog->stream_wfd->pid) {                        // This is true in the case that the child exited
+        merror(LOGCOLLECTOR_OSLOG_CHILD_ERROR, lf->oslog->stream_wfd->pid, status);
         w_oslog_release();
         lf->oslog->is_oslog_running = false;
     } else if (retval != 0) {
