@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # March 6, 2019.
 #
 # This program is free software; you can redistribute it
@@ -183,7 +183,7 @@ main () {
         if [ ! -f ${INSTALLDIR}/logs/ossec.log ]; then
             touch -f ${INSTALLDIR}/logs/ossec.log
             chmod 660 ${INSTALLDIR}/logs/ossec.log
-            chown root:ossec ${INSTALLDIR}/logs/ossec.log
+            chown root:wazuh ${INSTALLDIR}/logs/ossec.log
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER

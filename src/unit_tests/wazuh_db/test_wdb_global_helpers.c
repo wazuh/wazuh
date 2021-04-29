@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  * July 5, 2016.
  *
  * This program is free software; you can redistribute it
@@ -209,10 +209,10 @@ void test_wdb_create_agent_db_error_getting_ids(void **state)
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
     will_return(__wrap_Privsep_GetUser, (uid_t) - 1);
-    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
     will_return(__wrap_Privsep_GetGroup, (gid_t) - 1);
     will_return(__wrap_strerror, "error");
-    expect_string(__wrap__merror, formatted_msg, "(1203): Invalid user 'root' or group 'ossec' given: error (0)");
+    expect_string(__wrap__merror, formatted_msg, "(1203): Invalid user 'root' or group 'wazuh' given: error (0)");
 
     ret = wdb_create_agent_db(agent_id, agent_name);
 
@@ -246,7 +246,7 @@ void test_wdb_create_agent_db_error_changing_owner(void **state)
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
     will_return(__wrap_Privsep_GetUser, 0);
-    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
     will_return(__wrap_Privsep_GetGroup, 0);
     // Changing owner
     expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
@@ -288,7 +288,7 @@ void test_wdb_create_agent_db_error_changing_mode(void **state)
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
     will_return(__wrap_Privsep_GetUser, 0);
-    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
     will_return(__wrap_Privsep_GetGroup, 0);
     // Changing owner
     expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
@@ -333,7 +333,7 @@ void test_wdb_create_agent_db_success(void **state)
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
     will_return(__wrap_Privsep_GetUser, 0);
-    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
     will_return(__wrap_Privsep_GetGroup, 0);
     // Changing owner
     expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
@@ -621,7 +621,7 @@ void test_wdb_insert_agent_success(void **state)
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
     will_return(__wrap_Privsep_GetUser, 0);
-    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
     will_return(__wrap_Privsep_GetGroup, 0);
     // Changing owner
     expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");
@@ -736,7 +736,7 @@ void test_wdb_insert_agent_success_keep_date(void **state)
     // Getting IDs
     expect_string(__wrap_Privsep_GetUser, name, "root");
     will_return(__wrap_Privsep_GetUser, 0);
-    expect_string(__wrap_Privsep_GetGroup, name, "ossec");
+    expect_string(__wrap_Privsep_GetGroup, name, "wazuh");
     will_return(__wrap_Privsep_GetGroup, 0);
     // Changing owner
     expect_string(__wrap_chown, __file, "var/db/agents/001-agent1.db");

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -55,7 +55,7 @@ time_t __wrap_time(int time) {
     return mock();
 }
 
-void __wrap_key_lock_read(){
+void __wrap_key_lock_write(){
     function_called();
 }
 
@@ -73,7 +73,7 @@ void test_close_fp_main_queue_empty(void **state)
     expect_value(__wrap_sleep, seconds, 10);
 
     // key_lock
-    expect_function_call(__wrap_key_lock_read);
+    expect_function_call(__wrap_key_lock_write);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 0");
 
@@ -103,7 +103,7 @@ void test_close_fp_main_first_node_no_close_first(void **state)
     expect_value(__wrap_sleep, seconds, 10);
 
     // key_lock
-    expect_function_call(__wrap_key_lock_read);
+    expect_function_call(__wrap_key_lock_write);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 1");
 
@@ -142,7 +142,7 @@ void test_close_fp_main_close_first(void **state)
     expect_value(__wrap_sleep, seconds, 10);
 
     // key_lock
-    expect_function_call(__wrap_key_lock_read);
+    expect_function_call(__wrap_key_lock_write);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 1");
 
@@ -195,7 +195,7 @@ void test_close_fp_main_close_first_queue_2(void **state)
     expect_value(__wrap_sleep, seconds, 10);
 
     // key_lock
-    expect_function_call(__wrap_key_lock_read);
+    expect_function_call(__wrap_key_lock_write);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 2");
 
@@ -258,7 +258,7 @@ void test_close_fp_main_close_first_queue_2_close_2(void **state)
     expect_value(__wrap_sleep, seconds, 10);
 
     // key_lock
-    expect_function_call(__wrap_key_lock_read);
+    expect_function_call(__wrap_key_lock_write);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 2");
 
@@ -321,7 +321,7 @@ void test_close_fp_main_close_fp_null(void **state)
     expect_value(__wrap_sleep, seconds, 10);
 
     // key_lock
-    expect_function_call(__wrap_key_lock_read);
+    expect_function_call(__wrap_key_lock_write);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opened rids queue size: 1");
 

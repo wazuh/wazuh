@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Wazuh Inc.
+ * Copyright (C) 2015-2021, Wazuh Inc.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -636,12 +636,14 @@ void test_set_winsacl_unable_to_get_acl_info(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -717,12 +719,14 @@ void test_set_winsacl_fail_to_alloc_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -801,12 +805,14 @@ void test_set_winsacl_fail_to_initialize_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -891,12 +897,14 @@ void test_set_winsacl_fail_getting_ace_from_old_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -984,12 +992,14 @@ void test_set_winsacl_fail_adding_old_ace_into_new_sacl(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -1080,12 +1090,14 @@ void test_set_winsacl_fail_to_alloc_new_ace(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -1182,12 +1194,14 @@ void test_set_winsacl_fail_to_copy_sid(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -1286,12 +1300,14 @@ void test_set_winsacl_fail_to_add_ace(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -1396,12 +1412,14 @@ void test_set_winsacl_fail_to_set_security_info(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -1515,12 +1533,14 @@ void test_set_winsacl_success(void **state) {
     {
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &old_sacl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
-        expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
-        expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
     }
 
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
@@ -3124,7 +3144,7 @@ void test_is_valid_sacl_sid_error(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
 
     ret = is_valid_sacl(sacl, 0);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 2);
 }
 
 void test_is_valid_sacl_sacl_not_found(void **state) {
@@ -3142,7 +3162,7 @@ void test_is_valid_sacl_sacl_not_found(void **state) {
     expect_string(__wrap__mtdebug2, formatted_msg, "(6267): No SACL found on target. A new one will be created.");
 
     ret = is_valid_sacl(sacl, 0);
-    assert_int_equal(ret, 2);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_ace_not_found(void **state) {
@@ -3172,7 +3192,7 @@ void test_is_valid_sacl_ace_not_found(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(6633): Could not extract the ACE information. Error: '800'.");
 
     ret = is_valid_sacl(new_sacl, 0);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_not_valid(void **state) {
@@ -3198,7 +3218,7 @@ void test_is_valid_sacl_not_valid(void **state) {
     will_return(wrap_GetAce, 1);
 
     ret = is_valid_sacl(new_sacl, 1);
-    assert_int_equal(ret, 0);
+    assert_int_equal(ret, 1);
 }
 
 void test_is_valid_sacl_valid(void **state) {
@@ -3225,7 +3245,7 @@ void test_is_valid_sacl_valid(void **state) {
     will_return(wrap_EqualSid, 1);
 
     ret = is_valid_sacl(&new_sacl, 1);
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 0);
 }
 
 void test_replace_device_path_invalid_path(void **state) {
@@ -5969,7 +5989,7 @@ void test_check_object_sacl_open_process_error(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_unable_to_set_privilege(void **state) {
@@ -6003,7 +6023,7 @@ void test_check_object_sacl_unable_to_set_privilege(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
@@ -6056,7 +6076,7 @@ void test_check_object_sacl_unable_to_retrieve_security_info(void **state) {
 
     ret = check_object_sacl("C:\\a\\path", 0);
 
-    assert_int_equal(ret, 1);
+    assert_int_equal(ret, 2);
 }
 
 void test_check_object_sacl_invalid_sacl(void **state) {
@@ -6095,12 +6115,19 @@ void test_check_object_sacl_invalid_sacl(void **state) {
 
         expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
         expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-        will_return(wrap_AllocateAndInitializeSid, 0);
+        will_return(wrap_AllocateAndInitializeSid, 1);
+
+        will_return(wrap_GetAce, &acl);
+        will_return(wrap_GetAce, 0);
 
         will_return(wrap_GetLastError, (unsigned int) 700);
 
+<<<<<<< HEAD
         expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
         expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+=======
+        expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
+>>>>>>> master
     }
 
     // Inside set_privilege
@@ -6856,8 +6883,14 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     ACL acl;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
 
+<<<<<<< HEAD
     expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);
     expect_string(__wrap__mtdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+=======
+    acl.AceCount = 1;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6233): Checking thread set to '300' seconds.");
+>>>>>>> master
 
     will_return(__wrap_FOREVER, 1);
     will_return(__wrap_FOREVER, 0);
@@ -6900,12 +6933,19 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
 
             expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
             expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-            will_return(wrap_AllocateAndInitializeSid, 0);
+            will_return(wrap_AllocateAndInitializeSid, 1);
+
+            will_return(wrap_GetAce, &acl);
+            will_return(wrap_GetAce, 0);
 
             will_return(wrap_GetLastError, (unsigned int) 700);
 
+<<<<<<< HEAD
             expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
             expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+=======
+            expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
+>>>>>>> master
         }
 
         // Inside set_privilege
@@ -7195,12 +7235,19 @@ void test_state_checker_dir_readded_succesful(void **state) {
         {
             expect_memory(wrap_AllocateAndInitializeSid, pIdentifierAuthority, &world_auth, 6);
             expect_value(wrap_AllocateAndInitializeSid, nSubAuthorityCount, 1);
-            will_return(wrap_AllocateAndInitializeSid, 0);
+            will_return(wrap_AllocateAndInitializeSid, 1);
+
+            will_return(wrap_GetAce, &old_sacl);
+            will_return(wrap_GetAce, 0);
 
             will_return(wrap_GetLastError, (unsigned int) 700);
 
+<<<<<<< HEAD
             expect_string(__wrap__mterror, tag, SYSCHECK_LOGTAG);
             expect_string(__wrap__mterror, formatted_msg, "(6632): Could not obtain the sid of Everyone. Error '700'.");
+=======
+            expect_string(__wrap__merror, formatted_msg, "(6633): Could not extract the ACE information. Error: '700'.");
+>>>>>>> master
         }
 
         expect_string(__wrap__mtdebug1, tag, SYSCHECK_LOGTAG);

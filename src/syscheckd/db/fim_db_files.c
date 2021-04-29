@@ -3,7 +3,7 @@
  * @brief Definition of FIM database for files library.
  * @date 2020-09-9
  *
- * @copyright Copyright (c) 2020 Wazuh, Inc.
+ * @copyright Copyright (C) 2015-2021 Wazuh, Inc.
  */
 
 #include "fim_db_files.h"

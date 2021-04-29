@@ -1,11 +1,11 @@
 #!/bin/sh
 
-#Copyright (C) 2015-2020, Wazuh Inc.
+#Copyright (C) 2015-2021, Wazuh Inc.
 # Install functions for Wazuh
 # Wazuh.com (https://github.com/wazuh)
 
 patch_version(){
-        rm -rf $DIRECTORY/etc/shared/ssh > /dev/null 2>&1
+        rm -rf $PREINSTALLEDDIR/etc/shared/ssh > /dev/null 2>&1
 }
 WazuhSetup(){
     patch_version
@@ -38,7 +38,7 @@ CheckModuleIsEnabled(){
     close_label="$2"
     enable_label="$3"
 
-    if grep -n "${open_label}" $DIRECTORY/etc/ossec.conf > /dev/null ; then
+    if grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf > /dev/null ; then
         is_disabled="no"
     else
         is_disabled="yes"
@@ -55,12 +55,12 @@ CheckModuleIsEnabled(){
     fi
 
     end_config_limit="99999999"
-    for start_config in $(grep -n "${open_label}" $DIRECTORY/etc/ossec.conf | cut -d':' -f 1); do
-        end_config="$(sed -n "${start_config},${end_config_limit}p" $DIRECTORY/etc/ossec.conf | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
+    for start_config in $(grep -n "${open_label}" $PREINSTALLEDDIR/etc/ossec.conf | cut -d':' -f 1); do
+        end_config="$(sed -n "${start_config},${end_config_limit}p" $PREINSTALLEDDIR/etc/ossec.conf | sed -n "/${open_label}/,\$p" | grep -n "${close_label}" | head -n 1 | cut -d':' -f 1)"
         end_config="$((start_config + end_config))"
 
         if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-            configuration_block="$(sed -n "${start_config},${end_config}p" $DIRECTORY/etc/ossec.conf)"
+            configuration_block="$(sed -n "${start_config},${end_config}p" $PREINSTALLEDDIR/etc/ossec.conf)"
 
             for line in $(echo ${configuration_block} | grep -n "${tag}" | cut -d':' -f 1); do
                 # Check if the component is enabled
@@ -82,7 +82,7 @@ WazuhUpgrade()
 {
     # Encode Agentd passlist if not encoded
 
-    passlist=$DIRECTORY/agentless/.passlist
+    passlist=$PREINSTALLEDDIR/agentless/.passlist
 
     if [ -f $passlist ] && ! base64 -d $passlist > /dev/null 2>&1; then
         cp $passlist $passlist.bak
@@ -98,16 +98,16 @@ WazuhUpgrade()
     fi
 
     # Remove/relocate existing SQLite databases
-    rm -f $DIRECTORY/var/db/.profile.db*
-    rm -f $DIRECTORY/var/db/.template.db*
-    rm -f $DIRECTORY/var/db/agents/*
+    rm -f $PREINSTALLEDDIR/var/db/.profile.db*
+    rm -f $PREINSTALLEDDIR/var/db/.template.db*
+    rm -f $PREINSTALLEDDIR/var/db/agents/*
 
-    if [ -f "$DIRECTORY/var/db/global.db" ]; then
-        cp $DIRECTORY/var/db/global.db $DIRECTORY/queue/db/
-        if [ -f "$DIRECTORY/queue/db/global.db" ]; then
-            chmod 640 $DIRECTORY/queue/db/global.db
-            chown ossec:ossec $DIRECTORY/queue/db/global.db
-            rm -f $DIRECTORY/var/db/global.db*
+    if [ -f "$PREINSTALLEDDIR/var/db/global.db" ]; then
+        cp $PREINSTALLEDDIR/var/db/global.db $PREINSTALLEDDIR/queue/db/
+        if [ -f "$PREINSTALLEDDIR/queue/db/global.db" ]; then
+            chmod 640 $PREINSTALLEDDIR/queue/db/global.db
+            chown wazuh:wazuh $PREINSTALLEDDIR/queue/db/global.db
+            rm -f $PREINSTALLEDDIR/var/db/global.db*
         else
             echo "Unable to move global.db during the upgrade"
         fi
@@ -120,80 +120,97 @@ WazuhUpgrade()
 
     if [ $MAJOR = 3 ] && [ $MINOR -lt 7 ]
     then
-        rm -f $DIRECTORY/queue/db/*.db*
+        rm -f $PREINSTALLEDDIR/queue/db/*.db*
     fi
-    rm -f $DIRECTORY/queue/db/.template.db
+    rm -f $PREINSTALLEDDIR/queue/db/.template.db
 
     # Remove existing SQLite databases for vulnerability-detector
 
-    rm -f $DIRECTORY/wodles/cve.db
-    rm -f $DIRECTORY/queue/vulnerabilities/cve.db
+    rm -f $PREINSTALLEDDIR/wodles/cve.db
+    rm -f $PREINSTALLEDDIR/queue/vulnerabilities/cve.db
 
-    # Remove existing socket folder
+    # Migrate .agent_info and .wait files before removing deprecated socket folder
 
-    rm -rf $DIRECTORY/queue/ossec
+    if [ -d $PREINSTALLEDDIR/queue/ossec ]; then
+        if [ -f $PREINSTALLEDDIR/queue/ossec/.agent_info ]; then
+            mv -f $PREINSTALLEDDIR/queue/ossec/.agent_info $PREINSTALLEDDIR/queue/sockets/.agent_info
+        fi
+        if [ -f $PREINSTALLEDDIR/queue/ossec/.wait ]; then
+            mv -f $PREINSTALLEDDIR/queue/ossec/.wait $PREINSTALLEDDIR/queue/sockets/.wait
+        fi
+        rm -rf $PREINSTALLEDDIR/queue/ossec
+    fi
 
-	# Move rotated logs to new folder and remove the existing one
+    # Move rotated logs to new folder and remove the existing one
 
-	if [ -d $DIRECTORY/logs/ossec ]; then
-		if [ "$(ls -A $DIRECTORY/logs/ossec)" ]; then
-			mv -f $DIRECTORY/logs/ossec/* $DIRECTORY/logs/wazuh
-		fi
-		rm -rf $DIRECTORY/logs/ossec
-	fi
+    if [ -d $PREINSTALLEDDIR/logs/ossec ]; then
+        if [ "$(ls -A $PREINSTALLEDDIR/logs/ossec)" ]; then
+            mv -f $PREINSTALLEDDIR/logs/ossec/* $PREINSTALLEDDIR/logs/wazuh
+        fi
+        rm -rf $PREINSTALLEDDIR/logs/ossec
+    fi
 
     # Remove deprecated Wazuh tools
 
-    rm -f $DIRECTORY/bin/ossec-control
-    rm -f $DIRECTORY/bin/ossec-regex
-    rm -f $DIRECTORY/bin/ossec-logtest
-    rm -f $DIRECTORY/bin/ossec-makelists
-    rm -f $DIRECTORY/bin/util.sh
-    rm -f $DIRECTORY/bin/rootcheck_control
-	rm -f $DIRECTORY/bin/syscheck_control
-	rm -f $DIRECTORY/bin/syscheck_update
+    rm -f $PREINSTALLEDDIR/bin/ossec-control
+    rm -f $PREINSTALLEDDIR/bin/ossec-regex
+    rm -f $PREINSTALLEDDIR/bin/ossec-logtest
+    rm -f $PREINSTALLEDDIR/bin/ossec-makelists
+    rm -f $PREINSTALLEDDIR/bin/util.sh
+    rm -f $PREINSTALLEDDIR/bin/rootcheck_control
+    rm -f $PREINSTALLEDDIR/bin/syscheck_control
+    rm -f $PREINSTALLEDDIR/bin/syscheck_update
 
     # Remove old Wazuh daemons
 
-    rm -f $DIRECTORY/bin/ossec-agentd
-    rm -f $DIRECTORY/bin/ossec-agentlessd
-    rm -f $DIRECTORY/bin/ossec-analysisd
-    rm -f $DIRECTORY/bin/ossec-authd
-    rm -f $DIRECTORY/bin/ossec-csyslogd
-    rm -f $DIRECTORY/bin/ossec-dbd
-    rm -f $DIRECTORY/bin/ossec-integratord
-    rm -f $DIRECTORY/bin/ossec-logcollector
-    rm -f $DIRECTORY/bin/ossec-maild
-    rm -f $DIRECTORY/bin/ossec-monitord
-    rm -f $DIRECTORY/bin/ossec-remoted
-    rm -f $DIRECTORY/bin/ossec-reportd
-    rm -f $DIRECTORY/bin/ossec-syscheckd
+    rm -f $PREINSTALLEDDIR/bin/ossec-agentd
+    rm -f $PREINSTALLEDDIR/bin/ossec-agentlessd
+    rm -f $PREINSTALLEDDIR/bin/ossec-analysisd
+    rm -f $PREINSTALLEDDIR/bin/ossec-authd
+    rm -f $PREINSTALLEDDIR/bin/ossec-csyslogd
+    rm -f $PREINSTALLEDDIR/bin/ossec-dbd
+    rm -f $PREINSTALLEDDIR/bin/ossec-execd
+    rm -f $PREINSTALLEDDIR/bin/ossec-integratord
+    rm -f $PREINSTALLEDDIR/bin/ossec-logcollector
+    rm -f $PREINSTALLEDDIR/bin/ossec-maild
+    rm -f $PREINSTALLEDDIR/bin/ossec-monitord
+    rm -f $PREINSTALLEDDIR/bin/ossec-remoted
+    rm -f $PREINSTALLEDDIR/bin/ossec-reportd
+    rm -f $PREINSTALLEDDIR/bin/ossec-syscheckd
 
     # Remove existing ruleset version file
 
-    rm -f $DIRECTORY/ruleset/VERSION
+    rm -f $PREINSTALLEDDIR/ruleset/VERSION
 
     # Remove old Active Response scripts
 
-    rm -f $DIRECTORY/active-response/bin/firewall-drop.sh
-    rm -f $DIRECTORY/active-response/bin/default-firewall-drop.sh
-    rm -f $DIRECTORY/active-response/bin/pf.sh
-    rm -f $DIRECTORY/active-response/bin/npf.sh
-    rm -f $DIRECTORY/active-response/bin/ipfw.sh
-    rm -f $DIRECTORY/active-response/bin/ipfw_mac.sh
-    rm -f $DIRECTORY/active-response/bin/firewalld-drop.sh
-    rm -f $DIRECTORY/active-response/bin/disable-account.sh
-    rm -f $DIRECTORY/active-response/bin/host-deny.sh
-    rm -f $DIRECTORY/active-response/bin/ip-customblock.sh
-    rm -f $DIRECTORY/active-response/bin/restart-ossec.sh
-    rm -f $DIRECTORY/active-response/bin/route-null.sh
-    rm -f $DIRECTORY/active-response/bin/kaspersky.sh
-    rm -f $DIRECTORY/active-response/bin/ossec-slack.sh
-    rm -f $DIRECTORY/active-response/bin/ossec-tweeter.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/firewall-drop.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/default-firewall-drop.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/pf.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/npf.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/ipfw.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/ipfw_mac.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/firewalld-drop.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/disable-account.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/host-deny.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/ip-customblock.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/restart-ossec.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/route-null.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/kaspersky.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/ossec-slack.sh
+    rm -f $PREINSTALLEDDIR/active-response/bin/ossec-tweeter.sh
 
     # Remove deprecated ossec-init.conf file and its link
     if [ -f /etc/ossec-init.conf ]; then
-        rm -f $DIRECTORY/etc/ossec-init.conf
+        rm -f $PREINSTALLEDDIR/etc/ossec-init.conf
         rm -f /etc/ossec-init.conf
     fi
+
+    # Replace and delete ossec group along with ossec users
+    OSSEC_GROUP=ossec
+    if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then
+        find $PREINSTALLEDDIR -group $OSSEC_GROUP -user root -exec chown root:wazuh {} \;
+        find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown wazuh:wazuh {} \;
+    fi
+    ./src/init/delete-oldusers.sh $OSSEC_GROUP
 }

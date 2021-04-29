@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -27,7 +27,87 @@ extern w_queue_t * winexec_queue;
 OSList *timeout_list;
 OSListNode *timeout_node;
 
-void win_timeout_run() {
+DWORD WINAPI win_exec_main(void * args);
+
+/* Shut down win-execd properly */
+static void WinExecd_Shutdown()
+{
+    /* Remove pending active responses */
+    minfo(EXEC_SHUTDOWN);
+
+    timeout_node = OSList_GetFirstNode(timeout_list);
+    while (timeout_node) {
+        timeout_data *list_entry;
+
+        list_entry = (timeout_data *)timeout_node->data;
+
+        mdebug2("Delete pending AR: %s", list_entry->command[0]);
+
+        wfd_t *wfd = wpopenv(list_entry->command[0], list_entry->command, W_BIND_STDIN);
+        if (wfd) {
+            fwrite(list_entry->parameters, 1, strlen(list_entry->parameters), wfd->file);
+            wpclose(wfd);
+        } else {
+            merror(EXEC_CMD_FAIL, strerror(errno), errno);
+        }
+
+        /* Delete current node - already sets the pointer to next */
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+
+        /* Clear the memory */
+        FreeTimeoutEntry(list_entry);
+    }
+}
+
+int WinExecd_Start()
+{
+    int c;
+    char *cfg = OSSECCONF;
+    winexec_queue = queue_init(OS_SIZE_128);
+
+    /* Read config */
+    if ((c = ExecdConfig(cfg)) < 0) {
+        merror_exit(CONFIG_ERROR, cfg);
+    }
+
+    /* Active response disabled */
+    if (c == 1) {
+        minfo(EXEC_DISABLED);
+        return (0);
+    }
+
+    /* Create list for timeout */
+    timeout_list = OSList_Create();
+    if (!timeout_list) {
+        merror_exit(LIST_ERROR);
+    }
+
+    /* Delete pending AR at succesfull exit */
+    atexit(WinExecd_Shutdown);
+
+    /* Start up message */
+    minfo(STARTUP_MSG, getpid());
+
+    w_create_thread(NULL, 0, win_exec_main,
+                    winexec_queue, 0, NULL);
+
+    return (1);
+}
+
+// Create a thread to run windows AR simultaneous
+DWORD WINAPI win_exec_main(__attribute__((unused)) void * args) {
+    while(1) {
+        char* exec_msg = queue_pop_ex(winexec_queue);
+        if (exec_msg) {
+            WinExecdRun(exec_msg);
+            os_free(exec_msg);
+        }
+    }
+}
+
+void WinTimeoutRun()
+{
     time_t curr_time = time(NULL);
 
     if (timeout_list) {

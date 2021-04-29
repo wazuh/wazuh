@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
@@ -122,7 +122,7 @@ async def print_health(config, more, filter_node):
                 str(node_info['status']['last_sync_agentinfo']['date_start_master']),
                 str(node_info['status']['last_sync_agentinfo']['date_end_master']))
             msg2 += "                Number of synchronized chunks: {}.\n".format(
-                str(node_info['status']['last_sync_agentinfo']['total_agentinfo']))
+                str(node_info['status']['last_sync_agentinfo']['n_synced_chunks']))
 
     print(msg1)
 

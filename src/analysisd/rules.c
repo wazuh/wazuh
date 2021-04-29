@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -1498,6 +1498,14 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                 /* Check for a valid description */
                 if (!config_ruleinfo->comment) {
                     smerror(log_msg, "No such description at rule '%d'.", config_ruleinfo->sigid);
+                    goto cleanup;
+                }
+
+                /* Check for valid overwrite */
+                if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
+                    && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
+                    smerror(log_msg, "Invalid use of overwrite option. "
+                            "Could not overwrite parent rule at rule '%d'.", config_ruleinfo->sigid);
                     goto cleanup;
                 }
 

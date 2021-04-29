@@ -1,7 +1,9 @@
 <!--
-  -  Wazuh rules
-  -  Created by Wazuh, Inc. Based on OSSEC rules, credits to Daniel Cid.
-  -  Copyright (C) 2015-2020, Wazuh Inc.
+  -  OSSEC rules
+  -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2021, Wazuh Inc.
+  -  Copyright (C) 2009 Trend Micro Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 

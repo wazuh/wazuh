@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2020, Wazuh Inc.
+/* Copyright (C) 2015-2021, Wazuh Inc.
  * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -1004,6 +1004,14 @@ int OS_ReadXMLRules(const char *rulefile,
                 */
 
                 k++;
+            }
+
+            /* Check for valid overwrite */
+            if ((config_ruleinfo->if_sid || config_ruleinfo->if_group || config_ruleinfo->if_level)
+                && (config_ruleinfo->alert_opts & DO_OVERWRITE)) {
+                merror("Invalid use of overwrite option. "
+                       "Could not overwrite parent rule at rule '%d'.", config_ruleinfo->sigid);
+                goto cleanup;
             }
 
             /* Check for a valid use of frequency */

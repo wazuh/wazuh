@@ -1,5 +1,5 @@
 /* Public domain */
-/* Copyright (C) 2015-2020, Wazuh Inc. */
+/* Copyright (C) 2015-2021, Wazuh Inc. */
 /* Adapted from DJB's original cdb-0.75 package */
 
 #include <sys/types.h>
