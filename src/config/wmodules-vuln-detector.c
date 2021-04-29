@@ -236,17 +236,21 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
         }
         upd->dist_ref = FEED_REDHAT;
     } else if (strcasestr(feed, vu_feed_tag[FEED_ALAS])) {
+        if (!version) {
+            retval = OS_INVALID;
+            goto end;
+        }
         // Amazon Linux 1
-        if (!version || !strcmp(version, "1") || strcasestr(version, vu_feed_tag[FEED_AL1])) {
+        else if (!strcmp(version, "1") || strcasestr(vu_feed_tag[FEED_AL1], version)) {
             os_index = CVE_AL1;
             upd->dist_tag_ref = FEED_AL1;
-            os_strdup(version, upd->version);
+            os_strdup(vu_feed_tag[FEED_AL1], upd->version);
             upd->dist_ext = vu_feed_ext[FEED_AL1];
         // Amazon Linux 2
-        } else if (!strcmp(version, "2") || strcasestr(version, vu_feed_tag[FEED_AL2])) {
+        } else if (!strcmp(version, "2") || strcasestr(vu_feed_tag[FEED_AL2], version)) {
             os_index = CVE_AL2;
             upd->dist_tag_ref = FEED_AL2;
-            os_strdup(version, upd->version);
+            os_strdup(vu_feed_tag[FEED_AL2], upd->version);
             upd->dist_ext = vu_feed_ext[FEED_AL2];
         }
         upd->dist_ref = FEED_ALAS;
