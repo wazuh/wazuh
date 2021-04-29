@@ -31,7 +31,7 @@ typedef enum agents_db_access {
  * @return Returns cJSON object with the sys_osinfo table information. Null in case of error.
  *                 The cJSON object must be freed by the caller.
  */
-cJSON* wdb_agents_sys_osinfo_get(int id,
+cJSON* wdb_get_sys_osinfo(int id,
                                  int *sock);
 
 /**
@@ -41,7 +41,7 @@ cJSON* wdb_agents_sys_osinfo_get(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_sys_osinfo_set_triaged(int id,
+int wdb_set_sys_osinfo_triaged(int id,
                                       int *sock);
 
 /**
@@ -65,7 +65,7 @@ int wdb_agents_sys_osinfo_set_triaged(int id,
  *         On any error, 'status' contains 'ERROR' string.
  *         The cJSON object must be freed by the caller.
  */
-cJSON* wdb_agents_vuln_cves_insert(int id,
+cJSON* wdb_insert_vuln_cves(int id,
                                const char *name,
                                const char *version,
                                const char *architecture,
@@ -83,7 +83,7 @@ cJSON* wdb_agents_vuln_cves_insert(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cves_clear(int id,
+int wdb_clear_vuln_cves(int id,
                               int *sock);
 
 /**
@@ -95,7 +95,7 @@ int wdb_agents_vuln_cves_clear(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cves_remove_entry(int id,
+int wdb_remove_vuln_cves(int id,
                                      const char *cve,
                                      const char *reference,
                                      int *sock);
@@ -108,7 +108,7 @@ int wdb_agents_vuln_cves_remove_entry(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns a pointer to a cJSON object that contains the information of all the vulnerabilities removed.
  */
-cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
+cJSON* wdb_remove_vuln_cves_by_status(int id,
                                             const char *status,
                                             int *sock);
 
@@ -121,7 +121,7 @@ cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cves_update_status(int id,
+int wdb_update_vuln_cves_status(int id,
                                       const char *old_status,
                                       const char *new_status,
                                       int *sock);
@@ -135,7 +135,7 @@ int wdb_agents_vuln_cves_update_status(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cves_update_status_by_type(int id,
+int wdb_update_vuln_cves_status_by_type(int id,
                                                const char *type,
                                                const char *new_status,
                                                int *sock);

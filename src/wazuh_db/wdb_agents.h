@@ -85,7 +85,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
  * @param [in] type The type of vulnerability to update. Can not be used at the same time than old_status
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_update_status_vuln_cves(wdb_t *wdb, const char* old_status, const char* new_status, const char* type);
+int wdb_agents_update_vuln_cves_status(wdb_t *wdb, const char* old_status, const char* new_status, const char* type);
 
 /**
  * @brief Function to remove vulnerabilities from the vuln_cves table by specifying the PK of the entry.
@@ -105,7 +105,7 @@ int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* referen
  * @param [out] output A buffer where the response is written. Must be de-allocated by the caller.
  * @return wdbc_result to represent if all the vulnerabilities have been removed.
  */
-wdbc_result wdb_agents_remove_by_status_vuln_cves(wdb_t *wdb, const char* status, char **output);
+wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status, char **output);
 
 /**
  * @brief Function to clear whole data from agent vuln_cves table.
