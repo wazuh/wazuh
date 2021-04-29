@@ -6032,7 +6032,7 @@ int wdb_parse_vuln_cves(wdb_t* wdb, char* input, char* output) {
         result = wdb_parse_agents_insert_vuln_cves(wdb, tail, output);
     }
     else if (strcmp(next, "update_status") == 0) {
-        result = wdb_parse_agents_vuln_cves_update_status(wdb, tail, output);
+        result = wdb_parse_agents_update_vuln_cves_status(wdb, tail, output);
     }
     else if (strcmp(next, "remove") == 0) {
         result = wdb_parse_agents_remove_vuln_cves(wdb, tail, output);
@@ -6095,7 +6095,7 @@ int wdb_parse_agents_insert_vuln_cves(wdb_t* wdb, char* input, char* output) {
     return ret;
 }
 
-int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* output) {
+int wdb_parse_agents_update_vuln_cves_status(wdb_t* wdb, char* input, char* output) {
     cJSON *data = NULL;
     const char *error = NULL;
     int ret = OS_INVALID;
@@ -6113,7 +6113,7 @@ int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* outp
         const char *type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
 
         if (new_status && ((type && !old_status) || (!type && old_status) )) {
-            ret = wdb_agents_update_status_vuln_cves(wdb, old_status, new_status, type);
+            ret = wdb_agents_update_vuln_cves_status(wdb, old_status, new_status, type);
             if (OS_SUCCESS != ret) {
                 mdebug1("DB(%s) Cannot execute vuln_cves update_status command; SQL err: %s", wdb->id, sqlite3_errmsg(wdb->db));
                 snprintf(output, OS_MAXSTR + 1, "err Cannot execute vuln_cves update_status command; SQL err: %s", sqlite3_errmsg(wdb->db));
@@ -6153,7 +6153,7 @@ int wdb_parse_agents_remove_vuln_cves(wdb_t* wdb, char* input, char* output) {
         if (cJSON_IsString(status)) {
             char* remove_out_str = NULL;
 
-            wdbc_result wdb_res = wdb_agents_remove_by_status_vuln_cves(wdb, status->valuestring, &remove_out_str);
+            wdbc_result wdb_res = wdb_agents_remove_vuln_cves_by_status(wdb, status->valuestring, &remove_out_str);
             snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[wdb_res], remove_out_str);
             os_free(remove_out_str)
             ret = OS_SUCCESS;

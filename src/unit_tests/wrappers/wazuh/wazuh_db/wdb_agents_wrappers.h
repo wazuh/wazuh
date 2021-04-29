@@ -24,9 +24,9 @@ cJSON* __wrap_wdb_agents_insert_vuln_cves(wdb_t *wdb,
                                           const char* type,
                                           const char* status,
                                           bool check_pkg_existence);
-int __wrap_wdb_agents_update_status_vuln_cves(wdb_t *wdb, const char* old_status, const char* new_status, const char* type);
+int __wrap_wdb_agents_update_vuln_cves_status(wdb_t *wdb, const char* old_status, const char* new_status, const char* type);
 int __wrap_wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* reference);
-wdbc_result __wrap_wdb_agents_remove_by_status_vuln_cves(wdb_t *wdb, const char* status, char **output);
+wdbc_result __wrap_wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status, char **output);
 int __wrap_wdb_agents_clear_vuln_cves(wdb_t *wdb);
 bool __wrap_wdb_agents_find_package(wdb_t *wdb, const char* reference);
 bool __wrap_wdb_agents_find_cve(wdb_t *wdb, const char* cve, const char* reference);
