@@ -40,24 +40,11 @@
 #define OS_LOGCOLLECTOR_JSON_TIMESTAMP  "timestamp"
 
 
-///< macOS ULS milliseconds lenght i.e .123456
-#define OS_LOGCOLLECTOR_TIMESTAMP_MS_LEN        7
-///< macOS ULS timezone lenght i.e -0700
-#define OS_LOGCOLLECTOR_TIMESTAMP_TZ_LEN        5
-///< macOS ULS basic timestamp lenght i.e 2021-04-27 08:07:20
-#define OS_LOGCOLLECTOR_BASIC_TIMESTAMP_LEN     19
-///< macOS ULS short timestamp lenght i.e 2021-04-27 08:07:20-0700
-#define OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN     OS_LOGCOLLECTOR_BASIC_TIMESTAMP_LEN + OS_LOGCOLLECTOR_TIMESTAMP_TZ_LEN
-///< macOS ULS full timestamp lenght i.e 2020-11-09 05:45:08.000000-0800
-#define OS_LOGCOLLECTOR_FULL_TIMESTAMP_LEN      OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN + OS_LOGCOLLECTOR_TIMESTAMP_MS_LEN
-
-
-
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
 #include "os_crypto/sha1/sha1_op.h"
-#include "oslog_stream.h"
+#include "oslog.h"
 
 
 /*** Function prototypes ***/
@@ -123,7 +110,6 @@ void *read_multiline(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
-
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 /**
  * @brief Read oslog logs
