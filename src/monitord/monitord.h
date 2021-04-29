@@ -13,7 +13,7 @@
 
 #include "hash_op.h"
 #ifndef ARGV0
-#define ARGV0 "wazuh-monitord"
+#define ARGV0 "wazuh-modules"
 #endif
 
 #include "../headers/store_op.h"
