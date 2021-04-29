@@ -131,7 +131,7 @@ cJSON* wdb_agents_insert_vuln_cves(wdb_t *wdb,
     return result;
 }
 
-int wdb_agents_update_status_vuln_cves(wdb_t *wdb, const char* old_status, const char* new_status, const char* type) {
+int wdb_agents_update_vuln_cves_status(wdb_t *wdb, const char* old_status, const char* new_status, const char* type) {
     sqlite3_stmt* stmt = NULL;
 
     if (old_status && new_status && !type) {
@@ -185,7 +185,7 @@ int wdb_agents_remove_vuln_cves(wdb_t *wdb, const char* cve, const char* referen
     return wdb_exec_stmt_silent(stmt);
 }
 
-wdbc_result wdb_agents_remove_by_status_vuln_cves(wdb_t *wdb, const char* status, char **output) {
+wdbc_result wdb_agents_remove_vuln_cves_by_status(wdb_t *wdb, const char* status, char **output) {
     wdbc_result wdb_res = WDBC_ERROR;
 
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_VULN_CVES_SELECT_BY_STATUS);
