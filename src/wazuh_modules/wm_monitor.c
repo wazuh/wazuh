@@ -8,15 +8,20 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+
 #include <stdlib.h>
-#include "../../wmodules_def.h"
-#include "wmodules.h"
 #include "wm_monitor.h"
+#include "wmodules.h"
 #include "defs.h"
+
+#define DEFAULT_NO_AGENT 0
+#define DEFAULT_DAY_WAIT -1
+
+// Location field for event sending
+#define WM_MONITOR_LOCATION "monitor"
 
 static void* wm_monitor_main(wm_monitor_t *data);        // Module main function. It won't return
 static void wm_monitor_destroy(wm_monitor_t *data);      // Destroy data
-const char *WM_MONITOR_LOCATION = "monitor";            // Location field for event sending
 cJSON *wm_monitor_dump(const wm_monitor_t *data);
 
 const wm_context WM_MONITOR_CONTEXT = {
@@ -45,6 +50,11 @@ void* wm_monitor_main(wm_monitor_t *data) {
         mtinfo(WM_MONITOR_LOGTAG, "Module disabled. Exiting...");
         pthread_exit(NULL);
     }*/
+
+    /* Reading configuration */
+    if (MonitordConfig(OSSECCONF, &mond, DEFAULT_NO_AGENT, DEFAULT_DAY_WAIT) != OS_SUCCESS ) {
+        mterror(WM_MONITOR_LOGTAG, CONFIG_ERROR, OSSECCONF);
+    }
 
     mtinfo(WM_MONITOR_LOGTAG, "Module finished.");
 
