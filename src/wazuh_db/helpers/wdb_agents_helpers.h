@@ -32,7 +32,7 @@ typedef enum agents_db_access {
  *                 The cJSON object must be freed by the caller.
  */
 cJSON* wdb_get_sys_osinfo(int id,
-                                 int *sock);
+                          int *sock);
 
 /**
  * @brief Sets the triaged status in the sys_osinfo table of the specified agent's database.
@@ -42,7 +42,7 @@ cJSON* wdb_get_sys_osinfo(int id,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_set_sys_osinfo_triaged(int id,
-                                      int *sock);
+                               int *sock);
 
 /**
  * @brief Insert or update a vulnerability to the vuln_cves table in the agents database.
@@ -66,15 +66,15 @@ int wdb_set_sys_osinfo_triaged(int id,
  *         The cJSON object must be freed by the caller.
  */
 cJSON* wdb_insert_vuln_cves(int id,
-                               const char *name,
-                               const char *version,
-                               const char *architecture,
-                               const char *cve,
-                               const char *reference,
-                               const char *type,
-                               const char *status,
-                               bool check_pkg_existence,
-                               int *sock);
+                            const char *name,
+                            const char *version,
+                            const char *architecture,
+                            const char *cve,
+                            const char *reference,
+                            const char *type,
+                            const char *status,
+                            bool check_pkg_existence,
+                            int *sock);
 
 /**
  * @brief Removes all the entries from the vuln_cves table in the agents database.
@@ -84,7 +84,7 @@ cJSON* wdb_insert_vuln_cves(int id,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_clear_vuln_cves(int id,
-                              int *sock);
+                        int *sock);
 
 /**
  * @brief Removes an entry from the vuln_cves table in the agent's database.
@@ -96,9 +96,9 @@ int wdb_clear_vuln_cves(int id,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_remove_vuln_cves(int id,
-                                     const char *cve,
-                                     const char *reference,
-                                     int *sock);
+                         const char *cve,
+                         const char *reference,
+                         int *sock);
 
 /**
  * @brief Removes all the entries from the vuln_cves table in the agent's database that have the specified status.
@@ -109,8 +109,8 @@ int wdb_remove_vuln_cves(int id,
  * @return Returns a pointer to a cJSON object that contains the information of all the vulnerabilities removed.
  */
 cJSON* wdb_remove_vuln_cves_by_status(int id,
-                                            const char *status,
-                                            int *sock);
+                                      const char *status,
+                                      int *sock);
 
 /**
  * @brief Updates all or a specific status from the vuln_cves table in the agents database.
@@ -122,9 +122,9 @@ cJSON* wdb_remove_vuln_cves_by_status(int id,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_update_vuln_cves_status(int id,
-                                      const char *old_status,
-                                      const char *new_status,
-                                      int *sock);
+                                const char *old_status,
+                                const char *new_status,
+                                int *sock);
 
 /**
  * @brief Updates CVEs' status from the vuln_cves table according their type (OS/PACKAGE).
@@ -136,8 +136,8 @@ int wdb_update_vuln_cves_status(int id,
  * @return Returns 0 on success or -1 on error.
  */
 int wdb_update_vuln_cves_status_by_type(int id,
-                                               const char *type,
-                                               const char *new_status,
-                                               int *sock);
+                                        const char *type,
+                                        const char *new_status,
+                                        int *sock);
 
 #endif
