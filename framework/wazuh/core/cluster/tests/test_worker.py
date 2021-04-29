@@ -176,7 +176,7 @@ async def test_SyncWorker(create_log, caplog):
         with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=mock)):
             with caplog.at_level(logging.DEBUG):
                 await sync_worker.sync()
-                assert caplog.records[-1].message == expected_message
+                assert expected_message in caplog.records[-1].message
 
     worker_handler = get_worker_handler()
 
@@ -185,20 +185,20 @@ async def test_SyncWorker(create_log, caplog):
 
     send_request_mock = KeyError(1)
     await check_message(mock=send_request_mock, expected_message=f"Error asking for permission: 1")
-    await check_message(mock=b'False', expected_message="Master didnt grant permission to synchronize")
-    await check_message(mock=b'True', expected_message="Worker files sent to master")
+    await check_message(mock=b'False', expected_message="Master didn't grant permission to synchronize.")
+    await check_message(mock=b'True', expected_message="Zip file sent to master.")
 
     error = WazuhException(1001)
     with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=b'True')):
         with patch('wazuh.core.cluster.common.Handler.send_file', new=AsyncMock(side_effect=error)):
             await sync_worker.sync()
-            assert 'Error sending files information' in caplog.records[-1].message
+            assert 'Error sending zip file' in caplog.records[-1].message
 
     error = KeyError(1)
     with patch('wazuh.core.cluster.common.Handler.send_request', new=AsyncMock(return_value=b'True')):
         with patch('wazuh.core.cluster.common.Handler.send_file', new=AsyncMock(side_effect=error)):
             await sync_worker.sync()
-            assert 'Error sending files information' in caplog.records[-1].message
+            assert 'Error sending zip file' in caplog.records[-1].message
 
 
 @pytest.mark.asyncio
@@ -207,7 +207,7 @@ async def test_SyncInfo(caplog):
         with caplog.at_level(logging.DEBUG):
             await sync_worker.retrieve_and_send(*args, **kwargs)
             for i, expected_message in enumerate(expected_messages):
-                assert caplog.records[-(i+1)].message == expected_message
+                assert expected_message in caplog.records[-(i+1)].message
 
     worker_handler = get_worker_handler()
 
@@ -228,7 +228,7 @@ async def test_SyncInfo(caplog):
     sync_worker = worker.RetrieveAndSendToMaster(worker=worker_handler, destination_daemon='test', logger=logger,
                                                  data_retriever=lambda: ['test'])
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=WazuhException(1000)):
-        await check_message(expected_messages=["Finished sending information to test (0 chunks sent).",
+        await check_message(expected_messages=["Finished sending information to test in",
                                                "Error sending information to test: Error 1000 - Wazuh Internal Error"])
 
     # Test successful workflow for 2 chunks
@@ -236,7 +236,7 @@ async def test_SyncInfo(caplog):
                                                  msg_format='test_format {payload}',
                                                  data_retriever=lambda: ['test1', 'test2'])
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='ok') as mock_lc:
-        await check_message(expected_messages=["Finished sending information to test (2 chunks sent).",
+        await check_message(expected_messages=["Finished sending information to test in",
                                                "Master's test response: ok.",
                                                "Master's test response: ok.",
                                                "Starting to send information to test."])
@@ -252,11 +252,11 @@ async def test_SyncInfo(caplog):
                                                  cmd=b'sync_a_m_w')
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', return_value='ok') as mock_lc:
         with patch('wazuh.core.cluster.common.Handler.send_request', return_value='ok'):
-            await check_message(expected_messages=["Finished sending information to test (0 chunks sent).",
+            await check_message(expected_messages=["Finished sending information to test in",
                                                    "Master response for b'sync_a_m_w_e' command: ok",
                                                    "Master's test response: ok.",
                                                    "Error sending chunk to master's test. Response does not start with"
-                                                   " test_res. Retrying... 0.",
+                                                   " test_res (Response: ok). Retrying... 0",
                                                    "Master's test response: ok.",
                                                    "Starting to send information to test.",
                                                    "Master response for b'sync_a_m_w_s' command: ok",
