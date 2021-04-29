@@ -105,7 +105,7 @@ OSHash * files_status;
 char *files_status_name = "file_status";
 ///< OSLog last timestamp processed.
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-oslog_status_t oslog_status = { .mutex = PTHREAD_MUTEX_INITIALIZER, .timestamp = "" };
+STATIC oslog_status_t oslog_status = { .mutex = PTHREAD_MUTEX_INITIALIZER, .timestamp = "" };
 #endif
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
