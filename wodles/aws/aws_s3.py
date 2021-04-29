@@ -41,7 +41,6 @@ import gzip
 import zipfile
 import re
 import io
-import shlex
 from os import path
 import operator
 from datetime import datetime
