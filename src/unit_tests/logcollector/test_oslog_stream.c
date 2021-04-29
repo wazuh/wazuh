@@ -1843,6 +1843,7 @@ void test_w_logcollector_exec_oslog_stream_wpopenv_error(void ** state) {
     wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
 
     assert_null(ret);
+
     os_free(oslog_array);
 
 }
@@ -1868,6 +1869,7 @@ void test_w_logcollector_exec_oslog_stream_fileno_error(void ** state) {
     wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
 
     assert_ptr_equal(ret, 0);
+
     os_free(oslog_array);
 
 }
@@ -1893,6 +1895,7 @@ void test_w_logcollector_exec_oslog_stream_fp_to_fd_error(void ** state) {
     wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
 
     assert_ptr_equal(ret, 0);
+
     os_free(oslog_array);
 
 }
@@ -1920,6 +1923,7 @@ void test_w_logcollector_exec_oslog_stream_get_flags_error(void ** state) {
     wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
 
     assert_ptr_equal(ret, 0);
+
     os_free(oslog_array);
 
 }
@@ -1949,6 +1953,34 @@ void test_w_logcollector_exec_oslog_stream_set_flags_error(void ** state) {
     wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
 
     assert_ptr_equal(ret, 0);
+
+    os_free(oslog_array);
+
+}
+
+void test_w_logcollector_exec_oslog_stream_success(void ** state) {
+    wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
+
+    char * oslog_array = NULL;
+    os_strdup("log stream", oslog_array);
+    u_int32_t flags = 0;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fileno, __stream, wfd->file);
+    will_return(__wrap_fileno, 1);
+
+    will_return(__wrap_fcntl, 0);
+
+    will_return(__wrap_fcntl, 0);
+
+    wfd_t * ret = w_logcollector_exec_oslog_stream(&oslog_array, flags);
+
+    assert_ptr_equal(ret->file,  wfd->file);
+    assert_int_equal(ret->append_pool,0);
+    assert_int_equal(ret->pid,0);
+
     os_free(oslog_array);
 
 }
@@ -1977,6 +2009,128 @@ void test_w_is_log_cmd_executable_error(void ** state) {
     bool ret = w_is_log_cmd_executable();
 
     assert_false(ret);
+
+}
+
+/* w_logcollector_create_oslog_env */
+void test_w_logcollector_create_oslog_env_not_executable(void ** state) {
+
+    logreader *current = NULL;
+    os_calloc(1, sizeof(logreader), current);
+    current->fp = (FILE*)1;
+    os_strdup("test", current->file);
+    current->diff_max_size = 0;
+
+    os_calloc(1, sizeof(w_oslog_config_t), current->oslog);
+    current->oslog->is_oslog_running = false;
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", current->query);
+    os_strdup("debug", current->query_level);
+    current->query_type = 7;
+
+    os_calloc(1, sizeof(wfd_t), current->oslog->log_wfd);
+    current->oslog->log_wfd->file = (FILE*)1;
+
+    // test_w_is_log_cmd_executable_error
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "(1250): Error trying to execute \"/usr/bin/log\": Success (0).");
+
+    w_logcollector_create_oslog_env(current);
+
+    os_free(current->file);
+    os_free(current->query);
+    os_free(current->query_level);
+    os_free(current->oslog->log_wfd);
+    os_free(current->oslog);
+    os_free(current);
+
+}
+
+void test_w_logcollector_create_oslog_env_log_wfd_NULL(void ** state) {
+
+    logreader *current = NULL;
+    os_calloc(1, sizeof(logreader), current);
+    current->fp = (FILE*)1;
+    os_strdup("test", current->file);
+    current->diff_max_size = 0;
+
+    os_calloc(1, sizeof(w_oslog_config_t), current->oslog);
+    current->oslog->is_oslog_running = false;
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", current->query);
+    os_strdup("debug", current->query_level);
+    current->query_type = 7;
+
+    // test_w_is_log_cmd_executable_error
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 0);
+
+    // test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predicate
+
+    // test_w_logcollector_exec_oslog_stream_wpopenv_error
+    will_return(__wrap_wpopenv, NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1975): An error ocurred while calling wpopenv(): Success (0).");
+
+    w_logcollector_create_oslog_env(current);
+
+    os_free(current->file);
+    os_free(current->query);
+    os_free(current->query_level);
+    os_free(current->oslog->log_wfd);
+    os_free(current->oslog);
+    os_free(current);
+
+}
+
+void test_w_logcollector_create_oslog_env_success(void ** state) {
+
+    logreader *current = NULL;
+    os_calloc(1, sizeof(logreader), current);
+    current->fp = (FILE*)1;
+    os_strdup("test", current->file);
+    current->diff_max_size = 0;
+
+    os_calloc(1, sizeof(w_oslog_config_t), current->oslog);
+    current->oslog->is_oslog_running = false;
+
+    os_strdup("processImagePath CONTAINS[c] 'com.apple.geod'", current->query);
+    os_strdup("debug", current->query_level);
+    current->query_type = 7;
+
+    // test_w_is_log_cmd_executable_success
+    expect_string(__wrap_access, __name, "/usr/bin/log");
+    expect_value(__wrap_access, __type, 1);
+    will_return(__wrap_access, 0);
+
+    // test_w_create_oslog_stream_array_level_debug_type_activity_log_trace_predicate
+
+    // test_w_logcollector_exec_oslog_stream_success
+    wfd_t * wfd = *state;
+    wfd->file = (FILE*) 1234;
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(__wrap_fileno, __stream, wfd->file);
+    will_return(__wrap_fileno, 1);
+
+    will_return(__wrap_fcntl, 0);
+
+    will_return(__wrap_fcntl, 0);
+
+    expect_string(__wrap__minfo, formatted_msg, "(1971): Monitoring MacOS logs with: /usr/bin/log stream --style syslog --type activity --type log --type trace --level debug --predicate processImagePath CONTAINS[c] 'com.apple.geod'");
+
+    w_logcollector_create_oslog_env(current);
+
+    os_free(current->file);
+    os_free(current->query);
+    os_free(current->query_level);
+    os_free(current->oslog);
+    os_free(current);
 
 }
 
@@ -2056,9 +2210,14 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_fp_to_fd_error, setup_file, teardown_file),
         cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_get_flags_error, setup_file, teardown_file),
         cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_set_flags_error, setup_file, teardown_file),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_exec_oslog_stream_success, setup_file, teardown_file),
         // Test w_is_log_cmd_executable
         cmocka_unit_test(test_w_is_log_cmd_executable_success),
         cmocka_unit_test(test_w_is_log_cmd_executable_error),
+        // Test w_logcollector_create_oslog_env
+        cmocka_unit_test(test_w_logcollector_create_oslog_env_not_executable),
+        cmocka_unit_test(test_w_logcollector_create_oslog_env_log_wfd_NULL),
+        cmocka_unit_test_setup_teardown(test_w_logcollector_create_oslog_env_success, setup_file, teardown_file),
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
