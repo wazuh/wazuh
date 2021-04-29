@@ -1827,7 +1827,7 @@ int wdb_parse_task_delete_old(wdb_t* wdb, const cJSON *parameters, char* output)
  * @return 0 Success: response contains "ok".
  *        -1 On error: response contains "err" and an error description.
  */
- int wdb_parse_agents_vuln_cves_update_status(wdb_t* wdb, char* input, char* output);
+ int wdb_parse_agents_update_vuln_cves_status(wdb_t* wdb, char* input, char* output);
 
  /**
  * @brief Function to parse the vuln_cves remove action.

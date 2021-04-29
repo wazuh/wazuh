@@ -1431,10 +1431,10 @@ void test_vuln_cves_update_status_command_error(void **state){
     os_strdup("update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", query);
 
     // wdb_parse_agents_update_status_vuln_cves
-    will_return(__wrap_wdb_agents_update_status_vuln_cves, OS_INVALID);
-    expect_string(__wrap_wdb_agents_update_status_vuln_cves, old_status, "valid");
-    expect_string(__wrap_wdb_agents_update_status_vuln_cves, new_status, "obsolete");
-    expect_value(__wrap_wdb_agents_update_status_vuln_cves, type, NULL);
+    will_return(__wrap_wdb_agents_update_vuln_cves_status, OS_INVALID);
+    expect_string(__wrap_wdb_agents_update_vuln_cves_status, old_status, "valid");
+    expect_string(__wrap_wdb_agents_update_vuln_cves_status, new_status, "obsolete");
+    expect_value(__wrap_wdb_agents_update_vuln_cves_status, type, NULL);
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
 
@@ -1454,10 +1454,10 @@ void test_vuln_cves_update_status_command_success(void **state){
     os_strdup("update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", query);
 
     // wdb_parse_agents_update_status_vuln_cves
-    will_return(__wrap_wdb_agents_update_status_vuln_cves, OS_SUCCESS);
-    expect_string(__wrap_wdb_agents_update_status_vuln_cves, old_status, "valid");
-    expect_string(__wrap_wdb_agents_update_status_vuln_cves, new_status, "obsolete");
-    expect_value(__wrap_wdb_agents_update_status_vuln_cves, type, NULL);
+    will_return(__wrap_wdb_agents_update_vuln_cves_status, OS_SUCCESS);
+    expect_string(__wrap_wdb_agents_update_vuln_cves_status, old_status, "valid");
+    expect_string(__wrap_wdb_agents_update_vuln_cves_status, new_status, "obsolete");
+    expect_value(__wrap_wdb_agents_update_vuln_cves_status, type, NULL);
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
@@ -1475,10 +1475,10 @@ void test_vuln_cves_update_status_by_type_command_error(void **state){
     os_strdup("update_status {\"type\":\"PACKAGES\",\"new_status\":\"VALID\"}", query);
 
     // wdb_parse_agents_update_status_vuln_cves
-    will_return(__wrap_wdb_agents_update_status_vuln_cves, OS_INVALID);
-    expect_string(__wrap_wdb_agents_update_status_vuln_cves, type, "PACKAGES");
-    expect_string(__wrap_wdb_agents_update_status_vuln_cves, new_status, "VALID");
-    expect_value(__wrap_wdb_agents_update_status_vuln_cves, old_status, NULL);
+    will_return(__wrap_wdb_agents_update_vuln_cves_status, OS_INVALID);
+    expect_string(__wrap_wdb_agents_update_vuln_cves_status, type, "PACKAGES");
+    expect_string(__wrap_wdb_agents_update_vuln_cves_status, new_status, "VALID");
+    expect_value(__wrap_wdb_agents_update_vuln_cves_status, old_status, NULL);
     will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
 
@@ -1498,10 +1498,10 @@ void test_vuln_cves_update_status_by_type_command_success(void **state){
     os_strdup("update_status {\"type\":\"PACKAGES\",\"new_status\":\"VALID\"}", query);
 
     // wdb_parse_agents_update_status_vuln_cves
-    will_return(__wrap_wdb_agents_update_status_vuln_cves, OS_SUCCESS);
-    expect_string(__wrap_wdb_agents_update_status_vuln_cves, type, "PACKAGES");
-    expect_string(__wrap_wdb_agents_update_status_vuln_cves, new_status, "VALID");
-    expect_value(__wrap_wdb_agents_update_status_vuln_cves, old_status, NULL);
+    will_return(__wrap_wdb_agents_update_vuln_cves_status, OS_SUCCESS);
+    expect_string(__wrap_wdb_agents_update_vuln_cves_status, type, "PACKAGES");
+    expect_string(__wrap_wdb_agents_update_vuln_cves_status, new_status, "VALID");
+    expect_value(__wrap_wdb_agents_update_vuln_cves_status, old_status, NULL);
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
@@ -1555,10 +1555,10 @@ void test_vuln_cves_remove_by_status_success(void **state){
 
     os_strdup("remove {\"status\":\"OBSOLETE\"}", query);
 
-    // wdb_agents_remove_by_status_vuln_cves
-    expect_string(__wrap_wdb_agents_remove_by_status_vuln_cves, status, "OBSOLETE");
-    will_return(__wrap_wdb_agents_remove_by_status_vuln_cves, "{\"cve\":\"cve-xxxx-yyyy\"}");
-    will_return(__wrap_wdb_agents_remove_by_status_vuln_cves, WDBC_OK);
+    // wdb_agents_remove_vuln_cves_by_status
+    expect_string(__wrap_wdb_agents_remove_vuln_cves_by_status, status, "OBSOLETE");
+    will_return(__wrap_wdb_agents_remove_vuln_cves_by_status, "{\"cve\":\"cve-xxxx-yyyy\"}");
+    will_return(__wrap_wdb_agents_remove_vuln_cves_by_status, WDBC_OK);
 
     ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
 
@@ -1733,12 +1733,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_vuln_cves_insert_constraint_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_insert_command_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_insert_command_success, test_setup, test_teardown),
-        // wdb_parse_agents_vuln_cves_update_status
+        // wdb_parse_agents_update_vuln_cves_status
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_syntax_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_constraint_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_command_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_command_success, test_setup, test_teardown),
-        // wdb_parse_agents_vuln_cves_update_status_by_type
+        // wdb_parse_agents_update_vuln_cves_status_by_type
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_success, test_setup, test_teardown),
         // wdb_parse_agents_remove_vuln_cves
