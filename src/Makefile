@@ -173,8 +173,8 @@ endif
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
 ifneq (${uname_P},sparc)
-ifneq ($(uname_R),5.10)
 		OSSEC_LDFLAGS+=-z relax=secadj
+ifneq ($(uname_R),5.10)
 		AR_LDFLAGS+=-z relax=secadj
 else
 		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
