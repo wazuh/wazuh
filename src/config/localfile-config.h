@@ -156,6 +156,12 @@ typedef struct {
     int64_t offset_last_read;  ///< absolut file offset of last complete multiline log processed
 } w_multiline_config_t;
 
+typedef enum _w_oslog_state_t {
+    LOG_NOT_RUNNING,
+    LOG_RUNNING_STREAM,
+    LOG_RUNNING_SHOW
+} w_oslog_state_t;
+
 /**
  * @brief Context of a oslog that was not completely written.
  *
@@ -164,6 +170,7 @@ typedef struct {
 typedef struct {
     char buffer[OS_MAXSTR]; ///< store current read when oslog is in process
     time_t timestamp;       ///< last successful read
+    w_oslog_state_t state;  ///< stores the current oslog' running state
 } w_oslog_ctxt_t;
 
 /**
@@ -173,11 +180,8 @@ typedef struct {
     w_expression_t * start_log_regex; ///< used to check the start of a new log
     bool is_header_processed;            ///< True if the stream header was processed
     w_oslog_ctxt_t ctxt;              ///< store current status when read log is in process
-    char * last_read_timestamp;       ///< timestamp of last log queued (Used for only future event)
     wfd_t * stream_wfd;                 ///< `log stream` IPC connector
     wfd_t * show_wfd;                   ///< `log show` IPC connector
-    /** Indicates if `log stream` is currently running. if not running, localfiles with oslog format will be ignored */
-    bool is_oslog_running;
 } w_oslog_config_t;
 
 /* Logreader config */

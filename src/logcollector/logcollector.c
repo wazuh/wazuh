@@ -103,7 +103,6 @@ OSHash * msg_queues_table;
 OSHash * files_status;
 ///< Use for log messages
 char *files_status_name = "file_status";
-
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
@@ -128,7 +127,10 @@ static OSHash *excluded_files = NULL;
 static OSHash *excluded_binaries = NULL;
 #define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-static wfd_t * oslog_wfd = NULL;
+static struct _oslog_wfd_t {
+    wfd_t * show;
+    wfd_t * stream;
+} oslog_wfd = { .show = NULL, .stream = NULL };
 #endif
 
 /* Handle file management */
@@ -339,11 +341,14 @@ void LogCollectorStart()
         else if (strcmp(current->logformat, OSLOG) == 0) {
             w_oslog_create_env(current);
             current->read = read_oslog;
-            if (current->oslog->is_oslog_running) {
+            if (current->oslog->ctxt.state != LOG_NOT_RUNNING) {
                 if (atexit(w_oslog_release)) {
                     merror(ATEXIT_ERROR);
                 }
-                oslog_wfd = current->oslog->stream_wfd;    // OSLog's info needs to be globally reachable to be released
+                // OSLog's info needs to be globally reachable to be released
+                oslog_wfd.show = current->oslog->show_wfd;
+                oslog_wfd.stream = current->oslog->stream_wfd;
+
                 for(int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
                     mdebug1("Socket target for '%s' -> %s", OSLOG_NAME, current->target[tg_idx]);
                     w_logcollector_state_add_target(OSLOG_NAME, current->target[tg_idx]);
@@ -2133,7 +2138,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
                     /* Read process `log` in stream  (oslog) */
-                    else if (current->oslog != NULL && current->oslog->is_oslog_running) {
+                    else if (current->oslog != NULL && current->oslog->ctxt.state != LOG_NOT_RUNNING) {
                         current->read(current, &r, 0);
                     }
 #endif
@@ -2927,14 +2932,30 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
 }
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
-void w_oslog_release(void) {
-    if (oslog_wfd != NULL) {
+void w_oslog_release_show(void) {
+    if (oslog_wfd.show != NULL) {
         mdebug1("Releasing OSLog resources.");
-        if(oslog_wfd->pid > 0) {
-            kill(oslog_wfd->pid, SIGTERM);
+        if(oslog_wfd.show->pid > 0) {
+            kill(oslog_wfd.show->pid, SIGTERM);
         }
-        wpclose(oslog_wfd);
-        oslog_wfd = NULL;
+        wpclose(oslog_wfd.show);
+        oslog_wfd.show = NULL;
     }
+}
+
+void w_oslog_release_stream(void) {
+    if (oslog_wfd.stream != NULL) {
+        mdebug1("Releasing OSLog resources.");
+        if(oslog_wfd.stream->pid > 0) {
+            kill(oslog_wfd.stream->pid, SIGTERM);
+        }
+        wpclose(oslog_wfd.stream);
+        oslog_wfd.stream = NULL;
+    }
+}
+
+void w_oslog_release(void) {
+    w_oslog_release_show();
+    w_oslog_release_stream();
 }
 #endif
