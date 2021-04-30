@@ -1748,7 +1748,6 @@ ID: 91100 - 91449
             update_allow_force_pushes_enforcement_level
             update_allow_deletions_enforcement_level
             update_linear_history_requirement_enforcement_level
-            update_required_status_checks_enforcement_level
     -->
     <rule id="91275" level="3">
         <if_sid>91100</if_sid>
@@ -1889,15 +1888,6 @@ ID: 91100 - 91449
         <if_sid>91275</if_sid>
         <action>protected_branch.update_linear_history_requirement_enforcement_level</action>
         <description>GitHub Protected branch update linear history requirement enforcement level.</description>
-        <options>no_full_log</options>
-        <group>git_protected_branch</group>
-    </rule>
-
-    <!-- protected_branch.update_required_status_checks_enforcement_level -->
-    <rule id="91291" level="5">
-        <if_sid>91275</if_sid>
-        <action>protected_branch.update_required_status_checks_enforcement_level</action>
-        <description>GitHub Protected branch update required status checks enforcement level.</description>
         <options>no_full_log</options>
         <group>git_protected_branch</group>
     </rule>
