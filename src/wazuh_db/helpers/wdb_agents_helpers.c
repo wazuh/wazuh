@@ -21,7 +21,7 @@ static const char *agents_db_commands[] = {
     [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %d vuln_cves clear"
 };
 
-cJSON* wdb_get_sys_osinfo(int id,
+cJSON* wdb_get_agent_sys_osinfo(int id,
                           int *sock) {
     char *wdbquery = NULL;
     char *wdboutput = NULL;
@@ -48,7 +48,7 @@ cJSON* wdb_get_sys_osinfo(int id,
     return result;
 }
 
-int wdb_set_sys_osinfo_triaged(int id,
+int wdb_set_agent_sys_osinfo_triaged(int id,
                                int *sock) {
     int result = 0;
     char *wdbquery = NULL;
