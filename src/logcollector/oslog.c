@@ -10,8 +10,6 @@
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 #include "oslog.h"
 
-extern oslog_status_t oslog_status;
-
 // Removes STATIC/INLINE qualifiers from the tests
 #ifdef WAZUH_UNIT_TESTING
 #define STATIC
@@ -20,6 +18,8 @@ extern oslog_status_t oslog_status;
 #define STATIC static
 #define INLINE inline
 #endif
+
+STATIC w_oslog_status_t oslog_status = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "" };
 
 /**
  * @brief Validates whether the predicate is valid or not
@@ -242,6 +242,7 @@ STATIC INLINE bool w_oslog_is_log_executable(void) {
 void w_oslog_create_env(logreader * current) {
     char ** log_show_array = NULL;
     char ** log_stream_array = NULL;
+    char * timestamp = NULL;
 
     current->oslog->is_oslog_running = false;
 
@@ -249,10 +250,10 @@ void w_oslog_create_env(logreader * current) {
     current->oslog->stream_wfd = NULL;
 
     if (w_oslog_is_log_executable()) {
-
+        timestamp = w_oslog_get_status();
         /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
-        if (!current->future && oslog_status.timestamp[0] != '\0') {
-            log_show_array = w_oslog_create_show_array( oslog_status.timestamp, 
+        if (!current->future && timestamp != NULL) {
+            log_show_array = w_oslog_create_show_array( timestamp, 
                                                         current->query, 
                                                         current->query_level, 
                                                         current->query_type);
@@ -265,6 +266,7 @@ void w_oslog_create_env(logreader * current) {
             } else {
                 merror(LOGCOLLECTOR_OSLOG_SHOW_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_show_array));
             }
+            os_free(timestamp);
         }
 
         log_stream_array = w_oslog_create_stream_array(current->query, current->query_level, current->query_type);
@@ -284,6 +286,20 @@ void w_oslog_create_env(logreader * current) {
 
     free_strarray(log_show_array);
     free_strarray(log_stream_array);
+}
+
+void w_oslog_set_status(char * timestamp) {
+    w_rwlock_wrlock(&oslog_status.mutex);
+    strncpy(oslog_status.timestamp, timestamp, OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN);
+    w_rwlock_unlock(&oslog_status.mutex);
+}
+
+char * w_oslog_get_status() {
+    char * short_timestamp = NULL;
+    w_rwlock_rdlock(&oslog_status.mutex);
+    w_strdup(oslog_status.timestamp, short_timestamp);
+    w_rwlock_unlock(&oslog_status.mutex);
+    return short_timestamp;
 }
 
 #endif
