@@ -3212,6 +3212,16 @@ ID: 91100 - 91449
         <group>git_codespaces</group>
     </rule>
 
+    <!-- This rule capture internal event, 3 request fail.
+        {"actor":"wazuh","created_at":"@fecha","request":"@request","response":"@response","source":"github"}
+    -->
+    <rule id="91448" level="3">
+        <if_sid>91100</if_sid>
+        <field name="actor">wazuh</field>
+        <description>GitHub module internal event, 3 request fail.</description>
+        <options>no_full_log</options>
+    </rule>
+
     <!-- GitHub generic rule
         This rule capture unknown alerts
     -->
