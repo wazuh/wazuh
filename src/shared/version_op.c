@@ -749,7 +749,23 @@ os_info *get_unix_version()
                     }
                     pclose(cmd_output_ver);
                 }
-            } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"Linux") == 0){ // Linux undefined
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "AIX") == 0) { // AIX
+                os_strdup("AIX", info->os_name);
+                os_strdup("aix", info->os_platform);
+
+                if (cmd_output_ver = popen("oslevel", "r"), cmd_output_ver) {
+                    if (fgets(buff, sizeof(buff) - 1, cmd_output_ver)) {
+                        int buff_len = strlen(buff);
+                        if (buff_len > 0) {
+                            buff[buff_len - 1] = '\0';
+                            os_strdup(buff, info->os_version);
+                        }
+                    } else {
+                        mdebug1("Cannot read from command output (oslevel).");
+                    }
+                    pclose(cmd_output_ver);
+                }
+            } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Linux") == 0) { // Linux undefined
                 info->os_name = strdup("Linux");
                 info->os_platform = strdup("linux");
             }
