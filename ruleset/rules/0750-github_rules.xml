@@ -27,7 +27,7 @@ ID: 91100 - 91449
     -->
     <rule id="91101" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">account.\.*</action>
+        <action type="osregex">^account.\.*</action>
         <description>GitHub Account Category.</description>
         <options>no_full_log</options>
         <group>git_account</group>
@@ -77,7 +77,7 @@ ID: 91100 - 91449
     -->
     <rule id="91106" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">advisory_credit.\.*</action>
+        <action type="osregex">^advisory_credit.\.*</action>
         <description>GitHub Advisory credit.</description>
         <options>no_full_log</options>
         <group>git_advisory_credit</group>
@@ -125,7 +125,7 @@ ID: 91100 - 91449
     -->
     <rule id="91111" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">billing.\.*</action>
+        <action type="osregex">^billing.\.*</action>
         <description>GitHub Billing.</description>
         <options>no_full_log</options>
         <group>git_billing</group>
@@ -155,7 +155,7 @@ ID: 91100 - 91449
     -->
     <rule id="91114" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">dependabot_alerts.\.*</action>
+        <action type="osregex">^dependabot_alerts.\.*</action>
         <description>GitHub Dependabot alerts.</description>
         <options>no_full_log</options>
         <group>git_dependabot_alerts</group>
@@ -185,7 +185,7 @@ ID: 91100 - 91449
      -->
     <rule id="91117" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">dependabot_alerts_new_repos.\.*</action>
+        <action type="osregex">^dependabot_alerts_new_repos.\.*</action>
         <description>GitHub Dependabot alerts new repos.</description>
         <options>no_full_log</options>
         <group>git_dependabot_alerts_new_repos</group>
@@ -215,7 +215,7 @@ ID: 91100 - 91449
     -->
     <rule id="91120" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">dependabot_security_updates.\.*</action>
+        <action type="osregex">^dependabot_security_updates.\.*</action>
         <description>GitHub Dependabot security updates.</description>
         <options>no_full_log</options>
         <group>git_dependabot_security_updates</group>
@@ -245,7 +245,7 @@ ID: 91100 - 91449
     -->
     <rule id="91123" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">dependabot_security_updates_new_repos.\.*</action>
+        <action type="osregex">^dependabot_security_updates_new_repos.\.*</action>
         <description>GitHub Dependabot security updates new repos.</description>
         <options>no_full_log</options>
         <group>git_dependabot_security_updates_new_repos</group>
@@ -275,7 +275,7 @@ ID: 91100 - 91449
     -->
     <rule id="91126" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">dependency_graph.\.*</action>
+        <action type="osregex">^^dependency_graph.\.*</action>
         <description>GitHub Dependency graph.</description>
         <options>no_full_log</options>
         <group>git_dependency_graph</group>
@@ -305,7 +305,7 @@ ID: 91100 - 91449
     -->
     <rule id="91129" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">dependency_graph_new_repos.\.*</action>
+        <action type="osregex">^dependency_graph_new_repos.\.*</action>
         <description>GitHub Dependency graph new repos.</description>
         <options>no_full_log</options>
         <group>git_dependency_graph_new_repos</group>
@@ -335,7 +335,7 @@ ID: 91100 - 91449
     -->
     <rule id="91132" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">discussion_post.\.*</action>
+        <action type="osregex">^discussion_post.\.*</action>
         <description>GitHub Discussion post.</description>
         <options>no_full_log</options>
         <group>git_discussion_post</group>
@@ -365,7 +365,7 @@ ID: 91100 - 91449
     -->
     <rule id="91135" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">discussion_post_reply.\.*</action>
+        <action type="osregex">^discussion_post_reply.\.*</action>
         <description>GitHub Discussion post reply.</description>
         <options>no_full_log</options>
         <group>git_discussion_post_reply</group>
@@ -402,7 +402,7 @@ ID: 91100 - 91449
     -->
     <rule id="91139" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">enterprise.\.*</action>
+        <action type="osregex">^enterprise.\.*</action>
         <description>GitHub Enterprise.</description>
         <options>no_full_log</options>
         <group>git_enterprise</group>
@@ -500,7 +500,7 @@ ID: 91100 - 91449
     -->
     <rule id="91149" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">environment.\.*</action>
+        <action type="osregex">^environment.\.*</action>
         <description>GitHub Environment.</description>
         <options>no_full_log</options>
         <group>git_environment</group>
@@ -576,7 +576,7 @@ ID: 91100 - 91449
     -->
     <rule id="91157" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">git.\.*</action>
+        <action type="osregex">^git.\.*</action>
         <description>GitHub Git.</description>
         <options>no_full_log</options>
         <group>git_git</group>
@@ -617,7 +617,7 @@ ID: 91100 - 91449
     -->
     <rule id="91161" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">hook.\.*</action>
+        <action type="osregex">^hook.\.*</action>
         <description>GitHub Hook.</description>
         <options>no_full_log</options>
         <group>git_hook</group>
@@ -665,7 +665,7 @@ ID: 91100 - 91449
     -->
     <rule id="91166" level="3">
         <if_sid>91100</if_sid>
-        <action type="pcre2">integration_installation(?:_request)?\..*</action>
+        <action type="pcre2">^integration_installation(?:_request)?\..*</action>
         <description>GitHub Integration installation.</description>
         <options>no_full_log</options>
         <group>git_integration_installation</group>
@@ -674,7 +674,7 @@ ID: 91100 - 91449
     <!-- integration_installation.create -->
     <rule id="91167" level="5">
         <if_sid>91166</if_sid>
-        <action type="pcre2">integration_installation(?:_request)?\.create</action>
+        <action type="pcre2">^integration_installation(?:_request)?\.create</action>
         <description>GitHub Integration installation create.</description>
         <options>no_full_log</options>
         <group>git_integration_installation</group>
@@ -683,7 +683,7 @@ ID: 91100 - 91449
     <!-- integration_installation.close -->
     <rule id="91168" level="5">
         <if_sid>91166</if_sid>
-        <action type="pcre2">integration_installation(?:_request)?\.close</action>
+        <action type="pcre2">^integration_installation(?:_request)?\.close</action>
         <description>GitHub Integration installation close.</description>
         <options>no_full_log</options>
         <group>git_integration_installation</group>
@@ -694,7 +694,7 @@ ID: 91100 - 91449
     -->
     <rule id="91169" level="3">
         <if_sid>91100</if_sid>
-        <action type="pcre2">issues?\..*</action>
+        <action type="pcre2">^issues?\..*</action>
         <description>GitHub Issues.</description>
         <options>no_full_log</options>
         <group>git_issues</group>
@@ -703,7 +703,7 @@ ID: 91100 - 91449
     <!-- issues.destroy -->
     <rule id="91170" level="5">
         <if_sid>91169</if_sid>
-        <action type="pcre2">issues?\.destroy</action>
+        <action type="pcre2">^issues?\.destroy</action>
         <description>GitHub Issues destroy.</description>
         <options>no_full_log</options>
         <group>git_issues</group>
@@ -714,7 +714,7 @@ ID: 91100 - 91449
      -->
     <rule id="91171" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">marketplace_agreement_signature.\.*</action>
+        <action type="osregex">^marketplace_agreement_signature.\.*</action>
         <description>GitHub Marketplace agreement signature.</description>
         <options>no_full_log</options>
         <group>git_issues</group>
@@ -738,7 +738,7 @@ ID: 91100 - 91449
     -->
     <rule id="91173" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">marketplace_listing.\.*</action>
+        <action type="osregex">^marketplace_listing.\.*</action>
         <description>GitHub Marketplace listing.</description>
         <options>no_full_log</options>
         <group>git_marketplace_listing</group>
@@ -795,7 +795,7 @@ ID: 91100 - 91449
      -->
     <rule id="91179" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">members_can_create_pages.\.*</action>
+        <action type="osregex">^members_can_create_pages.\.*</action>
         <description>GitHub Members can create pages.</description>
         <options>no_full_log</options>
         <group>git_members_can_create_pages</group>
@@ -828,7 +828,7 @@ ID: 91100 - 91449
     -->
     <rule id="91182" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">oauth_application.\.*</action>
+        <action type="osregex">^oauth_application.\.*</action>
         <description>GitHub Oauth application.</description>
         <options>no_full_log</options>
         <group>git_oauth_application</group>
@@ -932,7 +932,7 @@ ID: 91100 - 91449
     -->
     <rule id="91188" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">org.\.*</action>
+        <action type="osregex">^org.\.*</action>
         <description>GitHub Organization.</description>
         <options>no_full_log</options>
         <group>git_org</group>
@@ -977,7 +977,7 @@ ID: 91100 - 91449
     <!-- org.audit_log_export or audit_log_git_event_export -->
     <rule id="91193" level="5">
         <if_sid>91188</if_sid>
-        <action type="pcre2">org\.audit_log(?:_git_event)?_export</action>
+        <action type="pcre2">^org\.audit_log(?:_git_event)?_export</action>
         <description>GitHub Organization audit log export.</description>
         <options>no_full_log</options>
         <group>git_org</group>
@@ -1379,7 +1379,7 @@ ID: 91100 - 91449
     -->
     <rule id="91239" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">org_credential_authorization.\.*</action>
+        <action type="osregex">^org_credential_authorization.\.*</action>
         <description>GitHub Organization credential authorization.</description>
         <options>no_full_log</options>
         <group>git_org_credential_authorization</group>
@@ -1419,7 +1419,7 @@ ID: 91100 - 91449
     -->
     <rule id="91243" level="3">
         <if_sid>91100</if_sid>
-        <action type="pcre2">organization(?:_default)?_label\..*</action>
+        <action type="pcre2">^organization(?:_default)?_label\..*</action>
         <description>GitHub Organization default label.</description>
         <options>no_full_log</options>
         <group>git_organization_default_label</group>
@@ -1428,7 +1428,7 @@ ID: 91100 - 91449
     <!-- organization_default_label.create -->
     <rule id="91244" level="5">
         <if_sid>91243</if_sid>
-        <action type="pcre2">organization(?:_default)?_label\.create</action>
+        <action type="pcre2">^organization(?:_default)?_label\.create</action>
         <description>GitHub Organization default label create.</description>
         <options>no_full_log</options>
         <group>git_organization_default_label</group>
@@ -1437,7 +1437,7 @@ ID: 91100 - 91449
     <!-- organization_default_label.update -->
     <rule id="91245" level="5">
         <if_sid>91243</if_sid>
-        <action type="pcre2">organization(?:_default)?_label\.update</action>
+        <action type="pcre2">^organization(?:_default)?_label\.update</action>
         <description>GitHub Organization default label update.</description>
         <options>no_full_log</options>
         <group>git_organization_default_label</group>
@@ -1446,7 +1446,7 @@ ID: 91100 - 91449
     <!-- organization_default_label.destroy -->
     <rule id="91246" level="5">
         <if_sid>91243</if_sid>
-        <action type="pcre2">organization(?:_default)?_label\.destroy</action>
+        <action type="pcre2">^organization(?:_default)?_label\.destroy</action>
         <description>GitHub Organization default label destroy.</description>
         <options>no_full_log</options>
         <group>git_organization_default_label</group>
@@ -1461,7 +1461,7 @@ ID: 91100 - 91449
      -->
     <rule id="91247" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">packages.\.*</action>
+        <action type="osregex">^packages.\.*</action>
         <description>GitHub Packages.</description>
         <options>no_full_log</options>
         <group>git_packages</group>
@@ -1519,7 +1519,7 @@ ID: 91100 - 91449
     -->
     <rule id="91253" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">payment_method.\.*</action>
+        <action type="osregex">^payment_method.\.*</action>
         <description>GitHub Payment method.</description>
         <options>no_full_log</options>
         <group>git_payment_method</group>
@@ -1557,7 +1557,7 @@ ID: 91100 - 91449
     -->
     <rule id="91257" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">profile_picture.\.*</action>
+        <action type="osregex">^profile_picture.\.*</action>
         <description>GitHub Profile picture.</description>
         <options>no_full_log</options>
         <group>git_profile_picture</group>
@@ -1585,7 +1585,7 @@ ID: 91100 - 91449
     -->
     <rule id="91259" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">project.\.*</action>
+        <action type="osregex">^project.\.*</action>
         <description>GitHub Project.</description>
         <options>no_full_log</options>
         <group>git_project</group>
@@ -1678,7 +1678,7 @@ ID: 91100 - 91449
     -->
     <rule id="91269" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">organization_domain.\.*</action>
+        <action type="osregex">^organization_domain.\.*</action>
         <description>GitHub Organization domain.</description>
         <options>no_full_log</options>
         <group>git_organization_domain</group>
@@ -1708,7 +1708,7 @@ ID: 91100 - 91449
     -->
     <rule id="91272" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">private_repository_forking.\.*</action>
+        <action type="osregex">^private_repository_forking.\.*</action>
         <description>GitHub Private repository forking.</description>
         <options>no_full_log</options>
         <group>git_private_repository_forking</group>
@@ -1751,7 +1751,7 @@ ID: 91100 - 91449
     -->
     <rule id="91275" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">protected_branch.\.*</action>
+        <action type="osregex">^protected_branch.\.*</action>
         <description>GitHub Protected branch.</description>
         <options>no_full_log</options>
         <group>git_protected_branch</group>
@@ -1905,7 +1905,7 @@ ID: 91100 - 91449
     -->
     <rule id="91292" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">pull_request.\.*</action>
+        <action type="osregex">^pull_request.\.*</action>
         <description>GitHub Pull request.</description>
         <options>no_full_log</options>
         <group>git_pull_request</group>
@@ -1999,7 +1999,7 @@ ID: 91100 - 91449
     -->
     <rule id="91302" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">pull_request_review.\.*</action>
+        <action type="osregex">^pull_request_review.\.*</action>
         <description>GitHub Pull request review.</description>
         <options>no_full_log</options>
         <group>git_pull_request_review</group>
@@ -2039,7 +2039,7 @@ ID: 91100 - 91449
     -->
     <rule id="91306" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">pull_request_review_comment.\.*</action>
+        <action type="osregex">^pull_request_review_comment.\.*</action>
         <description>GitHub Pull request review comment.</description>
         <options>no_full_log</options>
         <group>git_pull_request_review_comment</group>
@@ -2105,7 +2105,7 @@ ID: 91100 - 91449
     -->
     <rule id="91310" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">repo.\.*</action>
+        <action type="osregex">^repo.\.*</action>
         <description>GitHub Repo.</description>
         <options>no_full_log</options>
         <group>git_repo</group>
@@ -2384,7 +2384,7 @@ ID: 91100 - 91449
     -->
     <rule id="91340" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">repository_advisory.\.*</action>
+        <action type="osregex">^repository_advisory.\.*</action>
         <description>GitHub Repository advisory.</description>
         <options>no_full_log</options>
         <group>git_repository_advisory</group>
@@ -2468,7 +2468,7 @@ ID: 91100 - 91449
     -->
     <rule id="91349" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">repository_content_analysis.\.*</action>
+        <action type="osregex">^repository_content_analysis.\.*</action>
         <description>GitHub Repository content analysis.</description>
         <options>no_full_log</options>
         <group>git_repository_content_analysis</group>
@@ -2498,7 +2498,7 @@ ID: 91100 - 91449
     -->
     <rule id="91352" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">repository_dependency_graph.\.*</action>
+        <action type="osregex">^repository_dependency_graph.\.*</action>
         <description>GitHub Repository dependency graph.</description>
         <options>no_full_log</options>
         <group>git_repository_dependency_graph</group>
@@ -2528,7 +2528,7 @@ ID: 91100 - 91449
     -->
     <rule id="91355" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">repository_projects_change.\.*</action>
+        <action type="osregex">^repository_projects_change.\.*</action>
         <description>GitHub Repository projects change.</description>
         <options>no_full_log</options>
         <group>git_repository_projects_change</group>
@@ -2558,7 +2558,7 @@ ID: 91100 - 91449
     -->
     <rule id="91358" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">repository_secret_scanning.\.*</action>
+        <action type="osregex">^repository_secret_scanning.\.*</action>
         <description>GitHub Repository secret scanning.</description>
         <options>no_full_log</options>
         <group>git_repository_secret_scanning</group>
@@ -2589,7 +2589,7 @@ ID: 91100 - 91449
     -->
     <rule id="91361" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">repository_vulnerability_alert.\.*</action>
+        <action type="osregex">^repository_vulnerability_alert.\.*</action>
         <description>GitHub Repository vulnerability alert.</description>
         <options>no_full_log</options>
         <group>git_repository_vulnerability_alert</group>
@@ -2629,7 +2629,7 @@ ID: 91100 - 91449
     -->
     <rule id="91365" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">repository_vulnerability_alerts.\.*</action>
+        <action type="osregex">^repository_vulnerability_alerts.\.*</action>
         <description>GitHub Repository vulnerability alerts.</description>
         <options>no_full_log</options>
         <group>git_repository_vulnerability_alerts</group>
@@ -2668,7 +2668,7 @@ ID: 91100 - 91449
     -->
     <rule id="91369" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">secret_scanning.\.*</action>
+        <action type="osregex">^secret_scanning.\.*</action>
         <description>GitHub Secret scanning.</description>
         <options>no_full_log</options>
         <group>git_secret_scanning</group>
@@ -2698,7 +2698,7 @@ ID: 91100 - 91449
     -->
     <rule id="91372" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">secret_scanning_new_repos.\.*</action>
+        <action type="osregex">^secret_scanning_new_repos.\.*</action>
         <description>GitHub Secret scanning new repos.</description>
         <options>no_full_log</options>
         <group>git_secret_scanning_new_repos</group>
@@ -2742,7 +2742,7 @@ ID: 91100 - 91449
     -->
     <rule id="91375" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">sponsors.\.*</action>
+        <action type="osregex">^sponsors.\.*</action>
         <description>GitHub Sponsors.</description>
         <options>no_full_log</options>
         <group>git_sponsors</group>
@@ -2906,7 +2906,7 @@ ID: 91100 - 91449
     -->
     <rule id="91392" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">team.\.*</action>
+        <action type="osregex">^team.\.*</action>
         <description>GitHub Team.</description>
         <options>no_full_log</options>
         <group>git_team</group>
@@ -3008,7 +3008,7 @@ ID: 91100 - 91449
      -->
     <rule id="91403" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">team_discussions.\.*</action>
+        <action type="osregex">^team_discussions.\.*</action>
         <description>GitHub Team discussions.</description>
         <options>no_full_log</options>
         <group>git_team_discussions</group>
@@ -3044,7 +3044,7 @@ ID: 91100 - 91449
     -->
     <rule id="91406" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">workflows.\.*</action>
+        <action type="osregex">^workflows.\.*</action>
         <description>GitHub Workflows.</description>
         <options>no_full_log</options>
         <group>git_workflows</group>
@@ -3133,7 +3133,7 @@ ID: 91100 - 91449
     -->
     <rule id="91415" level="3">
         <if_sid>91100</if_sid>
-        <action type="osregex">codespaces.\.*</action>
+        <action type="osregex">^codespaces.\.*</action>
         <description>GitHub Codespaces.</description>
         <options>no_full_log</options>
         <group>git_codespaces</group>
