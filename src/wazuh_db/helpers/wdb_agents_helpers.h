@@ -31,7 +31,7 @@ typedef enum agents_db_access {
  * @return Returns cJSON object with the sys_osinfo table information. Null in case of error.
  *                 The cJSON object must be freed by the caller.
  */
-cJSON* wdb_get_sys_osinfo(int id,
+cJSON* wdb_get_agent_sys_osinfo(int id,
                           int *sock);
 
 /**
@@ -41,7 +41,7 @@ cJSON* wdb_get_sys_osinfo(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_set_sys_osinfo_triaged(int id,
+int wdb_set_agent_sys_osinfo_triaged(int id,
                                int *sock);
 
 /**
