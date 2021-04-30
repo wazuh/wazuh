@@ -7,6 +7,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
+#define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 #include "oslog.h"
 
@@ -231,6 +232,7 @@ STATIC wfd_t * w_oslog_exec(char ** oslog_array, u_int32_t flags) {
  * @return true when `log` command can be executed, false otherwise.
  */
 STATIC INLINE bool w_oslog_is_log_executable(void) {
+
     const int retval = access(LOG_CMD_STR, X_OK);
     if (retval == 0) {
         return true;
@@ -240,11 +242,12 @@ STATIC INLINE bool w_oslog_is_log_executable(void) {
 }
 
 void w_oslog_create_env(logreader * current) {
+
     char ** log_show_array = NULL;
     char ** log_stream_array = NULL;
     char * timestamp = NULL;
 
-    current->oslog->is_oslog_running = false;
+    current->oslog->ctxt.state = LOG_NOT_RUNNING;
 
     current->oslog->show_wfd = NULL;
     current->oslog->stream_wfd = NULL;
@@ -261,7 +264,7 @@ void w_oslog_create_env(logreader * current) {
             current->oslog->show_wfd = w_oslog_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
 
             if (current->oslog->show_wfd != NULL) {
-                current->oslog->is_oslog_running = true;
+                current->oslog->ctxt.state = LOG_RUNNING_SHOW;
                 minfo(LOGCOLLECTOR_LOG_SHOW_INFO, OSLOG_GET_LOG_PARAMS(log_show_array));
             } else {
                 merror(LOGCOLLECTOR_OSLOG_SHOW_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_show_array));
@@ -274,7 +277,9 @@ void w_oslog_create_env(logreader * current) {
         current->oslog->stream_wfd = w_oslog_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
 
         if (current->oslog->stream_wfd != NULL) {
-            current->oslog->is_oslog_running = true;
+            if (current->oslog->ctxt.state == LOG_NOT_RUNNING) {
+                current->oslog->ctxt.state = LOG_RUNNING_STREAM;
+            }
             minfo(LOGCOLLECTOR_LOG_STREAM_INFO, OSLOG_GET_LOG_PARAMS(log_stream_array));
         } else {
             merror(LOGCOLLECTOR_OSLOG_STREAM_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_stream_array));
@@ -289,12 +294,14 @@ void w_oslog_create_env(logreader * current) {
 }
 
 void w_oslog_set_status(char * timestamp) {
+
     w_rwlock_wrlock(&oslog_status.mutex);
     strncpy(oslog_status.timestamp, timestamp, OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN);
     w_rwlock_unlock(&oslog_status.mutex);
 }
 
 char * w_oslog_get_status() {
+
     char * short_timestamp = NULL;
     w_rwlock_rdlock(&oslog_status.mutex);
     w_strdup(oslog_status.timestamp, short_timestamp);

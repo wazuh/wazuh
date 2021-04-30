@@ -135,6 +135,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_localfile_query) == 0) {
+#define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
             const char * type_attr = w_get_attr_val_by_name(node[i], xml_localfile_query_type_attr);
             if (type_attr) {

@@ -6,7 +6,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
+#define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
+
 #include "shared.h"
 #include "logcollector.h"
 #include "oslog.h"
@@ -115,7 +117,7 @@ STATIC char * w_oslog_trim_full_timestamp(const char * full_timestamp) {
     return short_timestamp;
 }
 
-void * read_oslog(logreader * lf, int * rc, int drop_it) {
+void * read_oslog(logreader * lf, int * rc, __attribute__((unused)) int drop_it) {
     char read_buffer[OS_MAXSTR + 1];
     char full_timestamp[OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN + 1] = {'\0'};
     char * short_timestamp = NULL;
@@ -126,6 +128,8 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
     int retval = 0;
     const int MAX_LINE_LEN = OS_MAXSTR - OS_LOG_HEADER;
 
+    wfd_t * active_mode_wfd = (lf->oslog->ctxt.state == LOG_RUNNING_SHOW) ? lf->oslog->show_wfd : lf->oslog->stream_wfd;
+
     if (can_read() == 0) {
         return NULL;
     }
@@ -133,7 +137,7 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
     read_buffer[OS_MAXSTR] = '\0';
     *rc = 0;
 
-    while (oslog_getlog(read_buffer, MAX_LINE_LEN, lf->oslog->stream_wfd->file, lf->oslog)
+    while (oslog_getlog(read_buffer, MAX_LINE_LEN, active_mode_wfd->file, lf->oslog)
            && (maximum_lines == 0 || count_logs < maximum_lines)) {
 
         size = strlen(read_buffer);
@@ -153,14 +157,21 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
         os_free(short_timestamp);
     }
 
-    /* Checks whether the OSLog's process is still alive or exited */
-    retval = waitpid(lf->oslog->stream_wfd->pid, &status, WNOHANG);    // Tries to get the child' "soul"
-    if (retval == lf->oslog->stream_wfd->pid) {                        // This is true in the case that the child exited
-        merror(LOGCOLLECTOR_OSLOG_CHILD_ERROR, lf->oslog->stream_wfd->pid, status);
-        w_oslog_release();
-        lf->oslog->is_oslog_running = false;
-    } else if (retval != 0) {
-        merror(WAITPID_ERROR, errno, strerror(errno));
+    if (count_logs < maximum_lines) {
+        /* Checks whether the OSLog's process is still alive or exited */
+        retval = waitpid(active_mode_wfd->pid, &status, WNOHANG);    // Tries to get the child' "soul"
+        if (retval == active_mode_wfd->pid) {                        // This is true in the case that the child exited
+            merror(LOGCOLLECTOR_OSLOG_CHILD_ERROR, active_mode_wfd->pid, status);
+            if(lf->oslog->ctxt.state == LOG_RUNNING_SHOW) {
+                w_oslog_release_show();
+                lf->oslog->ctxt.state = (lf->oslog->stream_wfd != NULL) ? LOG_RUNNING_STREAM : LOG_NOT_RUNNING;
+            } else {
+                w_oslog_release_stream();
+                lf->oslog->ctxt.state = LOG_NOT_RUNNING;
+            }
+        } else if (retval != 0) {
+            merror(WAITPID_ERROR, errno, strerror(errno));
+        }
     }
 
     return NULL;
