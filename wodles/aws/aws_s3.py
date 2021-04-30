@@ -2149,6 +2149,97 @@ class AWSServerAccess(AWSCustomBucket):
         db_table_name = 's3_server_access'
         AWSCustomBucket.__init__(self, db_table_name=db_table_name, **kwargs)
 
+    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
+        def skip_if_old(downloaded_file):
+            date = re.search(r'(\d{4}-\d{2}-\d{2}).*', downloaded_file)
+            if date:
+                from datetime import datetime
+                date = datetime.strptime(date.group(1), '%Y-%m-%d')
+                return date < self.only_logs_after
+            return False
+
+        try:
+            bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
+            if 'Contents' not in bucket_files:
+                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                return
+
+            for bucket_file in bucket_files['Contents']:
+                if not bucket_file['Key']:
+                    continue
+
+                if skip_if_old(bucket_file['Key']):
+                    continue
+
+                if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
+                    if self.reparse:
+                        debug("++ File previously processed, but reparse flag set: {file}".format(
+                            file=bucket_file['Key']), 1)
+                    else:
+                        debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                        continue
+
+                debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                # Get the log file from S3 and decompress it
+                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
+                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
+                # Remove file from S3 Bucket
+                if self.delete_file:
+                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                self.mark_complete(aws_account_id, aws_region, bucket_file)
+            # optimize DB
+            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
+            self.db_connector.commit()
+            # iterate if there are more logs
+            while bucket_files['IsTruncated']:
+                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
+                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
+                bucket_files = self.client.list_objects_v2(**new_s3_args)
+
+                if 'Contents' not in bucket_files:
+                    debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                    return
+
+                for bucket_file in bucket_files['Contents']:
+                    if not bucket_file['Key']:
+                        continue
+
+                    if skip_if_old(bucket_file['Key']):
+                        continue
+
+                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
+                        if self.reparse:
+                            debug("++ File previously processed, but reparse flag set: {file}".format(
+                                file=bucket_file['Key']), 1)
+                        else:
+                            debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                            continue
+                    debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                    # Get the log file from S3 and decompress it
+                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
+                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
+                    # Remove file from S3 Bucket
+                    if self.delete_file:
+                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                    self.mark_complete(aws_account_id, aws_region, bucket_file)
+                # optimize DB
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
+                self.db_connector.commit()
+        except SystemExit:
+            raise
+        except Exception as err:
+            if hasattr(err, 'message'):
+                debug("+++ Unexpected error: {}".format(err.message), 2)
+            else:
+                debug("+++ Unexpected error: {}".format(err), 2)
+            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
+            sys.exit(7)
+
+    def marker_only_logs_after(self, aws_region, aws_account_id):
+        return self.get_full_prefix(aws_account_id, aws_region)
+
     def check_bucket(self):
         """Check if the bucket is empty or the credentials are wrong."""
         try:
