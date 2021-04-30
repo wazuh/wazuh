@@ -241,56 +241,79 @@ STATIC INLINE bool w_oslog_is_log_executable(void) {
     return false;
 }
 
-void w_oslog_create_env(logreader * current) {
+/**
+ * @brief Creates the environment for collecting "show" logs on MacOS Systems
+ * @param oslog_array logreader structure with `log show`'s input arguments and w_oslog_config_t structure to be set
+ */
+STATIC INLINE void w_oslog_create_show_env(logreader * current) {
 
     char ** log_show_array = NULL;
+
+    char * timestamp = w_oslog_get_status();
+
+    if (timestamp == NULL) {
+        return;
+    }
+
+    current->oslog->show_wfd = NULL;
+
+    log_show_array = w_oslog_create_show_array(timestamp, current->query, current->query_level, current->query_type);
+
+    current->oslog->show_wfd = w_oslog_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
+
+    if (current->oslog->show_wfd != NULL) {
+        current->oslog->ctxt.state = LOG_RUNNING_SHOW;
+        minfo(LOGCOLLECTOR_LOG_SHOW_INFO, OSLOG_GET_LOG_PARAMS(log_show_array));
+    } else {
+        merror(LOGCOLLECTOR_OSLOG_SHOW_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_show_array));
+    }
+
+    os_free(timestamp);
+    free_strarray(log_show_array);
+}
+
+/**
+ * @brief Creates the environment for collecting "stream" logs on MacOS Systems
+ * @param oslog_array logreader structure with `log stream`'s input arguments and w_oslog_config_t structure to be set
+ */
+STATIC INLINE void w_oslog_create_stream_env(logreader * current) {
+
     char ** log_stream_array = NULL;
-    char * timestamp = NULL;
+
+    current->oslog->stream_wfd = NULL;
+
+    log_stream_array = w_oslog_create_stream_array(current->query, current->query_level, current->query_type);
+
+    current->oslog->stream_wfd = w_oslog_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
+
+    if (current->oslog->stream_wfd != NULL) {
+        if (current->oslog->ctxt.state == LOG_NOT_RUNNING) {
+            current->oslog->ctxt.state = LOG_RUNNING_STREAM;
+        }
+        minfo(LOGCOLLECTOR_LOG_STREAM_INFO, OSLOG_GET_LOG_PARAMS(log_stream_array));
+    } else {
+        merror(LOGCOLLECTOR_OSLOG_STREAM_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_stream_array));
+    }
+
+    free_strarray(log_stream_array);
+}
+
+void w_oslog_create_env(logreader * current) {
 
     current->oslog->ctxt.state = LOG_NOT_RUNNING;
 
-    current->oslog->show_wfd = NULL;
-    current->oslog->stream_wfd = NULL;
-
     if (w_oslog_is_log_executable()) {
-        timestamp = w_oslog_get_status();
+
         /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
-        if (!current->future && timestamp != NULL) {
-            log_show_array = w_oslog_create_show_array( timestamp, 
-                                                        current->query, 
-                                                        current->query_level, 
-                                                        current->query_type);
-
-            current->oslog->show_wfd = w_oslog_exec(log_show_array, W_BIND_STDOUT | W_BIND_STDERR);
-
-            if (current->oslog->show_wfd != NULL) {
-                current->oslog->ctxt.state = LOG_RUNNING_SHOW;
-                minfo(LOGCOLLECTOR_LOG_SHOW_INFO, OSLOG_GET_LOG_PARAMS(log_show_array));
-            } else {
-                merror(LOGCOLLECTOR_OSLOG_SHOW_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_show_array));
-            }
-            os_free(timestamp);
+        if (!current->future) {
+            w_oslog_create_show_env(current);
         }
 
-        log_stream_array = w_oslog_create_stream_array(current->query, current->query_level, current->query_type);
-
-        current->oslog->stream_wfd = w_oslog_exec(log_stream_array, W_BIND_STDOUT | W_BIND_STDERR);
-
-        if (current->oslog->stream_wfd != NULL) {
-            if (current->oslog->ctxt.state == LOG_NOT_RUNNING) {
-                current->oslog->ctxt.state = LOG_RUNNING_STREAM;
-            }
-            minfo(LOGCOLLECTOR_LOG_STREAM_INFO, OSLOG_GET_LOG_PARAMS(log_stream_array));
-        } else {
-            merror(LOGCOLLECTOR_OSLOG_STREAM_EXEC_ERROR, OSLOG_GET_LOG_PARAMS(log_stream_array));
-        }
+        w_oslog_create_stream_env(current);
     }
 
     os_free(current->file);
     current->fp = NULL;
-
-    free_strarray(log_show_array);
-    free_strarray(log_stream_array);
 }
 
 void w_oslog_set_status(char * timestamp) {
