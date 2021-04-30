@@ -120,6 +120,7 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
     char full_timestamp[OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN + 1] = {'\0'};
     char * short_timestamp = NULL;
 
+    unsigned long size = 0;
     int count_logs = 0;
     int status = 0;
     int retval = 0;
@@ -135,17 +136,14 @@ void * read_oslog(logreader * lf, int * rc, int drop_it) {
     while (oslog_getlog(read_buffer, MAX_LINE_LEN, lf->oslog->stream_wfd->file, lf->oslog)
            && (maximum_lines == 0 || count_logs < maximum_lines)) {
 
-        if (drop_it == 0) {
-            unsigned long size = strlen(read_buffer);
-            if (size > 0) {
-                w_msg_hash_queues_push(read_buffer, OSLOG_NAME, size + 1, lf->log_target, LOCALFILE_MQ);
-            } else {
-                mdebug2("ULS: Discarding empty message...");
-            }
-
+        size = strlen(read_buffer);
+        if (size > 0) {
+            w_msg_hash_queues_push(read_buffer, OSLOG_NAME, size + 1, lf->log_target, LOCALFILE_MQ);
+            memcpy(full_timestamp, read_buffer, OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN);
+        } else {
+            mdebug2("ULS: Discarding empty message...");
         }
-        memcpy(full_timestamp, read_buffer, OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN);
-        full_timestamp[OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN] = '\0';
+
         count_logs++;
     }
 
