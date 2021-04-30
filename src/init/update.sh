@@ -403,6 +403,16 @@ UpdateStopOSSEC()
     if [ -d "$PREINSTALLEDDIR/queue/rootcheck" ]; then
         rm -rf $PREINSTALLEDDIR/queue/rootcheck > /dev/null 2>&1
     fi
+
+    # Deleting monitord if exists (it was migrated to Wazuh modules in v5.0)
+    # Version 4.1 and below
+    if [ -f "$PREINSTALLEDDIR/bin/ossec-monitord" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/ossec-monitord > /dev/null 2>&1
+    fi
+    # Version 4.2
+    if [ -f "$PREINSTALLEDDIR/bin/wazuh-monitord" ]; then
+        rm -rf $PREINSTALLEDDIR/bin/wazuh-monitord > /dev/null 2>&1
+    fi
 }
 
 UpdateOldVersions()

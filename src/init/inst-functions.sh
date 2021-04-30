@@ -939,7 +939,6 @@ InstallLocal()
 
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentlessd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-analysisd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-reportd ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-maild ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-logtest-legacy ${INSTALLDIR}/bin
