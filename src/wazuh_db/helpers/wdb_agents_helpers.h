@@ -31,8 +31,8 @@ typedef enum agents_db_access {
  * @return Returns cJSON object with the sys_osinfo table information. Null in case of error.
  *                 The cJSON object must be freed by the caller.
  */
-cJSON* wdb_agents_sys_osinfo_get(int id,
-                                 int *sock);
+cJSON* wdb_get_agent_sys_osinfo(int id,
+                          int *sock);
 
 /**
  * @brief Sets the triaged status in the sys_osinfo table of the specified agent's database.
@@ -41,8 +41,8 @@ cJSON* wdb_agents_sys_osinfo_get(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_sys_osinfo_set_triaged(int id,
-                                      int *sock);
+int wdb_set_agent_sys_osinfo_triaged(int id,
+                               int *sock);
 
 /**
  * @brief Insert or update a vulnerability to the vuln_cves table in the agents database.
@@ -65,16 +65,16 @@ int wdb_agents_sys_osinfo_set_triaged(int id,
  *         On any error, 'status' contains 'ERROR' string.
  *         The cJSON object must be freed by the caller.
  */
-cJSON* wdb_agents_vuln_cves_insert(int id,
-                               const char *name,
-                               const char *version,
-                               const char *architecture,
-                               const char *cve,
-                               const char *reference,
-                               const char *type,
-                               const char *status,
-                               bool check_pkg_existence,
-                               int *sock);
+cJSON* wdb_insert_vuln_cves(int id,
+                            const char *name,
+                            const char *version,
+                            const char *architecture,
+                            const char *cve,
+                            const char *reference,
+                            const char *type,
+                            const char *status,
+                            bool check_pkg_existence,
+                            int *sock);
 
 /**
  * @brief Removes all the entries from the vuln_cves table in the agents database.
@@ -83,8 +83,8 @@ cJSON* wdb_agents_vuln_cves_insert(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cves_clear(int id,
-                              int *sock);
+int wdb_clear_vuln_cves(int id,
+                        int *sock);
 
 /**
  * @brief Removes an entry from the vuln_cves table in the agent's database.
@@ -95,10 +95,10 @@ int wdb_agents_vuln_cves_clear(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cves_remove_entry(int id,
-                                     const char *cve,
-                                     const char *reference,
-                                     int *sock);
+int wdb_remove_vuln_cves(int id,
+                         const char *cve,
+                         const char *reference,
+                         int *sock);
 
 /**
  * @brief Removes all the entries from the vuln_cves table in the agent's database that have the specified status.
@@ -108,9 +108,9 @@ int wdb_agents_vuln_cves_remove_entry(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns a pointer to a cJSON object that contains the information of all the vulnerabilities removed.
  */
-cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
-                                            const char *status,
-                                            int *sock);
+cJSON* wdb_remove_vuln_cves_by_status(int id,
+                                      const char *status,
+                                      int *sock);
 
 /**
  * @brief Updates all or a specific status from the vuln_cves table in the agents database.
@@ -121,10 +121,10 @@ cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cves_update_status(int id,
-                                      const char *old_status,
-                                      const char *new_status,
-                                      int *sock);
+int wdb_update_vuln_cves_status(int id,
+                                const char *old_status,
+                                const char *new_status,
+                                int *sock);
 
 /**
  * @brief Updates CVEs' status from the vuln_cves table according their type (OS/PACKAGE).
@@ -135,9 +135,9 @@ int wdb_agents_vuln_cves_update_status(int id,
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return Returns 0 on success or -1 on error.
  */
-int wdb_agents_vuln_cves_update_status_by_type(int id,
-                                               const char *type,
-                                               const char *new_status,
-                                               int *sock);
+int wdb_update_vuln_cves_status_by_type(int id,
+                                        const char *type,
+                                        const char *new_status,
+                                        int *sock);
 
 #endif

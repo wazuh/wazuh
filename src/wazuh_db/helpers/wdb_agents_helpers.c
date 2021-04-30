@@ -21,8 +21,8 @@ static const char *agents_db_commands[] = {
     [WDB_AGENTS_VULN_CVES_CLEAR] = "agent %d vuln_cves clear"
 };
 
-cJSON* wdb_agents_sys_osinfo_get(int id,
-                                 int *sock) {
+cJSON* wdb_get_agent_sys_osinfo(int id,
+                          int *sock) {
     char *wdbquery = NULL;
     char *wdboutput = NULL;
     int aux_sock = -1;
@@ -48,8 +48,8 @@ cJSON* wdb_agents_sys_osinfo_get(int id,
     return result;
 }
 
-int wdb_agents_sys_osinfo_set_triaged(int id,
-                                      int *sock) {
+int wdb_set_agent_sys_osinfo_triaged(int id,
+                               int *sock) {
     int result = 0;
     char *wdbquery = NULL;
     char *wdboutput = NULL;
@@ -90,16 +90,16 @@ int wdb_agents_sys_osinfo_set_triaged(int id,
     return result;
 }
 
-cJSON* wdb_agents_vuln_cves_insert(int id,
-                                   const char *name,
-                                   const char *version,
-                                   const char *architecture,
-                                   const char *cve,
-                                   const char *reference,
-                                   const char *type,
-                                   const char *status,
-                                   bool check_pkg_existence,
-                                   int *sock) {
+cJSON* wdb_insert_vuln_cves(int id,
+                            const char *name,
+                            const char *version,
+                            const char *architecture,
+                            const char *cve,
+                            const char *reference,
+                            const char *type,
+                            const char *status,
+                            bool check_pkg_existence,
+                            int *sock) {
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
     char *wdbquery = NULL;
@@ -144,10 +144,10 @@ cJSON* wdb_agents_vuln_cves_insert(int id,
     return result;
 }
 
-int wdb_agents_vuln_cves_update_status(int id,
-                                       const char *old_status,
-                                       const char *new_status,
-                                       int *sock) {
+int wdb_update_vuln_cves_status(int id,
+                                const char *old_status,
+                                const char *new_status,
+                                int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -203,10 +203,10 @@ int wdb_agents_vuln_cves_update_status(int id,
     return result;
 }
 
-int wdb_agents_vuln_cves_update_status_by_type(int id,
-                                               const char *type,
-                                               const char *new_status,
-                                               int *sock) {
+int wdb_update_vuln_cves_status_by_type(int id,
+                                        const char *type,
+                                        const char *new_status,
+                                        int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -262,10 +262,10 @@ int wdb_agents_vuln_cves_update_status_by_type(int id,
     return result;
 }
 
-int wdb_agents_vuln_cves_remove_entry(int id,
-                                      const char *cve,
-                                      const char *reference,
-                                      int *sock) {
+int wdb_remove_vuln_cves(int id,
+                         const char *cve,
+                         const char *reference,
+                         int *sock) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -321,9 +321,9 @@ int wdb_agents_vuln_cves_remove_entry(int id,
     return result;
 }
 
-cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
-                                             const char *status,
-                                             int *sock) {
+cJSON* wdb_remove_vuln_cves_by_status(int id,
+                                      const char *status,
+                                      int *sock) {
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
     char *wdbquery = NULL;
@@ -403,8 +403,8 @@ cJSON* wdb_agents_vuln_cves_remove_by_status(int id,
     return data_out;
 }
 
-int wdb_agents_vuln_cves_clear(int id,
-                               int *sock) {
+int wdb_clear_vuln_cves(int id,
+                        int *sock) {
     int result = 0;
     char *wdbquery = NULL;
     char *wdboutput = NULL;
