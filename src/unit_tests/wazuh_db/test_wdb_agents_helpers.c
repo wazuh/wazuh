@@ -38,7 +38,7 @@ int teardown_wdb_agents_helpers(void **state) {
     return 0;
 }
 
-/* Tests wdb_get_sys_osinfo */
+/* Tests wdb_get_agent_sys_osinfo */
 
 void test_wdb_get_sys_osinfo_error_sql_execution(void ** state)
 {
@@ -55,7 +55,7 @@ void test_wdb_get_sys_osinfo_error_sql_execution(void ** state)
     //Cleaning  memory
     expect_function_call(__wrap_cJSON_Delete);
 
-    ret = wdb_get_sys_osinfo(id, NULL);
+    ret = wdb_get_agent_sys_osinfo(id, NULL);
 
     assert_null(ret);
 }
@@ -73,7 +73,7 @@ void test_wdb_get_sys_osinfo_success(void ** state)
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, root);
 
-    ret = wdb_get_sys_osinfo(id, NULL);
+    ret = wdb_get_agent_sys_osinfo(id, NULL);
 
     assert_ptr_equal(root, ret);
 
@@ -1122,7 +1122,7 @@ void test_wdb_clear_vuln_cves_success(void **state)
     assert_int_equal(OS_SUCCESS, ret);
 }
 
-/* Tests wdb_set_sys_osinfo_triaged */
+/* Tests wdb_set_agent_sys_osinfo_triaged */
 
 void test_wdb_set_sys_osinfo_triaged_error_socket(void **state)
 {
@@ -1143,7 +1143,7 @@ void test_wdb_set_sys_osinfo_triaged_error_socket(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error in the response from socket");
     expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 osinfo set_triaged");
 
-    ret = wdb_set_sys_osinfo_triaged(id, NULL);
+    ret = wdb_set_agent_sys_osinfo_triaged(id, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -1167,7 +1167,7 @@ void test_wdb_set_sys_osinfo_triaged_error_sql_execution(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Cannot execute SQL query");
     expect_string(__wrap__mdebug2, formatted_msg, "Agents DB (1) SQL query: agent 1 osinfo set_triaged");
 
-    ret = wdb_set_sys_osinfo_triaged(id, NULL);
+    ret = wdb_set_agent_sys_osinfo_triaged(id, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -1192,7 +1192,7 @@ void test_wdb_set_sys_osinfo_triaged_error_result(void **state)
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
     expect_string(__wrap__mdebug1, formatted_msg, "Agents DB (1) Error reported in the result of the query");
 
-    ret = wdb_set_sys_osinfo_triaged(id, NULL);
+    ret = wdb_set_agent_sys_osinfo_triaged(id, NULL);
 
     assert_int_equal(OS_INVALID, ret);
 }
@@ -1216,7 +1216,7 @@ void test_wdb_set_sys_osinfo_triaged_success(void **state)
     expect_any(__wrap_wdbc_parse_result, result);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    ret = wdb_set_sys_osinfo_triaged(id, NULL);
+    ret = wdb_set_agent_sys_osinfo_triaged(id, NULL);
 
     assert_int_equal(OS_SUCCESS, ret);
 }
@@ -1225,7 +1225,7 @@ int main()
 {
     const struct CMUnitTest tests[] =
     {
-        /* Tests wdb_get_sys_osinfo */
+        /* Tests wdb_get_agent_sys_osinfo */
         cmocka_unit_test_setup_teardown(test_wdb_get_sys_osinfo_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_get_sys_osinfo_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         /* Tests wdb_insert_vuln_cves*/
@@ -1262,7 +1262,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_clear_vuln_cves_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_clear_vuln_cves_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_clear_vuln_cves_success, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
-        /* Tests wdb_set_sys_osinfo_triaged*/
+        /* Tests wdb_set_agent_sys_osinfo_triaged*/
         cmocka_unit_test_setup_teardown(test_wdb_set_sys_osinfo_triaged_error_socket, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_set_sys_osinfo_triaged_error_sql_execution, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
         cmocka_unit_test_setup_teardown(test_wdb_set_sys_osinfo_triaged_error_result, setup_wdb_agents_helpers, teardown_wdb_agents_helpers),
