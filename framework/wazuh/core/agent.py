@@ -467,11 +467,6 @@ class Agent:
         if self.status.lower() != 'active':
             raise WazuhError(1707, extra_message='{0}'.format(self.status))
 
-        # Check if agent has active-response enabled
-        agent_conf = self.getconfig('com', 'active-response', self.version)
-        if agent_conf['active-response']['disabled'] == 'yes':
-            raise WazuhError(1750)
-
         return send_restart_command(self.id, self.version)
 
     def remove(self, backup=False, purge=False, use_only_authd=False):
