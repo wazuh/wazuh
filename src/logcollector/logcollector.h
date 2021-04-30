@@ -107,6 +107,7 @@ void *read_multiline(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
+#define Darwin
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 /**
  * @brief Read oslog logs
@@ -280,9 +281,19 @@ extern rlim_t nofile;
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 /**
- * @brief This function is called to release oslog's resources
+ * @brief This function is called to release oslog's "show" and/or "stream" resources
  */
 void w_oslog_release(void);
+
+/**
+ * @brief This function is called to release oslog's "show" resources
+ */
+void w_oslog_release_show(void);
+
+/**
+ * @brief This function is called to release oslog's "stream" resources
+ */
+void w_oslog_release_stream(void);
 #endif
 
 #endif /* LOGREADER_H */
