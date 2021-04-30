@@ -454,8 +454,6 @@ class Agent:
         ------
         WazuhError(1707)
             If the agent to be restarted is not active.
-        WazuhError(1750)
-            If the agent has active response disabled.
 
         Returns
         -------
