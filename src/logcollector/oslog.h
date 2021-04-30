@@ -23,18 +23,21 @@
 ///< macOS ULS timezone lenght i.e -0700
 #define OS_LOGCOLLECTOR_TIMESTAMP_TZ_LEN        5
 ///< macOS ULS basic timestamp lenght i.e 2021-04-27 08:07:20
-#define OS_LOGCOLLECTOR_BASIC_TIMESTAMP_LEN     19
+#define OS_LOGCOLLECTOR_TIMESTAMP_BASIC_LEN     19
 ///< macOS ULS short timestamp lenght i.e 2021-04-27 08:07:20-0700
-#define OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN     OS_LOGCOLLECTOR_BASIC_TIMESTAMP_LEN + OS_LOGCOLLECTOR_TIMESTAMP_TZ_LEN
+#define OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN     OS_LOGCOLLECTOR_TIMESTAMP_BASIC_LEN + OS_LOGCOLLECTOR_TIMESTAMP_TZ_LEN
 ///< macOS ULS full timestamp lenght i.e 2020-11-09 05:45:08.000000-0800
-#define OS_LOGCOLLECTOR_FULL_TIMESTAMP_LEN      OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN + OS_LOGCOLLECTOR_TIMESTAMP_MS_LEN
+#define OS_LOGCOLLECTOR_TIMESTAMP_FULL_LEN      OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + OS_LOGCOLLECTOR_TIMESTAMP_MS_LEN
+///< JSON fields for file_status related to macOS ULS
+#define OS_LOGCOLLECTOR_JSON_OSLOG      "oslog"
+#define OS_LOGCOLLECTOR_JSON_TIMESTAMP  "timestamp"
 
 /* ******************  DATATYPES  ****************** */
 
 typedef struct {
-    pthread_mutex_t mutex;
-    char timestamp[OS_LOGCOLLECTOR_SHORT_TIMESTAMP_LEN + 1];
-} oslog_status_t;
+    pthread_rwlock_t mutex;
+    char timestamp[OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1];
+} w_oslog_status_t;
 
 /* ******************  PROTOTYPES  ****************** */
 
@@ -43,6 +46,20 @@ typedef struct {
  * @param oslog_array logreader structure with `log`'s input arguments and w_oslog_config_t structure to be set
  */
 void w_oslog_create_env(logreader * current);
+
+/**
+ * @brief Set string containing the last recorded timestamp.
+ * 
+ * @param timestamp macOS ULS short timestamp
+ */
+void w_oslog_set_status(char * timestamp);
+
+/**
+ * @brief Get string containing the last recorded timestamp.
+ * 
+ * @return Allocated string containing last recorded timestamp. NULL otherwise 
+ */
+char * w_oslog_get_status();
 
 
 #endif /* OSLOGSTREAM_H */

@@ -35,9 +35,6 @@
 #define OS_LOGCOLLECTOR_JSON_PATH       "path"
 #define OS_LOGCOLLECTOR_JSON_HASH       "hash"
 #define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
-///< JSON fields for file_status relater to macOS ULS
-#define OS_LOGCOLLECTOR_JSON_OSLOG      "oslog"
-#define OS_LOGCOLLECTOR_JSON_TIMESTAMP  "timestamp"
 
 
 #include "shared.h"
@@ -286,14 +283,6 @@ extern rlim_t nofile;
  * @brief This function is called to release oslog's resources
  */
 void w_oslog_release(void);
-
-/**
- * @brief Update the last log readed timestamp
- * 
- * @param timestamp
- */
-void w_update_oslog_status(char * timestamp);
 #endif
-// endif
 
 #endif /* LOGREADER_H */
