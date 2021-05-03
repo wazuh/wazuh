@@ -148,6 +148,7 @@ bool UnixOsParser::parseFile(std::istream& in, nlohmann::json& info)
         {"NAME",             "os_name"},
         {"VERSION",          "os_version"},
         {"ID",               "os_platform"},
+        {"BUILD_ID",         "os_build"},
         {"VERSION_CODENAME", "os_codename"}
     };
     const auto ret {parseUnixFile(KEY_MAP, SEPARATOR, in, info)};

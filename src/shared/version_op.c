@@ -540,6 +540,27 @@ os_info *get_unix_version()
             }
             regfree(&regexCompiled);
             fclose(version_release);
+        // Arch
+        } else if (version_release = fopen("/etc/arch-release","r"), version_release){
+            info->os_name = strdup("Arch Linux");
+            info->os_platform = strdup("arch");
+            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                merror_exit("Cannot compile regular expression.");
+            }
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                    match_size = match[1].rm_eo - match[1].rm_so;
+                    os_malloc(match_size + 1, info->os_version);
+                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    break;
+                }
+            }
+            if (info->os_version == NULL) {
+                os_strdup("rolling", info->os_build);
+            }
+            regfree(&regexCompiled);
+            fclose(version_release);
         // Ubuntu
         } else if (version_release = fopen("/etc/lsb-release","r"), version_release){
             info->os_name = strdup("Ubuntu");
@@ -576,24 +597,6 @@ os_info *get_unix_version()
             info->os_name = strdup("SuSE Linux");
             info->os_platform = strdup("suse");
             static const char *pattern = ".*VERSION = ([0-9][0-9]*)";
-            if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
-                merror_exit("Cannot compile regular expression.");
-            }
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
-                    match_size = match[1].rm_eo - match[1].rm_so;
-                    os_malloc(match_size + 1, info->os_version);
-                    snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                    break;
-                }
-            }
-            regfree(&regexCompiled);
-            fclose(version_release);
-        // Arch
-        } else if (version_release = fopen("/etc/arch-release","r"), version_release){
-            info->os_name = strdup("Arch Linux");
-            info->os_platform = strdup("arch");
-            static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
             if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
                 merror_exit("Cannot compile regular expression.");
             }

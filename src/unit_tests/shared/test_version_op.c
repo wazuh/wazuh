@@ -431,6 +431,11 @@ void test_get_unix_version_fail_os_release_ubuntu(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
     // Open /etc/lsb-release
     expect_string(__wrap_fopen, path, "/etc/lsb-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -481,6 +486,11 @@ void test_get_unix_version_fail_os_release_gentoo(void **state)
 
     // Fail to open /etc/redhat-release
     expect_string(__wrap_fopen, path, "/etc/redhat-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -539,6 +549,11 @@ void test_get_unix_version_fail_os_release_suse(void **state)
 
     // Fail to open /etc/redhat-release
     expect_string(__wrap_fopen, path, "/etc/redhat-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -604,21 +619,6 @@ void test_get_unix_version_fail_os_release_arch(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_fopen, path, "/etc/lsb-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/gentoo-release
-    expect_string(__wrap_fopen, path, "/etc/gentoo-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/SuSE-release
-    expect_string(__wrap_fopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
     // Open /etc/arch-release
     expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -672,6 +672,11 @@ void test_get_unix_version_fail_os_release_debian(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
     // Fail to open /etc/lsb-release
     expect_string(__wrap_fopen, path, "/etc/lsb-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -684,11 +689,6 @@ void test_get_unix_version_fail_os_release_debian(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_fopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/arch-release
-    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -745,6 +745,11 @@ void test_get_unix_version_fail_os_release_slackware(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
     // Fail to open /etc/lsb-release
     expect_string(__wrap_fopen, path, "/etc/lsb-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -757,11 +762,6 @@ void test_get_unix_version_fail_os_release_slackware(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_fopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/arch-release
-    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -823,6 +823,11 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
     // Fail to open /etc/lsb-release
     expect_string(__wrap_fopen, path, "/etc/lsb-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -835,11 +840,6 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_fopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/arch-release
-    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -951,6 +951,11 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
     // Fail to open /etc/lsb-release
     expect_string(__wrap_fopen, path, "/etc/lsb-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -963,11 +968,6 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_fopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/arch-release
-    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -1046,6 +1046,11 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
     // Fail to open /etc/lsb-release
     expect_string(__wrap_fopen, path, "/etc/lsb-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -1058,11 +1063,6 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_fopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/arch-release
-    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -1141,6 +1141,11 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
     // Fail to open /etc/lsb-release
     expect_string(__wrap_fopen, path, "/etc/lsb-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -1153,11 +1158,6 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_fopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/arch-release
-    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
@@ -1236,6 +1236,11 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
+    // Fail to open /etc/arch-release
+    expect_string(__wrap_fopen, path, "/etc/arch-release");
+    expect_string(__wrap_fopen, mode, "r");
+    will_return(__wrap_fopen, 0);
+
     // Fail to open /etc/lsb-release
     expect_string(__wrap_fopen, path, "/etc/lsb-release");
     expect_string(__wrap_fopen, mode, "r");
@@ -1248,11 +1253,6 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_fopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
-
-    // Fail to open /etc/arch-release
-    expect_string(__wrap_fopen, path, "/etc/arch-release");
     expect_string(__wrap_fopen, mode, "r");
     will_return(__wrap_fopen, 0);
 
