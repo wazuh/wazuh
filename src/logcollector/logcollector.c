@@ -2934,7 +2934,7 @@ bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
 void w_oslog_release_show(void) {
     if (oslog_wfd.show != NULL) {
-        mdebug1("Releasing OSLog resources.");
+        mdebug1("Releasing OSLog's log show resources.");
         if(oslog_wfd.show->pid > 0) {
             kill(oslog_wfd.show->pid, SIGTERM);
         }
@@ -2945,7 +2945,7 @@ void w_oslog_release_show(void) {
 
 void w_oslog_release_stream(void) {
     if (oslog_wfd.stream != NULL) {
-        mdebug1("Releasing OSLog resources.");
+        mdebug1("Releasing OSLog log stream resources.");
         if(oslog_wfd.stream->pid > 0) {
             kill(oslog_wfd.stream->pid, SIGTERM);
         }
