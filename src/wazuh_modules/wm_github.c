@@ -10,7 +10,6 @@
  */
 
 #include "wmodules.h"
-#include "shared.h"
 
 static void* wm_github_main(wm_github* github_config);    // Module main function. It won't return
 static void wm_github_destroy(wm_github* github_config);
@@ -18,7 +17,7 @@ static void wm_github_auth_destroy(wm_github_auth* github_auth);
 static void wm_github_fail_destroy(wm_github_fail* github_fails);
 static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
 static int wm_github_execute_scan(wm_github *github_config, int initial_scan);
-static wm_github_response* wm_github_execute_curl(char *org_name, char *token, const char *page_link, const char *event_type, const char *created_from, const char *created_until);
+static curl_response* wm_github_execute_curl(char *org_name, char *token, const char *page_link, const char *event_type, const char *created_from, const char *created_until);
 static char* wm_github_get_next_page(char *header);
 cJSON *wm_github_dump(const wm_github* github_config);
 
@@ -43,11 +42,10 @@ void * wm_github_main(wm_github* github_config) {
             mterror(WM_OSQUERYMONITOR_LOGTAG, "Can't connect to queue. Closing module.");
             return NULL;
         }
-
 #endif
 
         if (github_config->run_on_start) {
-            //Execute initial scan
+            // Execute initial scan
             wm_github_execute_scan(github_config, 1);
         }
 
@@ -58,6 +56,7 @@ void * wm_github_main(wm_github* github_config) {
     } else {
         mtinfo(WM_GITHUB_LOGTAG, "Module GitHub disabled.");
     }
+
     return NULL;
 }
 
@@ -98,7 +97,7 @@ void wm_github_fail_destroy(wm_github_fail* github_fails)
     github_fails = NULL;
 }
 
-void wm_github_free_response(wm_github_response* response)
+void wm_github_free_response(curl_response* response)
 {
     os_free(response->header);
     os_free(response->body);
@@ -158,8 +157,8 @@ cJSON *wm_github_dump(const wm_github* github_config) {
 }
 
 size_t wm_github_write_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
-    size_t realsize = size * nmemb; 
-    get_request *req = (get_request *) userdata;
+    size_t realsize = size * nmemb;
+    curl_request *req = (curl_request *) userdata;
 
     while (req->buflen < req->len + realsize + 1)
     {
@@ -176,7 +175,7 @@ size_t wm_github_write_callback(char *ptr, size_t size, size_t nmemb, void *user
 static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     wm_github_auth* current = github_config->auth;
     wm_github_auth* next = NULL;
-    wm_github_response *response;
+    curl_response *response;
     wm_github_fail *org_fail;
     wm_github_state org_state_struc;
     int scan_finished = 0;
@@ -184,7 +183,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     char *next_page = NULL;
     char org_state_name[PATH_MAX];
     char last_scan_time_str[PATH_MAX];
-    char now_scan_time_str[PATH_MAX];
+    char new_scan_time_str[PATH_MAX];
     time_t last_scan_time;
     time_t new_scan_time;
 
@@ -194,7 +193,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         scan_finished = 0;
         fail = 0;
         mtdebug1(WM_GITHUB_LOGTAG, "Scan for: %s", current->org_name);
-    
+
         memset(org_state_name, '\0', PATH_MAX);
         snprintf(org_state_name, PATH_MAX -1, "%s-%s", WM_GITHUB_CONTEXT.name, current->org_name);
 
@@ -209,24 +208,26 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
         memset(last_scan_time_str, '\0', PATH_MAX);
         strftime(last_scan_time_str, 20, "%Y-%m-%dT%H:%M:%SZ", localtime(&last_scan_time));
-        memset(now_scan_time_str, '\0', PATH_MAX);
-        strftime(now_scan_time_str, 20, "%Y-%m-%dT%H:%M:%SZ", localtime(&new_scan_time));
+        memset(new_scan_time_str, '\0', PATH_MAX);
+        strftime(new_scan_time_str, 20, "%Y-%m-%dT%H:%M:%SZ", localtime(&new_scan_time));
 
         if (initial_scan && github_config->only_future_events) {
             org_state_struc.last_log_time = new_scan_time;
-            wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc));
+            if (wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc)) < 0) {
+                mterror(WM_GITHUB_LOGTAG, "Couldn't save running state.");
+            }
             scan_finished = 1;
             fail = 0;
         }
-        
+
         while (!scan_finished) {
-            response = wm_github_execute_curl(current->org_name, current->api_token, next_page, github_config->event_type, last_scan_time_str, now_scan_time_str);
+            response = wm_github_execute_curl(current->org_name, current->api_token, next_page, github_config->event_type, last_scan_time_str, new_scan_time_str);
             if (response) {
                 if (response->status_code == 200) {
                     // Load body to json and sent as localfile
                     cJSON *array_logs_json = NULL;
                     if (array_logs_json = cJSON_Parse(response->body), !array_logs_json) {
-                        mtdebug1(WM_GITHUB_LOGTAG,"Error parsing body");
+                        mtdebug1(WM_GITHUB_LOGTAG,"Error parsing response body.");
                         scan_finished = 1;
                         fail = 1;
                     } else {
@@ -238,12 +239,11 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                             if (subitem) {
                                 cJSON_AddStringToObject(subitem, "source", WM_GITHUB_CONTEXT.name);
                                 payload = cJSON_PrintUnformatted(subitem);
-                                mdebug2("Sending... '%s'", payload);
+                                mtdebug2(WM_GITHUB_LOGTAG, "Sending GitHub log: '%s'", payload);
 
                                 if (wm_sendmsg(WM_GITHUB_MSG_DELAY, github_config->queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
                                     mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                                 }
-
                                 os_free(payload);
                             }
                         }
@@ -265,6 +265,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     scan_finished = 1;
                     fail = 1;
                 }
+
                 wm_github_free_response(response);
             } else {
                 scan_finished = 1;
@@ -291,11 +292,13 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                 if (org_fail->fails == 3) {
                     org_fail->fails = org_fail->fails + 1;
                     // Send fails message
+
                 } else if (org_fail->fails < 3) {
                     org_fail->fails = org_fail->fails + 1;
                 }
             }
         }
+
         current = next;
     }
     return 0;
@@ -305,10 +308,11 @@ static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
     wm_github_fail* current;
     current = fails;
     int target_org = 0;
+
     while (!target_org)
     {
         if (current == NULL) {
-            mtdebug1(WM_GITHUB_LOGTAG, "No record for this org name %s", org_name);
+            mtdebug1(WM_GITHUB_LOGTAG, "No record for this organization: '%s'", org_name);
             target_org = 1;
             continue;
         }
@@ -319,20 +323,21 @@ static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
             target_org = 1;
         }
     }
+
     return current;
 }
 
-static wm_github_response* wm_github_execute_curl(char *org_name, char *token, const char *page_link, const char *event_type, const char *created_from, const char *created_until) {
+static curl_response* wm_github_execute_curl(char *org_name, char *token, const char *page_link, const char *event_type, const char *created_from, const char *created_until) {
     char url[PATH_MAX];
     char auth_header[PATH_MAX];
-    wm_github_response *response;
+    curl_response *response;
     struct curl_slist* headers = NULL;
     CURLcode res;
-    get_request req = {.buffer = NULL, .len = 0, .buflen = 0};
-    get_request req_header = {.buffer = NULL, .len = 0, .buflen = 0};
-    
+    curl_request req = {.buffer = NULL, .len = 0, .buflen = 0};
+    curl_request req_header = {.buffer = NULL, .len = 0, .buflen = 0};
+
     CURL* curl = curl_easy_init();
-    
+
     if (!curl) {
         mtdebug1(WM_GITHUB_LOGTAG, "curl initialization failure");
         return NULL;
@@ -342,7 +347,6 @@ static wm_github_response* wm_github_execute_curl(char *org_name, char *token, c
     curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
     curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
 
-    
     headers = curl_slist_append(headers, "User-Agent: curl/7.58.0");
 
     memset(auth_header, '\0', PATH_MAX);
@@ -354,7 +358,6 @@ static wm_github_response* wm_github_execute_curl(char *org_name, char *token, c
 
     req_header.buffer = malloc(CHUNK_SIZE);
     req_header.buflen = CHUNK_SIZE;
-    
 
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, wm_github_write_callback);
@@ -369,7 +372,7 @@ static wm_github_response* wm_github_execute_curl(char *org_name, char *token, c
     }
 
     mtdebug1(WM_GITHUB_LOGTAG, "Url: %s", url);
-    
+
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
     req.buffer = malloc(CHUNK_SIZE);
@@ -381,17 +384,18 @@ static wm_github_response* wm_github_execute_curl(char *org_name, char *token, c
         mtdebug1(WM_GITHUB_LOGTAG,"curl_easy_perform() failed: %s", curl_easy_strerror(res));
     }
 
-    os_calloc(1, sizeof(wm_github_response), response);
+    os_calloc(1, sizeof(curl_response), response);
     curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &response->status_code);
     response->header = req_header.buffer;
     response->body = req.buffer;
 
     curl_easy_cleanup(curl);
+
     return response;
 }
 
 static char* wm_github_get_next_page(char *header) {
     char *next_page = NULL;
-    
+
     return next_page;
 }

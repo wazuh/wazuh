@@ -24,17 +24,17 @@
 #define CHUNK_SIZE 2048
 #define ITEM_PER_PAGE 100
 
-typedef struct {
+typedef struct curl_request {
     char *buffer;
     size_t len;
     size_t buflen;
-} get_request;
+} curl_request;
 
-typedef struct wm_github_response{
+typedef struct curl_response {
     char *header;
     char *body;
     long status_code;
-} wm_github_response;
+} curl_response;
 
 typedef struct wm_github_auth {
     char *org_name;                         // Organization name
