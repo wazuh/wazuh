@@ -335,4 +335,12 @@ char** w_strarray_append(char **array, char *string, int n);
  */
 char** w_strtok(const char *string);
 
+/**
+ * @brief Concatenate a NULL-terminated string list into a single string
+ * 
+ * @param list String list to concatenate
+ * @param sep Optional separator. Set to 0 if unused.
+ * @return Allocated string with list concatenation.
+ */
+char* w_strcat_list(char ** list, char sep);
 #endif
