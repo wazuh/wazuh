@@ -349,7 +349,7 @@ void test_monitor_queue_connect_msg_fail(void **state) {
 /* Tests getMonitorInternalOptions */
 
 void test_getMonitorInternalOptions_success(void **state) {
-    cJSON *root = NULL;
+    cJSON *options = NULL;
     cJSON *object = NULL;
 
     // Arbitrary configuration
@@ -363,52 +363,52 @@ void test_getMonitorInternalOptions_success(void **state) {
     mond.daily_rotations = 100;
     mond.delete_old_agents = 3;
 
-    root = getMonitorInternalOptions();
+    options = getMonitorInternalOptions();
 
-    if (root) {
-        object = cJSON_GetObjectItem(root->child, "day_wait");
+    if (options) {
+        object = cJSON_GetObjectItem(options, "day_wait");
         assert_int_equal(object->valueint, mond.day_wait);
-        object = cJSON_GetObjectItem(root->child, "compress");
+        object = cJSON_GetObjectItem(options, "compress");
         assert_int_equal(object->valueint, mond.compress);
-        object = cJSON_GetObjectItem(root->child, "sign");
+        object = cJSON_GetObjectItem(options, "sign");
         assert_int_equal(object->valueint, mond.sign);
-        object = cJSON_GetObjectItem(root->child, "monitor_agents");
+        object = cJSON_GetObjectItem(options, "monitor_agents");
         assert_int_equal(object->valueint, mond.monitor_agents);
-        object = cJSON_GetObjectItem(root->child, "keep_log_days");
+        object = cJSON_GetObjectItem(options, "keep_log_days");
         assert_int_equal(object->valueint, mond.keep_log_days);
-        object = cJSON_GetObjectItem(root->child, "rotate_log");
+        object = cJSON_GetObjectItem(options, "rotate_log");
         assert_int_equal(object->valueint, mond.rotate_log);
-        object = cJSON_GetObjectItem(root->child, "size_rotate");
+        object = cJSON_GetObjectItem(options, "size_rotate");
         assert_int_equal(object->valueint, mond.size_rotate);
-        object = cJSON_GetObjectItem(root->child, "daily_rotations");
+        object = cJSON_GetObjectItem(options, "daily_rotations");
         assert_int_equal(object->valueint, mond.daily_rotations);
-        object = cJSON_GetObjectItem(root->child, "delete_old_agents");
+        object = cJSON_GetObjectItem(options, "delete_old_agents");
         assert_int_equal(object->valueint, mond.delete_old_agents);
     }
 
-    cJSON_Delete(root);
+    cJSON_Delete(options);
 }
 
 /* Tests getMonitorGlobalOptions */
 
 void test_getMonitorGlobalOptions_success(void **state) {
-    cJSON *root = NULL;
+    cJSON *options = NULL;
     cJSON *object = NULL;
 
     // Arbitrary configuration
     mond.global.agents_disconnection_time = 20;
     mond.global.agents_disconnection_alert_time = 100;
 
-    root = getMonitorGlobalOptions();
+    options = getMonitorGlobalOptions();
 
-    if (root) {
-        object = cJSON_GetObjectItem(root->child, "agents_disconnection_time");
+    if (options) {
+        object = cJSON_GetObjectItem(options, "agents_disconnection_time");
         assert_int_equal(object->valueint, mond.global.agents_disconnection_time);
-        object = cJSON_GetObjectItem(root->child, "agents_disconnection_alert_time");
+        object = cJSON_GetObjectItem(options, "agents_disconnection_alert_time");
         assert_int_equal(object->valueint, mond.global.agents_disconnection_alert_time);
     }
 
-    cJSON_Delete(root);
+    cJSON_Delete(options);
 }
 
 /* Tests getReportsOptions */

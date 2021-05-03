@@ -102,7 +102,6 @@ void Monitord()
 
 cJSON *getMonitorInternalOptions(void) {
 
-    cJSON *root = cJSON_CreateObject();
     cJSON *monconf = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(monconf,"day_wait",mond.day_wait);
@@ -115,22 +114,17 @@ cJSON *getMonitorInternalOptions(void) {
     cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
     cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
 
-    cJSON_AddItemToObject(root,"monitord",monconf);
-
-    return root;
+    return monconf;
 }
 
 cJSON *getMonitorGlobalOptions(void) {
 
-    cJSON *root = cJSON_CreateObject();
     cJSON *monconf = cJSON_CreateObject();
 
     cJSON_AddNumberToObject(monconf,"agents_disconnection_time",mond.global.agents_disconnection_time);
     cJSON_AddNumberToObject(monconf,"agents_disconnection_alert_time",mond.global.agents_disconnection_alert_time);
 
-    cJSON_AddItemToObject(root,"monitord",monconf);
-
-    return root;
+    return monconf;
 }
 
 cJSON *getReportsOptions(void) {

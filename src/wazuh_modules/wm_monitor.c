@@ -56,6 +56,8 @@ void* wm_monitor_main(wm_monitor_t *data) {
         mterror(WM_MONITOR_LOGTAG, CONFIG_ERROR, OSSECCONF);
     }
 
+    wm_monitor_log_config(data);
+
     mtinfo(WM_MONITOR_LOGTAG, "Module finished.");
 
     return 0;
@@ -68,5 +70,13 @@ void wm_monitor_destroy(wm_monitor_t *data) {
 }
 
 cJSON *wm_monitor_dump(const wm_monitor_t *data) {
-    return NULL;
+    (void)data;
+    cJSON *root = cJSON_CreateObject();
+    cJSON *internal_options = getMonitorInternalOptions();
+    cJSON *monitor_global_options = getMonitorGlobalOptions();
+    cJSON *report_options = getReportsOptions();
+    cJSON_AddItemToObject(root, "internal_options", internal_options);
+    cJSON_AddItemToObject(root, "monitor_global_options", monitor_global_options);
+    cJSON_AddItemToObject(root, "report_options", report_options);
+    return root;
 }
