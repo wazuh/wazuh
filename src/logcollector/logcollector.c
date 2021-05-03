@@ -2762,10 +2762,11 @@ STATIC void w_load_files_status(cJSON * global_json) {
     }
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     cJSON * oslog = cJSON_GetObjectItem(global_json, OS_LOGCOLLECTOR_JSON_OSLOG);
-    cJSON * ts = cJSON_GetObjectItem(oslog, OS_LOGCOLLECTOR_JSON_TIMESTAMP);
-    char * timestamp = cJSON_GetStringValue(ts);
-    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN) {
-        w_oslog_set_status(timestamp);
+    char * timestamp = cJSON_GetStringValue(cJSON_GetObjectItem(oslog, OS_LOGCOLLECTOR_JSON_TIMESTAMP));
+    char * settings = cJSON_GetStringValue(cJSON_GetObjectItem(oslog, OS_LOGCOLLECTOR_JSON_SETTINGS));
+    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
+        w_oslog_set_timestamp(timestamp);
+        w_oslog_set_settings(settings);
     }
 #endif
 
@@ -2804,11 +2805,14 @@ STATIC char * w_save_files_status_to_cJSON() {
 
 #if defined(Darwin) || (defined(__linux__) && defined(WAZUH_UNIT_TESTING))
     cJSON * oslog = cJSON_CreateObject();
-    char * timestamp = w_oslog_get_status();
-    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN) {
+    char * timestamp = w_oslog_get_timestamp();
+    char * settings = w_oslog_get_settings();
+    if (w_strlen(timestamp) == OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN && settings != NULL) {
         cJSON_AddItemToObject(oslog, OS_LOGCOLLECTOR_JSON_TIMESTAMP, cJSON_CreateString(timestamp));
+        cJSON_AddItemToObject(oslog, OS_LOGCOLLECTOR_JSON_SETTINGS, cJSON_CreateString(settings));
         cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_OSLOG, oslog);
     }
+    os_free(settings);
     os_free(timestamp);
 #endif
 
