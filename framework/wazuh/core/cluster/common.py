@@ -69,6 +69,7 @@ class InBuffer:
         self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
+        self.flag_divided = b''  # request's command flag to indicate a msg division
         self.counter = 0  # request's counter in the box
 
     def get_info_from_header(self, header: bytes, header_format: str, header_size: int) -> bytes:
@@ -89,7 +90,9 @@ class InBuffer:
             Buffer without the content of the header.
         """
         self.counter, self.total, cmd = struct.unpack(header_format, header[:header_size])
-        self.cmd = cmd.split(b' ')[0]
+        cmd_split = cmd.split(b' ')
+        self.cmd = cmd_split[0]
+        self.flag_divided = cmd_split[2] if len(cmd_split) == 3 and cmd_split[2] in [b'd', b'e'] else b''
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -256,7 +259,7 @@ class Handler(asyncio.Protocol):
         # The box stores all sent messages IDs.
         self.box = {}
         # Defines command length.
-        self.cmd_len = 12
+        self.cmd_len = 14
         # Defines header length.
         self.header_len = self.cmd_len + 8  # 4 bytes of counter and 4 bytes of message size
         # Defines header format.
@@ -305,11 +308,10 @@ class Handler(asyncio.Protocol):
         return self.counter
 
     def msg_build(self, command: bytes, counter: int, data: bytes) -> list[bytearray]:
-        """Build a message with header + payload. If message size is more than request_chunk, return the message
-        divided.
+        """Build messages with header + payload.
 
-        It contains a header in self.header_format format that includes self.counter, the data size and the command.
-        The data is also encrypted and added to the bytearray starting from the position self.header_len.
+        Each message contains a header in self.header_format format that includes self.counter, the data size and the
+        command. The data is also encrypted and added to the bytearray starting from the position self.header_len.
 
         Parameters
         ----------
@@ -326,21 +328,26 @@ class Handler(asyncio.Protocol):
             Built message.
         """
         cmd_len = len(command)
-        if cmd_len > self.cmd_len:
+        # 2 B reserved for the divided msg case
+        if cmd_len > self.cmd_len - 2:
             raise exception.WazuhClusterError(3024, extra_message=command)
 
-        # adds - to command until it reaches cmd length
+        # Adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
         encrypted_data = self.my_fernet.encrypt(data) if self.my_fernet is not None else data
         message_size = self.header_len + len(encrypted_data)
+
         # Message size is <= request_chunk, send the message
         if message_size <= self.request_chunk:
             msg = bytearray(message_size)
             msg[:self.header_len] = struct.pack(self.header_format, counter, len(encrypted_data), command)
             msg[self.header_len:message_size] = encrypted_data
             return [msg]
+
         # Message size > request_chunk, send the message divided
         else:
+            # Command with the flag d (divided)
+            command = command[:-2] + b' d'
             msg_list = []
             partial_data_size = 0
             data_size = len(encrypted_data)
@@ -348,6 +355,11 @@ class Handler(asyncio.Protocol):
                 message_size = self.request_chunk \
                     if data_size - partial_data_size + self.header_len >= self.request_chunk \
                     else data_size - partial_data_size + self.header_len
+
+                # Last divided message, change flag to e (end)
+                if message_size == data_size - partial_data_size + self.header_len:
+                    command = command[:-2] + b' e'
+
                 msg = bytearray(message_size)
                 msg[:self.header_len] = struct.pack(self.header_format, counter, message_size - self.header_len,
                                                     command)
@@ -383,7 +395,7 @@ class Handler(asyncio.Protocol):
         else:
             return False
 
-    def get_messages(self) -> Tuple[bytes, int, bytes]:
+    def get_messages(self) -> Tuple[bytes, int, bytes, bytes]:
         """Get received command, counter and payload.
 
         Called when data is received in the transport. It decrypts the received data and returns it using generators.
@@ -409,7 +421,7 @@ class Handler(asyncio.Protocol):
                         else bytes(self.in_msg.payload)
                 except cryptography.fernet.InvalidToken:
                     raise exception.WazuhClusterError(3025)
-                yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload
+                yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload, self.in_msg.flag_divided
                 self.in_msg = InBuffer()
             else:
                 break
