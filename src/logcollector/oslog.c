@@ -20,7 +20,7 @@
 #define INLINE inline
 #endif
 
-STATIC w_oslog_status_t oslog_status = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "" };
+STATIC w_oslog_status_t oslog_status = { .mutex = PTHREAD_RWLOCK_INITIALIZER, .timestamp = "", .settings = NULL};
 
 /**
  * @brief Validates whether the predicate is valid or not
@@ -249,7 +249,7 @@ STATIC INLINE void w_oslog_create_show_env(logreader * current) {
 
     char ** log_show_array = NULL;
 
-    char * timestamp = w_oslog_get_status();
+    char * timestamp = w_oslog_get_timestamp();
 
     if (timestamp == NULL) {
         return;
@@ -306,30 +306,58 @@ void w_oslog_create_env(logreader * current) {
 
         /* If only-future-events is disabled, so past events are retrieved, then `log show` is also executed */
         if (!current->future) {
-            w_oslog_create_show_env(current);
+            char ** current_settings_list = w_oslog_create_stream_array(current->query, current->query_level, current->query_type);
+            char * current_settings = w_strcat_list(current_settings_list,0);
+            char * last_settings = w_oslog_get_settings();
+
+            if (last_settings != NULL && strcmp(current_settings, last_settings) == 0){
+                w_oslog_create_show_env(current);
+            } else {
+                mwarn("Current predicate differs from last one. Discarding old events");
+                w_oslog_set_settings(current_settings);
+            }
+            os_free(last_settings);
+            os_free(current_settings);
+            free_strarray(current_settings_list);
         }
 
         w_oslog_create_stream_env(current);
     }
-
     os_free(current->file);
     current->fp = NULL;
 }
 
-void w_oslog_set_status(char * timestamp) {
+void w_oslog_set_timestamp(char * timestamp) {
 
     w_rwlock_wrlock(&oslog_status.mutex);
     strncpy(oslog_status.timestamp, timestamp, OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN);
     w_rwlock_unlock(&oslog_status.mutex);
 }
 
-char * w_oslog_get_status() {
+char * w_oslog_get_timestamp() {
 
     char * short_timestamp = NULL;
     w_rwlock_rdlock(&oslog_status.mutex);
     w_strdup(oslog_status.timestamp, short_timestamp);
     w_rwlock_unlock(&oslog_status.mutex);
     return short_timestamp;
+}
+
+void w_oslog_set_settings(char * settings) {
+
+    w_rwlock_wrlock(&oslog_status.mutex);
+    os_free(oslog_status.settings)
+    w_strdup(settings, oslog_status.settings);
+    w_rwlock_unlock(&oslog_status.mutex);
+}
+
+char * w_oslog_get_settings() {
+
+    char * settings = NULL;
+    w_rwlock_rdlock(&oslog_status.mutex);
+    w_strdup(oslog_status.settings, settings);
+    w_rwlock_unlock(&oslog_status.mutex);
+    return settings;
 }
 
 #endif

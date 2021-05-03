@@ -153,7 +153,7 @@ void * read_oslog(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
 
     short_timestamp = w_oslog_trim_full_timestamp(full_timestamp);
     if (short_timestamp != NULL) {
-        w_oslog_set_status(short_timestamp);
+        w_oslog_set_timestamp(short_timestamp);
         os_free(short_timestamp);
     }
 
