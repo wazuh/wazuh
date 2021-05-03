@@ -2153,7 +2153,6 @@ class AWSServerAccess(AWSCustomBucket):
         def skip_if_old(downloaded_file):
             date = re.search(r'(\d{4}-\d{2}-\d{2}).*', downloaded_file)
             if date:
-                from datetime import datetime
                 date = datetime.strptime(date.group(1), '%Y-%m-%d')
                 return date < self.only_logs_after
             return False
@@ -2259,7 +2258,7 @@ class AWSServerAccess(AWSCustomBucket):
                     try:
                         if next_[-1] == delimiter:
                             if remove:
-                                value_list[-1] = value_list[-1][1:-2]
+                                value_list[-1] = value_list[-1][1:-1]
                             break
                     except TypeError:
                         pass
@@ -2280,6 +2279,10 @@ class AWSServerAccess(AWSCustomBucket):
                         value_list[-1] = value_list[-1][1:-1]
                 except TypeError:
                     pass
+            try:
+                value_list[-1] = value_list[-1].replace("\n", "")
+            except TypeError:
+                pass
             return value_list
 
         with self.decompress_file(log_key=log_key) as f:
