@@ -51,10 +51,12 @@ void* wm_monitor_main(wm_monitor_t *data) {
         pthread_exit(NULL);
     }*/
 
-    mond = *data->mond;
-    worker_node = *data->worker_node;
-    agents_to_alert_hash = data->agents_to_alert_hash;
-    mond_time_control = *data->mond_time_control;
+    mtdebug1(WM_MONITOR_LOGTAG, "Starting Monitor.");
+
+    data->mond = &mond;
+    data->worker_node = &worker_node;
+    data->agents_to_alert_hash = agents_to_alert_hash;
+    data->mond_time_control = &mond_time_control;
 
     /* Initialize global variables */
     mond.a_queue = 0;
@@ -66,6 +68,7 @@ void* wm_monitor_main(wm_monitor_t *data) {
 
     /* If we have any reports configured, read smtp/emailfrom */
     if (mond.reports) {
+
         OS_XML xml;
         char *tmpsmtp;
 
@@ -124,9 +127,10 @@ void* wm_monitor_main(wm_monitor_t *data) {
     }
 
     /* Starting monitor */
+    mtdebug1(WM_MONITOR_LOGTAG, "Module Started.");
     Monitord();
-
     mtinfo(WM_MONITOR_LOGTAG, "Module finished.");
+
     return 0;
 }
 
