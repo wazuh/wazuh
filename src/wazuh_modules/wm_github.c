@@ -168,7 +168,7 @@ size_t wm_github_write_callback(char *ptr, size_t size, size_t nmemb, void *user
     }
     memcpy(&req->buffer[req->len], ptr, realsize);
     req->len += realsize;
-    req->buffer[req->len] = 0;
+    req->buffer[req->len] = '\0';
 
     return realsize;
 }
@@ -273,7 +273,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     }
                 } else {
                     if (response->body) {
-                        error_msg = malloc(strlen(response->body) + 1);
+                        os_malloc(strlen(response->body) + 1, error_msg);
                         strncpy(error_msg, response->body, strlen(response->body));
                     }
                     scan_finished = 1;
@@ -298,7 +298,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     os_calloc(1, sizeof(wm_github_fail), org_fail);
                     github_config->fails = org_fail;
                 }
-                org_fail->org_name = malloc(strlen(current->org_name) + 1);
+                os_malloc(strlen(current->org_name) + 1, org_fail->org_name);
                 strncpy(org_fail->org_name, current->org_name, strlen(current->org_name));
 
                 org_fail->fails = 1;
@@ -394,10 +394,10 @@ static wm_github_response* wm_github_execute_curl(char *token, const char* url) 
     snprintf(auth_header, PATH_MAX -1, "Authorization: token %s", token);
     headers = curl_slist_append(headers, auth_header);
 
-    req.buffer = malloc(CHUNK_SIZE);
+    os_malloc(CHUNK_SIZE, req.buffer);
     req.buflen = CHUNK_SIZE;
 
-    req_header.buffer = malloc(CHUNK_SIZE);
+    os_malloc(CHUNK_SIZE, req_header.buffer);
     req_header.buflen = CHUNK_SIZE;
     
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, wm_github_write_callback);
@@ -406,9 +406,6 @@ static wm_github_response* wm_github_execute_curl(char *token, const char* url) 
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, wm_github_write_callback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
     curl_easy_setopt(curl, CURLOPT_URL, url);
-
-    req.buffer = malloc(CHUNK_SIZE);
-    req.buflen = CHUNK_SIZE;
 
     res = curl_easy_perform(curl);
 
@@ -444,7 +441,7 @@ static char* wm_github_get_next_page(char *header) {
         return NULL;
     }
 
-    next_page = malloc(strlen(regex.d_sub_strings[0]) + 1);
+    os_malloc(strlen(regex.d_sub_strings[0]) + 1, next_page);
     strncpy(next_page, regex.d_sub_strings[0], strlen(regex.d_sub_strings[0]));
     OSRegex_FreePattern(&regex);
     return next_page;
