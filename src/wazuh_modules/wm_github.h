@@ -23,6 +23,9 @@
 
 #define CHUNK_SIZE 2048
 #define ITEM_PER_PAGE 100
+#define RETRIES_TO_SEND_ERROR 3
+
+#define GITHUB_API_URL "https://api.github.com/orgs/%s/audit-log?phrase=created:%s..%s&include=%s&order=asc&per_page=%d"
 
 typedef struct curl_request {
     char *buffer;
