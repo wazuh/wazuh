@@ -164,7 +164,12 @@ void * read_oslog(logreader * lf, int * rc, __attribute__((unused)) int drop_it)
             merror(LOGCOLLECTOR_OSLOG_CHILD_ERROR, active_mode_wfd->pid, status);
             if(lf->oslog->ctxt.state == LOG_RUNNING_SHOW) {
                 w_oslog_release_show();
-                lf->oslog->ctxt.state = (lf->oslog->stream_wfd != NULL) ? LOG_RUNNING_STREAM : LOG_NOT_RUNNING;
+                if (lf->oslog->stream_wfd != NULL) {
+                    lf->oslog->is_header_processed = false;
+                    lf->oslog->ctxt.state = LOG_RUNNING_STREAM;
+                } else {
+                    lf->oslog->ctxt.state = LOG_NOT_RUNNING;
+                }
             } else {
                 w_oslog_release_stream();
                 lf->oslog->ctxt.state = LOG_NOT_RUNNING;
