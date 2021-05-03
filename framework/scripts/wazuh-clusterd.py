@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import argparse
@@ -132,6 +132,11 @@ if __name__ == '__main__':
         sys.exit(0)
 
     from api import configuration
+
+    cluster_status = wazuh.core.cluster.utils.get_cluster_status()
+    if cluster_status['running'] == 'yes':
+        main_logger.error("Cluster is already running.")
+        sys.exit(1)
 
     configuration.api_conf.update(configuration.read_yaml_config())
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2020, Wazuh Inc.
+# Copyright (C) 2015-2021, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -10,6 +10,7 @@ import operator
 import re
 import stat
 import sys
+import tempfile
 import typing
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -19,7 +20,6 @@ from os.path import join, basename, relpath
 from pyexpat import ExpatError
 from shutil import Error, copyfile, move
 from subprocess import CalledProcessError, check_output
-from tempfile import mkstemp
 from xml.etree.ElementTree import ElementTree
 
 from defusedxml.ElementTree import fromstring
@@ -449,8 +449,6 @@ def chmod_r(filepath, mode):
     :param filepath: Path to the file.
     :param mode: file mode in octal.
     """
-    chmod(filepath, mode)
-
     if path.isdir(filepath):
         for item in listdir(filepath):
             itempath = path.join(filepath, item)
@@ -458,6 +456,8 @@ def chmod_r(filepath, mode):
                 chmod(itempath, mode)
             elif path.isdir(itempath):
                 chmod_r(itempath, mode)
+
+    chmod(filepath, mode)
 
 
 def chown_r(filepath, uid, gid):
@@ -1645,7 +1645,7 @@ def upload_file(content, path, check_xml_formula_values=True):
         return xml_string
 
     # Path of temporary files for parsing xml input
-    handle, tmp_file_path = mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".tmp")
+    handle, tmp_file_path = tempfile.mkstemp(prefix=f'{common.wazuh_path}/tmp/api_tmp_file_', suffix=".tmp")
     try:
         with open(handle, 'w') as tmp_file:
             final_file = escape_formula_values(content) if check_xml_formula_values else content
