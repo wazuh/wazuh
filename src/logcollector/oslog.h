@@ -73,12 +73,14 @@
 ///< JSON fields for file_status related to macOS ULS
 #define OS_LOGCOLLECTOR_JSON_OSLOG      "oslog"
 #define OS_LOGCOLLECTOR_JSON_TIMESTAMP  "timestamp"
+#define OS_LOGCOLLECTOR_JSON_SETTINGS   "settings"
 
 /* ******************  DATATYPES  ****************** */
 
 typedef struct {
     pthread_rwlock_t mutex;
     char timestamp[OS_LOGCOLLECTOR_TIMESTAMP_SHORT_LEN + 1];
+    char * settings;
 } w_oslog_status_t;
 
 /* ******************  PROTOTYPES  ****************** */
@@ -94,14 +96,28 @@ void w_oslog_create_env(logreader * current);
  * 
  * @param timestamp macOS ULS short timestamp
  */
-void w_oslog_set_status(char * timestamp);
+void w_oslog_set_timestamp(char * timestamp);
+
+/**
+ * @brief Set string containing the last macOS ULS settings used.
+ * 
+ * @param predicate macOS ULS settings
+ */
+void w_oslog_set_settings(char * settings);
 
 /**
  * @brief Get string containing the last recorded timestamp.
  * 
  * @return Allocated string containing last recorded timestamp. NULL otherwise 
  */
-char * w_oslog_get_status();
+char * w_oslog_get_timestamp();
+
+/**
+ * @brief Get string containing the last macOS ULS settings used.
+ * 
+ * @return Allocated string containing last macOS ULS settings used. NULL otherwise 
+ */
+char * w_oslog_get_settings();
 
 
 #endif /* OSLOGSTREAM_H */
