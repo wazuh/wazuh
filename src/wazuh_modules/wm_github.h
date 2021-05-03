@@ -23,6 +23,7 @@
 
 #define CHUNK_SIZE 2048
 #define ITEM_PER_PAGE 100
+#define RETRIES_TO_SEND_ERROR 3
 
 typedef struct {
     char *buffer;

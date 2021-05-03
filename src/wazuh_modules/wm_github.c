@@ -18,7 +18,7 @@ static void wm_github_auth_destroy(wm_github_auth* github_auth);
 static void wm_github_fail_destroy(wm_github_fail* github_fails);
 static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
 static int wm_github_execute_scan(wm_github *github_config, int initial_scan);
-static wm_github_response* wm_github_execute_curl(char *org_name, char *token, const char *page_link, const char *event_type, const char *created_from, const char *created_until);
+static wm_github_response* wm_github_execute_curl(char *token, const char *url);
 static char* wm_github_get_next_page(char *header);
 cJSON *wm_github_dump(const wm_github* github_config);
 
@@ -182,11 +182,14 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     int scan_finished = 0;
     int fail = 0;
     char *next_page = NULL;
+    char *payload;
+    char url[PATH_MAX];
     char org_state_name[PATH_MAX];
     char last_scan_time_str[PATH_MAX];
     char now_scan_time_str[PATH_MAX];
     time_t last_scan_time;
     time_t new_scan_time;
+    char *error_msg = NULL;
 
     while (current != NULL)
     {
@@ -204,7 +207,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
             org_state_struc.last_log_time = 0;
         }
 
-        last_scan_time = (time_t)org_state_struc.last_log_time;
+        last_scan_time = (time_t)org_state_struc.last_log_time + 1;
         new_scan_time = time(0) - github_config->time_delay;
 
         memset(last_scan_time_str, '\0', PATH_MAX);
@@ -218,9 +221,14 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
             scan_finished = 1;
             fail = 0;
         }
+
+        memset(url, '\0', PATH_MAX);
+        snprintf(url, PATH_MAX -1, "https://api.github.com/orgs/%s/audit-log?phrase=created:%s..%s&include=%s&order=asc&per_page=%d", current->org_name, last_scan_time_str, now_scan_time_str, github_config->event_type, ITEM_PER_PAGE);
+
+        mtdebug1(WM_GITHUB_LOGTAG, "Url: %s", url);
         
         while (!scan_finished) {
-            response = wm_github_execute_curl(current->org_name, current->api_token, next_page, github_config->event_type, last_scan_time_str, now_scan_time_str);
+            response = wm_github_execute_curl(current->api_token, url);
             if (response) {
                 if (response->status_code == 200) {
                     // Load body to json and sent as localfile
@@ -232,7 +240,6 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
                     } else {
                         int response_lenght = cJSON_GetArraySize(array_logs_json);
                         for (int i = 0 ; i < response_lenght ; i++) {
-                            char * payload;
                             cJSON * subitem = cJSON_GetArrayItem(array_logs_json, i);
 
                             if (subitem) {
@@ -246,22 +253,29 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                                 os_free(payload);
                             }
+
                         }
 
-                        org_state_struc.last_log_time = new_scan_time;
-                        wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc));
-                        next_page = wm_github_get_next_page(response->header);
-                        if (next_page == NULL) {
+                        if (response_lenght == ITEM_PER_PAGE) {
+                            next_page = wm_github_get_next_page(response->header);
+                            if (next_page == NULL) {
+                                scan_finished = 1;
+                            } else {
+                                memset(url, '\0', PATH_MAX);
+                                strncpy(url, next_page, strlen(next_page));
+                                os_free(next_page);
+                            }
+                        } else {
                             scan_finished = 1;
-                        }
-                        org_fail = wm_github_get_fail_by_org(github_config->fails, current->org_name);
-                        if (org_fail != NULL) {
-                            org_fail->fails = 0;
                         }
 
                         cJSON_Delete(array_logs_json);
                     }
                 } else {
+                    if (response->body) {
+                        error_msg = malloc(strlen(response->body) + 1);
+                        strncpy(error_msg, response->body, strlen(response->body));
+                    }
                     scan_finished = 1;
                     fail = 1;
                 }
@@ -273,6 +287,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
         }
 
         if (fail) {
+            cJSON *fail_object = NULL;
             org_fail = wm_github_get_fail_by_org(github_config->fails, current->org_name);
             if (org_fail == NULL) {
                 if (github_config->fails) {
@@ -288,15 +303,46 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
 
                 org_fail->fails = 1;
             } else {
-                if (org_fail->fails == 3) {
+                if (org_fail->fails == (RETRIES_TO_SEND_ERROR - 1)) {
+                    // Send fail message
+                    cJSON *msg_obj = cJSON_Parse(error_msg);
                     org_fail->fails = org_fail->fails + 1;
-                    // Send fails message
+                    fail_object = cJSON_CreateObject();
+                    cJSON_AddStringToObject(fail_object, "actor", "wazuh");
+                    cJSON_AddStringToObject(fail_object, "source", WM_GITHUB_CONTEXT.name);
+                    cJSON_AddStringToObject(fail_object, "created_at", last_scan_time_str);
+                    cJSON_AddStringToObject(fail_object, "request", url);
+
+                    if (msg_obj) {
+                        cJSON_AddStringToObject(fail_object, "response", cJSON_PrintUnformatted(msg_obj));
+                    } else {
+                        cJSON_AddStringToObject(fail_object, "response", "Unknown error");
+                    }
+
+                    payload = cJSON_PrintUnformatted(fail_object);
+                    mdebug2("Sending... '%s'", payload);
+
+                    if (wm_sendmsg(WM_GITHUB_MSG_DELAY, github_config->queue_fd, payload, WM_GITHUB_CONTEXT.name, LOCALFILE_MQ) < 0) {
+                        mterror(WM_GITHUB_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                    }
+
+                    os_free(payload);
+                    cJSON_Delete(fail_object);
                 } else if (org_fail->fails < 3) {
                     org_fail->fails = org_fail->fails + 1;
                 }
             }
+        } else {
+            org_state_struc.last_log_time = new_scan_time;
+            wm_state_io(org_state_name, WM_IO_WRITE, &org_state_struc, sizeof(org_state_struc));
+
+            org_fail = wm_github_get_fail_by_org(github_config->fails, current->org_name);
+            if (org_fail != NULL) {
+                org_fail->fails = 0;
+            }
         }
         current = next;
+        os_free(error_msg);
     }
     return 0;
 }
@@ -322,8 +368,7 @@ static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
     return current;
 }
 
-static wm_github_response* wm_github_execute_curl(char *org_name, char *token, const char *page_link, const char *event_type, const char *created_from, const char *created_until) {
-    char url[PATH_MAX];
+static wm_github_response* wm_github_execute_curl(char *token, const char* url) {
     char auth_header[PATH_MAX];
     wm_github_response *response;
     struct curl_slist* headers = NULL;
@@ -355,21 +400,11 @@ static wm_github_response* wm_github_execute_curl(char *org_name, char *token, c
     req_header.buffer = malloc(CHUNK_SIZE);
     req_header.buflen = CHUNK_SIZE;
     
-
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, wm_github_write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&req);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, wm_github_write_callback);
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
-    memset(url, '\0', PATH_MAX);
-    if (page_link) {
-        snprintf(url, PATH_MAX -1, "%s", page_link);
-    } else {
-        snprintf(url, PATH_MAX -1, "https://api.github.com/orgs/%s/audit-log?phrase=created:%s..%s&include=%s&order=asc&per_page=%d", org_name, created_from, created_until, event_type, ITEM_PER_PAGE);
-    }
-
-    mtdebug1(WM_GITHUB_LOGTAG, "Url: %s", url);
-    
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
     req.buffer = malloc(CHUNK_SIZE);
@@ -392,6 +427,25 @@ static wm_github_response* wm_github_execute_curl(char *org_name, char *token, c
 
 static char* wm_github_get_next_page(char *header) {
     char *next_page = NULL;
-    
+    OSRegex regex;
+    if (!OSRegex_Compile("<(\\S+)>;\\s*rel=\"next\"", &regex, OS_RETURN_SUBSTRING)) {
+        mtwarn(WM_GITHUB_LOGTAG, "Cannot compile regex");
+        return NULL;
+    }
+    if (!OSRegex_Execute(header, &regex)) {
+        mtdebug1(WM_GITHUB_LOGTAG, "No match regex.");
+        OSRegex_FreePattern(&regex);
+        return NULL;
+    }
+
+    if (!regex.d_sub_strings[0]) {
+        mtdebug1(WM_GITHUB_LOGTAG, "No next page was captured.");
+        OSRegex_FreePattern(&regex);
+        return NULL;
+    }
+
+    next_page = malloc(strlen(regex.d_sub_strings[0]) + 1);
+    strncpy(next_page, regex.d_sub_strings[0], strlen(regex.d_sub_strings[0]));
+    OSRegex_FreePattern(&regex);
     return next_page;
 }
