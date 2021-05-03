@@ -53,13 +53,13 @@ void* wm_monitor_main(wm_monitor_t *data) {
 
     mtdebug1(WM_MONITOR_LOGTAG, "Starting Monitor.");
 
+    /* Initialize global variables */
+    mond.a_queue = 0;
+
     data->mond = &mond;
     data->worker_node = &worker_node;
     data->agents_to_alert_hash = agents_to_alert_hash;
     data->mond_time_control = &mond_time_control;
-
-    /* Initialize global variables */
-    mond.a_queue = 0;
 
     /* Reading configuration */
     if (MonitordConfig(OSSECCONF, &mond, DEFAULT_NO_AGENT, DEFAULT_DAY_WAIT) != OS_SUCCESS ) {
