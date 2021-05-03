@@ -414,12 +414,12 @@ void test_getMonitorGlobalOptions_success(void **state) {
 /* Tests getReportsOptions */
 
 void test_getReportsOptions_success(void **state) {
-    cJSON *root = NULL;
+    cJSON *reports = NULL;
     report_config **reports_array = NULL;
     report_config *report = NULL;
     char **email_array = NULL;
-    char *expected_output = "{\"reports\":[{\"title\":\"Title\",\"group\":\"Group\",\"rule\":\"Rule\",\
-\"level\":\"Level\",\"srcip\":\"SourceIP\",\"user\":\"User\",\"showlogs\":\"yes\",\"email_to\":[\"emailto_test\"]}]}";
+    char *expected_output = "[{\"title\":\"Title\",\"group\":\"Group\",\"rule\":\"Rule\",\
+\"level\":\"Level\",\"srcip\":\"SourceIP\",\"user\":\"User\",\"showlogs\":\"yes\",\"email_to\":[\"emailto_test\"]}]";
     char *result = NULL;
 
     os_calloc(2, sizeof(report_config*), reports_array);
@@ -442,12 +442,12 @@ void test_getReportsOptions_success(void **state) {
     report->emailto = email_array;
     mond.reports = reports_array;
 
-    root = getReportsOptions();
+    reports = getReportsOptions();
 
-    result = cJSON_PrintUnformatted(root);
+    result = cJSON_PrintUnformatted(reports);
     assert_string_equal(expected_output, result);
 
-    cJSON_Delete(root);
+    cJSON_Delete(reports);
     os_free(report);
     os_free(reports_array);
     os_free(email_array[0]);

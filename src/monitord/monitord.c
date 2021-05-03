@@ -129,11 +129,10 @@ cJSON *getMonitorGlobalOptions(void) {
 
 cJSON *getReportsOptions(void) {
 
-    cJSON *root = cJSON_CreateObject();
+    cJSON *arr = cJSON_CreateArray();
     unsigned int i;
 
     if (mond.reports) {
-        cJSON *arr = cJSON_CreateArray();
         for (i=0;mond.reports[i];i++) {
             cJSON *rep = cJSON_CreateObject();
             if (mond.reports[i]->title) cJSON_AddStringToObject(rep,"title",mond.reports[i]->title);
@@ -154,10 +153,9 @@ cJSON *getReportsOptions(void) {
             }
             cJSON_AddItemToArray(arr, rep);
         }
-        cJSON_AddItemToObject(root,"reports",arr);
     }
 
-    return root;
+    return arr;
 }
 
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait) {
