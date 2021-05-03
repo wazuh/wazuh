@@ -366,7 +366,8 @@ typedef struct _config {
     unsigned int enable_synchronization:1;    /* Enable database synchronization */
     unsigned int enable_registry_synchronization:1; /* Enable registry database synchronization */
 
-    directory_t **directories; /* List of directories to be monitored */
+    directory_t **directories;      /* List of directories to be monitored */
+    directory_t **wildcards;        /* List of wildcards to be monitored */
 
     char *scan_day;                 /* run syscheck on this day */
     char *scan_time;                /* run syscheck at this time */
@@ -451,20 +452,44 @@ int read_data_unit(const char *content);
 void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node);
 
 /**
- * @brief Adds (or overwrite if exists) an entry to the syscheck configuration structure
+ * @brief Creates a directory_t object from defined values
  *
- * @param syscheck Syscheck configuration structure
- * @param entry Entry to be dumped
- * @param vals Indicates the attributes for folders or registries to be set
- * @param restrictfile The restrict regex to be set
+ * @param path Path to be dumped
+ * @param options Indicates the attributes for folders or registries to be set
+ * @param filerestrict The restrict string to be set
  * @param recursion_level The recursion level to be set
  * @param tag The tag to be set
- * @param link If the added entry is pointed by a symbolic link for folders and arch for registries
- * @param diff_size Maximum size to calculate diff for files in the directory
+ * @param diff_size_limit Maximum size to calculate diff for files in the directory
  */
-void dump_syscheck_file(syscheck_config *syscheck, char *entry, int vals, const char *restrictfile,
-                            int recursion_level, const char *tag, const char *link,
-                            int diff_size) __attribute__((nonnull(1, 2)));
+directory_t *fim_create_directory(const char *path,
+                                  int options,
+                                  const char *filerestrict,
+                                  int recursion_level,
+                                  const char *tag,
+                                  int diff_size_limit);
+
+/**
+ * @brief Inserts the directory_t 'config_object' into the directory_t array 'config_array'
+ *
+ * @param config_array directory_t array from the syscheck configuration, passed by reference
+ * @param config_object directory_t object to be inserted
+ */
+void fim_insert_directory(directory_t ***config_array,
+                          directory_t *config_object);
+
+/**
+ * @brief Copies a given directory_t object and returns a reference to the copy.
+ *
+ * @param _dir directory_t object to be copied
+ */
+directory_t *fim_copy_directory(const directory_t *_dir);
+
+/**
+ * @brief Expands wildcards in the given path
+ *
+ * @param path Path to be expanded
+ */
+char **expand_wildcards(const char *path);
 
 #ifdef WIN32
 /**

@@ -124,6 +124,9 @@ time_t fim_scan() {
     clock_t cputime_start;
     int nodes_count = 0;
     directory_t *dir_it;
+    directory_t *wild_it;
+    directory_t *new_entry;
+    char **paths;
 
     cputime_start = clock();
     gettime(&start);
@@ -137,6 +140,31 @@ time_t fim_scan() {
     mdebug2(FIM_DIFF_FOLDER_SIZE, DIFF_DIR, syscheck.diff_folder_size);
 
     w_mutex_lock(&syscheck.fim_scan_mutex);
+
+    foreach_array(wild_it, syscheck.wildcards) {
+        paths = expand_wildcards(wild_it->path);
+        if (paths == NULL) {
+            continue;
+        }
+
+        for (int i = 0; paths[i]; i++) {
+            new_entry = fim_copy_directory(wild_it);
+            os_free(new_entry->path);
+            os_strdup(paths[i], new_entry->path);
+            os_free(paths[i]);
+            os_free(new_entry->symbolic_links);
+
+            if (CHECK_FOLLOW & new_entry->options) {
+                new_entry->symbolic_links = realpath(new_entry->path, NULL);
+            }
+
+            fim_insert_directory(&syscheck.directories, new_entry);
+
+            // TODO: Check syscheck.wildcards for updates in congiguration
+        }
+
+        os_free(paths);
+    }
 
     w_mutex_lock(&syscheck.fim_entry_mutex);
     fim_db_set_all_unscanned(syscheck.database);

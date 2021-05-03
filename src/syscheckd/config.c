@@ -43,6 +43,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.file_limit_enabled = true;
     syscheck.file_limit     = 100000;
     syscheck.directories = NULL;
+    syscheck.wildcards = NULL;
     syscheck.enable_synchronization = 1;
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
