@@ -279,7 +279,7 @@ class Handler(asyncio.Protocol):
         # Stores incoming string information from string commands.
         self.in_str = {}
         # Maximum message length to send in a single request.
-        self.request_chunk = 200
+        self.request_chunk = 5242880
         # Object use to encrypt and decrypt requests.
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # Logging.Logger object used to write logs.
