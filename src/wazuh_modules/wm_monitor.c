@@ -51,11 +51,87 @@ void* wm_monitor_main(wm_monitor_t *data) {
         pthread_exit(NULL);
     }*/
 
+    mtdebug1(WM_MONITOR_LOGTAG, "Starting Monitor.");
+
+    /* Initialize global variables */
+    mond.a_queue = 0;
+
+    data->mond = &mond;
+    data->worker_node = &worker_node;
+    data->agents_to_alert_hash = agents_to_alert_hash;
+    data->mond_time_control = &mond_time_control;
+
     /* Reading configuration */
     if (MonitordConfig(OSSECCONF, &mond, DEFAULT_NO_AGENT, DEFAULT_DAY_WAIT) != OS_SUCCESS ) {
         mterror(WM_MONITOR_LOGTAG, CONFIG_ERROR, OSSECCONF);
     }
 
+    /* If we have any reports configured, read smtp/emailfrom */
+    if (mond.reports) {
+
+        OS_XML xml;
+        char *tmpsmtp;
+
+        const char *(xml_smtp[]) = {"wazuh_config", "global", "smtp_server", NULL};
+        const char *(xml_from[]) = {"wazuh_config", "global", "email_from", NULL};
+        const char *(xml_idsname[]) = {"wazuh_config", "global", "email_idsname", NULL};
+
+        if (OS_ReadXML(OSSECCONF, &xml) < 0) {
+            mterror_exit(WM_MONITOR_LOGTAG, CONFIG_ERROR, OSSECCONF);
+        }
+
+        tmpsmtp = OS_GetOneContentforElement(&xml, xml_smtp);
+        mond.emailfrom = OS_GetOneContentforElement(&xml, xml_from);
+        mond.emailidsname = OS_GetOneContentforElement(&xml, xml_idsname);
+
+        if (tmpsmtp && mond.emailfrom) {
+            if (tmpsmtp[0] == '/') {
+                os_strdup(tmpsmtp, mond.smtpserver);
+            } else {
+                mond.smtpserver = OS_GetHost(tmpsmtp, 5);
+                if (!mond.smtpserver) {
+                    mterror(WM_MONITOR_LOGTAG, INVALID_SMTP, tmpsmtp);
+                    if (mond.emailfrom) {
+                        free(mond.emailfrom);
+                    }
+                    mond.emailfrom = NULL;
+                    mterror(WM_MONITOR_LOGTAG, "Invalid SMTP server.  Disabling email reports.");
+                }
+            }
+        } else {
+            if (tmpsmtp) {
+                free(tmpsmtp);
+            }
+            if (mond.emailfrom) {
+                free(mond.emailfrom);
+            }
+
+            mond.emailfrom = NULL;
+            mterror(WM_MONITOR_LOGTAG, "SMTP server or 'email from' missing. Disabling email reports.");
+        }
+
+        OS_ClearXML(&xml);
+    }
+
+    // Read the cluster status and the node type from the configuration file
+    // Do not monitor agents in client/worker nodes
+    switch (w_is_worker()){
+        case -1:
+            mterror(WM_MONITOR_LOGTAG, "Invalid option at cluster configuration");
+            break;
+        case 0:
+            worker_node = false;
+            break;
+        case 1:
+            mtdebug1(WM_MONITOR_LOGTAG, "Cluster client node: Disabled the agent monitoring");
+            worker_node = true;
+            mond.monitor_agents = 0;
+            break;
+    }
+
+    /* Starting monitor */
+    mtdebug1(WM_MONITOR_LOGTAG, "Module Started.");
+    Monitord();
     mtinfo(WM_MONITOR_LOGTAG, "Module finished.");
 
     return 0;
@@ -63,7 +139,6 @@ void* wm_monitor_main(wm_monitor_t *data) {
 
 void wm_monitor_destroy(wm_monitor_t *data) {
     mtinfo(WM_MONITOR_LOGTAG, "Destroy received for monitor.");
-
     os_free(data);
 }
 

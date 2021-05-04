@@ -23,7 +23,7 @@ extern const wm_context WM_MONITOR_CONTEXT; // Context
 typedef struct wm_monitor_t {
     monitor_config *mond;
     bool *worker_node;
-    OSHash* agents_to_alert_hash;
+    OSHash *agents_to_alert_hash;
     monitor_time_control *mond_time_control;
 } wm_monitor_t;
 
