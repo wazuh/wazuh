@@ -96,4 +96,7 @@ CREATE TRIGGER hotfix_insert
         UPDATE sys_osinfo SET triaged = 0;
 END;
 
+INSERT INTO sync_info (component) VALUES ('syscollector-packages');
+INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');
+
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 8);
