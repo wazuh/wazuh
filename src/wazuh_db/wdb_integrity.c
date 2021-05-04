@@ -268,7 +268,6 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
  * @param legacy This flag is set to TRUE for agents with an old syscollector syncronization process, and FALSE otherwise.
  * @param timestamp Synchronization event timestamp (field "id");
  */
-
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, bool legacy, os_sha1 last_agent_checksum) {
 
     assert(wdb != NULL);
@@ -302,7 +301,6 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
  * @param timestamp Synchronization event timestamp (field "id").
  * @param last_agent_checksum The last global checksum received from the agent.
  */
-
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum) {
 
     assert(wdb != NULL);
