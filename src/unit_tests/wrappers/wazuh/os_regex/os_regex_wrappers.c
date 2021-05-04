@@ -1,4 +1,4 @@
-/* Copyright (C) 2015-2021, Wazuh Inc.
+/* Copyright (C) 2015-2020, Wazuh Inc.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it
@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include "shared.h"
 #include "../../common.h"
 
 char **d_sub_strings = NULL;
@@ -36,7 +37,14 @@ const char *__wrap_OSRegex_Execute(const char *str, OSRegex *reg) {
             check_expected(str);
         }
 
-        reg->d_sub_strings = d_sub_strings;
+        reg->d_sub_strings = NULL;
+        os_calloc(1, 20, reg->d_sub_strings);
+
+        if(!strcmp(str, "test")) {
+            reg->d_sub_strings[0] = NULL;
+        } else {
+            reg->d_sub_strings[0] = "https://api.com/";
+        }
 
         return mock_type(const char *);
     }

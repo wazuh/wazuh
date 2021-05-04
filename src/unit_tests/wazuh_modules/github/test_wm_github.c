@@ -7,7 +7,7 @@
  * Foundation.
  *
  * Test corresponding to the scheduling capacities
- * for azure Module
+ * for github Module
  * */
 
 #include <stdarg.h>
@@ -19,10 +19,196 @@
 #include "shared.h"
 #include "wazuh_modules/wmodules.h"
 #include "wazuh_modules/wm_github.h"
+#include "wazuh_modules/wm_github.c"
 
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
+#include "../../wrappers/wazuh/os_regex/os_regex_wrappers.c"
+#include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
+
+void * wm_github_main(wm_github* github_config);
+
+unsigned int __wrap_sleep (unsigned int __seconds) {
+    check_expected(__seconds);
+    return mock_type(unsigned int);
+}
+
+void __wrap_OSRegex_FreePattern(OSRegex *reg) {
+    check_expected(reg);
+    return;
+}
+
+////////////////  test wm-github /////////////////
+
+static int setup_conf(void **state) {
+    wm_github *test;
+    os_calloc(1, sizeof(wm_github), test);
+    test_mode = 1;
+    *state = test;
+    return 0;
+}
+
+static int teardown_conf(void **state) {
+    test_structure *test = *state;
+    test_mode = 0;
+    os_free(test);
+    return 0;
+}
+
+void test_github_main_disabled(void **state) {
+    wm_github* github_config = *state;
+    github_config->enabled = 0;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub disabled.");
+
+    wm_github_main(github_config);
+}
+
+void test_github_main_fail_StartMQ(void **state) {
+    wm_github* github_config = *state;
+    github_config->enabled = 1;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub started.");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:osquery");
+    expect_string(__wrap__mterror, formatted_msg, "Can't connect to queue. Closing module.");
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, -1);
+
+    wm_github_main(github_config);
+}
+
+void test_github_main_enable(void **state) {
+    wm_github* github_config = *state;
+    github_config->enabled = 1;
+    github_config->run_on_start = 1;
+    github_config->interval = 2;
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, 1);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub started.");
+
+    expect_value(__wrap_sleep, __seconds, 2);
+    will_return(__wrap_sleep, 0);
+
+    wm_github_main(github_config);
+}
+
+void test_github_get_next_page_warn(void **state) {
+    wm_github* github_config = *state;
+    char *header;
+
+    expect_string(__wrap_OSRegex_Compile, pattern,"<(\\S+)>;\\s*rel=\"next\"");
+    will_return(__wrap_OSRegex_Compile, 0);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtwarn, formatted_msg, "Cannot compile regex");
+
+    wm_github_get_next_page(header);
+}
+
+void test_github_get_next_page_execute(void **state) {
+    wm_github* github_config = *state;
+    char *header = "test";
+
+    expect_string(__wrap_OSRegex_Compile, pattern, "<(\\S+)>;\\s*rel=\"next\"");
+    will_return(__wrap_OSRegex_Compile, 1);
+
+    expect_string(__wrap_OSRegex_Execute, str, "test");
+    will_return(__wrap_OSRegex_Execute, NULL);
+
+    expect_any(__wrap_OSRegex_FreePattern, reg);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "No match regex.");
+
+    wm_github_get_next_page(header);
+}
+
+void test_github_get_next_page_sub_string(void **state) {
+    wm_github* github_config = *state;
+    char *header = "test";
+
+    expect_string(__wrap_OSRegex_Compile, pattern, "<(\\S+)>;\\s*rel=\"next\"");
+    will_return(__wrap_OSRegex_Compile, 1);
+
+    expect_string(__wrap_OSRegex_Execute, str, "test");
+    will_return(__wrap_OSRegex_Execute, "yes");
+
+    expect_any(__wrap_OSRegex_FreePattern, reg);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtdebug1, formatted_msg, "No next page was captured.");
+
+    wm_github_get_next_page(header);
+}
+
+void test_github_get_next_page_complete(void **state) {
+    wm_github* github_config = *state;
+    char *header = "test_1";
+
+    expect_string(__wrap_OSRegex_Compile, pattern, "<(\\S+)>;\\s*rel=\"next\"");
+    will_return(__wrap_OSRegex_Compile, 1);
+
+    expect_string(__wrap_OSRegex_Execute, str, "test_1");
+    will_return(__wrap_OSRegex_Execute, "yes");
+
+    expect_any(__wrap_OSRegex_FreePattern, reg);
+
+    wm_github_get_next_page(header);
+}
+
+void test_github_dump_1(void **state) {
+    wm_github* github_config = *state;
+    char *test = "{\"github\":{\"enabled\":\"no\",\"run_on_start\":\"no\",\"only_future_events\":\"no\"}}";
+
+    cJSON *root = wm_github_dump(github_config);
+    char *root_c = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    assert_string_equal(root_c, test);
+}
+
+void test_github_dump_2(void **state) {
+    wm_github* github_config = *state;
+    github_config->enabled = 1;
+    github_config->run_on_start = 1;
+    github_config->only_future_events = 1;
+    github_config->interval = 10;
+    github_config->time_delay = 1;
+    os_calloc(1, sizeof(wm_github_auth), github_config->auth);
+    github_config->auth->api_token = "test_token";
+    github_config->auth->org_name = "test_org";
+    github_config->event_type = "all";
+
+    char *test = "{\"github\":{\"enabled\":\"yes\",\"run_on_start\":\"yes\",\"only_future_events\":\"yes\",\"interval\":10,\"time_delay\":1,\"api_auth\":[{\"org_name\":\"test_org\",\"api_token\":\"test_token\"}],\"event_type\":\"all\"}}";
+
+    cJSON *root = wm_github_dump(github_config);
+    char *root_c = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    assert_string_equal(root_c, test);
+}
+
+/*void test_github_write_callback_1(void **state) {
+    wm_github* github_config = *state;
+    char *ptr;
+    size_t size;
+    size_t nmemb;
+    void *userdata;
+
+    wm_github_write_callback(ptr, size, nmemb, userdata);
+}*/
+
+////////////////  test wmodules-github /////////////////
 
 static int setup_test_read(void **state) {
     test_structure *test;
@@ -596,7 +782,20 @@ void test_error_event_type_1(void **state) {
 
 int main(void) {
 
-    const struct CMUnitTest tests[] = {
+    const struct CMUnitTest tests_with_startup[] = {
+        cmocka_unit_test_setup_teardown(test_github_main_disabled, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_main_fail_StartMQ, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_main_enable, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_get_next_page_warn, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_get_next_page_execute, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_get_next_page_sub_string, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_get_next_page_complete, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_dump_1, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_github_dump_2, setup_conf, teardown_conf),
+        //cmocka_unit_test_setup_teardown(test_github_write_callback_1, setup_conf, teardown_conf),
+
+    };
+    const struct CMUnitTest tests_without_startup[] = {
         cmocka_unit_test_setup_teardown(test_read_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_configuration_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_default_configuration, setup_test_read, teardown_test_read),
@@ -621,7 +820,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_error_api_token, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_api_token_1, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_error_event_type_1, setup_test_read, teardown_test_read),
-
     };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    int result;
+    result = cmocka_run_group_tests(tests_with_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    return result;
 }

@@ -9,17 +9,24 @@
  * Foundation.
  */
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include "wmodules.h"
 
-static void* wm_github_main(wm_github* github_config);    // Module main function. It won't return
-static void wm_github_destroy(wm_github* github_config);
-static void wm_github_auth_destroy(wm_github_auth* github_auth);
-static void wm_github_fail_destroy(wm_github_fail* github_fails);
-static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
-static int wm_github_execute_scan(wm_github *github_config, int initial_scan);
-static curl_response* wm_github_execute_curl(char *token, const char *url);
-static char* wm_github_get_next_page(char *header);
-static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
+STATIC void* wm_github_main(wm_github* github_config);    // Module main function. It won't return
+STATIC void wm_github_destroy(wm_github* github_config);
+STATIC void wm_github_auth_destroy(wm_github_auth* github_auth);
+STATIC void wm_github_fail_destroy(wm_github_fail* github_fails);
+STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name);
+STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan);
+STATIC curl_response* wm_github_execute_curl(char *token, const char *url);
+STATIC char* wm_github_get_next_page(char *header);
+STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd);
 cJSON *wm_github_dump(const wm_github* github_config);
 
 /* Context definition */
@@ -53,6 +60,9 @@ void * wm_github_main(wm_github* github_config) {
         while (1) {
             sleep(github_config->interval);
             wm_github_execute_scan(github_config, 0);
+            #ifdef WAZUH_UNIT_TESTING
+                break;
+            #endif
         }
     } else {
         mtinfo(WM_GITHUB_LOGTAG, "Module GitHub disabled.");
@@ -173,7 +183,7 @@ size_t wm_github_write_callback(char *ptr, size_t size, size_t nmemb, void *user
     return realsize;
 }
 
-static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
+STATIC int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     wm_github_auth* current = github_config->auth;
     wm_github_auth* next = NULL;
     curl_response *response;
@@ -313,7 +323,7 @@ static int wm_github_execute_scan(wm_github *github_config, int initial_scan) {
     return 0;
 }
 
-static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name) {
+STATIC wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *org_name) {
     wm_github_fail* current;
     current = fails;
     int target_org = 0;
@@ -336,7 +346,7 @@ static wm_github_fail* wm_github_get_fail_by_org(wm_github_fail *fails, char *or
     return current;
 }
 
-static curl_response* wm_github_execute_curl(char *token, const char* url) {
+STATIC curl_response* wm_github_execute_curl(char *token, const char* url) {
     char auth_header[PATH_MAX];
     curl_response *response;
     struct curl_slist* headers = NULL;
@@ -390,7 +400,7 @@ static curl_response* wm_github_execute_curl(char *token, const char* url) {
     return response;
 }
 
-static char* wm_github_get_next_page(char *header) {
+STATIC char* wm_github_get_next_page(char *header) {
     char *next_page = NULL;
     OSRegex regex;
 
@@ -417,7 +427,7 @@ static char* wm_github_get_next_page(char *header) {
     return next_page;
 }
 
-static void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd) {
+STATIC void wm_github_scan_failure_action(wm_github_fail **current_fails, char *org_name, char *error_msg, int queue_fd) {
     char *payload;
     wm_github_fail *org_fail;
 

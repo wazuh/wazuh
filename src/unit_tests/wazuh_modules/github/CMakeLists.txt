@@ -7,7 +7,11 @@
 
 # Tests list and flags
 list(APPEND tests_names "test_wm_github")
-list(APPEND tests_flags "-Wl,--wrap=_mwarn,--wrap=_merror")
+list(APPEND tests_flags "-Wl,--wrap,_mwarn -Wl,--wrap,_merror -Wl,--wrap,_mtinfo -Wl,--wrap,_mterror\
+                        -Wl,--wrap,_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap,StartMQ -Wl,--wrap,sleep \
+                        -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,OSRegex_Compile \
+                        -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
+                        -Wl,--wrap,OSRegex_FreePattern")
 list(APPEND use_shared_libs 1)
 
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
@@ -67,3 +71,4 @@ foreach(counter RANGE ${count})
     endif()
     add_test(${test_name} ${test_name})
 endforeach()
+
